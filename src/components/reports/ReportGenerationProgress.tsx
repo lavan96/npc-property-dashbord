@@ -1,32 +1,25 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { invokeSecureFunction, hasActiveSession, isAuthExhausted } from '@/lib/secureInvoke';
 import { useAuth } from '@/hooks/useAuth';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useGenerationHistory } from '@/hooks/useGenerationHistory';
+import {
+  GenerationProgressHeader,
+  GenerationProgressItem,
+  GenerationProgressPill,
+  GenerationHistoryList,
+  type AggregateCounts,
+  type AutoContinueSettings,
+  type ReportProgress,
+} from './progress/parts';
 
-interface ReportProgress {
-  id: string;
-  property_address: string;
-  status: string;
-  sectionsCompleted: number;
-  totalSections: number;
-  contentLength: number;
-  error_message?: string | null;
-  lastUpdated: Date;
-  lastCompletedSection: number; // From database
-  createdAt: Date;
-}
-
-interface AutoContinueSettings {
-  enabled: boolean;
-  maxRetries: number;
-  delaySeconds: number;
-}
+/* ---------- Settings persistence ---------- */
 
 interface RetryState {
   [reportId: string]: {
@@ -35,6 +28,10 @@ interface RetryState {
     scheduledRetry?: NodeJS.Timeout;
   };
 }
+
+type Corner = 'br' | 'bl' | 'tr' | 'tl';
+const POSITION_KEY = 'report-progress-position-v1';
+const COLLAPSED_KEY = 'report-progress-collapsed-v1';
 
 function getAutoContinueSettings(): AutoContinueSettings {
   try {
@@ -53,49 +50,92 @@ function getAutoContinueSettings(): AutoContinueSettings {
   return { enabled: true, maxRetries: 3, delaySeconds: 15 };
 }
 
+function saveAutoContinueSettings(next: AutoContinueSettings) {
+  try {
+    const saved = localStorage.getItem('dashboard-settings');
+    const parsed = saved ? JSON.parse(saved) : {};
+    parsed.autoContinueReports = next.enabled;
+    parsed.autoContinueMaxRetries = next.maxRetries;
+    parsed.autoContinueDelaySeconds = next.delaySeconds;
+    localStorage.setItem('dashboard-settings', JSON.stringify(parsed));
+  } catch (e) {
+    console.error('Failed to save auto-continue settings:', e);
+  }
+}
+
+function getCorner(): Corner {
+  const v = localStorage.getItem(POSITION_KEY) as Corner | null;
+  return v && ['br', 'bl', 'tr', 'tl'].includes(v) ? v : 'br';
+}
+function getCollapsed(): boolean {
+  return localStorage.getItem(COLLAPSED_KEY) === '1';
+}
+
+/* ---------- Public component ---------- */
+
 export function ReportGenerationProgress() {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const isPortalRoute = location.pathname.startsWith('/client') || location.pathname.startsWith('/portal') || location.pathname.startsWith('/finance');
+  const isPortalRoute =
+    location.pathname.startsWith('/client') ||
+    location.pathname.startsWith('/portal') ||
+    location.pathname.startsWith('/finance');
 
-  // Don't render on client-facing portal or finance portal routes
   if (isPortalRoute) return null;
-
-  // Don't render (and therefore don't poll) if auth is still loading or no user is logged in
   if (loading || !user) return null;
-  
+
   return <ReportGenerationProgressInner />;
 }
 
 function ReportGenerationProgressInner() {
   const [reports, setReports] = useState<ReportProgress[]>([]);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true); // For mobile: expand/collapse list
-  const [autoContinueSettings, setAutoContinueSettings] = useState<AutoContinueSettings>(getAutoContinueSettings);
+  const [isMinimized, setIsMinimized] = useState<boolean>(getCollapsed);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [corner, setCorner] = useState<Corner>(getCorner);
+  const [autoContinueSettings, setAutoContinueSettings] =
+    useState<AutoContinueSettings>(getAutoContinueSettings);
+
   const retryStateRef = useRef<RetryState>({});
   const autoRetryInProgressRef = useRef<Set<string>>(new Set());
   const isMobile = useIsMobile();
+  const { entries: history, addEntry: addHistory, clear: clearHistory } = useGenerationHistory();
 
-  // Load auto-continue settings from localStorage
+  /* Track section completion timestamps per report (for ETA + sparkline) */
+  const sectionTimelineRef = useRef<Map<string, number[]>>(new Map());
+  const lastSectionsRef = useRef<Map<string, number>>(new Map());
+  const previousReportIdsRef = useRef<Set<string>>(new Set());
+  const prevReportsRef = useRef<ReportProgress[]>([]);
+
+  /* Persist collapsed + corner */
   useEffect(() => {
-    const handleStorageChange = () => {
-      setAutoContinueSettings(getAutoContinueSettings());
-    };
+    localStorage.setItem(COLLAPSED_KEY, isMinimized ? '1' : '0');
+  }, [isMinimized]);
+  useEffect(() => {
+    localStorage.setItem(POSITION_KEY, corner);
+  }, [corner]);
 
-    // Check for settings changes periodically (localStorage doesn't trigger events in same tab)
-    const interval = setInterval(handleStorageChange, 5000);
-    
-    return () => clearInterval(interval);
+  /* Sync auto-continue settings (cross-tab + periodic) */
+  useEffect(() => {
+    const refresh = () => setAutoContinueSettings(getAutoContinueSettings());
+    const interval = setInterval(refresh, 5000);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'dashboard-settings') refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
-  // Load retry state from localStorage on mount
+  /* Load retry state on mount */
   useEffect(() => {
     try {
       const saved = localStorage.getItem('report-retry-state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Restore only attempt counts, not timeouts
-        Object.keys(parsed).forEach(id => {
+        Object.keys(parsed).forEach((id) => {
           retryStateRef.current[id] = {
             attempts: parsed[id].attempts || 0,
             lastAttempt: parsed[id].lastAttempt || 0,
@@ -107,7 +147,6 @@ function ReportGenerationProgressInner() {
     }
   }, []);
 
-  // Save retry state to localStorage
   const saveRetryState = useCallback(() => {
     try {
       const toSave: Record<string, { attempts: number; lastAttempt: number }> = {};
@@ -120,115 +159,81 @@ function ReportGenerationProgressInner() {
     }
   }, []);
 
-  const handleContinueGeneration = useCallback(async (reportId: string, isAutoRetry = false) => {
-    try {
-      // Prevent duplicate auto-retries
-      if (isAutoRetry && autoRetryInProgressRef.current.has(reportId)) {
-        console.log(`[AutoContinue] Skipping duplicate retry for ${reportId}`);
-        return;
-      }
+  const handleContinueGeneration = useCallback(
+    async (reportId: string, isAutoRetry = false) => {
+      try {
+        if (isAutoRetry && autoRetryInProgressRef.current.has(reportId)) return;
+        if (isAutoRetry) autoRetryInProgressRef.current.add(reportId);
 
-      if (isAutoRetry) {
-        autoRetryInProgressRef.current.add(reportId);
-        console.log(`[AutoContinue] Auto-retrying report ${reportId}`);
-      }
+        setReports((prev) =>
+          prev.map((r) =>
+            r.id === reportId
+              ? { ...r, status: 'processing', error_message: null, lastUpdated: new Date() }
+              : r
+          )
+        );
 
-      // Update local state to show resuming
-      setReports(prev => prev.map(r => 
-        r.id === reportId 
-          ? { ...r, status: 'processing', error_message: null, lastUpdated: new Date() }
-          : r
-      ));
+        await invokeSecureFunction('manage-investment-reports', {
+          action: 'update',
+          reportId,
+          data: {
+            status: 'processing',
+            error_message: null,
+            updated_at: new Date().toISOString(),
+          },
+        });
 
-      // Reset status to processing via secure Edge Function
-      await invokeSecureFunction('manage-investment-reports', {
-        action: 'update',
-        reportId,
-        data: { 
-          status: 'processing',
-          error_message: null,
-          updated_at: new Date().toISOString()
+        const { error } = await invokeSecureFunction('generate-investment-report', {
+          reportId,
+          continueFrom: true,
+          singleSection: true,
+        });
+
+        if (error) {
+          console.error('Error invoking generation:', error);
+          setReports((prev) =>
+            prev.map((r) =>
+              r.id === reportId
+                ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
+                : r
+            )
+          );
         }
-      });
-
-      // Use chunked single-section mode for resilience against platform timeouts
-      // This generates one section per call, avoiding the full-generation timeout risk
-      const { error } = await invokeSecureFunction('generate-investment-report', {
-        reportId: reportId,
-        continueFrom: true,
-        singleSection: true
-      });
-
-      if (error) {
-        console.error('Error invoking generation:', error);
-        setReports(prev => prev.map(r => 
-          r.id === reportId 
-            ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
-            : r
-        ));
+      } catch (error) {
+        console.error('Error continuing generation:', error);
+      } finally {
+        if (isAutoRetry) autoRetryInProgressRef.current.delete(reportId);
       }
-      
-    } catch (error) {
-      console.error('Error continuing generation:', error);
-    } finally {
-      if (isAutoRetry) {
-        autoRetryInProgressRef.current.delete(reportId);
+    },
+    []
+  );
+
+  const scheduleAutoRetry = useCallback(
+    (report: ReportProgress) => {
+      const { id } = report;
+      const settings = autoContinueSettings;
+      if (!settings.enabled || paused) return;
+      if (!retryStateRef.current[id]) {
+        retryStateRef.current[id] = { attempts: 0, lastAttempt: 0 };
       }
-    }
-  }, []);
+      const state = retryStateRef.current[id];
+      if (state.attempts >= settings.maxRetries) return;
+      if (state.scheduledRetry) return;
 
-  const scheduleAutoRetry = useCallback((report: ReportProgress) => {
-    const { id } = report;
-    const settings = autoContinueSettings;
-    
-    if (!settings.enabled) return;
+      const timeSinceLastAttempt = Date.now() - state.lastAttempt;
+      const delayMs = settings.delaySeconds * 1000;
 
-    // Initialize retry state if needed
-    if (!retryStateRef.current[id]) {
-      retryStateRef.current[id] = { attempts: 0, lastAttempt: 0 };
-    }
-
-    const state = retryStateRef.current[id];
-    
-    // Check if we've exceeded max retries
-    if (state.attempts >= settings.maxRetries) {
-      console.log(`[AutoContinue] Max retries (${settings.maxRetries}) exceeded for ${id}`);
-      return;
-    }
-
-    // Check if we already have a scheduled retry
-    if (state.scheduledRetry) {
-      return;
-    }
-
-    // Check if enough time has passed since last attempt
-    const timeSinceLastAttempt = Date.now() - state.lastAttempt;
-    const delayMs = settings.delaySeconds * 1000;
-    
-    if (timeSinceLastAttempt < delayMs) {
-      // Schedule for remaining time
-      const remainingDelay = delayMs - timeSinceLastAttempt;
+      const scheduleIn = timeSinceLastAttempt < delayMs ? delayMs - timeSinceLastAttempt : delayMs;
       state.scheduledRetry = setTimeout(() => {
         delete state.scheduledRetry;
         state.attempts++;
         state.lastAttempt = Date.now();
         saveRetryState();
         handleContinueGeneration(id, true);
-      }, remainingDelay);
-      return;
-    }
-
-    // Schedule the retry
-    console.log(`[AutoContinue] Scheduling retry ${state.attempts + 1}/${settings.maxRetries} for ${id} in ${settings.delaySeconds}s`);
-    
-    state.scheduledRetry = setTimeout(() => {
-      delete state.scheduledRetry;
-      state.attempts++;
-      state.lastAttempt = Date.now();
-      saveRetryState();
-      handleContinueGeneration(id, true);
-    }, delayMs);
-  }, [autoContinueSettings, handleContinueGeneration, saveRetryState]);
+      }, scheduleIn);
+    },
+    [autoContinueSettings, handleContinueGeneration, saveRetryState, paused]
+  );
 
   const cancelScheduledRetry = useCallback((reportId: string) => {
     const state = retryStateRef.current[reportId];
@@ -238,89 +243,66 @@ function ReportGenerationProgressInner() {
     }
   }, []);
 
-  // Clean up retry state for completed/removed reports
-  const cleanupRetryState = useCallback((activeReportIds: Set<string>) => {
-    Object.keys(retryStateRef.current).forEach(id => {
-      if (!activeReportIds.has(id)) {
-        cancelScheduledRetry(id);
-        delete retryStateRef.current[id];
-      }
-    });
-    saveRetryState();
-  }, [cancelScheduledRetry, saveRetryState]);
+  const cleanupRetryState = useCallback(
+    (activeReportIds: Set<string>) => {
+      Object.keys(retryStateRef.current).forEach((id) => {
+        if (!activeReportIds.has(id)) {
+          cancelScheduledRetry(id);
+          delete retryStateRef.current[id];
+        }
+      });
+      saveRetryState();
+    },
+    [cancelScheduledRetry, saveRetryState]
+  );
 
-  // Track consecutive auth failures to implement backoff
+  /* Polling state */
   const authFailCountRef = useRef(0);
-  const AUTH_FAIL_THRESHOLD = 3; // Stop polling after 3 consecutive 401s
-
-  // Track consecutive transient (5xx / network) failures to back off polling
+  const AUTH_FAIL_THRESHOLD = 3;
   const transientFailCountRef = useRef(0);
   const transientBackoffUntilRef = useRef(0);
+  const visibleRef = useRef(typeof document !== 'undefined' ? !document.hidden : true);
 
   useEffect(() => {
-    // Reset auth fail count when session state changes
-    if (hasActiveSession()) {
-      authFailCountRef.current = 0;
-    }
-
-    // Initial fetch
-    fetchActiveReports();
-
-    // Poll every 3 seconds for active reports
-    const interval = setInterval(fetchActiveReports, 3000);
-
-    return () => {
-      clearInterval(interval);
-      // Clean up all scheduled retries
-      Object.keys(retryStateRef.current).forEach(cancelScheduledRetry);
+    const onVis = () => {
+      visibleRef.current = !document.hidden;
     };
-  }, [cancelScheduledRetry]);
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
-  const fetchActiveReports = async () => {
-    // Guard: don't poll if no session token is available
-    if (!hasActiveSession()) {
-      return;
-    }
-
-    // Guard: stop polling if global auth circuit breaker has tripped
-    if (isAuthExhausted()) {
-      return;
-    }
-
-    // Guard: stop polling if we've hit too many consecutive auth failures locally
-    if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
-      return;
-    }
-
-    // Guard: respect transient-error backoff window (e.g., edge runtime 503s)
-    if (Date.now() < transientBackoffUntilRef.current) {
-      return;
-    }
+  const fetchActiveReports = useCallback(async () => {
+    if (paused) return;
+    if (!visibleRef.current) return;
+    if (!hasActiveSession()) return;
+    if (isAuthExhausted()) return;
+    if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) return;
+    if (Date.now() < transientBackoffUntilRef.current) return;
 
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       listMode: true,
       listOptions: {
-        select: 'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section',
+        select:
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
-        limit: 10
-      }
+        limit: 10,
+      },
     });
 
     if (error) {
-      // Check if it's an auth error (401) and increment counter
-      const isAuthError = error.message === 'Authentication required' || error.message?.includes('401');
+      const isAuthError =
+        error.message === 'Authentication required' || error.message?.includes('401');
       if (isAuthError) {
         authFailCountRef.current += 1;
         if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
-          console.warn('[ReportGenerationProgress] Stopped polling after repeated auth failures. User may need to re-login.');
+          console.warn(
+            '[ReportGenerationProgress] Stopped polling after repeated auth failures.'
+          );
         }
-        console.error('Error fetching active reports:', error);
         return;
       }
-
-      // Detect transient/server errors (5xx, network failures) and back off exponentially
       const msg = String(error.message || '');
       const isTransient =
         msg.includes('503') ||
@@ -330,108 +312,177 @@ function ReportGenerationProgressInner() {
         msg.includes('Failed to fetch') ||
         msg.includes('NetworkError') ||
         msg.includes('temporarily unavailable');
-
       if (isTransient) {
         transientFailCountRef.current += 1;
-        // Exponential backoff: 5s, 10s, 20s, 40s, capped at 60s
         const backoffSeconds = Math.min(60, 5 * Math.pow(2, transientFailCountRef.current - 1));
         transientBackoffUntilRef.current = Date.now() + backoffSeconds * 1000;
         console.warn(
-          `[ReportGenerationProgress] Edge function transient error (attempt ${transientFailCountRef.current}). Backing off ${backoffSeconds}s.`,
+          `[ReportGenerationProgress] Transient error (attempt ${transientFailCountRef.current}). Backing off ${backoffSeconds}s.`,
           msg
         );
         return;
       }
-
       console.error('Error fetching active reports:', error);
       return;
     }
 
-    // Reset auth + transient counters on success
     authFailCountRef.current = 0;
     transientFailCountRef.current = 0;
     transientBackoffUntilRef.current = 0;
 
     const records = data?.reports || [];
-    
-    // Filter out reports that are too old (24 hours)
     const now = Date.now();
     const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-    
+
     const recentReports = records.filter((report: any) => {
       const createdAt = new Date(report.created_at).getTime();
-      return (now - createdAt) < MAX_AGE_MS;
+      return now - createdAt < MAX_AGE_MS;
     });
-    
+
     const processedReports: ReportProgress[] = recentReports.map((report: any) => {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       const dbSection = report.last_completed_section || 0;
-      
       return {
         id: report.id,
         property_address: report.property_address,
         status: report.status,
-        sectionsCompleted: Math.max(sectionsCompleted, dbSection), // Use higher of regex vs DB
+        sectionsCompleted: Math.max(sectionsCompleted, dbSection),
         totalSections: 12,
         contentLength: content.length,
         error_message: report.error_message,
         lastUpdated: new Date(report.updated_at),
         lastCompletedSection: dbSection,
-        createdAt: new Date(report.created_at)
+        createdAt: new Date(report.created_at),
       };
     });
 
-    setReports(processedReports);
-    
-    // Clean up retry state for reports no longer active
-    cleanupRetryState(new Set(processedReports.map(r => r.id)));
+    /* Track section-completion timestamps for ETA + sparkline */
+    processedReports.forEach((r) => {
+      const prevSections = lastSectionsRef.current.get(r.id) ?? 0;
+      if (r.sectionsCompleted > prevSections) {
+        const timeline = sectionTimelineRef.current.get(r.id) ?? [];
+        const delta = r.sectionsCompleted - prevSections;
+        for (let i = 0; i < delta; i++) timeline.push(now);
+        sectionTimelineRef.current.set(r.id, timeline);
+      }
+      lastSectionsRef.current.set(r.id, r.sectionsCompleted);
+    });
 
-    // Check for stalled reports and schedule auto-retries
-    processedReports.forEach(report => {
+    /* Detect completed/failed jobs that disappeared from the active list -> push to history + toast */
+    const currentIds = new Set(processedReports.map((r) => r.id));
+    const previous = prevReportsRef.current;
+    const previousIds = previousReportIdsRef.current;
+    if (previousIds.size > 0) {
+      previous.forEach((prev) => {
+        if (!currentIds.has(prev.id)) {
+          // Disappeared from active list — fetch final status to know completed vs failed
+          finalizeJob(prev);
+        }
+      });
+    }
+    previousReportIdsRef.current = currentIds;
+    prevReportsRef.current = processedReports;
+
+    setReports(processedReports);
+    cleanupRetryState(currentIds);
+
+    processedReports.forEach((report) => {
       const timeSinceUpdate = now - report.lastUpdated.getTime();
-      const isTimedOut = timeSinceUpdate > 120000; // 2 minutes
+      const isTimedOut = timeSinceUpdate > 120000;
       const hasPartialContent = report.contentLength > 1000;
       const isIncomplete = report.sectionsCompleted < report.totalSections;
-      const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
-      
-      // Also detect reports stuck in "processing" with no content at all for > 5 minutes
-      // This catches initial generation failures where the edge function crashed/timed out
-      const isInitiallyStuck = report.status === 'processing' && 
-        timeSinceUpdate > 300000 && // 5 minutes
-        report.contentLength < 100 && // No real content generated
+      const isStuck =
+        report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
+
+      const isInitiallyStuck =
+        report.status === 'processing' &&
+        timeSinceUpdate > 300000 &&
+        report.contentLength < 100 &&
         report.sectionsCompleted === 0;
-      
-      if ((isStuck || isInitiallyStuck) && autoContinueSettings.enabled) {
+
+      if ((isStuck || isInitiallyStuck) && autoContinueSettings.enabled && !paused) {
         scheduleAutoRetry(report);
       }
     });
-  };
+  }, [autoContinueSettings.enabled, cleanupRetryState, paused, scheduleAutoRetry]);
 
-  const countSections = (content: string): number => {
-    let count = 0;
-    
-    if (/##?\s*Executive\s*Summary/i.test(content)) count++;
-    if (/##?\s*Location\s*Overview/i.test(content)) count++;
-    if (/##?\s*(Current\s*Market\s*Performance|Current\s*Economic\s*Context|Market\s*(&|and)\s*Economics?)/i.test(content)) count++;
-    if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Demand\s*Drivers)/i.test(content)) count++;
-    if (/##?\s*(Schools?\s*(&|and)\s*Education|Healthcare\s*(&|and)\s*Shopping)/i.test(content)) count++;
-    if (/##?\s*(Recreational\s*Amenities|Transport\s*(&|and)\s*Accessibility)/i.test(content)) count++;
-    if (/##?\s*(Environmental\s*Risks?\s*(&|and)\s*Climate|Crime\s*(&|and)\s*Safety)/i.test(content)) count++;
-    if (/##?\s*(Property-Level\s*Information|Zoning\s*(&|and)\s*Planning\s*Analysis)/i.test(content)) count++;
-    if (/##?\s*(Purchase\s*(&|and)\s*Ongoing\s*Costs|Rental\s*Assessment\s*(&|and)\s*Yield)/i.test(content)) count++;
-    if (/##?\s*(Loan\s*Structure\s*(&|and)\s*Repayment|Cashflow\s*Analysis)/i.test(content)) count++;
-    if (/##?\s*(10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
-    
-    const hasRisks = /##?\s*(Top\s*3\s*Risks|Investment\s*Recommendations)/i.test(content);
-    const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources)/i.test(content);
-    if (hasRisks && hasConclusion) count++;
-    
-    return count;
-  };
+  const finalizeJob = useCallback(
+    async (prev: ReportProgress) => {
+      try {
+        const { data } = await invokeSecureFunction('get-investment-reports', {
+          reportId: prev.id,
+          listOptions: { select: 'id, property_address, status, error_message, updated_at' },
+        });
+        const final = data?.report;
+        if (!final) return;
+        if (final.status === 'completed') {
+          toast.success(`Report ready: ${final.property_address}`, {
+            action: {
+              label: 'Open',
+              onClick: () => {
+                window.location.href = `/investment-report/${final.id}`;
+              },
+            },
+          });
+          addHistory({
+            id: final.id,
+            property_address: final.property_address,
+            status: 'completed',
+            totalSections: prev.totalSections,
+            sectionsCompleted: prev.totalSections,
+            durationMs: Date.now() - prev.createdAt.getTime(),
+            finishedAt: Date.now(),
+          });
+        } else if (final.status === 'failed') {
+          toast.error(`Report failed: ${final.property_address}`);
+          addHistory({
+            id: final.id,
+            property_address: final.property_address,
+            status: 'failed',
+            totalSections: prev.totalSections,
+            sectionsCompleted: prev.sectionsCompleted,
+            durationMs: Date.now() - prev.createdAt.getTime(),
+            error_message: final.error_message,
+            finishedAt: Date.now(),
+          });
+        }
+      } catch (e) {
+        console.error('Failed to finalize job:', e);
+      } finally {
+        sectionTimelineRef.current.delete(prev.id);
+        lastSectionsRef.current.delete(prev.id);
+      }
+    },
+    [addHistory]
+  );
+
+  useEffect(() => {
+    if (hasActiveSession()) authFailCountRef.current = 0;
+    fetchActiveReports();
+    const interval = setInterval(fetchActiveReports, 3000);
+    return () => {
+      clearInterval(interval);
+      Object.keys(retryStateRef.current).forEach(cancelScheduledRetry);
+    };
+  }, [cancelScheduledRetry, fetchActiveReports]);
+
+  /* ⌘⇧R toggles minimised */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const cmd = e.metaKey || e.ctrlKey;
+      if (cmd && e.shiftKey && (e.key === 'R' || e.key === 'r')) {
+        // Avoid hijacking page-reload only when no reports exist
+        if (reports.length === 0 && !historyOpen) return;
+        e.preventDefault();
+        setIsMinimized((m) => !m);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [reports.length, historyOpen]);
 
   const handleManualContinue = (reportId: string) => {
-    // Reset retry count for manual continues
     if (retryStateRef.current[reportId]) {
       retryStateRef.current[reportId].attempts = 0;
       saveRetryState();
@@ -441,290 +492,307 @@ function ReportGenerationProgressInner() {
   };
 
   const dismissReport = (reportId: string) => {
-    cancelScheduledRetry(reportId);
-    setReports(prev => prev.filter(r => r.id !== reportId));
-  };
-
-  if (reports.length === 0) return null;
-
-  // Removed separate mobile layout — unified with desktop floating card below
-
-  // Desktop: floating card in corner
-  return (
-    <div className={cn(
-      "fixed z-50 transition-all duration-300",
-      isMobile 
-        ? "bottom-44 right-4" 
-        : "bottom-24 right-6",
-      isMinimized ? "w-12 h-12" : isMobile ? "w-72" : "w-80"
-    )}>
-      {isMinimized ? (
-        <Button
-          size="icon"
-          variant="default"
-          className="w-12 h-12 rounded-full shadow-lg"
-          onClick={() => setIsMinimized(false)}
-        >
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="sr-only">Show progress</span>
-        </Button>
-      ) : (
-        <div className="bg-card border border-border rounded-lg shadow-xl overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                Report Generation ({reports.length})
-              </span>
-              {autoContinueSettings.enabled && (
-                <span title="Auto-continue enabled">
-                  <Zap className="h-3.5 w-3.5 text-warning" />
-                </span>
-              )}
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => setIsMinimized(true)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="max-h-64 overflow-y-auto">
-            {reports.map((report) => (
-              <ReportProgressItem
-                key={report.id}
-                report={report}
-                retryState={retryStateRef.current[report.id]}
-                autoContinueSettings={autoContinueSettings}
-                onContinue={() => handleManualContinue(report.id)}
-                onDismiss={() => dismissReport(report.id)}
-                isMobile={false}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface ReportProgressItemProps {
-  report: ReportProgress;
-  retryState?: { attempts: number; lastAttempt: number };
-  autoContinueSettings: AutoContinueSettings;
-  onContinue: () => void;
-  onDismiss: () => void;
-  isMobile?: boolean;
-}
-
-function ReportProgressItem({ report, retryState, autoContinueSettings, onContinue, onDismiss, isMobile = false }: ReportProgressItemProps) {
-  const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
-  
-  const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
-  const timeSinceCreation = Date.now() - report.createdAt.getTime();
-  const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
-  const secondsSinceUpdate = Math.floor(timeSinceUpdate / 1000);
-  
-  const isTimedOut = timeSinceUpdate > 120000;
-  const hasPartialContent = report.contentLength > 1000;
-  const isIncomplete = report.sectionsCompleted < report.totalSections;
-  const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
-  
-  const showContinueButton = isStuck || (report.status === 'pending' && report.sectionsCompleted > 0);
-  const currentSection = Math.min(report.sectionsCompleted + 1, report.totalSections);
-
-  // Check if auto-retry is active
-  const retriesUsed = retryState?.attempts || 0;
-  const maxRetriesReached = retriesUsed >= autoContinueSettings.maxRetries;
-  const hasScheduledRetry = isStuck && autoContinueSettings.enabled && !maxRetriesReached;
-
-  // Calculate elapsed time for display
-  const formatElapsedTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`;
+    const r = reports.find((x) => x.id === reportId);
+    if (r) {
+      addHistory({
+        id: r.id,
+        property_address: r.property_address,
+        status: 'dismissed',
+        totalSections: r.totalSections,
+        sectionsCompleted: r.sectionsCompleted,
+        durationMs: Date.now() - r.createdAt.getTime(),
+        error_message: r.error_message,
+        finishedAt: Date.now(),
+      });
     }
-    return `${seconds}s`;
+    cancelScheduledRetry(reportId);
+    setReports((prev) => prev.filter((x) => x.id !== reportId));
   };
 
-  return (
-    <div className={cn("p-3 border-b border-border last:border-b-0", isMobile && "px-4 py-2")}>
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <p className={cn("font-medium text-foreground truncate", isMobile ? "text-sm" : "text-xs")} title={report.property_address}>
-            {report.property_address}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {report.status === 'pending' && !isStuck && (
-              <>
-                <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
-                <span className="text-xs text-muted-foreground">Queued</span>
-              </>
-            )}
-            {report.status === 'processing' && !isStuck && (
-              <>
-                <Loader2 className="h-3 w-3 text-primary animate-spin" />
-                <span className="text-xs text-primary">
-                  Section {currentSection}/{report.totalSections}
-                </span>
-                {!isMobile && (
-                  <span className="text-xs text-muted-foreground">
-                    • {formatElapsedTime(timeSinceCreation)}
-                  </span>
-                )}
-              </>
-            )}
-            {isStuck && (
-              <>
-                {hasScheduledRetry ? (
-                  <>
-                    <Zap className="h-3 w-3 text-warning" />
-                    <span className="text-xs text-warning font-medium">
-                      {isMobile ? `Retry ${retriesUsed + 1}/${autoContinueSettings.maxRetries}` : `Auto-retry ${retriesUsed + 1}/${autoContinueSettings.maxRetries}`}
-                    </span>
-                  </>
-                ) : maxRetriesReached ? (
-                  <>
-                    <AlertCircle className="h-3 w-3 text-destructive" />
-                    <span className="text-xs text-destructive font-medium">
-                      Failed ({retriesUsed})
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-3 w-3 text-warning" />
-                    <span className="text-xs text-warning font-medium">Stalled</span>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          {showContinueButton && !hasScheduledRetry && (
-            <Button
-              size="sm"
-              variant="outline"
-              className={cn("h-6 text-xs", isMobile ? "px-3" : "px-2")}
-              onClick={onContinue}
-            >
-              <PlayCircle className="h-3 w-3 mr-1" />
-              {isMobile ? "Resume" : "Continue"}
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            onClick={onDismiss}
-            title="Dismiss"
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-      
-      <div className="space-y-1">
-        <Progress value={percentage} className="h-1.5" />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-help underline decoration-dotted">
-                  {report.sectionsCompleted}/{report.totalSections} sections
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <div className="space-y-1 text-xs">
-                  <p><strong>DB Saved:</strong> Section {report.lastCompletedSection}/12</p>
-                  <p><strong>Content Detected:</strong> Section {report.sectionsCompleted}/12</p>
-                  <p><strong>Content Size:</strong> {(report.contentLength / 1024).toFixed(1)} KB</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <span>{percentage}%</span>
-        </div>
-      </div>
+  const handleResumeAllStalled = () => {
+    reports.forEach((r) => {
+      const timeSinceUpdate = Date.now() - r.lastUpdated.getTime();
+      const isTimedOut = timeSinceUpdate > 120000;
+      const isStuck = r.status === 'processing' && isTimedOut && r.sectionsCompleted < r.totalSections;
+      if (isStuck) handleManualContinue(r.id);
+    });
+  };
 
-      {/* Retry status summary */}
-      {retriesUsed > 0 && (
-        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <RefreshCw className="h-3 w-3" />
-          <span>
-            {retriesUsed} auto-retry attempt{retriesUsed > 1 ? 's' : ''} used
-            {maxRetriesReached && ' (max reached)'}
-          </span>
+  /* Aggregate counts */
+  const counts: AggregateCounts = useMemo(() => {
+    let queued = 0;
+    let processing = 0;
+    let stalled = 0;
+    let failed = 0;
+    let completedSections = 0;
+    let totalSections = 0;
+    const now = Date.now();
+    reports.forEach((r) => {
+      completedSections += r.sectionsCompleted;
+      totalSections += r.totalSections;
+      const since = now - r.lastUpdated.getTime();
+      const isStuck =
+        r.status === 'processing' &&
+        since > 120000 &&
+        r.sectionsCompleted < r.totalSections;
+      if (r.status === 'failed') failed++;
+      else if (isStuck) stalled++;
+      else if (r.status === 'pending') queued++;
+      else if (r.status === 'processing') processing++;
+    });
+    return {
+      queued,
+      processing,
+      stalled,
+      failed,
+      total: reports.length,
+      completedSections,
+      totalSections,
+    };
+  }, [reports]);
+
+  /* ETA calculation per report */
+  const etaForReport = useCallback((r: ReportProgress): number | null => {
+    const timeline = sectionTimelineRef.current.get(r.id) ?? [];
+    if (timeline.length < 2) {
+      // Fallback: use elapsed time / sections done if at least 1 section done
+      if (r.sectionsCompleted > 0) {
+        const elapsed = Date.now() - r.createdAt.getTime();
+        const avg = elapsed / r.sectionsCompleted;
+        const remaining = r.totalSections - r.sectionsCompleted;
+        return avg * remaining;
+      }
+      return null;
+    }
+    const total = timeline[timeline.length - 1] - timeline[0];
+    const avg = total / Math.max(1, timeline.length - 1);
+    const remaining = r.totalSections - r.sectionsCompleted;
+    return avg * remaining;
+  }, []);
+
+  const aggregateEta = useMemo(() => {
+    const etas = reports.map(etaForReport).filter((v): v is number => v !== null);
+    if (etas.length === 0) return null;
+    return Math.max(...etas);
+  }, [reports, etaForReport]);
+
+  /* Drag-to-reposition (desktop) */
+  const onDragStart = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) < 80 && Math.abs(dy) < 80) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const left = ev.clientX < w / 2;
+      const top = ev.clientY < h / 2;
+      const next: Corner = `${top ? 't' : 'b'}${left ? 'l' : 'r'}` as Corner;
+      setCorner(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
+
+  /* Visibility logic — hide entirely when nothing to show */
+  const hasAnything = reports.length > 0 || historyOpen;
+  if (!hasAnything) return null;
+
+  const cornerClass = (() => {
+    switch (corner) {
+      case 'bl':
+        return isMobile ? 'bottom-44 left-4' : 'bottom-24 left-6';
+      case 'tr':
+        return isMobile ? 'top-20 right-4' : 'top-20 right-6';
+      case 'tl':
+        return isMobile ? 'top-20 left-4' : 'top-20 left-6';
+      case 'br':
+      default:
+        return isMobile ? 'bottom-44 right-4' : 'bottom-24 right-6';
+    }
+  })();
+
+  /* Live region for screen readers */
+  const liveText = (() => {
+    if (counts.total === 0) return '';
+    if (counts.failed > 0) return `${counts.failed} report generations failed.`;
+    if (counts.processing > 0)
+      return `Generating ${counts.processing} report${counts.processing === 1 ? '' : 's'}.`;
+    return '';
+  })();
+
+  /* Mobile uses a Vaul drawer when expanded */
+  if (isMobile) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <span aria-live="polite" className="sr-only">
+          {liveText}
+        </span>
+        <div className={cn('fixed z-50 transition-all', cornerClass)}>
+          <GenerationProgressPill
+            counts={counts}
+            etaMs={aggregateEta}
+            onClick={() => setIsMinimized(false)}
+          />
         </div>
-      )}
-      
-      {/* Stuck indicator with enhanced info */}
-      {isStuck && (
-        <div className={cn(
-          "mt-2 p-2 rounded text-xs border",
-          maxRetriesReached 
-            ? "bg-destructive/10 border-destructive/20 text-destructive" 
-            : "bg-warning/10 border-warning/20 text-warning"
-        )}>
-          <div className="flex items-start gap-1.5">
-            {hasScheduledRetry ? (
-              <Zap className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            ) : maxRetriesReached ? (
-              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            ) : (
-              <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            )}
-            <div className="space-y-0.5">
-              {hasScheduledRetry ? (
-                <>
-                  <p className="font-medium">Auto-resuming in {autoContinueSettings.delaySeconds}s</p>
-                  <p className="opacity-80">
-                    Attempt {retriesUsed + 1} of {autoContinueSettings.maxRetries} • 
-                    Resume from section {currentSection}
-                  </p>
-                </>
-              ) : maxRetriesReached ? (
-                <>
-                  <p className="font-medium">Max retries reached</p>
-                  <p className="opacity-80">
-                    Tried {retriesUsed} times • Last update {minutesSinceUpdate}m ago
-                  </p>
-                  <p className="opacity-80">
-                    Press <span className="font-medium">Continue</span> to manually retry from section {currentSection}
-                  </p>
-                </>
+        <Drawer open={!isMinimized} onOpenChange={(o) => setIsMinimized(!o)}>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerHeader className="p-0">
+              <DrawerTitle className="sr-only">Report generation progress</DrawerTitle>
+              <GenerationProgressHeader
+                counts={counts}
+                paused={paused}
+                autoContinueSettings={autoContinueSettings}
+                onTogglePaused={() => setPaused((p) => !p)}
+                onResumeAllStalled={handleResumeAllStalled}
+                onClearCompleted={() => clearHistory()}
+                onToggleHistory={() => setHistoryOpen((o) => !o)}
+                historyOpen={historyOpen}
+                onToggleAutoContinue={(enabled) => {
+                  const next = { ...autoContinueSettings, enabled };
+                  setAutoContinueSettings(next);
+                  saveAutoContinueSettings(next);
+                }}
+                onChangeDelay={(s) => {
+                  const next = { ...autoContinueSettings, delaySeconds: s };
+                  setAutoContinueSettings(next);
+                  saveAutoContinueSettings(next);
+                }}
+                onMinimize={() => setIsMinimized(true)}
+              />
+            </DrawerHeader>
+            <ScrollArea className="max-h-[70vh]">
+              {historyOpen ? (
+                <GenerationHistoryList entries={history} onClear={clearHistory} />
               ) : (
-                <>
-                  <p className="font-medium">Generation stalled</p>
-                  <p className="opacity-80">
-                    No progress for {minutesSinceUpdate > 0 ? `${minutesSinceUpdate} min` : `${secondsSinceUpdate}s`}
-                  </p>
-                  {autoContinueSettings.enabled ? (
-                    <p className="opacity-80">
-                      Auto-continue will retry shortly...
-                    </p>
-                  ) : (
-                    <p className="opacity-80">
-                      Press <span className="font-medium">Continue</span> to resume from section {currentSection}
-                    </p>
-                  )}
-                </>
+                reports.map((report) => (
+                  <GenerationProgressItem
+                    key={report.id}
+                    report={report}
+                    etaMs={etaForReport(report)}
+                    retryState={retryStateRef.current[report.id]}
+                    autoContinueSettings={autoContinueSettings}
+                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
+                    onContinue={() => handleManualContinue(report.id)}
+                    onDismiss={() => dismissReport(report.id)}
+                    isMobile
+                  />
+                ))
+              )}
+            </ScrollArea>
+          </DrawerContent>
+        </Drawer>
+      </TooltipProvider>
+    );
+  }
+
+  /* Desktop floating card */
+  return (
+    <TooltipProvider delayDuration={200}>
+      <span aria-live="polite" className="sr-only">
+        {liveText}
+      </span>
+      <div className={cn('fixed z-50 transition-all duration-300', cornerClass)}>
+        {isMinimized ? (
+          <GenerationProgressPill
+            counts={counts}
+            etaMs={aggregateEta}
+            onClick={() => setIsMinimized(false)}
+          />
+        ) : (
+          <div className="w-80 bg-card border border-border rounded-lg shadow-xl overflow-hidden">
+            <GenerationProgressHeader
+              counts={counts}
+              paused={paused}
+              autoContinueSettings={autoContinueSettings}
+              onTogglePaused={() => setPaused((p) => !p)}
+              onResumeAllStalled={handleResumeAllStalled}
+              onClearCompleted={() => clearHistory()}
+              onToggleHistory={() => setHistoryOpen((o) => !o)}
+              historyOpen={historyOpen}
+              onToggleAutoContinue={(enabled) => {
+                const next = { ...autoContinueSettings, enabled };
+                setAutoContinueSettings(next);
+                saveAutoContinueSettings(next);
+              }}
+              onChangeDelay={(s) => {
+                const next = { ...autoContinueSettings, delaySeconds: s };
+                setAutoContinueSettings(next);
+                saveAutoContinueSettings(next);
+              }}
+              onMinimize={() => setIsMinimized(true)}
+              onDragStart={onDragStart}
+              draggable
+            />
+            <div className="max-h-64 overflow-y-auto">
+              {historyOpen ? (
+                <GenerationHistoryList entries={history} onClear={clearHistory} />
+              ) : reports.length === 0 ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  No active generations.
+                </div>
+              ) : (
+                reports.map((report) => (
+                  <GenerationProgressItem
+                    key={report.id}
+                    report={report}
+                    etaMs={etaForReport(report)}
+                    retryState={retryStateRef.current[report.id]}
+                    autoContinueSettings={autoContinueSettings}
+                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
+                    onContinue={() => handleManualContinue(report.id)}
+                    onDismiss={() => dismissReport(report.id)}
+                  />
+                ))
               )}
             </div>
+            {paused && (
+              <div className="px-3 py-1.5 text-[10px] text-warning bg-warning/10 border-t border-warning/20">
+                Polling paused • new updates will not appear until you resume
+              </div>
+            )}
           </div>
-        </div>
-      )}
-      
-      {report.error_message && (
-        <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive flex items-start gap-1.5">
-          <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-          <span className="line-clamp-2">{report.error_message}</span>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
+}
+
+/* ---------- Section detection (preserved from original) ---------- */
+
+function countSections(content: string): number {
+  let count = 0;
+  if (/##?\s*Executive\s*Summary/i.test(content)) count++;
+  if (/##?\s*Location\s*Overview/i.test(content)) count++;
+  if (
+    /##?\s*(Current\s*Market\s*Performance|Current\s*Economic\s*Context|Market\s*(&|and)\s*Economics?)/i.test(
+      content
+    )
+  )
+    count++;
+  if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Demand\s*Drivers)/i.test(content)) count++;
+  if (/##?\s*(Schools?\s*(&|and)\s*Education|Healthcare\s*(&|and)\s*Shopping)/i.test(content))
+    count++;
+  if (/##?\s*(Recreational\s*Amenities|Transport\s*(&|and)\s*Accessibility)/i.test(content))
+    count++;
+  if (
+    /##?\s*(Environmental\s*Risks?\s*(&|and)\s*Climate|Crime\s*(&|and)\s*Safety)/i.test(content)
+  )
+    count++;
+  if (/##?\s*(Property-Level\s*Information|Zoning\s*(&|and)\s*Planning\s*Analysis)/i.test(content))
+    count++;
+  if (/##?\s*(Purchase\s*(&|and)\s*Ongoing\s*Costs|Rental\s*Assessment\s*(&|and)\s*Yield)/i.test(content))
+    count++;
+  if (/##?\s*(Loan\s*Structure\s*(&|and)\s*Repayment|Cashflow\s*Analysis)/i.test(content)) count++;
+  if (/##?\s*(10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
+  const hasRisks = /##?\s*(Top\s*3\s*Risks|Investment\s*Recommendations)/i.test(content);
+  const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources)/i.test(content);
+  if (hasRisks && hasConclusion) count++;
+  return count;
 }
