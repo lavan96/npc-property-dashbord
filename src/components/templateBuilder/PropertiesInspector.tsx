@@ -754,4 +754,3 @@ function ImageUploadField({
     </div>
   );
 }
-}
