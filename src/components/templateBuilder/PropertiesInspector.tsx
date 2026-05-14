@@ -256,6 +256,8 @@ function OverlayEditor({
             templateId={templateId}
             overlayId={overlay.id}
             currentSrc={String(overlay.src ?? '')}
+            overlayWidthPt={overlay.width}
+            overlayHeightPt={overlay.height}
             onUploaded={(url) => patch({ src: url } as any)}
             onClearSrc={() => patch({ src: '' } as any)}
           />
