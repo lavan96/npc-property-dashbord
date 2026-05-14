@@ -40,7 +40,7 @@ export function TemplateCanvas({ page, onOverlaysChange, onSelectOverlay }: Prop
     (editor: Editor) => {
       editorRef.current = editor;
       // Initial sync
-      syncOverlaysToEditor(editor, overlaysRef.current, page.size);
+      syncOverlaysToEditor(editor, overlaysRef.current, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
       lastPageIdRef.current = page.id;
       // Centre the page on screen
       try {
@@ -79,7 +79,7 @@ export function TemplateCanvas({ page, onOverlaysChange, onSelectOverlay }: Prop
     const editor = editorRef.current;
     if (!editor) return;
     if (lastPageIdRef.current !== page.id) {
-      syncOverlaysToEditor(editor, overlaysRef.current, page.size);
+      syncOverlaysToEditor(editor, overlaysRef.current, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
       lastPageIdRef.current = page.id;
       try {
         editor.zoomToFit({ animation: { duration: 0 } });

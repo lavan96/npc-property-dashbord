@@ -163,7 +163,7 @@ export function readShapesBackToOverlays(editor: Editor, originalOverlays: Overl
       rotation: Math.round(((s.rotation || 0) * 180) / Math.PI),
       opacity: s.opacity ?? o.opacity ?? 1,
     };
-    if (o.type === 'text' && typeof props.text === 'string') {
+    if (updated.type === 'text' && typeof props.text === 'string') {
       updated.content = props.text;
     }
     return updated;
