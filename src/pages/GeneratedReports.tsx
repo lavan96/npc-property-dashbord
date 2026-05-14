@@ -1339,18 +1339,18 @@ export default function GeneratedReports() {
                     
                     <div className="flex flex-col gap-2 pt-2">
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => navigate(`/investment-report/${report.id}`)}
                           className="flex-1"
                         >
                           <Eye className="mr-1 h-3 w-3" />
                           View
                         </Button>
-                        <Button 
-                          variant="default" 
-                          size="sm" 
+                        <Button
+                          variant="default"
+                          size="sm"
                           onClick={() => downloadInvestmentReportText(report)}
                           className="flex-1"
                         >
@@ -1358,8 +1358,8 @@ export default function GeneratedReports() {
                           Download
                         </Button>
                       </div>
-                       <div className="flex gap-2">
-                         <RegenerateReportButton
+                      <div className="flex gap-2">
+                        <RegenerateReportButton
                           reportId={report.id}
                           propertyAddress={report.property_address}
                           onRegenerated={handleInvestmentReportUpdate}
@@ -1367,70 +1367,30 @@ export default function GeneratedReports() {
                           size="sm"
                           className="flex-1"
                         />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewVersionHistory(report)}
-                          className="flex-1"
-                        >
-                          <History className="mr-1 h-3 w-3" />
-                          History ({report.current_version || 1})
-                        </Button>
-                        {/* Archive/Unarchive Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => report.is_archived ? unarchiveReport(report.id) : archiveReport(report.id)}
-                          className="px-2"
-                          title={report.is_archived ? "Restore report" : "Archive report"}
-                        >
-                          {report.is_archived ? (
-                            <ArchiveRestore className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Archive className="h-3 w-3 text-muted-foreground" />
-                          )}
-                        </Button>
+                        <ReportActionMenu
+                          surface="report-card"
+                          label={report.property_address}
+                          report={{
+                            reportId: report.id,
+                            status: (report.status as ReportActionStatus) || 'completed',
+                            tier: report.report_tier,
+                            scope: report.report_scope,
+                            isArchived: !!report.is_archived,
+                          }}
+                          generatingTier={
+                            generatingTier?.reportId === report.id ? generatingTier.tier as 'briefing' | 'snapshot' : null
+                          }
+                          callbacks={{
+                            onViewHistory: () => handleViewVersionHistory(report),
+                            onToggleArchive: () => report.is_archived ? unarchiveReport(report.id) : archiveReport(report.id),
+                            onGenerateBriefing: report.report_tier === 'compass' ? () => handleGenerateTier(report, 'briefing') : undefined,
+                            onGenerateSnapshot: report.report_tier === 'compass' ? () => handleGenerateTier(report, 'snapshot') : undefined,
+                          }}
+                          permissions={{ canArchive: canEditReports }}
+                          triggerClassName="h-8 w-8"
+                        />
                       </div>
                       {/* PDF download is available inside the report viewer (View) to avoid loading huge report payloads in the list. */}
-                      
-                      {/* Quick Tier Generation - Only show for Compass reports */}
-                      {report.report_tier === 'compass' && (
-                        <div className="border-t pt-3 mt-2">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-medium text-muted-foreground">Generate condensed versions:</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGenerateTier(report, 'briefing')}
-                              disabled={generatingTier?.reportId === report.id}
-                              className="flex-1 text-xs"
-                            >
-                              {generatingTier?.reportId === report.id && generatingTier?.tier === 'briefing' ? (
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              ) : (
-                                <FileText className="mr-1 h-3 w-3 text-blue-500" />
-                              )}
-                              Briefing (~20p)
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGenerateTier(report, 'snapshot')}
-                              disabled={generatingTier?.reportId === report.id}
-                              className="flex-1 text-xs"
-                            >
-                              {generatingTier?.reportId === report.id && generatingTier?.tier === 'snapshot' ? (
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              ) : (
-                                <Zap className="mr-1 h-3 w-3 text-green-500" />
-                              )}
-                              Snapshot (~5p)
-                            </Button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
