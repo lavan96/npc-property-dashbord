@@ -257,11 +257,15 @@ const CallLogs = () => {
         description: `${transformedData?.length || 0} call logs loaded`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching calls:', error);
+      const description =
+        error?.message ||
+        error?.error?.message ||
+        (typeof error === 'string' ? error : 'Failed to fetch call logs');
       toast({
-        title: 'Error',
-        description: 'Failed to fetch call logs',
+        title: 'Failed to refresh call logs',
+        description,
         variant: 'destructive',
       });
     } finally {
