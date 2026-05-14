@@ -218,45 +218,68 @@ const CallLogs = () => {
 
   const fetchCalls = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await fetchCallLogs();
+    const BATCH_SIZE = 30;
+    const MAX_BATCHES = 200; // hard safety stop (≈6,000 rows)
+    let accumulated: CallLog[] = [];
 
-      if (error) throw error;
-
-      // Transform data to match our interface types
-      const transformedData: CallLog[] = (data || []).map(call => ({
+    const transform = (rows: any[]): CallLog[] =>
+      (rows || []).map(call => ({
         ...call,
         assistants_involved: (call.assistants_involved as unknown as SquadAssistant[]) || null,
         handoff_sequence: (call.handoff_sequence as unknown as HandoffEvent[]) || null,
         structured_data_multi: (call.structured_data_multi as unknown as StructuredDataMultiItem[]) || null,
       }));
 
-      setCalls(transformedData);
-
-      // Extract unique agents by name (not ID) to avoid duplicates
+    const refreshDerived = (rows: CallLog[]) => {
       const agentCounts = new Map<string, number>();
-      transformedData?.forEach(call => {
-        const name = call.agent_name;
-        if (name) {
-          agentCounts.set(name, (agentCounts.get(name) || 0) + 1);
-        }
-      });
-      setAgents(Array.from(agentCounts, ([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name)));
-
-      // Extract unique squads
       const uniqueSquads = new Map<string, string>();
-      transformedData?.forEach(call => {
+      rows.forEach(call => {
+        if (call.agent_name) {
+          agentCounts.set(call.agent_name, (agentCounts.get(call.agent_name) || 0) + 1);
+        }
         if (call.squad_id) {
           uniqueSquads.set(call.squad_id, call.squad_name || call.squad_id);
         }
       });
+      setAgents(
+        Array.from(agentCounts, ([name, count]) => ({ name, count }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      );
       setSquads(Array.from(uniqueSquads, ([id, name]) => ({ id, name })));
+    };
+
+    try {
+      for (let i = 0; i < MAX_BATCHES; i++) {
+        const offset = i * BATCH_SIZE;
+        const result: any = await fetchCallLogs({ limit: BATCH_SIZE, offset });
+
+        if (result.error) throw result.error;
+
+        const batch = transform(result.data || []);
+        accumulated = accumulated.concat(batch);
+
+        // Progressive UI update — first batch unblocks the table, then keeps growing
+        setCalls([...accumulated]);
+        refreshDerived(accumulated);
+
+        if (i === 0) {
+          setLoading(false);
+          toast({
+            title: 'Loading call logs',
+            description:
+              result.total != null
+                ? `Showing ${accumulated.length} of ${result.total} — loading more in background…`
+                : `Loaded ${accumulated.length} so far…`,
+          });
+        }
+
+        if (!result.hasMore || batch.length < BATCH_SIZE) break;
+      }
 
       toast({
         title: 'Refreshed',
-        description: `${transformedData?.length || 0} call logs loaded`,
+        description: `${accumulated.length} call logs loaded`,
       });
-
     } catch (error: any) {
       console.error('Error fetching calls:', error);
       const description =
