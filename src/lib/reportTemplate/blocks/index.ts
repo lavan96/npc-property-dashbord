@@ -23,10 +23,17 @@ import { drawCalloutBlock } from './callout';
 import { drawTwoColumnBlock } from './twoColumn';
 import { drawGalleryBlock } from './gallery';
 import { drawPageNumberBlock } from './pageNumber';
+import { drawSpacerBlock } from './spacer';
+import { drawQrBlock } from './qrCode';
+import { drawBadgeListBlock } from './badgeList';
+import { drawTocBlock } from './toc';
+import { drawSignatureBlock } from './signature';
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
   page: { width: number; height: number };
+  /** All visible pages in render order — used by TOC and similar blocks. */
+  pages?: Array<{ name: string; id: string }>;
 }
 
 export type BlockRenderer = (block: Block, ctx: BlockRenderContext) => void;
@@ -46,6 +53,11 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   'two-column': drawTwoColumnBlock,
   gallery: drawGalleryBlock,
   'page-number': drawPageNumberBlock,
+  spacer: drawSpacerBlock,
+  qr: drawQrBlock,
+  'badge-list': drawBadgeListBlock,
+  toc: drawTocBlock,
+  signature: drawSignatureBlock,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
@@ -314,6 +326,84 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'select', key: 'align', label: 'Align', options: ['left', 'center', 'right'] },
       { kind: 'number', key: 'size', label: 'Size' },
       { kind: 'color', key: 'color', label: 'Color' },
+    ],
+  },
+  spacer: {
+    type: 'spacer',
+    label: 'Spacer',
+    defaultProps: () => ({ x: 24, y: 200, width: 547, height: 24, showGuide: false }),
+    fields: [
+      { kind: 'number', key: 'y', label: 'Y' },
+      { kind: 'number', key: 'height', label: 'Height' },
+      { kind: 'select', key: 'showGuide', label: 'Show guide', options: ['true', 'false'] },
+    ],
+  },
+  qr: {
+    type: 'qr',
+    label: 'QR code',
+    defaultProps: () => ({
+      x: 24, y: 320, size: 120,
+      data: 'https://example.com',
+      caption: 'Scan to learn more',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'data', label: 'Encoded data / URL' },
+      { kind: 'number', key: 'size', label: 'Size (pt)' },
+      { kind: 'bindable', key: 'caption', label: 'Caption' },
+      { kind: 'color', key: 'color', label: 'Caption color' },
+    ],
+  },
+  'badge-list': {
+    type: 'badge-list',
+    label: 'Badge list',
+    defaultProps: () => ({
+      x: 24, y: 320, width: 547,
+      items: ['Investor ready', 'High yield', 'Sub-3% vacancy'],
+      bg: 'token:primary',
+      color: '#FFFFFF',
+    }),
+    fields: [
+      { kind: 'list-strings', key: 'items', label: 'Badges' },
+      { kind: 'color', key: 'bg', label: 'Background' },
+      { kind: 'color', key: 'color', label: 'Text color' },
+      { kind: 'number', key: 'fontSize', label: 'Font size' },
+      { kind: 'number', key: 'radius', label: 'Radius' },
+    ],
+  },
+  toc: {
+    type: 'toc',
+    label: 'Table of contents',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Contents',
+      titleSize: 22,
+      size: 11,
+      lineHeight: 18,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'titleSize', label: 'Title size' },
+      { kind: 'number', key: 'size', label: 'Entry size' },
+      { kind: 'number', key: 'lineHeight', label: 'Line height' },
+      { kind: 'color', key: 'color', label: 'Entry color' },
+      { kind: 'color', key: 'indexColor', label: 'Index color' },
+    ],
+  },
+  signature: {
+    type: 'signature',
+    label: 'Signature',
+    defaultProps: () => ({
+      x: 24, y: 720, width: 240,
+      signerName: '{{client.name}}',
+      signerRole: 'Buyer signature',
+      dateLabel: 'Date: ____________',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'signerName', label: 'Name' },
+      { kind: 'bindable', key: 'signerRole', label: 'Role / label' },
+      { kind: 'bindable', key: 'dateLabel', label: 'Date label' },
+      { kind: 'number', key: 'width', label: 'Line width' },
+      { kind: 'color', key: 'lineColor', label: 'Line color' },
     ],
   },
   free: {
