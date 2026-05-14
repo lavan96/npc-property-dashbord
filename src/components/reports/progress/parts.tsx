@@ -878,46 +878,171 @@ export function BulkJobGroup({
   group,
   children,
   defaultOpen = true,
+  etaForReport,
+  onRetryAllFailed,
 }: {
   group: BulkGroup;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  etaForReport?: (r: ReportProgress) => number | null;
+  onRetryAllFailed?: (reportIds: string[]) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+
+  const completedSections = group.reports.reduce((s, r) => s + r.sectionsCompleted, 0);
+  const totalSections = group.reports.reduce((s, r) => s + r.totalSections, 0);
+  const pct = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
   const completed = group.reports.filter(
     (r) => r.sectionsCompleted >= r.totalSections,
   ).length;
-  const failed = group.reports.filter((r) => r.status === 'failed').length;
+
+  const failedReports = group.reports.filter((r) => r.status === 'failed');
+  const failed = failedReports.length;
+
+  const groupEta = (() => {
+    if (!etaForReport) return null;
+    const etas = group.reports.map(etaForReport).filter((v): v is number => v !== null);
+    if (etas.length === 0) return null;
+    return Math.max(...etas); // reports run in parallel — wall time is max
+  })();
+
+  // Build a chronological transition log derived from per-report timestamps.
+  const transitions = (() => {
+    type T = { ts: number; address: string; kind: 'queued' | 'processing' | 'failed' };
+    const out: T[] = [];
+    for (const r of group.reports) {
+      out.push({ ts: r.createdAt.getTime(), address: r.property_address, kind: 'queued' });
+      if (r.status === 'processing' || r.sectionsCompleted > 0) {
+        out.push({
+          ts: r.lastUpdated.getTime(),
+          address: r.property_address,
+          kind: 'processing',
+        });
+      }
+      if (r.status === 'failed') {
+        out.push({ ts: r.lastUpdated.getTime(), address: r.property_address, kind: 'failed' });
+      }
+    }
+    return out.sort((a, b) => a.ts - b.ts);
+  })();
+
   return (
     <div className="border-b border-border last:border-b-0 bg-muted/20">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/40 transition-colors"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-1.5 text-muted-foreground">
-          <Layers className="h-3 w-3" />
-          <span className="font-medium text-foreground">Bulk job</span>
-          <span className="font-mono text-[10px] opacity-70">
-            {group.jobId.slice(0, 8)}
-          </span>
-          <span>•</span>
-          <span>
-            {completed}/{group.reports.length} done
-            {failed > 0 ? `, ${failed} failed` : ''}
-          </span>
-        </span>
-        <ChevronDown
-          className={cn(
-            'h-3.5 w-3.5 text-muted-foreground transition-transform',
-            !open && '-rotate-90',
-          )}
-        />
-      </button>
+      <div className="px-3 py-1.5 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-w-0"
+            aria-expanded={open}
+          >
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 transition-transform',
+                !open && '-rotate-90',
+              )}
+            />
+            <Layers className="h-3 w-3 shrink-0" />
+            <span className="font-medium text-foreground">Bulk job</span>
+            <span className="font-mono text-[10px] opacity-70">
+              {group.jobId.slice(0, 8)}
+            </span>
+            <span className="opacity-50">•</span>
+            <span className="truncate">
+              {completed}/{group.reports.length} done
+              {failed > 0 ? `, ${failed} failed` : ''}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6"
+                  onClick={() => setTimelineOpen((o) => !o)}
+                  aria-pressed={timelineOpen}
+                  aria-label="Toggle timeline"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Timeline</TooltipContent>
+            </Tooltip>
+            {failed > 0 && onRetryAllFailed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => onRetryAllFailed(failedReports.map((r) => r.id))}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Retry {failed}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Retry all failed in this job</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {/* Aggregate progress + ETA */}
+        <div className="space-y-0.5">
+          <Progress value={pct} className="h-1" />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>
+              {completedSections}/{totalSections} sections
+            </span>
+            <span>
+              {pct}%
+              {groupEta !== null && (
+                <span className="opacity-80"> • ~{formatEta(groupEta)} left</span>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* Inline transition timeline */}
+        {timelineOpen && transitions.length > 0 && (
+          <div className="rounded border border-border bg-background/60 p-2 mt-1 max-h-32 overflow-y-auto">
+            <ol className="space-y-1 text-[10px]">
+              {transitions.map((t, i) => (
+                <li key={i} className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      'inline-block h-1.5 w-1.5 rounded-full shrink-0',
+                      t.kind === 'queued' && 'bg-muted-foreground',
+                      t.kind === 'processing' && 'bg-primary',
+                      t.kind === 'failed' && 'bg-destructive',
+                    )}
+                  />
+                  <span className="font-mono tabular-nums text-muted-foreground shrink-0">
+                    {formatClock(t.ts)}
+                  </span>
+                  <span className="capitalize text-muted-foreground shrink-0">{t.kind}</span>
+                  <span className="opacity-50">·</span>
+                  <span className="truncate text-foreground">{t.address}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
       {open && <div>{children}</div>}
     </div>
   );
+}
+
+function formatClock(epoch: number): string {
+  const d = new Date(epoch);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
 }
 
 
