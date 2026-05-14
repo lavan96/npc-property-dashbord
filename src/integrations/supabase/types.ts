@@ -1489,43 +1489,61 @@ export type Database = {
       }
       bulk_generation_items: {
         Row: {
+          attempts: number
+          claimed_at: string | null
           completed_at: string | null
           created_at: string
           error_message: string | null
+          heartbeat_at: string | null
           id: string
           job_id: string
+          last_error_at: string | null
+          max_attempts: number
           processing_time_seconds: number | null
           property_address: string
           property_listing_id: string
           report_id: string | null
           started_at: string | null
           status: string
+          worker_id: string | null
         }
         Insert: {
+          attempts?: number
+          claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           job_id: string
+          last_error_at?: string | null
+          max_attempts?: number
           processing_time_seconds?: number | null
           property_address: string
           property_listing_id: string
           report_id?: string | null
           started_at?: string | null
           status?: string
+          worker_id?: string | null
         }
         Update: {
+          attempts?: number
+          claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           job_id?: string
+          last_error_at?: string | null
+          max_attempts?: number
           processing_time_seconds?: number | null
           property_address?: string
           property_listing_id?: string
           report_id?: string | null
           started_at?: string | null
           status?: string
+          worker_id?: string | null
         }
         Relationships: [
           {
@@ -11165,6 +11183,16 @@ export type Database = {
           target_account: string
         }[]
       }
+      claim_next_bulk_item: {
+        Args: { p_job_id: string; p_worker: string }
+        Returns: {
+          attempts: number
+          id: string
+          property_address: string
+          property_listing_id: string
+          report_id: string
+        }[]
+      }
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
       cleanup_expired_climate_cache: { Args: never; Returns: undefined }
       cleanup_expired_crime_cache: { Args: never; Returns: undefined }
@@ -11322,6 +11350,14 @@ export type Database = {
         Args: { p_job_id: string; p_lease_seconds?: number }
         Returns: undefined
       }
+      list_resumable_bulk_jobs: {
+        Args: never
+        Returns: {
+          created_by: string
+          job_id: string
+          pending_count: number
+        }[]
+      }
       log_activity: {
         Args: {
           p_action_type: Database["public"]["Enums"]["activity_action_type"]
@@ -11364,6 +11400,13 @@ export type Database = {
       release_migration_job_lock: {
         Args: { p_job_id: string }
         Returns: undefined
+      }
+      requeue_stale_bulk_items: {
+        Args: never
+        Returns: {
+          failed_count: number
+          requeued_count: number
+        }[]
       }
       resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       seed_sample_schools: { Args: never; Returns: undefined }
