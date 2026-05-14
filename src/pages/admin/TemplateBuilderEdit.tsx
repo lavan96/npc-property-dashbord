@@ -34,6 +34,8 @@ import {
   makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
+import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
+import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -123,6 +125,25 @@ export default function TemplateBuilderEdit() {
     });
     setSelectedOverlayId(null);
   };
+  const duplicateOverlay = (oid: string) => {
+    if (!activePage) return;
+    let newId: string | null = null;
+    const blocks = activePage.blocks.map((b) => {
+      const idx = b.overlays.findIndex((o) => o.id === oid);
+      if (idx < 0) return b;
+      const original = b.overlays[idx];
+      const copy = JSON.parse(JSON.stringify(original));
+      copy.id = crypto.randomUUID();
+      copy.x = (original.x || 0) + 16;
+      copy.y = (original.y || 0) + 16;
+      newId = copy.id;
+      const next = [...b.overlays];
+      next.splice(idx + 1, 0, copy);
+      return { ...b, overlays: next };
+    });
+    updatePage({ ...activePage, blocks });
+    if (newId) setSelectedOverlayId(newId);
+  };
   const addOverlayToActivePage = (overlay: Overlay) => {
     if (!activePage) return;
     const blocks = [...activePage.blocks];
@@ -176,6 +197,9 @@ export default function TemplateBuilderEdit() {
     }
   };
 
+  // ── Binding validation (live) ───────────────────────────────────────────────
+  const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
+
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -186,20 +210,23 @@ export default function TemplateBuilderEdit() {
     if (!showPreview) return;
     setPreviewing(true);
     setPreviewError(null);
-    const handle = setTimeout(() => {
+    let cancelled = false;
+    const handle = setTimeout(async () => {
       try {
-        const blob = renderTemplateToBlob(template, { data: SAMPLE_DATA });
+        const prepared = await preloadImages(template);
+        if (cancelled) return;
+        const blob = renderTemplateToBlob(prepared, { data: SAMPLE_DATA });
         const url = URL.createObjectURL(blob);
         if (blobRef.current) URL.revokeObjectURL(blobRef.current);
         blobRef.current = url;
         setPreviewUrl(url);
       } catch (e: any) {
-        setPreviewError(e?.message ?? 'Render failed');
+        if (!cancelled) setPreviewError(e?.message ?? 'Render failed');
       } finally {
-        setPreviewing(false);
+        if (!cancelled) setPreviewing(false);
       }
     }, 500);
-    return () => clearTimeout(handle);
+    return () => { cancelled = true; clearTimeout(handle); };
   }, [template, showPreview]);
 
   useEffect(() => () => {
