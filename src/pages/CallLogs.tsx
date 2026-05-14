@@ -149,7 +149,7 @@ const CallLogs = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { canEdit: canEditCalls, canDelete: canDeleteCalls } = useModulePermissions('call_logs');
-  const { fetchCallLogs } = useSecureCallLogs();
+  const { fetchCallLogs, fetchCall } = useSecureCallLogs();
   const recordingPlayerRef = useRef<CallRecordingPlayerHandle>(null);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallLog[]>([]);
