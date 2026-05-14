@@ -277,6 +277,14 @@ export default function TemplateBuilderEdit() {
           />
         </div>
         <div className="flex items-center gap-2">
+          {bindingIssues.length > 0 && (
+            <span
+              className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
+              title={bindingIssues.map((i) => `${i.where}: ${i.message}`).join('\n')}
+            >
+              ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
+            </span>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
