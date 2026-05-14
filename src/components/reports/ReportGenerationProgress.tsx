@@ -675,8 +675,15 @@ function ReportGenerationProgressInner() {
             onClick={() => setIsMinimized(false)}
           />
         </div>
-        <Drawer open={!isMinimized} onOpenChange={(o) => setIsMinimized(!o)}>
-          <DrawerContent className="max-h-[85vh]">
+        <Drawer
+          open={!isMinimized}
+          onOpenChange={(o) => setIsMinimized(!o)}
+          snapPoints={DRAWER_SNAP_POINTS}
+          activeSnapPoint={drawerSnap}
+          setActiveSnapPoint={(s) => setDrawerSnap((s as number | string | null) ?? 0.45)}
+          dismissible
+        >
+          <DrawerContent className="max-h-[92vh]">
             <DrawerHeader className="p-0">
               <DrawerTitle className="sr-only">Report generation progress</DrawerTitle>
               <GenerationProgressHeader
@@ -701,23 +708,16 @@ function ReportGenerationProgressInner() {
                 onMinimize={() => setIsMinimized(true)}
               />
             </DrawerHeader>
-            <ScrollArea className="max-h-[70vh]">
+            <ScrollArea
+              className={cn(
+                'transition-[max-height]',
+                drawerSnap === 0.45 ? 'max-h-[35vh]' : 'max-h-[78vh]',
+              )}
+            >
               {historyOpen ? (
                 <GenerationHistoryList entries={history} onClear={clearHistory} />
               ) : (
-                reports.map((report) => (
-                  <GenerationProgressItem
-                    key={report.id}
-                    report={report}
-                    etaMs={etaForReport(report)}
-                    retryState={retryStateRef.current[report.id]}
-                    autoContinueSettings={autoContinueSettings}
-                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
-                    onContinue={() => handleManualContinue(report.id)}
-                    onDismiss={() => dismissReport(report.id)}
-                    isMobile
-                  />
-                ))
+                renderReportList(true)
               )}
             </ScrollArea>
           </DrawerContent>
