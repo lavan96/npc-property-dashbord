@@ -109,6 +109,10 @@ function OverlayEditor({
 
   return (
     <div className="space-y-5">
+  const [showDelete, setShowDelete] = useState(false);
+
+  return (
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold capitalize">{overlay.type} overlay</h3>
@@ -118,11 +122,28 @@ function OverlayEditor({
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete} title="Delete">
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setShowDelete(true)} title="Delete">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete overlay?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This overlay will be removed from the page. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDelete(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { setShowDelete(false); onDelete(); }}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Position / size */}
       <div className="grid grid-cols-2 gap-2">
@@ -237,7 +258,9 @@ function OverlayEditor({
           <ImageUploadField
             templateId={templateId}
             overlayId={overlay.id}
+            currentSrc={String(overlay.src ?? '')}
             onUploaded={(url) => patch({ src: url } as any)}
+            onClearSrc={() => patch({ src: '' } as any)}
           />
           <div>
             <Label className="text-xs">Fit</Label>
