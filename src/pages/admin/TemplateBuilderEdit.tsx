@@ -805,3 +805,96 @@ export default function TemplateBuilderEdit() {
     </div>
   );
 }
+
+// ─── Tokens editor ────────────────────────────────────────────────────────────
+function TokensEditor({
+  template,
+  onChange,
+}: {
+  template: ReportTemplate;
+  onChange: (tokens: ReportTemplate['tokens']) => void;
+}) {
+  const tokens = template.tokens;
+  const updateGroup = (
+    group: 'colors' | 'fonts' | 'spacing',
+    key: string,
+    value: string | number,
+  ) => {
+    const next = { ...tokens, [group]: { ...tokens[group], [key]: value } };
+    onChange(next);
+  };
+  const removeKey = (group: 'colors' | 'fonts' | 'spacing', key: string) => {
+    const copy = { ...tokens[group] } as Record<string, any>;
+    delete copy[key];
+    onChange({ ...tokens, [group]: copy });
+  };
+  const addKey = (group: 'colors' | 'fonts' | 'spacing') => {
+    const key = window.prompt(`New ${group} token key (e.g. "primary")`)?.trim();
+    if (!key) return;
+    const def = group === 'colors' ? '#000000' : group === 'fonts' ? 'Helvetica' : 0;
+    updateGroup(group, key, def as any);
+  };
+
+  return (
+    <div className="space-y-6">
+      {(['colors', 'fonts', 'spacing'] as const).map((group) => {
+        const entries = Object.entries(tokens[group] || {});
+        return (
+          <section key={group}>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">{group}</Label>
+              <Button size="sm" variant="ghost" onClick={() => addKey(group)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              </Button>
+            </div>
+            {entries.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No {group} tokens.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {entries.map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <Input value={k} disabled className="w-32 h-8 text-xs font-mono" />
+                    {group === 'colors' ? (
+                      <>
+                        <input
+                          type="color"
+                          value={typeof v === 'string' && v.startsWith('#') ? v : '#000000'}
+                          onChange={(e) => updateGroup(group, k, e.target.value)}
+                          className="h-8 w-10 rounded border bg-transparent cursor-pointer"
+                        />
+                        <Input
+                          value={String(v)}
+                          onChange={(e) => updateGroup(group, k, e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </>
+                    ) : group === 'spacing' ? (
+                      <Input
+                        type="number"
+                        value={Number(v)}
+                        onChange={(e) => updateGroup(group, k, Number(e.target.value))}
+                        className="h-8 text-xs"
+                      />
+                    ) : (
+                      <Input
+                        value={String(v)}
+                        onChange={(e) => updateGroup(group, k, e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    )}
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeKey(group, k)} title="Remove">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
+      <p className="text-[11px] text-muted-foreground">
+        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc.
+      </p>
+    </div>
+  );
+}
