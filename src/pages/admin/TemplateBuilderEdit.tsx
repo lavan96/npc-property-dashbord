@@ -316,6 +316,79 @@ export default function TemplateBuilderEdit() {
       setActivePageId(remaining[0]?.id ?? null);
     }
   };
+  const movePage = (pid: string, dir: -1 | 1) => {
+    const idx = template.pages.findIndex((p) => p.id === pid);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= template.pages.length) return;
+    const next = [...template.pages];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setTemplate((t) => ({ ...t, pages: next }));
+  };
+
+  // ── Block clipboard ops ─────────────────────────────────────────────────────
+  const copyBlock = (bid: string) => {
+    if (!activePage) return;
+    const b = activePage.blocks.find((x) => x.id === bid);
+    if (!b) return;
+    clipboardRef.current = JSON.parse(JSON.stringify(b));
+    toast.success(`Copied "${b.type}"`);
+  };
+  const pasteBlock = () => {
+    if (!activePage || !clipboardRef.current) return;
+    const copy: Block = JSON.parse(JSON.stringify(clipboardRef.current));
+    copy.id = crypto.randomUUID();
+    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
+    updatePage({ ...activePage, blocks: [...activePage.blocks, copy] });
+    setSelectedBlockId(copy.id);
+    toast.success(`Pasted "${copy.type}"`);
+  };
+
+  // ── Import / export template JSON ───────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name || 'template'}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(String(reader.result));
+        const parsed = parseTemplate(json);
+        setTemplate(parsed);
+        setActivePageId(parsed.pages[0]?.id ?? null);
+        setSelectedOverlayId(null);
+        setSelectedBlockId(null);
+        toast.success('Template imported');
+      } catch (e: any) {
+        toast.error(`Import failed: ${e?.message ?? 'invalid JSON'}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
+      else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
+      else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
+      else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
+      else if (e.key === 'd' && selectedBlockId && !isField) { e.preventDefault(); duplicateBlock(selectedBlockId); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBlockId, activePage]);
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
