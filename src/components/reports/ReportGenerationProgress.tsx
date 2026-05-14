@@ -354,6 +354,7 @@ function ReportGenerationProgressInner() {
         lastUpdated: new Date(report.updated_at),
         lastCompletedSection: dbSection,
         createdAt: new Date(report.created_at),
+        bulkJobId: report.bulk_job_id ?? null,
       };
     });
 
