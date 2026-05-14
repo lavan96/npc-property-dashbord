@@ -449,6 +449,18 @@ export default function Listings() {
               Export ({selectedListings.size})
             </Button>
           )}
+          <Button
+            onClick={() => setIsCommandPaletteOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            aria-label="Open command palette"
+          >
+            <CommandIcon className="h-4 w-4" />
+            <kbd className="hidden md:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+              ⌘K
+            </kbd>
+          </Button>
           <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching}>
             {isFetching ? (
               <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
