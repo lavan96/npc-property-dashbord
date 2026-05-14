@@ -373,6 +373,24 @@ export function BulkGenerationModal({
             <div className="flex gap-2 justify-end">
               {(jobStatus?.status === 'completed' || jobStatus?.status === 'failed') ? (
                 <>
+                  {(jobStatus?.failed_reports || 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (!jobId) return;
+                        const { error } = await supabase.rpc('retry_failed_bulk_items' as any, { p_job_id: jobId });
+                        if (error) {
+                          toast({ title: 'Retry failed', description: error.message, variant: 'destructive' });
+                          return;
+                        }
+                        toast({ title: 'Retrying failed reports', description: 'They will be processed shortly.' });
+                        setIsGenerating(true);
+                        await fetchJobStatus();
+                      }}
+                    >
+                      Retry Failed ({jobStatus?.failed_reports})
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleClose}>
                     Close
                   </Button>
