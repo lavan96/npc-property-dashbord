@@ -712,6 +712,9 @@ function ImageUploadField({
   const ratioMismatch = imageRatio != null && Math.abs(imageRatio - overlayRatio) / overlayRatio > 0.02;
   const fitObjectClass =
     fit === 'cover' ? 'object-cover' : fit === 'contain' ? 'object-contain' : 'object-fill';
+  const crop = (overlay as any).crop ?? { left: 0, right: 0, top: 0, bottom: 0 };
+  const hasCrop = crop.left || crop.right || crop.top || crop.bottom;
+  const dimsLoading = hasImage && !imgDims;
 
   return (
     <div className="space-y-2">
@@ -721,11 +724,27 @@ function ImageUploadField({
             className="relative rounded-md overflow-hidden border bg-[repeating-conic-gradient(theme(colors.muted)_0_25%,transparent_0_50%)] bg-[length:12px_12px]"
             style={{ aspectRatio: `${overlayRatio}` }}
           >
-            <img src={currentSrc} alt="Overlay preview" className={`absolute inset-0 w-full h-full ${fitObjectClass}`} />
+            {dimsLoading && (
+              <div className="absolute inset-0 animate-pulse bg-muted/60" aria-hidden />
+            )}
+            <img
+              src={currentSrc}
+              alt="Overlay preview"
+              className={`absolute inset-0 w-full h-full ${fitObjectClass} ${dimsLoading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+            />
+            {hasCrop && !dimsLoading && (
+              <>
+                {/* Translucent strips show what manual crop will trim. */}
+                <div className="absolute top-0 left-0 right-0 bg-destructive/40" style={{ height: `${crop.top}%` }} />
+                <div className="absolute bottom-0 left-0 right-0 bg-destructive/40" style={{ height: `${crop.bottom}%` }} />
+                <div className="absolute top-0 bottom-0 left-0 bg-destructive/40" style={{ width: `${crop.left}%` }} />
+                <div className="absolute top-0 bottom-0 right-0 bg-destructive/40" style={{ width: `${crop.right}%` }} />
+              </>
+            )}
           </div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground">
             <span>
-              {imgDims ? `${imgDims.width}×${imgDims.height}px` : '…'} ·
+              {dimsLoading ? 'Loading dimensions…' : imgDims ? `${imgDims.width}×${imgDims.height}px` : '—'} ·
               overlay {Math.round(overlayWidthPt)}×{Math.round(overlayHeightPt)}pt · fit: {fit}
             </span>
             {ratioMismatch && (
