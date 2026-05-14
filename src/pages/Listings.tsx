@@ -772,6 +772,21 @@ export default function Listings() {
         </Suspense>
       )}
 
+      {/* Phase C: ⌘K command palette */}
+      <ReportCommandPalette
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        listings={filteredListings}
+        selectedIds={selectedListings}
+        effectiveScope={effectiveScope}
+        effectiveTier={effectiveTier}
+        canGenerate={canEditListings}
+        onGenerateForListing={(listing, scope, tier) => launchScopedGeneration(listing, scope, tier)}
+        onOpenBulkGeneration={() => setIsBulkGenerationModalOpen(true)}
+        onToggleSelect={(id) => handleSelectListing(id, !selectedListings.has(id))}
+        onClearSelection={() => setSelectedListings(new Set())}
+      />
+
       {isBulkGenerationModalOpen && (
         <Suspense fallback={null}>
           <BulkGenerationModal
