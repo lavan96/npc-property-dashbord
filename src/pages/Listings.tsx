@@ -661,17 +661,39 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell>
-                    <ReportActionMenu
-                      surface="listing-row"
-                      label={listing.address || listing.location}
-                      callbacks={{
-                        onOpenDetails: () => openDetailsModal(listing),
-                        onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
-                        onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
-                        onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
-                      }}
-                      permissions={{ canGenerate: canEditListings }}
-                    />
+                    {(() => {
+                      const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
+                      return (
+                        <ReportActionMenu
+                          surface="listing-row"
+                          label={listing.address || listing.location}
+                          callbacks={{
+                            onOpenDetails: () => openDetailsModal(listing),
+                            onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
+                            onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
+                            onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
+                            onGenerateWithScope: canEditListings
+                              ? ({ scope, tier }) => launchScopedGeneration(listing, scope, tier)
+                              : undefined,
+                          }}
+                          permissions={{ canGenerate: canEditListings }}
+                          generatePicker={
+                            canEditListings
+                              ? {
+                                  scope: current.scope,
+                                  tier: current.tier,
+                                  defaultScope: prefs.default_scope,
+                                  defaultTier: prefs.default_tier,
+                                  onChange: (next) =>
+                                    setRowPicker((m) => ({ ...m, [listing.id]: next })),
+                                  onSaveDefault: ({ scope, tier }) =>
+                                    updatePrefs({ default_scope: scope, default_tier: tier }),
+                                }
+                              : undefined
+                          }
+                        />
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}
