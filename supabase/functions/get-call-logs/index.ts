@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       .order(orderBy, { ascending, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       console.error('[get-call-logs] Error fetching calls:', error);
@@ -186,8 +186,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    const returned = data?.length || 0;
+    const hasMore = count != null ? offset + returned < count : returned === limit;
+
     return new Response(
-      JSON.stringify({ success: true, calls: data || [] }),
+      JSON.stringify({
+        success: true,
+        calls: data || [],
+        total: count ?? null,
+        offset,
+        limit,
+        hasMore,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
