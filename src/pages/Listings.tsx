@@ -715,6 +715,7 @@ export default function Listings() {
                     })()}
                   </TableCell>
                 </TableRow>
+                </ListingRowContextMenu>
               ))}
             </TableBody>
           </Table>
