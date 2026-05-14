@@ -496,11 +496,15 @@ function BindingPicker({
 function ImageUploadField({
   templateId,
   overlayId,
+  currentSrc,
   onUploaded,
+  onClearSrc,
 }: {
   templateId?: string;
   overlayId: string;
+  currentSrc: string;
   onUploaded: (publicUrl: string) => void;
+  onClearSrc: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -536,29 +540,52 @@ function ImageUploadField({
     }
   };
 
+  const hasImage = currentSrc && /^https?:\/\//i.test(currentSrc);
+
   return (
-    <div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleFile(f);
-          e.currentTarget.value = '';
-        }}
-      />
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full text-xs"
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-        {busy ? 'Uploading…' : 'Upload image'}
-      </Button>
+    <div className="space-y-2">
+      {hasImage && (
+        <div className="relative rounded-md overflow-hidden border">
+          <img src={currentSrc} alt="Overlay preview" className="w-full h-24 object-cover" />
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-destructive/20"
+            onClick={onClearSrc}
+            title="Remove image"
+          >
+            <X className="h-3 w-3 text-destructive" />
+          </Button>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.currentTarget.value = '';
+          }}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 text-xs"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+          {hasImage ? 'Replace image' : 'Upload image'}
+        </Button>
+        {hasImage && (
+          <Button size="sm" variant="outline" className="text-xs text-destructive border-destructive/30" onClick={onClearSrc}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
