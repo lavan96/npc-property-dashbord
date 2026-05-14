@@ -3,7 +3,7 @@
  * or page-level settings if none is selected.
  */
 import { useMemo, useRef, useState } from 'react';
-import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Command,
   CommandEmpty,
