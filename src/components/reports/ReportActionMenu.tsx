@@ -167,6 +167,7 @@ export function ReportActionMenu({
   trigger,
   triggerClassName,
   align = 'end',
+  generatePicker,
 }: ReportActionMenuProps) {
   const {
     canGenerate = true,
