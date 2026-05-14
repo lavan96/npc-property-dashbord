@@ -441,9 +441,24 @@ const CallLogs = () => {
     }
   };
 
-  const openCallDetail = (call: CallLog) => {
+  const openCallDetail = async (call: CallLog) => {
+    // Show modal immediately with the lightweight list row, then hydrate
+    // with full call (transcript + artifact_messages) which were excluded
+    // from the list payload to keep the refresh fast.
     setSelectedCall(call);
     setShowCallDetail(true);
+    try {
+      const { data: full, error } = await fetchCall(call.id);
+      if (!error && full) {
+        setSelectedCall(prev =>
+          prev && prev.id === full.id
+            ? ({ ...prev, ...full } as CallLog)
+            : prev
+        );
+      }
+    } catch (err) {
+      console.warn('[CallLogs] Failed to hydrate full call detail:', err);
+    }
   };
 
   return (
