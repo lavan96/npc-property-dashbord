@@ -274,6 +274,32 @@ export function ReportActionMenu({
                   Generate new report…
                 </DropdownMenuItem>
               )}
+
+              {/* Phase B: scope + tier picker submenu */}
+              {generatePicker && callbacks.onGenerateWithScope && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                    Generate with options…
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-72 p-0">
+                      <ReportScopeTierPicker
+                        scope={generatePicker.scope}
+                        tier={generatePicker.tier}
+                        defaultScope={generatePicker.defaultScope}
+                        defaultTier={generatePicker.defaultTier}
+                        availableScopes={generatePicker.availableScopes}
+                        availableTiers={generatePicker.availableTiers}
+                        onChange={generatePicker.onChange}
+                        onSaveDefault={generatePicker.onSaveDefault}
+                        onConfirm={(next) => callbacks.onGenerateWithScope?.(next)}
+                        confirmLabel={hasReport ? 'Regenerate' : 'Generate'}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              )}
             </DropdownMenuGroup>
           )}
 
