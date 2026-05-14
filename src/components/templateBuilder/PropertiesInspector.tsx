@@ -105,6 +105,7 @@ function OverlayEditor({
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
+  const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
   const [showDelete, setShowDelete] = useState(false);
 
   return (
