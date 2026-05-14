@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     const { 
       orderBy = 'started_at',
       ascending = false,
-      limit = 1000,
+      limit = 30,
       offset = 0,
       status,
       outcome,
@@ -137,26 +137,12 @@ Deno.serve(async (req) => {
       endDate
     } = listOptions;
 
-    // Heavy columns excluded from list view to avoid Postgres statement timeouts:
-    //   - artifact_messages (~4MB total across the table)
-    //   - transcript        (~290KB total)
-    //   - metadata          (~144KB)
-    // These are fetched on demand via mode='single' when opening the detail modal.
-    // We surface `has_transcript` so the row badge still works without the payload.
-    const LIST_COLUMNS = [
-      'id','vapi_call_id','agent_id','agent_name','phone_number','customer_name',
-      'call_direction','call_status','call_outcome','started_at','ended_at',
-      'duration_seconds','cost','summary','sentiment','key_topics','action_items',
-      'recording_url','created_at','tags','is_squad_call','squad_id','squad_name',
-      'call_intent','assistants_involved','handoff_sequence','structured_data_multi',
-      'root_cause_category','escalation_severity','resolution_status','resolution_notes',
-      'ai_recommendations','negative_sentiment_moment','recovery_priority',
-      'reviewed_by','reviewed_at','ghl_contact_id'
-    ].join(',');
-
+    // Full row select. Pagination keeps each batch small enough to avoid
+    // Postgres statement timeouts even with heavy columns
+    // (artifact_messages, transcript, metadata) included.
     let query = supabase
       .from('vapi_call_logs')
-      .select(LIST_COLUMNS);
+      .select('*', { count: 'exact' });
 
     // Apply filters
     if (status) {
