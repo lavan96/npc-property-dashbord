@@ -57,6 +57,8 @@ import FinancePortalCompliance from "./pages/admin/FinancePortalCompliance";
 import FinancePortalCommissions from "./pages/admin/FinancePortalCommissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
+import TemplateBuilder from "./pages/admin/TemplateBuilder";
+import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
