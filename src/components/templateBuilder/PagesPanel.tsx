@@ -5,7 +5,8 @@
 import {
   Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type,
   LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus,
-  Hash, Columns2, MessageSquare, Images,
+  Hash, Columns2, MessageSquare, Images, ArrowUp, ArrowDown, QrCode, Tag, ListOrdered,
+  PenLine, Space,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +22,7 @@ interface Props {
   onAddPage: () => void;
   onDuplicatePage: (id: string) => void;
   onDeletePage: (id: string) => void;
+  onMovePage?: (id: string, dir: -1 | 1) => void;
   onAddBlock: (block: Block) => void;
   onAddOverlay: (overlay: Overlay) => void;
 }
@@ -52,6 +54,11 @@ const PALETTE: PaletteItem[] = [
   { label: 'Two-column', icon: Columns2, build: () => blockFromDef('two-column') },
   { label: 'Gallery', icon: Images, build: () => blockFromDef('gallery') },
   { label: 'Page number', icon: Hash, build: () => blockFromDef('page-number') },
+  { label: 'Spacer', icon: Space, build: () => blockFromDef('spacer') },
+  { label: 'QR code', icon: QrCode, build: () => blockFromDef('qr') },
+  { label: 'Badge list', icon: Tag, build: () => blockFromDef('badge-list') },
+  { label: 'Contents', icon: ListOrdered, build: () => blockFromDef('toc') },
+  { label: 'Signature', icon: PenLine, build: () => blockFromDef('signature') },
   { label: 'Free / overlays', icon: Layers, build: () => blockFromDef('free') },
   {
     label: 'Text overlay',
@@ -113,6 +120,7 @@ export function PagesPanel({
   onAddPage,
   onDuplicatePage,
   onDeletePage,
+  onMovePage,
   onAddBlock,
   onAddOverlay,
 }: Props) {
@@ -148,6 +156,24 @@ export function PagesPanel({
               <span className="text-[10px] text-muted-foreground">
                 {page.blocks.reduce((acc, b) => acc + b.overlays.length, 0)}
               </span>
+              {onMovePage && i > 0 && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); onMovePage(page.id, -1); }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-foreground"
+                  title="Move up"
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </span>
+              )}
+              {onMovePage && i < template.pages.length - 1 && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); onMovePage(page.id, 1); }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-foreground"
+                  title="Move down"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </span>
+              )}
               <span
                 onClick={(e) => {
                   e.stopPropagation();

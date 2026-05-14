@@ -50,15 +50,17 @@ export function renderTemplateToBlob(
     orientation: first.size.width > first.size.height ? 'landscape' : 'portrait',
   });
 
+  const allPages = visiblePages.map((p) => ({ id: p.id, name: p.name }));
   visiblePages.forEach((page, idx) => {
     if (idx > 0) {
       doc.addPage([page.size.width, page.size.height]);
     }
     // Inject pageNumber/pageCount so blocks like page-number / footer can bind them.
-    const pageCtx: ResolveContext = {
+    const pageCtx: ResolveContext & { _allPages?: typeof allPages } = {
       ...ctxBase,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length },
     };
+    (pageCtx as any)._allPages = allPages;
     drawPage(doc, page, pageCtx);
   });
 
@@ -111,6 +113,7 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
     ...ctxBase,
     doc,
     page: { width: page.size.width, height: page.size.height },
+    pages: (ctxBase as any)._allPages,
   };
 
   // Blocks

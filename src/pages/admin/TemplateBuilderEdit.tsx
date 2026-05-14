@@ -8,11 +8,11 @@
  * overlays (position, size, text content); blocks and bindings are edited in
  * the inspector / page panel. Live PDF regenerates on a 500ms debounce.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
-  Download, Copy as CopyIcon, CheckCircle2,
+  Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,7 @@ import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 
-const SAMPLE_DATA = {
+const DEFAULT_SAMPLE_DATA = {
   property: { address: '123 Sample Street, Sydney NSW 2000', suburb: 'Sydney', imageUrl: '' },
   financials: { weeklyRent: 850, purchasePrice: 950000 },
   client: { name: 'Sample Client' },
@@ -59,11 +59,59 @@ export default function TemplateBuilderEdit() {
   const [description, setDescription] = useState('');
   const [reportType, setReportType] = useState('');
   const [tier, setTier] = useState('');
-  const [template, setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
+  const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+
+  // ── Undo / redo history ────────────────────────────────────────────────────
+  const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
+  const skipHistoryRef = useRef(false);
+  const setTemplate = useCallback((updater: ReportTemplate | ((prev: ReportTemplate) => ReportTemplate)) => {
+    _setTemplate((prev) => {
+      const next = typeof updater === 'function' ? (updater as (p: ReportTemplate) => ReportTemplate)(prev) : updater;
+      if (!skipHistoryRef.current && next !== prev) {
+        historyRef.current.past.push(prev);
+        if (historyRef.current.past.length > 80) historyRef.current.past.shift();
+        historyRef.current.future = [];
+      }
+      skipHistoryRef.current = false;
+      return next;
+    });
+  }, []);
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    const prev = h.past.pop();
+    if (!prev) { toast('Nothing to undo'); return; }
+    _setTemplate((cur) => {
+      h.future.push(cur);
+      return prev;
+    });
+    skipHistoryRef.current = true;
+  }, []);
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    const next = h.future.pop();
+    if (!next) { toast('Nothing to redo'); return; }
+    _setTemplate((cur) => {
+      h.past.push(cur);
+      return next;
+    });
+    skipHistoryRef.current = true;
+  }, []);
+
+  // ── Sample data (editable in the Data tab, used for live preview) ───────────
+  const [sampleDataText, setSampleDataText] = useState(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2));
+  const sampleData = useMemo(() => {
+    try { return JSON.parse(sampleDataText); } catch { return DEFAULT_SAMPLE_DATA; }
+  }, [sampleDataText]);
+  const sampleDataValid = useMemo(() => {
+    try { JSON.parse(sampleDataText); return true; } catch { return false; }
+  }, [sampleDataText]);
+
+  // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
+  const clipboardRef = useRef<Block | null>(null);
 
   // Hydrate from server
   useEffect(() => {
@@ -268,6 +316,79 @@ export default function TemplateBuilderEdit() {
       setActivePageId(remaining[0]?.id ?? null);
     }
   };
+  const movePage = (pid: string, dir: -1 | 1) => {
+    const idx = template.pages.findIndex((p) => p.id === pid);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= template.pages.length) return;
+    const next = [...template.pages];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setTemplate((t) => ({ ...t, pages: next }));
+  };
+
+  // ── Block clipboard ops ─────────────────────────────────────────────────────
+  const copyBlock = (bid: string) => {
+    if (!activePage) return;
+    const b = activePage.blocks.find((x) => x.id === bid);
+    if (!b) return;
+    clipboardRef.current = JSON.parse(JSON.stringify(b));
+    toast.success(`Copied "${b.type}"`);
+  };
+  const pasteBlock = () => {
+    if (!activePage || !clipboardRef.current) return;
+    const copy: Block = JSON.parse(JSON.stringify(clipboardRef.current));
+    copy.id = crypto.randomUUID();
+    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
+    updatePage({ ...activePage, blocks: [...activePage.blocks, copy] });
+    setSelectedBlockId(copy.id);
+    toast.success(`Pasted "${copy.type}"`);
+  };
+
+  // ── Import / export template JSON ───────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name || 'template'}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(String(reader.result));
+        const parsed = parseTemplate(json);
+        setTemplate(parsed);
+        setActivePageId(parsed.pages[0]?.id ?? null);
+        setSelectedOverlayId(null);
+        setSelectedBlockId(null);
+        toast.success('Template imported');
+      } catch (e: any) {
+        toast.error(`Import failed: ${e?.message ?? 'invalid JSON'}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
+      else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
+      else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
+      else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
+      else if (e.key === 'd' && selectedBlockId && !isField) { e.preventDefault(); duplicateBlock(selectedBlockId); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBlockId, activePage]);
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
@@ -287,7 +408,7 @@ export default function TemplateBuilderEdit() {
       try {
         const prepared = await preloadImages(template);
         if (cancelled) return;
-        const blob = renderTemplateToBlob(prepared, { data: SAMPLE_DATA });
+        const blob = renderTemplateToBlob(prepared, { data: sampleData });
         const url = URL.createObjectURL(blob);
         if (blobRef.current) URL.revokeObjectURL(blobRef.current);
         blobRef.current = url;
@@ -299,7 +420,7 @@ export default function TemplateBuilderEdit() {
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, showPreview]);
+  }, [template, showPreview, sampleData]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
@@ -348,7 +469,7 @@ export default function TemplateBuilderEdit() {
             placeholder="Template name"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {bindingIssues.length > 0 ? (
             <span
               className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
@@ -361,6 +482,29 @@ export default function TemplateBuilderEdit() {
               <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
             </span>
           )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} title="Undo (⌘Z)">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} title="Redo (⌘⇧Z)">
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportFile(f);
+              e.target.value = '';
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} title="Import .json">
+            <Upload className="h-4 w-4 mr-1" /> Import
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExport} title="Download template .json">
+            <Download className="h-4 w-4 mr-1" /> Export
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -405,6 +549,8 @@ export default function TemplateBuilderEdit() {
         <TabsList className="self-start mx-3 mt-2">
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
+          <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
         </TabsList>
@@ -426,6 +572,7 @@ export default function TemplateBuilderEdit() {
               onAddPage={addPage}
               onDuplicatePage={duplicatePage}
               onDeletePage={deletePage}
+              onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
             />
@@ -508,6 +655,41 @@ export default function TemplateBuilderEdit() {
             <Label className="text-xs">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
           </div>
+        </TabsContent>
+
+        {/* Brand tokens */}
+        <TabsContent value="tokens" className="px-6 py-4 max-w-3xl space-y-6">
+          <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
+        </TabsContent>
+
+        {/* Sample data */}
+        <TabsContent value="data" className="px-6 py-4 max-w-3xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview sample data</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Edit the JSON used to render the live preview. Bindings like <code>{'{{property.address}}'}</code> resolve against this object.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSampleDataText(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2))}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+          <Textarea
+            value={sampleDataText}
+            onChange={(e) => setSampleDataText(e.target.value)}
+            spellCheck={false}
+            className="font-mono text-xs h-[60vh] resize-none"
+          />
         </TabsContent>
 
         {/* Raw JSON fallback (still editable) */}
@@ -620,6 +802,99 @@ export default function TemplateBuilderEdit() {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Tokens editor ────────────────────────────────────────────────────────────
+function TokensEditor({
+  template,
+  onChange,
+}: {
+  template: ReportTemplate;
+  onChange: (tokens: ReportTemplate['tokens']) => void;
+}) {
+  const tokens = template.tokens;
+  const updateGroup = (
+    group: 'colors' | 'fonts' | 'spacing',
+    key: string,
+    value: string | number,
+  ) => {
+    const next = { ...tokens, [group]: { ...tokens[group], [key]: value } };
+    onChange(next);
+  };
+  const removeKey = (group: 'colors' | 'fonts' | 'spacing', key: string) => {
+    const copy = { ...tokens[group] } as Record<string, any>;
+    delete copy[key];
+    onChange({ ...tokens, [group]: copy });
+  };
+  const addKey = (group: 'colors' | 'fonts' | 'spacing') => {
+    const key = window.prompt(`New ${group} token key (e.g. "primary")`)?.trim();
+    if (!key) return;
+    const def = group === 'colors' ? '#000000' : group === 'fonts' ? 'Helvetica' : 0;
+    updateGroup(group, key, def as any);
+  };
+
+  return (
+    <div className="space-y-6">
+      {(['colors', 'fonts', 'spacing'] as const).map((group) => {
+        const entries = Object.entries(tokens[group] || {});
+        return (
+          <section key={group}>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">{group}</Label>
+              <Button size="sm" variant="ghost" onClick={() => addKey(group)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              </Button>
+            </div>
+            {entries.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No {group} tokens.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {entries.map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <Input value={k} disabled className="w-32 h-8 text-xs font-mono" />
+                    {group === 'colors' ? (
+                      <>
+                        <input
+                          type="color"
+                          value={typeof v === 'string' && v.startsWith('#') ? v : '#000000'}
+                          onChange={(e) => updateGroup(group, k, e.target.value)}
+                          className="h-8 w-10 rounded border bg-transparent cursor-pointer"
+                        />
+                        <Input
+                          value={String(v)}
+                          onChange={(e) => updateGroup(group, k, e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </>
+                    ) : group === 'spacing' ? (
+                      <Input
+                        type="number"
+                        value={Number(v)}
+                        onChange={(e) => updateGroup(group, k, Number(e.target.value))}
+                        className="h-8 text-xs"
+                      />
+                    ) : (
+                      <Input
+                        value={String(v)}
+                        onChange={(e) => updateGroup(group, k, e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    )}
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeKey(group, k)} title="Remove">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
+      <p className="text-[11px] text-muted-foreground">
+        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc.
+      </p>
     </div>
   );
 }
