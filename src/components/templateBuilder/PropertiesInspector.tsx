@@ -3,7 +3,7 @@
  * or page-level settings if none is selected.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2 } from 'lucide-react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -31,12 +31,13 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { toast } from 'sonner';
-import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import {
   buildSuggestions,
   validateBindable,
   type BindingIssue,
 } from '@/lib/reportTemplate/bindingValidation';
+import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface Props {
@@ -44,10 +45,16 @@ interface Props {
   templateId?: string;
   page: Page | null;
   overlay: Overlay | null;
+  selectedBlockId?: string | null;
   onUpdateOverlay: (next: Overlay) => void;
   onDeleteOverlay: (id: string) => void;
   onDuplicateOverlay: (id: string) => void;
   onUpdatePage: (next: Page) => void;
+  onSelectBlock?: (blockId: string | null) => void;
+  onUpdateBlock?: (next: Block) => void;
+  onDeleteBlock?: (blockId: string) => void;
+  onDuplicateBlock?: (blockId: string) => void;
+  onMoveBlock?: (blockId: string, dir: -1 | 1) => void;
 }
 
 export function PropertiesInspector({
