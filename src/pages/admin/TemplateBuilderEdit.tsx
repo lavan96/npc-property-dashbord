@@ -549,6 +549,8 @@ export default function TemplateBuilderEdit() {
         <TabsList className="self-start mx-3 mt-2">
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
+          <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
         </TabsList>
