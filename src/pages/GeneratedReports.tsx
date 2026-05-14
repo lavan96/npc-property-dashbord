@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
+import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
 
 // Lazy load heavy modal components
 const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
