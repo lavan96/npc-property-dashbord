@@ -614,7 +614,6 @@ export default function TemplateBuilderEdit() {
                     </Button>
                   </div>
                 </li>
-                </li>
                 );
               })}
             </ul>
