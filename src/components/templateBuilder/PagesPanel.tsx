@@ -2,7 +2,11 @@
  * PagesPanel — left rail. Shows pages (selectable, add/duplicate/delete) and
  * a block library to insert known blocks onto the active page.
  */
-import { Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type, LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus } from 'lucide-react';
+import {
+  Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type,
+  LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus,
+  Hash, Columns2, MessageSquare, Images,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -43,6 +47,11 @@ const PALETTE: PaletteItem[] = [
   { label: 'Text block', icon: AlignJustify, build: () => blockFromDef('text-block') },
   { label: 'Footer', icon: Minus, build: () => blockFromDef('footer') },
   { label: 'Disclaimer', icon: Quote, build: () => blockFromDef('disclaimer') },
+  { label: 'Divider', icon: Minus, build: () => blockFromDef('divider') },
+  { label: 'Callout', icon: MessageSquare, build: () => blockFromDef('callout') },
+  { label: 'Two-column', icon: Columns2, build: () => blockFromDef('two-column') },
+  { label: 'Gallery', icon: Images, build: () => blockFromDef('gallery') },
+  { label: 'Page number', icon: Hash, build: () => blockFromDef('page-number') },
   { label: 'Free / overlays', icon: Layers, build: () => blockFromDef('free') },
   {
     label: 'Text overlay',
