@@ -256,6 +256,8 @@ function OverlayEditor({
             templateId={templateId}
             overlayId={overlay.id}
             currentSrc={String(overlay.src ?? '')}
+            overlayWidthPt={overlay.width}
+            overlayHeightPt={overlay.height}
             onUploaded={(url) => patch({ src: url } as any)}
             onClearSrc={() => patch({ src: '' } as any)}
           />
@@ -493,32 +495,80 @@ function BindingPicker({
   );
 }
 
+interface ImageWarning {
+  level: 'warning' | 'info';
+  message: string;
+}
+
 function ImageUploadField({
   templateId,
   overlayId,
   currentSrc,
+  overlayWidthPt,
+  overlayHeightPt,
   onUploaded,
   onClearSrc,
 }: {
   templateId?: string;
   overlayId: string;
   currentSrc: string;
+  overlayWidthPt: number;
+  overlayHeightPt: number;
   onUploaded: (publicUrl: string) => void;
   onClearSrc: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false);
+  const [warnings, setWarnings] = useState<ImageWarning[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
 
-  const handleFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please choose an image file');
-      return;
+  const hasImage = currentSrc && /^https?:\/\//i.test(currentSrc);
+
+  /** Read intrinsic image dimensions client-side. */
+  const readImageDims = (file: File): Promise<{ width: number; height: number }> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const dims = { width: img.naturalWidth, height: img.naturalHeight };
+        URL.revokeObjectURL(url);
+        resolve(dims);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not read image dimensions'));
+      };
+      img.src = url;
+    });
+
+  /** Compare image dims against overlay box; return any UX warnings. */
+  const checkDimensions = (px: { width: number; height: number }): ImageWarning[] => {
+    const issues: ImageWarning[] = [];
+    // Roughly: 1pt ≈ 1.33px (96dpi). For a sharp print, image px should be >= overlay pt.
+    const minPxW = Math.round(overlayWidthPt);
+    const minPxH = Math.round(overlayHeightPt);
+    if (px.width < minPxW || px.height < minPxH) {
+      issues.push({
+        level: 'warning',
+        message: `Image is ${px.width}×${px.height}px — smaller than the overlay (${minPxW}×${minPxH}pt) and will look blurry.`,
+      });
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be under 5MB');
-      return;
+    const overlayRatio = overlayWidthPt / Math.max(overlayHeightPt, 1);
+    const imageRatio = px.width / Math.max(px.height, 1);
+    const drift = Math.abs(overlayRatio - imageRatio) / overlayRatio;
+    if (drift > 0.15) {
+      issues.push({
+        level: 'warning',
+        message: `Aspect ratio mismatch — image ${imageRatio.toFixed(2)}:1 vs overlay ${overlayRatio.toFixed(2)}:1. Consider adjusting "Fit" or resizing the overlay.`,
+      });
     }
+    return issues;
+  };
+
+  const performUpload = async (file: File) => {
     setBusy(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
@@ -540,7 +590,58 @@ function ImageUploadField({
     }
   };
 
-  const hasImage = currentSrc && /^https?:\/\//i.test(currentSrc);
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    const supported = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    if (!supported.includes(file.type)) {
+      toast.error('Unsupported format. Use PNG, JPEG, WEBP or GIF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+
+    // Inspect dimensions first
+    let dimWarnings: ImageWarning[] = [];
+    try {
+      const dims = await readImageDims(file);
+      dimWarnings = checkDimensions(dims);
+    } catch {
+      dimWarnings = [{ level: 'warning', message: 'Could not read image dimensions.' }];
+    }
+    setWarnings(dimWarnings);
+
+    // Confirm before overwriting an existing image
+    if (hasImage) {
+      setPendingFile(file);
+      setConfirmReplaceOpen(true);
+      return;
+    }
+    await performUpload(file);
+  };
+
+  // ── Drag & drop handlers ────────────────────────────────────────────────────
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!dragActive) setDragActive(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const f = e.dataTransfer?.files?.[0];
+    if (f) handleFile(f);
+  };
 
   return (
     <div className="space-y-2">
@@ -558,11 +659,26 @@ function ImageUploadField({
           </Button>
         </div>
       )}
-      <div className="flex items-center gap-2">
+
+      {/* Drag-and-drop zone + click-to-upload */}
+      <div
+        onDragOver={onDragOver}
+        onDragEnter={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onClick={() => !busy && inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        className={`border-2 border-dashed rounded-md p-3 text-center cursor-pointer transition-colors ${
+          dragActive
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border hover:border-primary/50 hover:bg-muted/30 text-muted-foreground'
+        }`}
+      >
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -570,22 +686,71 @@ function ImageUploadField({
             e.currentTarget.value = '';
           }}
         />
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 text-xs"
-          disabled={busy}
-          onClick={() => inputRef.current?.click()}
-        >
-          {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-          {hasImage ? 'Replace image' : 'Upload image'}
-        </Button>
-        {hasImage && (
-          <Button size="sm" variant="outline" className="text-xs text-destructive border-destructive/30" onClick={onClearSrc}>
-            <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-          </Button>
+        {busy ? (
+          <span className="text-xs inline-flex items-center gap-1">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…
+          </span>
+        ) : (
+          <span className="text-xs inline-flex items-center gap-1">
+            <Upload className="h-3.5 w-3.5" />
+            {hasImage ? 'Drop to replace, or click' : 'Drop image, or click to upload'}
+          </span>
         )}
       </div>
+
+      {warnings.length > 0 && (
+        <ul className="space-y-0.5">
+          {warnings.map((w, i) => (
+            <li key={i} className="text-[10px] text-warning flex items-start gap-1">
+              <AlertTriangle className="h-2.5 w-2.5 mt-[2px] flex-shrink-0" />
+              <span>{w.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {hasImage && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-xs text-destructive hover:bg-destructive/10"
+          onClick={onClearSrc}
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove image
+        </Button>
+      )}
+
+      {/* Replace confirmation */}
+      <AlertDialog open={confirmReplaceOpen} onOpenChange={setConfirmReplaceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace current image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The existing image will be overwritten by <strong>{pendingFile?.name ?? 'the new file'}</strong>.
+              {warnings.length > 0 && (
+                <span className="block mt-2 text-warning">
+                  Heads up: {warnings.length} warning{warnings.length === 1 ? '' : 's'} on the new image.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setConfirmReplaceOpen(false); setPendingFile(null); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const f = pendingFile;
+                setConfirmReplaceOpen(false);
+                setPendingFile(null);
+                if (f) await performUpload(f);
+              }}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
