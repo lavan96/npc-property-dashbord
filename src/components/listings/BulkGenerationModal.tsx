@@ -39,6 +39,8 @@ interface ItemStatus {
   error_message: string | null;
   processing_time_seconds: number | null;
   report_id: string | null;
+  attempts?: number | null;
+  max_attempts?: number | null;
 }
 
 export function BulkGenerationModal({ 
@@ -348,8 +350,13 @@ export function BulkGenerationModal({
                           {item.property_address}
                         </div>
                         {item.error_message && (
-                          <div className="text-xs text-red-500 mt-1">
+                          <div className="text-xs text-destructive mt-1">
                             {item.error_message}
+                          </div>
+                        )}
+                        {(item.attempts ?? 0) > 1 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Attempt {item.attempts}{item.max_attempts ? ` of ${item.max_attempts}` : ''}
                           </div>
                         )}
                         {item.processing_time_seconds && (
@@ -371,6 +378,24 @@ export function BulkGenerationModal({
             <div className="flex gap-2 justify-end">
               {(jobStatus?.status === 'completed' || jobStatus?.status === 'failed') ? (
                 <>
+                  {(jobStatus?.failed_reports || 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (!jobId) return;
+                        const { error } = await supabase.rpc('retry_failed_bulk_items' as any, { p_job_id: jobId });
+                        if (error) {
+                          toast({ title: 'Retry failed', description: error.message, variant: 'destructive' });
+                          return;
+                        }
+                        toast({ title: 'Retrying failed reports', description: 'They will be processed shortly.' });
+                        setIsGenerating(true);
+                        await fetchJobStatus();
+                      }}
+                    >
+                      Retry Failed ({jobStatus?.failed_reports})
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleClose}>
                     Close
                   </Button>

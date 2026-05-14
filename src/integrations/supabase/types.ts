@@ -11409,6 +11409,7 @@ export type Database = {
         }[]
       }
       resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
+      retry_failed_bulk_items: { Args: { p_job_id: string }; Returns: number }
       seed_sample_schools: { Args: never; Returns: undefined }
       validate_property_specs: {
         Args: { specs: Json }
