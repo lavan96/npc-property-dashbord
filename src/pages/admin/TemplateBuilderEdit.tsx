@@ -469,7 +469,7 @@ export default function TemplateBuilderEdit() {
             placeholder="Template name"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {bindingIssues.length > 0 ? (
             <span
               className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
@@ -482,6 +482,29 @@ export default function TemplateBuilderEdit() {
               <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
             </span>
           )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} title="Undo (⌘Z)">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} title="Redo (⌘⇧Z)">
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportFile(f);
+              e.target.value = '';
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} title="Import .json">
+            <Upload className="h-4 w-4 mr-1" /> Import
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExport} title="Download template .json">
+            <Download className="h-4 w-4 mr-1" /> Export
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -547,6 +570,7 @@ export default function TemplateBuilderEdit() {
               onAddPage={addPage}
               onDuplicatePage={duplicatePage}
               onDeletePage={deletePage}
+              onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
             />
