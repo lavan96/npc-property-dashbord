@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
+  Download, Copy as CopyIcon, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ export default function TemplateBuilderEdit() {
   const [template, setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
 
   // Hydrate from server
@@ -177,6 +179,58 @@ export default function TemplateBuilderEdit() {
   const addBlockToActivePage = (block: Block) => {
     if (!activePage) return;
     updatePage({ ...activePage, blocks: [...activePage.blocks, block] });
+    setSelectedBlockId(block.id);
+    setSelectedOverlayId(null);
+  };
+  const updateBlock = (next: Block) => {
+    if (!activePage) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => (b.id === next.id ? next : b)),
+    });
+  };
+  const deleteBlock = (bid: string) => {
+    if (!activePage) return;
+    const snapshot: Page = JSON.parse(JSON.stringify(activePage));
+    const pageId = activePage.id;
+    updatePage({ ...activePage, blocks: activePage.blocks.filter((b) => b.id !== bid) });
+    if (selectedBlockId === bid) setSelectedBlockId(null);
+    toast('Block deleted', {
+      description: 'You can restore it within 8 seconds.',
+      duration: 8000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => (p.id === pageId ? snapshot : p)),
+          }));
+          toast.success('Block restored');
+        },
+      },
+    });
+  };
+  const duplicateBlock = (bid: string) => {
+    if (!activePage) return;
+    const idx = activePage.blocks.findIndex((b) => b.id === bid);
+    if (idx < 0) return;
+    const original = activePage.blocks[idx];
+    const copy: Block = JSON.parse(JSON.stringify(original));
+    copy.id = crypto.randomUUID();
+    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
+    const next = [...activePage.blocks];
+    next.splice(idx + 1, 0, copy);
+    updatePage({ ...activePage, blocks: next });
+    setSelectedBlockId(copy.id);
+  };
+  const moveBlock = (bid: string, dir: -1 | 1) => {
+    if (!activePage) return;
+    const idx = activePage.blocks.findIndex((b) => b.id === bid);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= activePage.blocks.length) return;
+    const next = [...activePage.blocks];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    updatePage({ ...activePage, blocks: next });
   };
 
   const addPage = () => {
