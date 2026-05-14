@@ -1,11 +1,9 @@
 /**
  * PropertiesInspector — right rail. Edits the currently-selected overlay,
  * or page-level settings if none is selected.
- *
- * Phase 2 supports text overlays in detail (content, font size/weight, alignment,
- * color, position/size). Shape & image overlays show their core props too.
  */
-import { Trash2, Sparkles } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -13,29 +11,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import type { Overlay, Page } from '@/lib/reportTemplate/templateSchema';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { toast } from 'sonner';
+import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import {
+  buildSuggestions,
+  validateBindable,
+  type BindingIssue,
+} from '@/lib/reportTemplate/bindingValidation';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface Props {
+  template: ReportTemplate;
+  templateId?: string;
   page: Page | null;
   overlay: Overlay | null;
   onUpdateOverlay: (next: Overlay) => void;
   onDeleteOverlay: (id: string) => void;
+  onDuplicateOverlay: (id: string) => void;
   onUpdatePage: (next: Page) => void;
 }
 
-const BINDING_HINTS = [
-  '{{property.address}}',
-  '{{financials.weeklyRent | currency}}',
-  '{{financials.purchasePrice | currency}}',
-  '{{client.name}}',
-  '{{tier | upper}}',
-];
-
 export function PropertiesInspector({
+  template,
+  templateId,
   page,
   overlay,
   onUpdateOverlay,
   onDeleteOverlay,
+  onDuplicateOverlay,
   onUpdatePage,
 }: Props) {
   if (!overlay && !page) {
@@ -51,12 +63,15 @@ export function PropertiesInspector({
       <div className="p-4 space-y-5">
         {overlay ? (
           <OverlayEditor
+            template={template}
+            templateId={templateId}
             overlay={overlay}
             onChange={onUpdateOverlay}
             onDelete={() => onDeleteOverlay(overlay.id)}
+            onDuplicate={() => onDuplicateOverlay(overlay.id)}
           />
         ) : (
-          page && <PageEditor page={page} onChange={onUpdatePage} />
+          page && <PageEditor template={template} page={page} onChange={onUpdatePage} />
         )}
       </div>
     </ScrollArea>
@@ -66,26 +81,37 @@ export function PropertiesInspector({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OverlayEditor({
+  template,
+  templateId,
   overlay,
   onChange,
   onDelete,
+  onDuplicate,
 }: {
+  template: ReportTemplate;
+  templateId?: string;
   overlay: Overlay;
   onChange: (n: Overlay) => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold capitalize">{overlay.type} overlay</h3>
           <p className="text-[11px] text-muted-foreground font-mono truncate">{overlay.id}</p>
         </div>
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete} title="Delete">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* Position / size */}
@@ -110,16 +136,13 @@ function OverlayEditor({
       {/* Type-specific */}
       {overlay.type === 'text' && (
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Content</Label>
-            <Textarea
-              value={String(overlay.content ?? '')}
-              onChange={(e) => patch({ content: e.target.value } as any)}
-              className="font-mono text-xs"
-              rows={3}
-            />
-            <BindingHelper onPick={(b) => patch({ content: `${overlay.content ?? ''}${b}` } as any)} />
-          </div>
+          <BindableField
+            label="Content"
+            value={String(overlay.content ?? '')}
+            onChange={(v) => patch({ content: v } as any)}
+            template={template}
+            multiline
+          />
           <div className="grid grid-cols-2 gap-2">
             <NumField
               label="Size (pt)"
@@ -162,7 +185,12 @@ function OverlayEditor({
               </Select>
             </div>
           </div>
-          <ColorField label="Color" value={String(overlay.color || '#000000')} onChange={(v) => patch({ color: v } as any)} />
+          <ColorField
+            label="Color"
+            value={String(overlay.color || '#000000')}
+            template={template}
+            onChange={(v) => patch({ color: v } as any)}
+          />
         </div>
       )}
 
@@ -179,8 +207,8 @@ function OverlayEditor({
               </SelectContent>
             </Select>
           </div>
-          <ColorField label="Fill" value={String(overlay.fill || '')} allowEmpty onChange={(v) => patch({ fill: v || undefined } as any)} />
-          <ColorField label="Stroke" value={String(overlay.stroke || '')} allowEmpty onChange={(v) => patch({ stroke: v || undefined } as any)} />
+          <ColorField label="Fill" template={template} value={String(overlay.fill || '')} allowEmpty onChange={(v) => patch({ fill: v || undefined } as any)} />
+          <ColorField label="Stroke" template={template} value={String(overlay.stroke || '')} allowEmpty onChange={(v) => patch({ stroke: v || undefined } as any)} />
           <div className="grid grid-cols-2 gap-2">
             <NumField label="Stroke W" value={overlay.strokeWidth || 0} onChange={(v) => patch({ strokeWidth: v } as any)} />
             <NumField label="Radius" value={overlay.borderRadius || 0} onChange={(v) => patch({ borderRadius: v } as any)} />
@@ -190,11 +218,17 @@ function OverlayEditor({
 
       {overlay.type === 'image' && (
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Source (URL or binding)</Label>
-            <Input value={String(overlay.src ?? '')} onChange={(e) => patch({ src: e.target.value } as any)} className="text-xs" />
-            <BindingHelper onPick={(b) => patch({ src: b } as any)} />
-          </div>
+          <BindableField
+            label="Source (URL or binding)"
+            value={String(overlay.src ?? '')}
+            onChange={(v) => patch({ src: v } as any)}
+            template={template}
+          />
+          <ImageUploadField
+            templateId={templateId}
+            overlayId={overlay.id}
+            onUploaded={(url) => patch({ src: url } as any)}
+          />
           <div>
             <Label className="text-xs">Fit</Label>
             <Select value={overlay.fit} onValueChange={(v) => patch({ fit: v as any })}>
@@ -223,7 +257,15 @@ function OverlayEditor({
   );
 }
 
-function PageEditor({ page, onChange }: { page: Page; onChange: (n: Page) => void }) {
+function PageEditor({
+  template,
+  page,
+  onChange,
+}: {
+  template: ReportTemplate;
+  page: Page;
+  onChange: (n: Page) => void;
+}) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold">Page settings</h3>
@@ -237,6 +279,7 @@ function PageEditor({ page, onChange }: { page: Page; onChange: (n: Page) => voi
       </div>
       <ColorField
         label="Background"
+        template={template}
         value={page.background?.color || ''}
         allowEmpty
         onChange={(v) => onChange({ ...page, background: { ...(page.background || {}), color: v || undefined } })}
@@ -278,9 +321,10 @@ function NumField({
 }
 
 function ColorField({
-  label, value, onChange, allowEmpty,
-}: { label: string; value: string; onChange: (v: string) => void; allowEmpty?: boolean }) {
+  label, value, onChange, allowEmpty, template,
+}: { label: string; value: string; onChange: (v: string) => void; allowEmpty?: boolean; template: ReportTemplate }) {
   const isHex = value?.startsWith('#');
+  const issues = validateBindable(value, template);
   return (
     <div>
       <Label className="text-xs">{label}</Label>
@@ -297,28 +341,194 @@ function ColorField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex or token:primary'}
-          className="h-8 text-xs font-mono"
+          className={`h-8 text-xs font-mono ${issues.length ? 'border-destructive focus-visible:ring-destructive' : ''}`}
         />
       </div>
+      <BindingIssues issues={issues} />
     </div>
   );
 }
 
-function BindingHelper({ onPick }: { onPick: (b: string) => void }) {
+/**
+ * Reusable bindable text input with validation chip + autocomplete popover.
+ */
+function BindableField({
+  label,
+  value,
+  onChange,
+  template,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  template: ReportTemplate;
+  multiline?: boolean;
+}) {
+  const issues = useMemo(() => validateBindable(value, template), [value, template]);
+  const invalid = issues.length > 0;
+
   return (
-    <div className="mt-1 flex flex-wrap gap-1">
-      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
-        <Sparkles className="h-2.5 w-2.5" /> bind:
-      </span>
-      {BINDING_HINTS.map((b) => (
-        <button
-          key={b}
-          onClick={() => onPick(b)}
-          className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10 hover:text-primary font-mono"
-        >
-          {b}
-        </button>
+    <div>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <BindingPicker template={template} onPick={(b) => onChange(`${value || ''}${b}`)} />
+      </div>
+      {multiline ? (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          className={`font-mono text-xs ${invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+        />
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`text-xs ${invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+        />
+      )}
+      <BindingIssues issues={issues} />
+    </div>
+  );
+}
+
+function BindingIssues({ issues }: { issues: BindingIssue[] }) {
+  if (!issues.length) return null;
+  return (
+    <ul className="mt-1 space-y-0.5">
+      {issues.map((i, idx) => (
+        <li key={idx} className="text-[10px] text-destructive flex items-start gap-1">
+          <AlertTriangle className="h-2.5 w-2.5 mt-[2px] flex-shrink-0" />
+          <span className="font-mono">{i.message}</span>
+        </li>
       ))}
+    </ul>
+  );
+}
+
+function BindingPicker({
+  template,
+  onPick,
+}: {
+  template: ReportTemplate;
+  onPick: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const suggestions = useMemo(() => buildSuggestions(template), [template]);
+
+  const groups = useMemo(() => {
+    const g: Record<string, typeof suggestions> = {};
+    for (const s of suggestions) (g[s.group] ||= []).push(s);
+    return g;
+  }, [suggestions]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10 hover:text-primary inline-flex items-center gap-1"
+          type="button"
+        >
+          <Sparkles className="h-2.5 w-2.5" /> Insert binding
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-64" align="end">
+        <Command>
+          <CommandInput placeholder="Search bindings…" className="h-9" />
+          <CommandList>
+            <CommandEmpty>No matches</CommandEmpty>
+            {Object.entries(groups).map(([group, items]) => (
+              <CommandGroup key={group} heading={group}>
+                {items.map((s) => (
+                  <CommandItem
+                    key={s.label}
+                    value={`${s.group} ${s.label} ${s.detail ?? ''}`}
+                    onSelect={() => {
+                      onPick(s.insert);
+                      setOpen(false);
+                    }}
+                    className="text-xs font-mono"
+                  >
+                    <span className="flex-1">{s.label}</span>
+                    {s.detail && <span className="text-[10px] text-muted-foreground ml-2">{s.detail}</span>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ImageUploadField({
+  templateId,
+  overlayId,
+  onUploaded,
+}: {
+  templateId?: string;
+  overlayId: string;
+  onUploaded: (publicUrl: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    setBusy(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const folder = templateId ?? 'unassigned';
+      const path = `${folder}/${overlayId}-${Date.now()}.${ext}`;
+      const result = await secureStorageUpload('report-templates', path, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+      if (!result.success) {
+        toast.error(`Upload failed: ${result.error ?? 'unknown error'}`);
+        return;
+      }
+      const publicUrl = `${supabaseUrl}/storage/v1/object/public/report-templates/${result.path ?? path}`;
+      onUploaded(publicUrl);
+      toast.success('Image uploaded');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.currentTarget.value = '';
+        }}
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full text-xs"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+        {busy ? 'Uploading…' : 'Upload image'}
+      </Button>
     </div>
   );
 }
