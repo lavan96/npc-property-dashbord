@@ -349,14 +349,44 @@ export default function TemplateBuilderEdit() {
           />
         </div>
         <div className="flex items-center gap-2">
-          {bindingIssues.length > 0 && (
+          {bindingIssues.length > 0 ? (
             <span
               className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
               title={bindingIssues.map((i) => `${i.where}: ${i.message}`).join('\n')}
             >
               ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
             </span>
+          ) : (
+            <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/10 text-success border border-success/30">
+              <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
+            </span>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(JSON.stringify(template, null, 2));
+                toast.success('Template JSON copied');
+              } catch { toast.error('Copy failed'); }
+            }}
+          >
+            <CopyIcon className="h-4 w-4 mr-1" /> Copy JSON
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!previewUrl}
+            onClick={() => {
+              if (!previewUrl) return;
+              const a = document.createElement('a');
+              a.href = previewUrl;
+              a.download = `${name || 'template'}.pdf`;
+              a.click();
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" /> Download PDF
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
@@ -392,7 +422,7 @@ export default function TemplateBuilderEdit() {
             <PagesPanel
               template={template}
               activePageId={activePageId}
-              onSelectPage={(id) => { setActivePageId(id); setSelectedOverlayId(null); }}
+              onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
               onAddPage={addPage}
               onDuplicatePage={duplicatePage}
               onDeletePage={deletePage}
@@ -406,7 +436,7 @@ export default function TemplateBuilderEdit() {
                   key={activePage.id}
                   page={activePage}
                   onOverlaysChange={setActivePageOverlays}
-                  onSelectOverlay={setSelectedOverlayId}
+                  onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -421,10 +451,16 @@ export default function TemplateBuilderEdit() {
                 templateId={id}
                 page={activePage}
                 overlay={selectedOverlay}
+                selectedBlockId={selectedBlockId}
                 onUpdateOverlay={updateOverlay}
                 onDeleteOverlay={deleteOverlay}
                 onDuplicateOverlay={duplicateOverlay}
                 onUpdatePage={updatePage}
+                onSelectBlock={setSelectedBlockId}
+                onUpdateBlock={updateBlock}
+                onDeleteBlock={deleteBlock}
+                onDuplicateBlock={duplicateBlock}
+                onMoveBlock={moveBlock}
               />
             </div>
 
