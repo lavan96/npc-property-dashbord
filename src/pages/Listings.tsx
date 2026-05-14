@@ -327,6 +327,41 @@ export default function Listings() {
     setIsInvestmentReportModalOpen(true);
   };
 
+  /**
+   * Phase B: launch report generation with explicit scope+tier.
+   * - address+compass uses the existing per-listing modal (zero-regression path).
+   * - everything else routes to /reports with prefilled URL params.
+   */
+  const launchScopedGeneration = useCallback(
+    (listing: PropertyListing, scope: ReportScope, tier: ReportTier) => {
+      void recordLastUsed(scope, tier);
+
+      if (scope === 'address' && tier === 'compass') {
+        openInvestmentReportModal(listing);
+        return;
+      }
+
+      const queryByScope: Record<ReportScope, string> = {
+        address: buildFullAddress(listing),
+        suburb: listing.suburb || listing.location || '',
+        zipcode: extractPostcode(buildFullAddress(listing)) || '',
+        state: extractAUState(buildFullAddress(listing)) || '',
+      };
+      const q = queryByScope[scope];
+      if (!q) {
+        toast({
+          title: 'Missing data',
+          description: `Could not determine ${scope} from this listing.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      const params = new URLSearchParams({ scope, q, tier });
+      navigate(`/reports?${params.toString()}`);
+    },
+    [navigate, recordLastUsed, toast]
+  );
+
   const closeDetailsModal = () => {
     setSelectedListing(null);
     setIsDetailsModalOpen(false);
