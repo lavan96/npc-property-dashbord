@@ -27,12 +27,12 @@ export const useSecureCallLogs = () => {
 
     if (error) {
       console.error('[useSecureCallLogs] Error fetching calls:', error);
-      return { data: null, error };
+      return { data: null, total: null, hasMore: false, offset: 0, limit: 0, error };
     }
 
     if (!data?.success) {
       console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
-      return { data: null, error: { message: data?.error || 'Unknown error' } };
+      return { data: null, total: null, hasMore: false, offset: 0, limit: 0, error: { message: data?.error || 'Unknown error' } };
     }
 
     console.log('[useSecureCallLogs] Fetched calls via secure Edge Function');
