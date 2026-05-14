@@ -34,6 +34,8 @@ import {
   makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
+import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
+import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -49,7 +51,7 @@ export default function TemplateBuilderEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: tplRow, isLoading } = useReportTemplate(id);
-  const { update } = useReportTemplateMutations();
+  const { update, create } = useReportTemplateMutations();
   const { data: versions = [] } = useReportTemplateVersions(id);
 
   const [name, setName] = useState('');
@@ -123,6 +125,25 @@ export default function TemplateBuilderEdit() {
     });
     setSelectedOverlayId(null);
   };
+  const duplicateOverlay = (oid: string) => {
+    if (!activePage) return;
+    let newId: string | null = null;
+    const blocks = activePage.blocks.map((b) => {
+      const idx = b.overlays.findIndex((o) => o.id === oid);
+      if (idx < 0) return b;
+      const original = b.overlays[idx];
+      const copy = JSON.parse(JSON.stringify(original));
+      copy.id = crypto.randomUUID();
+      copy.x = (original.x || 0) + 16;
+      copy.y = (original.y || 0) + 16;
+      newId = copy.id;
+      const next = [...b.overlays];
+      next.splice(idx + 1, 0, copy);
+      return { ...b, overlays: next };
+    });
+    updatePage({ ...activePage, blocks });
+    if (newId) setSelectedOverlayId(newId);
+  };
   const addOverlayToActivePage = (overlay: Overlay) => {
     if (!activePage) return;
     const blocks = [...activePage.blocks];
@@ -176,6 +197,9 @@ export default function TemplateBuilderEdit() {
     }
   };
 
+  // ── Binding validation (live) ───────────────────────────────────────────────
+  const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
+
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -186,20 +210,23 @@ export default function TemplateBuilderEdit() {
     if (!showPreview) return;
     setPreviewing(true);
     setPreviewError(null);
-    const handle = setTimeout(() => {
+    let cancelled = false;
+    const handle = setTimeout(async () => {
       try {
-        const blob = renderTemplateToBlob(template, { data: SAMPLE_DATA });
+        const prepared = await preloadImages(template);
+        if (cancelled) return;
+        const blob = renderTemplateToBlob(prepared, { data: SAMPLE_DATA });
         const url = URL.createObjectURL(blob);
         if (blobRef.current) URL.revokeObjectURL(blobRef.current);
         blobRef.current = url;
         setPreviewUrl(url);
       } catch (e: any) {
-        setPreviewError(e?.message ?? 'Render failed');
+        if (!cancelled) setPreviewError(e?.message ?? 'Render failed');
       } finally {
-        setPreviewing(false);
+        if (!cancelled) setPreviewing(false);
       }
     }, 500);
-    return () => clearTimeout(handle);
+    return () => { cancelled = true; clearTimeout(handle); };
   }, [template, showPreview]);
 
   useEffect(() => () => {
@@ -250,6 +277,14 @@ export default function TemplateBuilderEdit() {
           />
         </div>
         <div className="flex items-center gap-2">
+          {bindingIssues.length > 0 && (
+            <span
+              className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
+              title={bindingIssues.map((i) => `${i.where}: ${i.message}`).join('\n')}
+            >
+              ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
+            </span>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
@@ -310,10 +345,13 @@ export default function TemplateBuilderEdit() {
 
             <div className="border-l bg-background min-h-0">
               <PropertiesInspector
+                template={template}
+                templateId={id}
                 page={activePage}
                 overlay={selectedOverlay}
                 onUpdateOverlay={updateOverlay}
                 onDeleteOverlay={deleteOverlay}
+                onDuplicateOverlay={duplicateOverlay}
                 onUpdatePage={updatePage}
               />
             </div>
@@ -387,24 +425,67 @@ export default function TemplateBuilderEdit() {
           ) : (
             <ul className="space-y-2">
               {versions.map((v) => (
-                <li key={v.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
-                  <div>
+                <li key={v.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm gap-2">
+                  <div className="min-w-0">
                     <div className="font-medium">v{v.version}</div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(v.created_at).toLocaleString('en-AU')}
                       {v.note && ` — ${v.note}`}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setTemplate(parseTemplate(v.schema));
-                      toast.info(`Loaded v${v.version}. Click Save to apply.`);
-                    }}
-                  >
-                    Load
-                  </Button>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setTemplate(parseTemplate(v.schema));
+                        toast.info(`Loaded v${v.version} into editor. Click Save to apply.`);
+                      }}
+                    >
+                      Load
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!id || update.isPending}
+                      onClick={() => {
+                        if (!id) return;
+                        if (!confirm(`Restore v${v.version}? This will overwrite the current template (a snapshot of the current version is saved first).`)) return;
+                        const restored = parseTemplate(v.schema);
+                        setTemplate(restored);
+                        update.mutate(
+                          { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
+                          { onSuccess: () => toast.success(`Restored v${v.version}`) },
+                        );
+                      }}
+                    >
+                      Restore
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={create.isPending}
+                      onClick={() => {
+                        const cloned = parseTemplate(v.schema);
+                        create.mutate(
+                          {
+                            name: `${name || 'Template'} — v${v.version} clone`,
+                            description: `Cloned from v${v.version}`,
+                            report_type: reportType || null,
+                            tier: tier || null,
+                            schema: cloned,
+                          } as any,
+                          {
+                            onSuccess: (row: any) => {
+                              if (row?.id) navigate(`/admin/template-builder/${row.id}`);
+                            },
+                          },
+                        );
+                      }}
+                    >
+                      Clone as new
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
