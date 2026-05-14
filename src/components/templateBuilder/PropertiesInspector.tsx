@@ -618,11 +618,22 @@ function ImageUploadField({
         return;
       }
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/report-templates/${result.path ?? path}`;
-      onPatch({ src: publicUrl } as Partial<ImageOverlay>);
+
+      // Optionally compute fresh aspect ratio and apply it together with src.
+      let nextPatch: Partial<ImageOverlay> = { src: publicUrl } as Partial<ImageOverlay>;
+      if (autoMatch) {
+        try {
+          const dims = await readImageDims(file);
+          const ratio = dims.width / Math.max(dims.height, 1);
+          (nextPatch as any).height = Math.round((overlayWidthPt / ratio) * 100) / 100;
+        } catch { /* ignore — keep current height */ }
+      }
+      onPatch(nextPatch);
+
       if (prevSrc && /^https?:\/\//i.test(prevSrc)) {
-        offerUndo(prevSrc, 'Image replaced');
+        offerUndo(prevSrc, autoMatch ? 'Image replaced & overlay resized' : 'Image replaced');
       } else {
-        toast.success('Image uploaded');
+        toast.success(autoMatch ? 'Image uploaded & overlay resized' : 'Image uploaded');
       }
     } finally {
       setBusy(false);
