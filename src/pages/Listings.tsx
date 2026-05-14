@@ -36,6 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { ReportActionMenu } from '@/components/reports/ReportActionMenu';
 import { useReportPreferences, type ReportScope, type ReportTier } from '@/hooks/useReportPreferences';
 import { useNavigate } from 'react-router-dom';
+import { ListingRowContextMenu } from '@/components/listings/ListingRowContextMenu';
+import { ReportCommandPalette } from '@/components/reports/ReportCommandPalette';
+import { Command as CommandIcon } from 'lucide-react';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -113,6 +116,7 @@ export default function Listings() {
   const { prefs, update: updatePrefs, recordLastUsed, effectiveScope, effectiveTier } = useReportPreferences();
   // Per-row pending scope/tier choice in the picker (controlled)
   const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
