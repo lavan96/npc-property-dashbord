@@ -21,42 +21,31 @@ interface Props {
   onAddOverlay: (overlay: Overlay) => void;
 }
 
-const PALETTE: Array<{
-  label: string;
-  icon: typeof Type;
-  build: () => Block | { kind: 'overlay'; overlay: Overlay };
-}> = [
+type PaletteItem = { label: string; icon: typeof Type; build: () => Block | { kind: 'overlay'; overlay: Overlay } };
+
+function blockFromDef(type: string): Block {
+  const def = BLOCK_DEFS[type];
+  return {
+    id: crypto.randomUUID(),
+    type,
+    props: def ? def.defaultProps() : {},
+    overlays: [],
+  };
+}
+
+const PALETTE: PaletteItem[] = [
+  { label: 'Cover', icon: LayoutTemplate, build: () => blockFromDef('cover') },
+  { label: 'Hero', icon: Heading, build: () => blockFromDef('hero') },
+  { label: 'KPI grid', icon: Layers, build: () => blockFromDef('kpi-grid') },
+  { label: 'Data table', icon: TableIcon, build: () => blockFromDef('data-table') },
+  { label: 'Chart', icon: BarChart3, build: () => blockFromDef('chart') },
+  { label: 'Image block', icon: ImageIcon, build: () => blockFromDef('image') },
+  { label: 'Text block', icon: AlignJustify, build: () => blockFromDef('text-block') },
+  { label: 'Footer', icon: Minus, build: () => blockFromDef('footer') },
+  { label: 'Disclaimer', icon: Quote, build: () => blockFromDef('disclaimer') },
+  { label: 'Free / overlays', icon: Layers, build: () => blockFromDef('free') },
   {
-    label: 'Disclaimer',
-    icon: Quote,
-    build: () => ({
-      id: crypto.randomUUID(),
-      type: 'disclaimer',
-      props: {
-        companyName: 'Property Consulting',
-        website: 'example.com.au',
-        email: 'hello@example.com.au',
-        phone: '+61 0 0000 0000',
-        address: 'Sydney, NSW 2000',
-        abn: '00 000 000 000',
-        disclaimerText:
-          'This document is general information only and does not constitute financial advice.',
-      },
-      overlays: [],
-    }),
-  },
-  {
-    label: 'Free / overlays',
-    icon: Layers,
-    build: () => ({
-      id: crypto.randomUUID(),
-      type: 'free',
-      props: {},
-      overlays: [],
-    }),
-  },
-  {
-    label: 'Text',
+    label: 'Text overlay',
     icon: Type,
     build: () => ({
       kind: 'overlay',
@@ -93,7 +82,7 @@ const PALETTE: Array<{
     }),
   },
   {
-    label: 'Image',
+    label: 'Image overlay',
     icon: ImageIcon,
     build: () => ({
       kind: 'overlay',
