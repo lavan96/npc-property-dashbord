@@ -589,7 +589,22 @@ export default function Listings() {
             </TableHeader>
             <TableBody>
               {filteredListings.map((listing) => (
-                <TableRow key={listing.id} className="hover:bg-muted/50">
+                <ListingRowContextMenu
+                  key={listing.id}
+                  label={listing.address || listing.location}
+                  isSelected={selectedListings.has(listing.id)}
+                  canGenerate={canEditListings}
+                  effectiveScope={effectiveScope}
+                  effectiveTier={effectiveTier}
+                  onQuickGenerate={() => launchScopedGeneration(listing, effectiveScope, effectiveTier)}
+                  onGenerateWithScope={({ scope, tier }) => launchScopedGeneration(listing, scope, tier)}
+                  onToggleSelect={() => handleSelectListing(listing.id, !selectedListings.has(listing.id))}
+                  onOpenDetails={() => openDetailsModal(listing)}
+                  onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
+                  onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
+                >
+                  <TableRow className="hover:bg-muted/50">
+                    {/* preserve original cells */}
                   <TableCell>
                     <Checkbox
                       checked={selectedListings.has(listing.id)}
