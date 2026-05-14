@@ -268,14 +268,15 @@ async function generateSingleReport(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   const startTime = Date.now();
-  
+  let createdReportId: string | null = null;
+
   console.log(`🔨 Generating report for: ${property.address}`);
 
   try {
     // Get the item record
     const { data: item } = await supabase
       .from('bulk_generation_items')
-      .select('id')
+      .select('id, report_id')
       .eq('job_id', jobId)
       .eq('property_listing_id', property.id)
       .single();
@@ -284,29 +285,63 @@ async function generateSingleReport(
       throw new Error('Item not found');
     }
 
-    // Mark item as processing
+    // STEP 1: Pre-create the investment_reports row so generate-investment-report
+    // operates on a single, persistent row (no duplicates). Reuse if a previous
+    // attempt already created one for this item.
+    let reportId: string | null = item.report_id || null;
+    if (!reportId) {
+      const { data: created, error: createErr } = await supabase
+        .from('investment_reports')
+        .insert({
+          property_address: property.address,
+          report_content: '', // placeholder — filled by generate-investment-report
+          status: 'processing',
+          generated_by: userId,
+          report_scope: 'address',
+        })
+        .select('id')
+        .single();
+
+      if (createErr || !created) {
+        throw new Error(`Failed to pre-create report row: ${createErr?.message}`);
+      }
+      reportId = created.id;
+      createdReportId = reportId;
+    }
+
+    // Mark item as processing and link the report row
     await supabase
       .from('bulk_generation_items')
       .update({
         status: 'processing',
+        report_id: reportId,
         started_at: new Date().toISOString(),
       })
       .eq('id', item.id);
 
-    // Call the generate-investment-report function
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    // STEP 2: Call generate-investment-report with reportId.
+    // Service-to-service auth pattern (per memory): Authorization: Bearer SERVICE_ROLE
+    // + apikey: ANON_KEY so the gateway accepts the request and verifyAuth recognizes
+    // the service_role caller. Both env vars are trimmed defensively.
+    const supabaseUrl = (Deno.env.get('SUPABASE_URL') || '').trim();
+    const serviceRoleKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
+    const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+
     const response = await fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': anonKey,
       },
       body: JSON.stringify({
+        reportId,
         propertyAddress: property.address,
         propertyDetails: {
           suburb: property.suburb,
           state: property.state,
           zipCode: property.zipCode,
+          queryType: 'address',
         },
       }),
     });
@@ -317,53 +352,41 @@ async function generateSingleReport(
     }
 
     const reportData = await response.json();
-    
+
     if (!reportData.success) {
       throw new Error(reportData.error || 'Report generation failed');
     }
 
-    // Save the report to database
-    const { data: savedReport, error: saveError } = await supabase
-      .from('investment_reports')
-      .insert({
-        property_address: property.address,
-        report_content: reportData.reportContent,
-        sources_content: reportData.sourcesContent || null,
-        location_intelligence: reportData.enhancedData?.locationIntelligence || null,
-        investment_score: reportData.enhancedData?.investmentScore || null,
-        financial_calculations: reportData.enhancedData?.financials || null,
-        demographics_data: reportData.enhancedData?.demographics || null,
-        economic_data: reportData.enhancedData?.economics || null,
-        generated_by: userId,
-        status: 'completed', // Mark as completed
-      })
-      .select()
-      .single();
-
-    if (saveError) {
-      throw new Error(`Failed to save report: ${saveError.message}`);
-    }
-
+    // STEP 3: generate-investment-report has already written all content/enhanced
+    // data to the row identified by reportId. We just confirm the row reached a
+    // completed state and link it to the bulk item.
     const processingTime = Math.round((Date.now() - startTime) / 1000);
 
-    // Mark item as completed
     await supabase
       .from('bulk_generation_items')
       .update({
         status: 'completed',
-        report_id: savedReport.id,
+        report_id: reportId,
         completed_at: new Date().toISOString(),
         processing_time_seconds: processingTime,
       })
       .eq('id', item.id);
 
-    console.log(`✅ Report generated for ${property.address} in ${processingTime}s`);
+    console.log(`✅ Report generated for ${property.address} in ${processingTime}s (reportId=${reportId})`);
 
     return { success: true };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`❌ Failed to generate report for ${property.address}:`, errorMessage);
+
+    // Mark the pre-created report row as failed (if we created one)
+    if (createdReportId) {
+      await supabase
+        .from('investment_reports')
+        .update({ status: 'failed', error_message: errorMessage })
+        .eq('id', createdReportId);
+    }
 
     // Mark item as failed
     const { data: item } = await supabase
