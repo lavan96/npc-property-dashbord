@@ -335,7 +335,7 @@ export default function TemplateBuilderEdit() {
       try {
         const prepared = await preloadImages(template);
         if (cancelled) return;
-        const blob = renderTemplateToBlob(prepared, { data: SAMPLE_DATA });
+        const blob = renderTemplateToBlob(prepared, { data: sampleData });
         const url = URL.createObjectURL(blob);
         if (blobRef.current) URL.revokeObjectURL(blobRef.current);
         blobRef.current = url;
@@ -347,7 +347,7 @@ export default function TemplateBuilderEdit() {
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, showPreview]);
+  }, [template, showPreview, sampleData]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
