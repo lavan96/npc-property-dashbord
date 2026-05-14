@@ -93,7 +93,11 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
   }
   // (Background image support — Phase 2)
 
-  const blockCtx: BlockRenderContext = { ...ctxBase, doc, page: page.size };
+  const blockCtx: BlockRenderContext = {
+    ...ctxBase,
+    doc,
+    page: { width: page.size.width, height: page.size.height },
+  };
 
   // Blocks
   for (const block of page.blocks) {
