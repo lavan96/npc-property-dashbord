@@ -34,8 +34,22 @@ export async function preloadImages(template: ReportTemplate): Promise<ReportTem
   const tasks: Array<Promise<void>> = [];
   const next: ReportTemplate = JSON.parse(JSON.stringify(template));
 
+  const IMAGE_PROP_KEYS = ['imageUrl', 'src', 'chartUrl', 'backgroundUrl'];
+
   for (const page of next.pages) {
+    // Page background image
+    const bgUrl = page.background?.imageUrl;
+    if (typeof bgUrl === 'string' && /^https?:\/\//i.test(bgUrl)) {
+      tasks.push(fetchAsDataUrl(bgUrl).then((d) => { if (d) page.background.imageUrl = d; }));
+    }
     for (const block of page.blocks) {
+      // Block-level image-bearing props
+      for (const key of IMAGE_PROP_KEYS) {
+        const v = (block.props as any)?.[key];
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+          tasks.push(fetchAsDataUrl(v).then((d) => { if (d) (block.props as any)[key] = d; }));
+        }
+      }
       for (const overlay of block.overlays) {
         if (overlay.type !== 'image') continue;
         const src = overlay.src;
