@@ -337,10 +337,13 @@ export default function TemplateBuilderEdit() {
 
             <div className="border-l bg-background min-h-0">
               <PropertiesInspector
+                template={template}
+                templateId={id}
                 page={activePage}
                 overlay={selectedOverlay}
                 onUpdateOverlay={updateOverlay}
                 onDeleteOverlay={deleteOverlay}
+                onDuplicateOverlay={duplicateOverlay}
                 onUpdatePage={updatePage}
               />
             </div>
