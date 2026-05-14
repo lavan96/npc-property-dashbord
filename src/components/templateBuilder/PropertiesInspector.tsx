@@ -2,8 +2,8 @@
  * PropertiesInspector — right rail. Edits the currently-selected overlay,
  * or page-level settings if none is selected.
  */
-import { useMemo, useRef, useState } from 'react';
-import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
