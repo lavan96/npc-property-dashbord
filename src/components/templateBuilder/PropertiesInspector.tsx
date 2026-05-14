@@ -330,11 +330,22 @@ function PageEditor({
   template,
   page,
   onChange,
+  onSelectBlock,
+  onMoveBlock,
+  onDeleteBlock,
+  onDuplicateBlock,
 }: {
   template: ReportTemplate;
   page: Page;
   onChange: (n: Page) => void;
+  onSelectBlock?: (id: string | null) => void;
+  onMoveBlock?: (id: string, dir: -1 | 1) => void;
+  onDeleteBlock?: (id: string) => void;
+  onDuplicateBlock?: (id: string) => void;
 }) {
+  const [bgImageUrl, setBgImageUrl] = useState(String(page.background?.imageUrl ?? ''));
+  useEffect(() => { setBgImageUrl(String(page.background?.imageUrl ?? '')); }, [page.id]);
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold">Page settings</h3>
@@ -354,6 +365,18 @@ function PageEditor({
         onChange={(v) => onChange({ ...page, background: { ...(page.background || {}), color: v || undefined } })}
       />
       <div>
+        <Label className="text-xs">Background image URL</Label>
+        <Input
+          value={bgImageUrl}
+          onChange={(e) => setBgImageUrl(e.target.value)}
+          onBlur={() =>
+            onChange({ ...page, background: { ...(page.background || {}), imageUrl: bgImageUrl || undefined } })
+          }
+          placeholder="https://… (preloaded for PDF render)"
+          className="text-xs font-mono"
+        />
+      </div>
+      <div>
         <Label className="text-xs">Conditional</Label>
         <Input
           value={page.conditional ?? ''}
@@ -361,6 +384,272 @@ function PageEditor({
           className="text-xs font-mono"
         />
       </div>
+
+      <Separator />
+
+      {/* Blocks list with reorder / duplicate / delete / open editor */}
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          Blocks ({page.blocks.length})
+        </h4>
+        {page.blocks.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">
+            Use the left rail to insert a block.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {page.blocks.map((b, i) => {
+              const def = BLOCK_DEFS[b.type];
+              return (
+                <li
+                  key={b.id}
+                  className="flex items-center gap-1 rounded border bg-card px-2 py-1.5 text-xs hover:border-primary/50"
+                >
+                  <button
+                    onClick={() => onSelectBlock?.(b.id)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <div className="font-medium truncate">{def?.label ?? b.type}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {b.type} · {b.overlays.length} overlay{b.overlays.length === 1 ? '' : 's'}
+                    </div>
+                  </button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onMoveBlock?.(b.id, -1)} disabled={i === 0} title="Move up">
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onMoveBlock?.(b.id, 1)} disabled={i === page.blocks.length - 1} title="Move down">
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onDuplicateBlock?.(b.id)} title="Duplicate">
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDeleteBlock?.(b.id)} title="Delete">
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Block editor (driven by BLOCK_DEFS.fields) ─────────────────────────────
+function BlockEditor({
+  template,
+  block,
+  onChange,
+  onDelete,
+  onDuplicate,
+  onBack,
+}: {
+  template: ReportTemplate;
+  block: Block;
+  onChange: (next: Block) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onBack: () => void;
+}) {
+  const def = BLOCK_DEFS[block.type];
+  const props = (block.props ?? {}) as Record<string, any>;
+  const setProp = (key: string, value: unknown) =>
+    onChange({ ...block, props: { ...props, [key]: value } });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <button onClick={onBack} className="text-[10px] text-muted-foreground hover:text-foreground">
+            ← Back to page
+          </button>
+          <h3 className="text-sm font-semibold truncate">{def?.label ?? block.type}</h3>
+          <p className="text-[10px] font-mono text-muted-foreground truncate">{block.id}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete} title="Delete">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {def ? (
+        <div className="space-y-3">
+          {def.fields.map((f) => (
+            <BlockFieldInput
+              key={f.key}
+              field={f}
+              value={props[f.key]}
+              template={template}
+              onChange={(v) => setProp(f.key, v)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          No editor schema for block type "{block.type}". Edit via JSON tab.
+        </p>
+      )}
+
+      <Separator />
+      <div>
+        <Label className="text-xs">Conditional</Label>
+        <Input
+          value={block.conditional ?? ''}
+          onChange={(e) => onChange({ ...block, conditional: e.target.value || undefined })}
+          placeholder="e.g. tier === 'compass'"
+          className="text-xs font-mono"
+        />
+      </div>
+    </div>
+  );
+}
+
+function BlockFieldInput({
+  field, value, onChange, template,
+}: {
+  field: BlockField;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  template: ReportTemplate;
+}) {
+  switch (field.kind) {
+    case 'bindable':
+      return (
+        <BindableField
+          label={field.label}
+          value={String(value ?? '')}
+          onChange={onChange}
+          template={template}
+          multiline={field.multiline}
+        />
+      );
+    case 'number':
+      return (
+        <NumField
+          label={field.label}
+          value={Number(value ?? 0)}
+          step={field.step}
+          min={field.min}
+          max={field.max}
+          onChange={(n) => onChange(n)}
+        />
+      );
+    case 'color':
+      return (
+        <ColorField
+          label={field.label}
+          value={String(value ?? '')}
+          template={template}
+          allowEmpty
+          onChange={(v) => onChange(v || undefined)}
+        />
+      );
+    case 'select':
+      return (
+        <div>
+          <Label className="text-xs">{field.label}</Label>
+          <Select value={String(value ?? field.options[0])} onValueChange={(v) => onChange(v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {field.options.map((o) => (
+                <SelectItem key={o} value={o}>{o}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    case 'list-strings':
+      return (
+        <ListStringsField
+          label={field.label}
+          values={Array.isArray(value) ? (value as string[]) : []}
+          onChange={onChange}
+        />
+      );
+    case 'list-rows':
+      return (
+        <ListRowsField
+          label={field.label}
+          rows={Array.isArray(value) ? (value as Array<{ cells: string[] }>) : []}
+          onChange={onChange}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+function ListStringsField({
+  label, values, onChange,
+}: { label: string; values: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onChange([...values, ''])} title="Add">
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+      {values.map((v, i) => (
+        <div key={i} className="flex items-center gap-1">
+          <Input
+            value={v}
+            onChange={(e) => {
+              const next = [...values]; next[i] = e.target.value; onChange(next);
+            }}
+            className="h-7 text-xs"
+          />
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive"
+            onClick={() => onChange(values.filter((_, idx) => idx !== i))} title="Remove">
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ListRowsField({
+  label, rows, onChange,
+}: { label: string; rows: Array<{ cells: string[] }>; onChange: (v: Array<{ cells: string[] }>) => void }) {
+  const colCount = rows[0]?.cells?.length ?? 2;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <Button size="icon" variant="ghost" className="h-6 w-6"
+          onClick={() => onChange([...rows, { cells: Array(colCount).fill('') }])} title="Add row">
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+      {rows.map((row, i) => (
+        <div key={i} className="flex items-start gap-1">
+          <div className="flex-1 grid grid-cols-2 gap-1">
+            {(row.cells || []).map((cell, j) => (
+              <Input
+                key={j}
+                value={cell}
+                onChange={(e) => {
+                  const next = rows.map((r, ri) => ri === i
+                    ? { ...r, cells: r.cells.map((c, ci) => ci === j ? e.target.value : c) }
+                    : r);
+                  onChange(next);
+                }}
+                className="h-7 text-xs font-mono"
+              />
+            ))}
+          </div>
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive"
+            onClick={() => onChange(rows.filter((_, idx) => idx !== i))} title="Remove row">
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }
