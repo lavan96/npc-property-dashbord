@@ -62,11 +62,22 @@ export function PropertiesInspector({
   templateId,
   page,
   overlay,
+  selectedBlockId,
   onUpdateOverlay,
   onDeleteOverlay,
   onDuplicateOverlay,
   onUpdatePage,
+  onSelectBlock,
+  onUpdateBlock,
+  onDeleteBlock,
+  onDuplicateBlock,
+  onMoveBlock,
 }: Props) {
+  const selectedBlock =
+    page && selectedBlockId
+      ? page.blocks.find((b) => b.id === selectedBlockId) ?? null
+      : null;
+
   if (!overlay && !page) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
@@ -87,8 +98,27 @@ export function PropertiesInspector({
             onDelete={() => onDeleteOverlay(overlay.id)}
             onDuplicate={() => onDuplicateOverlay(overlay.id)}
           />
+        ) : selectedBlock ? (
+          <BlockEditor
+            template={template}
+            block={selectedBlock}
+            onChange={(b) => onUpdateBlock?.(b)}
+            onDelete={() => { onDeleteBlock?.(selectedBlock.id); onSelectBlock?.(null); }}
+            onDuplicate={() => onDuplicateBlock?.(selectedBlock.id)}
+            onBack={() => onSelectBlock?.(null)}
+          />
         ) : (
-          page && <PageEditor template={template} page={page} onChange={onUpdatePage} />
+          page && (
+            <PageEditor
+              template={template}
+              page={page}
+              onChange={onUpdatePage}
+              onSelectBlock={onSelectBlock}
+              onMoveBlock={onMoveBlock}
+              onDeleteBlock={onDeleteBlock}
+              onDuplicateBlock={onDuplicateBlock}
+            />
+          )
         )}
       </div>
     </ScrollArea>
