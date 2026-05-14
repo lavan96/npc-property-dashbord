@@ -2,11 +2,12 @@
  * PagesPanel — left rail. Shows pages (selectable, add/duplicate/delete) and
  * a block library to insert known blocks onto the active page.
  */
-import { Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type } from 'lucide-react';
+import { Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type, LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { cn } from '@/lib/utils';
 
 interface Props {
