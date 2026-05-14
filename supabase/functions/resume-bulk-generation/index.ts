@@ -29,13 +29,10 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    const auth = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
-    if (auth !== serviceKey && auth !== anonKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
+    // Auth: this function is gated by Supabase JWT verification at the gateway
+    // (verify_jwt=true). Any valid JWT — the cron's anon key, the service role
+    // key, or a logged-in user — can trigger a drain. Operations are limited
+    // to bulk_generation_* tables via service role.
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Step 1: requeue stale processing items
