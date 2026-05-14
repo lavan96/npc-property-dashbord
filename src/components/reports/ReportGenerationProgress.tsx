@@ -34,7 +34,7 @@ interface RetryState {
 type Corner = 'br' | 'bl' | 'tr' | 'tl';
 const POSITION_KEY = 'report-progress-position-v1';
 const COLLAPSED_KEY = 'report-progress-collapsed-v1';
-const DRAWER_SNAP_POINTS = [0.45, 0.92] as const;
+const DRAWER_SNAP_POINTS: (string | number)[] = [0.45, 0.92];
 
 function getAutoContinueSettings(): AutoContinueSettings {
   try {
