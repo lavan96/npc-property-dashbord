@@ -3,7 +3,7 @@
  * or page-level settings if none is selected.
  */
 import { useMemo, useRef, useState } from 'react';
-import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Command,
   CommandEmpty,
@@ -96,6 +106,7 @@ function OverlayEditor({
   onDuplicate: () => void;
 }) {
   const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
+  const [showDelete, setShowDelete] = useState(false);
 
   return (
     <div className="space-y-5">
@@ -108,11 +119,28 @@ function OverlayEditor({
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete} title="Delete">
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setShowDelete(true)} title="Delete">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete overlay?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This overlay will be removed from the page. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDelete(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { setShowDelete(false); onDelete(); }}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Position / size */}
       <div className="grid grid-cols-2 gap-2">
@@ -227,7 +255,9 @@ function OverlayEditor({
           <ImageUploadField
             templateId={templateId}
             overlayId={overlay.id}
+            currentSrc={String(overlay.src ?? '')}
             onUploaded={(url) => patch({ src: url } as any)}
+            onClearSrc={() => patch({ src: '' } as any)}
           />
           <div>
             <Label className="text-xs">Fit</Label>
@@ -466,11 +496,15 @@ function BindingPicker({
 function ImageUploadField({
   templateId,
   overlayId,
+  currentSrc,
   onUploaded,
+  onClearSrc,
 }: {
   templateId?: string;
   overlayId: string;
+  currentSrc: string;
   onUploaded: (publicUrl: string) => void;
+  onClearSrc: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -506,29 +540,52 @@ function ImageUploadField({
     }
   };
 
+  const hasImage = currentSrc && /^https?:\/\//i.test(currentSrc);
+
   return (
-    <div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleFile(f);
-          e.currentTarget.value = '';
-        }}
-      />
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full text-xs"
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-        {busy ? 'Uploading…' : 'Upload image'}
-      </Button>
+    <div className="space-y-2">
+      {hasImage && (
+        <div className="relative rounded-md overflow-hidden border">
+          <img src={currentSrc} alt="Overlay preview" className="w-full h-24 object-cover" />
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-destructive/20"
+            onClick={onClearSrc}
+            title="Remove image"
+          >
+            <X className="h-3 w-3 text-destructive" />
+          </Button>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.currentTarget.value = '';
+          }}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 text-xs"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+          {hasImage ? 'Replace image' : 'Upload image'}
+        </Button>
+        {hasImage && (
+          <Button size="sm" variant="outline" className="text-xs text-destructive border-destructive/30" onClick={onClearSrc}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
