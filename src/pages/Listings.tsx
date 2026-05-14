@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { ReportActionMenu } from '@/components/reports/ReportActionMenu';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -619,34 +620,17 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openDetailsModal(listing)}>
-                          Open Details
-                        </DropdownMenuItem>
-                        {listing.url && (
-                          <DropdownMenuItem onClick={() => openSourceUrl(listing.url!)}>
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Open Source
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy Address
-                        </DropdownMenuItem>
-                        {canEditListings && (
-                          <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            Investment Report
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ReportActionMenu
+                      surface="listing-row"
+                      label={listing.address || listing.location}
+                      callbacks={{
+                        onOpenDetails: () => openDetailsModal(listing),
+                        onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
+                        onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
+                        onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
+                      }}
+                      permissions={{ canGenerate: canEditListings }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
