@@ -579,6 +579,37 @@ function ReportGenerationProgressInner() {
     return Math.max(...etas);
   }, [reports, etaForReport]);
 
+  /* Group reports by bulk_job_id */
+  const { groups: bulkGroups, loose: looseReports } = useMemo(
+    () => groupReportsByBulkJob(reports),
+    [reports],
+  );
+
+  const renderItem = (report: ReportProgress, mobile: boolean) => (
+    <GenerationProgressItem
+      key={report.id}
+      report={report}
+      etaMs={etaForReport(report)}
+      retryState={retryStateRef.current[report.id]}
+      autoContinueSettings={autoContinueSettings}
+      sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
+      onContinue={() => handleManualContinue(report.id)}
+      onDismiss={() => dismissReport(report.id)}
+      isMobile={mobile}
+    />
+  );
+
+  const renderReportList = (mobile: boolean) => (
+    <>
+      {bulkGroups.map((g) => (
+        <BulkJobGroup key={g.jobId} group={g}>
+          {g.reports.map((r) => renderItem(r, mobile))}
+        </BulkJobGroup>
+      ))}
+      {looseReports.map((r) => renderItem(r, mobile))}
+    </>
+  );
+
   /* Drag-to-reposition (desktop) */
   const onDragStart = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
