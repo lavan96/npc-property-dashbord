@@ -29,6 +29,10 @@ import {
   Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ReportScopeTierPicker } from './ReportScopeTierPicker';
+import type { ReportScope, ReportTier } from '@/hooks/useReportPreferences';
+import { useState } from 'react';
+import { DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 
 /**
  * Unified report action menu used across Listings rows, Generated Reports
@@ -84,6 +88,21 @@ export interface ReportActionCallbacks {
   onOpenSource?: () => void;
   /** Copy the full address to clipboard */
   onCopyAddress?: () => void;
+  /** Phase B: open generate flow with explicit scope + tier */
+  onGenerateWithScope?: (args: { scope: ReportScope; tier: ReportTier }) => void;
+}
+
+export interface GeneratePickerConfig {
+  /** Currently selected scope (controlled) */
+  scope: ReportScope;
+  tier: ReportTier;
+  defaultScope: ReportScope;
+  defaultTier: ReportTier;
+  availableScopes?: ReportScope[];
+  availableTiers?: ReportTier[];
+  onChange: (next: { scope: ReportScope; tier: ReportTier }) => void;
+  /** Persist as default (star button) */
+  onSaveDefault?: (next: { scope: ReportScope; tier: ReportTier }) => void;
 }
 
 export interface ReportActionPermissions {
@@ -114,6 +133,8 @@ export interface ReportActionMenuProps {
   triggerClassName?: string;
   /** Menu alignment */
   align?: 'start' | 'center' | 'end';
+  /** Phase B: when provided, renders the scope+tier picker submenu */
+  generatePicker?: GeneratePickerConfig;
 }
 
 function StatusHint({ status, errorMessage }: { status?: ReportActionStatus; errorMessage?: string | null }) {
