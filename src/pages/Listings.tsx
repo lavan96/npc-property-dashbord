@@ -36,6 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { ReportActionMenu } from '@/components/reports/ReportActionMenu';
 import { useReportPreferences, type ReportScope, type ReportTier } from '@/hooks/useReportPreferences';
 import { useNavigate } from 'react-router-dom';
+import { ListingRowContextMenu } from '@/components/listings/ListingRowContextMenu';
+import { ReportCommandPalette } from '@/components/reports/ReportCommandPalette';
+import { Command as CommandIcon } from 'lucide-react';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -113,6 +116,7 @@ export default function Listings() {
   const { prefs, update: updatePrefs, recordLastUsed, effectiveScope, effectiveTier } = useReportPreferences();
   // Per-row pending scope/tier choice in the picker (controlled)
   const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
@@ -445,6 +449,18 @@ export default function Listings() {
               Export ({selectedListings.size})
             </Button>
           )}
+          <Button
+            onClick={() => setIsCommandPaletteOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            aria-label="Open command palette"
+          >
+            <CommandIcon className="h-4 w-4" />
+            <kbd className="hidden md:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+              ⌘K
+            </kbd>
+          </Button>
           <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching}>
             {isFetching ? (
               <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
@@ -585,7 +601,22 @@ export default function Listings() {
             </TableHeader>
             <TableBody>
               {filteredListings.map((listing) => (
-                <TableRow key={listing.id} className="hover:bg-muted/50">
+                <ListingRowContextMenu
+                  key={listing.id}
+                  label={listing.address || listing.location}
+                  isSelected={selectedListings.has(listing.id)}
+                  canGenerate={canEditListings}
+                  effectiveScope={effectiveScope}
+                  effectiveTier={effectiveTier}
+                  onQuickGenerate={() => launchScopedGeneration(listing, effectiveScope, effectiveTier)}
+                  onGenerateWithScope={({ scope, tier }) => launchScopedGeneration(listing, scope, tier)}
+                  onToggleSelect={() => handleSelectListing(listing.id, !selectedListings.has(listing.id))}
+                  onOpenDetails={() => openDetailsModal(listing)}
+                  onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
+                  onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
+                >
+                  <TableRow className="hover:bg-muted/50">
+                    {/* preserve original cells */}
                   <TableCell>
                     <Checkbox
                       checked={selectedListings.has(listing.id)}
@@ -696,6 +727,7 @@ export default function Listings() {
                     })()}
                   </TableCell>
                 </TableRow>
+                </ListingRowContextMenu>
               ))}
             </TableBody>
           </Table>
@@ -739,6 +771,21 @@ export default function Listings() {
           />
         </Suspense>
       )}
+
+      {/* Phase C: ⌘K command palette */}
+      <ReportCommandPalette
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        listings={filteredListings}
+        selectedIds={selectedListings}
+        effectiveScope={effectiveScope}
+        effectiveTier={effectiveTier}
+        canGenerate={canEditListings}
+        onGenerateForListing={(listing, scope, tier) => launchScopedGeneration(listing, scope, tier)}
+        onOpenBulkGeneration={() => setIsBulkGenerationModalOpen(true)}
+        onToggleSelect={(id) => handleSelectListing(id, !selectedListings.has(id))}
+        onClearSelection={() => setSelectedListings(new Set())}
+      />
 
       {isBulkGenerationModalOpen && (
         <Suspense fallback={null}>
