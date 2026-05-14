@@ -46,8 +46,17 @@ async function ensureReportRow(
   supabase: any,
   item: ClaimedItem,
   userId: string,
+  jobId: string,
 ): Promise<string> {
-  if (item.report_id) return item.report_id;
+  if (item.report_id) {
+    // Make sure existing row is tagged with the bulk job for widget grouping
+    await supabase
+      .from('investment_reports')
+      .update({ bulk_job_id: jobId })
+      .eq('id', item.report_id)
+      .is('bulk_job_id', null);
+    return item.report_id;
+  }
   const { data, error } = await supabase
     .from('investment_reports')
     .insert({
@@ -56,6 +65,7 @@ async function ensureReportRow(
       status: 'processing',
       generated_by: userId,
       report_scope: 'address',
+      bulk_job_id: jobId,
     })
     .select('id')
     .single();
@@ -115,6 +125,7 @@ async function processOneItem(
   supabase: any,
   item: ClaimedItem,
   userId: string,
+  jobId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const startedAt = Date.now();
   const heartbeat = startHeartbeat(supabase, item.id);
@@ -123,7 +134,7 @@ async function processOneItem(
 
   let reportId: string | null = null;
   try {
-    reportId = await ensureReportRow(supabase, item, userId);
+    reportId = await ensureReportRow(supabase, item, userId, jobId);
     await callInvestmentReport(
       reportId,
       { address: item.property_address },
@@ -249,7 +260,7 @@ export async function drainJob(
     if (claims.length === 0) break;
 
     const results = await Promise.allSettled(
-      claims.map((c) => processOneItem(supabase, c, userId)),
+      claims.map((c) => processOneItem(supabase, c, userId, jobId)),
     );
     for (const r of results) {
       processed++;

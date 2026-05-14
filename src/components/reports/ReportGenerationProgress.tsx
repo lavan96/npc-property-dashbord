@@ -14,6 +14,8 @@ import {
   GenerationProgressItem,
   GenerationProgressPill,
   GenerationHistoryList,
+  BulkJobGroup,
+  groupReportsByBulkJob,
   type AggregateCounts,
   type AutoContinueSettings,
   type ReportProgress,
@@ -32,6 +34,7 @@ interface RetryState {
 type Corner = 'br' | 'bl' | 'tr' | 'tl';
 const POSITION_KEY = 'report-progress-position-v1';
 const COLLAPSED_KEY = 'report-progress-collapsed-v1';
+const DRAWER_SNAP_POINTS: (string | number)[] = [0.45, 0.92];
 
 function getAutoContinueSettings(): AutoContinueSettings {
   try {
@@ -93,6 +96,7 @@ function ReportGenerationProgressInner() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [paused, setPaused] = useState(false);
   const [corner, setCorner] = useState<Corner>(getCorner);
+  const [drawerSnap, setDrawerSnap] = useState<number | string | null>(0.45);
   const [autoContinueSettings, setAutoContinueSettings] =
     useState<AutoContinueSettings>(getAutoContinueSettings);
 
@@ -283,7 +287,7 @@ function ReportGenerationProgressInner() {
       listMode: true,
       listOptions: {
         select:
-          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section',
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
@@ -354,6 +358,7 @@ function ReportGenerationProgressInner() {
         lastUpdated: new Date(report.updated_at),
         lastCompletedSection: dbSection,
         createdAt: new Date(report.created_at),
+        bulkJobId: report.bulk_job_id ?? null,
       };
     });
 
@@ -576,6 +581,37 @@ function ReportGenerationProgressInner() {
     return Math.max(...etas);
   }, [reports, etaForReport]);
 
+  /* Group reports by bulk_job_id */
+  const { groups: bulkGroups, loose: looseReports } = useMemo(
+    () => groupReportsByBulkJob(reports),
+    [reports],
+  );
+
+  const renderItem = (report: ReportProgress, mobile: boolean) => (
+    <GenerationProgressItem
+      key={report.id}
+      report={report}
+      etaMs={etaForReport(report)}
+      retryState={retryStateRef.current[report.id]}
+      autoContinueSettings={autoContinueSettings}
+      sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
+      onContinue={() => handleManualContinue(report.id)}
+      onDismiss={() => dismissReport(report.id)}
+      isMobile={mobile}
+    />
+  );
+
+  const renderReportList = (mobile: boolean) => (
+    <>
+      {bulkGroups.map((g) => (
+        <BulkJobGroup key={g.jobId} group={g}>
+          {g.reports.map((r) => renderItem(r, mobile))}
+        </BulkJobGroup>
+      ))}
+      {looseReports.map((r) => renderItem(r, mobile))}
+    </>
+  );
+
   /* Drag-to-reposition (desktop) */
   const onDragStart = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -641,8 +677,15 @@ function ReportGenerationProgressInner() {
             onClick={() => setIsMinimized(false)}
           />
         </div>
-        <Drawer open={!isMinimized} onOpenChange={(o) => setIsMinimized(!o)}>
-          <DrawerContent className="max-h-[85vh]">
+        <Drawer
+          open={!isMinimized}
+          onOpenChange={(o) => setIsMinimized(!o)}
+          snapPoints={DRAWER_SNAP_POINTS}
+          activeSnapPoint={drawerSnap}
+          setActiveSnapPoint={(s) => setDrawerSnap((s as number | string | null) ?? 0.45)}
+          dismissible
+        >
+          <DrawerContent className="max-h-[92vh]">
             <DrawerHeader className="p-0">
               <DrawerTitle className="sr-only">Report generation progress</DrawerTitle>
               <GenerationProgressHeader
@@ -667,23 +710,16 @@ function ReportGenerationProgressInner() {
                 onMinimize={() => setIsMinimized(true)}
               />
             </DrawerHeader>
-            <ScrollArea className="max-h-[70vh]">
+            <ScrollArea
+              className={cn(
+                'transition-[max-height]',
+                drawerSnap === 0.45 ? 'max-h-[35vh]' : 'max-h-[78vh]',
+              )}
+            >
               {historyOpen ? (
                 <GenerationHistoryList entries={history} onClear={clearHistory} />
               ) : (
-                reports.map((report) => (
-                  <GenerationProgressItem
-                    key={report.id}
-                    report={report}
-                    etaMs={etaForReport(report)}
-                    retryState={retryStateRef.current[report.id]}
-                    autoContinueSettings={autoContinueSettings}
-                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
-                    onContinue={() => handleManualContinue(report.id)}
-                    onDismiss={() => dismissReport(report.id)}
-                    isMobile
-                  />
-                ))
+                renderReportList(true)
               )}
             </ScrollArea>
           </DrawerContent>
@@ -738,18 +774,7 @@ function ReportGenerationProgressInner() {
                   No active generations.
                 </div>
               ) : (
-                reports.map((report) => (
-                  <GenerationProgressItem
-                    key={report.id}
-                    report={report}
-                    etaMs={etaForReport(report)}
-                    retryState={retryStateRef.current[report.id]}
-                    autoContinueSettings={autoContinueSettings}
-                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
-                    onContinue={() => handleManualContinue(report.id)}
-                    onDismiss={() => dismissReport(report.id)}
-                  />
-                ))
+                renderReportList(false)
               )}
             </div>
             {paused && (

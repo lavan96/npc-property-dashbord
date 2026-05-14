@@ -7925,6 +7925,7 @@ export type Database = {
       }
       investment_reports: {
         Row: {
+          bulk_job_id: string | null
           calculation_version: string | null
           client_property_id: string | null
           created_at: string
@@ -7956,6 +7957,7 @@ export type Database = {
           validation_flags: Json | null
         }
         Insert: {
+          bulk_job_id?: string | null
           calculation_version?: string | null
           client_property_id?: string | null
           created_at?: string
@@ -7987,6 +7989,7 @@ export type Database = {
           validation_flags?: Json | null
         }
         Update: {
+          bulk_job_id?: string | null
           calculation_version?: string | null
           client_property_id?: string | null
           created_at?: string
