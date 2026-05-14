@@ -55,6 +55,7 @@ export interface ReportProgress {
   lastUpdated: Date;
   lastCompletedSection: number;
   createdAt: Date;
+  bulkJobId?: string | null;
 }
 
 export interface AutoContinueSettings {
