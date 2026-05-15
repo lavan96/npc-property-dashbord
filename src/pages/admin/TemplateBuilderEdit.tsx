@@ -463,6 +463,7 @@ export default function TemplateBuilderEdit() {
   // ── Command palette (⌘K) ────────────────────────────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [snippetsOpen, setSnippetsOpen] = useState(false);
+  const [fixerOpen, setFixerOpen] = useState(false);
 
   // Insert a snippet (from library / palette) into active page.
   const insertSnippet = useCallback((snippetId: string) => {
