@@ -641,7 +641,58 @@ export default function TemplateBuilderEdit() {
                   <span className="font-medium">PDF preview</span>
                   {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                 </div>
-                <div className="flex-1 p-2">
+                {/* Page thumbnails strip */}
+                <ScrollArea className="border-b max-h-40 flex-shrink-0">
+                  <div className="flex gap-2 p-2">
+                    {template.pages.map((p, i) => {
+                      const errCount = issuesByPage.get(i) ?? 0;
+                      const isActive = p.id === activePageId;
+                      const ratio = (p.size?.width ?? 595) / (p.size?.height ?? 842);
+                      const W = 70;
+                      const H = Math.round(W / ratio);
+                      const bg = p.background?.color && typeof p.background.color === 'string' && p.background.color.startsWith('#') ? p.background.color : '#ffffff';
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => { setActivePageId(p.id); setSelectedOverlayId(null); setSelectedBlockId(null); }}
+                          className={`relative flex flex-col items-center gap-1 rounded border p-1 transition-colors ${
+                            isActive ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'
+                          }`}
+                          title={`${p.name}${errCount ? ` — ${errCount} binding issue${errCount === 1 ? '' : 's'}` : ''}`}
+                        >
+                          <svg
+                            width={W}
+                            height={H}
+                            viewBox={`0 0 ${p.size?.width ?? 595} ${p.size?.height ?? 842}`}
+                            className="rounded-sm"
+                            style={{ background: bg }}
+                          >
+                            {p.blocks.flatMap((b) =>
+                              b.overlays.map((o) => (
+                                <rect
+                                  key={o.id}
+                                  x={o.x}
+                                  y={o.y}
+                                  width={Math.max(o.width, 4)}
+                                  height={Math.max(o.height, 4)}
+                                  fill={o.type === 'text' ? '#94a3b8' : o.type === 'image' ? '#cbd5e1' : '#a78bfa'}
+                                  opacity={0.7}
+                                />
+                              )),
+                            )}
+                          </svg>
+                          <span className="text-[10px] text-muted-foreground leading-none">{i + 1}</span>
+                          {errCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] leading-none rounded-full min-w-[14px] h-[14px] px-1 flex items-center justify-center font-semibold">
+                              {errCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="flex-1 p-2 min-h-0">
                   {previewError ? (
                     <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center">
                       {previewError}
