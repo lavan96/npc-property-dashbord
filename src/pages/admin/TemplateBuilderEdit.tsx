@@ -954,6 +954,10 @@ export default function TemplateBuilderEdit() {
 
         {/* Brand tokens */}
         <TabsContent value="tokens" className="px-6 py-4 max-w-3xl space-y-6">
+          <ThemePresetsGallery
+            activeTokens={template.tokens}
+            onApply={applyTheme}
+          />
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
         </TabsContent>
 
