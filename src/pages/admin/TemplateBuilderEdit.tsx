@@ -280,6 +280,15 @@ export default function TemplateBuilderEdit() {
     [next[idx], next[j]] = [next[j], next[idx]];
     updatePage({ ...activePage, blocks: next });
   };
+  const reorderBlocks = (from: number, to: number) => {
+    if (!activePage) return;
+    if (from === to || from < 0 || to < 0) return;
+    const next = [...activePage.blocks];
+    if (from >= next.length || to >= next.length) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    updatePage({ ...activePage, blocks: next });
+  };
 
   const addPage = () => {
     const p: Page = {
