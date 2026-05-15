@@ -27,13 +27,15 @@ Deno.serve(async (req) => {
     // Action: fetch all emails for a mailbox
     if (action === 'list' || !action) {
       const mailboxFilter = mailbox_source || 'admin';
-      const limit = body.limit || 200;
+      const limit = Math.min(body.limit || 100, 150);
       const offset = body.offset || 0;
 
-      // Step 1: fetch emails WITHOUT join (uses idx_email_copilot_mailbox_received, fast)
+      // Step 1: fetch emails WITHOUT join, and EXCLUDE heavy jsonb columns
+      // (attachments, summary) to avoid statement timeouts. Body is kept for
+      // previews/search but is text — clients fetch full body via action='get'.
       const { data: emails, error } = await supabase
         .from('email_copilot_emails')
-        .select('*')
+        .select('id, sender, subject, body, received_at, draft_reply, urgency_level, linked_property_address, linked_report_id, status, created_by, created_at, updated_at, cc_recipients, bcc_recipients, mailbox_source, to_recipients, folder, client_id, conversation_id')
         .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false })
         .range(offset, offset + limit - 1);
