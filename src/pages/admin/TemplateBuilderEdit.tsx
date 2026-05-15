@@ -417,6 +417,8 @@ export default function TemplateBuilderEdit() {
     }
     return map;
   }, [bindingIssues]);
+  // ── Print-safety lint (live) ────────────────────────────────────────────────
+  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
