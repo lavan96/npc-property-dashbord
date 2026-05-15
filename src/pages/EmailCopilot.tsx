@@ -2838,20 +2838,20 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <DialogTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-purple-600" />
-                  Compose Reply
+        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 gap-3 sm:gap-4">
+          <DialogHeader className="pr-10">
+            <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <MessageSquare className="h-5 w-5 text-purple-600 shrink-0" />
+                  <span className="truncate">Compose Reply</span>
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-xs sm:text-sm">
                   Review recipients, edit your message, then send or copy
                 </DialogDescription>
               </div>
               {selectedEmail && (
-                <div className="shrink-0">
+                <div className="shrink-0 max-w-full">
                   <EmailClientAssignment
                     emailId={selectedEmail.id}
                     currentClientId={selectedEmail.client_id}
