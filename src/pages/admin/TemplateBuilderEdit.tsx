@@ -646,8 +646,30 @@ export default function TemplateBuilderEdit() {
             <CommandIcon className="h-3.5 w-3.5" /> Quick actions
             <kbd className="ml-1 px-1 py-px rounded bg-muted text-[10px] font-mono">⌘K</kbd>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSnippetsOpen(true)}
+            className="ml-1 h-8 gap-1.5 text-xs"
+            title="Open snippet library"
+          >
+            <Component className="h-3.5 w-3.5" /> Snippets
+          </Button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <BindingFixerPopover
+            template={template}
+            issues={bindingIssues}
+            sampleData={sampleData}
+            open={fixerOpen}
+            onOpenChange={setFixerOpen}
+            onApply={(next) => setTemplate(next)}
+            onJumpTo={(iss) => {
+              if (iss.pageId) setActivePageId(iss.pageId);
+              if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+              else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+            }}
+          />
           {bindingIssues.length > 0 ? (
             <Popover>
               <PopoverTrigger asChild>
