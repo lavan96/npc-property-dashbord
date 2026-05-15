@@ -148,6 +148,8 @@ export function CommandPalette({
         </CommandGroup>
 
         <CommandSeparator />
+
+        <CommandGroup heading="Insert block">
           {blockDefs.map((def) => (
             <CommandItem
               key={def.type}
