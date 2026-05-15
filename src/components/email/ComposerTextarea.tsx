@@ -20,6 +20,7 @@ interface Props {
   rows?: number;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   showToolbar?: boolean;
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
 }
 
 function wrapSelection(el: HTMLTextAreaElement, before: string, after: string = before, placeholder = '') {
