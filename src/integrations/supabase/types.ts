@@ -5356,6 +5356,63 @@ export type Database = {
           },
         ]
       }
+      email_copilot_scheduled_sends: {
+        Row: {
+          attachments: Json | null
+          bcc_recipients: string[] | null
+          body: string
+          cc_recipients: string[] | null
+          created_at: string
+          error: string | null
+          id: string
+          mailbox_source: string
+          original_email_id: string | null
+          recipient: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          bcc_recipients?: string[] | null
+          body?: string
+          cc_recipients?: string[] | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          mailbox_source?: string
+          original_email_id?: string | null
+          recipient: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          bcc_recipients?: string[] | null
+          body?: string
+          cc_recipients?: string[] | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          mailbox_source?: string
+          original_email_id?: string | null
+          recipient?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_copilot_sent_replies: {
         Row: {
           attachments: Json | null
@@ -5405,6 +5462,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_copilot_snippets: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string
+          id: string
+          shortcut: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          shortcut?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          shortcut?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       email_linking_excluded_addresses: {
         Row: {
