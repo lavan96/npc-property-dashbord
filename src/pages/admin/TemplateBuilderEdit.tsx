@@ -340,6 +340,75 @@ export default function TemplateBuilderEdit() {
     setTemplate((t) => ({ ...t, pages: next }));
   };
 
+  // ── Starter page presets / theme presets / sample-data presets ──────────────
+  const addStarterPage = (presetId: string) => {
+    const preset = getStarterPreset(presetId);
+    if (!preset) return;
+    const page = preset.build();
+    setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
+    setActivePageId(page.id);
+    setSelectedBlockId(null);
+    setSelectedOverlayId(null);
+    toast.success(`Added "${preset.label}"`);
+  };
+  const applyTheme = (presetId: string) => {
+    const preset = getThemePreset(presetId);
+    if (!preset) return;
+    setTemplate((t) => ({
+      ...t,
+      tokens: {
+        colors: { ...t.tokens.colors, ...preset.tokens.colors },
+        fonts: { ...t.tokens.fonts, ...preset.tokens.fonts },
+        spacing: { ...t.tokens.spacing, ...preset.tokens.spacing },
+      },
+    }));
+    toast.success(`Theme applied: ${preset.label}`);
+  };
+  const applySampleDataPreset = (presetId: string) => {
+    const preset = SAMPLE_DATA_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setSampleDataText(JSON.stringify(preset.data, null, 2));
+    toast.success(`Sample data: ${preset.label}`);
+  };
+  const insertBlockType = (type: string) => {
+    if (!activePage) { toast.error('No active page — add one first.'); return; }
+    const def = BLOCK_DEFS[type];
+    if (!def) return;
+    const newBlock: Block = {
+      id: crypto.randomUUID(),
+      type,
+      props: def.defaultProps(),
+      overlays: [],
+    };
+    addBlockToActivePage(newBlock);
+    toast.success(`Inserted ${def.label}`);
+  };
+  const jumpToFirstBindingIssue = () => {
+    const iss = bindingIssues[0];
+    if (!iss) return;
+    if (iss.pageId) setActivePageId(iss.pageId);
+    if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+    else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+  };
+  const jumpToFirstLintIssue = () => {
+    const iss = lintIssues[0];
+    if (!iss) return;
+    if (iss.pageId) setActivePageId(iss.pageId);
+    if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+    else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+  };
+  const syncTokensFromBrand = () => {
+    const themeCfg = (brand as any)?.settings?.themeConfig;
+    const primary = themeCfg?.primaryColor || (brand as any)?.settings?.primaryColor;
+    const accent = themeCfg?.accentColor || (brand as any)?.settings?.accentColor;
+    const incoming: Record<string, string> = {};
+    if (primary) incoming.primary = primary;
+    if (accent) incoming.accent = accent;
+    if (Object.keys(incoming).length === 0) { toast.info('No brand colours configured to sync'); return; }
+    setTemplate((t) => ({ ...t, tokens: { ...t.tokens, colors: { ...t.tokens.colors, ...incoming } } }));
+    toast.success(`Synced ${Object.keys(incoming).length} brand colour${Object.keys(incoming).length === 1 ? '' : 's'}`);
+  };
+
   // ── Block clipboard ops ─────────────────────────────────────────────────────
   const copyBlock = (bid: string) => {
     if (!activePage) return;
