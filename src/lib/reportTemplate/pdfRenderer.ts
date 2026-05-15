@@ -114,6 +114,8 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
     doc,
     page: { width: page.size.width, height: page.size.height },
     pages: (ctxBase as any)._allPages,
+    slots: (ctxBase as any)._slots,
+    _drawOverlay: (overlay, c) => drawOverlay(c.doc, overlay, c),
   };
 
   // Blocks
