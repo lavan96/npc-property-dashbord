@@ -3298,12 +3298,26 @@ export default function EmailCopilot() {
               {/* Email Body */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">Message Body *</Label>
-                <Textarea
+                <ComposerTextarea
                   value={composeEmail.body}
-                  onChange={(e) => setComposeEmail({ ...composeEmail, body: e.target.value })}
+                  onChange={(v) => setComposeEmail({ ...composeEmail, body: v })}
+                  snippets={snippets}
+                  onManageSnippets={() => setShowSnippetManager(true)}
                   className="h-[300px] resize-none font-sans text-sm"
                   placeholder="Type your email message here..."
                 />
+                <div className="mt-2">
+                  <RecipientSanityWarning
+                    to={composeEmail.to}
+                    cc={composeEmail.cc}
+                    bcc={composeEmail.bcc}
+                    expectedDomain={null}
+                    bodyText={composeEmail.body}
+                    attachmentCount={composeAttachments.length}
+                    onApplyFix={(from, to) => setComposeEmail(prev => ({ ...prev, to: prev.to.replace(from, to), cc: prev.cc.replace(from, to), bcc: prev.bcc.replace(from, to) }))}
+                  />
+                </div>
+                <div className="mt-2"><AttachmentSummary files={composeAttachments.map(f => ({ name: f.name, size: f.size }))} /></div>
               </div>
             </div>
           </ScrollArea>
@@ -3313,10 +3327,34 @@ export default function EmailCopilot() {
               <AlertCircle className="h-3 w-3" />
               Review carefully before sending
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowComposeModal(false)}>
                 Cancel
               </Button>
+              <ScheduleSendButton
+                disabled={isComposing || !composeEmail.to || !composeEmail.body}
+                buildPayload={async () => {
+                  const ccList = parseEmailList(composeEmail.cc);
+                  const bccList = parseEmailList(composeEmail.bcc);
+                  const attachmentsData = await Promise.all(
+                    composeAttachments.map(async (file) => ({
+                      name: file.name,
+                      contentType: file.type || 'application/octet-stream',
+                      contentBytes: await fileToBase64(file),
+                    })),
+                  );
+                  return {
+                    recipient: composeEmail.to,
+                    cc_recipients: ccList,
+                    bcc_recipients: bccList,
+                    subject: composeEmail.subject || '(No Subject)',
+                    body: composeEmail.body,
+                    attachments: attachmentsData,
+                    mailbox_source: selectedMailbox,
+                  };
+                }}
+                onScheduled={() => { refreshScheduled(); setShowComposeModal(false); setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' }); setComposeAttachments([]); }}
+              />
               <Button 
                 onClick={handleSendComposedEmail} 
                 disabled={isComposing || !composeEmail.to || !composeEmail.body}
