@@ -287,6 +287,9 @@ export default function EmailCopilot() {
   const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
   const composeFileInputRef = useRef<HTMLInputElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [loadingQuickReplies, setLoadingQuickReplies] = useState(false);
   
   // Drag and drop state
   const [replyDragActive, setReplyDragActive] = useState(false);
