@@ -42,6 +42,7 @@ import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { useBrand } from '@/branding/BrandProvider';
+import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
