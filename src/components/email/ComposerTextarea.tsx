@@ -46,10 +46,14 @@ function lineTransform(el: HTMLTextAreaElement, fn: (line: string, idx: number) 
 }
 
 export const ComposerTextarea = forwardRef<ComposerTextareaHandle, Props>(function ComposerTextarea(
-  { value, onChange, snippets, onManageSnippets, placeholder, className, rows = 12, onKeyDown, showToolbar = true },
+  { value, onChange, snippets, onManageSnippets, placeholder, className, rows = 12, onKeyDown, showToolbar = true, textareaRef },
   ref,
 ) {
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const setTaRef = useCallback((el: HTMLTextAreaElement | null) => {
+    (taRef as any).current = el;
+    if (textareaRef) textareaRef.current = el;
+  }, [textareaRef]);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashStart, setSlashStart] = useState<number | null>(null);
