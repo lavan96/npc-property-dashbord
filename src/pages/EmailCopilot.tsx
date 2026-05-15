@@ -2551,6 +2551,36 @@ export default function EmailCopilot() {
                     </Button>
                   )}
                 </div>
+
+                {/* Smart Quick-Reply Chips */}
+                {(quickReplies.length > 0 || loadingQuickReplies) && selectedEmail.status !== 'replied' && (
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-primary" /> Quick reply
+                    </span>
+                    {loadingQuickReplies ? (
+                      <>
+                        <div className="h-6 w-24 rounded-full bg-muted animate-pulse" />
+                        <div className="h-6 w-28 rounded-full bg-muted animate-pulse" />
+                        <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                      </>
+                    ) : (
+                      quickReplies.map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setCurrentDraft(q + '\n\nKind regards');
+                            initializeReplyFields();
+                            setShowDraftModal(true);
+                          }}
+                          className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 hover:bg-primary/10 text-foreground transition-colors"
+                        >
+                          {q}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
