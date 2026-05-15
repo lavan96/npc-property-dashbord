@@ -387,14 +387,20 @@ export default function TemplateBuilderEdit() {
     reader.readAsText(file);
   };
 
+  // ── Command palette (⌘K) ────────────────────────────────────────────────────
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
       const meta = e.metaKey || e.ctrlKey;
+      // ⌘K opens palette from anywhere (including fields)
+      if (meta && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
       if (!meta) return;
-      if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
+      if (e.key === 's') { e.preventDefault(); handleSave(false); }
+      else if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
       else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
       else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
       else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
