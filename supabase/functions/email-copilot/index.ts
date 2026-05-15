@@ -42,7 +42,13 @@ Deno.serve(async (req) => {
       // Continue - session token should be in headers/cookies
     }
 
-    const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = body;
+    const {
+      action, email, emailId, linkedPropertyAddress, replyContext, clientId,
+      // v2 inputs
+      tone, length, intent, language, threadEmails, variants,
+      // improve / quick reply inputs
+      text, instruction,
+    } = body;
     
     console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, ClientId: ${clientId || 'N/A'}`);
 
@@ -69,13 +75,26 @@ Deno.serve(async (req) => {
           throw new Error('OPENAI_API_KEY is not configured');
         }
         return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase, replyContext, corsHeaders);
-      
+
+      case 'draft_reply_v2':
+        return await handleDraftReplyV2({
+          email, emailId, linkedPropertyAddress, replyContext,
+          tone, length, intent, language, threadEmails,
+          variants: Math.min(Math.max(Number(variants) || 1, 1), 3),
+        }, supabase, corsHeaders);
+
+      case 'improve_text':
+        return await handleImproveText({ text, instruction, tone, language }, supabase, corsHeaders);
+
+      case 'quick_replies':
+        return await handleQuickReplies({ email, threadEmails }, supabase, corsHeaders);
+
       case 'save_email':
         return await handleSaveEmail(email, supabase, corsHeaders);
-      
+
       case 'assign_client':
         return await handleAssignClient(emailId, clientId, supabase, corsHeaders);
-      
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -353,4 +372,238 @@ async function handleAssignClient(
     JSON.stringify({ success: true, email: data }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+// =====================================================================
+// V2 — Tone/Length/Intent/Language/Variants/Thread Context
+// =====================================================================
+
+const TONE_GUIDE: Record<string, string> = {
+  formal: 'Formal and professional. Use full sentences, no contractions, polished business English.',
+  friendly: 'Warm and friendly while still professional. Conversational, approachable, contractions OK.',
+  direct: 'Direct and concise. Short sentences. No filler. Get to the point.',
+  empathetic: 'Empathetic and warm. Acknowledge feelings, soften any bad news, reassure the reader.',
+  enthusiastic: 'Upbeat and enthusiastic. Positive language, momentum, but not over-the-top.',
+};
+
+const LENGTH_GUIDE: Record<string, string> = {
+  short: 'Keep it under 60 words. 2–3 short sentences. One paragraph.',
+  medium: 'Around 80–140 words. 1–2 short paragraphs.',
+  long: 'Around 180–260 words. 2–3 paragraphs with clear structure.',
+};
+
+const INTENT_GUIDE: Record<string, string> = {
+  acknowledge: 'Acknowledge receipt of their message and confirm you are looking into it.',
+  answer: 'Answer the question(s) raised in their email clearly and accurately based on context provided.',
+  decline: 'Politely decline the request, explain briefly, and offer an alternative if appropriate.',
+  schedule: 'Propose scheduling a call or meeting. Suggest the user fill in concrete time options.',
+  request_info: 'Request the additional information needed before you can proceed.',
+  send_document: 'Confirm a document will be / is attached and explain briefly what it covers.',
+  follow_up: 'Follow up on the previous thread, gently nudge for a response or next step.',
+  thank: 'Thank the sender warmly and confirm next steps if any.',
+};
+
+function buildThreadContext(threadEmails: any[] | undefined, currentBody: string): string {
+  if (!threadEmails || !Array.isArray(threadEmails) || threadEmails.length === 0) return '';
+  const recent = threadEmails.slice(0, 4).reverse(); // chronological, oldest of last 4 first
+  const lines = recent.map((e: any, i: number) => {
+    const body = (e.body || '').slice(0, 600);
+    return `--- Message ${i + 1} ---\nFrom: ${e.sender}\nDate: ${e.received_at || ''}\nSubject: ${e.subject}\n\n${body}`;
+  });
+  return `\n\nPRIOR THREAD CONTEXT (oldest first):\n${lines.join('\n\n')}`;
+}
+
+async function handleDraftReplyV2(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { email, emailId, linkedPropertyAddress, replyContext, tone, length, intent, language, threadEmails, variants } = args;
+  console.log(`[Email Copilot V2] Draft reply: tone=${tone}, length=${length}, intent=${intent}, lang=${language}, variants=${variants}`);
+
+  const _brand = await getBrandConfig();
+  const propertyContext = linkedPropertyAddress
+    ? `\n\nProperty Context: This email may relate to ${linkedPropertyAddress}. Reference it only if clearly relevant.`
+    : '';
+
+  const toneInstr = TONE_GUIDE[tone] || TONE_GUIDE.friendly;
+  const lengthInstr = LENGTH_GUIDE[length] || LENGTH_GUIDE.medium;
+  const intentInstr = intent ? `\n\nPRIMARY INTENT: ${INTENT_GUIDE[intent] || intent}` : '';
+  const langInstr = language && language !== 'en'
+    ? `\n\nLANGUAGE: Write the reply in ${language}. Keep proper nouns in their original form.`
+    : '';
+  const userCtx = replyContext
+    ? `\n\nUSER GUIDANCE: "${replyContext}"\nIncorporate this faithfully.`
+    : '';
+  const threadCtx = buildThreadContext(threadEmails, email?.body || '');
+
+  const systemPrompt = `You are an elite email drafting assistant for ${_brand.companyName}, a property investment advisory firm.
+
+VOICE & TONE: ${toneInstr}
+LENGTH: ${lengthInstr}${intentInstr}${langInstr}
+
+NON-NEGOTIABLES:
+- Never invent prices, dates, rates, or specifics. If unknown, say you'll confirm.
+- Never make financial commitments or guarantees.
+- Use proper email formatting: greeting on its own line, body, sign-off.
+- Sign off as "${_brand.companyName} Team" unless guidance says otherwise.
+- Output ONLY the reply body. No preamble, no "Here is your draft", no markdown code fences.${propertyContext}${userCtx}${threadCtx}`;
+
+  const userPrompt = `Draft a reply to this email:
+
+From: ${email.sender}
+Subject: ${email.subject}
+Date: ${email.received_at || 'N/A'}
+
+Body:
+${email.body}`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+
+    // Generate N variants in parallel
+    const n = Math.max(1, Math.min(3, Number(variants) || 1));
+    const calls = Array.from({ length: n }, (_, i) =>
+      callLLMRaw({
+        agentKey: 'email_copilot',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt + (n > 1 ? `\n\n(Variant ${i + 1} of ${n} — make this distinct from the others.)` : '') },
+        ],
+        temperature: n > 1 ? 0.6 + i * 0.15 : 0.5,
+        maxTokens: length === 'long' ? 1200 : length === 'short' ? 400 : 800,
+      })
+    );
+
+    const responses = await Promise.all(calls);
+    const drafts: string[] = [];
+    let totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+
+    for (const r of responses) {
+      if (!r.ok) continue;
+      const data = await r.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (content) drafts.push(content);
+      const u = extractOpenAIUsage(data);
+      totalUsage.prompt_tokens += u.prompt_tokens || 0;
+      totalUsage.completion_tokens += u.completion_tokens || 0;
+      totalUsage.total_tokens += u.total_tokens || 0;
+    }
+
+    if (drafts.length === 0) throw new Error('No drafts generated');
+
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o-mini',
+      prompt_tokens: totalUsage.prompt_tokens,
+      completion_tokens: totalUsage.completion_tokens,
+      tokens_used: totalUsage.total_tokens,
+      status: 'success',
+      metadata: { function: 'email-copilot', action: 'draft_reply_v2', tone, length, intent, variants: drafts.length },
+    });
+
+    // Save first draft as canonical draft_reply
+    if (emailId && drafts[0]) {
+      await supabase.from('email_copilot_emails')
+        .update({ draft_reply: drafts[0], status: 'drafted' })
+        .eq('id', emailId);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, drafts, draftReply: drafts[0] }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('[Email Copilot V2] Error:', error);
+    throw error;
+  }
+}
+
+async function handleImproveText(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { text, instruction, tone, language } = args;
+  if (!text || !instruction) throw new Error('text and instruction are required');
+
+  const _brand = await getBrandConfig();
+  const toneInstr = tone ? `\nMaintain a ${tone} tone.` : '';
+  const langInstr = language && language !== 'en' ? `\nKeep the language as ${language}.` : '';
+
+  const systemPrompt = `You are an expert editor for ${_brand.companyName}'s outbound emails.
+Apply the requested change to the provided text. Preserve the original meaning, names, and any factual claims.
+Output ONLY the rewritten text. No preamble, no quotes, no markdown fences.${toneInstr}${langInstr}`;
+
+  const userPrompt = `INSTRUCTION: ${instruction}\n\nORIGINAL TEXT:\n${text}\n\nReturn the rewritten text only.`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const r = await callLLMRaw({
+      agentKey: 'email_copilot',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.4,
+      maxTokens: 1200,
+    });
+    if (!r.ok) throw new Error('LLM call failed');
+    const data = await r.json();
+    const improved = (data.choices?.[0]?.message?.content || '').trim();
+
+    const u = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai', endpoint: '/v1/chat/completions', model_used: 'gpt-4o-mini',
+      prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, tokens_used: u.total_tokens,
+      status: 'success', metadata: { function: 'email-copilot', action: 'improve_text', instruction },
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, improved }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[Improve text] error:', e);
+    throw e;
+  }
+}
+
+async function handleQuickReplies(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { email, threadEmails } = args;
+  if (!email?.body) throw new Error('email is required');
+
+  const _brand = await getBrandConfig();
+  const threadCtx = buildThreadContext(threadEmails, email.body);
+
+  const systemPrompt = `You generate 3 ultra-short reply suggestions for an email at ${_brand.companyName}.
+Each suggestion is 3–6 words, action-oriented, distinct from the others.
+Examples: "Will review and revert", "Schedule a call?", "Thanks, noted".
+Return JSON: { "suggestions": ["...", "...", "..."] }${threadCtx}`;
+
+  const userPrompt = `Email:\nFrom: ${email.sender}\nSubject: ${email.subject}\n\n${email.body.slice(0, 1500)}\n\nReturn 3 quick reply suggestions as JSON.`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const r = await callLLMRaw({
+      agentKey: 'email_copilot',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.6,
+      maxTokens: 200,
+      responseFormat: { type: 'json_object' },
+    });
+    if (!r.ok) throw new Error('LLM call failed');
+    const data = await r.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch { parsed = {}; }
+    const suggestions: string[] = Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [];
+
+    return new Response(
+      JSON.stringify({ success: true, suggestions }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[Quick replies] error:', e);
+    return new Response(
+      JSON.stringify({ success: false, suggestions: [] }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 }

@@ -9,6 +9,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
+import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
 import { 
   Mail, 
   FileText, 
@@ -286,6 +287,9 @@ export default function EmailCopilot() {
   const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
   const composeFileInputRef = useRef<HTMLInputElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [loadingQuickReplies, setLoadingQuickReplies] = useState(false);
   
   // Drag and drop state
   const [replyDragActive, setReplyDragActive] = useState(false);
@@ -562,7 +566,42 @@ export default function EmailCopilot() {
     }
   };
 
-  // Handle back button on mobile
+  // Fetch smart quick replies when an email is selected (and not already replied)
+  useEffect(() => {
+    setQuickReplies([]);
+    if (!selectedEmail || selectedEmail.status === 'replied') return;
+    let cancelled = false;
+    setLoadingQuickReplies(true);
+    (async () => {
+      try {
+        const key = getThreadKey(selectedEmail.subject);
+        const thread = emails
+          .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+          .slice(0, 3)
+          .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+        const { data, error } = await invokeSecureFunction('email-copilot', {
+          action: 'quick_replies',
+          email: {
+            sender: selectedEmail.sender,
+            subject: selectedEmail.subject,
+            body: selectedEmail.body,
+            received_at: selectedEmail.received_at,
+          },
+          threadEmails: thread,
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const s: string[] = Array.isArray(data?.suggestions) ? data.suggestions : [];
+        setQuickReplies(s);
+      } catch (err) {
+        console.warn('Quick replies failed', err);
+      } finally {
+        if (!cancelled) setLoadingQuickReplies(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmail?.id]);
   const handleMobileBack = () => {
     setShowMobileDetail(false);
     setSelectedEmail(null);
@@ -1024,7 +1063,7 @@ export default function EmailCopilot() {
     setReplyBcc(bccFromOriginal);
   };
 
-  // Show send confirmation
+  // Show send confirmation (with safety checks)
   const handleSendClick = () => {
     if (!currentDraft.trim()) {
       toast.error('Cannot send empty email');
@@ -1032,6 +1071,26 @@ export default function EmailCopilot() {
     }
     if (!replyTo.trim() || !replyTo.includes('@')) {
       toast.error('Please enter a valid recipient email');
+      return;
+    }
+    // Missing-attachment guard
+    const mentionsAttachment = /\b(see attached|please find attached|pfa|attached (please|herewith|is|are)|i('| ha)ve attached|attaching)\b/i.test(currentDraft);
+    if (mentionsAttachment && replyAttachments.length === 0) {
+      toast.warning('You mention an attachment but none is added', {
+        description: 'Add a file or rephrase the body before sending.',
+        action: { label: 'Send anyway', onClick: () => setShowSendConfirmModal(true) },
+        duration: 6000,
+      });
+      return;
+    }
+    // Recipient sanity: large recipient list (BCC>10)
+    const bccCount = parseEmailList(replyBcc).length;
+    if (bccCount > 10) {
+      toast.warning(`Sending to ${bccCount} BCC recipients`, {
+        description: 'Double-check this is intended.',
+        action: { label: 'Continue', onClick: () => setShowSendConfirmModal(true) },
+        duration: 6000,
+      });
       return;
     }
     setShowSendConfirmModal(true);
@@ -1244,12 +1303,48 @@ export default function EmailCopilot() {
     }
   };
 
-  // Send email directly (for reply)
-  const handleSendEmail = async () => {
+  // Send email directly (for reply) — supports 10s Undo Send
+  const handleSendEmail = async (opts?: { skipUndo?: boolean }) => {
     if (!selectedEmail || !currentDraft) return;
-    
-    setIsSendingEmail(true);
     setShowSendConfirmModal(false);
+
+    // 10s undo window
+    if (!opts?.skipUndo) {
+      let cancelled = false;
+      const targetEmail = selectedEmail;
+      const snapshot = {
+        to: replyTo, subject: replySubject, cc: replyCc, bcc: replyBcc,
+        body: currentDraft, attachments: replyAttachments,
+      };
+      // Optimistically close the modal
+      setShowDraftModal(false);
+      toast('Sending in 10s…', {
+        description: `To ${snapshot.to}`,
+        duration: 10000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            cancelled = true;
+            // restore composer
+            setSelectedEmail(targetEmail);
+            setReplyTo(snapshot.to);
+            setReplySubject(snapshot.subject);
+            setReplyCc(snapshot.cc);
+            setReplyBcc(snapshot.bcc);
+            setCurrentDraft(snapshot.body);
+            setReplyAttachments(snapshot.attachments);
+            setShowDraftModal(true);
+            toast.info('Send cancelled');
+          },
+        },
+      });
+      setTimeout(() => {
+        if (!cancelled) handleSendEmail({ skipUndo: true });
+      }, 10000);
+      return;
+    }
+
+    setIsSendingEmail(true);
     
     try {
       const ccList = parseEmailList(replyCc);
@@ -2547,6 +2642,36 @@ export default function EmailCopilot() {
                     </Button>
                   )}
                 </div>
+
+                {/* Smart Quick-Reply Chips */}
+                {(quickReplies.length > 0 || loadingQuickReplies) && selectedEmail.status !== 'replied' && (
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-primary" /> Quick reply
+                    </span>
+                    {loadingQuickReplies ? (
+                      <>
+                        <div className="h-6 w-24 rounded-full bg-muted animate-pulse" />
+                        <div className="h-6 w-28 rounded-full bg-muted animate-pulse" />
+                        <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                      </>
+                    ) : (
+                      quickReplies.map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setCurrentDraft(q + '\n\nKind regards');
+                            initializeReplyFields();
+                            setShowDraftModal(true);
+                          }}
+                          className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 hover:bg-primary/10 text-foreground transition-colors"
+                        >
+                          {q}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -2691,75 +2816,34 @@ export default function EmailCopilot() {
                 </div>
               </div>
               
-              {/* Reply Context Input */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Reply Context</Label>
-                <p className="text-xs text-muted-foreground">
-                  Describe what you want to say - the AI will generate a professional reply based on your input
-                </p>
-                <div className="flex gap-2">
-                  <Textarea
-                    value={replyContext}
-                    onChange={(e) => setReplyContext(e.target.value)}
-                    placeholder="e.g., 'Thank them for their inquiry and let them know I'll send through the property report by end of day'"
-                    className="h-20 resize-none flex-1 text-sm"
-                  />
-                  <Button
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="icon"
-                    className="h-20 w-12"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isTranscribing}
-                    title={isRecording ? "Stop recording" : "Speak your reply context"}
-                  >
-                    {isTranscribing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRecording ? (
-                      <MicOff className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                {isRecording && (
-                  <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
-                    <Mic className="h-3 w-3" />
-                    Recording... Click mic to stop
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleDraftReply(replyContext)}
-                    disabled={isDrafting}
-                    className="flex-1"
-                  >
-                    {isDrafting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {currentDraft ? 'Regenerate' : 'AI Draft'}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Open edit modal with empty draft for manual composition
-                      initializeReplyFields();
-                      setEditableDraft('');
-                      setShowEditDraftModal(true);
-                    }}
-                    className="flex-1"
-                  >
-                    <Reply className="h-4 w-4 mr-2" />
-                    Manual Reply
-                  </Button>
-                </div>
-              </div>
+              {/* AI Reply Assistant */}
+              {selectedEmail && (
+                <AIReplyAssistant
+                  email={{
+                    sender: selectedEmail.sender,
+                    subject: selectedEmail.subject,
+                    body: selectedEmail.body,
+                    received_at: selectedEmail.received_at,
+                  }}
+                  emailId={selectedEmail.id}
+                  linkedPropertyAddress={selectedEmail.linked_property_address}
+                  threadEmails={(() => {
+                    const key = getThreadKey(selectedEmail.subject);
+                    return emails
+                      .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+                      .slice(0, 4)
+                      .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+                  })()}
+                  draft={currentDraft}
+                  onDraftChange={setCurrentDraft}
+                  onInitialiseFields={initializeReplyFields}
+                  isRecording={isRecording}
+                  isTranscribing={isTranscribing}
+                  onStartRecording={startRecording}
+                  onStopRecording={stopRecording}
+                  composerRef={composerTextareaRef}
+                />
+              )}
               
               <Separator />
               
@@ -2822,12 +2906,24 @@ export default function EmailCopilot() {
               
               {/* Draft Content */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">Message Body</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Message Body</Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    {currentDraft.trim() ? `${currentDraft.trim().split(/\s+/).length} words` : 'Tip: select text then use Improve'}
+                  </span>
+                </div>
                 <Textarea
+                  ref={composerTextareaRef}
                   value={currentDraft}
                   onChange={(e) => setCurrentDraft(e.target.value)}
                   className="h-[250px] resize-none font-sans text-sm"
                   placeholder="Draft reply will appear here..."
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      if (currentDraft && replyTo && !isSendingEmail) handleSendClick();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -2936,7 +3032,7 @@ export default function EmailCopilot() {
               Cancel
             </Button>
             <Button 
-              onClick={handleSendEmail}
+              onClick={() => handleSendEmail()}
               disabled={isSendingEmail}
               className="bg-green-600 hover:bg-green-700"
             >
