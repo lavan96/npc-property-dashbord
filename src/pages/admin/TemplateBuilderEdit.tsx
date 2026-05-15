@@ -910,8 +910,98 @@ function TokensEditor({
     updateGroup(group, key, def as any);
   };
 
+  // ── Import / export tokens (share brand themes between templates) ──────────
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(tokens, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'brand-tokens.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success('Tokens exported');
+  };
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(tokens, null, 2));
+      toast.success('Tokens copied to clipboard');
+    } catch { toast.error('Copy failed'); }
+  };
+  const applyImport = (raw: unknown, mode: 'merge' | 'replace') => {
+    if (!raw || typeof raw !== 'object') {
+      toast.error('Invalid token JSON: expected an object');
+      return;
+    }
+    const incoming = raw as Partial<ReportTemplate['tokens']>;
+    const sanitised = {
+      colors: incoming.colors && typeof incoming.colors === 'object' ? incoming.colors : {},
+      fonts: incoming.fonts && typeof incoming.fonts === 'object' ? incoming.fonts : {},
+      spacing: incoming.spacing && typeof incoming.spacing === 'object' ? incoming.spacing : {},
+    };
+    if (mode === 'replace') {
+      onChange(sanitised as ReportTemplate['tokens']);
+    } else {
+      onChange({
+        colors: { ...tokens.colors, ...sanitised.colors },
+        fonts: { ...tokens.fonts, ...sanitised.fonts },
+        spacing: { ...tokens.spacing, ...sanitised.spacing },
+      });
+    }
+    const total =
+      Object.keys(sanitised.colors).length +
+      Object.keys(sanitised.fonts).length +
+      Object.keys(sanitised.spacing).length;
+    toast.success(`Imported ${total} token${total === 1 ? '' : 's'} (${mode})`);
+  };
+  const handleImportFile = (file: File) => {
+    const mode: 'merge' | 'replace' = window.confirm(
+      'Replace all existing tokens with the imported file?\n\nOK = Replace, Cancel = Merge (keep existing keys, overwrite matches).',
+    ) ? 'replace' : 'merge';
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { applyImport(JSON.parse(String(reader.result)), mode); }
+      catch (e: any) { toast.error(`Import failed: ${e?.message ?? 'invalid JSON'}`); }
+    };
+    reader.readAsText(file);
+  };
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      applyImport(JSON.parse(text), 'merge');
+    } catch (e: any) { toast.error(`Paste failed: ${e?.message ?? 'invalid JSON'}`); }
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2 pb-3 border-b">
+        <Label className="text-xs text-muted-foreground mr-auto">
+          Share brand themes between templates by exporting / importing this token set.
+        </Label>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleImportFile(f);
+            e.target.value = '';
+          }}
+        />
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+          <Upload className="h-3.5 w-3.5 mr-1" /> Import
+        </Button>
+        <Button size="sm" variant="outline" onClick={handlePaste} title="Import tokens from clipboard">
+          Paste
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleCopy}>
+          <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleExport}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Export
+        </Button>
+      </div>
       {(['colors', 'fonts', 'spacing'] as const).map((group) => {
         const entries = Object.entries(tokens[group] || {});
         return (
