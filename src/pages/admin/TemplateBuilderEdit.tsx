@@ -560,6 +560,34 @@ export default function TemplateBuilderEdit() {
 
   return (
     <div className="h-screen flex flex-col">
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        template={template}
+        pages={template.pages}
+        bindingIssueCount={bindingIssues.length}
+        lintIssueCount={lintIssues.length}
+        actions={{
+          insertBlock: insertBlockType,
+          jumpToPage: (pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); },
+          addStarterPage,
+          applyTheme,
+          applySampleData: applySampleDataPreset,
+          jumpToFirstBindingIssue,
+          jumpToFirstLintIssue,
+          save: () => handleSave(false),
+          saveSnapshot: () => handleSave(true),
+          undo, redo,
+          togglePreview: () => setShowPreview((s) => !s),
+          exportJson: handleExport,
+          importJson: () => fileInputRef.current?.click(),
+          copyJson: async () => {
+            try { await navigator.clipboard.writeText(JSON.stringify(template, null, 2)); toast.success('Template JSON copied'); }
+            catch { toast.error('Copy failed'); }
+          },
+          syncBrand: syncTokensFromBrand,
+        }}
+      />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b bg-background/95 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
@@ -572,6 +600,16 @@ export default function TemplateBuilderEdit() {
             className="text-base font-semibold border-0 bg-transparent focus-visible:bg-muted/30 focus-visible:ring-1 max-w-xs"
             placeholder="Template name"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPaletteOpen(true)}
+            className="ml-2 h-8 gap-1.5 text-xs text-muted-foreground"
+            title="Open command palette"
+          >
+            <CommandIcon className="h-3.5 w-3.5" /> Quick actions
+            <kbd className="ml-1 px-1 py-px rounded bg-muted text-[10px] font-mono">⌘K</kbd>
+          </Button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {bindingIssues.length > 0 ? (
