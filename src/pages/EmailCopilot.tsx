@@ -2959,7 +2959,7 @@ export default function EmailCopilot() {
               <AlertCircle className="h-3 w-3" />
               Review carefully before sending
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowDraftModal(false)}>
                 Cancel
               </Button>
@@ -2967,6 +2967,34 @@ export default function EmailCopilot() {
                 <Copy className="h-4 w-4 mr-2" />
                 Copy
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowFollowUp(true)}>
+                <Bell className="h-4 w-4 mr-1" /> Remind me
+              </Button>
+              <ScheduleSendButton
+                disabled={isSendingEmail || !currentDraft || !replyTo}
+                buildPayload={async () => {
+                  const ccList = parseEmailList(replyCc);
+                  const bccList = parseEmailList(replyBcc);
+                  const attachmentsData = await Promise.all(
+                    replyAttachments.map(async (file) => ({
+                      name: file.name,
+                      contentType: file.type || 'application/octet-stream',
+                      contentBytes: await fileToBase64(file),
+                    })),
+                  );
+                  return {
+                    recipient: replyTo,
+                    cc_recipients: ccList,
+                    bcc_recipients: bccList,
+                    subject: replySubject,
+                    body: currentDraft,
+                    attachments: attachmentsData,
+                    mailbox_source: selectedMailbox,
+                    original_email_id: selectedEmail?.id,
+                  };
+                }}
+                onScheduled={() => { refreshScheduled(); setShowDraftModal(false); }}
+              />
               <Button 
                 onClick={handleSendClick} 
                 disabled={isSendingEmail || !currentDraft || !replyTo}
