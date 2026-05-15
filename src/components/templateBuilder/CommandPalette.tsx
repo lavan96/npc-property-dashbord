@@ -44,6 +44,9 @@ export interface CommandPaletteAction {
   importJson: () => void;
   copyJson: () => void;
   syncBrand: () => void;
+  insertSnippet: (snippetId: string) => void;
+  openSnippetLibrary: () => void;
+  openBindingFixer: () => void;
 }
 
 interface Props {
