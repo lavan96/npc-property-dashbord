@@ -42,7 +42,13 @@ Deno.serve(async (req) => {
       // Continue - session token should be in headers/cookies
     }
 
-    const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = body;
+    const {
+      action, email, emailId, linkedPropertyAddress, replyContext, clientId,
+      // v2 inputs
+      tone, length, intent, language, threadEmails, variants,
+      // improve / quick reply inputs
+      text, instruction,
+    } = body;
     
     console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, ClientId: ${clientId || 'N/A'}`);
 
