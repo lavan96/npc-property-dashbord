@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
-import { invokeSecureFunction } from '@/integrations/supabase/secureInvoke';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 
 export type Sentiment = 'positive' | 'neutral' | 'negative' | 'angry';
