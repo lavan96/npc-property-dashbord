@@ -23,7 +23,9 @@ import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { THEME_PRESETS } from '@/lib/reportTemplate/themePresets';
 import { STARTER_PAGE_PRESETS } from '@/lib/reportTemplate/starterTemplates';
 import { SAMPLE_DATA_PRESETS } from '@/lib/reportTemplate/sampleDataPresets';
+import { SNIPPETS } from '@/lib/reportTemplate/snippetLibrary';
 import type { Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { Library, Wand2 } from 'lucide-react';
 
 export interface CommandPaletteAction {
   insertBlock: (type: string) => void;
