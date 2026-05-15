@@ -2826,13 +2826,32 @@ export default function EmailCopilot() {
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-purple-600" />
-              Compose Reply
-            </DialogTitle>
-            <DialogDescription>
-              Review recipients, edit your message, then send or copy
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <DialogTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-purple-600" />
+                  Compose Reply
+                </DialogTitle>
+                <DialogDescription>
+                  Review recipients, edit your message, then send or copy
+                </DialogDescription>
+              </div>
+              {selectedEmail && (
+                <div className="shrink-0">
+                  <EmailClientAssignment
+                    emailId={selectedEmail.id}
+                    currentClientId={selectedEmail.client_id}
+                    currentClientName={selectedEmail.client_name}
+                    onAssignmentChange={(clientId, clientName) => {
+                      setSelectedEmail(prev => prev ? { ...prev, client_id: clientId, client_name: clientName } : null);
+                      setEmails(prev => prev.map(e =>
+                        e.id === selectedEmail.id ? { ...e, client_id: clientId, client_name: clientName } : e
+                      ));
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </DialogHeader>
           
           <ScrollArea className="flex-1 pr-4">
