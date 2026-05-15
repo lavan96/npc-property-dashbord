@@ -606,6 +606,22 @@ export default function TemplateBuilderEdit() {
             catch { toast.error('Copy failed'); }
           },
           syncBrand: syncTokensFromBrand,
+          insertSnippet,
+          openSnippetLibrary: () => setSnippetsOpen(true),
+          openBindingFixer: () => setFixerOpen(true),
+        }}
+      />
+      <SnippetLibraryDialog
+        open={snippetsOpen}
+        onOpenChange={setSnippetsOpen}
+        onInsert={(block) => {
+          if (!activePage) { toast.error('No active page'); return; }
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
+          }));
+          setSelectedBlockId(block.id);
+          setSelectedOverlayId(null);
         }}
       />
       {/* Header */}
