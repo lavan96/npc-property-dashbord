@@ -10,6 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
 import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
+import { EmailIntelligencePanel, type EmailIntelligence } from '@/components/email/EmailIntelligencePanel';
 import { ComposerTextarea } from '@/components/email/ComposerTextarea';
 import { useEmailSnippets, SnippetManagerDialog } from '@/components/email/EmailSnippets';
 import { ScheduleSendButton, useScheduledSends, ScheduledSendsDialog } from '@/components/email/ScheduleSend';
