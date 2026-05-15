@@ -28,12 +28,17 @@ import { drawQrBlock } from './qrCode';
 import { drawBadgeListBlock } from './badgeList';
 import { drawTocBlock } from './toc';
 import { drawSignatureBlock } from './signature';
+import { drawSlotBlock } from './slot';
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
   page: { width: number; height: number };
   /** All visible pages in render order — used by TOC and similar blocks. */
   pages?: Array<{ name: string; id: string }>;
+  /** Reusable slots (Header/Footer/etc) keyed by slotKey. */
+  slots?: Record<string, Block>;
+  /** Internal: draw a single overlay (provided by pdfRenderer). */
+  _drawOverlay?: (overlay: import('../templateSchema').Overlay, ctx: BlockRenderContext) => void;
 }
 
 export type BlockRenderer = (block: Block, ctx: BlockRenderContext) => void;
