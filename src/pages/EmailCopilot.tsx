@@ -2868,57 +2868,57 @@ export default function EmailCopilot() {
             </div>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 -mr-2 pr-2 sm:pr-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Email Recipients Section */}
-              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-2 sm:space-y-3 p-2 sm:p-3 bg-muted/30 rounded-lg">
                 {/* From Field - Non-editable */}
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">From:</Label>
-                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-sm text-muted-foreground">
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">From:</Label>
+                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-xs sm:text-sm text-muted-foreground truncate">
                     {selectedMailbox === 'personal' && personalMailbox 
                       ? personalMailbox 
                       : 'Admin Mailbox'}
                   </div>
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">To:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">To:</Label>
                   <Input
                     value={replyTo}
                     onChange={(e) => setReplyTo(e.target.value)}
                     placeholder="recipient@example.com"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Subject:</Label>
                   <Input
                     value={replySubject}
                     onChange={(e) => setReplySubject(e.target.value)}
                     placeholder="Email subject"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">CC:</Label>
                   <Input
                     value={replyCc}
                     onChange={(e) => setReplyCc(e.target.value)}
-                    placeholder="cc@example.com, another@example.com"
-                    className="h-8"
+                    placeholder="cc@example.com"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">BCC:</Label>
                   <Input
                     value={replyBcc}
                     onChange={(e) => setReplyBcc(e.target.value)}
                     placeholder="bcc@example.com"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
               </div>
-              
+
               {/* AI Reply Assistant */}
               {selectedEmail && (
                 <AIReplyAssistant
