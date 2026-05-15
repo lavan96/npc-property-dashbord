@@ -566,7 +566,42 @@ export default function EmailCopilot() {
     }
   };
 
-  // Handle back button on mobile
+  // Fetch smart quick replies when an email is selected (and not already replied)
+  useEffect(() => {
+    setQuickReplies([]);
+    if (!selectedEmail || selectedEmail.status === 'replied') return;
+    let cancelled = false;
+    setLoadingQuickReplies(true);
+    (async () => {
+      try {
+        const key = getThreadKey(selectedEmail.subject);
+        const thread = emails
+          .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+          .slice(0, 3)
+          .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+        const { data, error } = await invokeSecureFunction('email-copilot', {
+          action: 'quick_replies',
+          email: {
+            sender: selectedEmail.sender,
+            subject: selectedEmail.subject,
+            body: selectedEmail.body,
+            received_at: selectedEmail.received_at,
+          },
+          threadEmails: thread,
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const s: string[] = Array.isArray(data?.suggestions) ? data.suggestions : [];
+        setQuickReplies(s);
+      } catch (err) {
+        console.warn('Quick replies failed', err);
+      } finally {
+        if (!cancelled) setLoadingQuickReplies(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmail?.id]);
   const handleMobileBack = () => {
     setShowMobileDetail(false);
     setSelectedEmail(null);
