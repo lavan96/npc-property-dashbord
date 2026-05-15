@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
+import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
+import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
+import { getSnippet } from '@/lib/reportTemplate/snippetLibrary';
 import { THEME_PRESETS, getThemePreset } from '@/lib/reportTemplate/themePresets';
 import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
 import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
@@ -459,6 +462,23 @@ export default function TemplateBuilderEdit() {
 
   // ── Command palette (⌘K) ────────────────────────────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
+  const [fixerOpen, setFixerOpen] = useState(false);
+
+  // Insert a snippet (from library / palette) into active page.
+  const insertSnippet = useCallback((snippetId: string) => {
+    const snip = getSnippet(snippetId);
+    if (!snip) return;
+    if (!activePage) { toast.error('No active page — add one first.'); return; }
+    const block = snip.build();
+    setTemplate((t) => ({
+      ...t,
+      pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
+    }));
+    setSelectedBlockId(block.id);
+    setSelectedOverlayId(null);
+    toast.success(`Inserted "${snip.label}"`);
+  }, [activePage, setTemplate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -586,6 +606,22 @@ export default function TemplateBuilderEdit() {
             catch { toast.error('Copy failed'); }
           },
           syncBrand: syncTokensFromBrand,
+          insertSnippet,
+          openSnippetLibrary: () => setSnippetsOpen(true),
+          openBindingFixer: () => setFixerOpen(true),
+        }}
+      />
+      <SnippetLibraryDialog
+        open={snippetsOpen}
+        onOpenChange={setSnippetsOpen}
+        onInsert={(block) => {
+          if (!activePage) { toast.error('No active page'); return; }
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
+          }));
+          setSelectedBlockId(block.id);
+          setSelectedOverlayId(null);
         }}
       />
       {/* Header */}
@@ -610,8 +646,30 @@ export default function TemplateBuilderEdit() {
             <CommandIcon className="h-3.5 w-3.5" /> Quick actions
             <kbd className="ml-1 px-1 py-px rounded bg-muted text-[10px] font-mono">⌘K</kbd>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSnippetsOpen(true)}
+            className="ml-1 h-8 gap-1.5 text-xs"
+            title="Open snippet library"
+          >
+            <Component className="h-3.5 w-3.5" /> Snippets
+          </Button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <BindingFixerPopover
+            template={template}
+            issues={bindingIssues}
+            sampleData={sampleData}
+            open={fixerOpen}
+            onOpenChange={setFixerOpen}
+            onApply={(next) => setTemplate(next)}
+            onJumpTo={(iss) => {
+              if (iss.pageId) setActivePageId(iss.pageId);
+              if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+              else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+            }}
+          />
           {bindingIssues.length > 0 ? (
             <Popover>
               <PopoverTrigger asChild>
