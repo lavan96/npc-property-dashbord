@@ -584,6 +584,9 @@ export default function TemplateBuilderEdit() {
               onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
+              selectedBlockId={selectedBlockId}
+              onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
+              onReorderBlocks={reorderBlocks}
             />
 
             <div className="relative bg-muted/30 min-h-0">
