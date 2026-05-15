@@ -2838,7 +2838,7 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 gap-3 sm:gap-4">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 lg:p-7 gap-3 sm:gap-4">
           <DialogHeader className="pr-10">
             <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-0">
@@ -3021,7 +3021,7 @@ export default function EmailCopilot() {
                   onChange={setCurrentDraft}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[250px] resize-none font-sans text-sm"
+                  className="h-[250px] lg:h-[340px] xl:h-[400px] resize-none font-sans text-sm"
                   placeholder="Draft reply will appear here..."
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
