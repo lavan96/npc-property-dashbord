@@ -18,6 +18,8 @@ interface Props {
   sampleData: Record<string, any>;
   onApply: (next: ReportTemplate) => void;
   onJumpTo: (issue: TemplateIssue) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -26,8 +28,10 @@ const KIND_LABEL: Record<string, string> = {
   filter: 'Unknown filter',
 };
 
-export function BindingFixerPopover({ template, issues, sampleData, onApply, onJumpTo }: Props) {
-  const [open, setOpen] = useState(false);
+export function BindingFixerPopover({ template, issues, sampleData, onApply, onJumpTo, open: controlledOpen, onOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const fixes: BindingFix[] = useMemo(
     () => buildFixes(issues, template, sampleData),
     [issues, template, sampleData],
