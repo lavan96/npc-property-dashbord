@@ -1063,7 +1063,7 @@ export default function EmailCopilot() {
     setReplyBcc(bccFromOriginal);
   };
 
-  // Show send confirmation
+  // Show send confirmation (with safety checks)
   const handleSendClick = () => {
     if (!currentDraft.trim()) {
       toast.error('Cannot send empty email');
@@ -1071,6 +1071,26 @@ export default function EmailCopilot() {
     }
     if (!replyTo.trim() || !replyTo.includes('@')) {
       toast.error('Please enter a valid recipient email');
+      return;
+    }
+    // Missing-attachment guard
+    const mentionsAttachment = /\b(see attached|please find attached|pfa|attached (please|herewith|is|are)|i('| ha)ve attached|attaching)\b/i.test(currentDraft);
+    if (mentionsAttachment && replyAttachments.length === 0) {
+      toast.warning('You mention an attachment but none is added', {
+        description: 'Add a file or rephrase the body before sending.',
+        action: { label: 'Send anyway', onClick: () => setShowSendConfirmModal(true) },
+        duration: 6000,
+      });
+      return;
+    }
+    // Recipient sanity: large recipient list (BCC>10)
+    const bccCount = parseEmailList(replyBcc).length;
+    if (bccCount > 10) {
+      toast.warning(`Sending to ${bccCount} BCC recipients`, {
+        description: 'Double-check this is intended.',
+        action: { label: 'Continue', onClick: () => setShowSendConfirmModal(true) },
+        duration: 6000,
+      });
       return;
     }
     setShowSendConfirmModal(true);
