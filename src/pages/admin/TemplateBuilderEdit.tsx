@@ -13,6 +13,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
+  ShieldAlert, Component, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,9 @@ import {
 import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
+import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
+import { useBrand } from '@/branding/BrandProvider';
+import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -414,6 +418,8 @@ export default function TemplateBuilderEdit() {
     }
     return map;
   }, [bindingIssues]);
+  // ── Print-safety lint (live) ────────────────────────────────────────────────
+  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -543,6 +549,65 @@ export default function TemplateBuilderEdit() {
               <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
             </span>
           )}
+          {/* Print-safety lint */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded border transition-colors ${
+                  lintIssues.length === 0
+                    ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                    : lintIssues.some((i) => i.severity === 'error')
+                    ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'
+                    : 'bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20'
+                }`}
+                title="Print-safety lint"
+              >
+                <ShieldAlert className="h-2.5 w-2.5" />
+                {lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-96 p-0">
+              <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
+                <span>Print-safety issues ({lintIssues.length})</span>
+                <span className="text-[10px] text-muted-foreground font-normal">Click to jump</span>
+              </div>
+              {lintIssues.length === 0 ? (
+                <div className="px-3 py-6 text-xs text-muted-foreground text-center">
+                  No print-safety issues detected.
+                </div>
+              ) : (
+                <ScrollArea className="max-h-72">
+                  <ul className="divide-y">
+                    {lintIssues.map((iss, idx) => (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (iss.pageId) setActivePageId(iss.pageId);
+                            if (iss.overlayId) {
+                              setSelectedOverlayId(iss.overlayId);
+                              setSelectedBlockId(null);
+                            } else if (iss.blockId) {
+                              setSelectedBlockId(iss.blockId);
+                              setSelectedOverlayId(null);
+                            }
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
+                        >
+                          <div className={`text-[11px] font-medium truncate ${iss.severity === 'error' ? 'text-destructive' : 'text-amber-600'}`}>
+                            <span className="font-mono text-[9px] uppercase tracking-wider mr-1.5 opacity-70">{iss.code}</span>
+                            {iss.message}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">{iss.where}</div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              )}
+            </PopoverContent>
+          </Popover>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} title="Undo (⌘Z)">
             <Undo2 className="h-4 w-4" />
           </Button>
@@ -611,6 +676,7 @@ export default function TemplateBuilderEdit() {
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
+          <TabsTrigger value="slots"><Component className="h-3.5 w-3.5 mr-1" /> Slots ({Object.keys(template.slots ?? {}).length})</TabsTrigger>
           <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
@@ -775,6 +841,14 @@ export default function TemplateBuilderEdit() {
         {/* Brand tokens */}
         <TabsContent value="tokens" className="px-6 py-4 max-w-3xl space-y-6">
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
+        </TabsContent>
+
+        {/* Reusable component slots (Header / Footer / etc.) */}
+        <TabsContent value="slots" className="px-6 py-4 max-w-3xl space-y-4">
+          <SlotsEditor
+            template={template}
+            onChange={(slots) => setTemplate((t) => ({ ...t, slots }))}
+          />
         </TabsContent>
 
         {/* Sample data */}
@@ -1012,6 +1086,23 @@ function TokensEditor({
     } catch (e: any) { toast.error(`Paste failed: ${e?.message ?? 'invalid JSON'}`); }
   };
 
+  // ── Sync from current brand (BrandProvider / whitelabel_settings) ──────────
+  const brand = useBrand();
+  const handleSyncBrand = () => {
+    const themeCfg = brand?.settings?.themeConfig;
+    const primary = themeCfg?.primaryColor || brand?.settings?.primaryColor;
+    const accent = themeCfg?.accentColor || brand?.settings?.accentColor;
+    const incoming: Record<string, string> = {};
+    if (primary) incoming.primary = primary;
+    if (accent) incoming.accent = accent;
+    if (Object.keys(incoming).length === 0) {
+      toast.info('No brand colours configured to sync');
+      return;
+    }
+    onChange({ ...tokens, colors: { ...tokens.colors, ...incoming } });
+    toast.success(`Synced ${Object.keys(incoming).length} brand colour${Object.keys(incoming).length === 1 ? '' : 's'}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2 pb-3 border-b">
@@ -1029,6 +1120,9 @@ function TokensEditor({
             e.target.value = '';
           }}
         />
+        <Button size="sm" variant="default" onClick={handleSyncBrand} title="Pull primary/accent from brand settings">
+          <Sparkles className="h-3.5 w-3.5 mr-1" /> Sync from brand
+        </Button>
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
           <Upload className="h-3.5 w-3.5 mr-1" /> Import
         </Button>
@@ -1100,6 +1194,122 @@ function TokensEditor({
       <p className="text-[11px] text-muted-foreground">
         Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc.
       </p>
+    </div>
+  );
+}
+
+// ─── Slots editor ─────────────────────────────────────────────────────────────
+// Reusable component slots (Header / Footer / etc). A slot is just a Block
+// definition stored on the template; pages reference it via a `slot` block
+// with props.slotKey matching the slot's key.
+function SlotsEditor({
+  template,
+  onChange,
+}: {
+  template: ReportTemplate;
+  onChange: (slots: Record<string, Block>) => void;
+}) {
+  const slots = template.slots ?? {};
+  const entries = Object.entries(slots);
+
+  const addSlot = () => {
+    const key = window.prompt('New slot key (e.g. "header", "footer")')?.trim();
+    if (!key) return;
+    if (slots[key]) { toast.error(`Slot "${key}" already exists`); return; }
+    const block: Block = {
+      id: crypto.randomUUID(),
+      type: 'footer',
+      props: { text: 'Edit this slot in the Slots tab', bg: 'token:bg', color: 'token:muted', align: 'center', height: 28 },
+      overlays: [],
+    };
+    onChange({ ...slots, [key]: block });
+    toast.success(`Slot "${key}" created`);
+  };
+
+  const renameSlot = (oldKey: string) => {
+    const newKey = window.prompt('Rename slot key', oldKey)?.trim();
+    if (!newKey || newKey === oldKey) return;
+    if (slots[newKey]) { toast.error(`Slot "${newKey}" already exists`); return; }
+    const next = { ...slots };
+    next[newKey] = next[oldKey];
+    delete next[oldKey];
+    onChange(next);
+  };
+
+  const removeSlot = (key: string) => {
+    if (!confirm(`Delete slot "${key}"? Pages referencing it will show a missing-slot warning.`)) return;
+    const next = { ...slots };
+    delete next[key];
+    onChange(next);
+  };
+
+  const setSlotType = (key: string, type: string) => {
+    onChange({ ...slots, [key]: { ...slots[key], type, props: BLOCK_DEFS[type]?.defaultProps() ?? {} } });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border-b pb-3">
+        <div>
+          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reusable component slots</Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            Define a Header / Footer / etc. once, then drop a <code className="font-mono">slot</code> block on any page
+            with the matching key. Editing here updates every page that references it.
+          </p>
+        </div>
+        <Button size="sm" variant="default" onClick={addSlot}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New slot
+        </Button>
+      </div>
+
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic text-center py-6">
+          No slots yet. Click "New slot" to create your first reusable component.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {entries.map(([key, block]) => (
+            <li key={key} className="border rounded-md p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{`{{slot:${key}}}`}</code>
+                <span className="text-[10px] text-muted-foreground">key:</span>
+                <code className="text-xs font-mono">{key}</code>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => renameSlot(key)}>Rename</Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeSlot(key)} title="Delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-[10px] text-muted-foreground w-16">Block type</Label>
+                <select
+                  value={block.type}
+                  onChange={(e) => setSlotType(key, e.target.value)}
+                  className="h-8 text-xs border rounded px-2 bg-background flex-1"
+                >
+                  {Object.values(BLOCK_DEFS)
+                    .filter((d) => d.type !== 'free' && d.type !== 'slot')
+                    .map((d) => (
+                      <option key={d.type} value={d.type}>{d.label} ({d.type})</option>
+                    ))}
+                </select>
+              </div>
+              <Textarea
+                value={JSON.stringify(block.props, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const props = JSON.parse(e.target.value);
+                    onChange({ ...slots, [key]: { ...block, props } });
+                  } catch { /* keep typing */ }
+                }}
+                spellCheck={false}
+                className="font-mono text-[11px] h-32 resize-none"
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -124,6 +124,12 @@ export const ReportTemplateSchema = z.object({
   version: z.literal(1).default(1),
   tokens: TokensSchema,
   pages: z.array(PageSchema).default([]),
+  /**
+   * Reusable component slots (Header / Footer / etc.). Pages reference a slot
+   * via a `slot` block whose `props.slotKey` matches a key here. Edit once,
+   * applied wherever referenced.
+   */
+  slots: z.record(BlockSchema).default({}),
 });
 
 export type ReportTemplate = z.infer<typeof ReportTemplateSchema>;
@@ -133,6 +139,7 @@ export const EMPTY_TEMPLATE: ReportTemplate = {
   version: 1,
   tokens: { colors: {}, fonts: {}, spacing: {} },
   pages: [],
+  slots: {},
 };
 
 export const DEFAULT_BRAND_TOKENS: Tokens = {

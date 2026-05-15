@@ -28,12 +28,17 @@ import { drawQrBlock } from './qrCode';
 import { drawBadgeListBlock } from './badgeList';
 import { drawTocBlock } from './toc';
 import { drawSignatureBlock } from './signature';
+import { drawSlotBlock } from './slot';
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
   page: { width: number; height: number };
   /** All visible pages in render order — used by TOC and similar blocks. */
   pages?: Array<{ name: string; id: string }>;
+  /** Reusable slots (Header/Footer/etc) keyed by slotKey. */
+  slots?: Record<string, Block>;
+  /** Internal: draw a single overlay (provided by pdfRenderer). */
+  _drawOverlay?: (overlay: import('../templateSchema').Overlay, ctx: BlockRenderContext) => void;
 }
 
 export type BlockRenderer = (block: Block, ctx: BlockRenderContext) => void;
@@ -58,6 +63,7 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   'badge-list': drawBadgeListBlock,
   toc: drawTocBlock,
   signature: drawSignatureBlock,
+  slot: drawSlotBlock,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
@@ -404,6 +410,14 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'bindable', key: 'dateLabel', label: 'Date label' },
       { kind: 'number', key: 'width', label: 'Line width' },
       { kind: 'color', key: 'lineColor', label: 'Line color' },
+    ],
+  },
+  slot: {
+    type: 'slot',
+    label: 'Slot reference',
+    defaultProps: () => ({ slotKey: 'header' }),
+    fields: [
+      { kind: 'bindable', key: 'slotKey', label: 'Slot key (e.g. header, footer)' },
     ],
   },
   free: {
