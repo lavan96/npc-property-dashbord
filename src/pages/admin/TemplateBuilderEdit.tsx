@@ -1119,6 +1119,9 @@ function TokensEditor({
             e.target.value = '';
           }}
         />
+        <Button size="sm" variant="default" onClick={handleSyncBrand} title="Pull primary/accent from brand settings">
+          <Sparkles className="h-3.5 w-3.5 mr-1" /> Sync from brand
+        </Button>
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
           <Upload className="h-3.5 w-3.5 mr-1" /> Import
         </Button>
