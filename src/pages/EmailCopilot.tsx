@@ -2924,10 +2924,12 @@ export default function EmailCopilot() {
                     {currentDraft.trim() ? `${currentDraft.trim().split(/\s+/).length} words` : 'Tip: select text then use Improve'}
                   </span>
                 </div>
-                <Textarea
-                  ref={composerTextareaRef}
+                <ComposerTextarea
+                  textareaRef={composerTextareaRef}
                   value={currentDraft}
-                  onChange={(e) => setCurrentDraft(e.target.value)}
+                  onChange={setCurrentDraft}
+                  snippets={snippets}
+                  onManageSnippets={() => setShowSnippetManager(true)}
                   className="h-[250px] resize-none font-sans text-sm"
                   placeholder="Draft reply will appear here..."
                   onKeyDown={(e) => {
@@ -2937,6 +2939,17 @@ export default function EmailCopilot() {
                     }
                   }}
                 />
+                <div className="mt-2">
+                  <RecipientSanityWarning
+                    to={replyTo}
+                    cc={replyCc}
+                    bcc={replyBcc}
+                    expectedDomain={selectedEmail?.sender?.split('@')[1] || null}
+                    bodyText={currentDraft}
+                    attachmentCount={replyAttachments.length}
+                  />
+                </div>
+                <div className="mt-2"><AttachmentSummary files={replyAttachments.map(f => ({ name: f.name, size: f.size }))} /></div>
               </div>
             </div>
           </ScrollArea>
