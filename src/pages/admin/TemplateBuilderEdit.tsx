@@ -971,14 +971,15 @@ export default function TemplateBuilderEdit() {
 
         {/* Sample data */}
         <TabsContent value="data" className="px-6 py-4 max-w-3xl space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview sample data</Label>
               <p className="text-xs text-muted-foreground mt-1">
                 Edit the JSON used to render the live preview. Bindings like <code>{'{{property.address}}'}</code> resolve against this object.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <BindingPathsPopover template={template} sampleData={sampleData} />
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
               </span>
@@ -991,11 +992,25 @@ export default function TemplateBuilderEdit() {
               </Button>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-wrap pb-1">
+            <Label className="text-[11px] text-muted-foreground mr-1">Presets:</Label>
+            {SAMPLE_DATA_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applySampleDataPreset(p.id)}
+                className="text-[11px] px-2 py-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-colors"
+                title={p.description}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <Textarea
             value={sampleDataText}
             onChange={(e) => setSampleDataText(e.target.value)}
             spellCheck={false}
-            className="font-mono text-xs h-[60vh] resize-none"
+            className="font-mono text-xs h-[55vh] resize-none"
           />
         </TabsContent>
 
