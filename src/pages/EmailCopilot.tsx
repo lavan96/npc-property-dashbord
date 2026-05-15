@@ -2838,7 +2838,7 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 gap-3 sm:gap-4">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 lg:p-7 gap-3 sm:gap-4">
           <DialogHeader className="pr-10">
             <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-0">
