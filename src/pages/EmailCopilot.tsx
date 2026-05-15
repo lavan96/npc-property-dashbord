@@ -1303,12 +1303,48 @@ export default function EmailCopilot() {
     }
   };
 
-  // Send email directly (for reply)
-  const handleSendEmail = async () => {
+  // Send email directly (for reply) — supports 10s Undo Send
+  const handleSendEmail = async (opts?: { skipUndo?: boolean }) => {
     if (!selectedEmail || !currentDraft) return;
-    
-    setIsSendingEmail(true);
     setShowSendConfirmModal(false);
+
+    // 10s undo window
+    if (!opts?.skipUndo) {
+      let cancelled = false;
+      const targetEmail = selectedEmail;
+      const snapshot = {
+        to: replyTo, subject: replySubject, cc: replyCc, bcc: replyBcc,
+        body: currentDraft, attachments: replyAttachments,
+      };
+      // Optimistically close the modal
+      setShowDraftModal(false);
+      toast('Sending in 10s…', {
+        description: `To ${snapshot.to}`,
+        duration: 10000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            cancelled = true;
+            // restore composer
+            setSelectedEmail(targetEmail);
+            setReplyTo(snapshot.to);
+            setReplySubject(snapshot.subject);
+            setReplyCc(snapshot.cc);
+            setReplyBcc(snapshot.bcc);
+            setCurrentDraft(snapshot.body);
+            setReplyAttachments(snapshot.attachments);
+            setShowDraftModal(true);
+            toast.info('Send cancelled');
+          },
+        },
+      });
+      setTimeout(() => {
+        if (!cancelled) handleSendEmail({ skipUndo: true });
+      }, 10000);
+      return;
+    }
+
+    setIsSendingEmail(true);
     
     try {
       const ccList = parseEmailList(replyCc);
