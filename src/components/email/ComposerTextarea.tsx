@@ -183,7 +183,7 @@ export const ComposerTextarea = forwardRef<ComposerTextareaHandle, Props>(functi
         </div>
       )}
       <Textarea
-        ref={taRef}
+        ref={setTaRef}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKey}
