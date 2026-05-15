@@ -842,6 +842,14 @@ export default function TemplateBuilderEdit() {
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
         </TabsContent>
 
+        {/* Reusable component slots (Header / Footer / etc.) */}
+        <TabsContent value="slots" className="px-6 py-4 max-w-3xl space-y-4">
+          <SlotsEditor
+            template={template}
+            onChange={(slots) => setTemplate((t) => ({ ...t, slots }))}
+          />
+        </TabsContent>
+
         {/* Sample data */}
         <TabsContent value="data" className="px-6 py-4 max-w-3xl space-y-3">
           <div className="flex items-center justify-between">
