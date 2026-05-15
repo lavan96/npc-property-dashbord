@@ -1,10 +1,44 @@
 // Email Copilot Extras: snippets, scheduled sends, follow-up reminders.
 // All actions go through verifyAuth + service-role DB access.
+//
+// Hardening notes (2026-05-15):
+//  - Explicit slim column lists (no select * on snippets/scheduled tables)
+//  - Tight result caps to bound jsonb/text payloads
+//  - Single retry with short backoff when Postgres reports a transient
+//    statement timeout (SQLSTATE 57014). On final failure we return HTTP
+//    503 (transient) instead of 500 so the SPA's secureInvoke wrapper
+//    logs a console.warn rather than triggering the runtime-error overlay
+//    that blanks the screen.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const SNIPPET_COLS = 'id, title, shortcut, body, category, updated_at';
+const SCHEDULED_COLS = 'id, recipient, subject, scheduled_for, status, error, mailbox_source';
+
+const MAX_SNIPPETS = 200;
+const MAX_SCHEDULED = 100;
+
+// Transient Postgres errors we should retry once.
+function isTransientDbError(err: any): boolean {
+  const code = err?.code || err?.cause?.code;
+  // 57014 = query_canceled (statement timeout)
+  // 53300 = too_many_connections, 08006 = connection_failure
+  return code === '57014' || code === '53300' || code === '08006';
+}
+
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (!isTransientDbError(e)) throw e;
+    console.warn(`[email-copilot-extras] ${label} transient failure, retrying once:`, (e as any)?.code);
+    await new Promise((r) => setTimeout(r, 250));
+    return await fn();
+  }
+}
 
 Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get('origin'));
@@ -25,13 +59,17 @@ Deno.serve(async (req) => {
 
     // ────────── SNIPPETS ──────────
     if (action === 'list_snippets') {
-      const { data, error } = await supabase
-        .from('email_copilot_snippets')
-        .select('*')
-        .eq('user_id', effectiveUserId)
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return json({ success: true, snippets: data || [] });
+      const data = await withRetry('list_snippets', async () => {
+        const { data, error } = await supabase
+          .from('email_copilot_snippets')
+          .select(SNIPPET_COLS)
+          .eq('user_id', effectiveUserId)
+          .order('updated_at', { ascending: false })
+          .limit(MAX_SNIPPETS);
+        if (error) throw error;
+        return data || [];
+      });
+      return json({ success: true, snippets: data });
     }
 
     if (action === 'save_snippet') {
@@ -50,7 +88,7 @@ Deno.serve(async (req) => {
           .update(payload)
           .eq('id', id)
           .eq('user_id', effectiveUserId)
-          .select()
+          .select(SNIPPET_COLS)
           .maybeSingle();
         if (error) throw error;
         return json({ success: true, snippet: data });
@@ -58,7 +96,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from('email_copilot_snippets')
         .insert(payload)
-        .select()
+        .select(SNIPPET_COLS)
         .maybeSingle();
       if (error) throw error;
       return json({ success: true, snippet: data });
@@ -78,14 +116,18 @@ Deno.serve(async (req) => {
 
     // ────────── SCHEDULED SENDS ──────────
     if (action === 'list_scheduled') {
-      const { data, error } = await supabase
-        .from('email_copilot_scheduled_sends')
-        .select('*')
-        .eq('user_id', effectiveUserId)
-        .in('status', ['pending', 'failed'])
-        .order('scheduled_for', { ascending: true });
-      if (error) throw error;
-      return json({ success: true, scheduled: data || [] });
+      const data = await withRetry('list_scheduled', async () => {
+        const { data, error } = await supabase
+          .from('email_copilot_scheduled_sends')
+          .select(SCHEDULED_COLS)
+          .eq('user_id', effectiveUserId)
+          .in('status', ['pending', 'failed'])
+          .order('scheduled_for', { ascending: true })
+          .limit(MAX_SCHEDULED);
+        if (error) throw error;
+        return data || [];
+      });
+      return json({ success: true, scheduled: data });
     }
 
     if (action === 'schedule_send') {
@@ -113,7 +155,7 @@ Deno.serve(async (req) => {
           scheduled_for: when.toISOString(),
           status: 'pending',
         })
-        .select()
+        .select(SCHEDULED_COLS)
         .maybeSingle();
       if (error) throw error;
       return json({ success: true, scheduled: data });
@@ -150,7 +192,7 @@ Deno.serve(async (req) => {
           assigned_to: [effectiveUserId],
           reminder_scope: client_id ? 'client' : 'personal',
         })
-        .select()
+        .select('id, title, due_date, status, priority, reminder_type, reminder_scope, client_id')
         .maybeSingle();
       if (error) throw error;
       return json({ success: true, reminder: data });
@@ -158,7 +200,20 @@ Deno.serve(async (req) => {
 
     return json({ error: `Unknown action: ${action}` }, 400);
   } catch (e: any) {
+    // Distinguish transient DB pressure (retryable) from real server errors.
+    // 503 keeps the SPA's secureInvoke wrapper at console.warn level instead
+    // of triggering the runtime-error overlay (which blanks the page).
+    if (isTransientDbError(e)) {
+      console.warn('[email-copilot-extras] Transient DB error after retry:', e?.code, e?.message);
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable, please retry', code: e?.code }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     console.error('[email-copilot-extras] Error:', e);
-    return json({ error: e?.message || 'Server error' }, 500);
+    return new Response(
+      JSON.stringify({ error: e?.message || 'Server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 });
