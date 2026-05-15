@@ -328,6 +328,13 @@ export default function EmailCopilot() {
   const [showMailboxSettings, setShowMailboxSettings] = useState(false);
   const hasAdminEmailAccess = hasModuleAccess('admin_email_access');
 
+  // Tier 2/3: snippets, scheduled sends, follow-up reminders
+  const { snippets, refresh: refreshSnippets } = useEmailSnippets();
+  const { items: scheduledSends, refresh: refreshScheduled } = useScheduledSends();
+  const [showSnippetManager, setShowSnippetManager] = useState(false);
+  const [showScheduledList, setShowScheduledList] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState(false);
+
   // Check for QA PDF attachment on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
