@@ -3045,21 +3045,22 @@ export default function EmailCopilot() {
             </div>
           </ScrollArea>
           
-          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <DialogFooter className="flex-col gap-2 sm:gap-3 sm:flex-row sm:justify-between border-t pt-3 sm:pt-4">
+            <p className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               Review carefully before sending
             </p>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => setShowDraftModal(false)}>
+            <div className="flex gap-1.5 sm:gap-2 flex-wrap justify-end w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={() => setShowDraftModal(false)}>
                 Cancel
               </Button>
-              <Button variant="outline" onClick={handleCopyDraft}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
+              <Button variant="outline" size="sm" onClick={handleCopyDraft}>
+                <Copy className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Copy</span>
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowFollowUp(true)}>
-                <Bell className="h-4 w-4 mr-1" /> Remind me
+                <Bell className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Remind me</span>
               </Button>
               <ScheduleSendButton
                 disabled={isSendingEmail || !currentDraft || !replyTo}
@@ -3088,6 +3089,7 @@ export default function EmailCopilot() {
               />
               <Button 
                 onClick={handleSendClick} 
+                size="sm"
                 disabled={isSendingEmail || !currentDraft || !replyTo}
                 className="bg-green-600 hover:bg-green-700"
               >
