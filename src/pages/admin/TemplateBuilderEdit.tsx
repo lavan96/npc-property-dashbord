@@ -13,8 +13,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
-  ShieldAlert, Component, Sparkles,
+  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2,
 } from 'lucide-react';
+import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
+import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
+import { THEME_PRESETS, getThemePreset } from '@/lib/reportTemplate/themePresets';
+import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
+import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,12 +52,7 @@ import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 
-const DEFAULT_SAMPLE_DATA = {
-  property: { address: '123 Sample Street, Sydney NSW 2000', suburb: 'Sydney', imageUrl: '' },
-  financials: { weeklyRent: 850, purchasePrice: 950000 },
-  client: { name: 'Sample Client' },
-  tier: 'compass',
-};
+const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
 
 export default function TemplateBuilderEdit() {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +66,7 @@ export default function TemplateBuilderEdit() {
   const [reportType, setReportType] = useState('');
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
+  const brand = useBrand();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -340,6 +341,75 @@ export default function TemplateBuilderEdit() {
     setTemplate((t) => ({ ...t, pages: next }));
   };
 
+  // ── Starter page presets / theme presets / sample-data presets ──────────────
+  const addStarterPage = (presetId: string) => {
+    const preset = getStarterPreset(presetId);
+    if (!preset) return;
+    const page = preset.build();
+    setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
+    setActivePageId(page.id);
+    setSelectedBlockId(null);
+    setSelectedOverlayId(null);
+    toast.success(`Added "${preset.label}"`);
+  };
+  const applyTheme = (presetId: string) => {
+    const preset = getThemePreset(presetId);
+    if (!preset) return;
+    setTemplate((t) => ({
+      ...t,
+      tokens: {
+        colors: { ...t.tokens.colors, ...preset.tokens.colors },
+        fonts: { ...t.tokens.fonts, ...preset.tokens.fonts },
+        spacing: { ...t.tokens.spacing, ...preset.tokens.spacing },
+      },
+    }));
+    toast.success(`Theme applied: ${preset.label}`);
+  };
+  const applySampleDataPreset = (presetId: string) => {
+    const preset = SAMPLE_DATA_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setSampleDataText(JSON.stringify(preset.data, null, 2));
+    toast.success(`Sample data: ${preset.label}`);
+  };
+  const insertBlockType = (type: string) => {
+    if (!activePage) { toast.error('No active page — add one first.'); return; }
+    const def = BLOCK_DEFS[type];
+    if (!def) return;
+    const newBlock: Block = {
+      id: crypto.randomUUID(),
+      type,
+      props: def.defaultProps(),
+      overlays: [],
+    };
+    addBlockToActivePage(newBlock);
+    toast.success(`Inserted ${def.label}`);
+  };
+  const jumpToFirstBindingIssue = () => {
+    const iss = bindingIssues[0];
+    if (!iss) return;
+    if (iss.pageId) setActivePageId(iss.pageId);
+    if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+    else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+  };
+  const jumpToFirstLintIssue = () => {
+    const iss = lintIssues[0];
+    if (!iss) return;
+    if (iss.pageId) setActivePageId(iss.pageId);
+    if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
+    else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+  };
+  const syncTokensFromBrand = () => {
+    const themeCfg = (brand as any)?.settings?.themeConfig;
+    const primary = themeCfg?.primaryColor || (brand as any)?.settings?.primaryColor;
+    const accent = themeCfg?.accentColor || (brand as any)?.settings?.accentColor;
+    const incoming: Record<string, string> = {};
+    if (primary) incoming.primary = primary;
+    if (accent) incoming.accent = accent;
+    if (Object.keys(incoming).length === 0) { toast.info('No brand colours configured to sync'); return; }
+    setTemplate((t) => ({ ...t, tokens: { ...t.tokens, colors: { ...t.tokens.colors, ...incoming } } }));
+    toast.success(`Synced ${Object.keys(incoming).length} brand colour${Object.keys(incoming).length === 1 ? '' : 's'}`);
+  };
+
   // ── Block clipboard ops ─────────────────────────────────────────────────────
   const copyBlock = (bid: string) => {
     if (!activePage) return;
@@ -387,14 +457,20 @@ export default function TemplateBuilderEdit() {
     reader.readAsText(file);
   };
 
+  // ── Command palette (⌘K) ────────────────────────────────────────────────────
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
       const meta = e.metaKey || e.ctrlKey;
+      // ⌘K opens palette from anywhere (including fields)
+      if (meta && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
       if (!meta) return;
-      if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
+      if (e.key === 's') { e.preventDefault(); handleSave(false); }
+      else if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
       else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
       else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
       else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
@@ -484,6 +560,34 @@ export default function TemplateBuilderEdit() {
 
   return (
     <div className="h-screen flex flex-col">
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        template={template}
+        pages={template.pages}
+        bindingIssueCount={bindingIssues.length}
+        lintIssueCount={lintIssues.length}
+        actions={{
+          insertBlock: insertBlockType,
+          jumpToPage: (pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); },
+          addStarterPage,
+          applyTheme,
+          applySampleData: applySampleDataPreset,
+          jumpToFirstBindingIssue,
+          jumpToFirstLintIssue,
+          save: () => handleSave(false),
+          saveSnapshot: () => handleSave(true),
+          undo, redo,
+          togglePreview: () => setShowPreview((s) => !s),
+          exportJson: handleExport,
+          importJson: () => fileInputRef.current?.click(),
+          copyJson: async () => {
+            try { await navigator.clipboard.writeText(JSON.stringify(template, null, 2)); toast.success('Template JSON copied'); }
+            catch { toast.error('Copy failed'); }
+          },
+          syncBrand: syncTokensFromBrand,
+        }}
+      />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b bg-background/95 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
@@ -496,6 +600,16 @@ export default function TemplateBuilderEdit() {
             className="text-base font-semibold border-0 bg-transparent focus-visible:bg-muted/30 focus-visible:ring-1 max-w-xs"
             placeholder="Template name"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPaletteOpen(true)}
+            className="ml-2 h-8 gap-1.5 text-xs text-muted-foreground"
+            title="Open command palette"
+          >
+            <CommandIcon className="h-3.5 w-3.5" /> Quick actions
+            <kbd className="ml-1 px-1 py-px rounded bg-muted text-[10px] font-mono">⌘K</kbd>
+          </Button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {bindingIssues.length > 0 ? (
@@ -840,6 +954,10 @@ export default function TemplateBuilderEdit() {
 
         {/* Brand tokens */}
         <TabsContent value="tokens" className="px-6 py-4 max-w-3xl space-y-6">
+          <ThemePresetsGallery
+            activeTokens={template.tokens}
+            onApply={applyTheme}
+          />
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
         </TabsContent>
 
@@ -853,14 +971,15 @@ export default function TemplateBuilderEdit() {
 
         {/* Sample data */}
         <TabsContent value="data" className="px-6 py-4 max-w-3xl space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview sample data</Label>
               <p className="text-xs text-muted-foreground mt-1">
                 Edit the JSON used to render the live preview. Bindings like <code>{'{{property.address}}'}</code> resolve against this object.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <BindingPathsPopover template={template} sampleData={sampleData} />
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
               </span>
@@ -873,11 +992,25 @@ export default function TemplateBuilderEdit() {
               </Button>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-wrap pb-1">
+            <Label className="text-[11px] text-muted-foreground mr-1">Presets:</Label>
+            {SAMPLE_DATA_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applySampleDataPreset(p.id)}
+                className="text-[11px] px-2 py-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-colors"
+                title={p.description}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <Textarea
             value={sampleDataText}
             onChange={(e) => setSampleDataText(e.target.value)}
             spellCheck={false}
-            className="font-mono text-xs h-[60vh] resize-none"
+            className="font-mono text-xs h-[55vh] resize-none"
           />
         </TabsContent>
 
@@ -1311,5 +1444,63 @@ function SlotsEditor({
         </ul>
       )}
     </div>
+  );
+}
+
+// ─── Theme presets gallery ────────────────────────────────────────────────────
+function ThemePresetsGallery({
+  activeTokens,
+  onApply,
+}: {
+  activeTokens: ReportTemplate['tokens'];
+  onApply: (presetId: string) => void;
+}) {
+  // Identify the closest preset (matches by primary + bg colour)
+  const activeId = (() => {
+    const p = activeTokens.colors?.primary;
+    const b = activeTokens.colors?.bg;
+    return THEME_PRESETS.find((t) => t.tokens.colors.primary === p && t.tokens.colors.bg === b)?.id ?? null;
+  })();
+
+  return (
+    <section className="border-b pb-5">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Wand2 className="h-3.5 w-3.5" /> Theme presets
+          </Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            One-click brand identities. Applies colors, fonts, and spacing on top of the existing token map.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {THEME_PRESETS.map((p) => {
+          const isActive = p.id === activeId;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onApply(p.id)}
+              className={`text-left rounded-md border p-2.5 transition-colors hover:border-primary/60 ${
+                isActive ? 'border-primary ring-1 ring-primary' : 'border-border'
+              }`}
+              title={p.description}
+            >
+              <div className="flex gap-1 mb-2">
+                {p.swatch.map((c) => (
+                  <span key={c} className="h-5 flex-1 rounded-sm border border-border/40" style={{ background: c }} />
+                ))}
+              </div>
+              <div className="text-xs font-medium leading-tight">{p.label}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{p.description}</div>
+              {isActive && (
+                <div className="mt-1.5 text-[9px] uppercase tracking-wider text-primary font-semibold">Active</div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
