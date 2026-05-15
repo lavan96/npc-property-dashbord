@@ -132,27 +132,38 @@ export function validateBindable(input: unknown, template?: ReportTemplate | nul
   return issues;
 }
 
+export interface TemplateIssue extends BindingIssue {
+  where: string;
+  pageId?: string;
+  pageIndex?: number;
+  blockId?: string;
+  overlayId?: string;
+  field?: string;
+}
+
 /** Walk the whole template and collect every binding issue (used pre-export). */
-export function collectTemplateIssues(template: ReportTemplate): Array<BindingIssue & { where: string }> {
-  const all: Array<BindingIssue & { where: string }> = [];
-  const push = (where: string, value: unknown) => {
-    for (const i of validateBindable(value, template)) all.push({ ...i, where });
+export function collectTemplateIssues(template: ReportTemplate): TemplateIssue[] {
+  const all: TemplateIssue[] = [];
+  const push = (where: string, value: unknown, ctx: Partial<TemplateIssue> = {}) => {
+    for (const i of validateBindable(value, template)) all.push({ ...i, where, ...ctx });
   };
   template.pages.forEach((page, pi) => {
-    push(`Page ${pi + 1} background`, page.background?.color);
-    push(`Page ${pi + 1} background image`, page.background?.imageUrl);
+    const pageCtx = { pageId: page.id, pageIndex: pi };
+    push(`Page ${pi + 1} background`, page.background?.color, { ...pageCtx, field: 'background.color' });
+    push(`Page ${pi + 1} background image`, page.background?.imageUrl, { ...pageCtx, field: 'background.imageUrl' });
     page.blocks.forEach((b, bi) => {
       b.overlays.forEach((o, oi) => {
         const tag = `Page ${pi + 1} → block ${bi + 1} → overlay ${oi + 1}`;
+        const oCtx = { ...pageCtx, blockId: b.id, overlayId: o.id };
         if (o.type === 'text') {
-          push(`${tag} (content)`, o.content);
-          push(`${tag} (color)`, o.color);
-          push(`${tag} (font)`, o.fontFamily);
+          push(`${tag} (content)`, o.content, { ...oCtx, field: 'content' });
+          push(`${tag} (color)`, o.color, { ...oCtx, field: 'color' });
+          push(`${tag} (font)`, o.fontFamily, { ...oCtx, field: 'fontFamily' });
         } else if (o.type === 'image') {
-          push(`${tag} (src)`, o.src);
+          push(`${tag} (src)`, o.src, { ...oCtx, field: 'src' });
         } else if (o.type === 'shape') {
-          push(`${tag} (fill)`, o.fill);
-          push(`${tag} (stroke)`, o.stroke);
+          push(`${tag} (fill)`, o.fill, { ...oCtx, field: 'fill' });
+          push(`${tag} (stroke)`, o.stroke, { ...oCtx, field: 'stroke' });
         }
       });
     });
