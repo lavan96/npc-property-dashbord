@@ -3685,6 +3685,26 @@ export default function EmailCopilot() {
           }
         }}
       />
+
+      <SnippetManagerDialog
+        open={showSnippetManager}
+        onOpenChange={setShowSnippetManager}
+        snippets={snippets}
+        onChanged={refreshSnippets}
+      />
+      <ScheduledSendsDialog
+        open={showScheduledList}
+        onOpenChange={setShowScheduledList}
+        items={scheduledSends}
+        onChanged={refreshScheduled}
+      />
+      <FollowUpReminderDialog
+        open={showFollowUp}
+        onOpenChange={setShowFollowUp}
+        defaultTitle={selectedEmail ? `Follow up: ${selectedEmail.subject}` : 'Follow up on email'}
+        defaultDescription={selectedEmail ? `Re: ${selectedEmail.sender}` : ''}
+        clientId={selectedEmail?.client_id || null}
+      />
     </div>
   );
 }
