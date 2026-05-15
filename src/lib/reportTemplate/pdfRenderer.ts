@@ -56,11 +56,12 @@ export function renderTemplateToBlob(
       doc.addPage([page.size.width, page.size.height]);
     }
     // Inject pageNumber/pageCount so blocks like page-number / footer can bind them.
-    const pageCtx: ResolveContext & { _allPages?: typeof allPages } = {
+    const pageCtx: ResolveContext & { _allPages?: typeof allPages; _slots?: Record<string, any> } = {
       ...ctxBase,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length },
     };
     (pageCtx as any)._allPages = allPages;
+    (pageCtx as any)._slots = template.slots ?? {};
     drawPage(doc, page, pageCtx);
   });
 
