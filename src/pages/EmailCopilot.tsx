@@ -10,6 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
 import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
+import { EmailIntelligencePanel, type EmailIntelligence } from '@/components/email/EmailIntelligencePanel';
 import { ComposerTextarea } from '@/components/email/ComposerTextarea';
 import { useEmailSnippets, SnippetManagerDialog } from '@/components/email/EmailSnippets';
 import { ScheduleSendButton, useScheduledSends, ScheduledSendsDialog } from '@/components/email/ScheduleSend';
@@ -96,6 +97,10 @@ interface EmailSummary {
   keyPoints: string[];
   requiredActions: string[];
   urgencyLevel: 'low' | 'medium' | 'high';
+  // Tier 4 intelligence (merged into summary jsonb by `analyze` action)
+  sentiment?: 'positive' | 'neutral' | 'negative' | 'angry';
+  category?: 'inquiry' | 'complaint' | 'opportunity' | 'admin' | 'fyi' | 'scheduling' | 'document_request' | 'other';
+  language?: string;
 }
 
 interface EmailAttachment {
@@ -2418,6 +2423,15 @@ export default function EmailCopilot() {
                     />
                     {getStatusBadge(selectedEmail.status)}
                     {selectedEmail.urgency_level && getUrgencyBadge(selectedEmail.urgency_level)}
+                    {selectedEmail.summary?.sentiment && selectedEmail.summary.sentiment !== 'neutral' && (
+                      <Badge variant="outline" className={
+                        selectedEmail.summary.sentiment === 'angry' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                        selectedEmail.summary.sentiment === 'negative' ? 'bg-warning/10 text-warning border-warning/20' :
+                        'bg-success/10 text-success border-success/20'
+                      }>
+                        {selectedEmail.summary.sentiment === 'angry' ? '🔥' : selectedEmail.summary.sentiment === 'negative' ? '😟' : '😊'} {selectedEmail.summary.sentiment}
+                      </Badge>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -2444,6 +2458,42 @@ export default function EmailCopilot() {
               {/* Email Content */}
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-6">
+                  {/* Tier 4: Intelligence Panel */}
+                  <EmailIntelligencePanel
+                    email={{
+                      id: selectedEmail.id,
+                      sender: selectedEmail.sender,
+                      subject: selectedEmail.subject,
+                      body: selectedEmail.body,
+                      received_at: selectedEmail.received_at,
+                    }}
+                    threadEmails={(() => {
+                      const key = getThreadKey(selectedEmail.subject);
+                      return emails
+                        .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+                        .slice(0, 6)
+                        .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+                    })()}
+                    intelligence={selectedEmail.summary ? {
+                      sentiment: selectedEmail.summary.sentiment,
+                      category: selectedEmail.summary.category,
+                      language: selectedEmail.summary.language,
+                      urgencyLevel: selectedEmail.summary.urgencyLevel,
+                    } : null}
+                    onIntelligenceUpdate={(next) => {
+                      setSelectedEmail(prev => prev ? {
+                        ...prev,
+                        urgency_level: next.urgencyLevel || prev.urgency_level,
+                        summary: { ...(prev.summary || { tldr: '', keyPoints: [], requiredActions: [], urgencyLevel: 'low' }), ...next } as EmailSummary,
+                      } : null);
+                      setEmails(prev => prev.map(e => e.id === selectedEmail.id ? {
+                        ...e,
+                        urgency_level: next.urgencyLevel || e.urgency_level,
+                        summary: { ...(e.summary || { tldr: '', keyPoints: [], requiredActions: [], urgencyLevel: 'low' }), ...next } as EmailSummary,
+                      } : e));
+                    }}
+                  />
+
                   {/* Email Body */}
                   <div className="bg-background rounded-lg border p-6">
                     <RichTextBody 
@@ -2776,13 +2826,32 @@ export default function EmailCopilot() {
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-purple-600" />
-              Compose Reply
-            </DialogTitle>
-            <DialogDescription>
-              Review recipients, edit your message, then send or copy
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <DialogTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-purple-600" />
+                  Compose Reply
+                </DialogTitle>
+                <DialogDescription>
+                  Review recipients, edit your message, then send or copy
+                </DialogDescription>
+              </div>
+              {selectedEmail && (
+                <div className="shrink-0">
+                  <EmailClientAssignment
+                    emailId={selectedEmail.id}
+                    currentClientId={selectedEmail.client_id}
+                    currentClientName={selectedEmail.client_name}
+                    onAssignmentChange={(clientId, clientName) => {
+                      setSelectedEmail(prev => prev ? { ...prev, client_id: clientId, client_name: clientName } : null);
+                      setEmails(prev => prev.map(e =>
+                        e.id === selectedEmail.id ? { ...e, client_id: clientId, client_name: clientName } : e
+                      ));
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </DialogHeader>
           
           <ScrollArea className="flex-1 pr-4">

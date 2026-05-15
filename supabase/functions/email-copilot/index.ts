@@ -89,6 +89,15 @@ Deno.serve(async (req) => {
       case 'quick_replies':
         return await handleQuickReplies({ email, threadEmails }, supabase, corsHeaders);
 
+      case 'analyze':
+        return await handleAnalyze({ email, emailId }, supabase, corsHeaders);
+
+      case 'translate':
+        return await handleTranslate({ text, language }, supabase, corsHeaders);
+
+      case 'thread_summary':
+        return await handleThreadSummary({ email, threadEmails }, supabase, corsHeaders);
+
       case 'save_email':
         return await handleSaveEmail(email, supabase, corsHeaders);
 
@@ -605,5 +614,200 @@ Return JSON: { "suggestions": ["...", "...", "..."] }${threadCtx}`;
       JSON.stringify({ success: false, suggestions: [] }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
+}
+
+// =====================================================================
+// Tier 4 — Polish: Analyze, Translate, Thread Summary
+// =====================================================================
+
+async function handleAnalyze(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { email, emailId } = args;
+  if (!email?.body) throw new Error('email is required');
+  const _brand = await getBrandConfig();
+
+  const systemPrompt = `You analyze inbound emails for ${_brand.companyName}, a property investment advisory.
+Return ONLY JSON matching:
+{
+  "sentiment": "positive" | "neutral" | "negative" | "angry",
+  "category": "inquiry" | "complaint" | "opportunity" | "admin" | "fyi" | "scheduling" | "document_request" | "other",
+  "language": "English" | "Spanish" | "French" | ... (full English name of detected language),
+  "urgencyLevel": "low" | "medium" | "high"
+}
+Rules:
+- "angry" only if the sender expresses clear hostility, frustration, or escalation language.
+- "complaint" if they express dissatisfaction; "inquiry" for questions; "opportunity" for new leads/business; "admin" for invoices/forms; "scheduling" for meeting requests; "document_request" if they ask for a document; "fyi" for informational only.
+- urgencyLevel "high" if there's a deadline within 48h, financial/legal stakes, or escalation; "medium" if a response is expected this week; "low" otherwise.`;
+
+  const userPrompt = `Analyze:\nFrom: ${email.sender}\nSubject: ${email.subject}\n\n${(email.body || '').slice(0, 4000)}`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const r = await callLLMRaw({
+      agentKey: 'email_copilot',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.2,
+      maxTokens: 200,
+      responseFormat: { type: 'json_object' },
+    });
+    if (!r.ok) throw new Error('LLM call failed');
+    const data = await r.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch { parsed = {}; }
+
+    const intelligence = {
+      sentiment: parsed.sentiment || 'neutral',
+      category: parsed.category || 'other',
+      language: parsed.language || 'English',
+      urgencyLevel: parsed.urgencyLevel || 'low',
+    };
+
+    // Persist by merging into the existing summary jsonb so we don't need a new column
+    if (emailId) {
+      const { data: existing } = await supabase
+        .from('email_copilot_emails')
+        .select('summary')
+        .eq('id', emailId)
+        .maybeSingle();
+      const merged = { ...(existing?.summary || {}), ...intelligence };
+      await supabase
+        .from('email_copilot_emails')
+        .update({ summary: merged, urgency_level: intelligence.urgencyLevel })
+        .eq('id', emailId);
+    }
+
+    const u = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai', endpoint: '/v1/chat/completions', model_used: 'gpt-4o-mini',
+      prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, tokens_used: u.total_tokens,
+      status: 'success', metadata: { function: 'email-copilot', action: 'analyze' },
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, intelligence }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[Analyze] error:', e);
+    throw e;
+  }
+}
+
+async function handleTranslate(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { text, language } = args;
+  if (!text) throw new Error('text is required');
+  const targetLang = language || 'en';
+
+  const systemPrompt = `You are a precise translator. Translate the user's text into the target language code "${targetLang}".
+- Preserve names, numbers, dates, URLs, and email addresses exactly.
+- Preserve paragraph structure and line breaks.
+- If the text is already in the target language, return it unchanged.
+- Output ONLY the translated text. No preamble, no quotes, no explanations.`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const r = await callLLMRaw({
+      agentKey: 'email_copilot',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text.slice(0, 8000) },
+      ],
+      temperature: 0.2,
+      maxTokens: 2000,
+    });
+    if (!r.ok) throw new Error('LLM call failed');
+    const data = await r.json();
+    const translated = (data.choices?.[0]?.message?.content || '').trim();
+
+    const u = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai', endpoint: '/v1/chat/completions', model_used: 'gpt-4o-mini',
+      prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, tokens_used: u.total_tokens,
+      status: 'success', metadata: { function: 'email-copilot', action: 'translate', target: targetLang },
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, translated, language: targetLang }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[Translate] error:', e);
+    throw e;
+  }
+}
+
+async function handleThreadSummary(args: any, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
+  const { email, threadEmails } = args;
+  if (!email?.body) throw new Error('email is required');
+  const _brand = await getBrandConfig();
+
+  const allMessages = [
+    ...(Array.isArray(threadEmails) ? threadEmails : []),
+    { sender: email.sender, subject: email.subject, body: email.body, received_at: email.received_at },
+  ];
+  // chronological
+  allMessages.sort((a: any, b: any) => new Date(a.received_at || 0).getTime() - new Date(b.received_at || 0).getTime());
+
+  const transcript = allMessages.map((m: any, i: number) => {
+    return `--- Message ${i + 1} ---\nFrom: ${m.sender}\nDate: ${m.received_at || ''}\nSubject: ${m.subject}\n\n${(m.body || '').slice(0, 1200)}`;
+  }).join('\n\n');
+
+  const systemPrompt = `You summarize email threads for ${_brand.companyName}.
+Return ONLY JSON:
+{
+  "tldr": "1-2 sentence summary of the whole thread",
+  "decisions": ["decisions explicitly agreed in the thread"],
+  "openQuestions": ["questions raised but not yet answered"],
+  "actionItems": [{ "owner": "name or role (e.g. Us / Client / John)", "task": "short description" }],
+  "nextStep": "single sentence: what should happen next"
+}
+Be specific. If a section has nothing, return an empty array (or empty string for tldr/nextStep).`;
+
+  const userPrompt = `Thread (${allMessages.length} messages, oldest first):\n\n${transcript}`;
+
+  try {
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const r = await callLLMRaw({
+      agentKey: 'email_copilot',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      maxTokens: 800,
+      responseFormat: { type: 'json_object' },
+    });
+    if (!r.ok) throw new Error('LLM call failed');
+    const data = await r.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch { parsed = {}; }
+
+    const summary = {
+      tldr: parsed.tldr || '',
+      decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+      openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions : [],
+      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
+      nextStep: parsed.nextStep || '',
+    };
+
+    const u = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai', endpoint: '/v1/chat/completions', model_used: 'gpt-4o-mini',
+      prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, tokens_used: u.total_tokens,
+      status: 'success', metadata: { function: 'email-copilot', action: 'thread_summary', messages: allMessages.length },
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, summary }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[Thread summary] error:', e);
+    throw e;
   }
 }
