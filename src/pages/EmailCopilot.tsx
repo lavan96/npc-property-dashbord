@@ -2423,6 +2423,15 @@ export default function EmailCopilot() {
                     />
                     {getStatusBadge(selectedEmail.status)}
                     {selectedEmail.urgency_level && getUrgencyBadge(selectedEmail.urgency_level)}
+                    {selectedEmail.summary?.sentiment && selectedEmail.summary.sentiment !== 'neutral' && (
+                      <Badge variant="outline" className={
+                        selectedEmail.summary.sentiment === 'angry' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                        selectedEmail.summary.sentiment === 'negative' ? 'bg-warning/10 text-warning border-warning/20' :
+                        'bg-success/10 text-success border-success/20'
+                      }>
+                        {selectedEmail.summary.sentiment === 'angry' ? '🔥' : selectedEmail.summary.sentiment === 'negative' ? '😟' : '😊'} {selectedEmail.summary.sentiment}
+                      </Badge>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
