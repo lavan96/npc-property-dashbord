@@ -1729,6 +1729,14 @@ export default function EmailCopilot() {
               </SelectContent>
             </Select>
           )}
+
+          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
+            <Clock className="h-3.5 w-3.5" />
+            {scheduledSends.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{scheduledSends.length}</Badge>}
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1" onClick={() => setShowSnippetManager(true)} title="Snippet library">
+            <Sparkles className="h-3.5 w-3.5" />
+          </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
