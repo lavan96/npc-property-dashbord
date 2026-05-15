@@ -548,6 +548,65 @@ export default function TemplateBuilderEdit() {
               <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
             </span>
           )}
+          {/* Print-safety lint */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded border transition-colors ${
+                  lintIssues.length === 0
+                    ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                    : lintIssues.some((i) => i.severity === 'error')
+                    ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'
+                    : 'bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20'
+                }`}
+                title="Print-safety lint"
+              >
+                <ShieldAlert className="h-2.5 w-2.5" />
+                {lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-96 p-0">
+              <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
+                <span>Print-safety issues ({lintIssues.length})</span>
+                <span className="text-[10px] text-muted-foreground font-normal">Click to jump</span>
+              </div>
+              {lintIssues.length === 0 ? (
+                <div className="px-3 py-6 text-xs text-muted-foreground text-center">
+                  No print-safety issues detected.
+                </div>
+              ) : (
+                <ScrollArea className="max-h-72">
+                  <ul className="divide-y">
+                    {lintIssues.map((iss, idx) => (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (iss.pageId) setActivePageId(iss.pageId);
+                            if (iss.overlayId) {
+                              setSelectedOverlayId(iss.overlayId);
+                              setSelectedBlockId(null);
+                            } else if (iss.blockId) {
+                              setSelectedBlockId(iss.blockId);
+                              setSelectedOverlayId(null);
+                            }
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
+                        >
+                          <div className={`text-[11px] font-medium truncate ${iss.severity === 'error' ? 'text-destructive' : 'text-amber-600'}`}>
+                            <span className="font-mono text-[9px] uppercase tracking-wider mr-1.5 opacity-70">{iss.code}</span>
+                            {iss.message}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">{iss.where}</div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              )}
+            </PopoverContent>
+          </Popover>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} title="Undo (⌘Z)">
             <Undo2 className="h-4 w-4" />
           </Button>
