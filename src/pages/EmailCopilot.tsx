@@ -2838,20 +2838,20 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <DialogTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-purple-600" />
-                  Compose Reply
+        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 gap-3 sm:gap-4">
+          <DialogHeader className="pr-10">
+            <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <MessageSquare className="h-5 w-5 text-purple-600 shrink-0" />
+                  <span className="truncate">Compose Reply</span>
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-xs sm:text-sm">
                   Review recipients, edit your message, then send or copy
                 </DialogDescription>
               </div>
               {selectedEmail && (
-                <div className="shrink-0">
+                <div className="shrink-0 max-w-full">
                   <EmailClientAssignment
                     emailId={selectedEmail.id}
                     currentClientId={selectedEmail.client_id}
@@ -2868,57 +2868,57 @@ export default function EmailCopilot() {
             </div>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 -mr-2 pr-2 sm:pr-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Email Recipients Section */}
-              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-2 sm:space-y-3 p-2 sm:p-3 bg-muted/30 rounded-lg">
                 {/* From Field - Non-editable */}
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">From:</Label>
-                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-sm text-muted-foreground">
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">From:</Label>
+                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-xs sm:text-sm text-muted-foreground truncate">
                     {selectedMailbox === 'personal' && personalMailbox 
                       ? personalMailbox 
                       : 'Admin Mailbox'}
                   </div>
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">To:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">To:</Label>
                   <Input
                     value={replyTo}
                     onChange={(e) => setReplyTo(e.target.value)}
                     placeholder="recipient@example.com"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Subject:</Label>
                   <Input
                     value={replySubject}
                     onChange={(e) => setReplySubject(e.target.value)}
                     placeholder="Email subject"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">CC:</Label>
                   <Input
                     value={replyCc}
                     onChange={(e) => setReplyCc(e.target.value)}
-                    placeholder="cc@example.com, another@example.com"
-                    className="h-8"
+                    placeholder="cc@example.com"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">BCC:</Label>
                   <Input
                     value={replyBcc}
                     onChange={(e) => setReplyBcc(e.target.value)}
                     placeholder="bcc@example.com"
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
               </div>
-              
+
               {/* AI Reply Assistant */}
               {selectedEmail && (
                 <AIReplyAssistant
@@ -3045,21 +3045,22 @@ export default function EmailCopilot() {
             </div>
           </ScrollArea>
           
-          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <DialogFooter className="flex-col gap-2 sm:gap-3 sm:flex-row sm:justify-between border-t pt-3 sm:pt-4">
+            <p className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               Review carefully before sending
             </p>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => setShowDraftModal(false)}>
+            <div className="flex gap-1.5 sm:gap-2 flex-wrap justify-end w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={() => setShowDraftModal(false)}>
                 Cancel
               </Button>
-              <Button variant="outline" onClick={handleCopyDraft}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
+              <Button variant="outline" size="sm" onClick={handleCopyDraft}>
+                <Copy className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Copy</span>
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowFollowUp(true)}>
-                <Bell className="h-4 w-4 mr-1" /> Remind me
+                <Bell className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Remind me</span>
               </Button>
               <ScheduleSendButton
                 disabled={isSendingEmail || !currentDraft || !replyTo}
@@ -3088,6 +3089,7 @@ export default function EmailCopilot() {
               />
               <Button 
                 onClick={handleSendClick} 
+                size="sm"
                 disabled={isSendingEmail || !currentDraft || !replyTo}
                 className="bg-green-600 hover:bg-green-700"
               >
