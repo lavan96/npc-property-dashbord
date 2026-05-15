@@ -1085,6 +1085,23 @@ function TokensEditor({
     } catch (e: any) { toast.error(`Paste failed: ${e?.message ?? 'invalid JSON'}`); }
   };
 
+  // ── Sync from current brand (BrandProvider / whitelabel_settings) ──────────
+  const brand = useBrand();
+  const handleSyncBrand = () => {
+    const themeCfg = brand?.settings?.themeConfig;
+    const primary = themeCfg?.primaryColor || brand?.settings?.primaryColor;
+    const accent = themeCfg?.accentColor || brand?.settings?.accentColor;
+    const incoming: Record<string, string> = {};
+    if (primary) incoming.primary = primary;
+    if (accent) incoming.accent = accent;
+    if (Object.keys(incoming).length === 0) {
+      toast.info('No brand colours configured to sync');
+      return;
+    }
+    onChange({ ...tokens, colors: { ...tokens.colors, ...incoming } });
+    toast.success(`Synced ${Object.keys(incoming).length} brand colour${Object.keys(incoming).length === 1 ? '' : 's'}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2 pb-3 border-b">
