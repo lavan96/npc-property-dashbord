@@ -127,7 +127,13 @@ export function PagesPanel({
   onMovePage,
   onAddBlock,
   onAddOverlay,
+  selectedBlockId,
+  onSelectBlock,
+  onReorderBlocks,
 }: Props) {
+  const activePage = template.pages.find((p) => p.id === activePageId) || null;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   return (
     <div className="flex flex-col h-full border-r bg-muted/20">
       {/* Pages */}
