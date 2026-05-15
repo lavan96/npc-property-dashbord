@@ -75,13 +75,26 @@ Deno.serve(async (req) => {
           throw new Error('OPENAI_API_KEY is not configured');
         }
         return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase, replyContext, corsHeaders);
-      
+
+      case 'draft_reply_v2':
+        return await handleDraftReplyV2({
+          email, emailId, linkedPropertyAddress, replyContext,
+          tone, length, intent, language, threadEmails,
+          variants: Math.min(Math.max(Number(variants) || 1, 1), 3),
+        }, supabase, corsHeaders);
+
+      case 'improve_text':
+        return await handleImproveText({ text, instruction, tone, language }, supabase, corsHeaders);
+
+      case 'quick_replies':
+        return await handleQuickReplies({ email, threadEmails }, supabase, corsHeaders);
+
       case 'save_email':
         return await handleSaveEmail(email, supabase, corsHeaders);
-      
+
       case 'assign_client':
         return await handleAssignClient(emailId, clientId, supabase, corsHeaders);
-      
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
