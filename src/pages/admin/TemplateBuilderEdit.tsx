@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
+import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
+import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
+import { getSnippet } from '@/lib/reportTemplate/snippetLibrary';
 import { THEME_PRESETS, getThemePreset } from '@/lib/reportTemplate/themePresets';
 import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
 import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
