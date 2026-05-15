@@ -3021,7 +3021,7 @@ export default function EmailCopilot() {
                   onChange={setCurrentDraft}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[250px] resize-none font-sans text-sm"
+                  className="h-[250px] lg:h-[340px] xl:h-[400px] resize-none font-sans text-sm"
                   placeholder="Draft reply will appear here..."
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
