@@ -2458,6 +2458,42 @@ export default function EmailCopilot() {
               {/* Email Content */}
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-6">
+                  {/* Tier 4: Intelligence Panel */}
+                  <EmailIntelligencePanel
+                    email={{
+                      id: selectedEmail.id,
+                      sender: selectedEmail.sender,
+                      subject: selectedEmail.subject,
+                      body: selectedEmail.body,
+                      received_at: selectedEmail.received_at,
+                    }}
+                    threadEmails={(() => {
+                      const key = getThreadKey(selectedEmail.subject);
+                      return emails
+                        .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+                        .slice(0, 6)
+                        .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+                    })()}
+                    intelligence={selectedEmail.summary ? {
+                      sentiment: selectedEmail.summary.sentiment,
+                      category: selectedEmail.summary.category,
+                      language: selectedEmail.summary.language,
+                      urgencyLevel: selectedEmail.summary.urgencyLevel,
+                    } : null}
+                    onIntelligenceUpdate={(next) => {
+                      setSelectedEmail(prev => prev ? {
+                        ...prev,
+                        urgency_level: next.urgencyLevel || prev.urgency_level,
+                        summary: { ...(prev.summary || { tldr: '', keyPoints: [], requiredActions: [], urgencyLevel: 'low' }), ...next } as EmailSummary,
+                      } : null);
+                      setEmails(prev => prev.map(e => e.id === selectedEmail.id ? {
+                        ...e,
+                        urgency_level: next.urgencyLevel || e.urgency_level,
+                        summary: { ...(e.summary || { tldr: '', keyPoints: [], requiredActions: [], urgencyLevel: 'low' }), ...next } as EmailSummary,
+                      } : e));
+                    }}
+                  />
+
                   {/* Email Body */}
                   <div className="bg-background rounded-lg border p-6">
                     <RichTextBody 
