@@ -97,6 +97,10 @@ interface EmailSummary {
   keyPoints: string[];
   requiredActions: string[];
   urgencyLevel: 'low' | 'medium' | 'high';
+  // Tier 4 intelligence (merged into summary jsonb by `analyze` action)
+  sentiment?: 'positive' | 'neutral' | 'negative' | 'angry';
+  category?: 'inquiry' | 'complaint' | 'opportunity' | 'admin' | 'fyi' | 'scheduling' | 'document_request' | 'other';
+  language?: string;
 }
 
 interface EmailAttachment {
