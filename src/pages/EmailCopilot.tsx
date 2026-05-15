@@ -731,19 +731,21 @@ export default function EmailCopilot() {
     }
   };
 
-  // Re-fetch emails when mailbox changes
+  // Re-fetch emails when mailbox changes (gated on auth readiness to avoid 401s on cold start)
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchEmails();
     fetchSentReplies();
     // Reset selection when switching mailboxes
     setSelectedEmail(null);
     setSelectedSentReply(null);
-  }, [selectedMailbox]);
+  }, [selectedMailbox, isAuthReady]);
 
   useEffect(() => {
-    // Auto-sync from Outlook on page load
+    if (!isAuthReady) return;
+    // Auto-sync from Outlook on page load (after auth is ready)
     handleSyncOutlook();
-  }, []);
+  }, [isAuthReady]);
 
   const fetchSentReplies = async () => {
     try {
