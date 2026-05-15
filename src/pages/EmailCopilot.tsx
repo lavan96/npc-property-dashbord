@@ -214,6 +214,8 @@ function formatEmailBody(body: string): string {
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
   const { hasModuleAccess, canEdit: canEditModule, canDelete: canDeleteModule, loading: permissionsLoading } = usePermissions();
+  const { user, loading: authLoading, accessToken } = useAuth();
+  const isAuthReady = !authLoading && !!user && !!accessToken;
   const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
