@@ -63,6 +63,7 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   'badge-list': drawBadgeListBlock,
   toc: drawTocBlock,
   signature: drawSignatureBlock,
+  slot: drawSlotBlock,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
