@@ -122,11 +122,32 @@ export function CommandPalette({
               <CommandShortcut>{lintIssueCount}</CommandShortcut>
             </CommandItem>
           )}
+          <CommandItem onSelect={run(actions.openBindingFixer)}>
+            <Wand2 /> Open AI binding fixer
+          </CommandItem>
+          <CommandItem onSelect={run(actions.openSnippetLibrary)}>
+            <Library /> Open snippet library
+          </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
 
-        <CommandGroup heading="Insert block">
+        <CommandGroup heading="Insert snippet">
+          {SNIPPETS.map((s) => (
+            <CommandItem
+              key={s.id}
+              value={`snippet ${s.label} ${s.category} ${s.tags.join(' ')}`}
+              onSelect={run(() => actions.insertSnippet(s.id))}
+            >
+              <Library /> {s.label}
+              <CommandShortcut className="text-[10px] truncate max-w-[200px]">
+                {s.category} · {s.tags.slice(0, 3).join(', ')}
+              </CommandShortcut>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+
+        <CommandSeparator />
           {blockDefs.map((def) => (
             <CommandItem
               key={def.type}
