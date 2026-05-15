@@ -9,6 +9,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
+import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
 import { 
   Mail, 
   FileText, 
