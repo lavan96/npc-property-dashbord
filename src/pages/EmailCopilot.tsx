@@ -2785,12 +2785,24 @@ export default function EmailCopilot() {
               
               {/* Draft Content */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">Message Body</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Message Body</Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    {currentDraft.trim() ? `${currentDraft.trim().split(/\s+/).length} words` : 'Tip: select text then use Improve'}
+                  </span>
+                </div>
                 <Textarea
+                  ref={composerTextareaRef}
                   value={currentDraft}
                   onChange={(e) => setCurrentDraft(e.target.value)}
                   className="h-[250px] resize-none font-sans text-sm"
                   placeholder="Draft reply will appear here..."
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      if (currentDraft && replyTo && !isSendingEmail) handleSendClick();
+                    }
+                  }}
                 />
               </div>
             </div>
