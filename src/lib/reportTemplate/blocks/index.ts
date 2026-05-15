@@ -412,6 +412,14 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'color', key: 'lineColor', label: 'Line color' },
     ],
   },
+  slot: {
+    type: 'slot',
+    label: 'Slot reference',
+    defaultProps: () => ({ slotKey: 'header' }),
+    fields: [
+      { kind: 'bindable', key: 'slotKey', label: 'Slot key (e.g. header, footer)' },
+    ],
+  },
   free: {
     type: 'free',
     label: 'Free / overlays',
