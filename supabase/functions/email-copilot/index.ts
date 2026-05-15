@@ -89,6 +89,15 @@ Deno.serve(async (req) => {
       case 'quick_replies':
         return await handleQuickReplies({ email, threadEmails }, supabase, corsHeaders);
 
+      case 'analyze':
+        return await handleAnalyze({ email, emailId }, supabase, corsHeaders);
+
+      case 'translate':
+        return await handleTranslate({ text, language }, supabase, corsHeaders);
+
+      case 'thread_summary':
+        return await handleThreadSummary({ email, threadEmails }, supabase, corsHeaders);
+
       case 'save_email':
         return await handleSaveEmail(email, supabase, corsHeaders);
 
