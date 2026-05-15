@@ -2695,75 +2695,34 @@ export default function EmailCopilot() {
                 </div>
               </div>
               
-              {/* Reply Context Input */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Reply Context</Label>
-                <p className="text-xs text-muted-foreground">
-                  Describe what you want to say - the AI will generate a professional reply based on your input
-                </p>
-                <div className="flex gap-2">
-                  <Textarea
-                    value={replyContext}
-                    onChange={(e) => setReplyContext(e.target.value)}
-                    placeholder="e.g., 'Thank them for their inquiry and let them know I'll send through the property report by end of day'"
-                    className="h-20 resize-none flex-1 text-sm"
-                  />
-                  <Button
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="icon"
-                    className="h-20 w-12"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isTranscribing}
-                    title={isRecording ? "Stop recording" : "Speak your reply context"}
-                  >
-                    {isTranscribing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRecording ? (
-                      <MicOff className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                {isRecording && (
-                  <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
-                    <Mic className="h-3 w-3" />
-                    Recording... Click mic to stop
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleDraftReply(replyContext)}
-                    disabled={isDrafting}
-                    className="flex-1"
-                  >
-                    {isDrafting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {currentDraft ? 'Regenerate' : 'AI Draft'}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Open edit modal with empty draft for manual composition
-                      initializeReplyFields();
-                      setEditableDraft('');
-                      setShowEditDraftModal(true);
-                    }}
-                    className="flex-1"
-                  >
-                    <Reply className="h-4 w-4 mr-2" />
-                    Manual Reply
-                  </Button>
-                </div>
-              </div>
+              {/* AI Reply Assistant */}
+              {selectedEmail && (
+                <AIReplyAssistant
+                  email={{
+                    sender: selectedEmail.sender,
+                    subject: selectedEmail.subject,
+                    body: selectedEmail.body,
+                    received_at: selectedEmail.received_at,
+                  }}
+                  emailId={selectedEmail.id}
+                  linkedPropertyAddress={selectedEmail.linked_property_address}
+                  threadEmails={(() => {
+                    const key = getThreadKey(selectedEmail.subject);
+                    return emails
+                      .filter(e => getThreadKey(e.subject) === key && e.id !== selectedEmail.id)
+                      .slice(0, 4)
+                      .map(e => ({ sender: e.sender, subject: e.subject, body: e.body, received_at: e.received_at }));
+                  })()}
+                  draft={currentDraft}
+                  onDraftChange={setCurrentDraft}
+                  onInitialiseFields={initializeReplyFields}
+                  isRecording={isRecording}
+                  isTranscribing={isTranscribing}
+                  onStartRecording={startRecording}
+                  onStopRecording={stopRecording}
+                  composerRef={composerTextareaRef}
+                />
+              )}
               
               <Separator />
               
