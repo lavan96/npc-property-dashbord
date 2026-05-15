@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import {
   useReportTemplate,
@@ -280,6 +281,15 @@ export default function TemplateBuilderEdit() {
     [next[idx], next[j]] = [next[j], next[idx]];
     updatePage({ ...activePage, blocks: next });
   };
+  const reorderBlocks = (from: number, to: number) => {
+    if (!activePage) return;
+    if (from === to || from < 0 || to < 0) return;
+    const next = [...activePage.blocks];
+    if (from >= next.length || to >= next.length) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    updatePage({ ...activePage, blocks: next });
+  };
 
   const addPage = () => {
     const p: Page = {
@@ -392,6 +402,17 @@ export default function TemplateBuilderEdit() {
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
+  const issuesByPage = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const issue of bindingIssues) {
+      const m = /^Page (\d+)/.exec(issue.where);
+      if (m) {
+        const idx = Number(m[1]) - 1;
+        map.set(idx, (map.get(idx) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [bindingIssues]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -575,6 +596,9 @@ export default function TemplateBuilderEdit() {
               onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
+              selectedBlockId={selectedBlockId}
+              onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
+              onReorderBlocks={reorderBlocks}
             />
 
             <div className="relative bg-muted/30 min-h-0">
@@ -618,7 +642,58 @@ export default function TemplateBuilderEdit() {
                   <span className="font-medium">PDF preview</span>
                   {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                 </div>
-                <div className="flex-1 p-2">
+                {/* Page thumbnails strip */}
+                <ScrollArea className="border-b max-h-40 flex-shrink-0">
+                  <div className="flex gap-2 p-2">
+                    {template.pages.map((p, i) => {
+                      const errCount = issuesByPage.get(i) ?? 0;
+                      const isActive = p.id === activePageId;
+                      const ratio = (p.size?.width ?? 595) / (p.size?.height ?? 842);
+                      const W = 70;
+                      const H = Math.round(W / ratio);
+                      const bg = p.background?.color && typeof p.background.color === 'string' && p.background.color.startsWith('#') ? p.background.color : '#ffffff';
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => { setActivePageId(p.id); setSelectedOverlayId(null); setSelectedBlockId(null); }}
+                          className={`relative flex flex-col items-center gap-1 rounded border p-1 transition-colors ${
+                            isActive ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'
+                          }`}
+                          title={`${p.name}${errCount ? ` — ${errCount} binding issue${errCount === 1 ? '' : 's'}` : ''}`}
+                        >
+                          <svg
+                            width={W}
+                            height={H}
+                            viewBox={`0 0 ${p.size?.width ?? 595} ${p.size?.height ?? 842}`}
+                            className="rounded-sm"
+                            style={{ background: bg }}
+                          >
+                            {p.blocks.flatMap((b) =>
+                              b.overlays.map((o) => (
+                                <rect
+                                  key={o.id}
+                                  x={o.x}
+                                  y={o.y}
+                                  width={Math.max(o.width, 4)}
+                                  height={Math.max(o.height, 4)}
+                                  fill={o.type === 'text' ? '#94a3b8' : o.type === 'image' ? '#cbd5e1' : '#a78bfa'}
+                                  opacity={0.7}
+                                />
+                              )),
+                            )}
+                          </svg>
+                          <span className="text-[10px] text-muted-foreground leading-none">{i + 1}</span>
+                          {errCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] leading-none rounded-full min-w-[14px] h-[14px] px-1 flex items-center justify-center font-semibold">
+                              {errCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="flex-1 p-2 min-h-0">
                   {previewError ? (
                     <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center">
                       {previewError}
@@ -835,8 +910,98 @@ function TokensEditor({
     updateGroup(group, key, def as any);
   };
 
+  // ── Import / export tokens (share brand themes between templates) ──────────
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(tokens, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'brand-tokens.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success('Tokens exported');
+  };
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(tokens, null, 2));
+      toast.success('Tokens copied to clipboard');
+    } catch { toast.error('Copy failed'); }
+  };
+  const applyImport = (raw: unknown, mode: 'merge' | 'replace') => {
+    if (!raw || typeof raw !== 'object') {
+      toast.error('Invalid token JSON: expected an object');
+      return;
+    }
+    const incoming = raw as Partial<ReportTemplate['tokens']>;
+    const sanitised = {
+      colors: incoming.colors && typeof incoming.colors === 'object' ? incoming.colors : {},
+      fonts: incoming.fonts && typeof incoming.fonts === 'object' ? incoming.fonts : {},
+      spacing: incoming.spacing && typeof incoming.spacing === 'object' ? incoming.spacing : {},
+    };
+    if (mode === 'replace') {
+      onChange(sanitised as ReportTemplate['tokens']);
+    } else {
+      onChange({
+        colors: { ...tokens.colors, ...sanitised.colors },
+        fonts: { ...tokens.fonts, ...sanitised.fonts },
+        spacing: { ...tokens.spacing, ...sanitised.spacing },
+      });
+    }
+    const total =
+      Object.keys(sanitised.colors).length +
+      Object.keys(sanitised.fonts).length +
+      Object.keys(sanitised.spacing).length;
+    toast.success(`Imported ${total} token${total === 1 ? '' : 's'} (${mode})`);
+  };
+  const handleImportFile = (file: File) => {
+    const mode: 'merge' | 'replace' = window.confirm(
+      'Replace all existing tokens with the imported file?\n\nOK = Replace, Cancel = Merge (keep existing keys, overwrite matches).',
+    ) ? 'replace' : 'merge';
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { applyImport(JSON.parse(String(reader.result)), mode); }
+      catch (e: any) { toast.error(`Import failed: ${e?.message ?? 'invalid JSON'}`); }
+    };
+    reader.readAsText(file);
+  };
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      applyImport(JSON.parse(text), 'merge');
+    } catch (e: any) { toast.error(`Paste failed: ${e?.message ?? 'invalid JSON'}`); }
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2 pb-3 border-b">
+        <Label className="text-xs text-muted-foreground mr-auto">
+          Share brand themes between templates by exporting / importing this token set.
+        </Label>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleImportFile(f);
+            e.target.value = '';
+          }}
+        />
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+          <Upload className="h-3.5 w-3.5 mr-1" /> Import
+        </Button>
+        <Button size="sm" variant="outline" onClick={handlePaste} title="Import tokens from clipboard">
+          Paste
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleCopy}>
+          <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleExport}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Export
+        </Button>
+      </div>
       {(['colors', 'fonts', 'spacing'] as const).map((group) => {
         const entries = Object.entries(tokens[group] || {});
         return (

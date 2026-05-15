@@ -6,8 +6,9 @@ import {
   Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type,
   LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus,
   Hash, Columns2, MessageSquare, Images, ArrowUp, ArrowDown, QrCode, Tag, ListOrdered,
-  PenLine, Space,
+  PenLine, Space, GripVertical,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,9 @@ interface Props {
   onMovePage?: (id: string, dir: -1 | 1) => void;
   onAddBlock: (block: Block) => void;
   onAddOverlay: (overlay: Overlay) => void;
+  selectedBlockId?: string | null;
+  onSelectBlock?: (id: string | null) => void;
+  onReorderBlocks?: (fromIndex: number, toIndex: number) => void;
 }
 
 type PaletteItem = { label: string; icon: typeof Type; build: () => Block | { kind: 'overlay'; overlay: Overlay } };
@@ -123,7 +127,13 @@ export function PagesPanel({
   onMovePage,
   onAddBlock,
   onAddOverlay,
+  selectedBlockId,
+  onSelectBlock,
+  onReorderBlocks,
 }: Props) {
+  const activePage = template.pages.find((p) => p.id === activePageId) || null;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   return (
     <div className="flex flex-col h-full border-r bg-muted/20">
       {/* Pages */}
@@ -200,6 +210,74 @@ export function PagesPanel({
       </ScrollArea>
 
       <Separator />
+
+      {/* Blocks on active page (drag to reorder) */}
+      {activePage && (
+        <>
+          <div className="p-3 pb-1 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Blocks ({activePage.blocks.length})
+            </h3>
+            <span className="text-[10px] text-muted-foreground">drag to reorder</span>
+          </div>
+          <ScrollArea className="max-h-[28%]">
+            <div className="px-2 pb-2 space-y-0.5">
+              {activePage.blocks.length === 0 && (
+                <p className="text-[11px] text-muted-foreground text-center py-2 italic">No blocks yet</p>
+              )}
+              {activePage.blocks.map((b, i) => {
+                const isSel = selectedBlockId === b.id;
+                const isDragging = dragIndex === i;
+                const isDropTarget = dropIndex === i && dragIndex !== null && dragIndex !== i;
+                return (
+                  <div
+                    key={b.id}
+                    draggable={!!onReorderBlocks}
+                    onDragStart={(e) => {
+                      setDragIndex(i);
+                      e.dataTransfer.effectAllowed = 'move';
+                      try { e.dataTransfer.setData('text/plain', String(i)); } catch { /* noop */ }
+                    }}
+                    onDragOver={(e) => {
+                      if (dragIndex === null) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dropIndex !== i) setDropIndex(i);
+                    }}
+                    onDragLeave={() => { if (dropIndex === i) setDropIndex(null); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragIndex !== null && dragIndex !== i && onReorderBlocks) {
+                        onReorderBlocks(dragIndex, i);
+                      }
+                      setDragIndex(null);
+                      setDropIndex(null);
+                    }}
+                    onDragEnd={() => { setDragIndex(null); setDropIndex(null); }}
+                    onClick={() => onSelectBlock?.(b.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs cursor-pointer transition-colors',
+                      isSel
+                        ? 'bg-primary/10 text-primary border border-primary/30'
+                        : 'hover:bg-muted border border-transparent',
+                      isDragging && 'opacity-40',
+                      isDropTarget && 'border-primary border-dashed',
+                    )}
+                  >
+                    <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0 cursor-grab active:cursor-grabbing" />
+                    <span className="text-[10px] text-muted-foreground w-4">{i + 1}</span>
+                    <span className="flex-1 truncate font-mono">{b.type}</span>
+                    {b.overlays.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{b.overlays.length}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          <Separator />
+        </>
+      )}
 
       {/* Block library */}
       <div className="p-3">
