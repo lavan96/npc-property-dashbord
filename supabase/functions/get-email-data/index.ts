@@ -27,28 +27,41 @@ Deno.serve(async (req) => {
     // Action: fetch all emails for a mailbox
     if (action === 'list' || !action) {
       const mailboxFilter = mailbox_source || 'admin';
-      const limit = body.limit || 500;
+      const limit = body.limit || 200;
       const offset = body.offset || 0;
 
-      // Single query with limit+offset to avoid statement timeout
-      const { data, error } = await supabase
+      // Step 1: fetch emails WITHOUT join (uses idx_email_copilot_mailbox_received, fast)
+      const { data: emails, error } = await supabase
         .from('email_copilot_emails')
-        .select('*, clients:client_id(id, primary_first_name, primary_surname)')
+        .select('*')
         .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
 
-      // Flatten client data into client_name field
-      const enrichedData = (data || []).map((email: any) => {
-        const client = email.clients;
-        const clientName = client
-          ? `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim() || null
-          : null;
-        const { clients: _removed, ...rest } = email;
-        return { ...rest, client_name: clientName };
-      });
+      // Step 2: batch-fetch client names for the linked client_ids only
+      const clientIds = Array.from(
+        new Set((emails || []).map((e: any) => e.client_id).filter(Boolean))
+      );
+      let clientMap: Record<string, string> = {};
+      if (clientIds.length > 0) {
+        const { data: clientsData } = await supabase
+          .from('clients')
+          .select('id, primary_first_name, primary_surname')
+          .in('id', clientIds);
+        clientMap = Object.fromEntries(
+          (clientsData || []).map((c: any) => [
+            c.id,
+            `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim() || null,
+          ])
+        );
+      }
+
+      const enrichedData = (emails || []).map((email: any) => ({
+        ...email,
+        client_name: email.client_id ? clientMap[email.client_id] || null : null,
+      }));
 
       return new Response(
         JSON.stringify({ success: true, emails: enrichedData, hasMore: enrichedData.length === limit }),
