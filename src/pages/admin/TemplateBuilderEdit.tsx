@@ -462,6 +462,22 @@ export default function TemplateBuilderEdit() {
 
   // ── Command palette (⌘K) ────────────────────────────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
+
+  // Insert a snippet (from library / palette) into active page.
+  const insertSnippet = useCallback((snippetId: string) => {
+    const snip = getSnippet(snippetId);
+    if (!snip) return;
+    if (!activePage) { toast.error('No active page — add one first.'); return; }
+    const block = snip.build();
+    setTemplate((t) => ({
+      ...t,
+      pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
+    }));
+    setSelectedBlockId(block.id);
+    setSelectedOverlayId(null);
+    toast.success(`Inserted "${snip.label}"`);
+  }, [activePage, setTemplate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
