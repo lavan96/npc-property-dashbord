@@ -3032,7 +3032,7 @@ export default function EmailCopilot() {
               Cancel
             </Button>
             <Button 
-              onClick={handleSendEmail}
+              onClick={() => handleSendEmail()}
               disabled={isSendingEmail}
               className="bg-green-600 hover:bg-green-700"
             >
