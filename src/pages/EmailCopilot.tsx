@@ -7,6 +7,7 @@ import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/hooks/useAuth';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
 import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
@@ -213,6 +214,8 @@ function formatEmailBody(body: string): string {
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
   const { hasModuleAccess, canEdit: canEditModule, canDelete: canDeleteModule, loading: permissionsLoading } = usePermissions();
+  const { user, loading: authLoading, accessToken } = useAuth();
+  const isAuthReady = !authLoading && !!user && !!accessToken;
   const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -728,19 +731,21 @@ export default function EmailCopilot() {
     }
   };
 
-  // Re-fetch emails when mailbox changes
+  // Re-fetch emails when mailbox changes (gated on auth readiness to avoid 401s on cold start)
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchEmails();
     fetchSentReplies();
     // Reset selection when switching mailboxes
     setSelectedEmail(null);
     setSelectedSentReply(null);
-  }, [selectedMailbox]);
+  }, [selectedMailbox, isAuthReady]);
 
   useEffect(() => {
-    // Auto-sync from Outlook on page load
+    if (!isAuthReady) return;
+    // Auto-sync from Outlook on page load (after auth is ready)
     handleSyncOutlook();
-  }, []);
+  }, [isAuthReady]);
 
   const fetchSentReplies = async () => {
     try {
@@ -796,7 +801,7 @@ export default function EmailCopilot() {
     client_name: email.client_name || null,
   });
 
-  const fetchEmails = async () => {
+  const fetchEmails = async (attempt = 0) => {
     setIsLoading(true);
     try {
       const { data, error } = await invokeSecureFunction('get-email-data', {
@@ -806,7 +811,16 @@ export default function EmailCopilot() {
         offset: 0,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Auto-retry once for transient/auth-warmup failures (cold-start 401/5xx)
+        const msg = (error.message || '').toLowerCase();
+        const isTransient = msg.includes('auth') || msg.includes('unauthor') || msg.includes('http 5') || msg.includes('timed out') || msg.includes('network');
+        if (isTransient && attempt < 2) {
+          await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+          return fetchEmails(attempt + 1);
+        }
+        throw error;
+      }
       
       const typedEmails: Email[] = (data?.emails || []).map(mapEmailData);
       
