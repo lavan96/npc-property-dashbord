@@ -66,6 +66,7 @@ export default function TemplateBuilderEdit() {
   const [reportType, setReportType] = useState('');
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
+  const brand = useBrand();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
