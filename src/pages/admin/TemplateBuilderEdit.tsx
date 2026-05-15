@@ -675,6 +675,7 @@ export default function TemplateBuilderEdit() {
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
+          <TabsTrigger value="slots"><Component className="h-3.5 w-3.5 mr-1" /> Slots ({Object.keys(template.slots ?? {}).length})</TabsTrigger>
           <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
