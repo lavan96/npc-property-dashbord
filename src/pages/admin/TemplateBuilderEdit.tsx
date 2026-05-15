@@ -492,12 +492,51 @@ export default function TemplateBuilderEdit() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {bindingIssues.length > 0 ? (
-            <span
-              className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
-              title={bindingIssues.map((i) => `${i.where}: ${i.message}`).join('\n')}
-            >
-              ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-colors"
+                  title="Click to view binding issues"
+                >
+                  ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-96 p-0">
+                <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
+                  <span>Binding issues ({bindingIssues.length})</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Click to jump</span>
+                </div>
+                <ScrollArea className="max-h-72">
+                  <ul className="divide-y">
+                    {bindingIssues.map((iss, idx) => (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (iss.pageId) setActivePageId(iss.pageId);
+                            if (iss.overlayId) {
+                              setSelectedOverlayId(iss.overlayId);
+                              setSelectedBlockId(null);
+                            } else if (iss.blockId) {
+                              setSelectedBlockId(iss.blockId);
+                              setSelectedOverlayId(null);
+                            }
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
+                        >
+                          <div className="text-[11px] font-medium text-destructive truncate">{iss.message}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">{iss.where}</div>
+                          {iss.raw && (
+                            <code className="text-[10px] font-mono text-muted-foreground/80 truncate block">{iss.raw}</code>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
           ) : (
             <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/10 text-success border border-success/30">
               <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
