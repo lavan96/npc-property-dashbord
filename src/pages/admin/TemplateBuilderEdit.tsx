@@ -13,8 +13,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
-  ShieldAlert, Component, Sparkles,
+  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2,
 } from 'lucide-react';
+import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
+import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
+import { THEME_PRESETS, getThemePreset } from '@/lib/reportTemplate/themePresets';
+import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
+import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
