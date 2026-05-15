@@ -6,8 +6,9 @@ import {
   Plus, Copy, Trash2, FileText, Layers, Quote, Image as ImageIcon, Square, Type,
   LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus,
   Hash, Columns2, MessageSquare, Images, ArrowUp, ArrowDown, QrCode, Tag, ListOrdered,
-  PenLine, Space,
+  PenLine, Space, GripVertical,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,9 @@ interface Props {
   onMovePage?: (id: string, dir: -1 | 1) => void;
   onAddBlock: (block: Block) => void;
   onAddOverlay: (overlay: Overlay) => void;
+  selectedBlockId?: string | null;
+  onSelectBlock?: (id: string | null) => void;
+  onReorderBlocks?: (fromIndex: number, toIndex: number) => void;
 }
 
 type PaletteItem = { label: string; icon: typeof Type; build: () => Block | { kind: 'overlay'; overlay: Overlay } };
