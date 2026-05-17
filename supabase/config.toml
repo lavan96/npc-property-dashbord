@@ -398,7 +398,7 @@ verify_jwt = true
 request_timeout = 300
 
 [functions.get-email-data]
-verify_jwt = true
+verify_jwt = false
 
 [functions.backfill-investment-scores]
 verify_jwt = false
