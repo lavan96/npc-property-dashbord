@@ -32,7 +32,7 @@ verify_jwt = true
 request_timeout = 900
 
 [functions.outlook-email-sync]
-verify_jwt = true
+verify_jwt = false
 
 [functions.outlook-manage-subscription]
 verify_jwt = true
@@ -227,10 +227,10 @@ verify_jwt = true
 request_timeout = 300
 
 [functions.email-copilot]
-verify_jwt = true
+verify_jwt = false
 
 [functions.outlook-email-sync]
-verify_jwt = true
+verify_jwt = false
 
 [functions.email-sync-cron]
 verify_jwt = false
@@ -306,7 +306,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.admin-user-management]
-verify_jwt = true
+verify_jwt = false
 
 [functions.secure-storage]
 verify_jwt = true
@@ -398,7 +398,7 @@ verify_jwt = true
 request_timeout = 300
 
 [functions.get-email-data]
-verify_jwt = true
+verify_jwt = false
 
 [functions.backfill-investment-scores]
 verify_jwt = false
