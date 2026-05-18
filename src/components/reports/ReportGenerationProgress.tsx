@@ -123,9 +123,22 @@ function ReportGenerationProgressInner() {
     localStorage.setItem(POSITION_KEY, corner);
   }, [corner]);
 
-  /* Sync auto-continue settings (cross-tab + periodic) */
+  /* Sync auto-continue settings (cross-tab + periodic).
+     IMPORTANT: only update state when values actually change, otherwise the
+     new object identity invalidates downstream useCallbacks every 5s and the
+     polling effect's cleanup cancels every scheduled auto-retry before its
+     timer can fire. */
   useEffect(() => {
-    const refresh = () => setAutoContinueSettings(getAutoContinueSettings());
+    const refresh = () => {
+      const next = getAutoContinueSettings();
+      setAutoContinueSettings((prev) =>
+        prev.enabled === next.enabled &&
+        prev.maxRetries === next.maxRetries &&
+        prev.delaySeconds === next.delaySeconds
+          ? prev
+          : next
+      );
+    };
     const interval = setInterval(refresh, 5000);
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'dashboard-settings') refresh();
