@@ -11071,6 +11071,120 @@ export type Database = {
         }
         Relationships: []
       }
+      token_audit_log: {
+        Row: {
+          agency_ref: string
+          available_tokens: number
+          created_at: string
+          error_message: string | null
+          event: string
+          function_name: string | null
+          id: string
+          idempotency_key: string
+          job_id: string | null
+          kind: string | null
+          reason: string | null
+          request_payload: Json | null
+          requested_tokens: number
+          reserved_tokens: number
+          status: string | null
+          used_tokens: number
+          user_id: string | null
+        }
+        Insert: {
+          agency_ref: string
+          available_tokens?: number
+          created_at?: string
+          error_message?: string | null
+          event: string
+          function_name?: string | null
+          id?: string
+          idempotency_key: string
+          job_id?: string | null
+          kind?: string | null
+          reason?: string | null
+          request_payload?: Json | null
+          requested_tokens?: number
+          reserved_tokens?: number
+          status?: string | null
+          used_tokens?: number
+          user_id?: string | null
+        }
+        Update: {
+          agency_ref?: string
+          available_tokens?: number
+          created_at?: string
+          error_message?: string | null
+          event?: string
+          function_name?: string | null
+          id?: string
+          idempotency_key?: string
+          job_id?: string | null
+          kind?: string | null
+          reason?: string | null
+          request_payload?: Json | null
+          requested_tokens?: number
+          reserved_tokens?: number
+          status?: string | null
+          used_tokens?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      token_usage_history: {
+        Row: {
+          actual_tokens: number
+          agency_ref: string
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          estimated_tokens: number
+          function_name: string
+          id: string
+          idempotency_key: string
+          job_id: string | null
+          kind: string
+          request_payload: Json | null
+          reserved_tokens: number
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          actual_tokens?: number
+          agency_ref: string
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          estimated_tokens?: number
+          function_name: string
+          id?: string
+          idempotency_key: string
+          job_id?: string | null
+          kind: string
+          request_payload?: Json | null
+          reserved_tokens?: number
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          actual_tokens?: number
+          agency_ref?: string
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          estimated_tokens?: number
+          function_name?: string
+          id?: string
+          idempotency_key?: string
+          job_id?: string | null
+          kind?: string
+          request_payload?: Json | null
+          reserved_tokens?: number
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transport_data_cache: {
         Row: {
           created_at: string
