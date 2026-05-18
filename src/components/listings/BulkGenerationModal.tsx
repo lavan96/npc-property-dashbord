@@ -183,7 +183,8 @@ export function BulkGenerationModal({
         metadata: { 
           propertyCount: selectedProperties.length,
           background,
-          addresses: properties.map(p => p.address).slice(0, 5) // First 5 addresses
+          addresses: properties.map(p => p.address),
+          propertyIds: properties.map(p => p.id),
         }
       });
       
