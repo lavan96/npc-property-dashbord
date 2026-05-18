@@ -806,6 +806,7 @@ export default function ReportQA() {
         documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
         comparisonMode: !!m.comparison_mode,
         toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+        pinned: !!m.pinned,
       }));
 
       // Prepend older messages, deduplicating by id
