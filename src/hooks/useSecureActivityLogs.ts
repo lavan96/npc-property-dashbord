@@ -15,21 +15,32 @@ export interface ActivityLog {
   created_at: string;
 }
 
+export interface ActivityStats {
+  eventsToday: number;
+  uniqueUsers: number;
+  topAction: { type: string; count: number } | null;
+  failures: number;
+  sampleSize: number;
+  sampleCapped: boolean;
+}
+
 interface FetchLogsOptions {
-  actionFilter?: string;
-  entityFilter?: string;
-  userFilter?: string;
-  startDate?: string; // ISO
-  endDate?: string;   // ISO
-  page?: number;      // 1-based
+  actionFilter?: string | string[];
+  entityFilter?: string | string[];
+  userFilter?: string | string[];
+  startDate?: string;
+  endDate?: string;
+  page?: number;
   pageSize?: number;
-  limit?: number;     // legacy
+  limit?: number;
+  includeStats?: boolean;
 }
 
 interface FetchLogsResult {
   logs: ActivityLog[];
   uniqueUsers: string[];
   total: number;
+  stats: ActivityStats | null;
   error: string | null;
 }
 
@@ -49,27 +60,29 @@ export function useSecureActivityLogs() {
         page: options.page,
         page_size: options.pageSize,
         limit: options.limit,
+        include_stats: options.includeStats !== false,
       });
 
       if (error) {
         console.error('[useSecureActivityLogs] Edge function error:', error);
-        return { logs: [], uniqueUsers: [], total: 0, error: error.message };
+        return { logs: [], uniqueUsers: [], total: 0, stats: null, error: error.message };
       }
 
       if (!data?.success) {
         const errorMsg = data?.error || 'Failed to fetch activity logs';
-        return { logs: [], uniqueUsers: [], total: 0, error: errorMsg };
+        return { logs: [], uniqueUsers: [], total: 0, stats: null, error: errorMsg };
       }
 
       return {
         logs: data.logs as ActivityLog[],
         uniqueUsers: data.uniqueUsers as string[],
         total: (data.total as number) ?? (data.logs?.length ?? 0),
+        stats: (data.stats as ActivityStats) ?? null,
         error: null,
       };
     } catch (error) {
       console.error('[useSecureActivityLogs] Unexpected error:', error);
-      return { logs: [], uniqueUsers: [], total: 0, error: 'Failed to fetch activity logs' };
+      return { logs: [], uniqueUsers: [], total: 0, stats: null, error: 'Failed to fetch activity logs' };
     } finally {
       setLoading(false);
     }
