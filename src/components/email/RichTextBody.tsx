@@ -620,24 +620,17 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
                 );
               }
               
-              // Regular paragraph - join lines intelligently
-              const isMultiLine = group.lines.length > 1;
-              const shouldJoinLines = group.lines.every(l => l.trim().length < 80);
-              
+              // Regular paragraph — always preserve line breaks so structure
+              // from Outlook (<br>, <p>, address blocks, sign-offs) cascades
+              // correctly into the dashboard instead of being flattened.
               return (
-                <p key={gIndex} className={`${textSize} text-foreground leading-relaxed`}>
-                  {shouldJoinLines && isMultiLine ? (
-                    // Join short lines into flowing text
-                    <RichTextSpan text={group.lines.map(l => l.trim()).join(' ')} />
-                  ) : (
-                    // Keep line breaks for longer content
-                    group.lines.map((line, lIndex) => (
-                      <React.Fragment key={lIndex}>
-                        <RichTextSpan text={line} />
-                        {lIndex < group.lines.length - 1 && <br />}
-                      </React.Fragment>
-                    ))
-                  )}
+                <p key={gIndex} className={`${textSize} text-foreground leading-relaxed whitespace-pre-wrap`}>
+                  {group.lines.map((line, lIndex) => (
+                    <React.Fragment key={lIndex}>
+                      <RichTextSpan text={line} />
+                      {lIndex < group.lines.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
                 </p>
               );
             })}
