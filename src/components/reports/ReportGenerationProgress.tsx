@@ -112,6 +112,8 @@ function ReportGenerationProgressInner() {
   const lastSectionsRef = useRef<Map<string, number>>(new Map());
   const previousReportIdsRef = useRef<Set<string>>(new Set());
   const prevReportsRef = useRef<ReportProgress[]>([]);
+  /* IDs cancelled by the user — skip finalizeJob to avoid overwriting the 'cancelled' history entry */
+  const cancelledIdsRef = useRef<Set<string>>(new Set());
 
   /* Persist collapsed + corner */
   useEffect(() => {
