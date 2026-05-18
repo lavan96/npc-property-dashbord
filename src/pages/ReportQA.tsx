@@ -2237,7 +2237,7 @@ export default function ReportQA() {
                     );
                     
                     return (
-                      <div key={message.id} className="w-full">
+                      <div key={message.id} id={`qa-msg-${message.id}`} className="w-full scroll-mt-24 transition-shadow rounded-lg">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
                         <div className={cn(
                           "flex gap-2 sm:gap-3 w-full",
