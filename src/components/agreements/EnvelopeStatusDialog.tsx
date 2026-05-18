@@ -117,15 +117,23 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-3 pr-8">
+          <DialogTitle className="flex items-center justify-between gap-3 pr-8 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
               <FileText className="h-5 w-5 text-primary shrink-0" />
               <span className="truncate">{title || 'Envelope Status'}</span>
             </span>
-            <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1 shrink-0">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {envelope?.status === 'completed' && (
+                <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="gap-1">
+                  {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download Signed PDF
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh
+              </Button>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
