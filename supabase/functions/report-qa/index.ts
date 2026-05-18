@@ -1738,6 +1738,19 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               } catch (fuErr) {
                 console.warn('[report-qa] Follow-up generation failed (non-fatal):', fuErr);
               }
+
+              // Phase 3.3 — extract durable client memories (fire-and-forget).
+              if (conversationClientId && assistantText && assistantText.length > 60 && LOVABLE_API_KEY) {
+                extractAndStoreClientMemory({
+                  supabase,
+                  clientId: conversationClientId,
+                  conversationId: conversationId || null,
+                  userId: userId || null,
+                  question: String(question || ''),
+                  answer: assistantText,
+                  lovableApiKey: LOVABLE_API_KEY,
+                }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
+              }
               controller.close();
               // Best-effort: mark checkpoint complete
               supabase.from('report_qa_stream_checkpoints')
