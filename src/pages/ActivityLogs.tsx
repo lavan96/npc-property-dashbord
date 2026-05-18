@@ -816,155 +816,65 @@ export default function ActivityLogs() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[640px]">
-            {loading ? (
-              <div className="space-y-3 p-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-[260px]" />
-                      <Skeleton className="h-3 w-[180px]" />
-                    </div>
+          {loading ? (
+            <div className="space-y-3 p-2 h-[640px]">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[260px]" />
+                    <Skeleton className="h-3 w-[180px]" />
                   </div>
-                ))}
-              </div>
-            ) : filteredLogs.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">No activity logs found</p>
-                {hasActiveFilters && (
-                  <Button variant="link" size="sm" onClick={clearFilters} className="mt-2">
-                    Clear filters
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* Mobile */}
-                <div className="sm:hidden space-y-4">
-                  {grouped.map(group => (
-                    <div key={group.key} className="space-y-2">
-                      <div className="sticky top-0 z-10 -mx-1 px-1 py-1 bg-background/95 backdrop-blur text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {group.label}
-                      </div>
-                      <div className="divide-y divide-border">
-                        {group.rows.map(log => {
-                          const cfg = getActionConfig(log.action_type);
-                          return (
-                            <button
-                              key={log.id}
-                              type="button"
-                              onClick={() => handleRowClick(log)}
-                              className={cn(
-                                'w-full text-left flex gap-3 items-start hover:bg-muted/40 transition-colors rounded-md px-2',
-                                compact ? 'py-2' : 'py-3'
-                              )}
-                            >
-                              <span className={cn('mt-1 w-1 self-stretch rounded-full', SEVERITY_BAR[cfg.tone])} />
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-muted-foreground shrink-0">{getEntityIcon(log.entity_type)}</span>
-                                    <span className="font-medium text-sm truncate">
-                                      {log.entity_name || log.entity_type.replace(/_/g, ' ')}
-                                    </span>
-                                  </div>
-                                  {getActionBadge(log.action_type)}
-                                </div>
-                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                  <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{log.username || 'Unknown'}</span>
-                                  <span className="font-mono">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
                 </div>
+              ))}
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground h-[640px] flex flex-col items-center justify-center">
+              <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">No activity logs found</p>
+              {hasActiveFilters && (
+                <Button variant="link" size="sm" onClick={clearFilters} className="mt-2">
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Mobile — virtualized */}
+              <div className="sm:hidden">
+                <VirtualLogList
+                  items={flatItems}
+                  variant="mobile"
+                  compact={compact}
+                  onRowClick={handleRowClick}
+                  getActionConfig={getActionConfig}
+                  getActionBadge={getActionBadge}
+                  getEntityIcon={getEntityIcon}
+                />
+              </div>
 
-                {/* Desktop */}
-                <div className="hidden sm:block">
-                  <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur">
-                      <TableRow>
-                        <TableHead className="w-[180px]">Timestamp</TableHead>
-                        <TableHead className="w-[140px]">User</TableHead>
-                        <TableHead className="w-[180px]">Action</TableHead>
-                        <TableHead>Entity</TableHead>
-                        <TableHead className="w-[130px]">IP Address</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {grouped.map(group => (
-                        <Fragment key={group.key}>
-                          <TableRow className="hover:bg-transparent border-b-0">
-                            <TableCell colSpan={5} className="py-2 px-4 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              {group.label}
-                              <span className="ml-2 text-muted-foreground/70 normal-case font-normal">
-                                · {group.rows.length} {group.rows.length === 1 ? 'event' : 'events'}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                          {group.rows.map(log => {
-                            const cfg = getActionConfig(log.action_type);
-                            const href = entityHref(log.entity_type, log.entity_id);
-                            return (
-                              <TableRow
-                                key={log.id}
-                                className="cursor-pointer relative"
-                                onClick={() => handleRowClick(log)}
-                              >
-                                <TableCell className={cn('font-mono text-xs relative', cellPad)}>
-                                  <span className={cn('absolute left-0 top-2 bottom-2 w-0.5 rounded-r', SEVERITY_BAR[cfg.tone])} />
-                                  <div className="pl-2">
-                                    <div>{format(new Date(log.created_at), 'HH:mm:ss')}</div>
-                                    {!compact && (
-                                      <div className="text-muted-foreground">
-                                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                                      </div>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className={cellPad}>
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-medium text-sm">{log.username || 'Unknown'}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className={cellPad}>{getActionBadge(log.action_type)}</TableCell>
-                                <TableCell className={cellPad}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground">{getEntityIcon(log.entity_type)}</span>
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-medium truncate max-w-[360px] flex items-center gap-1.5">
-                                        {log.entity_name || log.entity_type.replace(/_/g, ' ')}
-                                        {href && <ExternalLink className="h-3 w-3 text-muted-foreground/70" />}
-                                      </div>
-                                      {!compact && log.entity_id && (
-                                        <div className="text-xs text-muted-foreground font-mono">
-                                          {log.entity_id.slice(0, 8)}…
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className={cn('text-xs font-mono text-muted-foreground', cellPad)}>
-                                  {log.ip_address || '-'}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
+              {/* Desktop — virtualized */}
+              <div className="hidden sm:block">
+                {/* Sticky column header */}
+                <div className="sticky top-0 z-10 bg-card/95 backdrop-blur border border-border/60 rounded-t-md grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 h-12 items-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <div>Timestamp</div>
+                  <div>User</div>
+                  <div>Action</div>
+                  <div>Entity</div>
+                  <div>IP Address</div>
                 </div>
-              </>
-            )}
-          </ScrollArea>
+                <VirtualLogList
+                  items={flatItems}
+                  variant="desktop"
+                  compact={compact}
+                  onRowClick={handleRowClick}
+                  getActionConfig={getActionConfig}
+                  getActionBadge={getActionBadge}
+                  getEntityIcon={getEntityIcon}
+                />
+              </div>
+            </>
+          )}
 
           {/* Pagination */}
           {!loading && total > 0 && (
