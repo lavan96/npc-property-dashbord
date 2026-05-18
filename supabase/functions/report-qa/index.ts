@@ -869,8 +869,15 @@ Deno.serve(async (req) => {
       let summaryContext = "";
       let ragContext = "";
       let hasRagContext = false;
+      // Hold onto retrieved chunks so we can build paragraph-level citations
+      // and return them to the client alongside the answer.
+      let retrievedChunksForCitations: RetrievedChunk[] = [];
       const hasReports = (reportContents && reportContents.length > 0);
       const isMultiReport = reportContents && reportContents.length > 1;
+      // Comparison mode is enabled when the user has selected ≥2 reports.
+      // It drives both prompt selection and a UI badge on the answer.
+      const comparisonMode = !!isMultiReport ||
+        (Array.isArray(reportNames) && reportNames.length > 1);
 
       // Try RAG-based context assembly first
       if (conversationId && OPENAI_API_KEY) {
@@ -901,10 +908,11 @@ Deno.serve(async (req) => {
               0.5, // Lower threshold for broader matches
               12   // More chunks for comprehensive context
             );
-            
+
             if (relevantChunks.length > 0) {
               ragContext = formatRetrievedContext(relevantChunks);
               hasRagContext = true;
+              retrievedChunksForCitations = relevantChunks;
               console.log(`[report-qa] RAG retrieved ${relevantChunks.length} relevant chunks`);
             }
           } catch (ragError) {
