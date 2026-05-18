@@ -45,6 +45,7 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
   });
   const [signingDoc, setSigningDoc] = useState<GeneratedDocument | null>(null);
   const [signingPdfUrl, setSigningPdfUrl] = useState('');
+  const [statusDoc, setStatusDoc] = useState<GeneratedDocument | null>(null);
 
   const openPrepareForSigning = async (d: GeneratedDocument) => {
     if (!d.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
