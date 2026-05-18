@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
 // pdf-lib removed: we now ship the Gamma PDF as-is with embedded anchor tokens.
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
