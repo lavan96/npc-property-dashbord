@@ -1,8 +1,8 @@
 // Report metering middleware.
 // Wraps an edge function handler with Mission Control reserve → run → commit/cancel.
-// Adds `tokensUsed` to JSON responses and an `x-tokens-used` header.
-// Translates `insufficient_funds` to HTTP 402 with a structured body the
-// frontend can detect uniformly.
+// Adds tokensUsed/tokensReserved/estimatedTokens/durationMs to JSON responses
+// and matching x-* headers. Logs every reserve/commit/cancel event to
+// token_audit_log and a final outcome row to token_usage_history.
 
 import {
   reserveTokens,
@@ -10,6 +10,7 @@ import {
   cancelTokens,
   InsufficientTokensError,
   MissionControlError,
+  AGENCY_TENANT_REF,
   type ReserveResult,
   type TokenKind,
 } from "./missionControl.ts";
@@ -17,15 +18,18 @@ import { estimateTokens, fallbackActual, type EstimateOptions } from "./tokenEst
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "./auth.ts";
 
-/** Resolve the calling user from session/JWT. For internal service-role calls,
- *  falls back to body.userId / body.created_by so the bulk worker still meters. */
+function adminClient() {
+  const url = (Deno.env.get("SUPABASE_URL") || "").trim();
+  const key = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
 export async function resolveUserId(req: Request, body: any): Promise<string | null> {
   try {
-    const url = (Deno.env.get("SUPABASE_URL") || "").trim();
-    const key = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
-    if (!url || !key) return null;
-    const supabase = createClient(url, key);
-    const { userId } = await verifyAuth(supabase, req.headers, body);
+    const client = adminClient();
+    if (!client) return null;
+    const { userId } = await verifyAuth(client, req.headers, body);
     if (userId === "service_role") return body?.userId || body?.created_by || body?.user_id || null;
     return userId || null;
   } catch (e) {
@@ -40,8 +44,8 @@ export interface MeteringPlan {
   idempotencyKey: string;
   estimateOptions?: EstimateOptions;
   requestPayload?: Record<string, unknown>;
-  /** Optional explicit estimate override (skips estimator). */
   estimatedTokensOverride?: number;
+  functionName?: string;
 }
 
 export type PlanResolver = (
@@ -59,15 +63,30 @@ function corsFor(req: Request) {
   return origin ? { ...baseCors, "Access-Control-Allow-Origin": origin } : baseCors;
 }
 
-/** Clone a request with a re-serialised body so downstream `req.json()` still works. */
 function rebuildRequest(req: Request, body: any): Request {
   if (body === undefined) return req;
   const headers = new Headers(req.headers);
-  return new Request(req.url, {
-    method: req.method,
-    headers,
-    body: JSON.stringify(body),
-  });
+  return new Request(req.url, { method: req.method, headers, body: JSON.stringify(body) });
+}
+
+async function logAudit(row: Record<string, unknown>) {
+  try {
+    const client = adminClient();
+    if (!client) return;
+    await client.from("token_audit_log").insert(row);
+  } catch (e) {
+    console.warn("[reportMetering] audit log failed", e);
+  }
+}
+
+async function logUsage(row: Record<string, unknown>) {
+  try {
+    const client = adminClient();
+    if (!client) return;
+    await client.from("token_usage_history").insert(row);
+  } catch (e) {
+    console.warn("[reportMetering] usage log failed", e);
+  }
 }
 
 export function withReportMetering(
@@ -75,39 +94,38 @@ export function withReportMetering(
   handler: (req: Request) => Promise<Response>,
 ): (req: Request) => Promise<Response> {
   return async (req: Request) => {
-    if (req.method === "OPTIONS") {
-      return handler(req);
-    }
+    if (req.method === "OPTIONS") return handler(req);
 
-    // Read body once, then rebuild request so handler can re-parse it.
     let body: any = undefined;
     try {
       const text = await req.text();
       body = text ? JSON.parse(text) : undefined;
-    } catch {
-      body = undefined;
-    }
+    } catch { body = undefined; }
     const forwardReq = rebuildRequest(req, body);
     const cors = corsFor(req);
 
     let plan: MeteringPlan | null = null;
-    try {
-      plan = await resolvePlan(body, req);
-    } catch (e) {
+    try { plan = await resolvePlan(body, req); }
+    catch (e) {
       console.warn("[reportMetering] plan resolver threw, bypassing metering", e);
       plan = null;
     }
 
-    // No plan (anonymous, missing fields, resolver opted out) → run unmetered.
     if (!plan || !plan.userId || !plan.idempotencyKey) {
       return handler(forwardReq);
     }
+
+    const functionName = plan.functionName || (() => {
+      try { return new URL(req.url).pathname.split("/").filter(Boolean).pop() || "unknown"; }
+      catch { return "unknown"; }
+    })();
 
     const estimated =
       plan.estimatedTokensOverride && plan.estimatedTokensOverride > 0
         ? plan.estimatedTokensOverride
         : estimateTokens(plan.kind, plan.estimateOptions);
 
+    const startedAt = Date.now();
     let reservation: ReserveResult | null = null;
     try {
       reservation = await reserveTokens({
@@ -117,8 +135,47 @@ export function withReportMetering(
         userId: plan.userId,
         requestPayload: plan.requestPayload,
       });
+      await logAudit({
+        event: "reserve",
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        job_id: reservation.jobId,
+        requested_tokens: estimated,
+        reserved_tokens: reservation.reserved,
+        available_tokens: reservation.available,
+        status: "ok",
+        request_payload: plan.requestPayload ?? null,
+      });
     } catch (e) {
       if (e instanceof InsufficientTokensError) {
+        await logAudit({
+          event: "reserve",
+          user_id: plan.userId,
+          agency_ref: AGENCY_TENANT_REF,
+          function_name: functionName,
+          kind: plan.kind,
+          idempotency_key: plan.idempotencyKey,
+          requested_tokens: estimated,
+          available_tokens: e.available,
+          status: "insufficient_funds",
+          error_message: e.message,
+          request_payload: plan.requestPayload ?? null,
+        });
+        await logUsage({
+          user_id: plan.userId,
+          agency_ref: AGENCY_TENANT_REF,
+          function_name: functionName,
+          kind: plan.kind,
+          idempotency_key: plan.idempotencyKey,
+          estimated_tokens: estimated,
+          status: "insufficient_funds",
+          error_message: e.message,
+          duration_ms: Date.now() - startedAt,
+          request_payload: plan.requestPayload ?? null,
+        });
         return new Response(
           JSON.stringify({
             success: false,
@@ -133,7 +190,6 @@ export function withReportMetering(
         );
       }
       if (e instanceof MissionControlError && e.code === "unconfigured") {
-        // Mission Control not yet wired — proceed without metering so the app stays functional.
         console.warn("[reportMetering] Mission Control unconfigured — bypassing");
         return handler(forwardReq);
       }
@@ -145,59 +201,139 @@ export function withReportMetering(
     try {
       response = await handler(forwardReq);
     } catch (err) {
-      await cancelTokens(
-        reservation!.jobId,
-        err instanceof Error ? err.message : "handler_threw",
-      );
+      const msg = err instanceof Error ? err.message : "handler_threw";
+      await cancelTokens(reservation!.jobId, msg);
+      await logAudit({
+        event: "cancel",
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        job_id: reservation!.jobId,
+        reserved_tokens: reservation!.reserved,
+        status: "error",
+        reason: msg,
+        error_message: msg,
+      });
+      await logUsage({
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        estimated_tokens: estimated,
+        reserved_tokens: reservation!.reserved,
+        status: "failed",
+        error_message: msg,
+        duration_ms: Date.now() - startedAt,
+        job_id: reservation!.jobId,
+      });
       throw err;
     }
 
+    const durationMs = Date.now() - startedAt;
     const ok = response.ok;
     const headerUsedRaw = response.headers.get("x-mc-tokens-used");
     const headerUsed = headerUsedRaw ? Number(headerUsedRaw) : 0;
-    const actual =
-      headerUsed > 0 ? Math.ceil(headerUsed) : fallbackActual(estimated, ok);
+    const actual = headerUsed > 0 ? Math.ceil(headerUsed) : fallbackActual(estimated, ok);
 
     if (!ok) {
       await cancelTokens(reservation!.jobId, `handler_status_${response.status}`);
+      await logAudit({
+        event: "cancel",
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        job_id: reservation!.jobId,
+        reserved_tokens: reservation!.reserved,
+        status: "error",
+        reason: `status_${response.status}`,
+      });
+      await logUsage({
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        estimated_tokens: estimated,
+        reserved_tokens: reservation!.reserved,
+        status: "failed",
+        error_message: `handler_status_${response.status}`,
+        duration_ms: durationMs,
+        job_id: reservation!.jobId,
+      });
       return response;
     }
 
     try {
       await commitTokens(reservation!.jobId, actual);
+      await logAudit({
+        event: "commit",
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        job_id: reservation!.jobId,
+        reserved_tokens: reservation!.reserved,
+        used_tokens: actual,
+        status: "ok",
+      });
     } catch (e) {
       console.error("[reportMetering] commit failed", e);
     }
 
-    // Inject tokensUsed into JSON responses for the frontend indicator.
+    await logUsage({
+      user_id: plan.userId,
+      agency_ref: AGENCY_TENANT_REF,
+      function_name: functionName,
+      kind: plan.kind,
+      idempotency_key: plan.idempotencyKey,
+      estimated_tokens: estimated,
+      reserved_tokens: reservation!.reserved,
+      actual_tokens: actual,
+      duration_ms: durationMs,
+      status: "success",
+      job_id: reservation!.jobId,
+      request_payload: plan.requestPayload ?? null,
+    });
+
+    const usageMeta = {
+      tokensUsed: actual,
+      tokensReserved: reservation!.reserved,
+      estimatedTokens: estimated,
+      durationMs,
+    };
+
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       try {
         const json = await response.clone().json();
         const merged =
           json && typeof json === "object" && !Array.isArray(json)
-            ? { ...json, tokensUsed: actual, tokensReserved: estimated }
-            : { data: json, tokensUsed: actual, tokensReserved: estimated };
+            ? { ...json, ...usageMeta }
+            : { data: json, ...usageMeta };
         const headers = new Headers(response.headers);
         headers.set("x-tokens-used", String(actual));
-        headers.set("x-tokens-reserved", String(estimated));
-        return new Response(JSON.stringify(merged), {
-          status: response.status,
-          headers,
-        });
-      } catch {
-        // fall through and return original
-      }
+        headers.set("x-tokens-reserved", String(reservation!.reserved));
+        headers.set("x-tokens-estimated", String(estimated));
+        headers.set("x-duration-ms", String(durationMs));
+        return new Response(JSON.stringify(merged), { status: response.status, headers });
+      } catch { /* fall through */ }
     }
 
     const headers = new Headers(response.headers);
     headers.set("x-tokens-used", String(actual));
-    headers.set("x-tokens-reserved", String(estimated));
+    headers.set("x-tokens-reserved", String(reservation!.reserved));
+    headers.set("x-tokens-estimated", String(estimated));
+    headers.set("x-duration-ms", String(durationMs));
     return new Response(response.body, { status: response.status, headers });
   };
 }
 
-/** Build a deterministic idempotency key for a generator. */
 export function buildIdempotencyKey(
   prefix: string,
   parts: Array<string | number | null | undefined>,
