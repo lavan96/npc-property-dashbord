@@ -565,32 +565,59 @@ export interface RetrievedChunk {
   page_number?: number | null;
 }
 
+export interface RetrieveFilters {
+  documentNames?: string[];
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  reportType?: string;
+  semanticWeight?: number;
+  keywordWeight?: number;
+}
+
 async function retrieveRelevantChunks(
   supabase: any,
   query: string,
   openaiApiKey: string,
   conversationId?: string,
-  matchThreshold = 0.7,
-  matchCount = 5
+  matchThreshold = 0.5,
+  matchCount = 12,
+  filters?: RetrieveFilters
 ): Promise<RetrievedChunk[]> {
-  console.log(`[RAG] Retrieving relevant chunks for query: "${query.substring(0, 50)}..."`);
+  console.log(`[RAG] Hybrid retrieval for query: "${query.substring(0, 50)}..."`);
 
   try {
     const queryEmbedding = await generateEmbedding(query, openaiApiKey);
 
-    const { data, error } = await supabase.rpc('match_document_chunks', {
+    const { data, error } = await supabase.rpc('match_document_chunks_hybrid', {
       query_embedding: JSON.stringify(queryEmbedding),
+      query_text: query,
       match_conversation_id: conversationId || null,
+      match_document_names: filters?.documentNames ?? null,
+      match_suburb: filters?.suburb ?? null,
+      match_state: filters?.state ?? null,
+      match_postcode: filters?.postcode ?? null,
+      match_report_type: filters?.reportType ?? null,
       match_threshold: matchThreshold,
       match_count: matchCount,
+      semantic_weight: filters?.semanticWeight ?? 0.7,
+      keyword_weight: filters?.keywordWeight ?? 0.3,
     });
 
     if (error) {
-      console.error(`[RAG] Similarity search error:`, error);
-      throw error;
+      console.error(`[RAG] Hybrid search error, falling back to semantic-only:`, error);
+      // Fallback to legacy semantic-only RPC if hybrid not available
+      const { data: legacy, error: legacyErr } = await supabase.rpc('match_document_chunks', {
+        query_embedding: JSON.stringify(queryEmbedding),
+        match_conversation_id: conversationId || null,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+      });
+      if (legacyErr) throw legacyErr;
+      return legacy || [];
     }
 
-    console.log(`[RAG] Found ${data?.length || 0} relevant chunks`);
+    console.log(`[RAG] Hybrid found ${data?.length || 0} chunks (top score: ${data?.[0]?.hybrid_score?.toFixed(3) ?? 'n/a'})`);
     return data || [];
   } catch (error) {
     console.error(`[RAG] Failed to retrieve chunks:`, error);
