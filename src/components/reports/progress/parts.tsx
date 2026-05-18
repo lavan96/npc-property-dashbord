@@ -40,6 +40,7 @@ import {
   History as HistoryIcon,
   Loader2,
   MoreVertical,
+  Octagon,
   PauseCircle,
   PlayCircle,
   RefreshCw,
