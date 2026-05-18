@@ -178,9 +178,9 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/<div[^>]*>/gi, '');
   text = text.replace(/<br\s*\/?>/gi, '\n');
   text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n$1\n\n');
-  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '$2');
-  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '$2');
-  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '$2');
+  text = text.replace(/<(b|strong)[^>]*>([\s\S]*?)<\/(b|strong)>/gi, (_m, _t, content) => `**${String(content).trim()}**`);
+  text = text.replace(/<(i|em)[^>]*>([\s\S]*?)<\/(i|em)>/gi, (_m, _t, content) => `_${String(content).trim()}_`);
+  text = text.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, (_m, content) => `<u>${String(content).trim()}</u>`);
   text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
   text = text.replace(/<\/?[ou]l[^>]*>/gi, '\n');
   text = text.replace(/<tr[^>]*>/gi, '');
