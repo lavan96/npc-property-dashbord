@@ -27,7 +27,7 @@ import {
   Download, Filter, X, Users, Handshake, FileUp, StickyNote,
   CalendarIcon, ClipboardCheck, DatabaseIcon, ChevronLeft, ChevronRight,
   ExternalLink, Copy, Bookmark, BookmarkPlus, Trash2, AlertTriangle,
-  Sparkles, Rows3, Rows2, ChevronDown,
+  Sparkles, Rows3, Rows2, ChevronDown, Radio, Info,
 } from 'lucide-react';
 
 type ActionTone = 'success' | 'warning' | 'destructive' | 'info' | 'accent' | 'neutral';
