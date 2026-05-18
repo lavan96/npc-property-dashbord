@@ -1534,17 +1534,93 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         const composedStream = new ReadableStream({
           async start(controller) {
             const encoder = new TextEncoder();
+            const decoder = new TextDecoder();
             controller.enqueue(encoder.encode(metaLine));
             const reader = trackedStream.getReader();
+            // Capture assistant content as it streams so we can generate
+            // contextual follow-up suggestions once the answer completes.
+            let assistantText = '';
+            let parseBuf = '';
             try {
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 controller.enqueue(value);
+                try {
+                  parseBuf += decoder.decode(value, { stream: true });
+                  let nl: number;
+                  while ((nl = parseBuf.indexOf('\n')) !== -1) {
+                    const line = parseBuf.slice(0, nl).replace(/\r$/, '');
+                    parseBuf = parseBuf.slice(nl + 1);
+                    if (!line.startsWith('data: ')) continue;
+                    const payload = line.slice(6).trim();
+                    if (!payload || payload === '[DONE]') continue;
+                    try {
+                      const j = JSON.parse(payload);
+                      const c = j?.choices?.[0]?.delta?.content;
+                      if (typeof c === 'string') assistantText += c;
+                    } catch { /* partial json — ignore */ }
+                  }
+                } catch { /* peek is best-effort */ }
               }
             } catch (err) {
               console.error('[report-qa] Stream pipe error:', err);
             } finally {
+              // Phase 2.4 — generate 3 AI follow-up suggestions and emit as
+              // a `_followups` SSE event. Best-effort: any failure is logged
+              // and swallowed so it never blocks closing the stream.
+              try {
+                if (assistantText && assistantText.length > 40 && LOVABLE_API_KEY) {
+                  const reportLine = Array.isArray(reportNames) && reportNames.length
+                    ? `Reports: ${reportNames.slice(0, 5).join(', ')}`
+                    : 'No reports attached.';
+                  const fuResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      model: 'google/gemini-2.5-flash',
+                      max_tokens: 220,
+                      messages: [
+                        {
+                          role: 'system',
+                          content:
+                            'You generate exactly 3 short, specific, distinct follow-up questions an Australian property advisor would naturally ask next, based on the user\'s question and the assistant\'s answer. Each question must be ≤90 chars, end with "?", and reference a concrete topic from the answer (numbers, suburbs, risks, scenarios). Respond ONLY with a JSON array of 3 strings — no prose, no markdown.',
+                        },
+                        {
+                          role: 'user',
+                          content: `${reportLine}\n\nUser asked: ${String(question || '').slice(0, 600)}\n\nAssistant answered:\n${assistantText.slice(0, 4000)}\n\nReturn the JSON array now.`,
+                        },
+                      ],
+                    }),
+                  });
+                  if (fuResp.ok) {
+                    const fuData = await fuResp.json();
+                    const raw = fuData?.choices?.[0]?.message?.content || '';
+                    const match = raw.match(/\[[\s\S]*\]/);
+                    if (match) {
+                      const arr = JSON.parse(match[0]);
+                      if (Array.isArray(arr)) {
+                        const cleaned = arr
+                          .map((s: any) => (typeof s === 'string' ? s.trim() : ''))
+                          .filter((s: string) => s.length > 0 && s.length <= 140)
+                          .slice(0, 3);
+                        if (cleaned.length > 0) {
+                          controller.enqueue(
+                            encoder.encode(`data: ${JSON.stringify({ _followups: cleaned })}\n\n`),
+                          );
+                        }
+                      }
+                    }
+                  } else {
+                    console.warn('[report-qa] Follow-up gen HTTP', fuResp.status);
+                  }
+                }
+              } catch (fuErr) {
+                console.warn('[report-qa] Follow-up generation failed (non-fatal):', fuErr);
+              }
               controller.close();
               // Best-effort: mark checkpoint complete
               supabase.from('report_qa_stream_checkpoints')
