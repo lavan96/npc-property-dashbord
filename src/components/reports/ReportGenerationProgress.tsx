@@ -644,6 +644,7 @@ function ReportGenerationProgressInner() {
       sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
       onContinue={() => handleManualContinue(report.id)}
       onDismiss={() => dismissReport(report.id)}
+      onKill={() => killReport(report.id)}
       isMobile={mobile}
     />
   );
@@ -656,6 +657,7 @@ function ReportGenerationProgressInner() {
           group={g}
           etaForReport={etaForReport}
           onRetryAllFailed={(ids) => ids.forEach((id) => handleManualContinue(id))}
+          onKillAll={(ids) => killReports(ids)}
         >
           {g.reports.map((r) => renderItem(r, mobile))}
         </BulkJobGroup>
