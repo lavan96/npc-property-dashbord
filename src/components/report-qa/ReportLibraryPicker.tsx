@@ -277,8 +277,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
             </div>
             <div className="w-full sm:w-64">
               <ClientSearchSelect
-                value={clientId}
-                onChange={(id) => setClientId(id || undefined)}
+                value={clientId ?? null}
+                onValueChange={(id) => setClientId(id || undefined)}
                 placeholder="All clients"
               />
             </div>
