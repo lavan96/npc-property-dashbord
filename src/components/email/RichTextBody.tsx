@@ -642,10 +642,10 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
   const textSize = isSmall ? 'text-xs' : 'text-sm';
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {paragraphs.map((paragraphLines, pIndex) => {
         const groups = groupLinesByType(paragraphLines);
-        
+
         return (
           <div key={pIndex} className="space-y-2">
             {groups.map((group, gIndex) => {
@@ -658,24 +658,76 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
                   </ul>
                 );
               }
-              
-              // Regular paragraph — always preserve line breaks so structure
-              // from Outlook (<br>, <p>, address blocks, sign-offs) cascades
-              // correctly into the dashboard instead of being flattened.
+
+              // Horizontal rule shorthand
+              if (group.lines.length === 1 && /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(group.lines[0])) {
+                return <hr key={gIndex} className="my-3 border-border/60" />;
+              }
+
+              const isQuoted = group.lines.every((l) => /^\s*>/.test(l));
+              const quotedClean = isQuoted
+                ? group.lines.map((l) => l.replace(/^\s*>+\s?/, ''))
+                : group.lines;
+
+              const Wrapper: React.ElementType = isQuoted ? 'blockquote' : 'p';
+              const wrapperClass = isQuoted
+                ? `${textSize} text-muted-foreground leading-relaxed whitespace-pre-wrap border-l-2 border-border/60 pl-3 italic`
+                : `${textSize} text-foreground leading-relaxed whitespace-pre-wrap`;
+
               return (
-                <p key={gIndex} className={`${textSize} text-foreground leading-relaxed whitespace-pre-wrap`}>
-                  {group.lines.map((line, lIndex) => (
+                <Wrapper key={gIndex} className={wrapperClass}>
+                  {quotedClean.map((line, lIndex) => (
                     <React.Fragment key={lIndex}>
                       <RichTextSpan text={line} />
-                      {lIndex < group.lines.length - 1 && <br />}
+                      {lIndex < quotedClean.length - 1 && <br />}
                     </React.Fragment>
                   ))}
-                </p>
+                </Wrapper>
               );
             })}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+export default function RichTextBody({ content, className = '' }: RichTextBodyProps) {
+  const cleaned = cleanPlainTextArtifacts(content);
+  const { currentMessage, threadHistory } = parseEmailThread(cleaned);
+  const { body, signature } = parseSignature(currentMessage);
+
+  return (
+    <div className={className}>
+      <FormattedContent content={body} />
+
+      {signature && (
+        <details className="mt-5 pt-3 border-t border-border/50">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="font-medium">Show signature</span>
+          </summary>
+          <div className="mt-3 pl-3 border-l-2 border-border/30 text-muted-foreground">
+            <FormattedContent content={signature} isSmall />
+          </div>
+        </details>
+      )}
+
+      {threadHistory && (
+        <details className="mt-6 border-t pt-4">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span className="font-medium">Show previous messages in thread</span>
+          </summary>
+          <div className="mt-4 pl-4 border-l-2 border-muted text-muted-foreground">
+            <FormattedContent content={threadHistory} isSmall />
+          </div>
+        </details>
+      )}
     </div>
   );
 }
