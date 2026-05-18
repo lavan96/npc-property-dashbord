@@ -118,6 +118,11 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
                       <Send className="h-3 w-3" /> Mark Sent
                     </Button>
                   )}
+                  {d.pdf_storage_path && d.status !== 'signed' && d.status !== 'voided' && (
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => openPrepareForSigning(d)}>
+                      <FileSignature className="h-3 w-3" /> Prepare for Signing
+                    </Button>
+                  )}
                   {(d.status === 'sent' || d.status === 'viewed') && (
                     <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus({ id: d.id, status: 'signed' })}>
                       Mark Signed
