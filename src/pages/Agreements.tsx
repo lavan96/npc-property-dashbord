@@ -400,6 +400,20 @@ export default function Agreements() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {signingAgreement && (
+        <PrepareForSigningModal
+          open={!!signingAgreement}
+          onOpenChange={(v) => { if (!v) setSigningAgreement(null); }}
+          scope="agreement"
+          recordId={signingAgreement.id}
+          title={signingAgreement.buyer_names}
+          pdfUrl={signingPdfUrl}
+          initialRecipients={(signingAgreement as any).signing_recipients || []}
+          initialLayout={(signingAgreement as any).signing_layout || []}
+          onSent={() => setSigningAgreement(null)}
+        />
+      )}
     </div>
   );
 }
