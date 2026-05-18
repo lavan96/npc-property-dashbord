@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
