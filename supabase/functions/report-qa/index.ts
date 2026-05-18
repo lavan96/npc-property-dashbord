@@ -2019,8 +2019,21 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         
         const chunks = chunkText(content, 1500, 200); // Larger chunks for better context
         console.log(`[report-qa] Report "${name}": ${chunks.length} chunks from ${content.length} chars`);
-        
-        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId);
+
+        const metrics = extractReportMetrics(content);
+        let suburb: string | null = null;
+        if (metrics.address) {
+          const parts = metrics.address.split(',').map(p => p.trim());
+          if (parts.length >= 2) suburb = parts[1] || null;
+        }
+        const chunkMeta = {
+          suburb,
+          state: metrics.state ?? null,
+          postcode: metrics.postcode ?? null,
+          report_type: null,
+        };
+
+        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId, chunkMeta);
         totalChunks += chunks.length;
       }
 
