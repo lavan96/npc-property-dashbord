@@ -2040,6 +2040,8 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             model_provider: modelProvider,
             citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
             comparison_mode: comparisonMode,
+            prompt_version: PROMPT_VERSION,
+            model_version: modelName,
           },
         ]);
 
