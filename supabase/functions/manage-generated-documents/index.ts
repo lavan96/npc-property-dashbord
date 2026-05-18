@@ -231,6 +231,28 @@ Deno.serve(async (req) => {
           signers, events, mapped_status: newStatus,
         });
       }
+
+      case 'download_signed': {
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('id, title, docusign_envelope_id').eq('id', body.id).single();
+        if (dErr || !doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
+        const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+        if (!acct) return j({ success: false, error: 'DocuSign not configured' }, 422);
+        let token: string;
+        try { token = await getDocuSignAccessToken(); }
+        catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
+        const url = `${getDocuSignRestBaseUrl()}/v2.1/accounts/${acct}/envelopes/${doc.docusign_envelope_id}/documents/combined`;
+        const dsRes = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/pdf' } });
+        if (!dsRes.ok) {
+          const txt = await dsRes.text();
+          return j({ success: false, error: `DocuSign: ${txt.substring(0, 300)}` }, 502);
+        }
+        const bytes = new Uint8Array(await dsRes.arrayBuffer());
+        let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        const b64 = btoa(bin);
+        const filename = `${(doc.title || 'Document').replace(/[^a-z0-9]+/gi, '_')}_signed.pdf`;
+        return j({ success: true, pdf_base64: b64, filename });
+      }
     }
 
     return j({ success: false, error: 'Unknown action' }, 400);
