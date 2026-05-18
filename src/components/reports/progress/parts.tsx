@@ -809,6 +809,7 @@ export function GenerationHistoryList({
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
               <SelectItem value="dismissed">Dismissed</SelectItem>
             </SelectContent>
           </Select>
