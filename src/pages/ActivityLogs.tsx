@@ -397,9 +397,7 @@ export default function ActivityLogs() {
     return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
   }, [filteredLogs]);
 
-  type FlatItem =
-    | { kind: 'header'; key: string; label: string; count: number }
-    | { kind: 'row'; key: string; log: ActivityLog };
+  // FlatItem defined at file scope below
 
   const flatItems = useMemo<FlatItem[]>(() => {
     const out: FlatItem[] = [];
