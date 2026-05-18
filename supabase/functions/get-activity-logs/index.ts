@@ -6,14 +6,17 @@ interface ActivityLogsRequest {
   action_filter?: string;
   entity_filter?: string;
   user_filter?: string;
-  limit?: number;
+  start_date?: string; // ISO
+  end_date?: string;   // ISO
+  page?: number;       // 1-based
+  page_size?: number;
+  limit?: number;      // legacy fallback (no pagination)
 }
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -21,21 +24,26 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get request body
     const body: ActivityLogsRequest = await req.json();
-    const { action_filter, entity_filter, user_filter, limit = 500 } = body;
+    const {
+      action_filter,
+      entity_filter,
+      user_filter,
+      start_date,
+      end_date,
+      page,
+      page_size,
+      limit,
+    } = body;
 
-    // Validate authentication (JWT first, then session token)
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.error('[get-activity-logs] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
 
-    // Get user info to check permissions
     const { data: userData, error: userError } = await supabase
       .from('custom_users')
       .select('id, username, role')
@@ -43,93 +51,70 @@ Deno.serve(async (req) => {
       .single();
 
     if (userError || !userData) {
-      console.error('[get-activity-logs] User not found');
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Check if user has admin/superadmin role (only admins should see activity logs)
     const { data: userRoles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-
+      .from('user_roles').select('role').eq('user_id', userId);
     const roles = userRoles?.map(r => r.role) || [];
-    const isAdmin = roles.includes('superadmin') || roles.includes('admin') || userData.role === 'superadmin' || userData.role === 'admin';
+    const isAdmin = roles.includes('superadmin') || roles.includes('admin')
+      || userData.role === 'superadmin' || userData.role === 'admin';
 
     if (!isAdmin) {
-      console.error('[get-activity-logs] User does not have admin access');
-      return new Response(
-        JSON.stringify({ error: 'Access denied. Admin privileges required.' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Access denied. Admin privileges required.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`[get-activity-logs] Fetching logs for admin user: ${userData.username}`);
-
-    // Build query with filters
+    // Build base query (with exact count for pagination)
     let query = supabase
       .from('activity_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false });
 
-    if (action_filter && action_filter !== 'all') {
-      query = query.eq('action_type', action_filter);
-    }
-    if (entity_filter && entity_filter !== 'all') {
-      query = query.eq('entity_type', entity_filter);
-    }
-    if (user_filter && user_filter !== 'all') {
-      query = query.eq('username', user_filter);
+    if (action_filter && action_filter !== 'all') query = query.eq('action_type', action_filter);
+    if (entity_filter && entity_filter !== 'all') query = query.eq('entity_type', entity_filter);
+    if (user_filter && user_filter !== 'all') query = query.eq('username', user_filter);
+    if (start_date) query = query.gte('created_at', start_date);
+    if (end_date) query = query.lte('created_at', end_date);
+
+    // Pagination: prefer page/page_size, else fall back to legacy limit
+    if (typeof page === 'number' && typeof page_size === 'number' && page_size > 0) {
+      const from = (Math.max(1, page) - 1) * page_size;
+      const to = from + page_size - 1;
+      query = query.range(from, to);
+    } else {
+      query = query.limit(limit ?? 500);
     }
 
-    const { data: logs, error: logsError } = await query;
+    const { data: logs, error: logsError, count } = await query;
 
     if (logsError) {
       console.error('[get-activity-logs] Error fetching logs:', logsError);
-      return new Response(
-        JSON.stringify({ error: logsError.message }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return new Response(JSON.stringify({ error: logsError.message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Get unique usernames for filter dropdown
-    const uniqueUsers = [...new Set(logs?.map(l => l.username).filter(Boolean))];
-
-    console.log(`[get-activity-logs] Successfully fetched ${logs?.length || 0} logs`);
+    // Unique usernames for filter dropdown — fetch independently (not bounded by current page)
+    const { data: userRows } = await supabase
+      .from('activity_logs')
+      .select('username')
+      .not('username', 'is', null)
+      .order('username', { ascending: true })
+      .limit(2000);
+    const uniqueUsers = [...new Set((userRows || []).map(r => r.username).filter(Boolean))];
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        logs: logs || [],
-        uniqueUsers
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: true, logs: logs || [], uniqueUsers, total: count ?? (logs?.length ?? 0) }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
     console.error('[get-activity-logs] Unexpected error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
