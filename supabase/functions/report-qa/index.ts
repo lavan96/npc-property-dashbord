@@ -861,7 +861,7 @@ Deno.serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0 } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
       console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
 
