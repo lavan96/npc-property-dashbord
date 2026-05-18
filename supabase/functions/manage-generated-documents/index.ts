@@ -104,6 +104,72 @@ Deno.serve(async (req) => {
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
+
+      case 'save_signing_layout': {
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const { error } = await supabase.from('generated_documents').update({
+          signing_recipients: body.signing_recipients ?? [],
+          signing_layout: body.signing_layout ?? [],
+          signing_prepared_at: new Date().toISOString(),
+        }).eq('id', body.id);
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true });
+      }
+
+      case 'send_freeform': {
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const recipients = body.signing_recipients ?? [];
+        const tabs = body.signing_layout ?? [];
+        if (recipients.length === 0) return j({ success: false, error: 'At least one recipient required' }, 400);
+        if (tabs.length === 0) return j({ success: false, error: 'Place at least one field' }, 400);
+        for (const r of recipients) {
+          if (!r.email || !r.name) return j({ success: false, error: 'Recipient missing name/email' }, 400);
+        }
+        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('*').eq('id', body.id).single();
+        if (dErr || !doc) return j({ success: false, error: 'Document not found' }, 404);
+        if (!doc.pdf_storage_path) return j({ success: false, error: 'PDF not ready' }, 409);
+        const bucket = body.bucket || 'client-documents';
+        const { data: blob, error: dlErr } = await supabase.storage.from(bucket).download(doc.pdf_storage_path);
+        if (dlErr || !blob) return j({ success: false, error: `Failed to load PDF from ${bucket}: ${dlErr?.message}` }, 500);
+        const pdfBytes = new Uint8Array(await blob.arrayBuffer());
+
+        const accountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+        if (!accountId) return j({ success: false, error: 'DOCUSIGN_ACCOUNT_ID not configured', requires_setup: true }, 422);
+        let token: string;
+        try { token = await getDocuSignAccessToken(); }
+        catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
+
+        const envelope = buildFreeformEnvelope({
+          pdfBase64: pdfBytesToBase64(pdfBytes),
+          documentName: `${doc.title || 'Document'}.pdf`,
+          recipients, tabs,
+          emailSubject: body.email_subject || `${doc.title || 'Document for signature'}`,
+          emailBlurb: body.email_blurb || 'Please review and sign the attached document.',
+        });
+        const url = `${getDocuSignRestBaseUrl()}/v2.1/accounts/${accountId}/envelopes`;
+        const dsRes = await fetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(envelope),
+        });
+        const txt = await dsRes.text();
+        let dsData: any; try { dsData = JSON.parse(txt); } catch { return j({ success: false, error: `DocuSign non-JSON (${dsRes.status})`, raw: txt.substring(0, 400) }, 502); }
+        if (!dsRes.ok) {
+          console.error('[generated-docs freeform] envelope failed:', txt.substring(0, 1000));
+          return j({ success: false, error: `DocuSign: ${dsData.message || dsData.errorCode || 'Unknown'}`, details: dsData }, dsRes.status);
+        }
+        await supabase.from('generated_documents').update({
+          status: 'sent',
+          docusign_envelope_id: dsData.envelopeId,
+          docusign_status: dsData.status,
+          sent_at: new Date().toISOString(),
+          sent_to: recipients.map(r => r.email),
+          signing_recipients: recipients,
+          signing_layout: tabs,
+          signing_prepared_at: new Date().toISOString(),
+        }).eq('id', body.id);
+        return j({ success: true, envelope_id: dsData.envelopeId, status: dsData.status });
+      }
     }
 
     return j({ success: false, error: 'Unknown action' }, 400);
