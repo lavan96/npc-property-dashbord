@@ -850,6 +850,7 @@ export default function ReportQA() {
     setFailedMessage(null);
     setIsProcessing(true);
     setStreamingContent('');
+    setStreamingToolInvocations([]);
 
     try {
       // Use streaming for better UX
