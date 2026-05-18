@@ -3697,6 +3697,48 @@ export type Database = {
           },
         ]
       }
+      client_qa_memory: {
+        Row: {
+          client_id: string
+          content: string
+          content_hash: string | null
+          created_at: string
+          id: string
+          importance: number
+          kind: string
+          source_conversation_id: string | null
+          source_message_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          client_id: string
+          content: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          importance?: number
+          kind: string
+          source_conversation_id?: string | null
+          source_message_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          content_hash?: string | null
+          created_at?: string
+          id?: string
+          importance?: number
+          kind?: string
+          source_conversation_id?: string | null
+          source_message_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_reminders: {
         Row: {
           assigned_to: string[] | null
@@ -10355,6 +10397,7 @@ export type Database = {
       report_qa_conversations: {
         Row: {
           agent_mode: boolean
+          client_id: string | null
           conversation_summary: string | null
           created_at: string
           created_by: string | null
@@ -10370,6 +10413,7 @@ export type Database = {
         }
         Insert: {
           agent_mode?: boolean
+          client_id?: string | null
           conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
@@ -10385,6 +10429,7 @@ export type Database = {
         }
         Update: {
           agent_mode?: boolean
+          client_id?: string | null
           conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
