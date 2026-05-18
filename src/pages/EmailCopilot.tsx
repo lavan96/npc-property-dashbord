@@ -912,16 +912,20 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       toast.success('Email summarized');
-      
-      // Update local state
+
+      // Update local state (skip refetch to avoid clobbering the freshly-written summary)
       setSelectedEmail({
         ...selectedEmail,
         summary: data.summary,
         urgency_level: data.summary.urgencyLevel,
         status: 'summarized'
       });
-      
-      fetchEmails();
+      setEmails(prev => prev.map(e => e.id === selectedEmail.id ? {
+        ...e,
+        summary: data.summary,
+        urgency_level: data.summary.urgencyLevel,
+        status: 'summarized',
+      } : e));
     } catch (error) {
       console.error('Error summarizing:', error);
       toast.error('Failed to summarize email');
