@@ -481,47 +481,77 @@ export default function ActivityLogs() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredLogs.map((log) => (
-                          <TableRow key={log.id}>
-                            <TableCell className="font-mono text-xs">
-                              <div>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</div>
-                              <div className="text-muted-foreground">
-                                {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-sm">
-                                  {log.username || 'Unknown'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {getActionBadge(log.action_type)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">
-                                  {getEntityIcon(log.entity_type)}
-                                </span>
-                                <div>
-                                  <div className="text-sm font-medium truncate max-w-[300px]">
-                                    {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                        {filteredLogs.map((log) => {
+                          const bulkAddrs = getBulkAddresses(log);
+                          const isOpen = expandedRows.has(log.id);
+                          return (
+                            <Fragment key={log.id}>
+                              <TableRow>
+                                <TableCell className="font-mono text-xs">
+                                  <div>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</div>
+                                  <div className="text-muted-foreground">
+                                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                                   </div>
-                                  {log.entity_id && (
-                                    <div className="text-xs text-muted-foreground font-mono">
-                                      {log.entity_id.slice(0, 8)}...
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-medium text-sm">
+                                      {log.username || 'Unknown'}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {getActionBadge(log.action_type)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      {getEntityIcon(log.entity_type)}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium truncate max-w-[300px]">
+                                        {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                                      </div>
+                                      {log.entity_id && (
+                                        <div className="text-xs text-muted-foreground font-mono">
+                                          {log.entity_id.slice(0, 8)}...
+                                        </div>
+                                      )}
+                                      {bulkAddrs && (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleExpand(log.id)}
+                                          className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
+                                        >
+                                          <ChevronRight className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                          {isOpen ? 'Hide' : 'Show'} {bulkAddrs.length} {bulkAddrs.length === 1 ? 'property' : 'properties'}
+                                        </button>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs font-mono text-muted-foreground">
-                              {log.ip_address || '-'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs font-mono text-muted-foreground">
+                                  {log.ip_address || '-'}
+                                </TableCell>
+                              </TableRow>
+                              {bulkAddrs && isOpen && (
+                                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                                  <TableCell colSpan={5} className="py-3">
+                                    <div className="ml-8 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                      {bulkAddrs.map((addr, i) => (
+                                        <div key={i} className="text-xs text-foreground/90 flex gap-2">
+                                          <span className="text-muted-foreground font-mono shrink-0">{String(i + 1).padStart(2, '0')}.</span>
+                                          <span className="truncate">{addr}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
