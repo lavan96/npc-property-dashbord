@@ -5144,6 +5144,8 @@ export type Database = {
           embedding: string | null
           id: string
           metadata: Json | null
+          page_number: number | null
+          paragraph_index: number | null
         }
         Insert: {
           chunk_index: number
@@ -5154,6 +5156,8 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json | null
+          page_number?: number | null
+          paragraph_index?: number | null
         }
         Update: {
           chunk_index?: number
@@ -5164,6 +5168,8 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json | null
+          page_number?: number | null
+          paragraph_index?: number | null
         }
         Relationships: [
           {
@@ -10381,6 +10387,8 @@ export type Database = {
       report_qa_messages: {
         Row: {
           attachments: Json | null
+          citations: Json | null
+          comparison_mode: boolean
           content: string
           conversation_id: string
           created_at: string
@@ -10393,6 +10401,8 @@ export type Database = {
         }
         Insert: {
           attachments?: Json | null
+          citations?: Json | null
+          comparison_mode?: boolean
           content: string
           conversation_id: string
           created_at?: string
@@ -10405,6 +10415,8 @@ export type Database = {
         }
         Update: {
           attachments?: Json | null
+          citations?: Json | null
+          comparison_mode?: boolean
           content?: string
           conversation_id?: string
           created_at?: string
@@ -10431,6 +10443,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      report_qa_stream_checkpoints: {
+        Row: {
+          citations: Json | null
+          comparison_mode: boolean
+          conversation_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          last_event_at: string
+          model_provider: string | null
+          partial_content: string
+          question: string | null
+          status: string
+          stream_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          citations?: Json | null
+          comparison_mode?: boolean
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_event_at?: string
+          model_provider?: string | null
+          partial_content?: string
+          question?: string | null
+          status?: string
+          stream_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          citations?: Json | null
+          comparison_mode?: boolean
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_event_at?: string
+          model_provider?: string | null
+          partial_content?: string
+          question?: string | null
+          status?: string
+          stream_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       report_structure_templates: {
         Row: {
@@ -11573,6 +11636,8 @@ export type Database = {
           conversation_id: string
           document_name: string
           id: string
+          page_number: number
+          paragraph_index: number
           similarity: number
         }[]
       }
