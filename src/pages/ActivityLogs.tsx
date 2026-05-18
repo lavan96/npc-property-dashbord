@@ -189,7 +189,24 @@ export default function ActivityLogs() {
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [uniqueUsers, setUniqueUsers] = useState<string[]>([]);
-  
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const getBulkAddresses = (log: ActivityLog): string[] | null => {
+    if (log.entity_type !== 'bulk_generation_job') return null;
+    const meta = log.metadata as { addresses?: unknown } | null;
+    const addrs = meta?.addresses;
+    if (Array.isArray(addrs) && addrs.length > 0) return addrs as string[];
+    return null;
+  };
+
   const { fetchLogs: secureFetchLogs, loading } = useSecureActivityLogs();
 
   const loadLogs = async () => {
