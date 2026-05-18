@@ -462,12 +462,12 @@ async function generateEmbedding(text: string, openaiApiKey: string): Promise<nu
 async function storeDocumentChunks(
   supabase: any,
   documentName: string,
-  chunks: string[],
+  chunks: EnrichedChunk[],
   openaiApiKey: string,
   conversationId?: string
 ): Promise<void> {
   console.log(`[RAG] Storing ${chunks.length} chunks for document: ${documentName}`);
-  
+
   // Delete existing chunks for this document to avoid duplicates
   if (conversationId) {
     await supabase
@@ -476,39 +476,42 @@ async function storeDocumentChunks(
       .eq('document_name', documentName)
       .eq('conversation_id', conversationId);
   }
-  
+
   // Process chunks in batches to avoid overwhelming the API
   const batchSize = 5;
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
-    
+
     const chunksWithEmbeddings = await Promise.all(
-      batch.map(async (chunkText, batchIndex) => {
+      batch.map(async (chunk, batchIndex) => {
         const chunkIndex = i + batchIndex;
         try {
-          const embedding = await generateEmbedding(chunkText, openaiApiKey);
+          const embedding = await generateEmbedding(chunk.text, openaiApiKey);
           return {
             document_name: documentName,
             chunk_index: chunkIndex,
-            chunk_text: chunkText,
+            chunk_text: chunk.text,
+            paragraph_index: chunk.paragraph_index,
+            page_number: chunk.page_number,
             embedding: JSON.stringify(embedding),
             conversation_id: conversationId || null,
             metadata: {
-              char_count: chunkText.length,
+              char_count: chunk.text.length,
               created_at: new Date().toISOString(),
             },
           };
         } catch (error) {
           console.error(`[RAG] Failed to embed chunk ${chunkIndex}:`, error);
-          // Store without embedding if embedding fails
           return {
             document_name: documentName,
             chunk_index: chunkIndex,
-            chunk_text: chunkText,
+            chunk_text: chunk.text,
+            paragraph_index: chunk.paragraph_index,
+            page_number: chunk.page_number,
             embedding: null,
             conversation_id: conversationId || null,
             metadata: {
-              char_count: chunkText.length,
+              char_count: chunk.text.length,
               created_at: new Date().toISOString(),
               embedding_error: true,
             },
@@ -516,25 +519,30 @@ async function storeDocumentChunks(
         }
       })
     );
-    
+
     const { error } = await supabase
       .from('document_chunks')
       .insert(chunksWithEmbeddings);
-    
+
     if (error) {
       console.error(`[RAG] Error storing chunks batch ${i}:`, error);
       throw error;
     }
-    
+
     console.log(`[RAG] Stored batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(chunks.length / batchSize)}`);
   }
-  
+
   console.log(`[RAG] Successfully stored all ${chunks.length} chunks with embeddings`);
 }
 
-/**
- * Step 4: Retrieve relevant chunks using similarity search
- */
+export interface RetrievedChunk {
+  chunk_text: string;
+  document_name: string;
+  similarity: number;
+  paragraph_index?: number | null;
+  page_number?: number | null;
+}
+
 async function retrieveRelevantChunks(
   supabase: any,
   query: string,
@@ -542,26 +550,24 @@ async function retrieveRelevantChunks(
   conversationId?: string,
   matchThreshold = 0.7,
   matchCount = 5
-): Promise<{ chunk_text: string; document_name: string; similarity: number }[]> {
+): Promise<RetrievedChunk[]> {
   console.log(`[RAG] Retrieving relevant chunks for query: "${query.substring(0, 50)}..."`);
-  
+
   try {
-    // Generate embedding for the query
     const queryEmbedding = await generateEmbedding(query, openaiApiKey);
-    
-    // Use the match_document_chunks function for similarity search
+
     const { data, error } = await supabase.rpc('match_document_chunks', {
       query_embedding: JSON.stringify(queryEmbedding),
       match_conversation_id: conversationId || null,
       match_threshold: matchThreshold,
       match_count: matchCount,
     });
-    
+
     if (error) {
       console.error(`[RAG] Similarity search error:`, error);
       throw error;
     }
-    
+
     console.log(`[RAG] Found ${data?.length || 0} relevant chunks`);
     return data || [];
   } catch (error) {
@@ -571,18 +577,86 @@ async function retrieveRelevantChunks(
 }
 
 /**
- * Format retrieved chunks for context injection
+ * Format retrieved chunks for prompt injection, labelling each excerpt with a
+ * stable [S{n}] tag and paragraph/page metadata so the model is encouraged to
+ * cite back using the same tags.
  */
-function formatRetrievedContext(chunks: { chunk_text: string; document_name: string; similarity: number }[]): string {
-  if (!chunks || chunks.length === 0) {
-    return '';
+function formatRetrievedContext(chunks: RetrievedChunk[]): string {
+  if (!chunks || chunks.length === 0) return '';
+
+  const contextParts = chunks.map((chunk, idx) => {
+    const loc: string[] = [];
+    if (chunk.page_number) loc.push(`p.${chunk.page_number}`);
+    if (chunk.paragraph_index != null) loc.push(`¶${chunk.paragraph_index}`);
+    const locStr = loc.length ? ` | ${loc.join(' · ')}` : '';
+    return `[S${idx + 1}] [Source: ${chunk.document_name}${locStr} | Relevance: ${(chunk.similarity * 100).toFixed(1)}%]\n${chunk.chunk_text}`;
+  });
+
+  return `\n\n## RETRIEVED CONTEXT FROM KNOWLEDGE BASE\nThe following excerpts from uploaded documents are most relevant. When you use information from an excerpt, cite the source using its tag, e.g. [S1] or [S3].\n\n${contextParts.join('\n\n---\n\n')}`;
+}
+
+/**
+ * Build the structured citations payload that is returned to the client.
+ * Each entry is a paragraph-level pointer back into the source report.
+ */
+function buildStructuredCitations(chunks: RetrievedChunk[]): Array<{
+  document_name: string;
+  page_number: number | null;
+  paragraph_index: number | null;
+  snippet: string;
+  similarity: number;
+}> {
+  return (chunks || []).map((c) => ({
+    document_name: c.document_name,
+    page_number: c.page_number ?? null,
+    paragraph_index: c.paragraph_index ?? null,
+    snippet: (c.chunk_text || '').substring(0, 320),
+    similarity: c.similarity,
+  }));
+}
+
+/**
+ * fetchUpstreamWithRetry — wraps fetch() with exponential backoff for
+ * transient upstream failures (429 / 5xx / network errors). Used for all
+ * model calls so a flaky gateway no longer surfaces as a hard failure.
+ */
+async function fetchUpstreamWithRetry(
+  input: string,
+  init: RequestInit,
+  opts: { maxAttempts?: number; baseDelayMs?: number; label?: string } = {}
+): Promise<Response> {
+  const maxAttempts = opts.maxAttempts ?? 3;
+  const baseDelayMs = opts.baseDelayMs ?? 600;
+  const label = opts.label ?? 'upstream';
+
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(input, init);
+      // Retry on 429 + 5xx. Never retry on 402 (payment) or 4xx auth/validation.
+      if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 429)) {
+        return res;
+      }
+
+      console.warn(`[report-qa] ${label} attempt ${attempt}/${maxAttempts} → HTTP ${res.status}`);
+      if (attempt === maxAttempts) return res;
+
+      // Honour Retry-After if present
+      const retryAfter = res.headers.get('retry-after');
+      const headerDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 0;
+      const delay = Math.max(headerDelay, baseDelayMs * Math.pow(2, attempt - 1));
+      await new Promise((r) => setTimeout(r, delay));
+    } catch (err) {
+      lastError = err;
+      console.warn(`[report-qa] ${label} attempt ${attempt}/${maxAttempts} → network error:`, err);
+      if (attempt === maxAttempts) throw err;
+      await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)));
+    }
   }
-  
-  const contextParts = chunks.map((chunk, idx) => 
-    `[Source: ${chunk.document_name} | Relevance: ${(chunk.similarity * 100).toFixed(1)}%]\n${chunk.chunk_text}`
-  );
-  
-  return `\n\n## RETRIEVED CONTEXT FROM KNOWLEDGE BASE\nThe following excerpts from uploaded documents are most relevant to your question:\n\n${contextParts.join('\n\n---\n\n')}`;
+
+  // Should never reach here
+  throw lastError ?? new Error(`${label} failed`);
 }
 
 // ============= END RAG HELPER FUNCTIONS =============
