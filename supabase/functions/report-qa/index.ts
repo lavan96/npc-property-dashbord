@@ -1313,11 +1313,30 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         finalQuestion = lastUserMsg.content + '\n\n' + question;
       }
       
-      const messages = [
+      const rawMessages = [
         { role: "system", content: systemPrompt },
         ...sanitizedHistory,
         { role: "user", content: finalQuestion },
       ];
+
+      // Token-aware budgeter: pick per-model budget, drop oldest history first,
+      // then truncate system context tail. Keeps the most important slots intact.
+      const budgetModelHint =
+        modelProvider === 'gemini' ? 'google/gemini-3.1-pro-preview' :
+        modelProvider === 'openai-direct' ? 'openai/gpt-4.1' :
+        modelProvider === 'perplexity' ? 'sonar' :
+        'openai/gpt-5.2';
+      const budget = fitMessagesToBudget(
+        rawMessages,
+        inputBudgetForModel(budgetModelHint),
+        { systemContextSeparator: '\n\n## ' }
+      );
+      const messages = budget.messages;
+      if (budget.trimmed.historyDropped || budget.trimmed.systemTruncatedChars) {
+        console.log(`[report-qa] Budget trim — historyDropped=${budget.trimmed.historyDropped}, systemTruncatedChars=${budget.trimmed.systemTruncatedChars}, estTokens=${budget.estimatedTokens}`);
+      } else {
+        console.log(`[report-qa] Budget OK — estTokens=${budget.estimatedTokens}`);
+      }
 
       // Check if streaming is requested
       const streamingEnabled = body.stream === true;
