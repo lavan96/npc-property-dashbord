@@ -148,7 +148,11 @@ export default function TokenAuditLog() {
                         {r.user_id ? (users[r.user_id] ?? r.user_id.slice(0, 8)) : "—"}
                       </TableCell>
                       <TableCell className="text-xs">{r.function_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs font-mono max-w-[220px] truncate" title={r.idempotency_key}>
+                      <TableCell
+                        className="text-xs font-mono max-w-[220px] truncate cursor-pointer text-primary hover:underline"
+                        title={r.idempotency_key}
+                        onClick={() => setActiveKey(r.idempotency_key)}
+                      >
                         {r.idempotency_key}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{r.requested_tokens.toLocaleString()}</TableCell>
@@ -168,5 +172,11 @@ export default function TokenAuditLog() {
         </CardContent>
       </Card>
     </div>
+      <TokenEventDetailsDrawer
+        idempotencyKey={activeKey}
+        open={!!activeKey}
+        onOpenChange={(o) => !o && setActiveKey(null)}
+      />
+    </>
   );
 }
