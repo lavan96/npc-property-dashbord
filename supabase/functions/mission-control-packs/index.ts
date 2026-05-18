@@ -1,8 +1,8 @@
-// Mission Control balance proxy.
-// Frontend reads token balance via this function so the API key never leaves the server.
+// Mission Control top-up packs proxy.
+// Returns the public catalogue + deep-link `topup_url` for the OutOfTokensBanner CTA.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth } from "../_shared/auth.ts";
-import { getBalance, MissionControlError } from "../_shared/missionControl.ts";
+import { listTopupPacks, MissionControlError } from "../_shared/missionControl.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     );
 
     let body: any = {};
-    try { body = await req.json(); } catch { /* GET / empty */ }
+    try { body = await req.json(); } catch { /* allow empty */ }
 
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) {
@@ -31,9 +31,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const balance = await getBalance();
-    // Surface both detailed MC fields and the legacy frontend shape (available/allowance/used/reserved).
-    return new Response(JSON.stringify(balance), {
+    const url = new URL(req.url);
+    const limit = Number(url.searchParams.get("limit") ?? body?.limit ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? body?.offset ?? 0);
+
+    const result = await listTopupPacks({ limit, offset });
+    return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
@@ -43,7 +46,7 @@ Deno.serve(async (req) => {
     const payload = isMc
       ? { error: e.code, message: e.message }
       : { error: "internal_error", message: e instanceof Error ? e.message : String(e) };
-    console.error("[mission-control-balance] error", payload);
+    console.error("[mission-control-packs] error", payload);
     return new Response(JSON.stringify(payload), {
       status,
       headers: { ...corsHeaders, "content-type": "application/json" },

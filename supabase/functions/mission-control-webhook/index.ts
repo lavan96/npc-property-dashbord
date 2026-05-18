@@ -1,0 +1,162 @@
+// Mission Control → Prime webhook receiver.
+// Public endpoint (no JWT) — security is enforced via HMAC-SHA256 signature
+// of the raw request body using MISSION_CONTROL_WEBHOOK_SECRET.
+//
+// Events handled:
+//   tokens.balance.updated  → cache snapshot in token_balance_cache (best-effort)
+//   tokens.key.rotated      → log audit + ops note
+//   tokens.key.revoked      → log audit + ops note
+//   tokens.alert            → log audit
+//   tokens.test             → no-op success (used by MC's "Test" button)
+//
+// Delivery is at-least-once with retries; receiver MUST be idempotent.
+// We de-dupe via token_webhook_events (id + event PK).
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "content-type, x-mc-event, x-mc-signature, x-mc-idempotency-key",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.trim().toLowerCase();
+  if (clean.length % 2 !== 0) return new Uint8Array();
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    const byte = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    if (Number.isNaN(byte)) return new Uint8Array();
+    out[i] = byte;
+  }
+  return out;
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length === 0 || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret: string, body: string): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return new Uint8Array(sig);
+}
+
+function adminClient() {
+  const url = (Deno.env.get("SUPABASE_URL") || "").trim();
+  const key = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return new Response("method_not_allowed", { status: 405, headers: corsHeaders });
+  }
+
+  const secret = Deno.env.get("MISSION_CONTROL_WEBHOOK_SECRET");
+  if (!secret) {
+    console.error("[mission-control-webhook] MISSION_CONTROL_WEBHOOK_SECRET not configured");
+    return new Response("unconfigured", { status: 500, headers: corsHeaders });
+  }
+
+  const signature = req.headers.get("x-mc-signature") ?? "";
+  const event = req.headers.get("x-mc-event") ?? "";
+  const idemKey = req.headers.get("x-mc-idempotency-key") ?? "";
+  const raw = await req.text();
+
+  const expected = await hmacSha256Hex(secret, raw);
+  const provided = hexToBytes(signature);
+  if (!constantTimeEqual(provided, expected)) {
+    console.warn("[mission-control-webhook] invalid signature", { event });
+    return new Response("invalid_signature", { status: 401, headers: corsHeaders });
+  }
+
+  let payload: any = {};
+  try { payload = raw ? JSON.parse(raw) : {}; } catch { /* keep empty */ }
+  const data = payload?.data ?? payload ?? {};
+
+  const client = adminClient();
+
+  // De-dupe on (event, idempotency-key OR payload id).
+  const dedupeId = idemKey || data?.id || data?.tenant?.id || crypto.randomUUID();
+  if (client) {
+    try {
+      const { error } = await client.from("token_webhook_events").insert({
+        id: dedupeId,
+        event,
+        payload: data,
+      });
+      if (error && !String(error.message).includes("duplicate")) {
+        console.warn("[mission-control-webhook] dedupe insert failed", error.message);
+      } else if (error) {
+        // Already processed — return ok to stop retries.
+        return new Response("ok", { headers: corsHeaders });
+      }
+    } catch (e) {
+      console.warn("[mission-control-webhook] dedupe table missing or insert errored", e);
+    }
+  }
+
+  try {
+    switch (event) {
+      case "tokens.test":
+        // MC dashboard "Test" button — no-op success.
+        break;
+      case "tokens.balance.updated": {
+        if (client) {
+          const tenant = data?.tenant ?? {};
+          const balance = data?.balance ?? {};
+          await client.from("token_balance_cache").upsert({
+            tenant_ref: tenant?.external_ref ?? tenant?.ref ?? null,
+            available: Number(balance?.available ?? 0),
+            reserved: Number(balance?.reserved ?? 0),
+            lifetime_granted: Number(balance?.lifetime_granted ?? 0),
+            lifetime_spent: Number(balance?.lifetime_spent ?? 0),
+            plan_name: tenant?.billing_plans?.name ?? null,
+            monthly_allowance: Number(tenant?.billing_plans?.monthly_allowance ?? 0),
+            current_period_end: tenant?.current_period_end ?? null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "tenant_ref" });
+        }
+        break;
+      }
+      case "tokens.key.rotated":
+      case "tokens.key.revoked":
+      case "tokens.alert":
+        // Persist into audit log so admins can see it on /admin/token-audit.
+        if (client) {
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: event.endsWith("revoked") ? "error" : "ok",
+            request_payload: data,
+            error_message: event === "tokens.key.revoked"
+              ? `MC key ${data?.key_id ?? "?"} revoked`
+              : null,
+          }).then(({ error }) => {
+            if (error) console.warn("[mission-control-webhook] audit insert", error.message);
+          });
+        }
+        break;
+      default:
+        console.log("[mission-control-webhook] unhandled event", event);
+    }
+  } catch (e) {
+    console.error("[mission-control-webhook] handler error", e);
+    // Still return 200 so MC does not retry indefinitely on our internal errors.
+  }
+
+  return new Response("ok", { headers: corsHeaders });
+});

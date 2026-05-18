@@ -655,3 +655,12 @@ request_timeout = 400
 [functions.ghl-marketing-dump-export]
 verify_jwt = false
 request_timeout = 300
+
+[functions.mission-control-webhook]
+verify_jwt = false
+
+[functions.mission-control-packs]
+verify_jwt = false
+
+[functions.mission-control-balance]
+verify_jwt = false
