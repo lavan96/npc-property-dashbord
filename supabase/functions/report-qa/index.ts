@@ -6,6 +6,11 @@ import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
+import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
+import { listTools } from '../_shared/agent-tools.ts';
+// Side-effect import: registers calculator + live-data tools into the
+// shared registry. Empty in Phase 2.1; populated in 2.2 and 2.3.
+import '../_shared/agent-tools-registry.ts';
 
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
@@ -856,7 +861,7 @@ Deno.serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0 } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
       console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
 
@@ -1259,8 +1264,131 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       const streamingEnabled = body.stream === true;
       
       if (streamingEnabled) {
-        console.log(`[report-qa] Streaming mode enabled, provider: ${modelProvider}`);
-        
+        console.log(`[report-qa] Streaming mode enabled, provider: ${modelProvider}, agentMode: ${agentMode}`);
+
+        // -----------------------------------------------------------------
+        // AGENT MODE: multi-turn tool-calling loop
+        // -----------------------------------------------------------------
+        // Activated only when: (a) caller opts in via agentMode=true,
+        // (b) provider supports reliable function calling (not Perplexity),
+        // (c) at least one tool is registered (or the caller passed an
+        // explicit enabledTools allow-list with registered entries).
+        // The agent loop yields the same OpenAI-compatible SSE stream the
+        // frontend already parses, plus extra `_meta`, `_tool`, and
+        // `_error` events for transparency.
+        const canRunAgent =
+          agentMode &&
+          modelProvider !== 'perplexity' &&
+          agentLoopHasTools(enabledTools);
+
+        if (canRunAgent) {
+          let agentEndpoint = '';
+          let agentApiKey = '';
+          let agentModel = '';
+          let maxField: 'max_tokens' | 'max_completion_tokens' = 'max_completion_tokens';
+          let maxTokens = 16384;
+          let agentProvider: AgentLoopProvider = 'openai-gateway';
+
+          if (modelProvider === 'openai-direct') {
+            if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
+            agentEndpoint = 'https://api.openai.com/v1/chat/completions';
+            agentApiKey = OPENAI_API_KEY;
+            agentModel = 'gpt-4.1';
+            maxField = 'max_completion_tokens';
+            maxTokens = 32768;
+            agentProvider = 'openai-direct';
+          } else if (modelProvider === 'gemini') {
+            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+            agentApiKey = LOVABLE_API_KEY!;
+            agentModel = 'google/gemini-3.1-pro-preview';
+            maxField = 'max_tokens';
+            maxTokens = 65536;
+            agentProvider = 'gemini';
+          } else {
+            // 'openai' via Lovable AI Gateway (GPT-5.2)
+            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+            agentApiKey = LOVABLE_API_KEY!;
+            agentModel = 'openai/gpt-5.2';
+            maxField = 'max_completion_tokens';
+            maxTokens = 16384;
+            agentProvider = 'openai-gateway';
+          }
+
+          const structuredCitationsAgent = buildStructuredCitations(retrievedChunksForCitations);
+          const agentStreamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+          // Best-effort checkpoint so dropped streams are diagnosable.
+          try {
+            await supabase.from('report_qa_stream_checkpoints').insert({
+              stream_id: agentStreamId,
+              conversation_id: conversationId || null,
+              user_id: userId || null,
+              model_provider: modelProvider,
+              comparison_mode: comparisonMode,
+              citations: structuredCitationsAgent,
+              status: 'streaming',
+            });
+          } catch (cpErr) {
+            console.warn('[report-qa] agent checkpoint insert failed (non-fatal):', cpErr);
+          }
+
+          const agentStream = runAgentLoop({
+            provider: agentProvider,
+            apiKey: agentApiKey,
+            endpoint: agentEndpoint,
+            model: agentModel,
+            messages,
+            maxCompletionTokensField: maxField,
+            maxCompletionTokens: maxTokens,
+            enabledTools,
+            toolContext: {
+              supabase,
+              userId: userId || null,
+              conversationId: conversationId || null,
+              reportContents,
+              reportNames,
+            },
+            leadingMetaEvent: {
+              _meta: {
+                stream_id: agentStreamId,
+                comparisonMode,
+                citations: structuredCitationsAgent,
+                modelProvider,
+                agentMode: true,
+                tools_available: listTools().map((t) => t.name),
+              },
+            },
+            onComplete: async ({ toolInvocations, turns }) => {
+              console.log(
+                `[report-qa] Agent loop complete: ${turns} turn(s), ${toolInvocations.length} tool invocation(s)`,
+              );
+              try {
+                await supabase
+                  .from('report_qa_stream_checkpoints')
+                  .update({
+                    status: 'completed',
+                    last_event_at: new Date().toISOString(),
+                  })
+                  .eq('stream_id', agentStreamId);
+              } catch {
+                /* non-fatal */
+              }
+            },
+          });
+
+          return new Response(agentStream, {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'text/event-stream',
+              'x-stream-id': agentStreamId,
+              'x-agent-mode': 'true',
+            },
+          });
+        }
+
+        // -----------------------------------------------------------------
+        // Existing non-agent streaming path (unchanged)
+        // -----------------------------------------------------------------
         let response: Response;
         let citations: string[] = [];
         

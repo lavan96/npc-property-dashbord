@@ -50,6 +50,7 @@ import {
   Square,
   Download,
   Quote,
+  Wrench,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -89,6 +90,7 @@ import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySetti
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
 import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
+import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
 import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
@@ -121,6 +123,7 @@ interface ChatMessage {
   citations?: string[]; // Perplexity URL citations (legacy)
   documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
   comparisonMode?: boolean; // True when answer compares ≥2 reports
+  toolInvocations?: ToolInvocation[]; // Agent tools executed for this answer
   sent_by?: string | null;
   sent_by_username?: string | null;
 }
@@ -205,6 +208,10 @@ export default function ReportQA() {
   
   // Phase 1 UX improvements
   const [streamingContent, setStreamingContent] = useState('');
+  // Tool invocations emitted by the agent loop for the currently-streaming
+  // assistant message. Reset before each send; flushed onto the final
+  // ChatMessage when the stream completes.
+  const [streamingToolInvocations, setStreamingToolInvocations] = useState<ToolInvocation[]>([]);
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_MESSAGE_LENGTH = 12000;
@@ -233,6 +240,13 @@ export default function ReportQA() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('reportqa_show_citations', showCitations ? '1' : '0');
   }, [showCitations]);
+  // Agent mode: per-conversation toggle that enables tool-calling (calculators,
+  // live data, scenario modeling). Persisted on the conversation row so it
+  // survives reload. Disabled silently when the selected model is Perplexity
+  // because Perplexity doesn't reliably support function calling.
+  const [agentMode, setAgentMode] = useState<boolean>(false);
+  const agentModeSupported = selectedModel !== 'perplexity';
+  const effectiveAgentMode = agentMode && agentModeSupported;
   const [snippetViewer, setSnippetViewer] = useState<{
     open: boolean;
     reportName: string | null;
@@ -702,6 +716,7 @@ export default function ReportQA() {
           modelProvider: m.model_provider || null,
           documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
           comparisonMode: !!m.comparison_mode,
+          toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
         }))
       );
       setShowHistory(false);
@@ -749,6 +764,7 @@ export default function ReportQA() {
         modelProvider: m.model_provider || null,
         documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
         comparisonMode: !!m.comparison_mode,
+        toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
       }));
 
       // Prepend older messages, deduplicating by id
@@ -836,6 +852,7 @@ export default function ReportQA() {
     setFailedMessage(null);
     setIsProcessing(true);
     setStreamingContent('');
+    setStreamingToolInvocations([]);
 
     try {
       // Use streaming for better UX
@@ -877,6 +894,7 @@ export default function ReportQA() {
           modelProvider: selectedModel,
           needsConversationSummary: needsSummary,
           totalMessageCount: totalMessages,
+          agentMode: effectiveAgentMode,
         }),
       });
 
@@ -906,6 +924,13 @@ export default function ReportQA() {
       let fullContent = '';
       let buffer = '';
       let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
+      // Tool invocations accumulate from `_tool` SSE events emitted by the
+      // agent loop. Keyed by invocation id so a `started` chip can be
+      // updated in place when its `completed` event arrives.
+      const toolMap = new Map<string, ToolInvocation>();
+      const flushToolsToStreaming = () => {
+        setStreamingToolInvocations(Array.from(toolMap.values()));
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -937,6 +962,22 @@ export default function ReportQA() {
               };
               continue;
             }
+            // Agent tool-call transparency events
+            if (parsed?._tool) {
+              const t = parsed._tool;
+              const existing = toolMap.get(t.id) || { id: t.id, name: t.name, arguments: undefined };
+              const merged: ToolInvocation = {
+                ...existing,
+                ...t,
+              };
+              toolMap.set(t.id, merged);
+              flushToolsToStreaming();
+              continue;
+            }
+            if (parsed?._error) {
+              console.warn('[ReportQA] Agent loop error event:', parsed._error);
+              continue;
+            }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
@@ -950,6 +991,8 @@ export default function ReportQA() {
         }
       }
 
+      const finalToolInvocations = Array.from(toolMap.values());
+
       // Create the final assistant message
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -959,10 +1002,12 @@ export default function ReportQA() {
         modelProvider: selectedModel,
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
+        toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
+      setStreamingToolInvocations([]);
 
       // Save to database in background via secure function
       if (activeConversationId && fullContent) {
@@ -978,6 +1023,7 @@ export default function ReportQA() {
               model_provider: selectedModel,
               citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
               comparison_mode: !!streamMeta.comparisonMode,
+              tool_invocations: finalToolInvocations.length > 0 ? finalToolInvocations : [],
             },
           ]
         }).then(() => {
@@ -2002,6 +2048,29 @@ export default function ReportQA() {
                     <Quote className="h-4 w-4 opacity-40" />
                   )}
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={!agentModeSupported}
+                  onClick={() => setAgentMode((v) => !v)}
+                  title={
+                    !agentModeSupported
+                      ? 'Agent tools are unavailable for Perplexity — switch model to enable'
+                      : agentMode
+                        ? 'Disable agent tools (calculators, live data)'
+                        : 'Enable agent tools (calculators, live data, scenarios)'
+                  }
+                  aria-pressed={agentMode && agentModeSupported}
+                  aria-label="Toggle agent mode"
+                >
+                  <Wrench
+                    className={cn(
+                      'h-4 w-4',
+                      agentMode && agentModeSupported ? 'text-primary' : 'opacity-40',
+                    )}
+                  />
+                </Button>
                 <AccessibilitySettings />
                 {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
@@ -2188,6 +2257,9 @@ export default function ReportQA() {
                                     comparisonMode={message.comparisonMode}
                                     onDocumentClick={openCitationInViewer}
                                   />
+                                )}
+                                {message.toolInvocations && message.toolInvocations.length > 0 && (
+                                  <ToolInvocations invocations={message.toolInvocations} />
                                 )}
                                 <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                                 <div className="flex flex-wrap gap-1 sm:gap-2">
