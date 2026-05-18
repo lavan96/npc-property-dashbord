@@ -607,6 +607,7 @@ export default function EmailCopilot() {
         fullBodyFetchedRef.current.add(targetId);
         const patch = {
           body: full.body || '',
+          body_html: full.body_html ?? null,
           attachments: full.attachments || [],
           summary: full.summary ?? null,
         };
