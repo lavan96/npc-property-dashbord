@@ -263,14 +263,14 @@ function convertHtmlToStructuredText(html: string): string {
   // Preserve headings
   text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n$1\n\n');
   
-  // Extract bold/strong text content
-  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '$2');
-  
-  // Extract italic/emphasis text content
-  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '$2');
-  
-  // Extract underline text content
-  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '$2');
+  // Preserve bold/strong as markdown
+  text = text.replace(/<(b|strong)[^>]*>([\s\S]*?)<\/(b|strong)>/gi, (_m, _t, content) => `**${String(content).trim()}**`);
+
+  // Preserve italic/emphasis as markdown
+  text = text.replace(/<(i|em)[^>]*>([\s\S]*?)<\/(i|em)>/gi, (_m, _t, content) => `_${String(content).trim()}_`);
+
+  // Preserve underline using <u> tag so the renderer can style it
+  text = text.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, (_m, content) => `<u>${String(content).trim()}</u>`);
   
   // Preserve unordered list items with bullets
   text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
@@ -318,11 +318,7 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/^\s+|\s+$/gm, '');
   
-  // Fix formatting
-  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
-  text = text.replace(/_([^_\n]+)_/g, '$1');
-  text = text.replace(/([a-zA-Z0-9])_(\s|$)/g, '$1$2');
-  text = text.replace(/(^|\s)_([a-zA-Z])/g, '$1$2');
+  // (intentionally preserve **bold** and _italic_ markdown so the UI can render them)
   
   // Insert line breaks before email thread headers
   text = text.replace(/([^\n])(\s*From:\s+[^\n]+<[^>]+>)/gi, '$1\n\n$2');
@@ -482,7 +478,7 @@ Deno.serve(async (req) => {
           .insert({
             sender: email.from?.emailAddress?.address || 'unknown',
             subject: email.subject || '(No Subject)',
-            body: bodyContent.substring(0, 10000),
+            body: bodyContent.substring(0, 200000),
             received_at: emailDate,
             status: folder === 'sent' ? 'sent' : 'unread',
             to_recipients: toRecipients,

@@ -178,9 +178,9 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/<div[^>]*>/gi, '');
   text = text.replace(/<br\s*\/?>/gi, '\n');
   text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n$1\n\n');
-  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '$2');
-  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '$2');
-  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '$2');
+  text = text.replace(/<(b|strong)[^>]*>([\s\S]*?)<\/(b|strong)>/gi, (_m, _t, content) => `**${String(content).trim()}**`);
+  text = text.replace(/<(i|em)[^>]*>([\s\S]*?)<\/(i|em)>/gi, (_m, _t, content) => `_${String(content).trim()}_`);
+  text = text.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, (_m, content) => `<u>${String(content).trim()}</u>`);
   text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
   text = text.replace(/<\/?[ou]l[^>]*>/gi, '\n');
   text = text.replace(/<tr[^>]*>/gi, '');
@@ -216,10 +216,7 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/^\s+|\s+$/gm, '');
   
-  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
-  text = text.replace(/_([^_\n]+)_/g, '$1');
-  text = text.replace(/([a-zA-Z0-9])_(\s|$)/g, '$1$2');
-  text = text.replace(/(^|\s)_([a-zA-Z])/g, '$1$2');
+  // (intentionally preserve **bold** and _italic_ markdown so the UI can render them)
   
   text = text.replace(/([^\n])(\s*From:\s+[^\n]+<[^>]+>)/gi, '$1\n\n$2');
   text = text.replace(/([^\n])(\s*Sent:\s+\w+)/gi, '$1\n$2');
@@ -335,7 +332,7 @@ Deno.serve(async (req) => {
         .insert({
           sender: email.from?.emailAddress?.address || 'Unknown',
           subject: email.subject || '(No subject)',
-          body: bodyContent.substring(0, 10000),
+          body: bodyContent.substring(0, 200000),
           received_at: email.receivedDateTime,
           status: 'unread',
           cc_recipients: extractEmailAddresses(email.ccRecipients || []),
