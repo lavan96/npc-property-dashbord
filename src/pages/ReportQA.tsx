@@ -98,6 +98,8 @@ import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
+import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
+import { MessageActions } from '@/components/report-qa/MessageActions';
 
 interface UploadProgress {
   fileName: string;
