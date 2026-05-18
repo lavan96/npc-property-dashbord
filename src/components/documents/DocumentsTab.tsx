@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Send, Plus, FileCheck2, Clock, FileSignature } from 'lucide-react';
+import { FileText, Send, Plus, FileCheck2, Clock, FileSignature, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
