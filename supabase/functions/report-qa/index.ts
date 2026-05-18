@@ -2398,7 +2398,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       // Fetch own conversations
       const { data, error } = await supabase
         .from("report_qa_conversations")
-        .select("id, title, report_names, created_at, updated_at, structured_report, client_id")
+        .select("id, title, report_names, created_at, updated_at, structured_report, client_id, branched_from_conversation_id, branched_from_message_id")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

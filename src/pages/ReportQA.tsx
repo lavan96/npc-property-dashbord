@@ -100,6 +100,8 @@ import { Citations, type DocumentCitation } from '@/components/report-qa/Citatio
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
 import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
 import { MessageActions } from '@/components/report-qa/MessageActions';
+import { BranchedFromIndicator } from '@/components/report-qa/BranchedFromIndicator';
+import { PinnedAnswersStrip } from '@/components/report-qa/PinnedAnswersStrip';
 
 interface UploadProgress {
   fileName: string;
@@ -154,6 +156,8 @@ interface SavedConversation {
   shared_by?: string;
   permission?: string;
   handoff_note?: string;
+  branched_from_conversation_id?: string | null;
+  branched_from_message_id?: string | null;
 }
 
 export default function ReportQA() {
@@ -286,6 +290,17 @@ export default function ReportQA() {
     },
     [uploadedReports],
   );
+
+  // Scroll a specific message into view (used by the Pinned-answers jump strip).
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`qa-msg-${messageId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-primary/60', 'ring-offset-2', 'ring-offset-background');
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-primary/60', 'ring-offset-2', 'ring-offset-background');
+    }, 1600);
+  }, []);
   
   // Lazy loading for chat history
   const [totalMessageCount, setTotalMessageCount] = useState(0);
@@ -2214,6 +2229,26 @@ export default function ReportQA() {
                 </div>
               ) : (
               <div className="w-full space-y-2 sm:space-y-4">
+                  {(() => {
+                    const currentConv = savedConversations.find((c) => c.id === conversationId);
+                    const parentConv = currentConv?.branched_from_conversation_id
+                      ? savedConversations.find((c) => c.id === currentConv.branched_from_conversation_id)
+                      : null;
+                    const pinnedMessages = messages
+                      .filter((m) => m.role === 'assistant' && m.pinned)
+                      .map((m) => ({ id: m.id, content: m.content }));
+                    return (
+                      <>
+                        {parentConv && (
+                          <BranchedFromIndicator
+                            parentTitle={parentConv.title}
+                            onOpenParent={() => loadConversation(parentConv)}
+                          />
+                        )}
+                        <PinnedAnswersStrip pinned={pinnedMessages} onJump={scrollToMessage} />
+                      </>
+                    );
+                  })()}
                   {messages.map((message, index) => {
                     const previousMessage = index > 0 ? messages[index - 1] : null;
                     const showDateSep = shouldShowDateSeparator(
@@ -2222,7 +2257,7 @@ export default function ReportQA() {
                     );
                     
                     return (
-                      <div key={message.id} className="w-full">
+                      <div key={message.id} id={`qa-msg-${message.id}`} className="w-full scroll-mt-24 transition-shadow rounded-lg">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
                         <div className={cn(
                           "flex gap-2 sm:gap-3 w-full",
@@ -2365,12 +2400,29 @@ export default function ReportQA() {
                                             prev.map((m) => (m.id === message.id ? { ...m, pinned: p } : m))
                                           )
                                         }
-                                        onBranched={(newId) => {
-                                          loadSavedConversations();
-                                          toast({
-                                            title: 'Branch created',
-                                            description: 'Open it from History.',
-                                          });
+                                        onBranched={async (newId) => {
+                                          // Reload list, then auto-switch to the new branched conversation
+                                          // so the user lands directly in their fork.
+                                          try {
+                                            const { data } = await invokeSecureFunction('report-qa', {
+                                              action: 'get-conversations',
+                                            });
+                                            const own = (data?.conversations || []).map((c: any) => ({ ...c, shared: false }));
+                                            const shared = (data?.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
+                                            const all = [...own, ...shared];
+                                            setSavedConversations(all);
+                                            const newConv = all.find((c: SavedConversation) => c.id === newId);
+                                            if (newConv) {
+                                              await loadConversation(newConv);
+                                            }
+                                            toast({
+                                              title: 'Branch created',
+                                              description: 'Opened the new conversation from this point.',
+                                            });
+                                          } catch (e) {
+                                            loadSavedConversations();
+                                            toast({ title: 'Branch created', description: 'Open it from History.' });
+                                          }
                                         }}
                                       />
                                     </>
