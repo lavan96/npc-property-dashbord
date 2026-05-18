@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { drainJob, type BulkProperty } from '../_shared/bulkReportWorker.ts';
-import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
+// Per-item token metering happens inside `generate-investment-report` (called by the bulk worker).
 
 interface BulkGenerationRequest {
   properties: BulkProperty[];
