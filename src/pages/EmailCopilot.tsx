@@ -118,6 +118,7 @@ interface Email {
   sender: string;
   subject: string;
   body: string;
+  body_html?: string | null;
   received_at: string;
   summary: EmailSummary | null;
   draft_reply: string | null;
