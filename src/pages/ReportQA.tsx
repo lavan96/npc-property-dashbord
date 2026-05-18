@@ -2366,7 +2366,7 @@ export default function ReportQA() {
                                           )
                                         }
                                         onBranched={(newId) => {
-                                          loadConversations();
+                                          loadSavedConversations();
                                           toast({
                                             title: 'Branch created',
                                             description: 'Open it from History.',
