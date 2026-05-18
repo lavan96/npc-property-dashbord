@@ -379,6 +379,7 @@ interface ItemProps {
   sectionTimeline: number[]; // epoch ms of each section completion
   onContinue: () => void;
   onDismiss: () => void;
+  onKill?: () => void;
   isMobile?: boolean;
 }
 
@@ -390,6 +391,7 @@ export function GenerationProgressItem({
   sectionTimeline,
   onContinue,
   onDismiss,
+  onKill,
   isMobile = false,
 }: ItemProps) {
   const navigate = useNavigate();
