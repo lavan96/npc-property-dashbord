@@ -2400,12 +2400,29 @@ export default function ReportQA() {
                                             prev.map((m) => (m.id === message.id ? { ...m, pinned: p } : m))
                                           )
                                         }
-                                        onBranched={(newId) => {
-                                          loadSavedConversations();
-                                          toast({
-                                            title: 'Branch created',
-                                            description: 'Open it from History.',
-                                          });
+                                        onBranched={async (newId) => {
+                                          // Reload list, then auto-switch to the new branched conversation
+                                          // so the user lands directly in their fork.
+                                          try {
+                                            const { data } = await invokeSecureFunction('report-qa', {
+                                              action: 'get-conversations',
+                                            });
+                                            const own = (data?.conversations || []).map((c: any) => ({ ...c, shared: false }));
+                                            const shared = (data?.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
+                                            const all = [...own, ...shared];
+                                            setSavedConversations(all);
+                                            const newConv = all.find((c: SavedConversation) => c.id === newId);
+                                            if (newConv) {
+                                              await loadConversation(newConv);
+                                            }
+                                            toast({
+                                              title: 'Branch created',
+                                              description: 'Opened the new conversation from this point.',
+                                            });
+                                          } catch (e) {
+                                            loadSavedConversations();
+                                            toast({ title: 'Branch created', description: 'Open it from History.' });
+                                          }
                                         }}
                                       />
                                     </>
