@@ -903,12 +903,14 @@ export function BulkJobGroup({
   defaultOpen = true,
   etaForReport,
   onRetryAllFailed,
+  onKillAll,
 }: {
   group: BulkGroup;
   children: React.ReactNode;
   defaultOpen?: boolean;
   etaForReport?: (r: ReportProgress) => number | null;
   onRetryAllFailed?: (reportIds: string[]) => void;
+  onKillAll?: (reportIds: string[]) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [timelineOpen, setTimelineOpen] = useState(false);
