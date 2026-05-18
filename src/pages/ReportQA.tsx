@@ -100,6 +100,8 @@ import { Citations, type DocumentCitation } from '@/components/report-qa/Citatio
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
 import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
 import { MessageActions } from '@/components/report-qa/MessageActions';
+import { BranchedFromIndicator } from '@/components/report-qa/BranchedFromIndicator';
+import { PinnedAnswersStrip } from '@/components/report-qa/PinnedAnswersStrip';
 
 interface UploadProgress {
   fileName: string;
