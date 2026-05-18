@@ -1645,7 +1645,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           response: responseText,
           ragUsed: ragContext.length > 0,
           modelProvider,
+          comparisonMode,
           citations: citations.length > 0 ? citations : undefined,
+          structuredCitations: structuredCitationsNS.length > 0 ? structuredCitationsNS : undefined,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
