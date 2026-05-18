@@ -50,7 +50,6 @@ import {
   Square,
   Download,
   Quote,
-  QuoteIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
