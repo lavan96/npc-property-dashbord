@@ -804,7 +804,7 @@ function Sparkline({ timestamps, startedAt }: { timestamps: number[]; startedAt:
 
 /* ---------- History list ---------- */
 
-type HistoryFilter = 'all' | 'completed' | 'failed' | 'dismissed';
+type HistoryFilter = 'all' | 'completed' | 'failed' | 'cancelled' | 'dismissed';
 type HistorySort = 'recent' | 'oldest';
 
 export function GenerationHistoryList({
