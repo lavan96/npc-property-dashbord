@@ -5138,38 +5138,59 @@ export type Database = {
         Row: {
           chunk_index: number
           chunk_text: string
+          content_hash: string | null
           conversation_id: string | null
           created_at: string
           document_name: string
           embedding: string | null
           id: string
           metadata: Json | null
+          model_version: string | null
           page_number: number | null
           paragraph_index: number | null
+          postcode: string | null
+          report_type: string | null
+          state: string | null
+          suburb: string | null
+          tsv: unknown
         }
         Insert: {
           chunk_index: number
           chunk_text: string
+          content_hash?: string | null
           conversation_id?: string | null
           created_at?: string
           document_name: string
           embedding?: string | null
           id?: string
           metadata?: Json | null
+          model_version?: string | null
           page_number?: number | null
           paragraph_index?: number | null
+          postcode?: string | null
+          report_type?: string | null
+          state?: string | null
+          suburb?: string | null
+          tsv?: unknown
         }
         Update: {
           chunk_index?: number
           chunk_text?: string
+          content_hash?: string | null
           conversation_id?: string | null
           created_at?: string
           document_name?: string
           embedding?: string | null
           id?: string
           metadata?: Json | null
+          model_version?: string | null
           page_number?: number | null
           paragraph_index?: number | null
+          postcode?: string | null
+          report_type?: string | null
+          state?: string | null
+          suburb?: string | null
+          tsv?: unknown
         }
         Relationships: [
           {
@@ -11645,6 +11666,38 @@ export type Database = {
           page_number: number
           paragraph_index: number
           similarity: number
+        }[]
+      }
+      match_document_chunks_hybrid: {
+        Args: {
+          keyword_weight?: number
+          match_conversation_id?: string
+          match_count?: number
+          match_document_names?: string[]
+          match_postcode?: string
+          match_report_type?: string
+          match_state?: string
+          match_suburb?: string
+          match_threshold?: number
+          query_embedding: string
+          query_text?: string
+          semantic_weight?: number
+        }
+        Returns: {
+          chunk_index: number
+          chunk_text: string
+          conversation_id: string
+          document_name: string
+          hybrid_score: number
+          id: string
+          keyword_rank: number
+          page_number: number
+          paragraph_index: number
+          postcode: string
+          report_type: string
+          similarity: number
+          state: string
+          suburb: string
         }[]
       }
       pause_migration_job: { Args: { p_job_id: string }; Returns: undefined }

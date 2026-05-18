@@ -8,6 +8,8 @@ import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
 import { listTools } from '../_shared/agent-tools.ts';
+import { extractReportMetrics } from '../_shared/calculators.ts';
+import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudget.ts';
 // Side-effect import: registers calculator + live-data tools into the
 // shared registry. Empty in Phase 2.1; populated in 2.2 and 2.3.
 import '../_shared/agent-tools-registry.ts';
@@ -462,6 +464,24 @@ async function generateEmbedding(text: string, openaiApiKey: string): Promise<nu
 }
 
 /**
+ * Compute SHA-256 hex of a string for chunk dedupe.
+ */
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const EMBEDDING_MODEL_VERSION = 'openai/text-embedding-3-small';
+
+export interface ChunkPersistMetadata {
+  suburb?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  report_type?: string | null;
+}
+
+/**
  * Step 3: Store document chunks with embeddings in database
  */
 async function storeDocumentChunks(
@@ -469,7 +489,8 @@ async function storeDocumentChunks(
   documentName: string,
   chunks: EnrichedChunk[],
   openaiApiKey: string,
-  conversationId?: string
+  conversationId?: string,
+  chunkMeta?: ChunkPersistMetadata
 ): Promise<void> {
   console.log(`[RAG] Storing ${chunks.length} chunks for document: ${documentName}`);
 
@@ -490,36 +511,34 @@ async function storeDocumentChunks(
     const chunksWithEmbeddings = await Promise.all(
       batch.map(async (chunk, batchIndex) => {
         const chunkIndex = i + batchIndex;
+        const content_hash = await sha256Hex(`${documentName}::${chunkIndex}::${chunk.text}`);
+        const baseRow: Record<string, unknown> = {
+          document_name: documentName,
+          chunk_index: chunkIndex,
+          chunk_text: chunk.text,
+          paragraph_index: chunk.paragraph_index,
+          page_number: chunk.page_number,
+          conversation_id: conversationId || null,
+          suburb: chunkMeta?.suburb ?? null,
+          state: chunkMeta?.state ?? null,
+          postcode: chunkMeta?.postcode ?? null,
+          report_type: chunkMeta?.report_type ?? null,
+          model_version: EMBEDDING_MODEL_VERSION,
+          content_hash,
+        };
         try {
           const embedding = await generateEmbedding(chunk.text, openaiApiKey);
           return {
-            document_name: documentName,
-            chunk_index: chunkIndex,
-            chunk_text: chunk.text,
-            paragraph_index: chunk.paragraph_index,
-            page_number: chunk.page_number,
+            ...baseRow,
             embedding: JSON.stringify(embedding),
-            conversation_id: conversationId || null,
-            metadata: {
-              char_count: chunk.text.length,
-              created_at: new Date().toISOString(),
-            },
+            metadata: { char_count: chunk.text.length, created_at: new Date().toISOString() },
           };
         } catch (error) {
           console.error(`[RAG] Failed to embed chunk ${chunkIndex}:`, error);
           return {
-            document_name: documentName,
-            chunk_index: chunkIndex,
-            chunk_text: chunk.text,
-            paragraph_index: chunk.paragraph_index,
-            page_number: chunk.page_number,
+            ...baseRow,
             embedding: null,
-            conversation_id: conversationId || null,
-            metadata: {
-              char_count: chunk.text.length,
-              created_at: new Date().toISOString(),
-              embedding_error: true,
-            },
+            metadata: { char_count: chunk.text.length, created_at: new Date().toISOString(), embedding_error: true },
           };
         }
       })
@@ -548,32 +567,59 @@ export interface RetrievedChunk {
   page_number?: number | null;
 }
 
+export interface RetrieveFilters {
+  documentNames?: string[];
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  reportType?: string;
+  semanticWeight?: number;
+  keywordWeight?: number;
+}
+
 async function retrieveRelevantChunks(
   supabase: any,
   query: string,
   openaiApiKey: string,
   conversationId?: string,
-  matchThreshold = 0.7,
-  matchCount = 5
+  matchThreshold = 0.5,
+  matchCount = 12,
+  filters?: RetrieveFilters
 ): Promise<RetrievedChunk[]> {
-  console.log(`[RAG] Retrieving relevant chunks for query: "${query.substring(0, 50)}..."`);
+  console.log(`[RAG] Hybrid retrieval for query: "${query.substring(0, 50)}..."`);
 
   try {
     const queryEmbedding = await generateEmbedding(query, openaiApiKey);
 
-    const { data, error } = await supabase.rpc('match_document_chunks', {
+    const { data, error } = await supabase.rpc('match_document_chunks_hybrid', {
       query_embedding: JSON.stringify(queryEmbedding),
+      query_text: query,
       match_conversation_id: conversationId || null,
+      match_document_names: filters?.documentNames ?? null,
+      match_suburb: filters?.suburb ?? null,
+      match_state: filters?.state ?? null,
+      match_postcode: filters?.postcode ?? null,
+      match_report_type: filters?.reportType ?? null,
       match_threshold: matchThreshold,
       match_count: matchCount,
+      semantic_weight: filters?.semanticWeight ?? 0.7,
+      keyword_weight: filters?.keywordWeight ?? 0.3,
     });
 
     if (error) {
-      console.error(`[RAG] Similarity search error:`, error);
-      throw error;
+      console.error(`[RAG] Hybrid search error, falling back to semantic-only:`, error);
+      // Fallback to legacy semantic-only RPC if hybrid not available
+      const { data: legacy, error: legacyErr } = await supabase.rpc('match_document_chunks', {
+        query_embedding: JSON.stringify(queryEmbedding),
+        match_conversation_id: conversationId || null,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+      });
+      if (legacyErr) throw legacyErr;
+      return legacy || [];
     }
 
-    console.log(`[RAG] Found ${data?.length || 0} relevant chunks`);
+    console.log(`[RAG] Hybrid found ${data?.length || 0} chunks (top score: ${data?.[0]?.hybrid_score?.toFixed(3) ?? 'n/a'})`);
     return data || [];
   } catch (error) {
     console.error(`[RAG] Failed to retrieve chunks:`, error);
@@ -833,7 +879,21 @@ Deno.serve(async (req) => {
           const chunks = chunkText(extractedText);
           chunksStored = chunks.length;
 
-          await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId);
+          // Derive lightweight location metadata so chunks are filterable later.
+          const metrics = extractReportMetrics(extractedText);
+          let suburb: string | null = null;
+          if (metrics.address) {
+            const parts = metrics.address.split(',').map(p => p.trim());
+            if (parts.length >= 2) suburb = parts[1] || null;
+          }
+          const chunkMeta = {
+            suburb,
+            state: metrics.state ?? null,
+            postcode: metrics.postcode ?? null,
+            report_type: null,
+          };
+
+          await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId, chunkMeta);
 
           ragEnabled = true;
           console.log(`[report-qa] RAG storage complete for ${fileName}`);
@@ -1254,11 +1314,30 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         finalQuestion = lastUserMsg.content + '\n\n' + question;
       }
       
-      const messages = [
+      const rawMessages = [
         { role: "system", content: systemPrompt },
         ...sanitizedHistory,
         { role: "user", content: finalQuestion },
       ];
+
+      // Token-aware budgeter: pick per-model budget, drop oldest history first,
+      // then truncate system context tail. Keeps the most important slots intact.
+      const budgetModelHint =
+        modelProvider === 'gemini' ? 'google/gemini-3.1-pro-preview' :
+        modelProvider === 'openai-direct' ? 'openai/gpt-4.1' :
+        modelProvider === 'perplexity' ? 'sonar' :
+        'openai/gpt-5.2';
+      const budget = fitMessagesToBudget(
+        rawMessages,
+        inputBudgetForModel(budgetModelHint),
+        { systemContextSeparator: '\n\n## ' }
+      );
+      const messages = budget.messages;
+      if (budget.trimmed.historyDropped || budget.trimmed.systemTruncatedChars) {
+        console.log(`[report-qa] Budget trim — historyDropped=${budget.trimmed.historyDropped}, systemTruncatedChars=${budget.trimmed.systemTruncatedChars}, estTokens=${budget.estimatedTokens}`);
+      } else {
+        console.log(`[report-qa] Budget OK — estTokens=${budget.estimatedTokens}`);
+      }
 
       // Check if streaming is requested
       const streamingEnabled = body.stream === true;
@@ -1960,8 +2039,21 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         
         const chunks = chunkText(content, 1500, 200); // Larger chunks for better context
         console.log(`[report-qa] Report "${name}": ${chunks.length} chunks from ${content.length} chars`);
-        
-        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId);
+
+        const metrics = extractReportMetrics(content);
+        let suburb: string | null = null;
+        if (metrics.address) {
+          const parts = metrics.address.split(',').map(p => p.trim());
+          if (parts.length >= 2) suburb = parts[1] || null;
+        }
+        const chunkMeta = {
+          suburb,
+          state: metrics.state ?? null,
+          postcode: metrics.postcode ?? null,
+          report_type: null,
+        };
+
+        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId, chunkMeta);
         totalChunks += chunks.length;
       }
 
