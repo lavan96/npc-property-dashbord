@@ -96,9 +96,13 @@ const FORMAT_GROUPS = [
 ];
 
 export default function Templates() {
+  const navigate = useNavigate();
   const { canEdit: canEditTemplates } = useModulePermissions('templates');
   const [activeTab, setActiveTab] = useState('report-formats');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat | null>(null);
+
+  const { data: reportTemplates = [], isLoading: reportTemplatesLoading } = useReportTemplates();
+  const { create: createReportTemplate, remove: removeReportTemplate } = useReportTemplateMutations();
 
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['report-structure-templates'],
