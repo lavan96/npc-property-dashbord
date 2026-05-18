@@ -124,6 +124,7 @@ interface ChatMessage {
   documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
   comparisonMode?: boolean; // True when answer compares ≥2 reports
   toolInvocations?: ToolInvocation[]; // Agent tools executed for this answer
+  aiFollowups?: string[]; // Phase 2.4 — AI-generated follow-up suggestions
   sent_by?: string | null;
   sent_by_username?: string | null;
 }
@@ -974,6 +975,10 @@ export default function ReportQA() {
               flushToolsToStreaming();
               continue;
             }
+            if (parsed?._followups && Array.isArray(parsed._followups)) {
+              (streamMeta as any).followups = parsed._followups.filter((s: any) => typeof s === 'string');
+              continue;
+            }
             if (parsed?._error) {
               console.warn('[ReportQA] Agent loop error event:', parsed._error);
               continue;
@@ -1003,6 +1008,7 @@ export default function ReportQA() {
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
         toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
+        aiFollowups: (streamMeta as any).followups,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -2298,6 +2304,7 @@ export default function ReportQA() {
                                 {index === messages.length - 1 && (
                                   <FollowUpSuggestions
                                     lastAssistantMessage={message.content}
+                                    aiSuggestions={message.aiFollowups}
                                     reportContext={
                                       uploadedReports.length > 1 ? 'comparison' : 
                                       uploadedReports.length === 1 ? 'single' : 'none'
