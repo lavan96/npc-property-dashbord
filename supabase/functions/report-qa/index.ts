@@ -438,9 +438,44 @@ function chunkText(text: string, chunkSize = 800, overlapSize = 150): EnrichedCh
 }
 
 /**
- * Step 2: Generate embedding vector for a text chunk using OpenAI
+ * Step 2: Generate embedding vector for a text chunk via Lovable AI Gateway.
+ * Uses Gemini embedding-001 truncated (Matryoshka) to 1536 dims to match the
+ * existing pgvector column. Falls back to OpenAI if the gateway is unavailable.
  */
 async function generateEmbedding(text: string, openaiApiKey: string): Promise<number[]> {
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+  const input = text.substring(0, 8000);
+
+  if (lovableKey) {
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-embedding-001',
+          input,
+          dimensions: 1536,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const vec = data?.data?.[0]?.embedding;
+        if (Array.isArray(vec) && vec.length === 1536) return vec;
+        console.warn(`[RAG] Gateway returned unexpected embedding shape (len=${vec?.length}); falling back.`);
+      } else {
+        const errText = await response.text();
+        console.warn(`[RAG] Gateway embedding error ${response.status}: ${errText.slice(0, 200)} – falling back to OpenAI.`);
+      }
+    } catch (err) {
+      console.warn('[RAG] Gateway embedding threw, falling back to OpenAI:', err);
+    }
+  }
+
+  // Legacy fallback: OpenAI
   const response = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: {
@@ -449,7 +484,7 @@ async function generateEmbedding(text: string, openaiApiKey: string): Promise<nu
     },
     body: JSON.stringify({
       model: 'text-embedding-3-small',
-      input: text.substring(0, 8000), // Limit input to avoid token limits
+      input,
     }),
   });
 
@@ -472,7 +507,7 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-const EMBEDDING_MODEL_VERSION = 'openai/text-embedding-3-small';
+const EMBEDDING_MODEL_VERSION = 'lovable/gemini-embedding-001@1536';
 
 export interface ChunkPersistMetadata {
   suburb?: string | null;
