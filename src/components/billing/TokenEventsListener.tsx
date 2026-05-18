@@ -23,13 +23,18 @@ export function TokenEventsListener() {
   const [outOfTokens, setOutOfTokens] = useState<OutOfTokensDetail | null>(null);
 
   useEffect(() => {
-    const offUsed = onTokensUsed(({ tokensUsed, tokensReserved, functionName }) => {
+    const offUsed = onTokensUsed(({ tokensUsed, tokensReserved, estimatedTokens, durationMs, functionName }) => {
       const label = FUNCTION_LABELS[functionName] ?? "Report";
-      toast.success(`${label} complete`, {
-        description: `Used ${tokensUsed.toLocaleString()} tokens${
-          tokensReserved ? ` (reserved ${tokensReserved.toLocaleString()})` : ""
-        }`,
-      });
+      const parts: string[] = [`Used ${tokensUsed.toLocaleString()} tokens`];
+      if (tokensReserved) parts.push(`reserved ${tokensReserved.toLocaleString()}`);
+      if (estimatedTokens && estimatedTokens !== tokensReserved) {
+        parts.push(`est. ${estimatedTokens.toLocaleString()}`);
+      }
+      if (durationMs && durationMs > 0) {
+        const s = (durationMs / 1000).toFixed(durationMs < 10_000 ? 1 : 0);
+        parts.push(`${s}s`);
+      }
+      toast.success(`${label} complete`, { description: parts.join(" · ") });
     });
     const offOOT = onOutOfTokens((detail) => {
       setOutOfTokens(detail);

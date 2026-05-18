@@ -8,6 +8,8 @@
 export interface TokensUsedDetail {
   tokensUsed: number;
   tokensReserved?: number;
+  estimatedTokens?: number;
+  durationMs?: number;
   functionName: string;
   label?: string;
 }
