@@ -57,6 +57,7 @@ interface GeneratedReport {
   analytics: any;
   insights: any;
   config: any;
+  generated_by?: string | null;
 }
 
 interface InvestmentReport {
@@ -78,6 +79,7 @@ interface InvestmentReport {
   economic_data?: any;
   investment_score?: any;
   location_intelligence?: any;
+  generated_by?: string | null;
 }
 
 interface ComparisonAnalysis {
@@ -96,6 +98,7 @@ interface ComparisonAnalysis {
   location_comparison: any;
   risk_comparison: any;
   red_flags: any;
+  created_by?: string | null;
 }
 
 export default function GeneratedReports() {
