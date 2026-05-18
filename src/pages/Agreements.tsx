@@ -329,10 +329,16 @@ export default function Agreements() {
                               View Client
                             </DropdownMenuItem>
                             {canEditAgreements && agreement.status === 'generated' && (
-                              <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send via DocuSign
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => openPrepareForSigning(agreement)}>
+                                  <FileSignature className="h-4 w-4 mr-2" />
+                                  Prepare for Signing
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send via DocuSign (legacy anchors)
+                                </DropdownMenuItem>
+                              </>
                             )}
                             {agreement.docusign_envelope_id && (
                               <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
