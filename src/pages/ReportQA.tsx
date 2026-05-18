@@ -975,6 +975,10 @@ export default function ReportQA() {
               flushToolsToStreaming();
               continue;
             }
+            if (parsed?._followups && Array.isArray(parsed._followups)) {
+              (streamMeta as any).followups = parsed._followups.filter((s: any) => typeof s === 'string');
+              continue;
+            }
             if (parsed?._error) {
               console.warn('[ReportQA] Agent loop error event:', parsed._error);
               continue;
@@ -1004,6 +1008,7 @@ export default function ReportQA() {
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
         toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
+        aiFollowups: (streamMeta as any).followups,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
