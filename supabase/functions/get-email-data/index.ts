@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       // previews/search but is text — clients fetch full body via action='get'.
       const { data: emails, error } = await supabase
         .from('email_copilot_emails')
-        .select('id, sender, subject, received_at, draft_reply, urgency_level, linked_property_address, linked_report_id, status, created_by, created_at, updated_at, cc_recipients, bcc_recipients, mailbox_source, to_recipients, folder, client_id, conversation_id')
+        .select('id, sender, subject, body_preview, received_at, draft_reply, urgency_level, linked_property_address, linked_report_id, status, created_by, created_at, updated_at, cc_recipients, bcc_recipients, mailbox_source, to_recipients, folder, client_id, conversation_id')
         .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false })
         .range(offset, offset + limit - 1);
