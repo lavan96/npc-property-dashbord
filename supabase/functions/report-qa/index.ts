@@ -858,6 +858,34 @@ Deno.serve(async (req) => {
       console.log('[report-qa] Body parsing failed (may be empty), continuing with empty body:', err);
       // Continue - session token should be in headers/cookies
     }
+
+    // PUBLIC action (no auth) — shared answer lookup must be reachable
+    // without a session so anyone with the link can view a single answer.
+    if (body?.action === "get-shared-answer-public") {
+      const shareToken = body?.shareToken;
+      if (!shareToken) {
+        return new Response(JSON.stringify({ error: "shareToken required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const sbPub = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data, error } = await sbPub.rpc("get_shared_qa_answer", { _share_token: shareToken });
+      if (error) {
+        console.error('[report-qa] get-shared-answer-public error:', error);
+        return new Response(JSON.stringify({ error: "Lookup failed" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
+        return new Response(JSON.stringify({ error: "Not found or revoked" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ answer: row }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     // SECURITY: Verify authentication
     // IMPORTANT: verifyAuth checks headers/cookies first, then body
