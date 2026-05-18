@@ -478,7 +478,7 @@ export function InvestmentReportGenerator() {
           report_content: 'Generating report...',
           status: 'pending',
           report_scope: queryType, // Track the scope type
-          generated_by: null, // Set to null to avoid foreign key constraint issues
+          generated_by: user?.id ?? null,
           manual_overrides: cleanedOverrides, // Save pre-generation overrides (empty for area reports)
         },
       });
@@ -844,7 +844,7 @@ export function InvestmentReportGenerator() {
           report_content: 'Generating report from scraped listing...',
           status: 'pending',
           report_scope: 'address',
-          generated_by: null,
+          generated_by: user?.id ?? null,
           manual_overrides: cleanedOverrides,
         },
       });
@@ -1277,7 +1277,7 @@ export function InvestmentReportGenerator() {
           report_content: 'Generating report from PDF...',
           status: 'pending',
           report_scope: 'address',
-          generated_by: null,
+          generated_by: user?.id ?? null,
           manual_overrides: pdfOverrides,
         },
       });
