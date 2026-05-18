@@ -171,6 +171,21 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {signingDoc && (
+        <PrepareForSigningModal
+          open={!!signingDoc}
+          onOpenChange={(v) => { if (!v) setSigningDoc(null); }}
+          scope="document"
+          recordId={signingDoc.id}
+          title={signingDoc.title}
+          pdfUrl={signingPdfUrl}
+          bucket={DOC_BUCKET}
+          initialRecipients={((signingDoc as any).signing_recipients as SigningRecipient[]) || (signingDoc.sent_to || []).map((email, i) => ({ id: `r${i}`, name: email.split('@')[0], email, roleLabel: 'Signer', routingOrder: 1 }))}
+          initialLayout={((signingDoc as any).signing_layout) || []}
+          onSent={() => setSigningDoc(null)}
+        />
+      )}
     </div>
   );
 }
