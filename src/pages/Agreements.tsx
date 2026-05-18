@@ -45,8 +45,24 @@ export default function Agreements() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [signingAgreement, setSigningAgreement] = useState<AgencyAgreement | null>(null);
+  const [signingPdfUrl, setSigningPdfUrl] = useState<string>('');
   const navigate = useNavigate();
   const { canEdit: canEditAgreements } = useModulePermissions('agreements');
+
+  const openPrepareForSigning = async (a: AgencyAgreement) => {
+    if (!a.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
+    const { data, error } = await supabase.storage.from('agency-agreements').createSignedUrl(a.pdf_storage_path, 600);
+    if (error || !data?.signedUrl) { toast.error(`Failed to load PDF: ${error?.message}`); return; }
+    const existingRecipients: SigningRecipient[] = Array.isArray((a as any).signing_recipients) && (a as any).signing_recipients.length
+      ? (a as any).signing_recipients
+      : [
+          { id: 'buyer', name: a.buyer_names, email: a.buyer_email || '', roleLabel: 'Primary Buyer', routingOrder: 1 },
+          ...(a.secondary_buyer_name ? [{ id: 'buyer2', name: a.secondary_buyer_name, email: (a as any).secondary_buyer_email || a.buyer_email || '', roleLabel: 'Secondary Buyer', routingOrder: 1 }] : []),
+        ];
+    setSigningPdfUrl(data.signedUrl);
+    setSigningAgreement({ ...a, signing_recipients: existingRecipients } as any);
+  };
 
   const filteredAgreements = agreements.filter((a) =>
     a.buyer_names.toLowerCase().includes(searchTerm.toLowerCase()) ||
