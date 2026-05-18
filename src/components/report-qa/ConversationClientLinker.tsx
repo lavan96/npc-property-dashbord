@@ -9,6 +9,10 @@ import { cn } from '@/lib/utils';
 
 interface ConversationClientLinkerProps {
   conversationId: string | null;
+  /** Current linked client_id from the parent's conversation record. */
+  initialClientId?: string | null;
+  /** Optional callback so parent state stays in sync after a change. */
+  onClientChange?: (clientId: string | null) => void;
   className?: string;
 }
 
@@ -19,34 +23,19 @@ interface ConversationClientLinkerProps {
  *
  * Client linkage is optional — free-floating threads remain supported.
  */
-export function ConversationClientLinker({ conversationId, className }: ConversationClientLinkerProps) {
-  const [clientId, setClientId] = useState<string | null>(null);
+export function ConversationClientLinker({
+  conversationId,
+  initialClientId = null,
+  onClientChange,
+  className,
+}: ConversationClientLinkerProps) {
+  const [clientId, setClientId] = useState<string | null>(initialClientId);
   const [clientName, setClientName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  // Load current linkage
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!conversationId) { setClientId(null); setClientName(null); return; }
-      try {
-        const { data, error } = await invokeSecureFunction('get-table-data', {
-          table: 'report_qa_conversations',
-          select: 'client_id',
-          filters: { id: conversationId },
-          single: true,
-        });
-        if (cancelled) return;
-        if (!error) {
-          const cid = (data?.record?.client_id || data?.client_id || null) as string | null;
-          setClientId(cid);
-        }
-      } catch { /* non-fatal */ }
-    })();
-    return () => { cancelled = true; };
-  }, [conversationId]);
+  useEffect(() => { setClientId(initialClientId ?? null); }, [initialClientId, conversationId]);
 
   const handleChange = async (newId: string | null, newName?: string) => {
     if (!conversationId) {
