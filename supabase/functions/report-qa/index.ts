@@ -820,16 +820,16 @@ Deno.serve(async (req) => {
 
       // Step 5: Store extracted text as chunks with embeddings for RAG
       let ragEnabled = false;
+      let chunksStored = 0;
       if (enableRAG && OPENAI_API_KEY && extractedText.length > 100) {
         try {
           console.log(`[report-qa] Processing document for RAG storage...`);
-          
-          // Chunk the extracted text
+
           const chunks = chunkText(extractedText);
-          
-          // Store chunks with embeddings
+          chunksStored = chunks.length;
+
           await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId);
-          
+
           ragEnabled = true;
           console.log(`[report-qa] RAG storage complete for ${fileName}`);
         } catch (ragError) {
@@ -845,7 +845,7 @@ Deno.serve(async (req) => {
           success: true,
           extractedText,
           ragEnabled,
-          chunksStored: ragEnabled ? chunkText(extractedText).length : 0,
+          chunksStored,
           imagesProcessed,
           totalPages,
           fileSizeBytes,
