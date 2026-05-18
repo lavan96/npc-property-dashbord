@@ -477,6 +477,16 @@ export function GenerationProgressItem({
                 )}
               </>
             )}
+            {report.status === 'failed' && !isStuck && (
+              <>
+                <Octagon className="h-3 w-3 text-destructive" />
+                <span className="text-xs text-destructive font-medium">
+                  {report.error_message?.toLowerCase().startsWith('cancelled')
+                    ? report.error_message
+                    : 'Failed'}
+                </span>
+              </>
+            )}
             {isStuck && (
               <>
                 {hasScheduledRetry ? (
