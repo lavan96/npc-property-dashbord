@@ -2117,7 +2117,14 @@ export default function ReportQA() {
                               </div>
                             )}
                             {message.role === 'assistant' && !message.attachments?.length && (
-                              <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
+                              <>
+                                {(message.documentCitations?.length || message.comparisonMode) && (
+                                  <Citations
+                                    documents={message.documentCitations}
+                                    comparisonMode={message.comparisonMode}
+                                  />
+                                )}
+                                <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                                 <div className="flex flex-wrap gap-1 sm:gap-2">
                                   <CopyWithFeedback content={message.content} />
                                   <TextToSpeech text={message.content} />
