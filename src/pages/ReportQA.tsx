@@ -2376,9 +2376,6 @@ export default function ReportQA() {
                                     </>
                                   )}
                                 </div>
-                              </>
-                            </>
-                          ))}
                                 <MessageThreading
                                   messageId={message.id}
                                   messageContent={message.content}
