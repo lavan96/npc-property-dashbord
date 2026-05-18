@@ -419,7 +419,7 @@ export default function GeneratedReports() {
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
           status: ['completed', 'pending', 'failed', 'processing'],
           createdAfter: thirtyDaysAgo,
           isArchived: false,
@@ -458,7 +458,7 @@ export default function GeneratedReports() {
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
           status: ['completed', 'pending'],
           isArchived: true,
           limit: 100
@@ -626,7 +626,7 @@ export default function GeneratedReports() {
       // Cast to any to bypass TypeScript for property_comparisons table
       const { data, error } = await (supabase as any)
         .from('property_comparisons')
-        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags, is_archived')
+        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags, is_archived, created_by')
         .order('created_at', { ascending: false });
 
       if (error) {
