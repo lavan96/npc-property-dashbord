@@ -419,6 +419,11 @@ function ReportGenerationProgressInner() {
   const finalizeJob = useCallback(
     async (prev: ReportProgress) => {
       try {
+        if (cancelledIdsRef.current.has(prev.id)) {
+          // User-cancelled jobs are already logged in history as 'cancelled'.
+          cancelledIdsRef.current.delete(prev.id);
+          return;
+        }
         const { data } = await invokeSecureFunction('get-investment-reports', {
           reportId: prev.id,
           listOptions: { select: 'id, property_address, status, error_message, updated_at' },
