@@ -522,20 +522,55 @@ export function GenerationProgressItem({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    if (window.confirm(`Stop generation for "${report.property_address}"? This will mark the report as failed.`)) {
-                      onKill();
-                    }
-                  }}
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                  disabled={hasScheduledRetry}
+                  onClick={() => setKillOpen(true)}
                   aria-label="Stop report generation"
                 >
                   <Octagon className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Stop / kill this job</TooltipContent>
+              <TooltipContent>
+                {hasScheduledRetry
+                  ? 'Wait — auto-retry in progress'
+                  : 'Stop / kill this job'}
+              </TooltipContent>
             </Tooltip>
           )}
+          <AlertDialog open={killOpen} onOpenChange={setKillOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Stop report generation?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-medium text-foreground">
+                        {report.property_address}
+                      </span>{' '}
+                      will be marked as <span className="text-destructive font-medium">failed</span>{' '}
+                      and removed from the active queue.
+                    </p>
+                    <p>
+                      Progress so far: {report.sectionsCompleted}/{report.totalSections} sections.
+                      This cannot be undone, but you can re-generate the report later.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep running</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onKill?.();
+                    setKillOpen(false);
+                  }}
+                >
+                  Stop generation
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             size="sm"
             variant="ghost"
