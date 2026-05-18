@@ -48,7 +48,9 @@ import {
   Pause,
   Play,
   Square,
-  Download
+  Download,
+  Quote,
+  QuoteIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -92,6 +94,7 @@ import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
+import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
 
 interface UploadProgress {
   fileName: string;
@@ -219,6 +222,49 @@ export default function ReportQA() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [showReportsPanel, setShowReportsPanel] = useState(true);
+  // Visibility of citation chips & snippet tooltips. Stored locally so the
+  // preference survives reloads without changing what we persist on the
+  // conversation — `documentCitations` remain on each message so toggling
+  // back on (or restoring a saved chat) re-hydrates without a refetch.
+  const [showCitations, setShowCitations] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('reportqa_show_citations') !== '0';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('reportqa_show_citations', showCitations ? '1' : '0');
+  }, [showCitations]);
+  const [snippetViewer, setSnippetViewer] = useState<{
+    open: boolean;
+    reportName: string | null;
+    reportContent: string | null;
+    citation: DocumentCitation | null;
+  }>({ open: false, reportName: null, reportContent: null, citation: null });
+
+  const openCitationInViewer = useCallback(
+    (citation: DocumentCitation) => {
+      // Match by exact name first; fall back to a case-insensitive / stem match
+      // so renamed-but-equivalent files (e.g. "Report.pdf" vs "report.PDF") work.
+      const target =
+        uploadedReports.find((r) => r.name === citation.document_name) ??
+        uploadedReports.find(
+          (r) => r.name.toLowerCase() === citation.document_name?.toLowerCase(),
+        ) ??
+        uploadedReports.find((r) =>
+          r.name.toLowerCase().includes(
+            (citation.document_name ?? '').toLowerCase().replace(/\.pdf$/i, ''),
+          ),
+        );
+
+      setSnippetViewer({
+        open: true,
+        reportName: target?.name ?? citation.document_name ?? 'Report',
+        reportContent: target?.content ?? null,
+        citation,
+      });
+    },
+    [uploadedReports],
+  );
   
   // Lazy loading for chat history
   const [totalMessageCount, setTotalMessageCount] = useState(0);
