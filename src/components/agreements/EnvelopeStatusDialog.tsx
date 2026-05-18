@@ -65,6 +65,32 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
   const [signers, setSigners] = useState<Signer[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadSigned = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const fn = scope === 'agreement' ? 'manage-agency-agreements' : 'manage-generated-documents';
+      const payload = scope === 'agreement'
+        ? { action: 'download_signed', agreement_id: recordId }
+        : { action: 'download_signed', id: recordId };
+      const { data, error: invErr } = await invokeSecureFunction<any>(fn, payload);
+      if (invErr) throw new Error(invErr.message);
+      if (!data?.success) throw new Error(data?.error || 'Download failed');
+      const bin = atob(data.pdf_base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = data.filename || 'signed.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Signed PDF downloaded');
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally { setDownloading(false); }
+  }, [scope, recordId]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
