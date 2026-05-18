@@ -52,6 +52,7 @@ export function ConversationClientLinker({
       if (error) throw error;
       setClientId(newId);
       setClientName(newName ?? null);
+      onClientChange?.(newId);
       toast({
         title: newId ? 'Client linked' : 'Client unlinked',
         description: newId
