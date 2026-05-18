@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TemplateUploader } from '@/components/templates/TemplateUploader';
 import { TemplateList } from '@/components/templates/TemplateList';
 import { BrandingManager } from '@/components/templates/BrandingManager';
@@ -15,7 +19,15 @@ import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplat
 import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
 import { ReportFormatGroup } from '@/components/templates/ReportFormatGroup';
 import { CoverPageOverlayManager } from '@/components/templates/cover-editor/CoverPageOverlayManager';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator, MapPin, Hash, Map, Layers } from 'lucide-react';
+import {
+  FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare,
+  Calculator, MapPin, Hash, Map, Layers, Edit, Trash2, CheckCircle2, Plus,
+} from 'lucide-react';
+import {
+  useReportTemplates,
+  useReportTemplateMutations,
+} from '@/hooks/useReportTemplates';
+import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 
 type ReportFormat =
   | 'investment_compass' 
