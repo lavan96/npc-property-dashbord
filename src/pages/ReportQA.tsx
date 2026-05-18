@@ -142,6 +142,7 @@ interface SavedConversation {
   id: string;
   title: string;
   report_names: string[];
+  client_id?: string | null;
   created_at: string;
   updated_at: string;
   shared?: boolean;
