@@ -2304,6 +2304,7 @@ export default function ReportQA() {
                                 {index === messages.length - 1 && (
                                   <FollowUpSuggestions
                                     lastAssistantMessage={message.content}
+                                    aiSuggestions={message.aiFollowups}
                                     reportContext={
                                       uploadedReports.length > 1 ? 'comparison' : 
                                       uploadedReports.length === 1 ? 'single' : 'none'
