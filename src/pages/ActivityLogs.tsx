@@ -423,30 +423,49 @@ export default function ActivityLogs() {
                 <>
                   {/* Mobile: Card layout */}
                   <div className="sm:hidden divide-y divide-border">
-                    {filteredLogs.map((log) => (
-                      <div key={log.id} className="py-3 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-muted-foreground shrink-0">
-                              {getEntityIcon(log.entity_type)}
-                            </span>
-                            <span className="font-medium text-sm truncate">
-                              {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                    {filteredLogs.map((log) => {
+                      const bulkAddrs = getBulkAddresses(log);
+                      const isOpen = expandedRows.has(log.id);
+                      return (
+                        <div key={log.id} className="py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-muted-foreground shrink-0">
+                                {getEntityIcon(log.entity_type)}
+                              </span>
+                              <span className="font-medium text-sm truncate">
+                                {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            {getActionBadge(log.action_type)}
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3" />
+                              <span>{log.username || 'Unknown'}</span>
+                            </div>
+                            <span className="font-mono">
+                              {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                             </span>
                           </div>
-                          {getActionBadge(log.action_type)}
+                          {bulkAddrs && (
+                            <Collapsible open={isOpen} onOpenChange={() => toggleExpand(log.id)}>
+                              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                <ChevronRight className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                {isOpen ? 'Hide' : 'Show'} {bulkAddrs.length} {bulkAddrs.length === 1 ? 'property' : 'properties'}
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="mt-2 rounded-md border border-border bg-muted/30 p-2 space-y-1">
+                                {bulkAddrs.map((addr, i) => (
+                                  <div key={i} className="text-xs text-foreground/90">
+                                    <span className="text-muted-foreground mr-1">{i + 1}.</span>{addr}
+                                  </div>
+                                ))}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
                         </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <User className="h-3 w-3" />
-                            <span>{log.username || 'Unknown'}</span>
-                          </div>
-                          <span className="font-mono">
-                            {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Desktop: Table layout */}
