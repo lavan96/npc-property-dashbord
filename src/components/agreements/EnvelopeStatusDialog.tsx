@@ -44,7 +44,7 @@ const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = 
   autoresponded: { tone: 'bg-amber-500/10 text-amber-700 border-amber-500/30', icon: AlertTriangle, label: 'Bounced' },
 };
 
-function StatusBadge({ status }: { status?: string }) {
+export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   const key = status.toLowerCase();
   const cfg = STATUS_TONE[key] || { tone: 'bg-muted text-muted-foreground border-border', icon: Clock, label: status };
@@ -55,6 +55,7 @@ function StatusBadge({ status }: { status?: string }) {
     </Badge>
   );
 }
+const StatusBadge = DocuSignStatusBadge;
 
 function fmt(ts?: string) { return ts ? format(new Date(ts), 'dd MMM yy HH:mm') : '—'; }
 
