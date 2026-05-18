@@ -1495,6 +1495,10 @@ export default function GeneratedReports() {
                         <Calendar className="h-3 w-3" />
                         {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
                       </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3" />
+                        Created by {generatorLabel(comparison.created_by)}
+                      </div>
                       {comparison.property_states && comparison.property_states.length > 0 && (
                         <div className="text-xs">
                           States: {comparison.property_states.join(', ')}
