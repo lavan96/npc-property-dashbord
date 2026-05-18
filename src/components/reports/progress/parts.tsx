@@ -63,7 +63,10 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import type { GenerationHistoryEntry } from '@/hooks/useGenerationHistory';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 /* ---------- Types shared with parent ---------- */
 
