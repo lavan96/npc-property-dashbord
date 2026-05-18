@@ -1012,6 +1012,36 @@ export function BulkJobGroup({
                 <TooltipContent>Retry all failed in this job</TooltipContent>
               </Tooltip>
             )}
+            {onKillAll && (() => {
+              const active = group.reports.filter(
+                (r) => r.status === 'pending' || r.status === 'processing',
+              );
+              if (active.length === 0) return null;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Stop ${active.length} active report${active.length === 1 ? '' : 's'} in this bulk job? They will be marked as failed.`,
+                          )
+                        ) {
+                          onKillAll(active.map((r) => r.id));
+                        }
+                      }}
+                    >
+                      <Octagon className="h-3 w-3 mr-1" />
+                      Stop {active.length}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Kill all active jobs in this bulk job</TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </div>
         </div>
 
