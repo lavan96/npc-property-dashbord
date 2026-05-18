@@ -2022,3 +2022,22 @@ function buildOverrideSummary(overrides: Record<string, any>, financials?: Recor
     ? summaryLines.join('\n') 
     : 'No specific overrides provided - regenerate based on original report data.';
 }
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const overrideKeys = body?.manualOverrides ? Object.keys(body.manualOverrides).sort().join(',') : '';
+  const idempotencyKey = buildIdempotencyKey('regen-qual', [
+    body?.reportId,
+    overrideKeys,
+    body?.currentReportContent ? body.currentReportContent.length : 0,
+  ]);
+  return {
+    kind: 'report.qualitative-regen' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true },
+    requestPayload: { reportId: body?.reportId, propertyAddress: body?.propertyAddress },
+  };
+}, __regenerateQualHandler));

@@ -964,3 +964,24 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position
     });
   }
 });
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const reportType = body?.report_type || 'full';
+  const audience = body?.audience_segment || 'general';
+  const idempotencyKey = buildIdempotencyKey('mi-report', [
+    reportType,
+    audience,
+    body?.include_advisory_strategy ?? body?.include_npc_strategy,
+    new Date().toISOString().slice(0, 13), // hour-bucketed
+  ]);
+  return {
+    kind: 'report.market-intelligence' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true, extraSections: reportType === 'full' ? 2 : 0 },
+    requestPayload: { reportType, audience },
+  };
+}, __miReportHandler));

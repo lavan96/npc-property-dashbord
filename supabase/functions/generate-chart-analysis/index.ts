@@ -455,3 +455,20 @@ const __chartAnalysisHandler = async (req: Request): Promise<Response> => {
     });
   }
 });
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const idempotencyKey = buildIdempotencyKey('chart-analysis', [
+    body?.chartId,
+    body?.chartData?.title,
+    body?.chartData?.type,
+  ]);
+  return {
+    kind: 'report.chart-analysis' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true },
+    requestPayload: { chartId: body?.chartId, type: body?.chartData?.type },
+  };
+}, __chartAnalysisHandler));

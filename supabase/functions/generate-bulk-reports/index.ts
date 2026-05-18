@@ -138,3 +138,7 @@ const __bulkReportHandler = async (req: Request): Promise<Response> => {
     });
   }
 });
+
+// Bulk endpoint only kicks off the job; per-item metering happens inside
+// generate-investment-report (called by the bulk worker). No reservation here.
+Deno.serve(__bulkReportHandler);

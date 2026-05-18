@@ -749,3 +749,23 @@ Format your response as valid JSON with this structure:
     );
   }
 });
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const idempotencyKey = buildIdempotencyKey('portfolio', [
+    body?.clientId,
+    body?.investorProfile,
+    body?.analysisDepth,
+    body?.projectionYears,
+    new Date().toISOString().slice(0, 10),
+  ]);
+  return {
+    kind: 'report.portfolio-review' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true, extraSections: body?.includeProjections ? 1 : 0 },
+    requestPayload: { clientId: body?.clientId, investorProfile: body?.investorProfile },
+  };
+}, __portfolioHandler));
