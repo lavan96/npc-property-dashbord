@@ -742,10 +742,26 @@ export default function ReportQA() {
           documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
           comparisonMode: !!m.comparison_mode,
           toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+          pinned: !!m.pinned,
         }))
       );
       setShowHistory(false);
-      
+
+      // Phase 5.1 — load this user's feedback for the conversation
+      try {
+        const { data: fbData } = await invokeSecureFunction('report-qa', {
+          action: 'get-feedback',
+          conversationId: conv.id,
+        });
+        const map: Record<string, { rating: 1 | -1 | null; reason: string | null }> = {};
+        (fbData?.feedback || []).forEach((f: any) => {
+          map[f.message_id] = { rating: f.rating, reason: f.reason || null };
+        });
+        setMessageFeedback(map);
+      } catch (e) {
+        console.warn('[ReportQA] feedback load failed:', e);
+      }
+
       toast({
         title: 'Conversation loaded',
         description: conv.title,
