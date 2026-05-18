@@ -66,6 +66,7 @@ import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcu
 import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
 import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTypingIndicator';
 import { MessageReactions } from '@/components/report-qa/MessageReactions';
+import { ConversationClientLinker } from '@/components/report-qa/ConversationClientLinker';
 import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
 import { ChatThemeSelector, useCurrentTheme, type Theme } from '@/components/report-qa/ChatThemeSelector';
