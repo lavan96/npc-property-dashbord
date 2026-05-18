@@ -5,6 +5,45 @@ interface RichTextBodyProps {
   className?: string;
 }
 
+/**
+ * Strip stray markdown markers that leak through from the HTML→text conversion
+ * (e.g. unbalanced **bold** spans broken by line wraps, decorative underscore
+ * separator lines, trailing single _ after a word like "Disclaimer:_"), so they
+ * don't render as literal asterisks/underscores in the dashboard.
+ */
+function cleanPlainTextArtifacts(input: string): string {
+  if (!input) return '';
+  let text = input.replace(/\r\n/g, '\n');
+
+  // Drop decorative separator lines made of just _ or - or = (3+).
+  text = text
+    .split('\n')
+    .map((line) => (/^\s*[_\-=]{1,}\s*$/.test(line) && line.trim().length <= 80 ? '' : line))
+    .join('\n');
+
+  // Per-line: if a line has an odd number of `**`, remove the unmatched one
+  // (prefer removing a leading marker; otherwise drop the last one).
+  text = text
+    .split('\n')
+    .map((line) => {
+      const count = (line.match(/\*\*/g) || []).length;
+      if (count % 2 === 0) return line;
+      if (line.startsWith('**')) return line.replace(/^\*\*/, '');
+      return line.replace(/\*\*(?=[^*]*$)/, '');
+    })
+    .join('\n');
+
+  // Trailing single underscore glued to a word ("Disclaimer:_") with no opener.
+  text = text.replace(/([^\s_])_(?=\s|$)/g, '$1');
+  // Leading single underscore glued to a word.
+  text = text.replace(/(^|\s)_(?=[^\s_])/g, '$1');
+
+  // Collapse 3+ blank lines.
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  return text.trim();
+}
+
 // Patterns for detecting various types of content
 const linkPatterns = {
   url: /(https?:\/\/[^\s<>"{}|\\^`[\]]+|www\.[^\s<>"{}|\\^`[\]]+)/gi,
@@ -603,10 +642,10 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
   const textSize = isSmall ? 'text-xs' : 'text-sm';
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {paragraphs.map((paragraphLines, pIndex) => {
         const groups = groupLinesByType(paragraphLines);
-        
+
         return (
           <div key={pIndex} className="space-y-2">
             {groups.map((group, gIndex) => {
@@ -619,19 +658,31 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
                   </ul>
                 );
               }
-              
-              // Regular paragraph — always preserve line breaks so structure
-              // from Outlook (<br>, <p>, address blocks, sign-offs) cascades
-              // correctly into the dashboard instead of being flattened.
+
+              // Horizontal rule shorthand
+              if (group.lines.length === 1 && /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(group.lines[0])) {
+                return <hr key={gIndex} className="my-3 border-border/60" />;
+              }
+
+              const isQuoted = group.lines.every((l) => /^\s*>/.test(l));
+              const quotedClean = isQuoted
+                ? group.lines.map((l) => l.replace(/^\s*>+\s?/, ''))
+                : group.lines;
+
+              const Wrapper: React.ElementType = isQuoted ? 'blockquote' : 'p';
+              const wrapperClass = isQuoted
+                ? `${textSize} text-muted-foreground leading-relaxed whitespace-pre-wrap border-l-2 border-border/60 pl-3 italic`
+                : `${textSize} text-foreground leading-relaxed whitespace-pre-wrap`;
+
               return (
-                <p key={gIndex} className={`${textSize} text-foreground leading-relaxed whitespace-pre-wrap`}>
-                  {group.lines.map((line, lIndex) => (
+                <Wrapper key={gIndex} className={wrapperClass}>
+                  {quotedClean.map((line, lIndex) => (
                     <React.Fragment key={lIndex}>
                       <RichTextSpan text={line} />
-                      {lIndex < group.lines.length - 1 && <br />}
+                      {lIndex < quotedClean.length - 1 && <br />}
                     </React.Fragment>
                   ))}
-                </p>
+                </Wrapper>
               );
             })}
           </div>
@@ -642,16 +693,17 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
 }
 
 export default function RichTextBody({ content, className = '' }: RichTextBodyProps) {
-  const { currentMessage, threadHistory } = parseEmailThread(content);
+  const cleaned = cleanPlainTextArtifacts(content);
+  const { currentMessage, threadHistory } = parseEmailThread(cleaned);
   const { body, signature } = parseSignature(currentMessage);
-  
+
   return (
     <div className={className}>
       <FormattedContent content={body} />
-      
+
       {signature && (
-        <details className="mt-4 pt-3 border-t border-border/50">
-          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+        <details className="mt-5 pt-3 border-t border-border/50">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -662,10 +714,10 @@ export default function RichTextBody({ content, className = '' }: RichTextBodyPr
           </div>
         </details>
       )}
-      
+
       {threadHistory && (
         <details className="mt-6 border-t pt-4">
-          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
