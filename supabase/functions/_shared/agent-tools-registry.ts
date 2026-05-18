@@ -409,5 +409,219 @@ registerTool({
   },
 });
 
+// ===========================================================================
+// Phase 2.3 — Live-data tools
+// Each wraps an existing edge function (ABS, Domain, climate, crime,
+// location intelligence, listing scraper) so the agent can fetch
+// suburb-level market context on demand. All auto-fill suburb/state/
+// postcode from the attached report(s) when not specified.
+// ===========================================================================
+
+const AU_STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] as const;
+
+async function invokeService(
+  ctx: AgentToolContext,
+  fnName: string,
+  body: Record<string, any>,
+): Promise<any> {
+  const { data, error } = await ctx.supabase.functions.invoke(fnName, { body });
+  if (error) throw new Error(`${fnName} failed: ${error.message}`);
+  if (data && data.success === false) {
+    throw new Error(`${fnName} error: ${data.error || 'unknown'}`);
+  }
+  return data?.data ?? data;
+}
+
+// 11. get_abs_demographics --------------------------------------------------
+registerTool({
+  name: 'get_abs_demographics',
+  description:
+    'Fetch ABS Census demographics (population, median age, household income, family composition, education) for a suburb/postcode. Auto-fills suburb/state/postcode from the report when omitted.',
+  parameters: {
+    type: 'object',
+    properties: {
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'abs-data-service', {
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+    });
+  },
+});
+
+// 12. get_abs_seifa ---------------------------------------------------------
+registerTool({
+  name: 'get_abs_seifa',
+  description:
+    'Fetch ABS SEIFA socio-economic index scores (IRSAD, IRSD, IER, IEO) and decile rankings for a postcode. Indicates relative advantage/disadvantage.',
+  parameters: {
+    type: 'object',
+    properties: {
+      postcode: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'abs-seifa-service', {
+      postcode: args.postcode ?? d.postcode,
+      state: args.state ?? d.state,
+    });
+  },
+});
+
+// 13. get_abs_employment ----------------------------------------------------
+registerTool({
+  name: 'get_abs_employment',
+  description:
+    'Fetch ABS labour-force employment data (employment/unemployment/participation rates, top industries, median income) for a state and suburb/postcode.',
+  parameters: {
+    type: 'object',
+    properties: {
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'abs-employment-service', {
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+    });
+  },
+});
+
+// 14. get_climate_risk ------------------------------------------------------
+registerTool({
+  name: 'get_climate_risk',
+  description:
+    'Fetch climate and natural-hazard risk data (flood, bushfire, cyclone, heatwave, coastal erosion) for a suburb/postcode.',
+  parameters: {
+    type: 'object',
+    properties: {
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'climate-data-service', {
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+    });
+  },
+});
+
+// 15. get_crime_statistics --------------------------------------------------
+registerTool({
+  name: 'get_crime_statistics',
+  description:
+    'Fetch crime statistics (overall rate, breakdown by category, trend vs state average) for a suburb/postcode.',
+  parameters: {
+    type: 'object',
+    properties: {
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'crime-statistics-service', {
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+    });
+  },
+});
+
+// 16. get_domain_market_stats ----------------------------------------------
+registerTool({
+  name: 'get_domain_market_stats',
+  description:
+    'Fetch Domain suburb performance statistics (12-month median price, growth, days on market, sales volume, rental yield) for houses or units.',
+  parameters: {
+    type: 'object',
+    properties: {
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+      property_category: { type: 'string', enum: ['house', 'unit'] },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return invokeService(ctx, 'domain-data-service', {
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+      propertyCategory: args.property_category || 'house',
+    });
+  },
+});
+
+// 17. get_location_intelligence --------------------------------------------
+registerTool({
+  name: 'get_location_intelligence',
+  description:
+    'Fetch location intelligence for an address: commute times, nearby amenities (schools, transport, shopping, healthcare), walkability score, and proximity rankings.',
+  parameters: {
+    type: 'object',
+    properties: {
+      address: { type: 'string' },
+      suburb: { type: 'string' },
+      state: { type: 'string', enum: [...AU_STATES] },
+      postcode: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    const address = args.address ?? d.address;
+    if (!address) throw new Error('address required (and not found in report)');
+    return invokeService(ctx, 'location-intelligence-service', {
+      address,
+      suburb: args.suburb ?? d.suburb,
+      state: args.state ?? d.state,
+      postcode: args.postcode ?? d.postcode,
+    });
+  },
+});
+
+// 18. scrape_property_listing ----------------------------------------------
+registerTool({
+  name: 'scrape_property_listing',
+  description:
+    'Scrape a public property listing URL (realestate.com.au, domain.com.au, etc.) and extract address, price, bed/bath/car, land/floor size, features, and agent details. Use when the user pastes a listing URL.',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: { type: 'string', description: 'Public listing URL.' },
+    },
+    required: ['url'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    if (!args.url) throw new Error('url is required');
+    return invokeService(ctx, 'scrape-property-listing', { url: args.url });
+  },
+});
+
 // Re-export for convenience / type-checking from importers.
 export { extractReportMetrics };
