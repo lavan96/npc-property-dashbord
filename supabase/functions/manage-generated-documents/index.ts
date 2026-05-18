@@ -1,13 +1,20 @@
 // Batch 7E.2 — Generated documents (loan/cover/etc) + DocuSign envelope tracking
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { getDocuSignAccessToken, getDocuSignRestBaseUrl } from '../_shared/docusign-auth.ts';
+import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
 
 interface Body {
-  action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete';
+  action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete' | 'save_signing_layout' | 'send_freeform' | 'check_status';
   id?: string;
   data?: Record<string, any>;
   filters?: Record<string, any>;
   session_token?: string;
+  bucket?: string;
+  signing_recipients?: FreeformRecipient[];
+  signing_layout?: FreeformTab[];
+  email_subject?: string;
+  email_blurb?: string;
 }
 
 Deno.serve(async (req) => {
