@@ -208,6 +208,10 @@ export default function ReportQA() {
   
   // Phase 1 UX improvements
   const [streamingContent, setStreamingContent] = useState('');
+  // Tool invocations emitted by the agent loop for the currently-streaming
+  // assistant message. Reset before each send; flushed onto the final
+  // ChatMessage when the stream completes.
+  const [streamingToolInvocations, setStreamingToolInvocations] = useState<ToolInvocation[]>([]);
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_MESSAGE_LENGTH = 12000;
