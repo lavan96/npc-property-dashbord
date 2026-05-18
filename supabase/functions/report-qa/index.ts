@@ -9,6 +9,7 @@ import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
 import { listTools } from '../_shared/agent-tools.ts';
 import { extractReportMetrics } from '../_shared/calculators.ts';
+import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudget.ts';
 // Side-effect import: registers calculator + live-data tools into the
 // shared registry. Empty in Phase 2.1; populated in 2.2 and 2.3.
 import '../_shared/agent-tools-registry.ts';
