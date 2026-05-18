@@ -2,15 +2,412 @@
  * Side-effect module that registers all Report Q&A agent tools into the
  * shared `_shared/agent-tools.ts` registry.
  *
- * Phase 2.1: intentionally empty — the registry contract exists, but no
- * tools are registered yet.
- * Phase 2.2 will add calculator tools (yield, LVR, cash-flow, CGT,
- *   depreciation, stamp duty, borrowing capacity, scenario delta).
+ * Phase 2.2 — calculator tools (yield, LVR, repayment, cash flow,
+ * scenario delta, stamp duty), plus auto-extract from report context
+ * and edge-function-backed deep calculators (financial-calculator-service,
+ * calculate-borrowing-capacity, estimate-property-expenses).
+ *
  * Phase 2.3 will add live-data tools (ABS, Domain, climate, crime, etc).
  */
 
-// import { registerTool } from './agent-tools.ts';
+// deno-lint-ignore-file no-explicit-any
 
-// Future: registerTool({ name: 'calculate_yield', ... });
+import { registerTool, type AgentToolContext } from './agent-tools.ts';
+import {
+  calculateMortgageRepayment,
+  calculateYield,
+  calculateLvr,
+  calculateCashFlow,
+  calculateScenarioDelta,
+  extractMetricsFromReports,
+  extractReportMetrics,
+} from './calculators.ts';
+import { calculateStampDuty } from './stampDutyCalculator.ts';
 
-export {};
+// ---------------------------------------------------------------------------
+// Helper: pull defaults from the report context so tools can fill missing
+// args automatically (option a — auto-extract). Callers can still override
+// any argument explicitly (option b — inline form).
+// ---------------------------------------------------------------------------
+function reportDefaults(ctx: AgentToolContext) {
+  const merged = extractMetricsFromReports((ctx.reportContents as any) || []);
+  return merged;
+}
+
+function pick<T>(explicit: T | undefined | null, fallback: T | undefined): T | undefined {
+  return explicit != null ? explicit : fallback;
+}
+
+// ---------------------------------------------------------------------------
+// 1. extract_report_metrics
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'extract_report_metrics',
+  description:
+    'Extract headline numbers (property value, weekly rent, loan amount, deposit, interest rate, postcode, state, address) directly from the attached report(s). Use this first whenever the user asks a calculation question without supplying numbers — it returns the values the model should plug into other calculator tools.',
+  parameters: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
+  async execute(_args, ctx) {
+    const result = reportDefaults(ctx);
+    return {
+      ...result,
+      source: 'attached_reports',
+      report_count: ctx.reportContents?.length || 0,
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 2. calculate_yield
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_yield',
+  description:
+    'Calculate gross and (optionally) net rental yield for a property. Auto-fills missing values from the attached report(s). Returns gross_yield_percent and, if annual_expenses provided, net_yield_percent.',
+  parameters: {
+    type: 'object',
+    properties: {
+      property_value: { type: 'number', description: 'Property purchase/valuation price (AUD). Omit to auto-extract from report.' },
+      weekly_rent: { type: 'number', description: 'Weekly rent (AUD). Omit to auto-extract or supply annual_rent instead.' },
+      annual_rent: { type: 'number', description: 'Annual rent (AUD). Optional alternative to weekly_rent.' },
+      annual_expenses: { type: 'number', description: 'Total annual holding costs (rates, insurance, PM, maintenance). Required for net yield.' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateYield({
+      property_value: pick(args.property_value, d.property_value) ?? 0,
+      weekly_rent: pick(args.weekly_rent, d.weekly_rent),
+      annual_rent: pick(args.annual_rent, d.annual_rent),
+      annual_expenses: args.annual_expenses,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 3. calculate_lvr
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_lvr',
+  description:
+    'Calculate Loan-to-Value Ratio (LVR), flag whether LMI is likely, and report the deposit gap needed to reach 80% LVR. Supply any two of loan_amount/property_value/deposit; the third is derived.',
+  parameters: {
+    type: 'object',
+    properties: {
+      property_value: { type: 'number' },
+      loan_amount: { type: 'number' },
+      deposit: { type: 'number' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateLvr({
+      property_value: pick(args.property_value, d.property_value) ?? 0,
+      loan_amount: pick(args.loan_amount, d.loan_amount),
+      deposit: pick(args.deposit, d.deposit),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 4. calculate_mortgage_repayment
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_mortgage_repayment',
+  description:
+    'Calculate periodic mortgage repayments (weekly/fortnightly/monthly), monthly equivalent, annual total, and total interest over the loan term. Supports principal_and_interest or interest_only loans.',
+  parameters: {
+    type: 'object',
+    properties: {
+      loan_amount: { type: 'number' },
+      annual_rate_percent: { type: 'number' },
+      loan_term_years: { type: 'number' },
+      frequency: { type: 'string', enum: ['weekly', 'fortnightly', 'monthly'] },
+      loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+      io_term_years: { type: 'number', description: 'Years of interest-only period (if loan_type=interest_only).' },
+    },
+    required: ['loan_amount', 'annual_rate_percent', 'loan_term_years'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateMortgageRepayment({
+      loan_amount: pick(args.loan_amount, d.loan_amount) ?? 0,
+      annual_rate_percent: pick(args.annual_rate_percent, d.interest_rate_percent) ?? 0,
+      loan_term_years: pick(args.loan_term_years, d.loan_term_years) ?? 30,
+      frequency: args.frequency,
+      loan_type: args.loan_type,
+      io_term_years: args.io_term_years,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 5. calculate_cash_flow
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_cash_flow',
+  description:
+    'Calculate weekly/monthly/annual property cash flow after rent, repayments, vacancy, and holding expenses. Either supply explicit repayments OR loan terms (loan_amount + annual_rate_percent + loan_term_years) and the tool will compute them.',
+  parameters: {
+    type: 'object',
+    properties: {
+      weekly_rent: { type: 'number' },
+      annual_rent: { type: 'number' },
+      annual_repayments: { type: 'number' },
+      monthly_repayments: { type: 'number' },
+      loan_amount: { type: 'number' },
+      annual_rate_percent: { type: 'number' },
+      loan_term_years: { type: 'number' },
+      loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+      annual_expenses: { type: 'number', description: 'Total annual expenses override (replaces breakdown).' },
+      council_rates: { type: 'number' },
+      water_rates: { type: 'number' },
+      property_management_percent: { type: 'number', description: 'PM fee as % of rent (default 7).' },
+      insurance: { type: 'number' },
+      strata: { type: 'number' },
+      maintenance: { type: 'number' },
+      vacancy_weeks: { type: 'number', description: 'Assumed vacancy weeks per year (default 2).' },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateCashFlow({
+      weekly_rent: pick(args.weekly_rent, d.weekly_rent),
+      annual_rent: pick(args.annual_rent, d.annual_rent),
+      annual_repayments: args.annual_repayments,
+      monthly_repayments: args.monthly_repayments,
+      loan_amount: pick(args.loan_amount, d.loan_amount),
+      annual_rate_percent: pick(args.annual_rate_percent, d.interest_rate_percent),
+      loan_term_years: pick(args.loan_term_years, d.loan_term_years),
+      loan_type: args.loan_type,
+      annual_expenses: args.annual_expenses,
+      council_rates: args.council_rates,
+      water_rates: args.water_rates,
+      property_management_percent: args.property_management_percent,
+      insurance: args.insurance,
+      strata: args.strata,
+      maintenance: args.maintenance,
+      vacancy_weeks: args.vacancy_weeks,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 6. calculate_stamp_duty
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_stamp_duty',
+  description:
+    'Calculate Australian stamp duty (transfer duty) for a property purchase. Returns base duty, FHB concession, foreign/investor surcharges, total duty, and effective rate. Supports all 8 states/territories.',
+  parameters: {
+    type: 'object',
+    properties: {
+      property_value: { type: 'number' },
+      state: { type: 'string', enum: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] },
+      intent: { type: 'string', enum: ['owner_occupier', 'investor'] },
+      category: { type: 'string', enum: ['established', 'new', 'vacant_land'] },
+      is_first_home_buyer: { type: 'boolean' },
+      is_foreign_buyer: { type: 'boolean' },
+      off_the_plan_construction_fraction: { type: 'number', description: 'VIC only — fraction (0–1) of price representing future construction.' },
+    },
+    required: ['property_value', 'state', 'intent'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateStampDuty({
+      propertyValue: pick(args.property_value, d.property_value) ?? 0,
+      state: (args.state || d.state) as any,
+      intent: args.intent,
+      category: args.category,
+      isFirstHomeBuyer: args.is_first_home_buyer,
+      isForeignBuyer: args.is_foreign_buyer,
+      offThePlanConstructionFraction: args.off_the_plan_construction_fraction,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 7. calculate_scenario_delta
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'calculate_scenario_delta',
+  description:
+    'Compare two mortgage scenarios (e.g. rate +1%, switch to interest-only, weekly vs monthly repayments) and report the monthly/annual/lifetime-interest delta. Use to answer "what if" questions.',
+  parameters: {
+    type: 'object',
+    properties: {
+      loan_amount: { type: 'number' },
+      loan_term_years: { type: 'number' },
+      baseline: {
+        type: 'object',
+        properties: {
+          annual_rate_percent: { type: 'number' },
+          loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+          frequency: { type: 'string', enum: ['weekly', 'fortnightly', 'monthly'] },
+        },
+        required: ['annual_rate_percent'],
+        additionalProperties: false,
+      },
+      scenario: {
+        type: 'object',
+        properties: {
+          annual_rate_percent: { type: 'number' },
+          loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+          frequency: { type: 'string', enum: ['weekly', 'fortnightly', 'monthly'] },
+          io_term_years: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
+    },
+    required: ['loan_amount', 'loan_term_years', 'baseline', 'scenario'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    return calculateScenarioDelta({
+      loan_amount: pick(args.loan_amount, d.loan_amount) ?? 0,
+      loan_term_years: pick(args.loan_term_years, d.loan_term_years) ?? 30,
+      baseline: args.baseline,
+      scenario: args.scenario,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 8. analyze_property_financials (edge-fn-backed)
+//    Calls the full financial-calculator-service for a multi-year projection.
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'analyze_property_financials',
+  description:
+    'Run a full multi-year property financial analysis using live interest rates, LVR-tiered pricing, projected capital growth, rent growth, equity build-up and cash flow. Heavier than individual calculators — use when the user asks for a 5/10-year outlook or ROI projection.',
+  parameters: {
+    type: 'object',
+    properties: {
+      property_value: { type: 'number' },
+      deposit: { type: 'number' },
+      weekly_rent: { type: 'number' },
+      state: { type: 'string', enum: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] },
+      property_type: { type: 'string', enum: ['house', 'unit', 'townhouse'] },
+      loan_term_years: { type: 'number' },
+      interest_rate_percent: { type: 'number', description: 'Override interest rate. Omit to use live LVR-tiered rates.' },
+      borrower_type: { type: 'string', enum: ['owner_occupier', 'investor'] },
+      is_first_home_buyer: { type: 'boolean' },
+      is_new_build: { type: 'boolean' },
+      capital_growth_rate_percent: { type: 'number' },
+      cpi_growth_rate_percent: { type: 'number' },
+      rent_growth_rate_percent: { type: 'number' },
+    },
+    required: ['property_value', 'state'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    const propertyValue = pick(args.property_value, d.property_value) ?? 0;
+    const weeklyRent = pick(args.weekly_rent, d.weekly_rent) ?? 0;
+    const deposit = pick(args.deposit, d.deposit) ?? Math.round(propertyValue * 0.2);
+    const { data, error } = await ctx.supabase.functions.invoke('financial-calculator-service', {
+      body: {
+        propertyValue,
+        deposit,
+        weeklyRent,
+        state: args.state || d.state,
+        propertyType: args.property_type || 'house',
+        loanTerm: args.loan_term_years ?? d.loan_term_years ?? 30,
+        interestRate: args.interest_rate_percent ?? d.interest_rate_percent,
+        borrowerType: args.borrower_type || 'investor',
+        isFirstHomeBuyer: args.is_first_home_buyer,
+        isNewBuild: args.is_new_build,
+        capitalGrowthRate: args.capital_growth_rate_percent,
+        cpiGrowthRate: args.cpi_growth_rate_percent,
+        rentGrowthRate: args.rent_growth_rate_percent,
+      },
+    });
+    if (error) throw new Error(`financial-calculator-service failed: ${error.message}`);
+    return data;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 9. estimate_borrowing_capacity (edge-fn-backed)
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'estimate_borrowing_capacity',
+  description:
+    'Estimate the borrower\'s maximum borrowing capacity using the unified policy engine (net contribution model, lender shading, LVR caps). Use when the user asks "how much can I borrow?" or "what\'s my serviceability?".',
+  parameters: {
+    type: 'object',
+    properties: {
+      client_id: { type: 'string', description: 'Optional client UUID to pull income/liabilities from the database.' },
+      gross_annual_income: { type: 'number' },
+      partner_gross_annual_income: { type: 'number' },
+      monthly_living_expenses: { type: 'number' },
+      existing_monthly_repayments: { type: 'number' },
+      dependants: { type: 'number' },
+      target_property_value: { type: 'number' },
+      target_state: { type: 'string', enum: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const { data, error } = await ctx.supabase.functions.invoke('calculate-borrowing-capacity', {
+      body: {
+        clientId: args.client_id,
+        grossAnnualIncome: args.gross_annual_income,
+        partnerGrossAnnualIncome: args.partner_gross_annual_income,
+        monthlyLivingExpenses: args.monthly_living_expenses,
+        existingMonthlyRepayments: args.existing_monthly_repayments,
+        dependants: args.dependants,
+        targetPropertyValue: args.target_property_value,
+        targetState: args.target_state,
+      },
+    });
+    if (error) throw new Error(`calculate-borrowing-capacity failed: ${error.message}`);
+    return data;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// 10. estimate_property_expenses (edge-fn-backed)
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'estimate_property_expenses',
+  description:
+    'Estimate annual holding expenses for a property (council rates, water, insurance, PM, maintenance, strata if applicable) based on postcode/state and property type.',
+  parameters: {
+    type: 'object',
+    properties: {
+      property_value: { type: 'number' },
+      weekly_rent: { type: 'number' },
+      state: { type: 'string', enum: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] },
+      postcode: { type: 'string' },
+      property_type: { type: 'string', enum: ['house', 'unit', 'townhouse'] },
+    },
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    const { data, error } = await ctx.supabase.functions.invoke('estimate-property-expenses', {
+      body: {
+        propertyValue: pick(args.property_value, d.property_value),
+        weeklyRent: pick(args.weekly_rent, d.weekly_rent),
+        state: args.state || d.state,
+        postcode: args.postcode || d.postcode,
+        propertyType: args.property_type || 'house',
+      },
+    });
+    if (error) throw new Error(`estimate-property-expenses failed: ${error.message}`);
+    return data;
+  },
+});
+
+// Re-export for convenience / type-checking from importers.
+export { extractReportMetrics };
