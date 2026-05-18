@@ -1,10 +1,13 @@
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, ArrowRight } from 'lucide-react';
+import { Lightbulb, ArrowRight, Sparkles } from 'lucide-react';
 
 interface FollowUpSuggestionsProps {
   lastAssistantMessage: string;
   reportContext: 'single' | 'comparison' | 'none';
   onSelect: (suggestion: string) => void;
+  /** Phase 2.4 — AI-generated follow-ups streamed from the edge function. When
+   *  provided, these take precedence over the keyword heuristic. */
+  aiSuggestions?: string[];
 }
 
 // Generate follow-up suggestions based on the last AI response
