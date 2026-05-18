@@ -35,6 +35,7 @@ import {
   Send,
   Map,
   Cpu,
+  Coins,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -75,6 +76,7 @@ const navigationItems = [
   { title: 'Marketing', url: '/marketing-analytics', icon: TrendingUp, moduleKey: 'marketing_analytics' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
+  { title: 'Token Usage', url: '/billing/usage', icon: Coins, moduleKey: '__always__' },
 ];
 
 const adminItems = [
@@ -95,6 +97,7 @@ const adminItems = [
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
   { title: 'Finance Portal', url: '/admin/finance-portal', icon: ShieldCheck, moduleKey: 'finance_portal_admin' },
   { title: 'Portal Config', url: '/portal-config', icon: Globe, moduleKey: 'portal_config' },
+  { title: 'Token Audit Log', url: '/admin/token-audit', icon: Coins, moduleKey: '__superadmin_only__' },
 ];
 
 export function DashboardSidebar() {
@@ -111,11 +114,15 @@ export function DashboardSidebar() {
   // Once loaded, filter based on actual permissions
   const visibleNavItems = permissionsLoading 
     ? navigationItems 
-    : navigationItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
+    : navigationItems.filter(item =>
+        item.moduleKey === '__always__' ? true : (isSuperadmin || hasModuleAccess(item.moduleKey))
+      );
   
   const visibleAdminItems = permissionsLoading
     ? [] // Hide admin items while loading for security
-    : adminItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
+    : adminItems.filter(item =>
+        item.moduleKey === '__superadmin_only__' ? isSuperadmin : (isSuperadmin || hasModuleAccess(item.moduleKey))
+      );
 
   // Determine which logo to show based on sidebar state
   const currentLogo = isCollapsed 

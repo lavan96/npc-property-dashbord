@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
+import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
 interface AuditRow {
   id: string;
@@ -42,6 +43,7 @@ export default function TokenAuditLog() {
   const [loading, setLoading] = useState(false);
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -68,6 +70,7 @@ export default function TokenAuditLog() {
   }, [rows, search, users]);
 
   return (
+    <>
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -146,7 +149,11 @@ export default function TokenAuditLog() {
                         {r.user_id ? (users[r.user_id] ?? r.user_id.slice(0, 8)) : "—"}
                       </TableCell>
                       <TableCell className="text-xs">{r.function_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs font-mono max-w-[220px] truncate" title={r.idempotency_key}>
+                      <TableCell
+                        className="text-xs font-mono max-w-[220px] truncate cursor-pointer text-primary hover:underline"
+                        title={r.idempotency_key}
+                        onClick={() => setActiveKey(r.idempotency_key)}
+                      >
                         {r.idempotency_key}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{r.requested_tokens.toLocaleString()}</TableCell>
@@ -166,5 +173,11 @@ export default function TokenAuditLog() {
         </CardContent>
       </Card>
     </div>
+      <TokenEventDetailsDrawer
+        idempotencyKey={activeKey}
+        open={!!activeKey}
+        onOpenChange={(o) => !o && setActiveKey(null)}
+      />
+    </>
   );
 }
