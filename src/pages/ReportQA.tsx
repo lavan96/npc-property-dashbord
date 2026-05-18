@@ -91,6 +91,7 @@ import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelS
 import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
+import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 
 interface UploadProgress {
   fileName: string;
@@ -115,7 +116,9 @@ interface ChatMessage {
   audioUrl?: string; // For voice messages
   attachments?: PDFAttachment[]; // For PDF attachments
   modelProvider?: ModelProvider | null; // Which AI model generated this message
-  citations?: string[]; // Perplexity citations
+  citations?: string[]; // Perplexity URL citations (legacy)
+  documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
+  comparisonMode?: boolean; // True when answer compares ≥2 reports
   sent_by?: string | null;
   sent_by_username?: string | null;
 }
@@ -651,6 +654,9 @@ export default function ReportQA() {
           timestamp: new Date(m.created_at),
           sent_by: m.sent_by || null,
           sent_by_username: m.sent_by_username || null,
+          modelProvider: m.model_provider || null,
+          documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+          comparisonMode: !!m.comparison_mode,
         }))
       );
       setShowHistory(false);
@@ -695,6 +701,9 @@ export default function ReportQA() {
         timestamp: new Date(m.created_at),
         sent_by: m.sent_by || null,
         sent_by_username: m.sent_by_username || null,
+        modelProvider: m.model_provider || null,
+        documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+        comparisonMode: !!m.comparison_mode,
       }));
 
       // Prepend older messages, deduplicating by id
@@ -851,6 +860,7 @@ export default function ReportQA() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
+      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
 
       while (true) {
         const { done, value } = await reader.read();
@@ -873,6 +883,15 @@ export default function ReportQA() {
 
           try {
             const parsed = JSON.parse(jsonStr);
+            // Capture metadata event (citations + comparison mode) emitted before tokens
+            if (parsed?._meta) {
+              streamMeta = {
+                citations: parsed._meta.citations,
+                comparisonMode: parsed._meta.comparisonMode,
+                stream_id: parsed._meta.stream_id,
+              };
+              continue;
+            }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
@@ -893,6 +912,8 @@ export default function ReportQA() {
         content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
         modelProvider: selectedModel,
+        documentCitations: streamMeta.citations,
+        comparisonMode: streamMeta.comparisonMode,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -905,7 +926,14 @@ export default function ReportQA() {
           table: 'report_qa_messages',
           data: [
             { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
-            { conversation_id: activeConversationId, role: 'assistant', content: fullContent, model_provider: selectedModel },
+            {
+              conversation_id: activeConversationId,
+              role: 'assistant',
+              content: fullContent,
+              model_provider: selectedModel,
+              citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
+              comparison_mode: !!streamMeta.comparisonMode,
+            },
           ]
         }).then(() => {
           console.log('[ReportQA] Messages saved to database');
@@ -2089,7 +2117,14 @@ export default function ReportQA() {
                               </div>
                             )}
                             {message.role === 'assistant' && !message.attachments?.length && (
-                              <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
+                              <>
+                                {(message.documentCitations?.length || message.comparisonMode) && (
+                                  <Citations
+                                    documents={message.documentCitations}
+                                    comparisonMode={message.comparisonMode}
+                                  />
+                                )}
+                                <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                                 <div className="flex flex-wrap gap-1 sm:gap-2">
                                   <CopyWithFeedback content={message.content} />
                                   <TextToSpeech text={message.content} />
@@ -2133,7 +2168,8 @@ export default function ReportQA() {
                                     onSelect={(suggestion) => setInputMessage(suggestion)}
                                   />
                                 )}
-                              </div>
+                                </div>
+                              </>
                             )}
                           </div>
                           {message.role === 'user' && (
