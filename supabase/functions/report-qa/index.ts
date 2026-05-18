@@ -509,36 +509,34 @@ async function storeDocumentChunks(
     const chunksWithEmbeddings = await Promise.all(
       batch.map(async (chunk, batchIndex) => {
         const chunkIndex = i + batchIndex;
+        const content_hash = await sha256Hex(`${documentName}::${chunkIndex}::${chunk.text}`);
+        const baseRow: Record<string, unknown> = {
+          document_name: documentName,
+          chunk_index: chunkIndex,
+          chunk_text: chunk.text,
+          paragraph_index: chunk.paragraph_index,
+          page_number: chunk.page_number,
+          conversation_id: conversationId || null,
+          suburb: chunkMeta?.suburb ?? null,
+          state: chunkMeta?.state ?? null,
+          postcode: chunkMeta?.postcode ?? null,
+          report_type: chunkMeta?.report_type ?? null,
+          model_version: EMBEDDING_MODEL_VERSION,
+          content_hash,
+        };
         try {
           const embedding = await generateEmbedding(chunk.text, openaiApiKey);
           return {
-            document_name: documentName,
-            chunk_index: chunkIndex,
-            chunk_text: chunk.text,
-            paragraph_index: chunk.paragraph_index,
-            page_number: chunk.page_number,
+            ...baseRow,
             embedding: JSON.stringify(embedding),
-            conversation_id: conversationId || null,
-            metadata: {
-              char_count: chunk.text.length,
-              created_at: new Date().toISOString(),
-            },
+            metadata: { char_count: chunk.text.length, created_at: new Date().toISOString() },
           };
         } catch (error) {
           console.error(`[RAG] Failed to embed chunk ${chunkIndex}:`, error);
           return {
-            document_name: documentName,
-            chunk_index: chunkIndex,
-            chunk_text: chunk.text,
-            paragraph_index: chunk.paragraph_index,
-            page_number: chunk.page_number,
+            ...baseRow,
             embedding: null,
-            conversation_id: conversationId || null,
-            metadata: {
-              char_count: chunk.text.length,
-              created_at: new Date().toISOString(),
-              embedding_error: true,
-            },
+            metadata: { char_count: chunk.text.length, created_at: new Date().toISOString(), embedding_error: true },
           };
         }
       })
