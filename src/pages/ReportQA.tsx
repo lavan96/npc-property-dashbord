@@ -2486,6 +2486,16 @@ export default function ReportQA() {
         </div>
       </MobileReportsPanel>
 
+      <ReportSnippetViewer
+        open={snippetViewer.open}
+        onOpenChange={(open) =>
+          setSnippetViewer((prev) => ({ ...prev, open }))
+        }
+        reportName={snippetViewer.reportName}
+        reportContent={snippetViewer.reportContent}
+        citation={snippetViewer.citation}
+      />
+
       {/* History Dialog - Enhanced */}
       <Dialog open={showHistory} onOpenChange={(open) => {
         setShowHistory(open);
