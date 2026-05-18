@@ -767,5 +767,72 @@ registerTool({
   },
 });
 
+// ---------------------------------------------------------------------------
+// 20. create_client_reminder (Phase 4 — action handoff)
+//     Lets the agent create a follow-up reminder / task tied to a client.
+//     Uses the existing client_reminders table so it shows up in the normal
+//     reminders pipeline + notifications.
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'create_client_reminder',
+  description:
+    'Create a follow-up reminder or task tied to a client. Use when the user says "remind me to call X next week", "schedule a follow-up", "create a task to review this in 30 days", etc. Returns the reminder ID. Requires client_id to be passed in or available on the conversation; otherwise, asks the user to specify a client.',
+  parameters: {
+    type: 'object',
+    properties: {
+      client_id: { type: 'string', description: 'UUID of the client. Falls back to the conversation\'s linked client when omitted.' },
+      title: { type: 'string', description: 'Short title (e.g. "Call about Lismore deal").' },
+      description: { type: 'string', description: 'Optional longer description / notes for the reminder.' },
+      due_date: { type: 'string', description: 'ISO-8601 timestamp for when the reminder is due (e.g. 2026-06-01T09:00:00Z).' },
+      priority: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Priority. Defaults to medium.' },
+      reminder_type: { type: 'string', enum: ['follow_up', 'call', 'email', 'meeting', 'review', 'other'], description: 'Type of reminder.' },
+    },
+    required: ['title', 'due_date'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    let clientId: string | null = args.client_id || null;
+    // Fall back to conversation's linked client_id
+    if (!clientId && ctx.conversationId) {
+      const { data: conv } = await ctx.supabase
+        .from('report_qa_conversations')
+        .select('client_id')
+        .eq('id', ctx.conversationId)
+        .maybeSingle();
+      clientId = conv?.client_id || null;
+    }
+    if (!clientId) {
+      throw new Error('client_id is required — link this conversation to a client or pass client_id explicitly.');
+    }
+    if (!ctx.userId) throw new Error('userId required to create reminder.');
+
+    const { data, error } = await ctx.supabase
+      .from('client_reminders')
+      .insert({
+        client_id: clientId,
+        title: args.title,
+        description: args.description || null,
+        due_date: args.due_date,
+        priority: args.priority || 'medium',
+        reminder_type: args.reminder_type || 'follow_up',
+        status: 'pending',
+        created_by: ctx.userId,
+        assigned_to: [ctx.userId],
+        reminder_scope: 'client',
+      })
+      .select('id, title, due_date, priority')
+      .single();
+
+    if (error) throw new Error(`Failed to create reminder: ${error.message}`);
+    return {
+      reminder_id: data.id,
+      title: data.title,
+      due_date: data.due_date,
+      priority: data.priority,
+      summary: `Created ${data.priority} priority reminder "${data.title}" due ${new Date(data.due_date).toLocaleString('en-AU')}.`,
+    };
+  },
+});
+
 // Re-export for convenience / type-checking from importers.
 export { extractReportMetrics };
