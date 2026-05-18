@@ -698,6 +698,9 @@ export default function ReportQA() {
         timestamp: new Date(m.created_at),
         sent_by: m.sent_by || null,
         sent_by_username: m.sent_by_username || null,
+        modelProvider: m.model_provider || null,
+        documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+        comparisonMode: !!m.comparison_mode,
       }));
 
       // Prepend older messages, deduplicating by id
