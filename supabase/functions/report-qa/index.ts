@@ -1304,7 +1304,7 @@ You are a senior property finance strategist for ${_brandCfg.companyName}, combi
       const isMultiReportContext = isMultiReport || (reportNames && reportNames.length > 1);
       
       if (isMultiReportContext && hasContext) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with MULTIPLE investment reports for SIDE-BY-SIDE COMPARISON analysis.
+        systemPrompt = FINANCE_PERSONA + `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with MULTIPLE investment reports for SIDE-BY-SIDE COMPARISON analysis.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -1331,7 +1331,7 @@ You MUST structure every answer in this exact order:
 ## REPORT DATA
 ${contextSection}`;
       } else if (hasContext) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with investment property report data to analyze.
+        systemPrompt = FINANCE_PERSONA + `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with investment property report data to analyze.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -1365,7 +1365,7 @@ ${contextSection}`;
 ${contextSection}`;
       } else if (ragContext) {
         // No reports loaded but we have RAG context from knowledge base
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}.
+        systemPrompt = FINANCE_PERSONA + `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -1393,7 +1393,7 @@ ${contextSection}`;
 ${ragContext}`;
       } else {
         // Open-ended conversation without document context
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}, a property investment advisory firm.
+        systemPrompt = FINANCE_PERSONA + `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}, a property investment advisory firm.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories (Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart, Darwin, Canberra, and regional areas)
