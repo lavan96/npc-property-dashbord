@@ -504,12 +504,32 @@ export function GenerationProgressItem({
               {isMobile ? 'Resume' : 'Continue'}
             </Button>
           )}
+          {onKill && (report.status === 'pending' || report.status === 'processing') && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    if (window.confirm(`Stop generation for "${report.property_address}"? This will mark the report as failed.`)) {
+                      onKill();
+                    }
+                  }}
+                  aria-label="Stop report generation"
+                >
+                  <Octagon className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Stop / kill this job</TooltipContent>
+            </Tooltip>
+          )}
           <Button
             size="sm"
             variant="ghost"
             className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
             onClick={onDismiss}
-            title="Dismiss"
+            title="Dismiss (hide locally, job keeps running)"
             aria-label="Dismiss report"
           >
             <X className="h-3 w-3" />
