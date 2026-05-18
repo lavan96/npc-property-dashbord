@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
 // pdf-lib removed: we now ship the Gamma PDF as-is with embedded anchor tokens.
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -751,7 +752,153 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ─── SEND VIA DOCUSIGN ─────────────────────────────────
+    // ─── SAVE SIGNING LAYOUT (visual tagger persistence) ──────
+    if (action === 'save_signing_layout') {
+      const { agreement_id, signing_recipients, signing_layout } = body;
+      if (!agreement_id) {
+        return new Response(JSON.stringify({ error: 'Missing agreement_id' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error } = await supabase
+        .from('agency_agreements')
+        .update({
+          signing_recipients: Array.isArray(signing_recipients) ? signing_recipients : [],
+          signing_layout: Array.isArray(signing_layout) ? signing_layout : [],
+          signing_prepared_at: new Date().toISOString(),
+        })
+        .eq('id', agreement_id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── SEND VIA DOCUSIGN — FREEFORM (visual tagger) ─────────
+    if (action === 'send_freeform') {
+      const { agreement_id, signing_recipients, signing_layout, email_subject, email_blurb } = body;
+      if (!agreement_id) {
+        return new Response(JSON.stringify({ error: 'Missing agreement_id' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const recipients: FreeformRecipient[] = Array.isArray(signing_recipients) ? signing_recipients : [];
+      const tabs: FreeformTab[] = Array.isArray(signing_layout) ? signing_layout : [];
+      if (recipients.length === 0) {
+        return new Response(JSON.stringify({ error: 'At least one recipient is required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (tabs.length === 0) {
+        return new Response(JSON.stringify({ error: 'At least one signature field must be placed' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      for (const r of recipients) {
+        if (!r.email || !r.name) {
+          return new Response(JSON.stringify({ error: `Recipient missing name or email: ${JSON.stringify(r)}` }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      const { data: agreement, error: fetchErr } = await supabase
+        .from('agency_agreements')
+        .select('*')
+        .eq('id', agreement_id)
+        .single();
+      if (fetchErr || !agreement) {
+        return new Response(JSON.stringify({ error: 'Agreement not found' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (!agreement.pdf_storage_path) {
+        return new Response(JSON.stringify({
+          error: 'Agreement PDF is not ready yet. Please wait for generation to complete and try again.',
+          code: 'PDF_NOT_READY',
+        }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+      if (!docusignAccountId) {
+        return new Response(JSON.stringify({
+          error: 'DocuSign not configured. Add DOCUSIGN_ACCOUNT_ID secret.',
+          requires_setup: true,
+        }), { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      let docusignAccessToken: string;
+      try {
+        docusignAccessToken = await getDocuSignAccessToken();
+      } catch (tokenErr: any) {
+        return new Response(JSON.stringify({ error: `DocuSign auth failed: ${tokenErr.message}` }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: pdfBlob, error: dlErr } = await supabase.storage
+        .from('agency-agreements')
+        .download(agreement.pdf_storage_path);
+      if (dlErr || !pdfBlob) {
+        return new Response(JSON.stringify({ error: `Failed to load PDF: ${dlErr?.message || 'not found'}` }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+      const brandCfg = await getBrandConfig();
+
+      const envelopeDefinition = buildFreeformEnvelope({
+        pdfBase64: pdfBytesToBase64(pdfBytes),
+        documentName: "Buyer's Agent Agreement.pdf",
+        recipients,
+        tabs,
+        emailSubject: email_subject || `Buyer's Agent Agreement — ${agreement.buyer_names}`,
+        emailBlurb: email_blurb || `Please review and sign the attached Buyer's Agent Agreement.\n\nKind regards,\n${brandCfg.companyName || 'Property Consulting'}`,
+      });
+
+      const docusignBaseUrl = getDocuSignRestBaseUrl();
+      const envelopeUrl = `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes`;
+      const dsResponse = await fetch(envelopeUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${docusignAccessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(envelopeDefinition),
+      });
+      const dsText = await dsResponse.text();
+      let dsData: any;
+      try { dsData = JSON.parse(dsText); } catch {
+        return new Response(JSON.stringify({ error: `DocuSign returned non-JSON (status ${dsResponse.status})`, raw: dsText.substring(0, 500) }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (!dsResponse.ok) {
+        console.error('[DocuSign freeform] envelope failed:', dsText.substring(0, 1000));
+        return new Response(JSON.stringify({ error: `DocuSign error: ${dsData.message || dsData.errorCode || 'Unknown'}`, details: dsData }), {
+          status: dsResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      await supabase.from('agency_agreements').update({
+        status: 'sent',
+        docusign_envelope_id: dsData.envelopeId,
+        docusign_status: dsData.status,
+        docusign_sent_at: new Date().toISOString(),
+        sent_via: 'docusign',
+        signing_recipients: recipients,
+        signing_layout: tabs,
+        signing_prepared_at: new Date().toISOString(),
+      }).eq('id', agreement_id);
+
+      return new Response(JSON.stringify({ success: true, envelope_id: dsData.envelopeId, status: dsData.status }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── SEND VIA DOCUSIGN (LEGACY anchor mode) ────────────
     if (action === 'send_docusign') {
       const { agreement_id } = body;
       if (!agreement_id) {

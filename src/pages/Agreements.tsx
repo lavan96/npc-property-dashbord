@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
+import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
   pending_pdf: { label: 'Processing PDF', variant: 'secondary', icon: Clock },
@@ -43,8 +45,24 @@ export default function Agreements() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [signingAgreement, setSigningAgreement] = useState<AgencyAgreement | null>(null);
+  const [signingPdfUrl, setSigningPdfUrl] = useState<string>('');
   const navigate = useNavigate();
   const { canEdit: canEditAgreements } = useModulePermissions('agreements');
+
+  const openPrepareForSigning = async (a: AgencyAgreement) => {
+    if (!a.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
+    const { data, error } = await supabase.storage.from('agency-agreements').createSignedUrl(a.pdf_storage_path, 600);
+    if (error || !data?.signedUrl) { toast.error(`Failed to load PDF: ${error?.message}`); return; }
+    const existingRecipients: SigningRecipient[] = Array.isArray((a as any).signing_recipients) && (a as any).signing_recipients.length
+      ? (a as any).signing_recipients
+      : [
+          { id: 'buyer', name: a.buyer_names, email: a.buyer_email || '', roleLabel: 'Primary Buyer', routingOrder: 1 },
+          ...(a.secondary_buyer_name ? [{ id: 'buyer2', name: a.secondary_buyer_name, email: (a as any).secondary_buyer_email || a.buyer_email || '', roleLabel: 'Secondary Buyer', routingOrder: 1 }] : []),
+        ];
+    setSigningPdfUrl(data.signedUrl);
+    setSigningAgreement({ ...a, signing_recipients: existingRecipients } as any);
+  };
 
   const filteredAgreements = agreements.filter((a) =>
     a.buyer_names.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -311,10 +329,16 @@ export default function Agreements() {
                               View Client
                             </DropdownMenuItem>
                             {canEditAgreements && agreement.status === 'generated' && (
-                              <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send via DocuSign
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => openPrepareForSigning(agreement)}>
+                                  <FileSignature className="h-4 w-4 mr-2" />
+                                  Prepare for Signing
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send via DocuSign (legacy anchors)
+                                </DropdownMenuItem>
+                              </>
                             )}
                             {agreement.docusign_envelope_id && (
                               <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
@@ -376,6 +400,20 @@ export default function Agreements() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {signingAgreement && (
+        <PrepareForSigningModal
+          open={!!signingAgreement}
+          onOpenChange={(v) => { if (!v) setSigningAgreement(null); }}
+          scope="agreement"
+          recordId={signingAgreement.id}
+          title={signingAgreement.buyer_names}
+          pdfUrl={signingPdfUrl}
+          initialRecipients={(signingAgreement as any).signing_recipients || []}
+          initialLayout={(signingAgreement as any).signing_layout || []}
+          onSent={() => setSigningAgreement(null)}
+        />
+      )}
     </div>
   );
 }

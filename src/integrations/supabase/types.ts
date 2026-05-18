@@ -126,6 +126,9 @@ export type Database = {
           secondary_buyer_name: string | null
           sent_via: string | null
           signed_pdf_storage_path: string | null
+          signing_layout: Json
+          signing_prepared_at: string | null
+          signing_recipients: Json
           status: string
           template_id: string | null
           updated_at: string
@@ -155,6 +158,9 @@ export type Database = {
           secondary_buyer_name?: string | null
           sent_via?: string | null
           signed_pdf_storage_path?: string | null
+          signing_layout?: Json
+          signing_prepared_at?: string | null
+          signing_recipients?: Json
           status?: string
           template_id?: string | null
           updated_at?: string
@@ -184,6 +190,9 @@ export type Database = {
           secondary_buyer_name?: string | null
           sent_via?: string | null
           signed_pdf_storage_path?: string | null
+          signing_layout?: Json
+          signing_prepared_at?: string | null
+          signing_recipients?: Json
           status?: string
           template_id?: string | null
           updated_at?: string
@@ -6962,6 +6971,9 @@ export type Database = {
           shared_with_client: boolean
           signed_at: string | null
           signed_pdf_storage_path: string | null
+          signing_layout: Json
+          signing_prepared_at: string | null
+          signing_recipients: Json
           status: Database["public"]["Enums"]["generated_doc_status"]
           submission_id: string | null
           template_id: string | null
@@ -6988,6 +7000,9 @@ export type Database = {
           shared_with_client?: boolean
           signed_at?: string | null
           signed_pdf_storage_path?: string | null
+          signing_layout?: Json
+          signing_prepared_at?: string | null
+          signing_recipients?: Json
           status?: Database["public"]["Enums"]["generated_doc_status"]
           submission_id?: string | null
           template_id?: string | null
@@ -7014,6 +7029,9 @@ export type Database = {
           shared_with_client?: boolean
           signed_at?: string | null
           signed_pdf_storage_path?: string | null
+          signing_layout?: Json
+          signing_prepared_at?: string | null
+          signing_recipients?: Json
           status?: Database["public"]["Enums"]["generated_doc_status"]
           submission_id?: string | null
           template_id?: string | null
