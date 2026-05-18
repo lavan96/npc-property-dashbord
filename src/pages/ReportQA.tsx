@@ -854,6 +854,7 @@ export default function ReportQA() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
+      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
 
       while (true) {
         const { done, value } = await reader.read();
@@ -876,6 +877,15 @@ export default function ReportQA() {
 
           try {
             const parsed = JSON.parse(jsonStr);
+            // Capture metadata event (citations + comparison mode) emitted before tokens
+            if (parsed?._meta) {
+              streamMeta = {
+                citations: parsed._meta.citations,
+                comparisonMode: parsed._meta.comparisonMode,
+                stream_id: parsed._meta.stream_id,
+              };
+              continue;
+            }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
@@ -896,6 +906,8 @@ export default function ReportQA() {
         content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
         modelProvider: selectedModel,
+        documentCitations: streamMeta.citations,
+        comparisonMode: streamMeta.comparisonMode,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -908,7 +920,14 @@ export default function ReportQA() {
           table: 'report_qa_messages',
           data: [
             { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
-            { conversation_id: activeConversationId, role: 'assistant', content: fullContent, model_provider: selectedModel },
+            {
+              conversation_id: activeConversationId,
+              role: 'assistant',
+              content: fullContent,
+              model_provider: selectedModel,
+              citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
+              comparison_mode: !!streamMeta.comparisonMode,
+            },
           ]
         }).then(() => {
           console.log('[ReportQA] Messages saved to database');
