@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Send, Plus, FileCheck2, Clock } from 'lucide-react';
+import { FileText, Send, Plus, FileCheck2, Clock, FileSignature } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   useGeneratedDocuments, TEMPLATE_TYPE_LABEL,
-  type GeneratedDocStatus, type TemplateDocType,
+  type GeneratedDocStatus, type TemplateDocType, type GeneratedDocument,
 } from '@/hooks/useGeneratedDocuments';
+import { PrepareForSigningModal, type SigningRecipient } from '@/components/agreements/PrepareForSigningModal';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+const DOC_BUCKET = 'client-documents';
 
 interface Props {
   clientId?: string;
@@ -37,6 +42,16 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
   const [form, setForm] = useState<{ template_type: TemplateDocType; title: string; sent_to: string; shared_with_client: boolean }>({
     template_type: 'loan_application', title: '', sent_to: '', shared_with_client: false,
   });
+  const [signingDoc, setSigningDoc] = useState<GeneratedDocument | null>(null);
+  const [signingPdfUrl, setSigningPdfUrl] = useState('');
+
+  const openPrepareForSigning = async (d: GeneratedDocument) => {
+    if (!d.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
+    const { data, error } = await supabase.storage.from(DOC_BUCKET).createSignedUrl(d.pdf_storage_path, 600);
+    if (error || !data?.signedUrl) { toast.error(`Failed to load PDF: ${error?.message}`); return; }
+    setSigningPdfUrl(data.signedUrl);
+    setSigningDoc(d);
+  };
 
   const handleCreate = () => {
     if (!form.title) return;
@@ -103,6 +118,11 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
                       <Send className="h-3 w-3" /> Mark Sent
                     </Button>
                   )}
+                  {d.pdf_storage_path && d.status !== 'signed' && d.status !== 'voided' && (
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => openPrepareForSigning(d)}>
+                      <FileSignature className="h-3 w-3" /> Prepare for Signing
+                    </Button>
+                  )}
                   {(d.status === 'sent' || d.status === 'viewed') && (
                     <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus({ id: d.id, status: 'signed' })}>
                       Mark Signed
@@ -151,6 +171,21 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {signingDoc && (
+        <PrepareForSigningModal
+          open={!!signingDoc}
+          onOpenChange={(v) => { if (!v) setSigningDoc(null); }}
+          scope="document"
+          recordId={signingDoc.id}
+          title={signingDoc.title}
+          pdfUrl={signingPdfUrl}
+          bucket={DOC_BUCKET}
+          initialRecipients={((signingDoc as any).signing_recipients as SigningRecipient[]) || (signingDoc.sent_to || []).map((email, i) => ({ id: `r${i}`, name: email.split('@')[0], email, roleLabel: 'Signer', routingOrder: 1 }))}
+          initialLayout={((signingDoc as any).signing_layout) || []}
+          onSent={() => setSigningDoc(null)}
+        />
+      )}
     </div>
   );
 }
