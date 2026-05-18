@@ -123,9 +123,22 @@ function ReportGenerationProgressInner() {
     localStorage.setItem(POSITION_KEY, corner);
   }, [corner]);
 
-  /* Sync auto-continue settings (cross-tab + periodic) */
+  /* Sync auto-continue settings (cross-tab + periodic).
+     IMPORTANT: only update state when values actually change, otherwise the
+     new object identity invalidates downstream useCallbacks every 5s and the
+     polling effect's cleanup cancels every scheduled auto-retry before its
+     timer can fire. */
   useEffect(() => {
-    const refresh = () => setAutoContinueSettings(getAutoContinueSettings());
+    const refresh = () => {
+      const next = getAutoContinueSettings();
+      setAutoContinueSettings((prev) =>
+        prev.enabled === next.enabled &&
+        prev.maxRetries === next.maxRetries &&
+        prev.delaySeconds === next.delaySeconds
+          ? prev
+          : next
+      );
+    };
     const interval = setInterval(refresh, 5000);
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'dashboard-settings') refresh();
@@ -477,9 +490,25 @@ function ReportGenerationProgressInner() {
     const interval = setInterval(fetchActiveReports, 3000);
     return () => {
       clearInterval(interval);
-      Object.keys(retryStateRef.current).forEach(cancelScheduledRetry);
+      // NOTE: do NOT cancel scheduled retries here. This effect re-runs
+      // whenever fetchActiveReports identity changes (e.g. settings refresh),
+      // and cancelling pending timers on every re-run would prevent the
+      // 15s auto-retry from ever firing for stuck reports.
     };
-  }, [cancelScheduledRetry, fetchActiveReports]);
+  }, [fetchActiveReports]);
+
+  /* True unmount cleanup: cancel any pending auto-retry timers exactly once. */
+  useEffect(() => {
+    return () => {
+      Object.keys(retryStateRef.current).forEach((id) => {
+        const s = retryStateRef.current[id];
+        if (s?.scheduledRetry) {
+          clearTimeout(s.scheduledRetry);
+          delete s.scheduledRetry;
+        }
+      });
+    };
+  }, []);
 
   /* ⌘⇧R toggles minimised */
   useEffect(() => {
