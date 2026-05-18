@@ -841,6 +841,8 @@ export function GenerationHistoryList({
                 <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
               ) : e.status === 'failed' ? (
                 <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+              ) : e.status === 'cancelled' ? (
+                <Octagon className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
               ) : (
                 <X className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
               )}
@@ -852,7 +854,12 @@ export function GenerationHistoryList({
                   {e.sectionsCompleted}/{e.totalSections} sections • {formatElapsed(e.durationMs)} •{' '}
                   {timeAgo(e.finishedAt)}
                 </p>
-                {e.error_message && (
+                {e.status === 'cancelled' && (
+                  <p className="text-[10px] text-destructive/80 mt-0.5">
+                    Stopped by {e.cancelledBy || 'user'}
+                  </p>
+                )}
+                {e.error_message && e.status !== 'cancelled' && (
                   <p className="text-[10px] text-destructive line-clamp-1 mt-0.5">
                     {e.error_message}
                   </p>
