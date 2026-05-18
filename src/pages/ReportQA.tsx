@@ -290,6 +290,17 @@ export default function ReportQA() {
     },
     [uploadedReports],
   );
+
+  // Scroll a specific message into view (used by the Pinned-answers jump strip).
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`qa-msg-${messageId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-primary/60', 'ring-offset-2', 'ring-offset-background');
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-primary/60', 'ring-offset-2', 'ring-offset-background');
+    }, 1600);
+  }, []);
   
   // Lazy loading for chat history
   const [totalMessageCount, setTotalMessageCount] = useState(0);
