@@ -60,10 +60,14 @@ Deno.serve(async (req) => {
         );
       }
 
-      const enrichedData = (emails || []).map((email: any) => ({
-        ...email,
-        client_name: email.client_id ? clientMap[email.client_id] || null : null,
-      }));
+      const enrichedData = (emails || []).map((email: any) => {
+        const { body_preview, ...rest } = email;
+        return {
+          ...rest,
+          body: body_preview || '',
+          client_name: email.client_id ? clientMap[email.client_id] || null : null,
+        };
+      });
 
       return new Response(
         JSON.stringify({ success: true, emails: enrichedData, hasMore: enrichedData.length === limit }),
