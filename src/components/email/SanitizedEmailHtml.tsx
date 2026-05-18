@@ -139,7 +139,7 @@ export default function SanitizedEmailHtml({
   }, [rendered, chunks.length]);
 
   return (
-    <div className={`email-html-body ${className}`}>
+    <div className={`email-html-body overflow-x-auto [&_img]:max-w-full [&_img]:h-auto [&_table]:max-w-full [&_a]:text-primary [&_a]:underline ${className}`}>
       {chunks.slice(0, rendered).map((chunk, i) => (
         // eslint-disable-next-line react/no-danger
         <div key={i} dangerouslySetInnerHTML={{ __html: chunk }} />
