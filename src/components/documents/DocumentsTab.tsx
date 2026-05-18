@@ -125,6 +125,11 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
                       <FileSignature className="h-3 w-3" /> Prepare for Signing
                     </Button>
                   )}
+                  {d.docusign_envelope_id && (
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setStatusDoc(d)}>
+                      <Activity className="h-3 w-3" /> Envelope Status
+                    </Button>
+                  )}
                   {(d.status === 'sent' || d.status === 'viewed') && (
                     <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus({ id: d.id, status: 'signed' })}>
                       Mark Signed
