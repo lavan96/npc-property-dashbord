@@ -3,14 +3,29 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 
 interface ActivityLogsRequest {
   session_token?: string;
-  action_filter?: string;
-  entity_filter?: string;
-  user_filter?: string;
+  action_filter?: string | string[];
+  entity_filter?: string | string[];
+  user_filter?: string | string[];
   start_date?: string; // ISO
   end_date?: string;   // ISO
   page?: number;       // 1-based
   page_size?: number;
   limit?: number;      // legacy fallback (no pagination)
+  include_stats?: boolean;
+}
+
+const FAILURE_ACTIONS = new Set([
+  'report_deleted','comparison_deleted','cash_flow_deleted','qa_conversation_deleted',
+  'automation_switch_deleted','template_deleted','branding_profile_deleted','user_deactivated',
+  'password_reset_initiated','client_deleted','client_file_deleted','deal_deleted',
+  'appointment_deleted','checklist_deleted','alert_rule_deleted',
+]);
+
+function toArray(v: string | string[] | undefined): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(x => x && x !== 'all');
+  if (v === 'all') return [];
+  return [v];
 }
 
 Deno.serve(async (req) => {
@@ -36,11 +51,11 @@ Deno.serve(async (req) => {
       page,
       page_size,
       limit,
+      include_stats,
     } = body;
 
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
-      console.error('[get-activity-logs] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
 
@@ -68,19 +83,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build base query (with exact count for pagination)
-    let query = supabase
-      .from('activity_logs')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
+    const actions = toArray(action_filter);
+    const entities = toArray(entity_filter);
+    const users = toArray(user_filter);
 
-    if (action_filter && action_filter !== 'all') query = query.eq('action_type', action_filter);
-    if (entity_filter && entity_filter !== 'all') query = query.eq('entity_type', entity_filter);
-    if (user_filter && user_filter !== 'all') query = query.eq('username', user_filter);
-    if (start_date) query = query.gte('created_at', start_date);
-    if (end_date) query = query.lte('created_at', end_date);
+    const applyFilters = (q: any) => {
+      if (actions.length === 1) q = q.eq('action_type', actions[0]);
+      else if (actions.length > 1) q = q.in('action_type', actions);
+      if (entities.length === 1) q = q.eq('entity_type', entities[0]);
+      else if (entities.length > 1) q = q.in('entity_type', entities);
+      if (users.length === 1) q = q.eq('username', users[0]);
+      else if (users.length > 1) q = q.in('username', users);
+      if (start_date) q = q.gte('created_at', start_date);
+      if (end_date) q = q.lte('created_at', end_date);
+      return q;
+    };
 
-    // Pagination: prefer page/page_size, else fall back to legacy limit
+    let query = applyFilters(
+      supabase.from('activity_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false })
+    );
+
     if (typeof page === 'number' && typeof page_size === 'number' && page_size > 0) {
       const from = (Math.max(1, page) - 1) * page_size;
       const to = from + page_size - 1;
@@ -98,7 +120,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Unique usernames for filter dropdown — fetch independently (not bounded by current page)
+    // Unique usernames (unfiltered) for the dropdown
     const { data: userRows } = await supabase
       .from('activity_logs')
       .select('username')
@@ -107,8 +129,57 @@ Deno.serve(async (req) => {
       .limit(2000);
     const uniqueUsers = [...new Set((userRows || []).map(r => r.username).filter(Boolean))];
 
+    // Stats over filtered range (capped sample for performance)
+    let stats: any = null;
+    if (include_stats !== false) {
+      const { data: sample } = await applyFilters(
+        supabase.from('activity_logs')
+          .select('action_type, username, created_at')
+          .order('created_at', { ascending: false })
+      ).limit(5000);
+
+      const rows = sample || [];
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const todayIso = startOfToday.toISOString();
+
+      let eventsToday = 0;
+      const userSet = new Set<string>();
+      const actionCounts = new Map<string, number>();
+      let failures = 0;
+
+      for (const r of rows as any[]) {
+        if (r.created_at >= todayIso) eventsToday++;
+        if (r.username) userSet.add(r.username);
+        if (r.action_type) {
+          actionCounts.set(r.action_type, (actionCounts.get(r.action_type) || 0) + 1);
+          if (FAILURE_ACTIONS.has(r.action_type)) failures++;
+        }
+      }
+
+      let topAction: { type: string; count: number } | null = null;
+      for (const [type, c] of actionCounts) {
+        if (!topAction || c > topAction.count) topAction = { type, count: c };
+      }
+
+      stats = {
+        eventsToday,
+        uniqueUsers: userSet.size,
+        topAction,
+        failures,
+        sampleSize: rows.length,
+        sampleCapped: rows.length >= 5000,
+      };
+    }
+
     return new Response(
-      JSON.stringify({ success: true, logs: logs || [], uniqueUsers, total: count ?? (logs?.length ?? 0) }),
+      JSON.stringify({
+        success: true,
+        logs: logs || [],
+        uniqueUsers,
+        total: count ?? (logs?.length ?? 0),
+        stats,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
