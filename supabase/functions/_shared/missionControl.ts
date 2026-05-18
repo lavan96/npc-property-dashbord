@@ -1,15 +1,22 @@
-// Mission Control token client — reserve / commit / cancel / balance.
+// Mission Control token client — reserve / commit / cancel / balance / packs.
 // Aurixa Mission Control is the single source of truth for billing.
 // This module is the ONLY place that talks to its public token API.
+//
+// API contract: see prime-repo-token-integration_1.md
+//   - auth header:        x-clone-api-key
+//   - request payload:    snake_case (tenant_ref, estimated_tokens, idempotency_key, …)
+//   - balance response:   { tenant, balance: { available, reserved, lifetime_granted, lifetime_spent } }
+//   - rate-limited:       60 req/min/key, 429 + Retry-After
+//   - idempotent retries: same idempotency_key returns existing job
 
-const BASE_URL = Deno.env.get("MISSION_CONTROL_URL") ?? "";
+const BASE_URL = (Deno.env.get("MISSION_CONTROL_URL") ?? "").replace(/\/+$/, "");
 const API_KEY = Deno.env.get("MISSION_CONTROL_CLONE_API_KEY") ?? "";
 
 // Stable per-agency tenant ref. Single-agency install → Supabase project ref.
-// If multi-agency support is ever added, swap this for the agency UUID.
 const PROJECT_REF =
   Deno.env.get("SUPABASE_URL")?.match(/https:\/\/([^.]+)\./)?.[1] ?? "prime";
 export const AGENCY_TENANT_REF = `prime:${PROJECT_REF}`;
+export const AGENCY_DISPLAY_NAME = Deno.env.get("MISSION_CONTROL_AGENCY_NAME") ?? "Prime";
 
 export type TokenKind =
   | "report.investment.compass"
@@ -29,12 +36,15 @@ export interface ReserveArgs {
   idempotencyKey: string;
   userId: string;
   requestPayload?: Record<string, unknown>;
+  ttlSeconds?: number;
 }
 
 export interface ReserveResult {
   jobId: string;
   reserved: number;
   available: number;
+  idempotent?: boolean;
+  status?: string;
 }
 
 export interface BalanceResult {
@@ -42,6 +52,33 @@ export interface BalanceResult {
   allowance: number;
   used: number;
   reserved: number;
+  lifetimeGranted: number;
+  lifetimeSpent: number;
+  planName: string | null;
+  overagePolicy: string | null;
+  currentPeriodEnd: string | null;
+}
+
+export interface TopupPack {
+  id: string;
+  slug: string;
+  name: string;
+  tokens: number;
+  priceCents: number;
+  currency: string;
+  expiresAfterDays: number | null;
+}
+
+export interface TopupPacksResult {
+  packs: TopupPack[];
+  topupUrl: string | null;
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
 }
 
 export class MissionControlError extends Error {
@@ -68,6 +105,13 @@ export class InsufficientTokensError extends MissionControlError {
   }
 }
 
+export class RateLimitedError extends MissionControlError {
+  constructor(public retryAfterSeconds: number, details?: unknown) {
+    super("rate_limited", `Mission Control rate limited; retry after ${retryAfterSeconds}s`, 429, details);
+    this.name = "RateLimitedError";
+  }
+}
+
 function assertConfigured() {
   if (!BASE_URL || !API_KEY) {
     throw new MissionControlError(
@@ -78,44 +122,76 @@ function assertConfigured() {
   }
 }
 
-async function mcFetch(path: string, init: RequestInit): Promise<Response> {
+async function mcFetchRaw(path: string, init: RequestInit): Promise<Response> {
   assertConfigured();
   return await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
-      "x-api-key": API_KEY,
+      "x-clone-api-key": API_KEY,
       ...(init.headers ?? {}),
     },
   });
+}
+
+/** Fetch with one retry on 429 (honoring Retry-After) and 5xx (500ms back-off). */
+async function mcFetch(path: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await mcFetchRaw(path, init);
+    if (res.status === 429 && attempt === 0) {
+      const ra = Number(res.headers.get("retry-after") ?? "1");
+      const waitMs = Math.min(Math.max(ra, 1), 10) * 1000;
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    if (res.status >= 500 && attempt === 0) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
+    return res;
+  }
+  // Unreachable, but TypeScript-safe fallback.
+  return await mcFetchRaw(path, init);
 }
 
 async function parseOrThrow(res: Response): Promise<any> {
   const text = await res.text();
   let body: any = {};
   try { body = text ? JSON.parse(text) : {}; } catch { /* keep raw */ }
-  if (res.ok) return body;
 
-  const code = body?.error?.code ?? body?.code ?? "mc_error";
-  const message = body?.error?.message ?? body?.message ?? `Mission Control ${res.status}`;
+  // MC uses `ok: false` envelope even on 200 for some errors (e.g. insufficient_funds).
+  const okFlag = body?.ok !== false;
+  if (res.ok && okFlag) return body;
+
+  const code = body?.error ?? body?.code ?? "mc_error";
+  const message = body?.message ?? (typeof code === "string" ? code : `Mission Control ${res.status}`);
+
   if (code === "insufficient_funds") {
     throw new InsufficientTokensError(
-      Number(body?.error?.available ?? body?.available ?? 0),
-      Number(body?.error?.requested ?? body?.requested ?? 0),
+      Number(body?.available ?? 0),
+      Number(body?.required ?? body?.requested ?? 0),
       body,
     );
   }
-  throw new MissionControlError(code, message, res.status, body);
+  if (code === "rate_limited" || res.status === 429) {
+    throw new RateLimitedError(
+      Number(body?.retry_after_seconds ?? res.headers.get("retry-after") ?? 1),
+      body,
+    );
+  }
+  throw new MissionControlError(code, message, res.status || 500, body);
 }
 
 export async function reserveTokens(args: ReserveArgs): Promise<ReserveResult> {
   const res = await mcFetch("/api/public/tokens/reserve", {
     method: "POST",
     body: JSON.stringify({
-      tenantRef: AGENCY_TENANT_REF,
+      tenant_ref: AGENCY_TENANT_REF,
+      display_name: AGENCY_DISPLAY_NAME,
       kind: args.kind,
-      estimatedTokens: args.estimatedTokens,
-      idempotencyKey: args.idempotencyKey,
+      estimated_tokens: args.estimatedTokens,
+      idempotency_key: args.idempotencyKey,
+      ttl_seconds: args.ttlSeconds,
       request_payload: {
         user_id: args.userId,
         ...(args.requestPayload ?? {}),
@@ -124,49 +200,110 @@ export async function reserveTokens(args: ReserveArgs): Promise<ReserveResult> {
   });
   const body = await parseOrThrow(res);
   return {
-    jobId: body.jobId ?? body.job_id,
-    reserved: body.reserved ?? args.estimatedTokens,
-    available: body.available ?? 0,
+    jobId: body.job_id ?? body.jobId,
+    reserved: Number(body.reserved_tokens ?? body.reserved ?? args.estimatedTokens),
+    available: Number(body.available_after ?? body.available ?? 0),
+    idempotent: Boolean(body.idempotent),
+    status: body.status,
   };
 }
 
-export async function commitTokens(jobId: string, actualTokens: number): Promise<void> {
-  // Commit must always succeed eventually. Retry once on 5xx.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await mcFetch("/api/public/tokens/commit", {
+export async function commitTokens(jobId: string, actualTokens: number, resultMeta?: Record<string, unknown>): Promise<void> {
+  // Commit must always succeed eventually. Retry once on 5xx — commit is idempotent on completed jobs.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await mcFetchRaw("/api/public/tokens/commit", {
       method: "POST",
-      body: JSON.stringify({ jobId, actualTokens }),
+      body: JSON.stringify({
+        job_id: jobId,
+        actual_tokens: actualTokens,
+        result_meta: resultMeta,
+      }),
     });
     if (res.ok) { await res.text(); return; }
-    if (res.status < 500 || attempt === 1) { await parseOrThrow(res); return; }
-    await new Promise((r) => setTimeout(r, 500));
+    if (res.status === 429) {
+      const ra = Number(res.headers.get("retry-after") ?? "1");
+      await new Promise((r) => setTimeout(r, Math.min(ra, 10) * 1000));
+      continue;
+    }
+    if (res.status < 500 || attempt === 2) {
+      await parseOrThrow(res);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
   }
 }
 
 export async function cancelTokens(jobId: string, reason?: string): Promise<void> {
   try {
-    const res = await mcFetch("/api/public/tokens/cancel", {
+    const res = await mcFetchRaw("/api/public/tokens/cancel", {
       method: "POST",
-      body: JSON.stringify({ jobId, reason: reason ?? "generation_failed" }),
+      body: JSON.stringify({ job_id: jobId, reason: reason?.slice(0, 280) ?? "generation_failed" }),
     });
     await res.text();
   } catch (e) {
     // Best effort — never let cancel failure mask the original error.
+    // Reservations auto-expire after TTL anyway.
     console.error("[missionControl] cancel failed", e);
   }
 }
 
 export async function getBalance(): Promise<BalanceResult> {
-  const res = await mcFetch(
-    `/api/public/tokens/balance?tenantRef=${encodeURIComponent(AGENCY_TENANT_REF)}`,
-    { method: "GET" },
-  );
+  const q = new URLSearchParams({
+    tenant_ref: AGENCY_TENANT_REF,
+    display_name: AGENCY_DISPLAY_NAME,
+  });
+  const res = await mcFetch(`/api/public/tokens/balance?${q.toString()}`, { method: "GET" });
   const body = await parseOrThrow(res);
+
+  const tenant = body?.tenant ?? {};
+  const plan = tenant?.billing_plans ?? null;
+  const balance = body?.balance ?? body ?? {};
+
+  const allowance = Number(plan?.monthly_allowance ?? body?.allowance ?? 0);
+  const lifetimeGranted = Number(balance?.lifetime_granted ?? 0);
+  const lifetimeSpent = Number(balance?.lifetime_spent ?? balance?.used ?? 0);
+
   return {
-    available: Number(body.available ?? 0),
-    allowance: Number(body.allowance ?? 0),
-    used: Number(body.used ?? 0),
-    reserved: Number(body.reserved ?? 0),
+    available: Number(balance?.available ?? 0),
+    reserved: Number(balance?.reserved ?? 0),
+    allowance,
+    // Best-effort `used` for the current period: prefer lifetime_spent (MC source of truth).
+    used: lifetimeSpent,
+    lifetimeGranted,
+    lifetimeSpent,
+    planName: plan?.name ?? null,
+    overagePolicy: plan?.overage_policy ?? null,
+    currentPeriodEnd: tenant?.current_period_end ?? null,
+  };
+}
+
+export async function listTopupPacks(opts: { limit?: number; offset?: number } = {}): Promise<TopupPacksResult> {
+  const q = new URLSearchParams({ tenant_ref: AGENCY_TENANT_REF });
+  if (opts.limit) q.set("limit", String(Math.min(opts.limit, 100)));
+  if (opts.offset) q.set("offset", String(opts.offset));
+  const res = await mcFetch(`/api/public/tokens/packs?${q.toString()}`, { method: "GET" });
+  const body = await parseOrThrow(res);
+  const pagination = body?.pagination ?? {};
+  return {
+    packs: Array.isArray(body?.packs)
+      ? body.packs.map((p: any) => ({
+          id: p.id,
+          slug: p.slug,
+          name: p.name,
+          tokens: Number(p.tokens ?? 0),
+          priceCents: Number(p.price_cents ?? 0),
+          currency: String(p.currency ?? "USD"),
+          expiresAfterDays: p.expires_after_days ?? null,
+        }))
+      : [],
+    topupUrl: body?.topup_url ?? null,
+    pagination: {
+      limit: Number(pagination.limit ?? 50),
+      offset: Number(pagination.offset ?? 0),
+      total: Number(pagination.total ?? 0),
+      hasMore: Boolean(pagination.has_more),
+      nextOffset: pagination.next_offset ?? null,
+    },
   };
 }
 
@@ -176,12 +313,12 @@ export async function getBalance(): Promise<BalanceResult> {
  */
 export async function withTokenReservation<T>(
   args: ReserveArgs,
-  run: (reservation: ReserveResult) => Promise<{ actualTokens: number; result: T }>,
+  run: (reservation: ReserveResult) => Promise<{ actualTokens: number; result: T; resultMeta?: Record<string, unknown> }>,
 ): Promise<T> {
   const reservation = await reserveTokens(args);
   try {
-    const { actualTokens, result } = await run(reservation);
-    await commitTokens(reservation.jobId, actualTokens);
+    const { actualTokens, result, resultMeta } = await run(reservation);
+    await commitTokens(reservation.jobId, actualTokens, resultMeta);
     return result;
   } catch (err) {
     await cancelTokens(reservation.jobId, err instanceof Error ? err.message : "error");
