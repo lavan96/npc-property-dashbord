@@ -108,6 +108,8 @@ export default function Templates() {
   const { canEdit: canEditTemplates } = useModulePermissions('templates');
   const [activeTab, setActiveTab] = useState('report-formats');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat | null>(null);
+  const [builderSearch, setBuilderSearch] = useState('');
+  const [builderSort, setBuilderSort] = useState<'name_asc' | 'name_desc' | 'type' | 'tier' | 'version_desc' | 'updated_desc'>('updated_desc');
 
   const { data: reportTemplates = [], isLoading: reportTemplatesLoading } = useReportTemplates();
   const { create: createReportTemplate, remove: removeReportTemplate } = useReportTemplateMutations();
