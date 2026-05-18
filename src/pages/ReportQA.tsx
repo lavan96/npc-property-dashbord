@@ -154,6 +154,8 @@ interface SavedConversation {
   shared_by?: string;
   permission?: string;
   handoff_note?: string;
+  branched_from_conversation_id?: string | null;
+  branched_from_message_id?: string | null;
 }
 
 export default function ReportQA() {
