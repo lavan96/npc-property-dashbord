@@ -422,6 +422,16 @@ export default function Agreements() {
           onSent={() => setSigningAgreement(null)}
         />
       )}
+
+      {statusAgreement && (
+        <EnvelopeStatusDialog
+          open={!!statusAgreement}
+          onOpenChange={(v) => { if (!v) setStatusAgreement(null); }}
+          scope="agreement"
+          recordId={statusAgreement.id}
+          title={`${statusAgreement.buyer_names} — Envelope`}
+        />
+      )}
     </div>
   );
 }
