@@ -23,6 +23,7 @@ import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
+import { EnvelopeStatusDialog } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
