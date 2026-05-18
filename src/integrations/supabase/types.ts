@@ -11131,6 +11131,42 @@ export type Database = {
         }
         Relationships: []
       }
+      token_balance_cache: {
+        Row: {
+          available: number
+          current_period_end: string | null
+          lifetime_granted: number
+          lifetime_spent: number
+          monthly_allowance: number
+          plan_name: string | null
+          reserved: number
+          tenant_ref: string
+          updated_at: string
+        }
+        Insert: {
+          available?: number
+          current_period_end?: string | null
+          lifetime_granted?: number
+          lifetime_spent?: number
+          monthly_allowance?: number
+          plan_name?: string | null
+          reserved?: number
+          tenant_ref: string
+          updated_at?: string
+        }
+        Update: {
+          available?: number
+          current_period_end?: string | null
+          lifetime_granted?: number
+          lifetime_spent?: number
+          monthly_allowance?: number
+          plan_name?: string | null
+          reserved?: number
+          tenant_ref?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       token_usage_history: {
         Row: {
           actual_tokens: number
@@ -11182,6 +11218,27 @@ export type Database = {
           reserved_tokens?: number
           status?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      token_webhook_events: {
+        Row: {
+          event: string
+          id: string
+          payload: Json | null
+          received_at: string
+        }
+        Insert: {
+          event: string
+          id: string
+          payload?: Json | null
+          received_at?: string
+        }
+        Update: {
+          event?: string
+          id?: string
+          payload?: Json | null
+          received_at?: string
         }
         Relationships: []
       }

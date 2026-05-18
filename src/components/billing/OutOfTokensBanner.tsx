@@ -1,7 +1,12 @@
-import { Ban } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { MISSION_CONTROL_BILLING_URL } from "@/lib/missionControl";
+import {
+  MISSION_CONTROL_BILLING_URL,
+  MISSION_CONTROL_TOPUP_URL,
+  fetchTopupPacks,
+} from "@/lib/missionControl";
 
 interface OutOfTokensBannerProps {
   available: number;
@@ -11,27 +16,48 @@ interface OutOfTokensBannerProps {
 
 /**
  * Dedicated state for `insufficient_funds`. Use after catching `InsufficientTokensError`
- * from a generator call.
+ * from a generator call. Lazy-fetches the Mission Control top-up deep link so the CTA
+ * routes the operator straight to the hosted top-up page.
  */
 export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfTokensBannerProps) {
+  const short = Math.max(0, requested - available);
+  const [topupUrl, setTopupUrl] = useState<string>(MISSION_CONTROL_TOPUP_URL);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTopupPacks()
+      .then((r) => {
+        if (!cancelled && r.topupUrl) setTopupUrl(r.topupUrl);
+      })
+      .catch(() => {/* keep fallback URL */});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <Alert variant="destructive">
-      <Ban className="h-4 w-4" />
-      <AlertTitle>Not enough tokens</AlertTitle>
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Out of report credits</AlertTitle>
       <AlertDescription className="flex flex-col gap-3">
         <span>
           This report needs{" "}
           <span className="font-semibold">{requested.toLocaleString()}</span> tokens but only{" "}
-          <span className="font-semibold">{available.toLocaleString()}</span> are available
-          in your agency pool.
+          <span className="font-semibold">{available.toLocaleString()}</span> are available in your
+          agency pool — you're short by{" "}
+          <span className="font-semibold">{short.toLocaleString()}</span>.
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
-            variant="secondary"
             size="sm"
-            onClick={() => window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener")}
+            onClick={() => window.open(topupUrl, "_blank", "noopener,noreferrer")}
           >
-            Top up in Mission Control
+            Top up credits
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener,noreferrer")}
+          >
+            Upgrade plan
           </Button>
           {onDismiss && (
             <Button variant="ghost" size="sm" onClick={onDismiss}>
