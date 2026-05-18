@@ -2048,6 +2048,29 @@ export default function ReportQA() {
                     <Quote className="h-4 w-4 opacity-40" />
                   )}
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={!agentModeSupported}
+                  onClick={() => setAgentMode((v) => !v)}
+                  title={
+                    !agentModeSupported
+                      ? 'Agent tools are unavailable for Perplexity — switch model to enable'
+                      : agentMode
+                        ? 'Disable agent tools (calculators, live data)'
+                        : 'Enable agent tools (calculators, live data, scenarios)'
+                  }
+                  aria-pressed={agentMode && agentModeSupported}
+                  aria-label="Toggle agent mode"
+                >
+                  <Wrench
+                    className={cn(
+                      'h-4 w-4',
+                      agentMode && agentModeSupported ? 'text-primary' : 'opacity-40',
+                    )}
+                  />
+                </Button>
                 <AccessibilitySettings />
                 {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
@@ -2234,6 +2257,9 @@ export default function ReportQA() {
                                     comparisonMode={message.comparisonMode}
                                     onDocumentClick={openCitationInViewer}
                                   />
+                                )}
+                                {message.toolInvocations && message.toolInvocations.length > 0 && (
+                                  <ToolInvocations invocations={message.toolInvocations} />
                                 )}
                                 <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                                 <div className="flex flex-wrap gap-1 sm:gap-2">
