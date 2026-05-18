@@ -89,6 +89,7 @@ import { FullScreenToggle, useFullScreen } from '@/components/report-qa/FullScre
 import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
 import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
+import { ReportLibraryPicker, type PickedReport } from '@/components/report-qa/ReportLibraryPicker';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
 import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
 import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
@@ -579,6 +580,23 @@ export default function ReportQA() {
       setIsUploading(false);
     }
   }, [toast, uploadedReports]);
+
+  const handleLibraryAdd = useCallback((picks: PickedReport[]) => {
+    if (!picks.length) return;
+    const existing = new Set(uploadedReports.map((r) => r.name));
+    const additions: UploadedReport[] = picks
+      .filter((p) => !existing.has(p.name))
+      .map((p) => ({
+        name: p.name,
+        content: p.content,
+        uploadedAt: new Date(),
+        fileSizeBytes: new Blob([p.content]).size,
+        totalPages: undefined,
+        imagesProcessed: 0,
+      }));
+    if (additions.length === 0) return;
+    setUploadedReports((prev) => [...prev, ...additions]);
+  }, [uploadedReports]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -1812,6 +1830,15 @@ export default function ReportQA() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Library picker (existing investment reports) */}
+            <div className="flex justify-center">
+              <ReportLibraryPicker
+                onAdd={handleLibraryAdd}
+                existingNames={uploadedReports.map((r) => r.name)}
+                disabled={isUploading}
+              />
             </div>
 
             {/* Upload Progress */}
