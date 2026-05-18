@@ -14,6 +14,25 @@ import {
   type TokenKind,
 } from "./missionControl.ts";
 import { estimateTokens, fallbackActual, type EstimateOptions } from "./tokenEstimator.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth } from "./auth.ts";
+
+/** Resolve the calling user from session/JWT. For internal service-role calls,
+ *  falls back to body.userId / body.created_by so the bulk worker still meters. */
+export async function resolveUserId(req: Request, body: any): Promise<string | null> {
+  try {
+    const url = (Deno.env.get("SUPABASE_URL") || "").trim();
+    const key = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+    if (!url || !key) return null;
+    const supabase = createClient(url, key);
+    const { userId } = await verifyAuth(supabase, req.headers, body);
+    if (userId === "service_role") return body?.userId || body?.created_by || body?.user_id || null;
+    return userId || null;
+  } catch (e) {
+    console.warn("[reportMetering] resolveUserId failed", e);
+    return null;
+  }
+}
 
 export interface MeteringPlan {
   kind: TokenKind;
