@@ -29,7 +29,7 @@ import { ReportFormatGroup } from '@/components/templates/ReportFormatGroup';
 import { CoverPageOverlayManager } from '@/components/templates/cover-editor/CoverPageOverlayManager';
 import {
   FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare,
-  Calculator, MapPin, Hash, Map, Layers, Edit, Trash2, CheckCircle2, Plus,
+  Calculator, MapPin, Hash, Map, Layers, Edit, Trash2, CheckCircle2, Plus, Search,
 } from 'lucide-react';
 import {
   useReportTemplates,
