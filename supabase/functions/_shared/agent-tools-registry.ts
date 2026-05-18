@@ -623,5 +623,149 @@ registerTool({
   },
 });
 
+// ---------------------------------------------------------------------------
+// 19. run_property_scenarios (composite scenario modeling — Phase 2.4)
+//     Computes a baseline cash-flow + N user-defined scenario variants in one
+//     call so the model can answer "what if rates rise 1% AND rent drops 10%"
+//     without chaining many tool calls.
+// ---------------------------------------------------------------------------
+registerTool({
+  name: 'run_property_scenarios',
+  description:
+    'Run multi-scenario "what-if" modelling on a single property: returns the baseline cash-flow + repayments plus N user-defined scenario variants (rate change, rent change, vacancy spike, expense change, loan-type switch, repayment frequency change). Use for "what if rates rise 1%", "what if rent drops 10% and vacancy doubles", or sensitivity tables. Each variant returns full cash-flow numbers and the delta vs baseline.',
+  parameters: {
+    type: 'object',
+    properties: {
+      baseline: {
+        type: 'object',
+        description: 'Baseline assumptions. Missing values auto-fill from the attached report.',
+        properties: {
+          property_value: { type: 'number' },
+          weekly_rent: { type: 'number' },
+          loan_amount: { type: 'number' },
+          annual_rate_percent: { type: 'number' },
+          loan_term_years: { type: 'number' },
+          loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+          annual_expenses: { type: 'number' },
+          property_management_percent: { type: 'number' },
+          vacancy_weeks: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
+      scenarios: {
+        type: 'array',
+        description: 'List of scenario variants. Each entry inherits unspecified fields from the baseline.',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: 'Short human label, e.g. "Rates +1%" or "Rent -10% & vacancy 6wk".' },
+            rate_delta_percent: { type: 'number', description: 'Add to baseline annual_rate_percent (e.g. 1 = +1%).' },
+            annual_rate_percent: { type: 'number', description: 'Absolute rate override (mutually exclusive with rate_delta_percent).' },
+            rent_change_percent: { type: 'number', description: 'Percentage change to weekly_rent (e.g. -10 = drop 10%).' },
+            weekly_rent: { type: 'number', description: 'Absolute weekly rent override.' },
+            vacancy_weeks: { type: 'number' },
+            expense_change_percent: { type: 'number', description: 'Percentage change applied to total annual expenses.' },
+            annual_expenses: { type: 'number', description: 'Absolute expense override.' },
+            loan_type: { type: 'string', enum: ['principal_interest', 'interest_only'] },
+            frequency: { type: 'string', enum: ['weekly', 'fortnightly', 'monthly'] },
+          },
+          required: ['label'],
+          additionalProperties: false,
+        },
+        minItems: 1,
+        maxItems: 6,
+      },
+    },
+    required: ['scenarios'],
+    additionalProperties: false,
+  },
+  async execute(args, ctx) {
+    const d = reportDefaults(ctx);
+    const b = args.baseline || {};
+    const baseInputs = {
+      property_value: pick(b.property_value, d.property_value) ?? 0,
+      weekly_rent: pick(b.weekly_rent, d.weekly_rent) ?? 0,
+      loan_amount: pick(b.loan_amount, d.loan_amount) ?? 0,
+      annual_rate_percent: pick(b.annual_rate_percent, d.interest_rate_percent) ?? 6.0,
+      loan_term_years: pick(b.loan_term_years, d.loan_term_years) ?? 30,
+      loan_type: (b.loan_type || 'principal_interest') as 'principal_interest' | 'interest_only',
+      annual_expenses: b.annual_expenses,
+      property_management_percent: b.property_management_percent,
+      vacancy_weeks: b.vacancy_weeks ?? 2,
+    };
+
+    const computeOne = (overrides: any) => {
+      const rate = overrides.annual_rate_percent ??
+        (baseInputs.annual_rate_percent + (overrides.rate_delta_percent ?? 0));
+      const weeklyRent = overrides.weekly_rent ??
+        baseInputs.weekly_rent * (1 + ((overrides.rent_change_percent ?? 0) / 100));
+      const vacancyWeeks = overrides.vacancy_weeks ?? baseInputs.vacancy_weeks;
+      const loanType = overrides.loan_type ?? baseInputs.loan_type;
+      const frequency = (overrides.frequency ?? 'monthly') as 'weekly' | 'fortnightly' | 'monthly';
+
+      let annualExpenses = overrides.annual_expenses ?? baseInputs.annual_expenses;
+      if (annualExpenses == null && overrides.expense_change_percent != null) {
+        // Apply % delta to default expense profile by computing baseline cashflow first
+        const baseCF = calculateCashFlow({
+          weekly_rent: baseInputs.weekly_rent,
+          loan_amount: baseInputs.loan_amount,
+          annual_rate_percent: baseInputs.annual_rate_percent,
+          loan_term_years: baseInputs.loan_term_years,
+          loan_type: baseInputs.loan_type,
+          annual_expenses: baseInputs.annual_expenses,
+          property_management_percent: baseInputs.property_management_percent,
+          vacancy_weeks: baseInputs.vacancy_weeks,
+        });
+        annualExpenses = Math.round(baseCF.annual_expenses_total * (1 + overrides.expense_change_percent / 100));
+      }
+
+      const repayment = calculateMortgageRepayment({
+        loan_amount: baseInputs.loan_amount,
+        annual_rate_percent: rate,
+        loan_term_years: baseInputs.loan_term_years,
+        loan_type: loanType,
+        frequency,
+      });
+      const cashflow = calculateCashFlow({
+        weekly_rent: weeklyRent,
+        loan_amount: baseInputs.loan_amount,
+        annual_rate_percent: rate,
+        loan_term_years: baseInputs.loan_term_years,
+        loan_type: loanType,
+        annual_expenses: annualExpenses,
+        property_management_percent: baseInputs.property_management_percent,
+        vacancy_weeks: vacancyWeeks,
+      });
+      return {
+        inputs: { annual_rate_percent: rate, weekly_rent: Math.round(weeklyRent), vacancy_weeks: vacancyWeeks, loan_type: loanType, frequency, annual_expenses: annualExpenses ?? cashflow.annual_expenses_total },
+        repayment,
+        cashflow,
+      };
+    };
+
+    const baseline = computeOne({});
+    const scenarios = (args.scenarios as any[]).map((s) => {
+      const result = computeOne(s);
+      return {
+        label: s.label,
+        ...result,
+        delta_vs_baseline: {
+          monthly_repayment: Math.round((result.repayment.monthly_equivalent - baseline.repayment.monthly_equivalent) * 100) / 100,
+          annual_cash_flow: result.cashflow.annual_cash_flow - baseline.cashflow.annual_cash_flow,
+          weekly_cash_flow: result.cashflow.weekly_cash_flow - baseline.cashflow.weekly_cash_flow,
+        },
+      };
+    });
+
+    return {
+      baseline,
+      scenarios,
+      summary:
+        `Baseline weekly cash flow $${baseline.cashflow.weekly_cash_flow.toLocaleString()}. ` +
+        scenarios.map((s) => `${s.label}: $${s.cashflow.weekly_cash_flow.toLocaleString()}/wk (Δ $${s.delta_vs_baseline.weekly_cash_flow.toLocaleString()})`).join('; ') + '.',
+    };
+  },
+});
+
 // Re-export for convenience / type-checking from importers.
 export { extractReportMetrics };
