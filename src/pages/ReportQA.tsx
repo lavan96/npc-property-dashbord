@@ -1000,10 +1000,12 @@ export default function ReportQA() {
         modelProvider: selectedModel,
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
+        toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
+      setStreamingToolInvocations([]);
 
       // Save to database in background via secure function
       if (activeConversationId && fullContent) {
@@ -1019,6 +1021,7 @@ export default function ReportQA() {
               model_provider: selectedModel,
               citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
               comparison_mode: !!streamMeta.comparisonMode,
+              tool_invocations: finalToolInvocations.length > 0 ? finalToolInvocations : [],
             },
           ]
         }).then(() => {
