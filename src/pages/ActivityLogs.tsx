@@ -597,7 +597,57 @@ export default function ActivityLogs() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="outline" size="sm" onClick={loadLogs} className="min-h-[44px] sm:min-h-0">
+          {/* Severity legend */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0" aria-label="Severity legend">
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Severity legend
+              </div>
+              <div className="space-y-2">
+                {(['destructive','warning','info','success','accent','neutral'] as ActionTone[]).map(t => (
+                  <div key={t} className="flex items-start gap-2.5">
+                    <span className={cn('mt-0.5 w-1 h-5 rounded-full shrink-0', SEVERITY_BAR[t])} />
+                    <div className="min-w-0">
+                      <div className={cn('text-xs', TONE_CLASSES[t], 'inline-flex')}>{t}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{TONE_DESCRIPTION[t]}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Live tail toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={liveTail ? 'default' : 'outline'} size="sm"
+                onClick={() => { setLiveTail(v => !v); setNewSinceMount(0); }}
+                className="min-h-[44px] sm:min-h-0 relative"
+                aria-pressed={liveTail}
+              >
+                <Radio className={cn('h-4 w-4 mr-2', liveTail && 'animate-pulse text-success')} />
+                {liveTail ? 'Live' : 'Live tail'}
+                {liveTail && newSinceMount > 0 && (
+                  <span className="ml-1.5 text-[10px] rounded-full bg-success/20 text-success px-1.5 py-0.5">
+                    +{newSinceMount}
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {liveTail
+                ? `Polling every 10s${lastTickAt ? ` · last @ ${format(lastTickAt, 'HH:mm:ss')}` : ''}${page > 1 ? ' (paused — not page 1)' : ''}`
+                : 'Auto-refresh page 1 every 10s'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className="min-h-[44px] sm:min-h-0">
             <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
