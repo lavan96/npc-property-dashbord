@@ -527,6 +527,7 @@ function ReportGenerationProgressInner() {
     async (reportId: string) => {
       const r = reports.find((x) => x.id === reportId);
       cancelScheduledRetry(reportId);
+      cancelledIdsRef.current.add(reportId);
       // Reflect the cancellation in the active list immediately so the user
       // sees the status flip before the next polling cycle removes the row.
       setReports((prev) =>
