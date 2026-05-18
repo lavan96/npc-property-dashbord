@@ -77,6 +77,8 @@ import GamePlan from "./pages/GamePlan";
 import Commissions from "./pages/Commissions";
 import ReportsAnalytics from "./pages/ReportsAnalytics";
 import ModelHub from "./pages/ModelHub";
+import TokenUsageHistory from "./pages/TokenUsageHistory";
+import TokenAuditLog from "./pages/TokenAuditLog";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -303,6 +305,8 @@ const App = () => (
                 <Route path="commissions" element={<Commissions />} />
                 <Route path="reports/analytics" element={<ReportsAnalytics />} />
                 <Route path="model-hub" element={<ModelHub />} />
+                <Route path="billing/usage" element={<TokenUsageHistory />} />
+                <Route path="admin/token-audit" element={<TokenAuditLog />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
