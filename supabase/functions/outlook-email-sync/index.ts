@@ -263,14 +263,14 @@ function convertHtmlToStructuredText(html: string): string {
   // Preserve headings
   text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n$1\n\n');
   
-  // Extract bold/strong text content
-  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '$2');
-  
-  // Extract italic/emphasis text content
-  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '$2');
-  
-  // Extract underline text content
-  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '$2');
+  // Preserve bold/strong as markdown
+  text = text.replace(/<(b|strong)[^>]*>([\s\S]*?)<\/(b|strong)>/gi, (_m, _t, content) => `**${String(content).trim()}**`);
+
+  // Preserve italic/emphasis as markdown
+  text = text.replace(/<(i|em)[^>]*>([\s\S]*?)<\/(i|em)>/gi, (_m, _t, content) => `_${String(content).trim()}_`);
+
+  // Preserve underline using <u> tag so the renderer can style it
+  text = text.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, (_m, content) => `<u>${String(content).trim()}</u>`);
   
   // Preserve unordered list items with bullets
   text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
