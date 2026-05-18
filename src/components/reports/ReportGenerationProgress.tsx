@@ -514,6 +514,53 @@ function ReportGenerationProgressInner() {
     setReports((prev) => prev.filter((x) => x.id !== reportId));
   };
 
+  const killReport = useCallback(
+    async (reportId: string) => {
+      const r = reports.find((x) => x.id === reportId);
+      cancelScheduledRetry(reportId);
+      // Optimistically remove from UI
+      setReports((prev) => prev.filter((x) => x.id !== reportId));
+      try {
+        const { error } = await invokeSecureFunction('manage-investment-reports', {
+          action: 'update',
+          reportId,
+          data: {
+            status: 'failed',
+            error_message: 'Cancelled by user',
+            updated_at: new Date().toISOString(),
+          },
+        });
+        if (error) {
+          toast.error(`Failed to stop generation: ${error.message || 'Unknown error'}`);
+          return;
+        }
+        toast.success(r ? `Stopped: ${r.property_address}` : 'Generation stopped');
+        if (r) {
+          addHistory({
+            id: r.id,
+            property_address: r.property_address,
+            status: 'failed',
+            totalSections: r.totalSections,
+            sectionsCompleted: r.sectionsCompleted,
+            durationMs: Date.now() - r.createdAt.getTime(),
+            error_message: 'Cancelled by user',
+            finishedAt: Date.now(),
+          });
+        }
+      } catch (e: any) {
+        toast.error(`Failed to stop generation: ${e?.message || 'Unknown error'}`);
+      }
+    },
+    [reports, cancelScheduledRetry, addHistory],
+  );
+
+  const killReports = useCallback(
+    (ids: string[]) => {
+      ids.forEach((id) => killReport(id));
+    },
+    [killReport],
+  );
+
   const handleResumeAllStalled = () => {
     reports.forEach((r) => {
       const timeSinceUpdate = Date.now() - r.lastUpdated.getTime();
