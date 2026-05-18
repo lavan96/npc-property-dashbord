@@ -69,20 +69,26 @@ function generateSuggestions(content: string, context: 'single' | 'comparison' |
   return suggestions.slice(0, 3);
 }
 
-export function FollowUpSuggestions({ 
-  lastAssistantMessage, 
+export function FollowUpSuggestions({
+  lastAssistantMessage,
   reportContext,
-  onSelect 
+  onSelect,
+  aiSuggestions,
 }: FollowUpSuggestionsProps) {
-  const suggestions = generateSuggestions(lastAssistantMessage, reportContext);
+  const cleanedAi = (aiSuggestions || [])
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter((s) => s.length > 0)
+    .slice(0, 3);
+  const useAi = cleanedAi.length > 0;
+  const suggestions = useAi ? cleanedAi : generateSuggestions(lastAssistantMessage, reportContext);
 
   if (suggestions.length === 0) return null;
 
   return (
     <div className="mt-3 pt-3 border-t border-border/30">
       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-        <Lightbulb className="h-3 w-3" />
-        <span>Follow-up questions</span>
+        {useAi ? <Sparkles className="h-3 w-3 text-primary" /> : <Lightbulb className="h-3 w-3" />}
+        <span>{useAi ? 'Suggested follow-ups' : 'Follow-up questions'}</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion, idx) => (
