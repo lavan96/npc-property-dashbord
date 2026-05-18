@@ -818,16 +818,46 @@ export function GenerationHistoryList({
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [sort, setSort] = useState<HistorySort>('recent');
   const [query, setQuery] = useState('');
+  const [cancelledByFilter, setCancelledByFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  const cancellers = useMemo(() => {
+    const set = new Set<string>();
+    entries.forEach((e) => {
+      if (e.cancelledBy) set.add(e.cancelledBy);
+    });
+    return Array.from(set).sort();
+  }, [entries]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return entries
       .filter((e) => (filter === 'all' ? true : e.status === filter))
       .filter((e) => (q ? e.property_address.toLowerCase().includes(q) : true))
+      .filter((e) => {
+        if (cancelledByFilter === 'all') return true;
+        return e.cancelledBy === cancelledByFilter;
+      })
+      .filter((e) => {
+        if (!dateFrom && !dateTo) return true;
+        const startOfDay = dateFrom ? new Date(dateFrom).setHours(0, 0, 0, 0) : null;
+        const endOfDay = dateTo ? new Date(dateTo).setHours(23, 59, 59, 999) : null;
+        if (startOfDay && e.finishedAt < startOfDay) return false;
+        if (endOfDay && e.finishedAt > endOfDay) return false;
+        return true;
+      })
       .sort((a, b) =>
         sort === 'recent' ? b.finishedAt - a.finishedAt : a.finishedAt - b.finishedAt,
       );
-  }, [entries, filter, sort, query]);
+  }, [entries, filter, sort, query, cancelledByFilter, dateFrom, dateTo]);
+
+  const hasActiveFilters =
+    filter !== 'all' ||
+    query.trim().length > 0 ||
+    cancelledByFilter !== 'all' ||
+    dateFrom !== undefined ||
+    dateTo !== undefined;
 
   if (entries.length === 0) {
     return (
@@ -844,13 +874,30 @@ export function GenerationHistoryList({
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {filtered.length} of {entries.length}
           </span>
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            Clear all
-          </button>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilter('all');
+                  setQuery('');
+                  setCancelledByFilter('all');
+                  setDateFrom(undefined);
+                  setDateTo(undefined);
+                }}
+                className="text-[10px] text-primary hover:text-primary/80"
+              >
+                Reset filters
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClear}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Clear all
+            </button>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
@@ -883,6 +930,71 @@ export function GenerationHistoryList({
               <SelectItem value="oldest">Oldest</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        {cancellers.length > 0 && (
+          <Select value={cancelledByFilter} onValueChange={setCancelledByFilter}>
+            <SelectTrigger className="h-7 text-xs w-full">
+              <SelectValue placeholder="Stopped by…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any user</SelectItem>
+              {cancellers.map((name) => (
+                <SelectItem key={name} value={name}>
+                  Stopped by {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="flex items-center gap-1.5">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-7 text-xs flex-1 justify-start text-left font-normal',
+                  !dateFrom && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
+                {dateFrom ? format(dateFrom, 'dd MMM yyyy') : 'From date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateFrom}
+                onSelect={setDateFrom}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-7 text-xs flex-1 justify-start text-left font-normal',
+                  !dateTo && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
+                {dateTo ? format(dateTo, 'dd MMM yyyy') : 'To date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateTo}
+                onSelect={setDateTo}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       {filtered.length === 0 ? (
