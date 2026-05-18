@@ -124,6 +124,7 @@ interface ChatMessage {
   documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
   comparisonMode?: boolean; // True when answer compares ≥2 reports
   toolInvocations?: ToolInvocation[]; // Agent tools executed for this answer
+  aiFollowups?: string[]; // Phase 2.4 — AI-generated follow-up suggestions
   sent_by?: string | null;
   sent_by_username?: string | null;
 }
