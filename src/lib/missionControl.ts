@@ -1,7 +1,7 @@
 /**
- * Frontend client for Mission Control token balance.
- * Reads balance via the `mission-control-balance` edge function (API key stays server-side).
- * Pre-flight estimates live here so UI can gate "Generate" CTAs.
+ * Frontend client for Mission Control token balance + top-up packs.
+ * All requests go through the `mission-control-*` edge functions so the clone API key
+ * never leaves the server. Pre-flight estimates live here so UI can gate "Generate" CTAs.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,34 @@ export interface TokenBalance {
   allowance: number;
   used: number;
   reserved: number;
+  // Optional extended fields surfaced by mission-control-balance.
+  lifetimeGranted?: number;
+  lifetimeSpent?: number;
+  planName?: string | null;
+  overagePolicy?: string | null;
+  currentPeriodEnd?: string | null;
+}
+
+export interface TopupPack {
+  id: string;
+  slug: string;
+  name: string;
+  tokens: number;
+  priceCents: number;
+  currency: string;
+  expiresAfterDays: number | null;
+}
+
+export interface TopupPacksResult {
+  packs: TopupPack[];
+  topupUrl: string | null;
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
 }
 
 export class InsufficientTokensError extends Error {
@@ -67,6 +95,14 @@ export async function fetchTokenBalance(): Promise<TokenBalance> {
   return data as TokenBalance;
 }
 
+export async function fetchTopupPacks(): Promise<TopupPacksResult> {
+  const { data, error } = await supabase.functions.invoke("mission-control-packs", {
+    method: "GET",
+  });
+  if (error) throw new Error(error.message ?? "Failed to fetch top-up packs");
+  return (data as TopupPacksResult) ?? { packs: [], topupUrl: null, pagination: { limit: 50, offset: 0, total: 0, hasMore: false, nextOffset: null } };
+}
+
 /** Throws InsufficientTokensError if available < estimate. Returns balance otherwise. */
 export async function preflightTokens(estimate: number): Promise<TokenBalance> {
   const balance = await fetchTokenBalance();
@@ -79,3 +115,5 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
 /** Mission Control billing/top-up URL — override per deployment if needed. */
 export const MISSION_CONTROL_BILLING_URL =
   "https://aurixa-mission-control.lovable.app/billing";
+export const MISSION_CONTROL_TOPUP_URL =
+  "https://aurixa-mission-control.lovable.app/billing/topup";
