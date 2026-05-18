@@ -1,0 +1,81 @@
+/**
+ * Frontend client for Mission Control token balance.
+ * Reads balance via the `mission-control-balance` edge function (API key stays server-side).
+ * Pre-flight estimates live here so UI can gate "Generate" CTAs.
+ */
+import { supabase } from "@/integrations/supabase/client";
+
+export type TokenKind =
+  | "report.investment.compass"
+  | "report.investment.executive"
+  | "report.investment.snapshot"
+  | "report.suburb.compass"
+  | "report.postcode.compass"
+  | "report.market-intelligence"
+  | "report.portfolio-review"
+  | "report.bulk-item"
+  | "report.chart-analysis"
+  | "report.qualitative-regen";
+
+export interface TokenBalance {
+  available: number;
+  allowance: number;
+  used: number;
+  reserved: number;
+}
+
+export class InsufficientTokensError extends Error {
+  constructor(public available: number, public requested: number) {
+    super(`Insufficient tokens: need ${requested}, have ${available}`);
+    this.name = "InsufficientTokensError";
+  }
+}
+
+/** Mirror of server-side estimator. Keep in sync with supabase/functions/_shared/tokenEstimator.ts. */
+const BASE: Record<TokenKind, number> = {
+  "report.investment.compass": 12000,
+  "report.investment.executive": 8000,
+  "report.investment.snapshot": 4000,
+  "report.suburb.compass": 10000,
+  "report.postcode.compass": 10000,
+  "report.market-intelligence": 6000,
+  "report.portfolio-review": 8000,
+  "report.bulk-item": 8000,
+  "report.chart-analysis": 2000,
+  "report.qualitative-regen": 3000,
+};
+
+export function estimateTokens(
+  kind: TokenKind,
+  opts: { extraSections?: number; aiNarrative?: boolean; multiplier?: number } = {},
+): number {
+  let n = BASE[kind] ?? 5000;
+  if (opts.extraSections && opts.extraSections > 0) n *= 1 + 0.2 * opts.extraSections;
+  if (opts.aiNarrative) n *= 1.5;
+  if (opts.multiplier && opts.multiplier > 0) n *= opts.multiplier;
+  return Math.ceil(n);
+}
+
+export async function fetchTokenBalance(): Promise<TokenBalance> {
+  const { data, error } = await supabase.functions.invoke("mission-control-balance", {
+    method: "GET",
+  });
+  if (error) throw new Error(error.message ?? "Failed to fetch balance");
+  if (!data || typeof data.available !== "number") {
+    throw new Error("Invalid balance response");
+  }
+  return data as TokenBalance;
+}
+
+/** Throws InsufficientTokensError if available < estimate. Returns balance otherwise. */
+export async function preflightTokens(estimate: number): Promise<TokenBalance> {
+  const balance = await fetchTokenBalance();
+  if (balance.available < estimate) {
+    throw new InsufficientTokensError(balance.available, estimate);
+  }
+  return balance;
+}
+
+/** Mission Control billing/top-up URL — override per deployment if needed. */
+export const MISSION_CONTROL_BILLING_URL =
+  "https://aurixa-mission-control.lovable.app/billing";
