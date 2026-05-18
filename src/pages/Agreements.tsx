@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
+import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
   pending_pdf: { label: 'Processing PDF', variant: 'secondary', icon: Clock },
