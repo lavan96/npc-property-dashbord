@@ -55,6 +55,19 @@ interface ReportFormatConfig {
   icon: React.ElementType;
 }
 
+const REPORT_TYPE_LABELS: Record<string, string> = {
+  investment: 'Investment Report',
+  cashflow: 'Cash Flow',
+  qa: 'Q&A Export',
+  borrowing_capacity: 'Borrowing Capacity',
+  portfolio: 'Portfolio Analysis',
+  suburb: 'Suburb Analysis',
+  postcode: 'Postcode Analysis',
+  statewide: 'Statewide Analysis',
+  comparison: 'Comparison Report',
+  vownet: 'Vownet / Client Form',
+};
+
 const REPORT_FORMATS: ReportFormatConfig[] = [
   { id: 'investment_compass', label: 'Investor Compass', description: 'Comprehensive investment analysis report', category: 'investment', tier: 'compass', icon: Building2 },
   { id: 'investment_executive', label: 'Executive Brief', description: 'Condensed executive summary report', category: 'investment', tier: 'executive', icon: FileText },
