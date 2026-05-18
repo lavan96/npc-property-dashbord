@@ -10333,6 +10333,7 @@ export type Database = {
       }
       report_qa_conversations: {
         Row: {
+          agent_mode: boolean
           conversation_summary: string | null
           created_at: string
           created_by: string | null
@@ -10347,6 +10348,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_mode?: boolean
           conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
@@ -10361,6 +10363,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_mode?: boolean
           conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
@@ -10398,6 +10401,7 @@ export type Database = {
           role: string
           sent_by: string | null
           sent_by_username: string | null
+          tool_invocations: Json
         }
         Insert: {
           attachments?: Json | null
@@ -10412,6 +10416,7 @@ export type Database = {
           role: string
           sent_by?: string | null
           sent_by_username?: string | null
+          tool_invocations?: Json
         }
         Update: {
           attachments?: Json | null
@@ -10426,6 +10431,7 @@ export type Database = {
           role?: string
           sent_by?: string | null
           sent_by_username?: string | null
+          tool_invocations?: Json
         }
         Relationships: [
           {
