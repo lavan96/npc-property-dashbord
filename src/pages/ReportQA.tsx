@@ -116,7 +116,9 @@ interface ChatMessage {
   audioUrl?: string; // For voice messages
   attachments?: PDFAttachment[]; // For PDF attachments
   modelProvider?: ModelProvider | null; // Which AI model generated this message
-  citations?: string[]; // Perplexity citations
+  citations?: string[]; // Perplexity URL citations (legacy)
+  documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
+  comparisonMode?: boolean; // True when answer compares ≥2 reports
   sent_by?: string | null;
   sent_by_username?: string | null;
 }
