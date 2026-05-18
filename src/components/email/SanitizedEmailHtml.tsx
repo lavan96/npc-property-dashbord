@@ -60,7 +60,7 @@ function hardenLinksAndAttrs(root: HTMLElement) {
 
 function sanitize(html: string): string {
   if (!html) return '';
-  const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG) as string;
+  const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG as any) as unknown as string;
   // Post-process with a detached DOM to harden links and strip residuals.
   const tpl = document.createElement('template');
   tpl.innerHTML = clean;
