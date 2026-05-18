@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const balance = await getBalance();
+    // Surface both detailed MC fields and the legacy frontend shape (available/allowance/used/reserved).
     return new Response(JSON.stringify(balance), {
       status: 200,
       headers: { ...corsHeaders, "content-type": "application/json" },
