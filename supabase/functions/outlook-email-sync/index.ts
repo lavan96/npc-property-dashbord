@@ -463,8 +463,11 @@ Deno.serve(async (req) => {
           ? (email as any).sentDateTime || email.receivedDateTime
           : email.receivedDateTime;
 
-        // Use structure-preserving HTML conversion
-        const bodyContent = email.body?.contentType === 'html' 
+        // Use structure-preserving HTML conversion for the plain-text body,
+        // but also keep the original HTML so the dashboard can render tables,
+        // links, and rich formatting safely via DOMPurify on the client.
+        const rawHtml = email.body?.contentType === 'html' ? (email.body.content || '') : '';
+        const bodyContent = email.body?.contentType === 'html'
           ? convertHtmlToStructuredText(email.body.content)
           : email.body?.content || email.bodyPreview || '';
 
@@ -479,6 +482,7 @@ Deno.serve(async (req) => {
             sender: email.from?.emailAddress?.address || 'unknown',
             subject: email.subject || '(No Subject)',
             body: bodyContent.substring(0, 200000),
+            body_html: rawHtml ? rawHtml.substring(0, 500000) : null,
             received_at: emailDate,
             status: folder === 'sent' ? 'sent' : 'unread',
             to_recipients: toRecipients,

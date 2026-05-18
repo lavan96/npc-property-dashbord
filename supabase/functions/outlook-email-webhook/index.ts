@@ -321,9 +321,12 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Use structure-preserving HTML conversion
-      const bodyContent = email.body?.contentType === 'html' 
-        ? convertHtmlToStructuredText(email.body.content) 
+      // Use structure-preserving HTML conversion for the plain-text body,
+      // and persist the raw HTML so the dashboard can render tables/links
+      // safely via DOMPurify on the client.
+      const rawHtml = email.body?.contentType === 'html' ? (email.body.content || '') : '';
+      const bodyContent = email.body?.contentType === 'html'
+        ? convertHtmlToStructuredText(email.body.content)
         : email.body?.content || email.bodyPreview || '';
 
       // Insert email first to get the ID
@@ -333,6 +336,7 @@ Deno.serve(async (req) => {
           sender: email.from?.emailAddress?.address || 'Unknown',
           subject: email.subject || '(No subject)',
           body: bodyContent.substring(0, 200000),
+          body_html: rawHtml ? rawHtml.substring(0, 500000) : null,
           received_at: email.receivedDateTime,
           status: 'unread',
           cc_recipients: extractEmailAddresses(email.ccRecipients || []),

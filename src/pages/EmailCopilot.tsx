@@ -118,6 +118,7 @@ interface Email {
   sender: string;
   subject: string;
   body: string;
+  body_html?: string | null;
   received_at: string;
   summary: EmailSummary | null;
   draft_reply: string | null;
@@ -606,6 +607,7 @@ export default function EmailCopilot() {
         fullBodyFetchedRef.current.add(targetId);
         const patch = {
           body: full.body || '',
+          body_html: full.body_html ?? null,
           attachments: full.attachments || [],
           summary: full.summary ?? null,
         };
@@ -2548,6 +2550,7 @@ export default function EmailCopilot() {
                   <div className="bg-background rounded-lg border p-6">
                     <EmailBodyView
                       content={selectedEmail.body}
+                      html={selectedEmail.body_html}
                       className="prose prose-sm max-w-none dark:prose-invert"
                     />
                   </div>
