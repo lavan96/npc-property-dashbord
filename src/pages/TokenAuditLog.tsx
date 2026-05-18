@@ -43,6 +43,7 @@ export default function TokenAuditLog() {
   const [loading, setLoading] = useState(false);
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
