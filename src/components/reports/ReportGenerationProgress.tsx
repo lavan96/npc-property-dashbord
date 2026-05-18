@@ -92,11 +92,7 @@ export function ReportGenerationProgress() {
 
 function ReportGenerationProgressInner() {
   const { user } = useAuth();
-  const currentUserLabel =
-    (user as any)?.user_metadata?.username ||
-    (user as any)?.user_metadata?.full_name ||
-    user?.email ||
-    'unknown user';
+  const currentUserLabel = user?.username || 'unknown user';
   const [reports, setReports] = useState<ReportProgress[]>([]);
   const [isMinimized, setIsMinimized] = useState<boolean>(getCollapsed);
   const [historyOpen, setHistoryOpen] = useState(false);
