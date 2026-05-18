@@ -2360,7 +2360,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
     // Handle updating conversation (e.g., title)
     if (action === "update-conversation") {
-      const { conversationId, title } = body;
+      const { conversationId, title, clientId } = body;
       
       if (!conversationId) {
         return new Response(
@@ -2371,6 +2371,8 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
       const updateData: any = {};
       if (title !== undefined) updateData.title = title;
+      // clientId may be a uuid string or null (to unlink)
+      if (clientId !== undefined) updateData.client_id = clientId || null;
       updateData.updated_at = new Date().toISOString();
 
       const { data, error } = await supabase
