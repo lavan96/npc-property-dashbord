@@ -1568,11 +1568,21 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         metadata: { function: 'report-qa', action: 'chat', streaming: false, modelProvider },
       });
 
+      // Build structured paragraph-level citations (non-streaming path)
+      const structuredCitationsNS = buildStructuredCitations(retrievedChunksForCitations);
+
       // Save messages to database if conversationId provided
       if (conversationId) {
         await supabase.from("report_qa_messages").insert([
           { conversation_id: conversationId, role: "user", content: sanitizeForPostgres(question) },
-          { conversation_id: conversationId, role: "assistant", content: sanitizeForPostgres(responseText), model_provider: modelProvider },
+          {
+            conversation_id: conversationId,
+            role: "assistant",
+            content: sanitizeForPostgres(responseText),
+            model_provider: modelProvider,
+            citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
+            comparison_mode: comparisonMode,
+          },
         ]);
 
         // Check if this is the first message and generate a dynamic title
