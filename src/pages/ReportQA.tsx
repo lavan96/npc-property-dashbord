@@ -917,6 +917,13 @@ export default function ReportQA() {
       let fullContent = '';
       let buffer = '';
       let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
+      // Tool invocations accumulate from `_tool` SSE events emitted by the
+      // agent loop. Keyed by invocation id so a `started` chip can be
+      // updated in place when its `completed` event arrives.
+      const toolMap = new Map<string, ToolInvocation>();
+      const flushToolsToStreaming = () => {
+        setStreamingToolInvocations(Array.from(toolMap.values()));
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -948,6 +955,22 @@ export default function ReportQA() {
               };
               continue;
             }
+            // Agent tool-call transparency events
+            if (parsed?._tool) {
+              const t = parsed._tool;
+              const existing = toolMap.get(t.id) || { id: t.id, name: t.name, arguments: undefined };
+              const merged: ToolInvocation = {
+                ...existing,
+                ...t,
+              };
+              toolMap.set(t.id, merged);
+              flushToolsToStreaming();
+              continue;
+            }
+            if (parsed?._error) {
+              console.warn('[ReportQA] Agent loop error event:', parsed._error);
+              continue;
+            }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
@@ -960,6 +983,8 @@ export default function ReportQA() {
           }
         }
       }
+
+      const finalToolInvocations = Array.from(toolMap.values());
 
       // Create the final assistant message
       const assistantMessage: ChatMessage = {
