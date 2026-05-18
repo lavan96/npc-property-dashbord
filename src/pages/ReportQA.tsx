@@ -2168,7 +2168,8 @@ export default function ReportQA() {
                                     onSelect={(suggestion) => setInputMessage(suggestion)}
                                   />
                                 )}
-                              </div>
+                                </div>
+                              </>
                             )}
                           </div>
                           {message.role === 'user' && (
