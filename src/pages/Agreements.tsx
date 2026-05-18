@@ -343,10 +343,16 @@ export default function Agreements() {
                               </>
                             )}
                             {agreement.docusign_envelope_id && (
-                              <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Refresh Status
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => setStatusAgreement(agreement)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Envelope Status &amp; Audit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Refresh Status
+                                </DropdownMenuItem>
+                              </>
                             )}
                             {canEditAgreements && ['sent', 'delivered', 'viewed'].includes(agreement.status) && (
                               <DropdownMenuItem
