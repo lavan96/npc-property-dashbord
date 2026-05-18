@@ -42,12 +42,21 @@ const TONE_CLASSES: Record<ActionTone, string> = {
 };
 
 const SEVERITY_BAR: Record<ActionTone, string> = {
-  success: 'bg-success/70',
-  warning: 'bg-warning/70',
-  destructive: 'bg-destructive/70',
-  info: 'bg-primary/60',
-  accent: 'bg-accent/70',
-  neutral: 'bg-muted-foreground/40',
+  success: 'bg-gradient-to-b from-success/90 via-success/70 to-success/40',
+  warning: 'bg-gradient-to-b from-warning/90 via-warning/70 to-warning/40',
+  destructive: 'bg-gradient-to-b from-destructive via-destructive/80 to-destructive/50 shadow-[0_0_10px_hsl(var(--destructive)/0.45)]',
+  info: 'bg-gradient-to-b from-primary/80 via-primary/60 to-primary/30',
+  accent: 'bg-gradient-to-b from-accent/90 via-accent/70 to-accent/40',
+  neutral: 'bg-gradient-to-b from-muted-foreground/50 to-muted-foreground/20',
+};
+
+const TONE_DESCRIPTION: Record<ActionTone, string> = {
+  success: 'Successful creation, completion, or activation',
+  info: 'Informational update or edit',
+  warning: 'Caution — config change, archive, deactivation',
+  destructive: 'Deletion, removal, or revocation',
+  accent: 'Branding, tagging, or visual change',
+  neutral: 'Read, view, or low-signal event',
 };
 
 const ACTION_TYPE_LABELS: Record<string, { label: string; tone: ActionTone; group?: string }> = {
