@@ -91,6 +91,7 @@ import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelS
 import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
+import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 
 interface UploadProgress {
   fileName: string;
