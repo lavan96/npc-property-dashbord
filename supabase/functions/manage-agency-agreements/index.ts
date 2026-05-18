@@ -159,7 +159,6 @@ function getDocuSignRestBaseUrl(): string {
   return `${normalizedBaseUrl}/restapi`;
 }
 
-
 // ─── Helper: Fetch PDF from Gamma with content-type validation ────
 async function fetchGammaPdfBuffer(
   exportUrl: string | null,
@@ -1356,6 +1355,38 @@ Deno.serve(async (req) => {
         },
         signers, events, mapped_status: newStatus,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── DOWNLOAD SIGNED PDF ───────────────────────────────
+    if (action === 'download_signed') {
+      const { agreement_id } = body;
+      const { data: agreement, error: fErr } = await supabase
+        .from('agency_agreements').select('id, docusign_envelope_id, buyer_names').eq('id', agreement_id).single();
+      if (fErr || !agreement?.docusign_envelope_id) {
+        return new Response(JSON.stringify({ error: 'Envelope not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+      const base = getDocuSignRestBaseUrl();
+      if (!acct) return new Response(JSON.stringify({ error: 'DocuSign not configured' }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      let token: string;
+      try { token = await getDocuSignAccessToken(); }
+      catch (e: any) { return new Response(JSON.stringify({ error: `DocuSign auth: ${e.message}` }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+      const url = `${base}/v2.1/accounts/${acct}/envelopes/${agreement.docusign_envelope_id}/documents/combined`;
+      const dsRes = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/pdf' } });
+      if (!dsRes.ok) {
+        const txt = await dsRes.text();
+        return new Response(JSON.stringify({ error: `DocuSign: ${txt.substring(0, 300)}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const bytes = new Uint8Array(await dsRes.arrayBuffer());
+      let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin);
+      const filename = `${(agreement.buyer_names || 'Agreement').replace(/[^a-z0-9]+/gi, '_')}_signed.pdf`;
+      return new Response(JSON.stringify({ success: true, pdf_base64: b64, filename }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // ─── VOID AGREEMENT ────────────────────────────────────

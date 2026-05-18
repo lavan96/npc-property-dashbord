@@ -23,7 +23,7 @@ import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
-import { EnvelopeStatusDialog } from '@/components/agreements/EnvelopeStatusDialog';
+import { EnvelopeStatusDialog, DocuSignStatusBadge } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
@@ -296,7 +296,14 @@ export default function Agreements() {
                       <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                         {agreement.buyer_email || '-'}
                       </TableCell>
-                      <TableCell>{renderStatusBadge(agreement.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {renderStatusBadge(agreement.status)}
+                          {agreement.docusign_envelope_id && agreement.docusign_status && (
+                            <DocuSignStatusBadge status={agreement.docusign_status} />
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                         {format(new Date(agreement.agreement_date), 'dd MMM yyyy')}
                       </TableCell>

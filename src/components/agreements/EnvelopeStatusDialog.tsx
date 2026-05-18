@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -44,7 +44,7 @@ const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = 
   autoresponded: { tone: 'bg-amber-500/10 text-amber-700 border-amber-500/30', icon: AlertTriangle, label: 'Bounced' },
 };
 
-function StatusBadge({ status }: { status?: string }) {
+export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   const key = status.toLowerCase();
   const cfg = STATUS_TONE[key] || { tone: 'bg-muted text-muted-foreground border-border', icon: Clock, label: status };
@@ -55,6 +55,7 @@ function StatusBadge({ status }: { status?: string }) {
     </Badge>
   );
 }
+const StatusBadge = DocuSignStatusBadge;
 
 function fmt(ts?: string) { return ts ? format(new Date(ts), 'dd MMM yy HH:mm') : '—'; }
 
@@ -64,6 +65,32 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
   const [signers, setSigners] = useState<Signer[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadSigned = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const fn = scope === 'agreement' ? 'manage-agency-agreements' : 'manage-generated-documents';
+      const payload = scope === 'agreement'
+        ? { action: 'download_signed', agreement_id: recordId }
+        : { action: 'download_signed', id: recordId };
+      const { data, error: invErr } = await invokeSecureFunction<any>(fn, payload);
+      if (invErr) throw new Error(invErr.message);
+      if (!data?.success) throw new Error(data?.error || 'Download failed');
+      const bin = atob(data.pdf_base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = data.filename || 'signed.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Signed PDF downloaded');
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally { setDownloading(false); }
+  }, [scope, recordId]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
@@ -90,15 +117,23 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-3 pr-8">
+          <DialogTitle className="flex items-center justify-between gap-3 pr-8 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
               <FileText className="h-5 w-5 text-primary shrink-0" />
               <span className="truncate">{title || 'Envelope Status'}</span>
             </span>
-            <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1 shrink-0">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {envelope?.status === 'completed' && (
+                <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="gap-1">
+                  {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download Signed PDF
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh
+              </Button>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
