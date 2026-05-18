@@ -2550,6 +2550,7 @@ export default function EmailCopilot() {
                   <div className="bg-background rounded-lg border p-6">
                     <EmailBodyView
                       content={selectedEmail.body}
+                      html={selectedEmail.body_html}
                       className="prose prose-sm max-w-none dark:prose-invert"
                     />
                   </div>
