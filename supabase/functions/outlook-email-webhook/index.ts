@@ -332,7 +332,7 @@ Deno.serve(async (req) => {
         .insert({
           sender: email.from?.emailAddress?.address || 'Unknown',
           subject: email.subject || '(No subject)',
-          body: bodyContent.substring(0, 10000),
+          body: bodyContent.substring(0, 200000),
           received_at: email.receivedDateTime,
           status: 'unread',
           cc_recipients: extractEmailAddresses(email.ccRecipients || []),
