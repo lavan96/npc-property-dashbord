@@ -586,6 +586,36 @@ export default function EmailCopilot() {
     }
   };
 
+  // Fetch the FULL email body when an email is selected (list endpoint only returns body_preview).
+  const fullBodyFetchedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedEmail) return;
+    if (fullBodyFetchedRef.current.has(selectedEmail.id)) return;
+    const targetId = selectedEmail.id;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await invokeSecureFunction('get-email-data', {
+          action: 'get',
+          email_id: targetId,
+        });
+        if (cancelled || error || !data?.email) return;
+        const full = data.email;
+        fullBodyFetchedRef.current.add(targetId);
+        const patch = {
+          body: full.body || '',
+          attachments: full.attachments || [],
+          summary: full.summary ?? null,
+        };
+        setSelectedEmail(prev => (prev && prev.id === targetId ? { ...prev, ...patch } : prev));
+        setEmails(prev => prev.map(e => (e.id === targetId ? { ...e, ...patch } : e)));
+      } catch (e) {
+        console.error('[EmailCopilot] Failed to fetch full email body:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedEmail?.id]);
+
   // Fetch smart quick replies when an email is selected (and not already replied)
   useEffect(() => {
     setQuickReplies([]);
