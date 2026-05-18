@@ -2229,6 +2229,26 @@ export default function ReportQA() {
                 </div>
               ) : (
               <div className="w-full space-y-2 sm:space-y-4">
+                  {(() => {
+                    const currentConv = savedConversations.find((c) => c.id === conversationId);
+                    const parentConv = currentConv?.branched_from_conversation_id
+                      ? savedConversations.find((c) => c.id === currentConv.branched_from_conversation_id)
+                      : null;
+                    const pinnedMessages = messages
+                      .filter((m) => m.role === 'assistant' && m.pinned)
+                      .map((m) => ({ id: m.id, content: m.content }));
+                    return (
+                      <>
+                        {parentConv && (
+                          <BranchedFromIndicator
+                            parentTitle={parentConv.title}
+                            onOpenParent={() => loadConversation(parentConv)}
+                          />
+                        )}
+                        <PinnedAnswersStrip pinned={pinnedMessages} onJump={scrollToMessage} />
+                      </>
+                    );
+                  })()}
                   {messages.map((message, index) => {
                     const previousMessage = index > 0 ? messages[index - 1] : null;
                     const showDateSep = shouldShowDateSeparator(
