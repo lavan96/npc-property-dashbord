@@ -66,6 +66,7 @@ import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcu
 import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
 import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTypingIndicator';
 import { MessageReactions } from '@/components/report-qa/MessageReactions';
+import { ConversationClientLinker } from '@/components/report-qa/ConversationClientLinker';
 import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
 import { ChatThemeSelector, useCurrentTheme, type Theme } from '@/components/report-qa/ChatThemeSelector';
@@ -142,6 +143,7 @@ interface SavedConversation {
   id: string;
   title: string;
   report_names: string[];
+  client_id?: string | null;
   created_at: string;
   updated_at: string;
   shared?: boolean;
@@ -2027,6 +2029,11 @@ export default function ReportQA() {
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
                   <>
+                    <ConversationClientLinker
+                      conversationId={conversationId}
+                      initialClientId={savedConversations.find(c => c.id === conversationId)?.client_id ?? null}
+                      onClientChange={(cid) => setSavedConversations(prev => prev.map(c => c.id === conversationId ? { ...c, client_id: cid } : c))}
+                    />
                     <PinConversation conversationId={conversationId} isPinned={pinnedIds.includes(conversationId)} onTogglePin={handleTogglePin} />
                     <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
                   </>

@@ -627,6 +627,91 @@ async function retrieveRelevantChunks(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 3.3 — Per-client memory extractor
+// ---------------------------------------------------------------------------
+// Lightweight, best-effort: asks gemini-2.5-flash to pull 0–5 durable facts
+// from the latest Q&A turn and upserts them on the `client_qa_memory` table.
+// Caller invokes fire-and-forget after the assistant stream completes.
+interface ExtractMemoryArgs {
+  supabase: any;
+  clientId: string;
+  conversationId: string | null;
+  userId: string | null;
+  question: string;
+  answer: string;
+  lovableApiKey: string;
+}
+
+async function extractAndStoreClientMemory(args: ExtractMemoryArgs): Promise<void> {
+  const { supabase, clientId, conversationId, userId, question, answer, lovableApiKey } = args;
+  try {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${lovableApiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        max_tokens: 600,
+        messages: [
+          {
+            role: 'system',
+            content:
+              "You extract durable, reusable facts about a property-investment client from a single Q&A turn. " +
+              "Only keep facts that will still matter in future conversations (goals, risk profile, decisions, hard preferences, key constraints). " +
+              "Do NOT extract one-off questions, transient numbers from a single report, or generic advice. " +
+              "Respond ONLY with a JSON array (0–5 items). Each item: {\"kind\":\"goal|preference|risk|decision|fact\",\"content\":\"<<=180 chars>>\",\"importance\":1-10}. " +
+              "If nothing durable, return [].",
+          },
+          {
+            role: 'user',
+            content: `Client question:\n${question.slice(0, 800)}\n\nAssistant answer:\n${answer.slice(0, 3500)}\n\nReturn the JSON array now.`,
+          },
+        ],
+      }),
+    });
+    if (!resp.ok) {
+      console.warn('[report-qa] memory extractor HTTP', resp.status);
+      return;
+    }
+    const data = await resp.json();
+    const raw = data?.choices?.[0]?.message?.content || '';
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return;
+    let items: any;
+    try { items = JSON.parse(match[0]); } catch { return; }
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const validKinds = new Set(['goal', 'preference', 'risk', 'decision', 'fact']);
+    const rows = await Promise.all(
+      items
+        .filter((it: any) => it && typeof it.content === 'string' && validKinds.has(it.kind))
+        .slice(0, 5)
+        .map(async (it: any) => {
+          const content = String(it.content).trim().slice(0, 220);
+          const importance = Math.max(1, Math.min(10, Number(it.importance) || 5));
+          const hash = await sha256Hex(`${clientId}::${it.kind}::${content.toLowerCase()}`);
+          return {
+            client_id: clientId,
+            user_id: userId,
+            kind: it.kind,
+            content,
+            importance,
+            source_conversation_id: conversationId,
+            content_hash: hash,
+          };
+        })
+    );
+    if (rows.length === 0) return;
+    const { error } = await supabase
+      .from('client_qa_memory')
+      .upsert(rows, { onConflict: 'client_id,kind,content_hash', ignoreDuplicates: true });
+    if (error) console.warn('[report-qa] memory upsert err:', error.message);
+    else console.log(`[report-qa] stored ${rows.length} client memory items for ${clientId}`);
+  } catch (e) {
+    console.warn('[report-qa] memory extractor failed:', e);
+  }
+}
+
 /**
  * Format retrieved chunks for prompt injection, labelling each excerpt with a
  * stable [S{n}] tag and paragraph/page metadata so the model is encouraged to
@@ -944,13 +1029,18 @@ Deno.serve(async (req) => {
       const comparisonMode = !!isMultiReport ||
         (Array.isArray(reportNames) && reportNames.length > 1);
 
+      // Per-client memory (Phase 3.3): if conversation is linked to a client,
+      // load durable facts/preferences and inject them into the system prompt.
+      let clientMemoryContext = "";
+      let conversationClientId: string | null = null;
+
       // Try RAG-based context assembly first
       if (conversationId && OPENAI_API_KEY) {
         // Load structural summary from conversation
         try {
           const { data: conv } = await supabase
             .from("report_qa_conversations")
-            .select("structured_report, report_names")
+            .select("structured_report, report_names, client_id")
             .eq("id", conversationId)
             .single();
 
@@ -958,9 +1048,39 @@ Deno.serve(async (req) => {
             summaryContext = conv.structured_report;
             console.log(`[report-qa] Loaded structural summary: ${summaryContext.length} chars`);
           }
+          conversationClientId = (conv?.client_id as string | null) || null;
         } catch (e) {
           console.error(`[report-qa] Failed to load summary:`, e);
         }
+
+        // Load top per-client memories
+        if (conversationClientId) {
+          try {
+            const { data: memRows } = await supabase
+              .from('client_qa_memory')
+              .select('kind, content, importance')
+              .eq('client_id', conversationClientId)
+              .order('importance', { ascending: false })
+              .order('updated_at', { ascending: false })
+              .limit(30);
+            if (memRows && memRows.length > 0) {
+              const grouped: Record<string, string[]> = {};
+              for (const m of memRows) {
+                const k = m.kind as string;
+                (grouped[k] ||= []).push(`- ${m.content}`);
+              }
+              const lines: string[] = [];
+              for (const [k, items] of Object.entries(grouped)) {
+                lines.push(`**${k.toUpperCase()}**\n${items.join('\n')}`);
+              }
+              clientMemoryContext = lines.join('\n\n');
+              console.log(`[report-qa] Loaded ${memRows.length} client memory items for ${conversationClientId}`);
+            }
+          } catch (memErr) {
+            console.error('[report-qa] Failed to load client memory:', memErr);
+          }
+        }
+      }
 
         // Retrieve relevant chunks via semantic search
         if (useRAG) {
@@ -1291,6 +1411,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       }
       
       // Inject conversation summary into system prompt if available
+      if (clientMemoryContext) {
+        systemPrompt += `\n\n## CLIENT MEMORY (durable facts known about this client)\nUse these to personalise your answers. If something here conflicts with new information in this conversation, treat the new information as the latest truth.\n\n${clientMemoryContext}`;
+      }
       if (conversationSummaryContext) {
         systemPrompt += `\n\n## EARLIER CONVERSATION CONTEXT\nThe following is a summary of earlier messages in this conversation that are beyond the recent chat window. Use this to maintain continuity and avoid repeating information:\n\n${conversationSummaryContext}`;
       }
@@ -1699,6 +1822,19 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 }
               } catch (fuErr) {
                 console.warn('[report-qa] Follow-up generation failed (non-fatal):', fuErr);
+              }
+
+              // Phase 3.3 — extract durable client memories (fire-and-forget).
+              if (conversationClientId && assistantText && assistantText.length > 60 && LOVABLE_API_KEY) {
+                extractAndStoreClientMemory({
+                  supabase,
+                  clientId: conversationClientId,
+                  conversationId: conversationId || null,
+                  userId: userId || null,
+                  question: String(question || ''),
+                  answer: assistantText,
+                  lovableApiKey: LOVABLE_API_KEY,
+                }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
               }
               controller.close();
               // Best-effort: mark checkpoint complete
@@ -2148,7 +2284,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       // Fetch own conversations
       const { data, error } = await supabase
         .from("report_qa_conversations")
-        .select("id, title, report_names, created_at, updated_at, structured_report")
+        .select("id, title, report_names, created_at, updated_at, structured_report, client_id")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -2224,7 +2360,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
     // Handle updating conversation (e.g., title)
     if (action === "update-conversation") {
-      const { conversationId, title } = body;
+      const { conversationId, title, clientId } = body;
       
       if (!conversationId) {
         return new Response(
@@ -2235,6 +2371,8 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
       const updateData: any = {};
       if (title !== undefined) updateData.title = title;
+      // clientId may be a uuid string or null (to unlink)
+      if (clientId !== undefined) updateData.client_id = clientId || null;
       updateData.updated_at = new Date().toISOString();
 
       const { data, error } = await supabase
