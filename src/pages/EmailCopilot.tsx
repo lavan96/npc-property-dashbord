@@ -9,6 +9,8 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import RichTextBody from '@/components/email/RichTextBody';
+import EmailBodyView from '@/components/email/EmailBodyView';
+import EmailAttachmentsList from '@/components/email/EmailAttachmentsList';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
 import { AIReplyAssistant } from '@/components/email/AIReplyAssistant';
 import { EmailIntelligencePanel, type EmailIntelligence } from '@/components/email/EmailIntelligencePanel';
