@@ -83,7 +83,16 @@ export function InvestmentReportModal({
     
     try {
       console.log('Calling generate-investment-report with:', { propertyAddress, propertyDetails });
-      
+
+      const { runPreflight } = await import('@/lib/preflightTokens');
+      const ok = await runPreflight({
+        kind: 'report.investment.compass',
+        functionName: 'generate-investment-report',
+        label: 'Investment report',
+        estimate: { aiNarrative: true },
+      });
+      if (!ok) { setIsGenerating(false); setIsBackgroundGeneration(false); return; }
+
       const { data, error } = await invokeSecureFunction('generate-investment-report', {
         propertyAddress,
         propertyDetails
