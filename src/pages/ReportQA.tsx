@@ -581,6 +581,23 @@ export default function ReportQA() {
     }
   }, [toast, uploadedReports]);
 
+  const handleLibraryAdd = useCallback((picks: PickedReport[]) => {
+    if (!picks.length) return;
+    const existing = new Set(uploadedReports.map((r) => r.name));
+    const additions: UploadedReport[] = picks
+      .filter((p) => !existing.has(p.name))
+      .map((p) => ({
+        name: p.name,
+        content: p.content,
+        uploadedAt: new Date(),
+        fileSizeBytes: new Blob([p.content]).size,
+        totalPages: undefined,
+        imagesProcessed: 0,
+      }));
+    if (additions.length === 0) return;
+    setUploadedReports((prev) => [...prev, ...additions]);
+  }, [uploadedReports]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
