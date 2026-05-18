@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
   AlertCircle,
+  CalendarIcon,
   CheckCircle2,
   ChevronDown,
   Clock,
