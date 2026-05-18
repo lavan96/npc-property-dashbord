@@ -887,6 +887,7 @@ export default function ReportQA() {
           modelProvider: selectedModel,
           needsConversationSummary: needsSummary,
           totalMessageCount: totalMessages,
+          agentMode: effectiveAgentMode,
         }),
       });
 
