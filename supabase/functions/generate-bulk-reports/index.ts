@@ -2,13 +2,14 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { drainJob, type BulkProperty } from '../_shared/bulkReportWorker.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 interface BulkGenerationRequest {
   properties: BulkProperty[];
   userId: string;
 }
 
-Deno.serve(async (req) => {
+const __bulkReportHandler = async (req: Request): Promise<Response> => {
   console.log('🚀 Bulk report generation function invoked');
 
   const origin = req.headers.get('origin');

@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { callLLMRaw } from '../_shared/llmRouter.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -515,7 +516,7 @@ Keep it professional, warm, and action-oriented. No generic "contact us" languag
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
+const __miReportHandler = async (req: Request): Promise<Response> => {
   const corsHeaders = createCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
