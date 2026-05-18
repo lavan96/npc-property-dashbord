@@ -14,6 +14,10 @@ import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudg
 // shared registry. Empty in Phase 2.1; populated in 2.2 and 2.3.
 import '../_shared/agent-tools-registry.ts';
 
+// Phase 5.3 — prompt + model version tracking. Bump this string whenever the
+// system prompt or routing logic changes meaningfully so we can A/B traceback.
+const PROMPT_VERSION = '2026-05-18.v1';
+
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
 // Uses streaming chunk processing to avoid CPU timeouts
@@ -853,6 +857,34 @@ Deno.serve(async (req) => {
     } catch (err) {
       console.log('[report-qa] Body parsing failed (may be empty), continuing with empty body:', err);
       // Continue - session token should be in headers/cookies
+    }
+
+    // PUBLIC action (no auth) — shared answer lookup must be reachable
+    // without a session so anyone with the link can view a single answer.
+    if (body?.action === "get-shared-answer-public") {
+      const shareToken = body?.shareToken;
+      if (!shareToken) {
+        return new Response(JSON.stringify({ error: "shareToken required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const sbPub = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data, error } = await sbPub.rpc("get_shared_qa_answer", { _share_token: shareToken });
+      if (error) {
+        console.error('[report-qa] get-shared-answer-public error:', error);
+        return new Response(JSON.stringify({ error: "Lookup failed" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
+        return new Response(JSON.stringify({ error: "Not found or revoked" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ answer: row }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     
     // SECURITY: Verify authentication
@@ -2036,6 +2068,8 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             model_provider: modelProvider,
             citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
             comparison_mode: comparisonMode,
+            prompt_version: PROMPT_VERSION,
+            model_version: modelName,
           },
         ]);
 
@@ -2639,8 +2673,198 @@ ${transcript}`;
       );
     }
 
-    // Handle getting team members for sharing
-    if (action === "get-team-members") {
+    // Phase 5.1 — Answer quality feedback (thumbs up/down + optional reason)
+    if (action === "submit-feedback") {
+      const { messageId, conversationId: feedbackConvId, rating, reason } = body;
+      if (!messageId || !feedbackConvId || ![1, -1].includes(rating)) {
+        return new Response(
+          JSON.stringify({ error: "messageId, conversationId, rating(±1) required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { error: fbErr } = await supabase
+        .from("report_qa_message_feedback")
+        .upsert({
+          message_id: messageId,
+          conversation_id: feedbackConvId,
+          user_id: userId,
+          rating,
+          reason: reason || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "message_id,user_id" });
+      if (fbErr) throw fbErr;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get-feedback") {
+      const { conversationId: fbConvId } = body;
+      if (!fbConvId) {
+        return new Response(JSON.stringify({ error: "conversationId required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data, error } = await supabase
+        .from("report_qa_message_feedback")
+        .select("message_id, rating, reason")
+        .eq("conversation_id", fbConvId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      return new Response(JSON.stringify({ feedback: data || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Phase 5.5 — Pin individual answers
+    if (action === "toggle-pin-message") {
+      const { messageId, pinned } = body;
+      if (!messageId || typeof pinned !== "boolean") {
+        return new Response(JSON.stringify({ error: "messageId + pinned bool required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supabase
+        .from("report_qa_messages")
+        .update({ pinned })
+        .eq("id", messageId);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, pinned }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Phase 4.5 — Per-answer shareable links
+    if (action === "generate-share-link") {
+      const { messageId } = body;
+      if (!messageId) {
+        return new Response(JSON.stringify({ error: "messageId required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Generate stable token if none exists
+      const { data: existing } = await supabase
+        .from("report_qa_messages")
+        .select("share_token")
+        .eq("id", messageId)
+        .maybeSingle();
+      let token = existing?.share_token as string | null;
+      if (!token) {
+        token = crypto.randomUUID();
+        const { error: updErr } = await supabase
+          .from("report_qa_messages")
+          .update({ share_token: token })
+          .eq("id", messageId);
+        if (updErr) throw updErr;
+      }
+      return new Response(JSON.stringify({ shareToken: token }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "revoke-share-link") {
+      const { messageId } = body;
+      if (!messageId) {
+        return new Response(JSON.stringify({ error: "messageId required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supabase
+        .from("report_qa_messages")
+        .update({ share_token: null })
+        .eq("id", messageId);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Phase 5.4 — Branch a conversation from a specific message.
+    // Copies all messages up to and including `branchFromMessageId` into a
+    // brand-new conversation row so the user can explore an alternative path
+    // without polluting the original thread.
+    if (action === "branch-conversation") {
+      const { sourceConversationId, branchFromMessageId, newTitle } = body;
+      if (!sourceConversationId || !branchFromMessageId) {
+        return new Response(
+          JSON.stringify({ error: "sourceConversationId and branchFromMessageId required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Load source conversation
+      const { data: srcConv, error: srcErr } = await supabase
+        .from("report_qa_conversations")
+        .select("*")
+        .eq("id", sourceConversationId)
+        .maybeSingle();
+      if (srcErr || !srcConv) throw srcErr || new Error("Source conversation not found");
+
+      // Find the branch point's created_at to capture messages up to it
+      const { data: branchMsg, error: bErr } = await supabase
+        .from("report_qa_messages")
+        .select("created_at")
+        .eq("id", branchFromMessageId)
+        .maybeSingle();
+      if (bErr || !branchMsg) throw bErr || new Error("Branch message not found");
+
+      // Create new conversation with provenance
+      const { data: newConv, error: newConvErr } = await supabase
+        .from("report_qa_conversations")
+        .insert({
+          user_id: srcConv.user_id,
+          title: newTitle || `${srcConv.title || "Q&A"} — branch`,
+          report_names: srcConv.report_names || [],
+          client_id: srcConv.client_id || null,
+          structured_report: srcConv.structured_report || null,
+          branched_from_conversation_id: sourceConversationId,
+          branched_from_message_id: branchFromMessageId,
+        })
+        .select("id")
+        .single();
+      if (newConvErr) throw newConvErr;
+
+      // Copy messages up to and including the branch point
+      const { data: msgs, error: msgsErr } = await supabase
+        .from("report_qa_messages")
+        .select("role, content, model_provider, citations, comparison_mode, tool_invocations, attachments, prompt_version, model_version")
+        .eq("conversation_id", sourceConversationId)
+        .lte("created_at", branchMsg.created_at)
+        .order("created_at", { ascending: true });
+      if (msgsErr) throw msgsErr;
+
+      if (msgs && msgs.length > 0) {
+        const rows = msgs.map(m => ({ ...m, conversation_id: newConv.id }));
+        const { error: copyErr } = await supabase.from("report_qa_messages").insert(rows);
+        if (copyErr) throw copyErr;
+      }
+
+      return new Response(JSON.stringify({ success: true, conversationId: newConv.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Phase 4.5 — Public shared-answer lookup (no auth — token-gated).
+    if (action === "get-shared-answer") {
+      const { shareToken } = body;
+      if (!shareToken) {
+        return new Response(JSON.stringify({ error: "shareToken required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const sbPub = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data, error } = await sbPub.rpc("get_shared_qa_answer", { _share_token: shareToken });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
+        return new Response(JSON.stringify({ error: "Not found or revoked" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ answer: row }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
       const { data: members, error: membersError } = await supabase
         .from("custom_users")
         .select("id, username, email, role")

@@ -10397,6 +10397,8 @@ export type Database = {
       report_qa_conversations: {
         Row: {
           agent_mode: boolean
+          branched_from_conversation_id: string | null
+          branched_from_message_id: string | null
           client_id: string | null
           conversation_summary: string | null
           created_at: string
@@ -10413,6 +10415,8 @@ export type Database = {
         }
         Insert: {
           agent_mode?: boolean
+          branched_from_conversation_id?: string | null
+          branched_from_message_id?: string | null
           client_id?: string | null
           conversation_summary?: string | null
           created_at?: string
@@ -10429,6 +10433,8 @@ export type Database = {
         }
         Update: {
           agent_mode?: boolean
+          branched_from_conversation_id?: string | null
+          branched_from_message_id?: string | null
           client_id?: string | null
           conversation_summary?: string | null
           created_at?: string
@@ -10445,6 +10451,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "report_qa_conversations_branched_from_conversation_id_fkey"
+            columns: ["branched_from_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_qa_conversations_branched_from_message_id_fkey"
+            columns: ["branched_from_message_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_messages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "report_qa_conversations_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -10453,9 +10473,58 @@ export type Database = {
           },
         ]
       }
+      report_qa_message_feedback: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          message_id: string
+          rating: number
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_id: string
+          rating: number
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          rating?: number
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_qa_message_feedback_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_qa_message_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_qa_messages: {
         Row: {
           attachments: Json | null
+          branched_from_message_id: string | null
           citations: Json | null
           comparison_mode: boolean
           content: string
@@ -10464,13 +10533,18 @@ export type Database = {
           edited_content: string | null
           id: string
           model_provider: string | null
+          model_version: string | null
+          pinned: boolean
+          prompt_version: string | null
           role: string
           sent_by: string | null
           sent_by_username: string | null
+          share_token: string | null
           tool_invocations: Json
         }
         Insert: {
           attachments?: Json | null
+          branched_from_message_id?: string | null
           citations?: Json | null
           comparison_mode?: boolean
           content: string
@@ -10479,13 +10553,18 @@ export type Database = {
           edited_content?: string | null
           id?: string
           model_provider?: string | null
+          model_version?: string | null
+          pinned?: boolean
+          prompt_version?: string | null
           role: string
           sent_by?: string | null
           sent_by_username?: string | null
+          share_token?: string | null
           tool_invocations?: Json
         }
         Update: {
           attachments?: Json | null
+          branched_from_message_id?: string | null
           citations?: Json | null
           comparison_mode?: boolean
           content?: string
@@ -10494,12 +10573,23 @@ export type Database = {
           edited_content?: string | null
           id?: string
           model_provider?: string | null
+          model_version?: string | null
+          pinned?: boolean
+          prompt_version?: string | null
           role?: string
           sent_by?: string | null
           sent_by_username?: string | null
+          share_token?: string | null
           tool_invocations?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "report_qa_messages_branched_from_message_id_fkey"
+            columns: ["branched_from_message_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "report_qa_messages_conversation_id_fkey"
             columns: ["conversation_id"]
@@ -11635,6 +11725,21 @@ export type Database = {
           by_type: Json
           total_schools: number
           total_students: number
+        }[]
+      }
+      get_shared_qa_answer: {
+        Args: { _share_token: string }
+        Returns: {
+          attachments: Json
+          citations: Json
+          content: string
+          conversation_id: string
+          conversation_title: string
+          created_at: string
+          message_id: string
+          model_provider: string
+          role: string
+          tool_invocations: Json
         }[]
       }
       get_user_activity_summary: {

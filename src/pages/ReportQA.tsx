@@ -98,6 +98,8 @@ import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
+import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
+import { MessageActions } from '@/components/report-qa/MessageActions';
 
 interface UploadProgress {
   fileName: string;
@@ -129,6 +131,7 @@ interface ChatMessage {
   aiFollowups?: string[]; // Phase 2.4 — AI-generated follow-up suggestions
   sent_by?: string | null;
   sent_by_username?: string | null;
+  pinned?: boolean; // Phase 5.5 — pinned answers
 }
 
 interface UploadedReport {
@@ -191,6 +194,7 @@ export default function ReportQA() {
   const [chatTheme, setChatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { rating: 1 | -1 | null; reason: string | null }>>({});
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [messageEditorOpen, setMessageEditorOpen] = useState(false);
@@ -738,10 +742,26 @@ export default function ReportQA() {
           documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
           comparisonMode: !!m.comparison_mode,
           toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+          pinned: !!m.pinned,
         }))
       );
       setShowHistory(false);
-      
+
+      // Phase 5.1 — load this user's feedback for the conversation
+      try {
+        const { data: fbData } = await invokeSecureFunction('report-qa', {
+          action: 'get-feedback',
+          conversationId: conv.id,
+        });
+        const map: Record<string, { rating: 1 | -1 | null; reason: string | null }> = {};
+        (fbData?.feedback || []).forEach((f: any) => {
+          map[f.message_id] = { rating: f.rating, reason: f.reason || null };
+        });
+        setMessageFeedback(map);
+      } catch (e) {
+        console.warn('[ReportQA] feedback load failed:', e);
+      }
+
       toast({
         title: 'Conversation loaded',
         description: conv.title,
@@ -786,6 +806,7 @@ export default function ReportQA() {
         documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
         comparisonMode: !!m.comparison_mode,
         toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+        pinned: !!m.pinned,
       }));
 
       // Prepend older messages, deduplicating by id
@@ -2327,6 +2348,33 @@ export default function ReportQA() {
                                     <span className="hidden sm:inline">PDF</span>
                                   </Button>
                                   <MessageReactions messageId={message.id} />
+                                  {conversationId && (
+                                    <>
+                                      <MessageFeedback
+                                        messageId={message.id}
+                                        conversationId={conversationId}
+                                        initialRating={messageFeedback[message.id]?.rating ?? null}
+                                        initialReason={messageFeedback[message.id]?.reason ?? null}
+                                      />
+                                      <MessageActions
+                                        messageId={message.id}
+                                        conversationId={conversationId}
+                                        pinned={!!message.pinned}
+                                        onPinChange={(p) =>
+                                          setMessages((prev) =>
+                                            prev.map((m) => (m.id === message.id ? { ...m, pinned: p } : m))
+                                          )
+                                        }
+                                        onBranched={(newId) => {
+                                          loadSavedConversations();
+                                          toast({
+                                            title: 'Branch created',
+                                            description: 'Open it from History.',
+                                          });
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </div>
                                 <MessageThreading
                                   messageId={message.id}
