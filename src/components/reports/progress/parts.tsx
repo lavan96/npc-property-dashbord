@@ -1074,28 +1074,74 @@ export function BulkJobGroup({
               );
               if (active.length === 0) return null;
               return (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Stop ${active.length} active report${active.length === 1 ? '' : 's'} in this bulk job? They will be marked as failed.`,
-                          )
-                        ) {
-                          onKillAll(active.map((r) => r.id));
-                        }
-                      }}
-                    >
-                      <Octagon className="h-3 w-3 mr-1" />
-                      Stop {active.length}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Kill all active jobs in this bulk job</TooltipContent>
-                </Tooltip>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setKillAllOpen(true)}
+                      >
+                        <Octagon className="h-3 w-3 mr-1" />
+                        Stop {active.length}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Kill all active jobs in this bulk job</TooltipContent>
+                  </Tooltip>
+                  <AlertDialog open={killAllOpen} onOpenChange={setKillAllOpen}>
+                    <AlertDialogContent className="max-w-md">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Stop {active.length} active report
+                          {active.length === 1 ? '' : 's'}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                          <div className="space-y-2 text-sm text-muted-foreground">
+                            <p>
+                              The following report{active.length === 1 ? '' : 's'} in bulk job{' '}
+                              <span className="font-mono text-xs">
+                                {group.jobId.slice(0, 8)}
+                              </span>{' '}
+                              will be marked as{' '}
+                              <span className="text-destructive font-medium">failed</span>:
+                            </p>
+                            <ScrollArea className="max-h-40 rounded border border-border bg-muted/30 p-2">
+                              <ul className="space-y-1">
+                                {active.map((r) => (
+                                  <li
+                                    key={r.id}
+                                    className="text-xs text-foreground flex items-center justify-between gap-2"
+                                  >
+                                    <span className="truncate">{r.property_address}</span>
+                                    <span className="text-[10px] text-muted-foreground shrink-0">
+                                      {r.sectionsCompleted}/{r.totalSections}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </ScrollArea>
+                            <p className="text-xs">
+                              Already-completed reports in this job are unaffected.
+                            </p>
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep running</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => {
+                            onKillAll(active.map((r) => r.id));
+                            setKillAllOpen(false);
+                          }}
+                        >
+                          Stop {active.length} report{active.length === 1 ? '' : 's'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               );
             })()}
           </div>
