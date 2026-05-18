@@ -1374,9 +1374,66 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           metadata: { function: 'report-qa', action: 'chat', modelProvider },
         });
 
+        // Prepend a metadata SSE event so the client can render paragraph-level
+        // citations and the comparison-mode badge without waiting for the answer.
+        const structuredCitations = buildStructuredCitations(retrievedChunksForCitations);
+        const streamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const metaPayload = {
+          _meta: {
+            stream_id: streamId,
+            comparisonMode,
+            citations: structuredCitations,
+            modelProvider,
+          },
+        };
+        const metaLine = `data: ${JSON.stringify(metaPayload)}\n\n`;
+
+        // Create a checkpoint row up-front so a dropped stream can be diagnosed.
+        try {
+          await supabase.from('report_qa_stream_checkpoints').insert({
+            stream_id: streamId,
+            conversation_id: conversationId || null,
+            user_id: userId || null,
+            model_provider: modelProvider,
+            comparison_mode: comparisonMode,
+            citations: structuredCitations,
+            status: 'streaming',
+          });
+        } catch (cpErr) {
+          console.warn('[report-qa] Failed to create stream checkpoint (non-fatal):', cpErr);
+        }
+
+        const composedStream = new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder();
+            controller.enqueue(encoder.encode(metaLine));
+            const reader = trackedStream.getReader();
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                controller.enqueue(value);
+              }
+            } catch (err) {
+              console.error('[report-qa] Stream pipe error:', err);
+            } finally {
+              controller.close();
+              // Best-effort: mark checkpoint complete
+              supabase.from('report_qa_stream_checkpoints')
+                .update({ status: 'completed', last_event_at: new Date().toISOString() })
+                .eq('stream_id', streamId)
+                .then(() => {});
+            }
+          },
+        });
+
         // Return the tracked streaming response
-        return new Response(trackedStream, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        return new Response(composedStream, {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "text/event-stream",
+            "x-stream-id": streamId,
+          },
         });
       }
       
