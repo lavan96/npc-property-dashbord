@@ -193,6 +193,16 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
           onSent={() => setSigningDoc(null)}
         />
       )}
+
+      {statusDoc && (
+        <EnvelopeStatusDialog
+          open={!!statusDoc}
+          onOpenChange={(v) => { if (!v) setStatusDoc(null); }}
+          scope="document"
+          recordId={statusDoc.id}
+          title={`${statusDoc.title} — Envelope`}
+        />
+      )}
     </div>
   );
 }
