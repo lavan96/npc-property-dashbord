@@ -878,7 +878,21 @@ Deno.serve(async (req) => {
           const chunks = chunkText(extractedText);
           chunksStored = chunks.length;
 
-          await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId);
+          // Derive lightweight location metadata so chunks are filterable later.
+          const metrics = extractReportMetrics(extractedText);
+          let suburb: string | null = null;
+          if (metrics.address) {
+            const parts = metrics.address.split(',').map(p => p.trim());
+            if (parts.length >= 2) suburb = parts[1] || null;
+          }
+          const chunkMeta = {
+            suburb,
+            state: metrics.state ?? null,
+            postcode: metrics.postcode ?? null,
+            report_type: null,
+          };
+
+          await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId, chunkMeta);
 
           ragEnabled = true;
           console.log(`[report-qa] RAG storage complete for ${fileName}`);
