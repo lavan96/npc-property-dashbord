@@ -1999,7 +1999,7 @@ export default function ReportQA() {
                   {showCitations ? (
                     <Quote className="h-4 w-4" />
                   ) : (
-                    <QuoteIcon className="h-4 w-4 opacity-40" />
+                    <Quote className="h-4 w-4 opacity-40" />
                   )}
                 </Button>
                 <AccessibilitySettings />
