@@ -131,6 +131,7 @@ interface ChatMessage {
   aiFollowups?: string[]; // Phase 2.4 — AI-generated follow-up suggestions
   sent_by?: string | null;
   sent_by_username?: string | null;
+  pinned?: boolean; // Phase 5.5 — pinned answers
 }
 
 interface UploadedReport {
