@@ -406,6 +406,7 @@ export function GenerationProgressItem({
   isMobile = false,
 }: ItemProps) {
   const navigate = useNavigate();
+  const [killOpen, setKillOpen] = useState(false);
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
 
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
