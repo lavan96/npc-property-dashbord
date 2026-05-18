@@ -2029,6 +2029,11 @@ export default function ReportQA() {
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
                   <>
+                    <ConversationClientLinker
+                      conversationId={conversationId}
+                      initialClientId={savedConversations.find(c => c.id === conversationId)?.client_id ?? null}
+                      onClientChange={(cid) => setSavedConversations(prev => prev.map(c => c.id === conversationId ? { ...c, client_id: cid } : c))}
+                    />
                     <PinConversation conversationId={conversationId} isPinned={pinnedIds.includes(conversationId)} onTogglePin={handleTogglePin} />
                     <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
                   </>
