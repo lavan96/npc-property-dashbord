@@ -103,11 +103,19 @@ export async function invokeSecureFunction<T = any>(
     const data = await response.json();
     
     if (!response.ok) {
-      // Transient platform errors (5xx) should be warnings, not errors.
-      // The Supabase edge runtime intermittently returns 503/502 even when
-      // the function itself is healthy — logging these as console.error
-      // triggers the runtime error overlay and creates a poor UX. Callers
-      // already handle these with backoff via the returned error.
+      // Mission Control insufficient_funds → surface global banner.
+      if (response.status === 402 && data?.error?.code === 'insufficient_funds') {
+        emitOutOfTokens({
+          available: Number(data.error.available ?? 0),
+          requested: Number(data.error.requested ?? 0),
+          functionName,
+        });
+        return {
+          data: data as T,
+          error: { message: data.error.message || 'Insufficient tokens' },
+        };
+      }
+
       const isTransient = response.status >= 500 && response.status < 600;
       const log = isTransient ? console.warn : console.error;
       log('[invokeSecureFunction] Request failed', {
@@ -118,9 +126,6 @@ export async function invokeSecureFunction<T = any>(
         hasSessionToken: Boolean(sessionToken),
       });
 
-      // Only definitive authentication failures should trip the auth circuit breaker.
-      // Business-rule 400s (for example GHL token preflight failures) must not clear
-      // the user's dashboard session or turn a handled validation error into a blank screen.
       const message = String(data?.error || data?.message || '').toLowerCase();
       const isAuthFailure = response.status === 401
         || response.status === 403
@@ -133,9 +138,6 @@ export async function invokeSecureFunction<T = any>(
 
       if (isAuthFailure) {
         markAuthFailure();
-
-        // If circuit breaker trips, proactively clear stale tokens
-        // so the next page load starts clean and shows the login screen
         if (isAuthExhausted()) {
           console.warn('[secureInvoke] Clearing stale tokens after repeated auth failures');
           clearStoredToken(ACCESS_TOKEN_KEY);
@@ -149,8 +151,22 @@ export async function invokeSecureFunction<T = any>(
       };
     }
     
-    // Successful response resets the global auth breaker
     resetAuthFailures();
+
+    // Surface token usage for metered generators.
+    if (isReportGenerator(functionName)) {
+      const headerUsed = Number(response.headers.get('x-tokens-used') || 0);
+      const headerReserved = Number(response.headers.get('x-tokens-reserved') || 0);
+      const bodyUsed = Number((data as any)?.tokensUsed || 0);
+      const used = bodyUsed > 0 ? bodyUsed : headerUsed;
+      if (used > 0) {
+        emitTokensUsed({
+          tokensUsed: used,
+          tokensReserved: headerReserved || (data as any)?.tokensReserved,
+          functionName,
+        });
+      }
+    }
 
     return { data: data as T, error: null };
   } catch (error: any) {
