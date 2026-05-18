@@ -216,10 +216,7 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/^\s+|\s+$/gm, '');
   
-  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
-  text = text.replace(/_([^_\n]+)_/g, '$1');
-  text = text.replace(/([a-zA-Z0-9])_(\s|$)/g, '$1$2');
-  text = text.replace(/(^|\s)_([a-zA-Z])/g, '$1$2');
+  // (intentionally preserve **bold** and _italic_ markdown so the UI can render them)
   
   text = text.replace(/([^\n])(\s*From:\s+[^\n]+<[^>]+>)/gi, '$1\n\n$2');
   text = text.replace(/([^\n])(\s*Sent:\s+\w+)/gi, '$1\n$2');
