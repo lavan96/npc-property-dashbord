@@ -18,6 +18,7 @@ import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
 import { ReportGenerationProgress } from "./components/reports/ReportGenerationProgress";
 import { CallNotificationListener } from "./components/CallNotificationListener";
 import { Phase1NotificationListeners } from "./components/Phase1NotificationListeners";
+import { TokenEventsListener } from "@/components/billing/TokenEventsListener";
 import { PushNotificationPrompt } from "./components/PushNotificationPrompt";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { HarveyCountdown } from "@/components/HarveyCountdown";
@@ -155,6 +156,7 @@ const App = () => (
                   <ReportGenerationProgress />
                   <CallNotificationListener />
                   <Phase1NotificationListeners />
+                  <TokenEventsListener />
                   <PushNotificationPrompt />
                   <ComparisonProvider>
                     <SearchProvider>
