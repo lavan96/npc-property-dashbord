@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
           .insert({
             sender: email.from?.emailAddress?.address || 'unknown',
             subject: email.subject || '(No Subject)',
-            body: bodyContent.substring(0, 10000),
+            body: bodyContent.substring(0, 200000),
             received_at: emailDate,
             status: folder === 'sent' ? 'sent' : 'unread',
             to_recipients: toRecipients,
