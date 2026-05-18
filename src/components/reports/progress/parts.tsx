@@ -969,6 +969,7 @@ export function BulkJobGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [killAllOpen, setKillAllOpen] = useState(false);
 
   const completedSections = group.reports.reduce((s, r) => s + r.sectionsCompleted, 0);
   const totalSections = group.reports.reduce((s, r) => s + r.totalSections, 0);
