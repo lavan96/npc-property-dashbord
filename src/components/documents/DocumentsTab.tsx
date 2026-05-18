@@ -42,6 +42,16 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
   const [form, setForm] = useState<{ template_type: TemplateDocType; title: string; sent_to: string; shared_with_client: boolean }>({
     template_type: 'loan_application', title: '', sent_to: '', shared_with_client: false,
   });
+  const [signingDoc, setSigningDoc] = useState<GeneratedDocument | null>(null);
+  const [signingPdfUrl, setSigningPdfUrl] = useState('');
+
+  const openPrepareForSigning = async (d: GeneratedDocument) => {
+    if (!d.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
+    const { data, error } = await supabase.storage.from(DOC_BUCKET).createSignedUrl(d.pdf_storage_path, 600);
+    if (error || !data?.signedUrl) { toast.error(`Failed to load PDF: ${error?.message}`); return; }
+    setSigningPdfUrl(data.signedUrl);
+    setSigningDoc(d);
+  };
 
   const handleCreate = () => {
     if (!form.title) return;
