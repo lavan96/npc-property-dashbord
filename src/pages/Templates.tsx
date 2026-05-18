@@ -238,6 +238,127 @@ export default function Templates() {
           )}
         </TabsContent>
 
+        <TabsContent value="builder" className="space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Visual PDF Template Builder</h2>
+              <p className="text-muted-foreground text-sm max-w-2xl">
+                Design PDF report layouts visually. Drag, drop, bind to live data, and preview the actual generated PDF in real time.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                createReportTemplate.mutate(
+                  { name: 'Untitled template', schema: makeBlankTemplate() },
+                  {
+                    onSuccess: (record: any) => {
+                      if (record?.id) navigate(`/admin/template-builder/${record.id}`);
+                    },
+                  }
+                );
+              }}
+              disabled={createReportTemplate.isPending}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New template
+            </Button>
+          </div>
+
+          {reportTemplatesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-44" />
+              ))}
+            </div>
+          ) : reportTemplates.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <CardTitle className="text-lg">No builder templates yet</CardTitle>
+                <CardDescription className="mt-2 max-w-md mx-auto">
+                  Create your first template to start designing report layouts visually.
+                </CardDescription>
+                <Button
+                  className="mt-6"
+                  disabled={createReportTemplate.isPending}
+                  onClick={() => {
+                    createReportTemplate.mutate(
+                      { name: 'Untitled template', schema: makeBlankTemplate() },
+                      {
+                        onSuccess: (record: any) => {
+                          if (record?.id) navigate(`/admin/template-builder/${record.id}`);
+                        },
+                      }
+                    );
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Create first template
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reportTemplates.map((tpl) => {
+                const pageCount = tpl.schema?.pages?.length ?? 0;
+                return (
+                  <Card key={tpl.id} className="hover:border-primary/40 transition-colors">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base truncate">{tpl.name}</CardTitle>
+                          <CardDescription className="mt-1 line-clamp-2 text-xs">
+                            {tpl.description || 'No description'}
+                          </CardDescription>
+                        </div>
+                        {tpl.is_active && (
+                          <Badge variant="default" className="text-xs">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-1.5 text-xs">
+                        {tpl.report_type && (
+                          <Badge variant="secondary">
+                            {REPORT_TYPE_LABELS[tpl.report_type] || tpl.report_type}
+                          </Badge>
+                        )}
+                        {tpl.tier && <Badge variant="outline">{tpl.tier}</Badge>}
+                        <Badge variant="outline">v{tpl.version}</Badge>
+                        <Badge variant="outline">
+                          {pageCount} page{pageCount === 1 ? '' : 's'}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => navigate(`/admin/template-builder/${tpl.id}`)}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Open in Builder
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => {
+                            if (confirm(`Delete "${tpl.name}"? This cannot be undone.`)) {
+                              removeReportTemplate.mutate(tpl.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="cover-editor" className="space-y-4">
           <CoverPageOverlayManager />
