@@ -10,6 +10,7 @@ import { AgentChatWidget } from '@/components/agent/AgentChatWidget';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useDashboardTheme } from '@/hooks/useDashboardTheme';
 import { DashboardPageShell } from './DashboardPageShell';
+import { TokenBalanceBanner } from '@/components/billing/TokenBalanceBanner';
 
 export function DashboardLayout() {
   const isMobile = useIsMobile();
@@ -29,6 +30,7 @@ export function DashboardLayout() {
           <div className="dashboard-content">
             <ErrorBoundary>
               <DashboardPageShell>
+                <TokenBalanceBanner />
                 <Outlet />
               </DashboardPageShell>
             </ErrorBoundary>
@@ -58,6 +60,7 @@ export function DashboardLayout() {
             <div className="dashboard-content">
               <ErrorBoundary>
                 <DashboardPageShell>
+                  <TokenBalanceBanner />
                   <Outlet />
                 </DashboardPageShell>
               </ErrorBoundary>
