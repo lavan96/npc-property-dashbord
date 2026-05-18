@@ -161,6 +161,8 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <Routes>
+                        {/* Public shareable answer link (no auth) */}
+                        <Route path="/qa/shared/:token" element={<SharedQAAnswer />} />
                         {/* Client Portal Routes */}
                         <Route path="/client/login" element={
                           <PortalAuthProvider>
