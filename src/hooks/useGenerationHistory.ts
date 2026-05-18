@@ -3,12 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 export interface GenerationHistoryEntry {
   id: string;
   property_address: string;
-  status: 'completed' | 'failed' | 'dismissed';
+  status: 'completed' | 'failed' | 'dismissed' | 'cancelled';
   totalSections: number;
   sectionsCompleted: number;
   durationMs: number;
   error_message?: string | null;
   finishedAt: number; // epoch ms
+  cancelledBy?: string; // username/email of the user who clicked Stop
 }
 
 const STORAGE_KEY = 'report-generation-history-v1';
