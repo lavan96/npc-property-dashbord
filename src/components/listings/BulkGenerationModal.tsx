@@ -166,7 +166,7 @@ export function BulkGenerationModal({
         label: 'Bulk reports',
         estimate: { aiNarrative: true, multiplier: properties.length },
       });
-      if (!ok) { setIsLoading?.(false); return; }
+      if (!ok) { setIsGenerating(false); return; }
 
       // Call the edge function
       const { data, error } = await invokeSecureFunction('generate-bulk-reports', {
