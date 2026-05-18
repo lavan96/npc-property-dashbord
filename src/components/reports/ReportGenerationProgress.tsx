@@ -91,6 +91,8 @@ export function ReportGenerationProgress() {
 }
 
 function ReportGenerationProgressInner() {
+  const { user } = useAuth();
+  const currentUserLabel = user?.username || 'unknown user';
   const [reports, setReports] = useState<ReportProgress[]>([]);
   const [isMinimized, setIsMinimized] = useState<boolean>(getCollapsed);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -110,6 +112,8 @@ function ReportGenerationProgressInner() {
   const lastSectionsRef = useRef<Map<string, number>>(new Map());
   const previousReportIdsRef = useRef<Set<string>>(new Set());
   const prevReportsRef = useRef<ReportProgress[]>([]);
+  /* IDs cancelled by the user — skip finalizeJob to avoid overwriting the 'cancelled' history entry */
+  const cancelledIdsRef = useRef<Set<string>>(new Set());
 
   /* Persist collapsed + corner */
   useEffect(() => {
@@ -415,6 +419,11 @@ function ReportGenerationProgressInner() {
   const finalizeJob = useCallback(
     async (prev: ReportProgress) => {
       try {
+        if (cancelledIdsRef.current.has(prev.id)) {
+          // User-cancelled jobs are already logged in history as 'cancelled'.
+          cancelledIdsRef.current.delete(prev.id);
+          return;
+        }
         const { data } = await invokeSecureFunction('get-investment-reports', {
           reportId: prev.id,
           listOptions: { select: 'id, property_address, status, error_message, updated_at' },
@@ -518,15 +527,28 @@ function ReportGenerationProgressInner() {
     async (reportId: string) => {
       const r = reports.find((x) => x.id === reportId);
       cancelScheduledRetry(reportId);
-      // Optimistically remove from UI
-      setReports((prev) => prev.filter((x) => x.id !== reportId));
+      cancelledIdsRef.current.add(reportId);
+      // Reflect the cancellation in the active list immediately so the user
+      // sees the status flip before the next polling cycle removes the row.
+      setReports((prev) =>
+        prev.map((x) =>
+          x.id === reportId
+            ? {
+                ...x,
+                status: 'failed',
+                error_message: `Cancelled by ${currentUserLabel}`,
+                lastUpdated: new Date(),
+              }
+            : x,
+        ),
+      );
       try {
         const { error } = await invokeSecureFunction('manage-investment-reports', {
           action: 'update',
           reportId,
           data: {
             status: 'failed',
-            error_message: 'Cancelled by user',
+            error_message: `Cancelled by ${currentUserLabel}`,
             updated_at: new Date().toISOString(),
           },
         });
@@ -534,29 +556,35 @@ function ReportGenerationProgressInner() {
           toast.error(`Failed to stop generation: ${error.message || 'Unknown error'}`);
           return;
         }
-        toast.success(r ? `Stopped: ${r.property_address}` : 'Generation stopped');
+        toast.success(
+          r ? `Stopped "${r.property_address}" — marked as failed` : 'Generation stopped',
+        );
         if (r) {
           addHistory({
             id: r.id,
             property_address: r.property_address,
-            status: 'failed',
+            status: 'cancelled',
             totalSections: r.totalSections,
             sectionsCompleted: r.sectionsCompleted,
             durationMs: Date.now() - r.createdAt.getTime(),
-            error_message: 'Cancelled by user',
+            error_message: `Cancelled by ${currentUserLabel}`,
             finishedAt: Date.now(),
+            cancelledBy: currentUserLabel,
           });
         }
       } catch (e: any) {
         toast.error(`Failed to stop generation: ${e?.message || 'Unknown error'}`);
       }
     },
-    [reports, cancelScheduledRetry, addHistory],
+    [reports, cancelScheduledRetry, addHistory, currentUserLabel],
   );
 
   const killReports = useCallback(
     (ids: string[]) => {
       ids.forEach((id) => killReport(id));
+      if (ids.length > 1) {
+        toast.success(`Stopping ${ids.length} reports…`);
+      }
     },
     [killReport],
   );

@@ -25,6 +25,17 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -395,6 +406,7 @@ export function GenerationProgressItem({
   isMobile = false,
 }: ItemProps) {
   const navigate = useNavigate();
+  const [killOpen, setKillOpen] = useState(false);
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
 
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
@@ -465,6 +477,16 @@ export function GenerationProgressItem({
                 )}
               </>
             )}
+            {report.status === 'failed' && !isStuck && (
+              <>
+                <Octagon className="h-3 w-3 text-destructive" />
+                <span className="text-xs text-destructive font-medium">
+                  {report.error_message?.toLowerCase().startsWith('cancelled')
+                    ? report.error_message
+                    : 'Failed'}
+                </span>
+              </>
+            )}
             {isStuck && (
               <>
                 {hasScheduledRetry ? (
@@ -510,20 +532,55 @@ export function GenerationProgressItem({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    if (window.confirm(`Stop generation for "${report.property_address}"? This will mark the report as failed.`)) {
-                      onKill();
-                    }
-                  }}
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                  disabled={hasScheduledRetry}
+                  onClick={() => setKillOpen(true)}
                   aria-label="Stop report generation"
                 >
                   <Octagon className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Stop / kill this job</TooltipContent>
+              <TooltipContent>
+                {hasScheduledRetry
+                  ? 'Wait — auto-retry in progress'
+                  : 'Stop / kill this job'}
+              </TooltipContent>
             </Tooltip>
           )}
+          <AlertDialog open={killOpen} onOpenChange={setKillOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Stop report generation?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-medium text-foreground">
+                        {report.property_address}
+                      </span>{' '}
+                      will be marked as <span className="text-destructive font-medium">failed</span>{' '}
+                      and removed from the active queue.
+                    </p>
+                    <p>
+                      Progress so far: {report.sectionsCompleted}/{report.totalSections} sections.
+                      This cannot be undone, but you can re-generate the report later.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep running</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onKill?.();
+                    setKillOpen(false);
+                  }}
+                >
+                  Stop generation
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             size="sm"
             variant="ghost"
@@ -809,6 +866,7 @@ export function GenerationHistoryList({
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
               <SelectItem value="dismissed">Dismissed</SelectItem>
             </SelectContent>
           </Select>
@@ -840,6 +898,8 @@ export function GenerationHistoryList({
                 <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
               ) : e.status === 'failed' ? (
                 <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+              ) : e.status === 'cancelled' ? (
+                <Octagon className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
               ) : (
                 <X className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
               )}
@@ -851,7 +911,12 @@ export function GenerationHistoryList({
                   {e.sectionsCompleted}/{e.totalSections} sections • {formatElapsed(e.durationMs)} •{' '}
                   {timeAgo(e.finishedAt)}
                 </p>
-                {e.error_message && (
+                {e.status === 'cancelled' && (
+                  <p className="text-[10px] text-destructive/80 mt-0.5">
+                    Stopped by {e.cancelledBy || 'user'}
+                  </p>
+                )}
+                {e.error_message && e.status !== 'cancelled' && (
                   <p className="text-[10px] text-destructive line-clamp-1 mt-0.5">
                     {e.error_message}
                   </p>
@@ -914,6 +979,7 @@ export function BulkJobGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [killAllOpen, setKillAllOpen] = useState(false);
 
   const completedSections = group.reports.reduce((s, r) => s + r.sectionsCompleted, 0);
   const totalSections = group.reports.reduce((s, r) => s + r.totalSections, 0);
@@ -1018,28 +1084,74 @@ export function BulkJobGroup({
               );
               if (active.length === 0) return null;
               return (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Stop ${active.length} active report${active.length === 1 ? '' : 's'} in this bulk job? They will be marked as failed.`,
-                          )
-                        ) {
-                          onKillAll(active.map((r) => r.id));
-                        }
-                      }}
-                    >
-                      <Octagon className="h-3 w-3 mr-1" />
-                      Stop {active.length}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Kill all active jobs in this bulk job</TooltipContent>
-                </Tooltip>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setKillAllOpen(true)}
+                      >
+                        <Octagon className="h-3 w-3 mr-1" />
+                        Stop {active.length}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Kill all active jobs in this bulk job</TooltipContent>
+                  </Tooltip>
+                  <AlertDialog open={killAllOpen} onOpenChange={setKillAllOpen}>
+                    <AlertDialogContent className="max-w-md">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Stop {active.length} active report
+                          {active.length === 1 ? '' : 's'}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                          <div className="space-y-2 text-sm text-muted-foreground">
+                            <p>
+                              The following report{active.length === 1 ? '' : 's'} in bulk job{' '}
+                              <span className="font-mono text-xs">
+                                {group.jobId.slice(0, 8)}
+                              </span>{' '}
+                              will be marked as{' '}
+                              <span className="text-destructive font-medium">failed</span>:
+                            </p>
+                            <ScrollArea className="max-h-40 rounded border border-border bg-muted/30 p-2">
+                              <ul className="space-y-1">
+                                {active.map((r) => (
+                                  <li
+                                    key={r.id}
+                                    className="text-xs text-foreground flex items-center justify-between gap-2"
+                                  >
+                                    <span className="truncate">{r.property_address}</span>
+                                    <span className="text-[10px] text-muted-foreground shrink-0">
+                                      {r.sectionsCompleted}/{r.totalSections}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </ScrollArea>
+                            <p className="text-xs">
+                              Already-completed reports in this job are unaffected.
+                            </p>
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep running</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => {
+                            onKillAll(active.map((r) => r.id));
+                            setKillAllOpen(false);
+                          }}
+                        >
+                          Stop {active.length} report{active.length === 1 ? '' : 's'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               );
             })()}
           </div>
