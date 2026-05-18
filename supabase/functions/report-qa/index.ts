@@ -16,7 +16,7 @@ import '../_shared/agent-tools-registry.ts';
 
 // Phase 5.3 — prompt + model version tracking. Bump this string whenever the
 // system prompt or routing logic changes meaningfully so we can A/B traceback.
-const PROMPT_VERSION = '2026-05-18.v1';
+const PROMPT_VERSION = '2026-05-18.v2-finance-strategist';
 
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
