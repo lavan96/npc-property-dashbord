@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1328,7 +1329,7 @@ Generate the ${sectionDef.name} section now:`;
   return { content: '', citations: [], error: 'Max retries exceeded' };
 }
 
-Deno.serve(async (req) => {
+const __regenerateQualHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
@@ -2021,3 +2022,22 @@ function buildOverrideSummary(overrides: Record<string, any>, financials?: Recor
     ? summaryLines.join('\n') 
     : 'No specific overrides provided - regenerate based on original report data.';
 }
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const overrideKeys = body?.manualOverrides ? Object.keys(body.manualOverrides).sort().join(',') : '';
+  const idempotencyKey = buildIdempotencyKey('regen-qual', [
+    body?.reportId,
+    overrideKeys,
+    body?.currentReportContent ? body.currentReportContent.length : 0,
+  ]);
+  return {
+    kind: 'report.qualitative-regen' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true },
+    requestPayload: { reportId: body?.reportId, propertyAddress: body?.propertyAddress },
+  };
+}, __regenerateQualHandler));

@@ -53,6 +53,21 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
 
     try {
       setProgress('Analysing RBA, housing, sentiment & economic data...');
+
+      const { runPreflight } = await import('@/lib/preflightTokens');
+      const ok = await runPreflight({
+        kind: 'report.market-intelligence',
+        functionName: 'generate-market-intelligence-report',
+        label: 'Market intelligence report',
+        estimate: { aiNarrative: true, extraSections: reportType === 'full' ? 2 : 0 },
+      });
+      if (!ok) {
+        toast.dismiss(toastId);
+        setIsGenerating(false);
+        setGenerationState({ status: 'idle' });
+        return;
+      }
+
       const { data, error } = await invokeSecureFunction('generate-market-intelligence-report', {
         report_type: reportType,
         audience_segment: 'general',

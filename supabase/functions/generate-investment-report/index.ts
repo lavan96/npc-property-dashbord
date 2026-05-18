@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -1020,7 +1021,7 @@ async function markReportFailed(reportId: string | null, errorMessage: string): 
   }
 }
 
-Deno.serve(async (req) => {
+const __investmentReportHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 
@@ -4947,4 +4948,38 @@ YOUR DEDICATED PROPERTY PARTNER
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const scope = body?.propertyDetails?.queryType || 'address';
+  const isArea = ['suburb', 'postcode', 'statewide', 'zipcode'].includes(scope);
+  const tier = (body?.propertyDetails?.tier || body?.tier || 'compass').toLowerCase();
+  const kind = isArea
+    ? (scope === 'suburb' ? 'report.suburb.compass'
+      : scope === 'postcode' || scope === 'zipcode' ? 'report.postcode.compass'
+      : 'report.investment.compass')
+    : (tier === 'executive' ? 'report.investment.executive'
+      : tier === 'snapshot' ? 'report.investment.snapshot'
+      : 'report.investment.compass');
+  const idempotencyKey = buildIdempotencyKey('inv-report', [
+    body?.reportId,
+    body?.propertyAddress,
+    body?.singleSection ? `sec:${body?.singleSection}` : null,
+    body?.continueFrom ? 'cont' : null,
+  ]);
+  return {
+    kind: kind as any,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true },
+    requestPayload: {
+      reportId: body?.reportId,
+      propertyAddress: body?.propertyAddress,
+      scope,
+      tier,
+    },
+  };
+}, __investmentReportHandler));

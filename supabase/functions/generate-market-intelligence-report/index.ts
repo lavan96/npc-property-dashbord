@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { callLLMRaw } from '../_shared/llmRouter.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -515,7 +516,7 @@ Keep it professional, warm, and action-oriented. No generic "contact us" languag
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
+const __miReportHandler = async (req: Request): Promise<Response> => {
   const corsHeaders = createCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -963,3 +964,24 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position
     });
   }
 });
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const reportType = body?.report_type || 'full';
+  const audience = body?.audience_segment || 'general';
+  const idempotencyKey = buildIdempotencyKey('mi-report', [
+    reportType,
+    audience,
+    body?.include_advisory_strategy ?? body?.include_npc_strategy,
+    new Date().toISOString().slice(0, 13), // hour-bucketed
+  ]);
+  return {
+    kind: 'report.market-intelligence' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true, extraSections: reportType === 'full' ? 2 : 0 },
+    requestPayload: { reportType, audience },
+  };
+}, __miReportHandler));

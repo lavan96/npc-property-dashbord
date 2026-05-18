@@ -399,8 +399,17 @@ export function PortfolioAnalysisPDFGenerator({
 
   const generateAnalysis = async () => {
     setIsGenerating(true);
-    
+
     try {
+      const { runPreflight } = await import('@/lib/preflightTokens');
+      const ok = await runPreflight({
+        kind: 'report.portfolio-review',
+        functionName: 'generate-portfolio-analysis',
+        label: 'Portfolio analysis',
+        estimate: { aiNarrative: true },
+      });
+      if (!ok) { setIsGenerating(false); return; }
+
       const { data, error } = await invokeSecureFunction('generate-portfolio-analysis', {
         clientId,
         investorProfile: 'general',

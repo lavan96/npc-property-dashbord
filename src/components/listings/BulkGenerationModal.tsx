@@ -158,6 +158,16 @@ export function BulkGenerationModal({
         zipCode: p.zipCode,
       }));
 
+      // Preflight token check (bulk = per-item estimate × count)
+      const { runPreflight } = await import('@/lib/preflightTokens');
+      const ok = await runPreflight({
+        kind: 'report.investment.compass',
+        functionName: 'generate-bulk-reports',
+        label: 'Bulk reports',
+        estimate: { aiNarrative: true, multiplier: properties.length },
+      });
+      if (!ok) { setIsGenerating(false); return; }
+
       // Call the edge function
       const { data, error } = await invokeSecureFunction('generate-bulk-reports', {
         properties,

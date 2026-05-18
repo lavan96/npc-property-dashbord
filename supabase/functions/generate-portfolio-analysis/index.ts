@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +55,7 @@ interface ClientData {
   equity_release: number | null;
 }
 
-Deno.serve(async (req) => {
+const __portfolioHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
@@ -748,3 +749,23 @@ Format your response as valid JSON with this structure:
     );
   }
 });
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const idempotencyKey = buildIdempotencyKey('portfolio', [
+    body?.clientId,
+    body?.investorProfile,
+    body?.analysisDepth,
+    body?.projectionYears,
+    new Date().toISOString().slice(0, 10),
+  ]);
+  return {
+    kind: 'report.portfolio-review' as const,
+    userId,
+    idempotencyKey,
+    estimateOptions: { aiNarrative: true, extraSections: body?.includeProjections ? 1 : 0 },
+    requestPayload: { clientId: body?.clientId, investorProfile: body?.investorProfile },
+  };
+}, __portfolioHandler));
