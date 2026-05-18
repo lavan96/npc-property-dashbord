@@ -194,6 +194,7 @@ export default function ReportQA() {
   const [chatTheme, setChatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { rating: 1 | -1 | null; reason: string | null }>>({});
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [messageEditorOpen, setMessageEditorOpen] = useState(false);
