@@ -13,7 +13,7 @@ interface SanitizedEmailHtmlProps {
  * - Preserves: paragraph, line break, lists, tables, links, images, basic formatting (bold/italic/underline/strike), headings, blockquote, code, hr, span/div with style.
  * - Drops: scripts, iframes, forms, event handlers, javascript: / data: (non-image) URLs, style/link tags.
  */
-const SANITIZE_CONFIG: DOMPurify.Config = {
+const SANITIZE_CONFIG = {
   ALLOWED_TAGS: [
     'a', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'small',
     'p', 'br', 'hr', 'div', 'span',
