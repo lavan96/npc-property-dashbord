@@ -462,6 +462,24 @@ async function generateEmbedding(text: string, openaiApiKey: string): Promise<nu
 }
 
 /**
+ * Compute SHA-256 hex of a string for chunk dedupe.
+ */
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const EMBEDDING_MODEL_VERSION = 'openai/text-embedding-3-small';
+
+export interface ChunkPersistMetadata {
+  suburb?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  report_type?: string | null;
+}
+
+/**
  * Step 3: Store document chunks with embeddings in database
  */
 async function storeDocumentChunks(
@@ -469,7 +487,8 @@ async function storeDocumentChunks(
   documentName: string,
   chunks: EnrichedChunk[],
   openaiApiKey: string,
-  conversationId?: string
+  conversationId?: string,
+  chunkMeta?: ChunkPersistMetadata
 ): Promise<void> {
   console.log(`[RAG] Storing ${chunks.length} chunks for document: ${documentName}`);
 
