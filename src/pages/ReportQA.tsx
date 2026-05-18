@@ -1984,6 +1984,25 @@ export default function ReportQA() {
                 <ConversationExport messages={messages} title={getCurrentTitle()} reportNames={uploadedReports.map(r => r.name)} conversationId={conversationId} />
                 <AutoSummarize messages={messages.map(m => ({ role: m.role, content: m.content }))} reportNames={uploadedReports.map(r => r.name)} disabled={messages.length < 2} />
                 <KeyboardShortcutsHelp />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setShowCitations((v) => !v)}
+                  title={
+                    showCitations
+                      ? 'Hide citation chips & snippet tooltips'
+                      : 'Show citation chips & snippet tooltips'
+                  }
+                  aria-pressed={showCitations}
+                  aria-label="Toggle citations"
+                >
+                  {showCitations ? (
+                    <Quote className="h-4 w-4" />
+                  ) : (
+                    <QuoteIcon className="h-4 w-4 opacity-40" />
+                  )}
+                </Button>
                 <AccessibilitySettings />
                 {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
@@ -2164,10 +2183,11 @@ export default function ReportQA() {
                             )}
                             {message.role === 'assistant' && !message.attachments?.length && (
                               <>
-                                {(message.documentCitations?.length || message.comparisonMode) && (
+                                {showCitations && (message.documentCitations?.length || message.comparisonMode) && (
                                   <Citations
                                     documents={message.documentCitations}
                                     comparisonMode={message.comparisonMode}
+                                    onDocumentClick={openCitationInViewer}
                                   />
                                 )}
                                 <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
