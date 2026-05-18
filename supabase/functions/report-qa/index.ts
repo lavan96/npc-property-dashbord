@@ -338,68 +338,95 @@ function decodeBase64ToUint8Array(base64String: string): Uint8Array {
  * Step 1: Chunk text into smaller overlapping segments
  * Uses sentence-aware chunking with overlap for better context preservation
  */
-function chunkText(text: string, chunkSize = 800, overlapSize = 150): string[] {
-  const chunks: string[] = [];
-  
-  // Clean and normalize text
+/**
+ * Enriched chunk that carries the paragraph and page where it originated.
+ * Used to build paragraph-level citations for the chat UI.
+ */
+export interface EnrichedChunk {
+  text: string;
+  paragraph_index: number; // 1-based index of first paragraph in chunk
+  page_number: number | null; // best-effort page number derived from [Page N] markers
+}
+
+/**
+ * Chunk text while tracking the running paragraph index and the most
+ * recently seen [Page N] marker so the resulting chunks can be cited
+ * by both paragraph and page.
+ */
+function chunkText(text: string, chunkSize = 800, overlapSize = 150): EnrichedChunk[] {
   const cleanText = text
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  
-  if (cleanText.length <= chunkSize) {
-    return [cleanText];
-  }
-  
-  // Split by paragraphs first for better semantic boundaries
+
+  if (!cleanText) return [];
+
+  // Split into paragraphs and walk them, tracking the running paragraph index
+  // and the most recently observed [Page N] marker.
   const paragraphs = cleanText.split(/\n\n+/);
-  let currentChunk = '';
-  
+  const pageRegex = /\[Page\s+(\d+)\]/i;
+
+  const initial: EnrichedChunk[] = [];
+  let currentText = '';
+  let currentParaStart = 1;
+  let currentPage: number | null = null;
+  let runningPara = 0;
+
+  const flush = () => {
+    const trimmed = currentText.trim();
+    if (trimmed) {
+      initial.push({
+        text: trimmed,
+        paragraph_index: currentParaStart,
+        page_number: currentPage,
+      });
+    }
+    currentText = '';
+  };
+
   for (const paragraph of paragraphs) {
-    // If adding this paragraph would exceed chunk size, save current and start new
-    if (currentChunk.length + paragraph.length > chunkSize && currentChunk.length > 0) {
-      chunks.push(currentChunk.trim());
-      
-      // Start new chunk with overlap from previous
-      const words = currentChunk.split(' ');
-      const overlapWords = words.slice(-Math.floor(overlapSize / 5)); // Approximate word count for overlap
-      currentChunk = overlapWords.join(' ') + '\n\n' + paragraph;
+    runningPara += 1;
+    const match = paragraph.match(pageRegex);
+    if (match) currentPage = parseInt(match[1], 10) || currentPage;
+
+    if (currentText.length + paragraph.length > chunkSize && currentText.length > 0) {
+      flush();
+      // Start a new chunk with a small word-level overlap from the previous one
+      // for better retrieval recall across chunk boundaries.
+      const words = (initial[initial.length - 1]?.text || '').split(' ');
+      const overlapWords = words.slice(-Math.floor(overlapSize / 5));
+      currentText = overlapWords.join(' ') + '\n\n' + paragraph;
+      currentParaStart = runningPara;
     } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+      if (!currentText) currentParaStart = runningPara;
+      currentText += (currentText ? '\n\n' : '') + paragraph;
     }
   }
-  
-  // Don't forget the last chunk
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-  
-  // If we still have very long chunks, split them further
-  const finalChunks: string[] = [];
-  for (const chunk of chunks) {
-    if (chunk.length > chunkSize * 1.5) {
-      // Split by sentences
-      const sentences = chunk.split(/(?<=[.!?])\s+/);
-      let subChunk = '';
-      
+  flush();
+
+  // Secondary split for any oversized chunks — keep the parent chunk's
+  // paragraph_index/page_number since the metadata is approximate at this
+  // resolution.
+  const finalChunks: EnrichedChunk[] = [];
+  for (const chunk of initial) {
+    if (chunk.text.length > chunkSize * 1.5) {
+      const sentences = chunk.text.split(/(?<=[.!?])\s+/);
+      let sub = '';
       for (const sentence of sentences) {
-        if (subChunk.length + sentence.length > chunkSize && subChunk.length > 0) {
-          finalChunks.push(subChunk.trim());
-          subChunk = sentence;
+        if (sub.length + sentence.length > chunkSize && sub.length > 0) {
+          finalChunks.push({ ...chunk, text: sub.trim() });
+          sub = sentence;
         } else {
-          subChunk += (subChunk ? ' ' : '') + sentence;
+          sub += (sub ? ' ' : '') + sentence;
         }
       }
-      
-      if (subChunk.trim()) {
-        finalChunks.push(subChunk.trim());
-      }
+      if (sub.trim()) finalChunks.push({ ...chunk, text: sub.trim() });
     } else {
       finalChunks.push(chunk);
     }
   }
-  
-  console.log(`[RAG] Chunked text into ${finalChunks.length} segments`);
+
+  console.log(`[RAG] Chunked text into ${finalChunks.length} segments (paragraph + page tagged)`);
   return finalChunks;
 }
 
