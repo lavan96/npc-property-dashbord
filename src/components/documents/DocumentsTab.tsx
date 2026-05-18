@@ -98,7 +98,12 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
                     <CardTitle className="text-sm">{d.title}</CardTitle>
                     <p className="text-xs text-muted-foreground">{TEMPLATE_TYPE_LABEL[d.template_type]}</p>
                   </div>
-                  <Badge className={`text-[10px] border ${STATUS_TONE[d.status]} capitalize`}>{d.status}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className={`text-[10px] border ${STATUS_TONE[d.status]} capitalize`}>{d.status}</Badge>
+                    {d.docusign_envelope_id && d.docusign_status && (
+                      <DocuSignStatusBadge status={d.docusign_status} />
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="text-xs space-y-1 pt-0">
