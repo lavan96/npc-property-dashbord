@@ -43,6 +43,7 @@ import Conversations from './pages/Conversations';
 import Lenders from './pages/Lenders';
 import CashFlowAnalysis from './pages/CashFlowAnalysis';
 import ReportQA from './pages/ReportQA';
+import SharedQAAnswer from './pages/SharedQAAnswer';
 import InvestmentReportView from './pages/InvestmentReportView';
 import Templates from './pages/Templates';
 import WhiteLabel from './pages/WhiteLabel';
