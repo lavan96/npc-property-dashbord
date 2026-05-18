@@ -944,13 +944,18 @@ Deno.serve(async (req) => {
       const comparisonMode = !!isMultiReport ||
         (Array.isArray(reportNames) && reportNames.length > 1);
 
+      // Per-client memory (Phase 3.3): if conversation is linked to a client,
+      // load durable facts/preferences and inject them into the system prompt.
+      let clientMemoryContext = "";
+      let conversationClientId: string | null = null;
+
       // Try RAG-based context assembly first
       if (conversationId && OPENAI_API_KEY) {
         // Load structural summary from conversation
         try {
           const { data: conv } = await supabase
             .from("report_qa_conversations")
-            .select("structured_report, report_names")
+            .select("structured_report, report_names, client_id")
             .eq("id", conversationId)
             .single();
 
@@ -958,9 +963,39 @@ Deno.serve(async (req) => {
             summaryContext = conv.structured_report;
             console.log(`[report-qa] Loaded structural summary: ${summaryContext.length} chars`);
           }
+          conversationClientId = (conv?.client_id as string | null) || null;
         } catch (e) {
           console.error(`[report-qa] Failed to load summary:`, e);
         }
+
+        // Load top per-client memories
+        if (conversationClientId) {
+          try {
+            const { data: memRows } = await supabase
+              .from('client_qa_memory')
+              .select('kind, content, importance')
+              .eq('client_id', conversationClientId)
+              .order('importance', { ascending: false })
+              .order('updated_at', { ascending: false })
+              .limit(30);
+            if (memRows && memRows.length > 0) {
+              const grouped: Record<string, string[]> = {};
+              for (const m of memRows) {
+                const k = m.kind as string;
+                (grouped[k] ||= []).push(`- ${m.content}`);
+              }
+              const lines: string[] = [];
+              for (const [k, items] of Object.entries(grouped)) {
+                lines.push(`**${k.toUpperCase()}**\n${items.join('\n')}`);
+              }
+              clientMemoryContext = lines.join('\n\n');
+              console.log(`[report-qa] Loaded ${memRows.length} client memory items for ${conversationClientId}`);
+            }
+          } catch (memErr) {
+            console.error('[report-qa] Failed to load client memory:', memErr);
+          }
+        }
+      }
 
         // Retrieve relevant chunks via semantic search
         if (useRAG) {
