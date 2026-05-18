@@ -236,6 +236,13 @@ export default function ReportQA() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('reportqa_show_citations', showCitations ? '1' : '0');
   }, [showCitations]);
+  // Agent mode: per-conversation toggle that enables tool-calling (calculators,
+  // live data, scenario modeling). Persisted on the conversation row so it
+  // survives reload. Disabled silently when the selected model is Perplexity
+  // because Perplexity doesn't reliably support function calling.
+  const [agentMode, setAgentMode] = useState<boolean>(false);
+  const agentModeSupported = selectedModel !== 'perplexity';
+  const effectiveAgentMode = agentMode && agentModeSupported;
   const [snippetViewer, setSnippetViewer] = useState<{
     open: boolean;
     reportName: string | null;
