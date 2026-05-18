@@ -1021,7 +1021,7 @@ async function markReportFailed(reportId: string | null, errorMessage: string): 
   }
 }
 
-Deno.serve(async (req) => {
+const __investmentReportHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 
