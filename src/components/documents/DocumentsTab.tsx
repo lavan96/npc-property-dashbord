@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Send, Plus, FileCheck2, Clock, FileSignature } from 'lucide-react';
+import { FileText, Send, Plus, FileCheck2, Clock, FileSignature, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import {
   type GeneratedDocStatus, type TemplateDocType, type GeneratedDocument,
 } from '@/hooks/useGeneratedDocuments';
 import { PrepareForSigningModal, type SigningRecipient } from '@/components/agreements/PrepareForSigningModal';
+import { EnvelopeStatusDialog } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -44,6 +45,7 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
   });
   const [signingDoc, setSigningDoc] = useState<GeneratedDocument | null>(null);
   const [signingPdfUrl, setSigningPdfUrl] = useState('');
+  const [statusDoc, setStatusDoc] = useState<GeneratedDocument | null>(null);
 
   const openPrepareForSigning = async (d: GeneratedDocument) => {
     if (!d.pdf_storage_path) { toast.error('PDF not ready yet'); return; }
@@ -123,6 +125,11 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
                       <FileSignature className="h-3 w-3" /> Prepare for Signing
                     </Button>
                   )}
+                  {d.docusign_envelope_id && (
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setStatusDoc(d)}>
+                      <Activity className="h-3 w-3" /> Envelope Status
+                    </Button>
+                  )}
                   {(d.status === 'sent' || d.status === 'viewed') && (
                     <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus({ id: d.id, status: 'signed' })}>
                       Mark Signed
@@ -184,6 +191,16 @@ export function DocumentsTab({ clientId, dealId, submissionId }: Props) {
           initialRecipients={((signingDoc as any).signing_recipients as SigningRecipient[]) || (signingDoc.sent_to || []).map((email, i) => ({ id: `r${i}`, name: email.split('@')[0], email, roleLabel: 'Signer', routingOrder: 1 }))}
           initialLayout={((signingDoc as any).signing_layout) || []}
           onSent={() => setSigningDoc(null)}
+        />
+      )}
+
+      {statusDoc && (
+        <EnvelopeStatusDialog
+          open={!!statusDoc}
+          onOpenChange={(v) => { if (!v) setStatusDoc(null); }}
+          scope="document"
+          recordId={statusDoc.id}
+          title={`${statusDoc.title} — Envelope`}
         />
       )}
     </div>

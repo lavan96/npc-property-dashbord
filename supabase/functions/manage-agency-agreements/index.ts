@@ -1284,6 +1284,80 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ─── ENVELOPE DETAILS (status + recipients + audit events) ─
+    if (action === 'envelope_details') {
+      const { agreement_id } = body;
+      const { data: agreement, error: fetchErr } = await supabase
+        .from('agency_agreements').select('*').eq('id', agreement_id).single();
+      if (fetchErr || !agreement?.docusign_envelope_id) {
+        return new Response(JSON.stringify({ error: 'Envelope not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+      const base = getDocuSignRestBaseUrl();
+      if (!acct) return new Response(JSON.stringify({ error: 'DocuSign not configured' }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      let token: string;
+      try { token = await getDocuSignAccessToken(); }
+      catch (e: any) { return new Response(JSON.stringify({ error: `DocuSign auth failed: ${e.message}` }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+
+      const auth = { Authorization: `Bearer ${token}` };
+      const envId = agreement.docusign_envelope_id;
+      const [envRes, recRes, evtRes] = await Promise.all([
+        fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}`, { headers: auth }),
+        fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/recipients`, { headers: auth }),
+        fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/audit_events`, { headers: auth }),
+      ]);
+      const envelope = await envRes.json();
+      const recipients = recRes.ok ? await recRes.json() : null;
+      const auditRaw = evtRes.ok ? await evtRes.json() : null;
+      if (!envRes.ok) {
+        return new Response(JSON.stringify({ error: `DocuSign: ${envelope?.message || 'Unknown'}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Persist refreshed status
+      let newStatus = agreement.status;
+      const updates: Record<string, any> = { docusign_status: envelope.status };
+      if (envelope.status === 'completed') { newStatus = 'signed'; updates.docusign_signed_at = envelope.completedDateTime || new Date().toISOString(); }
+      else if (envelope.status === 'delivered') newStatus = 'delivered';
+      else if (envelope.status === 'sent') newStatus = 'sent';
+      else if (envelope.status === 'declined') newStatus = 'declined';
+      else if (envelope.status === 'voided') { newStatus = 'voided'; updates.docusign_voided_at = envelope.voidedDateTime || new Date().toISOString(); }
+      updates.status = newStatus;
+      await supabase.from('agency_agreements').update(updates).eq('id', agreement_id);
+
+      // Flatten audit events
+      const events = (auditRaw?.auditEvents || []).map((ev: any) => {
+        const fields: Record<string, string> = {};
+        (ev.eventFields || []).forEach((f: any) => { fields[f.name] = f.value; });
+        return {
+          action: fields.Action || fields.action || 'event',
+          description: fields.Description || fields.description || '',
+          user: fields.UserName || fields.userName || '',
+          email: fields.UserEmail || fields.userEmail || '',
+          timestamp: fields.LogTime || fields.logTime || '',
+        };
+      }).filter((e: any) => e.timestamp);
+
+      const signers = (recipients?.signers || []).map((s: any) => ({
+        name: s.name, email: s.email, status: s.status, routingOrder: s.routingOrder,
+        sentAt: s.sentDateTime, deliveredAt: s.deliveredDateTime, signedAt: s.signedDateTime, declinedReason: s.declinedReason,
+      }));
+
+      return new Response(JSON.stringify({
+        success: true,
+        envelope: {
+          envelopeId: envelope.envelopeId, status: envelope.status, emailSubject: envelope.emailSubject,
+          sentDateTime: envelope.sentDateTime, statusChangedDateTime: envelope.statusChangedDateTime,
+          completedDateTime: envelope.completedDateTime, voidedDateTime: envelope.voidedDateTime, voidedReason: envelope.voidedReason,
+        },
+        signers, events, mapped_status: newStatus,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ─── VOID AGREEMENT ────────────────────────────────────
     if (action === 'void') {
       const { agreement_id, void_reason } = body;

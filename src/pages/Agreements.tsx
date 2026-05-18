@@ -23,6 +23,7 @@ import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
+import { EnvelopeStatusDialog } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
@@ -47,6 +48,7 @@ export default function Agreements() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [signingAgreement, setSigningAgreement] = useState<AgencyAgreement | null>(null);
   const [signingPdfUrl, setSigningPdfUrl] = useState<string>('');
+  const [statusAgreement, setStatusAgreement] = useState<AgencyAgreement | null>(null);
   const navigate = useNavigate();
   const { canEdit: canEditAgreements } = useModulePermissions('agreements');
 
@@ -341,10 +343,16 @@ export default function Agreements() {
                               </>
                             )}
                             {agreement.docusign_envelope_id && (
-                              <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Refresh Status
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => setStatusAgreement(agreement)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Envelope Status &amp; Audit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Refresh Status
+                                </DropdownMenuItem>
+                              </>
                             )}
                             {canEditAgreements && ['sent', 'delivered', 'viewed'].includes(agreement.status) && (
                               <DropdownMenuItem
@@ -412,6 +420,16 @@ export default function Agreements() {
           initialRecipients={(signingAgreement as any).signing_recipients || []}
           initialLayout={(signingAgreement as any).signing_layout || []}
           onSent={() => setSigningAgreement(null)}
+        />
+      )}
+
+      {statusAgreement && (
+        <EnvelopeStatusDialog
+          open={!!statusAgreement}
+          onOpenChange={(v) => { if (!v) setStatusAgreement(null); }}
+          scope="agreement"
+          recordId={statusAgreement.id}
+          title={`${statusAgreement.buyer_names} — Envelope`}
         />
       )}
     </div>
