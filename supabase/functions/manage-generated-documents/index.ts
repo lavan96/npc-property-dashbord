@@ -170,6 +170,67 @@ Deno.serve(async (req) => {
         }).eq('id', body.id);
         return j({ success: true, envelope_id: dsData.envelopeId, status: dsData.status });
       }
+
+      case 'check_status':
+      case 'envelope_details': {
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('*').eq('id', body.id).single();
+        if (dErr || !doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
+        const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
+        if (!acct) return j({ success: false, error: 'DocuSign not configured' }, 422);
+        let token: string;
+        try { token = await getDocuSignAccessToken(); }
+        catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
+        const auth = { Authorization: `Bearer ${token}` };
+        const base = getDocuSignRestBaseUrl();
+        const envId = doc.docusign_envelope_id;
+        const [envRes, recRes, evtRes] = await Promise.all([
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}`, { headers: auth }),
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/recipients`, { headers: auth }),
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/audit_events`, { headers: auth }),
+        ]);
+        const envelope = await envRes.json();
+        if (!envRes.ok) return j({ success: false, error: `DocuSign: ${envelope?.message || 'Unknown'}` }, 502);
+        const recipients = recRes.ok ? await recRes.json() : null;
+        const auditRaw = evtRes.ok ? await evtRes.json() : null;
+
+        let newStatus = doc.status;
+        const updates: Record<string, any> = { docusign_status: envelope.status };
+        if (envelope.status === 'completed') { newStatus = 'signed'; updates.signed_at = envelope.completedDateTime || new Date().toISOString(); }
+        else if (envelope.status === 'delivered') newStatus = 'viewed';
+        else if (envelope.status === 'sent') newStatus = 'sent';
+        else if (envelope.status === 'declined') newStatus = 'voided';
+        else if (envelope.status === 'voided') { newStatus = 'voided'; updates.voided_at = envelope.voidedDateTime || new Date().toISOString(); updates.voided_reason = envelope.voidedReason || null; }
+        updates.status = newStatus;
+        await supabase.from('generated_documents').update(updates).eq('id', body.id);
+
+        const events = (auditRaw?.auditEvents || []).map((ev: any) => {
+          const fields: Record<string, string> = {};
+          (ev.eventFields || []).forEach((f: any) => { fields[f.name] = f.value; });
+          return {
+            action: fields.Action || fields.action || 'event',
+            description: fields.Description || fields.description || '',
+            user: fields.UserName || fields.userName || '',
+            email: fields.UserEmail || fields.userEmail || '',
+            timestamp: fields.LogTime || fields.logTime || '',
+          };
+        }).filter((e: any) => e.timestamp);
+
+        const signers = (recipients?.signers || []).map((s: any) => ({
+          name: s.name, email: s.email, status: s.status, routingOrder: s.routingOrder,
+          sentAt: s.sentDateTime, deliveredAt: s.deliveredDateTime, signedAt: s.signedDateTime, declinedReason: s.declinedReason,
+        }));
+
+        return j({
+          success: true,
+          envelope: {
+            envelopeId: envelope.envelopeId, status: envelope.status, emailSubject: envelope.emailSubject,
+            sentDateTime: envelope.sentDateTime, statusChangedDateTime: envelope.statusChangedDateTime,
+            completedDateTime: envelope.completedDateTime, voidedDateTime: envelope.voidedDateTime, voidedReason: envelope.voidedReason,
+          },
+          signers, events, mapped_status: newStatus,
+        });
+      }
     }
 
     return j({ success: false, error: 'Unknown action' }, 400);
