@@ -5264,6 +5264,7 @@ export type Database = {
           attachments: Json | null
           bcc_recipients: string[] | null
           body: string
+          body_preview: string | null
           cc_recipients: string[] | null
           client_id: string | null
           conversation_id: string | null
@@ -5288,6 +5289,7 @@ export type Database = {
           attachments?: Json | null
           bcc_recipients?: string[] | null
           body: string
+          body_preview?: string | null
           cc_recipients?: string[] | null
           client_id?: string | null
           conversation_id?: string | null
@@ -5312,6 +5314,7 @@ export type Database = {
           attachments?: Json | null
           bcc_recipients?: string[] | null
           body?: string
+          body_preview?: string | null
           cc_recipients?: string[] | null
           client_id?: string | null
           conversation_id?: string | null
