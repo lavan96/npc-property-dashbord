@@ -1270,7 +1270,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             throw new Error("PERPLEXITY_API_KEY is not configured");
           }
           
-          response = await fetch("https://api.perplexity.ai/chat/completions", {
+          response = await fetchUpstreamWithRetry("https://api.perplexity.ai/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
@@ -1283,7 +1283,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               stream: true,
               stream_options: { include_usage: true },
             }),
-          });
+          }, { label: 'perplexity-stream' });
         } else if (modelProvider === 'openai-direct') {
           // Use OpenAI API directly (bypasses Lovable AI Gateway)
           if (!OPENAI_API_KEY) {
@@ -1291,7 +1291,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           }
           
           console.log(`[report-qa] Using direct OpenAI API`);
-          response = await fetch("https://api.openai.com/v1/chat/completions", {
+          response = await fetchUpstreamWithRetry("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -1304,11 +1304,11 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               stream: true,
               stream_options: { include_usage: true },
             }),
-          });
+          }, { label: 'openai-direct-stream' });
         } else if (modelProvider === 'gemini') {
           // Use Lovable AI Gateway with Gemini Pro (large context window)
           console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway`);
-          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -1321,10 +1321,10 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               stream: true,
               stream_options: { include_usage: true },
             }),
-          });
+          }, { label: 'gemini-stream' });
         } else {
           // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
-          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -1337,7 +1337,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               stream: true,
               stream_options: { include_usage: true },
             }),
-          });
+          }, { label: 'gpt5-stream' });
         }
 
         if (!response.ok) {
