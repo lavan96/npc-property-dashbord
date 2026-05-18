@@ -397,6 +397,19 @@ export default function ActivityLogs() {
     return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }));
   }, [filteredLogs]);
 
+  type FlatItem =
+    | { kind: 'header'; key: string; label: string; count: number }
+    | { kind: 'row'; key: string; log: ActivityLog };
+
+  const flatItems = useMemo<FlatItem[]>(() => {
+    const out: FlatItem[] = [];
+    for (const g of grouped) {
+      out.push({ kind: 'header', key: `h-${g.key}`, label: g.label, count: g.rows.length });
+      for (const log of g.rows) out.push({ kind: 'row', key: log.id, log });
+    }
+    return out;
+  }, [grouped]);
+
   const clearFilters = () => {
     setSearchTerm('');
     setActionFilter([]);
