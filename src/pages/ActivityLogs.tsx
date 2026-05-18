@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,16 +10,23 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useSecureActivityLogs, ActivityLog } from '@/hooks/useSecureActivityLogs';
+import { useSecureActivityLogs, ActivityLog, ActivityStats } from '@/hooks/useSecureActivityLogs';
+import { SearchableMultiSelect, MSOption } from '@/components/shared/SearchableMultiSelect';
 import { format, formatDistanceToNow, startOfDay, endOfDay, subDays, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  Activity, Search, RefreshCw, User, FileText, LogIn, LogOut,
+  Activity, Search, RefreshCw, User, FileText, LogIn,
   GitCompare, Mail, Phone, MessageSquare, Settings, Zap, Palette,
-  Download, Filter, X, Users, Handshake, FileUp, StickyNote, Tag,
+  Download, Filter, X, Users, Handshake, FileUp, StickyNote,
   CalendarIcon, ClipboardCheck, DatabaseIcon, ChevronLeft, ChevronRight,
-  ExternalLink, Copy,
+  ExternalLink, Copy, Bookmark, BookmarkPlus, Trash2, AlertTriangle,
+  Sparkles, Rows3, Rows2, ChevronDown,
 } from 'lucide-react';
 
 type ActionTone = 'success' | 'warning' | 'destructive' | 'info' | 'accent' | 'neutral';
@@ -42,107 +49,105 @@ const SEVERITY_BAR: Record<ActionTone, string> = {
   neutral: 'bg-muted-foreground/40',
 };
 
-const ACTION_TYPE_LABELS: Record<string, { label: string; tone: ActionTone }> = {
+const ACTION_TYPE_LABELS: Record<string, { label: string; tone: ActionTone; group?: string }> = {
   // Auth
-  login: { label: 'Login', tone: 'success' },
-  logout: { label: 'Logout', tone: 'neutral' },
+  login: { label: 'Login', tone: 'success', group: 'Auth' },
+  logout: { label: 'Logout', tone: 'neutral', group: 'Auth' },
+  password_reset_initiated: { label: 'Password Reset', tone: 'destructive', group: 'Auth' },
   // Reports
-  report_generated: { label: 'Report Generated', tone: 'success' },
-  report_regenerated: { label: 'Report Regenerated', tone: 'info' },
-  report_viewed: { label: 'Report Viewed', tone: 'neutral' },
-  report_edited: { label: 'Report Edited', tone: 'info' },
-  report_archived: { label: 'Report Archived', tone: 'warning' },
-  report_deleted: { label: 'Report Deleted', tone: 'destructive' },
-  report_pdf_downloaded: { label: 'PDF Downloaded', tone: 'accent' },
-  report_shared: { label: 'Report Shared', tone: 'info' },
-  manual_override_applied: { label: 'Override Applied', tone: 'warning' },
+  report_generated: { label: 'Report Generated', tone: 'success', group: 'Reports' },
+  report_regenerated: { label: 'Report Regenerated', tone: 'info', group: 'Reports' },
+  report_viewed: { label: 'Report Viewed', tone: 'neutral', group: 'Reports' },
+  report_edited: { label: 'Report Edited', tone: 'info', group: 'Reports' },
+  report_archived: { label: 'Report Archived', tone: 'warning', group: 'Reports' },
+  report_deleted: { label: 'Report Deleted', tone: 'destructive', group: 'Reports' },
+  report_pdf_downloaded: { label: 'PDF Downloaded', tone: 'accent', group: 'Reports' },
+  report_shared: { label: 'Report Shared', tone: 'info', group: 'Reports' },
+  manual_override_applied: { label: 'Override Applied', tone: 'warning', group: 'Reports' },
+  portfolio_report_generated: { label: 'Portfolio Report', tone: 'success', group: 'Reports' },
+  comparison_pdf_downloaded: { label: 'Comparison PDF', tone: 'accent', group: 'Reports' },
   // Comparisons
-  comparison_created: { label: 'Comparison Created', tone: 'success' },
-  comparison_viewed: { label: 'Comparison Viewed', tone: 'neutral' },
-  comparison_deleted: { label: 'Comparison Deleted', tone: 'destructive' },
+  comparison_created: { label: 'Comparison Created', tone: 'success', group: 'Comparisons' },
+  comparison_viewed: { label: 'Comparison Viewed', tone: 'neutral', group: 'Comparisons' },
+  comparison_deleted: { label: 'Comparison Deleted', tone: 'destructive', group: 'Comparisons' },
   // Cash flow
-  cash_flow_created: { label: 'Cash Flow Created', tone: 'success' },
-  cash_flow_updated: { label: 'Cash Flow Updated', tone: 'info' },
-  cash_flow_deleted: { label: 'Cash Flow Deleted', tone: 'destructive' },
+  cash_flow_created: { label: 'Cash Flow Created', tone: 'success', group: 'Cash Flow' },
+  cash_flow_updated: { label: 'Cash Flow Updated', tone: 'info', group: 'Cash Flow' },
+  cash_flow_deleted: { label: 'Cash Flow Deleted', tone: 'destructive', group: 'Cash Flow' },
   // Email
-  email_read: { label: 'Email Read', tone: 'neutral' },
-  email_reply_generated: { label: 'Reply Generated', tone: 'info' },
-  email_reply_sent: { label: 'Reply Sent', tone: 'success' },
-  email_linked_to_report: { label: 'Email Linked', tone: 'info' },
+  email_read: { label: 'Email Read', tone: 'neutral', group: 'Email' },
+  email_reply_generated: { label: 'Reply Generated', tone: 'info', group: 'Email' },
+  email_reply_sent: { label: 'Reply Sent', tone: 'success', group: 'Email' },
+  email_linked_to_report: { label: 'Email Linked', tone: 'info', group: 'Email' },
   // Calls
-  call_tagged: { label: 'Call Tagged', tone: 'accent' },
-  alert_rule_created: { label: 'Alert Created', tone: 'info' },
-  alert_rule_updated: { label: 'Alert Updated', tone: 'info' },
-  alert_rule_deleted: { label: 'Alert Deleted', tone: 'destructive' },
-  weekly_report_config_changed: { label: 'Config Changed', tone: 'neutral' },
+  call_tagged: { label: 'Call Tagged', tone: 'accent', group: 'Calls' },
+  alert_rule_created: { label: 'Alert Created', tone: 'info', group: 'Calls' },
+  alert_rule_updated: { label: 'Alert Updated', tone: 'info', group: 'Calls' },
+  alert_rule_deleted: { label: 'Alert Deleted', tone: 'destructive', group: 'Calls' },
+  weekly_report_config_changed: { label: 'Config Changed', tone: 'neutral', group: 'Calls' },
   // QA
-  qa_conversation_created: { label: 'QA Started', tone: 'info' },
-  qa_question_asked: { label: 'Question Asked', tone: 'neutral' },
-  qa_conversation_deleted: { label: 'QA Deleted', tone: 'destructive' },
+  qa_conversation_created: { label: 'QA Started', tone: 'info', group: 'QA' },
+  qa_question_asked: { label: 'Question Asked', tone: 'neutral', group: 'QA' },
+  qa_conversation_deleted: { label: 'QA Deleted', tone: 'destructive', group: 'QA' },
   // Automation
-  automation_switch_created: { label: 'Switch Created', tone: 'success' },
-  automation_switch_enabled: { label: 'Switch Enabled', tone: 'success' },
-  automation_switch_disabled: { label: 'Switch Disabled', tone: 'warning' },
-  automation_switch_deleted: { label: 'Switch Deleted', tone: 'destructive' },
-  automation_master_toggle_changed: { label: 'Master Toggle', tone: 'warning' },
+  automation_switch_created: { label: 'Switch Created', tone: 'success', group: 'Automation' },
+  automation_switch_enabled: { label: 'Switch Enabled', tone: 'success', group: 'Automation' },
+  automation_switch_disabled: { label: 'Switch Disabled', tone: 'warning', group: 'Automation' },
+  automation_switch_deleted: { label: 'Switch Deleted', tone: 'destructive', group: 'Automation' },
+  automation_master_toggle_changed: { label: 'Master Toggle', tone: 'warning', group: 'Automation' },
   // Templates
-  template_uploaded: { label: 'Template Uploaded', tone: 'info' },
-  template_activated: { label: 'Template Activated', tone: 'success' },
-  template_deactivated: { label: 'Template Deactivated', tone: 'warning' },
-  template_deleted: { label: 'Template Deleted', tone: 'destructive' },
-  branding_profile_created: { label: 'Branding Created', tone: 'accent' },
-  branding_profile_updated: { label: 'Branding Updated', tone: 'accent' },
-  branding_profile_deleted: { label: 'Branding Deleted', tone: 'destructive' },
+  template_uploaded: { label: 'Template Uploaded', tone: 'info', group: 'Templates' },
+  template_activated: { label: 'Template Activated', tone: 'success', group: 'Templates' },
+  template_deactivated: { label: 'Template Deactivated', tone: 'warning', group: 'Templates' },
+  template_deleted: { label: 'Template Deleted', tone: 'destructive', group: 'Templates' },
+  // Branding
+  branding_profile_created: { label: 'Branding Created', tone: 'accent', group: 'Branding' },
+  branding_profile_updated: { label: 'Branding Updated', tone: 'accent', group: 'Branding' },
+  branding_profile_deleted: { label: 'Branding Deleted', tone: 'destructive', group: 'Branding' },
   // User management
-  user_invited: { label: 'User Invited', tone: 'info' },
-  user_permissions_changed: { label: 'Permissions Changed', tone: 'warning' },
-  user_deactivated: { label: 'User Deactivated', tone: 'destructive' },
-  user_activated: { label: 'User Activated', tone: 'success' },
-  password_reset_initiated: { label: 'Password Reset', tone: 'destructive' },
+  user_invited: { label: 'User Invited', tone: 'info', group: 'Users' },
+  user_permissions_changed: { label: 'Permissions Changed', tone: 'warning', group: 'Users' },
+  user_deactivated: { label: 'User Deactivated', tone: 'destructive', group: 'Users' },
+  user_activated: { label: 'User Activated', tone: 'success', group: 'Users' },
   // White label
-  whitelabel_settings_updated: { label: 'Whitelabel Updated', tone: 'accent' },
-  whitelabel_logo_changed: { label: 'Logo Changed', tone: 'accent' },
+  whitelabel_settings_updated: { label: 'Whitelabel Updated', tone: 'accent', group: 'White Label' },
+  whitelabel_logo_changed: { label: 'Logo Changed', tone: 'accent', group: 'White Label' },
+  whitelabel_logo_uploaded: { label: 'Logo Uploaded', tone: 'accent', group: 'White Label' },
+  whitelabel_logo_removed: { label: 'Logo Removed', tone: 'warning', group: 'White Label' },
+  whitelabel_theme_changed: { label: 'Theme Changed', tone: 'accent', group: 'White Label' },
   // Bulk
-  bulk_generation_started: { label: 'Bulk Started', tone: 'info' },
-  bulk_generation_completed: { label: 'Bulk Completed', tone: 'success' },
+  bulk_generation_started: { label: 'Bulk Started', tone: 'info', group: 'Bulk' },
+  bulk_generation_completed: { label: 'Bulk Completed', tone: 'success', group: 'Bulk' },
   // General
-  settings_updated: { label: 'Settings Updated', tone: 'warning' },
-  data_exported: { label: 'Data Exported', tone: 'info' },
-  // Client management
-  client_created: { label: 'Client Created', tone: 'success' },
-  client_updated: { label: 'Client Updated', tone: 'info' },
-  client_deleted: { label: 'Client Deleted', tone: 'destructive' },
-  client_exported: { label: 'Client Exported', tone: 'info' },
-  client_file_uploaded: { label: 'File Uploaded', tone: 'info' },
-  client_file_deleted: { label: 'File Deleted', tone: 'destructive' },
-  client_note_added: { label: 'Note Added', tone: 'info' },
-  client_tag_added: { label: 'Tag Added', tone: 'accent' },
-  client_tag_removed: { label: 'Tag Removed', tone: 'neutral' },
+  settings_updated: { label: 'Settings Updated', tone: 'warning', group: 'General' },
+  data_exported: { label: 'Data Exported', tone: 'info', group: 'General' },
+  data_imported: { label: 'Data Imported', tone: 'success', group: 'General' },
+  // Clients
+  client_created: { label: 'Client Created', tone: 'success', group: 'Clients' },
+  client_updated: { label: 'Client Updated', tone: 'info', group: 'Clients' },
+  client_deleted: { label: 'Client Deleted', tone: 'destructive', group: 'Clients' },
+  client_exported: { label: 'Client Exported', tone: 'info', group: 'Clients' },
+  client_file_uploaded: { label: 'File Uploaded', tone: 'info', group: 'Clients' },
+  client_file_deleted: { label: 'File Deleted', tone: 'destructive', group: 'Clients' },
+  client_note_added: { label: 'Note Added', tone: 'info', group: 'Clients' },
+  client_tag_added: { label: 'Tag Added', tone: 'accent', group: 'Clients' },
+  client_tag_removed: { label: 'Tag Removed', tone: 'neutral', group: 'Clients' },
   // Deal pipeline
-  deal_created: { label: 'Deal Created', tone: 'success' },
-  deal_updated: { label: 'Deal Updated', tone: 'info' },
-  deal_stage_changed: { label: 'Stage Changed', tone: 'accent' },
-  deal_deleted: { label: 'Deal Deleted', tone: 'destructive' },
-  build_payment_updated: { label: 'Payment Updated', tone: 'info' },
+  deal_created: { label: 'Deal Created', tone: 'success', group: 'Deals' },
+  deal_updated: { label: 'Deal Updated', tone: 'info', group: 'Deals' },
+  deal_stage_changed: { label: 'Stage Changed', tone: 'accent', group: 'Deals' },
+  deal_deleted: { label: 'Deal Deleted', tone: 'destructive', group: 'Deals' },
+  build_payment_updated: { label: 'Payment Updated', tone: 'info', group: 'Deals' },
   // Calendar
-  appointment_created: { label: 'Appointment Created', tone: 'success' },
-  appointment_updated: { label: 'Appointment Updated', tone: 'info' },
-  appointment_deleted: { label: 'Appointment Deleted', tone: 'destructive' },
-  appointment_rescheduled: { label: 'Appointment Rescheduled', tone: 'warning' },
+  appointment_created: { label: 'Appointment Created', tone: 'success', group: 'Calendar' },
+  appointment_updated: { label: 'Appointment Updated', tone: 'info', group: 'Calendar' },
+  appointment_deleted: { label: 'Appointment Deleted', tone: 'destructive', group: 'Calendar' },
+  appointment_rescheduled: { label: 'Appointment Rescheduled', tone: 'warning', group: 'Calendar' },
   // Checklists
-  checklist_generated: { label: 'Checklist Generated', tone: 'info' },
-  checklist_item_checked: { label: 'Item Checked', tone: 'success' },
-  checklist_completed: { label: 'Checklist Completed', tone: 'success' },
-  checklist_deleted: { label: 'Checklist Deleted', tone: 'destructive' },
-  // Data
-  data_imported: { label: 'Data Imported', tone: 'success' },
-  // WhiteLabel extended
-  whitelabel_logo_uploaded: { label: 'Logo Uploaded', tone: 'accent' },
-  whitelabel_logo_removed: { label: 'Logo Removed', tone: 'warning' },
-  whitelabel_theme_changed: { label: 'Theme Changed', tone: 'accent' },
-  // Reports extended
-  comparison_pdf_downloaded: { label: 'Comparison PDF', tone: 'accent' },
-  portfolio_report_generated: { label: 'Portfolio Report', tone: 'success' },
+  checklist_generated: { label: 'Checklist Generated', tone: 'info', group: 'Checklists' },
+  checklist_item_checked: { label: 'Item Checked', tone: 'success', group: 'Checklists' },
+  checklist_completed: { label: 'Checklist Completed', tone: 'success', group: 'Checklists' },
+  checklist_deleted: { label: 'Checklist Deleted', tone: 'destructive', group: 'Checklists' },
 };
 
 const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -171,53 +176,88 @@ const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
   portfolio_report: <FileText className="h-4 w-4" />,
 };
 
-// Resolve an entity to an in-app route. Returns null if no deep-link target.
+const ENTITY_OPTIONS: MSOption[] = [
+  { value: 'investment_report', label: 'Reports', group: 'Content' },
+  { value: 'property_comparison', label: 'Comparisons', group: 'Content' },
+  { value: 'cash_flow_analysis', label: 'Cash Flow', group: 'Content' },
+  { value: 'portfolio_report', label: 'Portfolio Reports', group: 'Content' },
+  { value: 'template', label: 'Templates', group: 'Content' },
+  { value: 'branding_profile', label: 'Branding', group: 'Content' },
+  { value: 'email', label: 'Email', group: 'Comms' },
+  { value: 'call_log', label: 'Call Logs', group: 'Comms' },
+  { value: 'call_alert_rule', label: 'Call Alerts', group: 'Comms' },
+  { value: 'qa_conversation', label: 'QA', group: 'Comms' },
+  { value: 'client', label: 'Clients', group: 'CRM' },
+  { value: 'client_file', label: 'Client Files', group: 'CRM' },
+  { value: 'client_note', label: 'Client Notes', group: 'CRM' },
+  { value: 'deal', label: 'Deals', group: 'CRM' },
+  { value: 'appointment', label: 'Appointments', group: 'CRM' },
+  { value: 'checklist', label: 'Checklists', group: 'CRM' },
+  { value: 'automation_switch', label: 'Automation', group: 'System' },
+  { value: 'user', label: 'Users', group: 'System' },
+  { value: 'session', label: 'Sessions', group: 'System' },
+  { value: 'whitelabel_settings', label: 'White Label', group: 'System' },
+  { value: 'data_import', label: 'Data Imports', group: 'System' },
+  { value: 'bulk_generation_job', label: 'Bulk Jobs', group: 'System' },
+];
+
+const ACTION_OPTIONS: MSOption[] = Object.entries(ACTION_TYPE_LABELS).map(([value, v]) => ({
+  value, label: v.label, group: v.group,
+}));
+
+// Deep-link resolver
 function entityHref(entityType: string, entityId: string | null): string | null {
   if (!entityType) return null;
   switch (entityType) {
-    case 'investment_report':
-      return entityId ? `/investment-report/${entityId}` : '/reports/analytics';
-    case 'property_comparison':
-      return '/reports/analytics';
-    case 'cash_flow_analysis':
-      return '/cash-flow-analysis';
-    case 'email':
-      return '/email-copilot';
+    case 'investment_report': return entityId ? `/investment-report/${entityId}` : '/reports/analytics';
+    case 'property_comparison': return '/reports/analytics';
+    case 'cash_flow_analysis': return '/cash-flow-analysis';
+    case 'email': return '/email-copilot';
     case 'call_log':
-    case 'call_alert_rule':
-      return '/call-logs';
-    case 'qa_conversation':
-      return '/report-qa';
-    case 'automation_switch':
-      return '/automation';
-    case 'template':
-      return '/templates';
+    case 'call_alert_rule': return '/call-logs';
+    case 'qa_conversation': return '/report-qa';
+    case 'automation_switch': return '/automation';
+    case 'template': return '/templates';
     case 'branding_profile':
-    case 'whitelabel_settings':
-      return '/white-label';
-    case 'user':
-      return '/admin/users';
+    case 'whitelabel_settings': return '/white-label';
+    case 'user': return '/admin/users';
     case 'client':
     case 'client_file':
-    case 'client_note':
-      return '/clients';
-    case 'deal':
-      return '/deal-pipeline';
-    case 'appointment':
-      return '/calendar';
-    case 'checklist':
-      return '/checklists';
-    case 'data_import':
-      return '/data-import';
-    case 'portfolio_report':
-      return '/portfolio-reports';
-    default:
-      return null;
+    case 'client_note': return '/clients';
+    case 'deal': return '/deal-pipeline';
+    case 'appointment': return '/calendar';
+    case 'checklist': return '/checklists';
+    case 'data_import': return '/data-import';
+    case 'portfolio_report': return '/portfolio-reports';
+    default: return null;
   }
 }
 
 type DateRangeKey = 'all' | '24h' | '7d' | '30d' | 'custom';
+type Density = 'compact' | 'comfortable';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+const PRESETS_KEY = 'activityLogs.presets.v1';
+const DENSITY_KEY = 'activityLogs.density.v1';
+
+interface FilterPreset {
+  id: string;
+  name: string;
+  actions: string[];
+  entities: string[];
+  users: string[];
+  dateRange: DateRangeKey;
+}
+
+function loadPresets(): FilterPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch { return []; }
+}
+function savePresets(p: FilterPreset[]) {
+  try { localStorage.setItem(PRESETS_KEY, JSON.stringify(p)); } catch {}
+}
 
 function dayLabel(d: Date): string {
   if (isToday(d)) return 'Today';
@@ -229,11 +269,12 @@ export default function ActivityLogs() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [actionFilter, setActionFilter] = useState<string>('all');
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [userFilter, setUserFilter] = useState<string>('all');
+  const [actionFilter, setActionFilter] = useState<string[]>([]);
+  const [entityFilter, setEntityFilter] = useState<string[]>([]);
+  const [userFilter, setUserFilter] = useState<string[]>([]);
   const [uniqueUsers, setUniqueUsers] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<ActivityStats | null>(null);
 
   const [dateRange, setDateRange] = useState<DateRangeKey>('30d');
   const [customStart, setCustomStart] = useState<Date | undefined>();
@@ -241,10 +282,21 @@ export default function ActivityLogs() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [density, setDensity] = useState<Density>(() => {
+    try { return (localStorage.getItem(DENSITY_KEY) as Density) || 'comfortable'; }
+    catch { return 'comfortable'; }
+  });
 
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [presets, setPresets] = useState<FilterPreset[]>(() => loadPresets());
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
 
   const { fetchLogs: secureFetchLogs, loading } = useSecureActivityLogs();
+
+  useEffect(() => {
+    try { localStorage.setItem(DENSITY_KEY, density); } catch {}
+  }, [density]);
 
   const { startDateISO, endDateISO } = useMemo(() => {
     const now = new Date();
@@ -258,38 +310,31 @@ export default function ActivityLogs() {
     };
   }, [dateRange, customStart, customEnd]);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     const result = await secureFetchLogs({
-      actionFilter: actionFilter !== 'all' ? actionFilter : undefined,
-      entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
-      userFilter: userFilter !== 'all' ? userFilter : undefined,
+      actionFilter: actionFilter.length ? actionFilter : undefined,
+      entityFilter: entityFilter.length ? entityFilter : undefined,
+      userFilter: userFilter.length ? userFilter : undefined,
       startDate: startDateISO,
       endDate: endDateISO,
       page,
       pageSize,
+      includeStats: true,
     });
 
     if (result.error) {
       toast.error(result.error);
-      setLogs([]);
-      setUniqueUsers([]);
-      setTotal(0);
+      setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null);
     } else {
       setLogs(result.logs);
       setUniqueUsers(result.uniqueUsers);
       setTotal(result.total);
+      setStats(result.stats);
     }
-  };
+  }, [secureFetchLogs, actionFilter, entityFilter, userFilter, startDateISO, endDateISO, page, pageSize]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [actionFilter, entityFilter, userFilter, startDateISO, endDateISO, pageSize]);
-
-  useEffect(() => {
-    loadLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actionFilter, entityFilter, userFilter, startDateISO, endDateISO, page, pageSize]);
+  useEffect(() => { setPage(1); }, [actionFilter, entityFilter, userFilter, startDateISO, endDateISO, pageSize]);
+  useEffect(() => { loadLogs(); }, [loadLogs]);
 
   // Client-side text search on current page
   const filteredLogs = useMemo(() => {
@@ -304,7 +349,6 @@ export default function ActivityLogs() {
     );
   }, [logs, searchTerm]);
 
-  // Group filtered logs by day
   const grouped = useMemo(() => {
     const map = new Map<string, { label: string; rows: ActivityLog[] }>();
     for (const log of filteredLogs) {
@@ -318,9 +362,9 @@ export default function ActivityLogs() {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setActionFilter('all');
-    setEntityFilter('all');
-    setUserFilter('all');
+    setActionFilter([]);
+    setEntityFilter([]);
+    setUserFilter([]);
     setDateRange('30d');
     setCustomStart(undefined);
     setCustomEnd(undefined);
@@ -328,9 +372,9 @@ export default function ActivityLogs() {
 
   const hasActiveFilters =
     !!searchTerm ||
-    actionFilter !== 'all' ||
-    entityFilter !== 'all' ||
-    userFilter !== 'all' ||
+    actionFilter.length > 0 ||
+    entityFilter.length > 0 ||
+    userFilter.length > 0 ||
     dateRange !== '30d';
 
   const getActionConfig = (a: string) =>
@@ -344,7 +388,20 @@ export default function ActivityLogs() {
   const getEntityIcon = (entityType: string) =>
     ENTITY_TYPE_ICONS[entityType] || <Activity className="h-4 w-4" />;
 
-  const exportCurrentPage = () => {
+  const userOptions: MSOption[] = useMemo(
+    () => uniqueUsers.map(u => ({ value: u, label: u })), [uniqueUsers]
+  );
+
+  // Exporters
+  const downloadBlob = (content: string, mime: string, filename: string) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCSV = () => {
     const csv = [
       ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Entity ID', 'IP Address'].join(','),
       ...filteredLogs.map(log => [
@@ -357,14 +414,45 @@ export default function ActivityLogs() {
         log.ip_address || '',
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
     ].join('\n');
+    downloadBlob(csv, 'text/csv', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    toast.success(`Exported ${filteredLogs.length} rows to CSV`);
+  };
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportJSON = () => {
+    const json = JSON.stringify(filteredLogs, null, 2);
+    downloadBlob(json, 'application/json', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.json`);
+    toast.success(`Exported ${filteredLogs.length} rows to JSON`);
+  };
+
+  // Presets
+  const applyPreset = (p: FilterPreset) => {
+    setActionFilter(p.actions);
+    setEntityFilter(p.entities);
+    setUserFilter(p.users);
+    setDateRange(p.dateRange);
+    toast.success(`Applied "${p.name}"`);
+  };
+  const savePreset = () => {
+    if (!newPresetName.trim()) return;
+    const next: FilterPreset = {
+      id: crypto.randomUUID(),
+      name: newPresetName.trim(),
+      actions: actionFilter,
+      entities: entityFilter,
+      users: userFilter,
+      dateRange,
+    };
+    const updated = [...presets, next];
+    setPresets(updated);
+    savePresets(updated);
+    setNewPresetName('');
+    setPresetDialogOpen(false);
+    toast.success(`Saved preset "${next.name}"`);
+  };
+  const deletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    savePresets(updated);
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -374,33 +462,140 @@ export default function ActivityLogs() {
   const handleRowClick = (log: ActivityLog) => setSelectedLog(log);
 
   const copy = async (text: string, label = 'Copied') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(label);
-    } catch {
-      toast.error('Failed to copy');
-    }
+    try { await navigator.clipboard.writeText(text); toast.success(label); }
+    catch { toast.error('Failed to copy'); }
   };
 
+  const compact = density === 'compact';
+  const cellPad = compact ? 'py-2' : 'py-3';
+
+  const topActionLabel = stats?.topAction
+    ? (ACTION_TYPE_LABELS[stats.topAction.type]?.label || stats.topAction.type.replace(/_/g, ' '))
+    : null;
+
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
-          <p className="text-sm text-muted-foreground">
-            Track all user actions and system events
-          </p>
+          <p className="text-sm text-muted-foreground">Track all user actions and system events</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCurrentPage} className="min-h-[44px] sm:min-h-0">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* Presets */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0">
+                <Bookmark className="h-4 w-4 mr-2" />
+                Presets
+                {presets.length > 0 && (
+                  <span className="ml-1.5 text-xs text-muted-foreground">({presets.length})</span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Saved filter presets</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {presets.length === 0 ? (
+                <div className="px-2 py-3 text-xs text-muted-foreground">No saved presets yet.</div>
+              ) : (
+                presets.map(p => (
+                  <div key={p.id} className="group flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
+                    <button onClick={() => applyPreset(p)} className="flex-1 text-left text-sm truncate">
+                      {p.name}
+                      <div className="text-[10px] text-muted-foreground">
+                        {p.actions.length + p.entities.length + p.users.length} filters · {p.dateRange}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deletePreset(p.id); }}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1"
+                      aria-label="Delete preset"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => { e.preventDefault(); setPresetDialogOpen(true); }}
+                disabled={!hasActiveFilters}
+              >
+                <BookmarkPlus className="h-4 w-4 mr-2" />
+                Save current filters…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Density toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => setDensity(d => d === 'compact' ? 'comfortable' : 'compact')}
+                className="min-h-[44px] sm:min-h-0"
+                aria-label="Toggle density"
+              >
+                {compact ? <Rows3 className="h-4 w-4" /> : <Rows2 className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{compact ? 'Comfortable view' : 'Compact view'}</TooltipContent>
+          </Tooltip>
+
+          {/* Export dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportCSV}>Export as CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportJSON}>Export as JSON (with metadata)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button variant="outline" size="sm" onClick={loadLogs} className="min-h-[44px] sm:min-h-0">
             <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
         </div>
+      </div>
+
+      {/* Quick Stats Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatTile
+          label="Events today"
+          value={stats?.eventsToday ?? '—'}
+          icon={<Sparkles className="h-4 w-4" />}
+          tone="info"
+        />
+        <StatTile
+          label="Active users"
+          value={stats?.uniqueUsers ?? '—'}
+          icon={<Users className="h-4 w-4" />}
+          tone="success"
+          hint={stats?.sampleCapped ? 'Within sampled window' : undefined}
+        />
+        <StatTile
+          label="Top action"
+          value={topActionLabel || '—'}
+          subValue={stats?.topAction ? `${stats.topAction.count} events` : undefined}
+          icon={<Activity className="h-4 w-4" />}
+          tone="accent"
+          truncate
+        />
+        <StatTile
+          label="Destructive actions"
+          value={stats?.failures ?? '—'}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          tone={stats && stats.failures > 0 ? 'destructive' : 'neutral'}
+        />
       </div>
 
       {/* Filters */}
@@ -434,49 +629,34 @@ export default function ActivityLogs() {
               </SelectContent>
             </Select>
 
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger><SelectValue placeholder="Action Type" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">All Actions</SelectItem>
-                {Object.entries(ACTION_TYPE_LABELS).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableMultiSelect
+              label="Actions"
+              placeholder="All actions"
+              searchPlaceholder="Search 60+ actions…"
+              options={ACTION_OPTIONS}
+              selected={actionFilter}
+              onChange={setActionFilter}
+              icon={<Zap className="h-4 w-4 text-muted-foreground" />}
+              width="w-[300px]"
+            />
 
-            <Select value={entityFilter} onValueChange={setEntityFilter}>
-              <SelectTrigger><SelectValue placeholder="Entity Type" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Entities</SelectItem>
-                <SelectItem value="investment_report">Reports</SelectItem>
-                <SelectItem value="property_comparison">Comparisons</SelectItem>
-                <SelectItem value="cash_flow_analysis">Cash Flow</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="call_log">Call Logs</SelectItem>
-                <SelectItem value="qa_conversation">QA</SelectItem>
-                <SelectItem value="automation_switch">Automation</SelectItem>
-                <SelectItem value="template">Templates</SelectItem>
-                <SelectItem value="user">Users</SelectItem>
-                <SelectItem value="session">Sessions</SelectItem>
-                <SelectItem value="client">Clients</SelectItem>
-                <SelectItem value="deal">Deals</SelectItem>
-                <SelectItem value="client_file">Client Files</SelectItem>
-                <SelectItem value="client_note">Client Notes</SelectItem>
-                <SelectItem value="appointment">Appointments</SelectItem>
-                <SelectItem value="checklist">Checklists</SelectItem>
-                <SelectItem value="data_import">Data Imports</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableMultiSelect
+              label="Entities"
+              placeholder="All entities"
+              options={ENTITY_OPTIONS}
+              selected={entityFilter}
+              onChange={setEntityFilter}
+              icon={<DatabaseIcon className="h-4 w-4 text-muted-foreground" />}
+            />
 
-            <Select value={userFilter} onValueChange={setUserFilter}>
-              <SelectTrigger><SelectValue placeholder="User" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">All Users</SelectItem>
-                {uniqueUsers.map(user => (
-                  <SelectItem key={user} value={user}>{user}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableMultiSelect
+              label="Users"
+              placeholder="All users"
+              options={userOptions}
+              selected={userFilter}
+              onChange={setUserFilter}
+              icon={<User className="h-4 w-4 text-muted-foreground" />}
+            />
           </div>
 
           {dateRange === 'custom' && (
@@ -576,7 +756,10 @@ export default function ActivityLogs() {
                               key={log.id}
                               type="button"
                               onClick={() => handleRowClick(log)}
-                              className="w-full text-left py-3 flex gap-3 items-start hover:bg-muted/40 transition-colors rounded-md px-2"
+                              className={cn(
+                                'w-full text-left flex gap-3 items-start hover:bg-muted/40 transition-colors rounded-md px-2',
+                                compact ? 'py-2' : 'py-3'
+                              )}
                             >
                               <span className={cn('mt-1 w-1 self-stretch rounded-full', SEVERITY_BAR[cfg.tone])} />
                               <div className="flex-1 min-w-0 space-y-1">
@@ -634,33 +817,33 @@ export default function ActivityLogs() {
                                 className="cursor-pointer relative"
                                 onClick={() => handleRowClick(log)}
                               >
-                                <TableCell className="font-mono text-xs relative">
+                                <TableCell className={cn('font-mono text-xs relative', cellPad)}>
                                   <span className={cn('absolute left-0 top-2 bottom-2 w-0.5 rounded-r', SEVERITY_BAR[cfg.tone])} />
                                   <div className="pl-2">
                                     <div>{format(new Date(log.created_at), 'HH:mm:ss')}</div>
-                                    <div className="text-muted-foreground">
-                                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                                    </div>
+                                    {!compact && (
+                                      <div className="text-muted-foreground">
+                                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                                      </div>
+                                    )}
                                   </div>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className={cellPad}>
                                   <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-medium text-sm">{log.username || 'Unknown'}</span>
                                   </div>
                                 </TableCell>
-                                <TableCell>{getActionBadge(log.action_type)}</TableCell>
-                                <TableCell>
+                                <TableCell className={cellPad}>{getActionBadge(log.action_type)}</TableCell>
+                                <TableCell className={cellPad}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground">{getEntityIcon(log.entity_type)}</span>
                                     <div className="min-w-0">
                                       <div className="text-sm font-medium truncate max-w-[360px] flex items-center gap-1.5">
                                         {log.entity_name || log.entity_type.replace(/_/g, ' ')}
-                                        {href && (
-                                          <ExternalLink className="h-3 w-3 text-muted-foreground/70" />
-                                        )}
+                                        {href && <ExternalLink className="h-3 w-3 text-muted-foreground/70" />}
                                       </div>
-                                      {log.entity_id && (
+                                      {!compact && log.entity_id && (
                                         <div className="text-xs text-muted-foreground font-mono">
                                           {log.entity_id.slice(0, 8)}…
                                         </div>
@@ -668,7 +851,7 @@ export default function ActivityLogs() {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-xs font-mono text-muted-foreground">
+                                <TableCell className={cn('text-xs font-mono text-muted-foreground', cellPad)}>
                                   {log.ip_address || '-'}
                                 </TableCell>
                               </TableRow>
@@ -701,23 +884,51 @@ export default function ActivityLogs() {
                 <span className="text-xs text-muted-foreground mr-2">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>
-                  First
-                </Button>
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>First</Button>
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
-                  Last
-                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Save Preset Dialog (lightweight popover) */}
+      {presetDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setPresetDialogOpen(false)}
+        >
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookmarkPlus className="h-4 w-4" /> Save filter preset
+              </CardTitle>
+              <CardDescription>
+                Captures current actions, entities, users, and date range.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                autoFocus
+                placeholder="e.g. Today's failures"
+                value={newPresetName}
+                onChange={(e) => setNewPresetName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') savePreset(); }}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPresetDialogOpen(false)}>Cancel</Button>
+                <Button size="sm" onClick={savePreset} disabled={!newPresetName.trim()}>Save</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Detail Drawer */}
       <Sheet open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
@@ -772,9 +983,7 @@ export default function ActivityLogs() {
                       )}
                       {href && (
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="mt-2"
+                          size="sm" variant="outline" className="mt-2"
                           onClick={() => { navigate(href); setSelectedLog(null); }}
                         >
                           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
@@ -803,9 +1012,7 @@ export default function ActivityLogs() {
                         {JSON.stringify(selectedLog.metadata, null, 2)}
                       </pre>
                       <Button
-                        size="sm"
-                        variant="ghost"
-                        className="mt-2"
+                        size="sm" variant="ghost" className="mt-2"
                         onClick={() => copy(JSON.stringify(selectedLog.metadata, null, 2), 'Metadata copied')}
                       >
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
@@ -820,6 +1027,7 @@ export default function ActivityLogs() {
         </SheetContent>
       </Sheet>
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -844,5 +1052,48 @@ function CopyableMono({ value, onCopy }: { value: string; onCopy: (v: string, l?
       <span className="truncate max-w-[280px]">{value}</span>
       <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
+  );
+}
+
+const STAT_TONE: Record<string, { ring: string; icon: string; value: string }> = {
+  info:        { ring: 'ring-primary/20',     icon: 'text-primary bg-primary/10',           value: 'text-foreground' },
+  success:     { ring: 'ring-success/20',     icon: 'text-success bg-success/10',           value: 'text-foreground' },
+  accent:      { ring: 'ring-accent/30',      icon: 'text-accent-foreground bg-accent/15',  value: 'text-foreground' },
+  destructive: { ring: 'ring-destructive/30', icon: 'text-destructive bg-destructive/10',   value: 'text-destructive' },
+  neutral:     { ring: 'ring-border',         icon: 'text-muted-foreground bg-muted/40',    value: 'text-foreground' },
+};
+
+function StatTile({
+  label, value, subValue, icon, tone = 'neutral', hint, truncate,
+}: {
+  label: string;
+  value: React.ReactNode;
+  subValue?: string;
+  icon: React.ReactNode;
+  tone?: 'info' | 'success' | 'accent' | 'destructive' | 'neutral';
+  hint?: string;
+  truncate?: boolean;
+}) {
+  const t = STAT_TONE[tone];
+  return (
+    <Card className={cn('relative overflow-hidden border-border/60 ring-1', t.ring)}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</div>
+            <div className={cn(
+              'mt-1 font-bold text-2xl leading-tight',
+              t.value,
+              truncate && 'truncate'
+            )}>
+              {value}
+            </div>
+            {subValue && <div className="text-xs text-muted-foreground mt-0.5">{subValue}</div>}
+            {hint && <div className="text-[10px] text-muted-foreground/70 mt-1 italic">{hint}</div>}
+          </div>
+          <div className={cn('p-2 rounded-lg shrink-0', t.icon)}>{icon}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
