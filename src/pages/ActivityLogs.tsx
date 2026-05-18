@@ -302,6 +302,12 @@ export default function ActivityLogs() {
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
 
+  // Live tail
+  const [liveTail, setLiveTail] = useState(false);
+  const [lastTickAt, setLastTickAt] = useState<Date | null>(null);
+  const [newSinceMount, setNewSinceMount] = useState(0);
+  const prevTopIdRef = useRef<string | null>(null);
+
   const { fetchLogs: secureFetchLogs, loading } = useSecureActivityLogs();
 
   useEffect(() => {
@@ -320,7 +326,7 @@ export default function ActivityLogs() {
     };
   }, [dateRange, customStart, customEnd]);
 
-  const loadLogs = useCallback(async () => {
+  const loadLogs = useCallback(async (silent = false) => {
     const result = await secureFetchLogs({
       actionFilter: actionFilter.length ? actionFilter : undefined,
       entityFilter: entityFilter.length ? entityFilter : undefined,
@@ -333,18 +339,39 @@ export default function ActivityLogs() {
     });
 
     if (result.error) {
-      toast.error(result.error);
-      setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null);
+      if (!silent) toast.error(result.error);
+      if (!silent) { setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null); }
     } else {
+      // Detect new events for live tail badge
+      const newTopId = result.logs[0]?.id ?? null;
+      if (silent && prevTopIdRef.current && newTopId && newTopId !== prevTopIdRef.current) {
+        const idx = result.logs.findIndex(l => l.id === prevTopIdRef.current);
+        const delta = idx === -1 ? result.logs.length : idx;
+        if (delta > 0) setNewSinceMount(n => n + delta);
+      }
+      prevTopIdRef.current = newTopId;
       setLogs(result.logs);
       setUniqueUsers(result.uniqueUsers);
       setTotal(result.total);
       setStats(result.stats);
+      setLastTickAt(new Date());
     }
   }, [secureFetchLogs, actionFilter, entityFilter, userFilter, startDateISO, endDateISO, page, pageSize]);
 
   useEffect(() => { setPage(1); }, [actionFilter, entityFilter, userFilter, startDateISO, endDateISO, pageSize]);
-  useEffect(() => { loadLogs(); }, [loadLogs]);
+  useEffect(() => { setNewSinceMount(0); prevTopIdRef.current = null; loadLogs(); }, [loadLogs]);
+
+  // Live tail polling — only when on page 1, no drawer open, tab visible
+  useEffect(() => {
+    if (!liveTail) return;
+    if (page !== 1) return;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      if (selectedLog) return;
+      loadLogs(true);
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [liveTail, page, selectedLog, loadLogs]);
 
   // Client-side text search on current page
   const filteredLogs = useMemo(() => {
