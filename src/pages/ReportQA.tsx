@@ -1832,6 +1832,15 @@ export default function ReportQA() {
               )}
             </div>
 
+            {/* Library picker (existing investment reports) */}
+            <div className="flex justify-center">
+              <ReportLibraryPicker
+                onAdd={handleLibraryAdd}
+                existingNames={uploadedReports.map((r) => r.name)}
+                disabled={isUploading}
+              />
+            </div>
+
             {/* Upload Progress */}
             {uploadProgress.length > 0 && (
               <div className="space-y-2">
