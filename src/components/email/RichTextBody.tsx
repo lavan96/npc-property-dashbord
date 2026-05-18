@@ -5,6 +5,45 @@ interface RichTextBodyProps {
   className?: string;
 }
 
+/**
+ * Strip stray markdown markers that leak through from the HTML→text conversion
+ * (e.g. unbalanced **bold** spans broken by line wraps, decorative underscore
+ * separator lines, trailing single _ after a word like "Disclaimer:_"), so they
+ * don't render as literal asterisks/underscores in the dashboard.
+ */
+function cleanPlainTextArtifacts(input: string): string {
+  if (!input) return '';
+  let text = input.replace(/\r\n/g, '\n');
+
+  // Drop decorative separator lines made of just _ or - or = (3+).
+  text = text
+    .split('\n')
+    .map((line) => (/^\s*[_\-=]{1,}\s*$/.test(line) && line.trim().length <= 80 ? '' : line))
+    .join('\n');
+
+  // Per-line: if a line has an odd number of `**`, remove the unmatched one
+  // (prefer removing a leading marker; otherwise drop the last one).
+  text = text
+    .split('\n')
+    .map((line) => {
+      const count = (line.match(/\*\*/g) || []).length;
+      if (count % 2 === 0) return line;
+      if (line.startsWith('**')) return line.replace(/^\*\*/, '');
+      return line.replace(/\*\*(?=[^*]*$)/, '');
+    })
+    .join('\n');
+
+  // Trailing single underscore glued to a word ("Disclaimer:_") with no opener.
+  text = text.replace(/([^\s_])_(?=\s|$)/g, '$1');
+  // Leading single underscore glued to a word.
+  text = text.replace(/(^|\s)_(?=[^\s_])/g, '$1');
+
+  // Collapse 3+ blank lines.
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  return text.trim();
+}
+
 // Patterns for detecting various types of content
 const linkPatterns = {
   url: /(https?:\/\/[^\s<>"{}|\\^`[\]]+|www\.[^\s<>"{}|\\^`[\]]+)/gi,
@@ -642,7 +681,8 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
 }
 
 export default function RichTextBody({ content, className = '' }: RichTextBodyProps) {
-  const { currentMessage, threadHistory } = parseEmailThread(content);
+  const cleaned = cleanPlainTextArtifacts(content);
+  const { currentMessage, threadHistory } = parseEmailThread(cleaned);
   const { body, signature } = parseSignature(currentMessage);
   
   return (
