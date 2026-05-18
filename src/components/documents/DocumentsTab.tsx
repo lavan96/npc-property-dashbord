@@ -15,7 +15,7 @@ import {
   type GeneratedDocStatus, type TemplateDocType, type GeneratedDocument,
 } from '@/hooks/useGeneratedDocuments';
 import { PrepareForSigningModal, type SigningRecipient } from '@/components/agreements/PrepareForSigningModal';
-import { EnvelopeStatusDialog } from '@/components/agreements/EnvelopeStatusDialog';
+import { EnvelopeStatusDialog, DocuSignStatusBadge } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
