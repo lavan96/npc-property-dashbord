@@ -89,6 +89,7 @@ import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySetti
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
 import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
+import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
 import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
 import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
