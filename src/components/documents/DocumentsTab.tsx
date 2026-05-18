@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Send, Plus, FileCheck2, Clock } from 'lucide-react';
+import { FileText, Send, Plus, FileCheck2, Clock, FileSignature } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   useGeneratedDocuments, TEMPLATE_TYPE_LABEL,
-  type GeneratedDocStatus, type TemplateDocType,
+  type GeneratedDocStatus, type TemplateDocType, type GeneratedDocument,
 } from '@/hooks/useGeneratedDocuments';
+import { PrepareForSigningModal, type SigningRecipient } from '@/components/agreements/PrepareForSigningModal';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+const DOC_BUCKET = 'client-documents';
 
 interface Props {
   clientId?: string;
