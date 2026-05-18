@@ -5,7 +5,7 @@ import { getDocuSignAccessToken, getDocuSignRestBaseUrl } from '../_shared/docus
 import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
 
 interface Body {
-  action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete' | 'save_signing_layout' | 'send_freeform' | 'check_status' | 'envelope_details';
+  action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete' | 'save_signing_layout' | 'send_freeform' | 'check_status' | 'envelope_details' | 'download_signed';
   id?: string;
   data?: Record<string, any>;
   filters?: Record<string, any>;
