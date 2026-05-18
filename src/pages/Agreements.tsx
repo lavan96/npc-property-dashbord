@@ -48,6 +48,7 @@ export default function Agreements() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [signingAgreement, setSigningAgreement] = useState<AgencyAgreement | null>(null);
   const [signingPdfUrl, setSigningPdfUrl] = useState<string>('');
+  const [statusAgreement, setStatusAgreement] = useState<AgencyAgreement | null>(null);
   const navigate = useNavigate();
   const { canEdit: canEditAgreements } = useModulePermissions('agreements');
 
