@@ -1326,6 +1326,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       }
       
       // Inject conversation summary into system prompt if available
+      if (clientMemoryContext) {
+        systemPrompt += `\n\n## CLIENT MEMORY (durable facts known about this client)\nUse these to personalise your answers. If something here conflicts with new information in this conversation, treat the new information as the latest truth.\n\n${clientMemoryContext}`;
+      }
       if (conversationSummaryContext) {
         systemPrompt += `\n\n## EARLIER CONVERSATION CONTEXT\nThe following is a summary of earlier messages in this conversation that are beyond the recent chat window. Use this to maintain continuity and avoid repeating information:\n\n${conversationSummaryContext}`;
       }
