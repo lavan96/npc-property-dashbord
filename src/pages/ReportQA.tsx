@@ -2348,7 +2348,37 @@ export default function ReportQA() {
                                     <span className="hidden sm:inline">PDF</span>
                                   </Button>
                                   <MessageReactions messageId={message.id} />
+                                  {conversationId && (
+                                    <>
+                                      <MessageFeedback
+                                        messageId={message.id}
+                                        conversationId={conversationId}
+                                        initialRating={messageFeedback[message.id]?.rating ?? null}
+                                        initialReason={messageFeedback[message.id]?.reason ?? null}
+                                      />
+                                      <MessageActions
+                                        messageId={message.id}
+                                        conversationId={conversationId}
+                                        pinned={!!message.pinned}
+                                        onPinChange={(p) =>
+                                          setMessages((prev) =>
+                                            prev.map((m) => (m.id === message.id ? { ...m, pinned: p } : m))
+                                          )
+                                        }
+                                        onBranched={(newId) => {
+                                          loadConversations();
+                                          toast({
+                                            title: 'Branch created',
+                                            description: 'Open it from History.',
+                                          });
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </div>
+                              </>
+                            </>
+                          ))}
                                 <MessageThreading
                                   messageId={message.id}
                                   messageContent={message.content}
