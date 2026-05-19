@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
+import { reserveSeat, commitSeat, releaseSeat } from "../_shared/missionControlSeats.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -40,6 +41,7 @@ interface RequestBody {
   email_signature?: string;
   include_deleted?: boolean;
   restore?: boolean;
+  idempotency_key?: string;
 }
 
 // Helper to verify authentication and check if user is superadmin
@@ -228,6 +230,18 @@ Deno.serve(async (req: Request) => {
               granted_by: invite.invited_by,
             });
         }
+      }
+
+      // Mission Control: commit the seat reservation tied to this invite.
+      try {
+        if (invite.mc_seat_id) {
+          const commit = await commitSeat(invite.mc_seat_id);
+          if (!commit.ok) {
+            console.warn(`[seat] commit failed for invite ${invite.id}: ${commit.error}`);
+          }
+        }
+      } catch (e) {
+        console.warn('[seat] commit threw', e);
       }
 
       // Mark invite as used
@@ -795,6 +809,13 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Look up email first so we can release the Mission Control seat.
+      const { data: victim } = await supabase
+        .from('custom_users')
+        .select('email')
+        .eq('id', user_id)
+        .single();
+
       // Soft-delete: set deleted_at and deactivate
       const { error } = await supabase
         .from('custom_users')
@@ -817,6 +838,16 @@ Deno.serve(async (req: Request) => {
         .from('user_sessions')
         .delete()
         .eq('user_id', user_id);
+
+      // Mission Control: release the seat (idempotent — safe on repeat).
+      if (victim?.email) {
+        try {
+          const released = await releaseSeat(victim.email, 'user_soft_deleted');
+          if (!released.ok) console.warn(`[seat] release failed: ${released.error}`);
+        } catch (e) {
+          console.warn('[seat] release threw', e);
+        }
+      }
 
       console.log(`User ${user_id} soft-deleted by ${adminUser.username}`);
       return new Response(
@@ -845,7 +876,7 @@ Deno.serve(async (req: Request) => {
       // Verify user is soft-deleted before allowing purge
       const { data: targetUser } = await supabase
         .from('custom_users')
-        .select('id, deleted_at, username')
+        .select('id, deleted_at, username, email')
         .eq('id', user_id)
         .single();
 
@@ -874,6 +905,16 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({ success: false, error: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Mission Control: release the seat (idempotent even if soft-delete already did).
+      if (targetUser.email) {
+        try {
+          const released = await releaseSeat(targetUser.email, 'user_purged');
+          if (!released.ok) console.warn(`[seat] release on purge failed: ${released.error}`);
+        } catch (e) {
+          console.warn('[seat] release on purge threw', e);
+        }
       }
 
       console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);
@@ -971,6 +1012,40 @@ Deno.serve(async (req: Request) => {
         tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
       }
 
+      // Mission Control: reserve a seat BEFORE we persist the invite, so a full
+      // tenant returns HTTP 402 with `seat_limit_reached` and no invite is created.
+      // Idempotency key = invite token, so a retried request reuses the reservation.
+      const seatIdempotencyKey = (body as any)?.idempotency_key || token;
+      let mcSeatId: string | null = null;
+      try {
+        const reservation = await reserveSeat({
+          externalUserId: invite_data.email,
+          email: invite_data.email,
+          displayName: invite_data.username,
+          idempotencyKey: seatIdempotencyKey,
+        });
+        if (!reservation.ok) {
+          if (reservation.error === 'seat_limit_reached') {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'seat_limit_reached',
+                message: `Seat limit reached on the ${reservation.plan} plan (${reservation.seats_used}/${reservation.seat_limit}). Upgrade to invite more team members.`,
+                seat_limit: reservation.seat_limit,
+                seats_used: reservation.seats_used,
+                plan: reservation.plan,
+              }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.warn(`[seat] reserve failed (${reservation.error}); continuing without seat tracking`);
+        } else {
+          mcSeatId = reservation.seat_id;
+        }
+      } catch (e) {
+        console.warn('[seat] reserve threw; continuing without seat tracking', e);
+      }
+
       const { error: insertError } = await supabase
         .from('permission_invite_tokens')
         .insert({
@@ -982,10 +1057,16 @@ Deno.serve(async (req: Request) => {
           permissions: invite_data.permissions,
           invited_by: adminUser.id,
           expires_at: expiresAt.toISOString(),
+          mc_seat_id: mcSeatId,
+          mc_seat_idempotency_key: seatIdempotencyKey,
         });
 
       if (insertError) {
         console.error('Failed to create invite:', insertError);
+        // Roll back the seat reservation so the slot isn't wasted.
+        if (mcSeatId) {
+          try { await releaseSeat(invite_data.email, 'invite_persist_failed'); } catch { /* ignore */ }
+        }
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to create invite' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
