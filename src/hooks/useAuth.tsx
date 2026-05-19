@@ -323,7 +323,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       };
     }
-    return { error: deviceResult.message || 'Device registration failed.' };
+    const message = deviceResult.code === 'error' ? deviceResult.message : 'Device registration failed.';
+    return { error: message };
   };
 
   const signIn = async (username: string, password: string, turnstileToken?: string) => {
