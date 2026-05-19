@@ -563,4 +563,26 @@ Format your response as valid JSON with this structure:
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+};
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const reportIds: string[] = Array.isArray(body?.reportIds) ? body.reportIds : [];
+  return {
+    kind: 'report.qualitative-regen' as const,
+    userId,
+    idempotencyKey: buildIdempotencyKey('compare-inv', [
+      reportIds.slice().sort().join(','),
+      body?.analysisDepth,
+      body?.timeHorizon,
+      body?.riskTolerance,
+    ]),
+    estimateOptions: { aiNarrative: true, multiplier: Math.max(1, reportIds.length) },
+    requestPayload: {
+      reportCount: reportIds.length,
+      analysisDepth: body?.analysisDepth,
+    },
+  };
+}, __compareInvestmentReportsHandler));
