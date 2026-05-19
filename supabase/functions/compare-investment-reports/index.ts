@@ -121,76 +121,135 @@ const __compareInvestmentReportsHandler = async (req: Request): Promise<Response
     console.log(`Property states extracted: ${propertyStates.length > 0 ? propertyStates.join(', ') : 'none found'}`);
 
     // Structure data for AI analysis
+    // IMPORTANT: investment_reports stores nested JSONB. Field paths verified 2026-05-19:
+    //   financial_calculations.initialCosts.{propertyValue, buildPrice, landPrice, loanAmount, stampDuty, lmi, totalUpfront, deposit, lvr}
+    //   financial_calculations.income.weeklyRent
+    //   financial_calculations.keyMetrics.{grossRentalYield, netRentalYield, weeklyNet, annualNet, cashOnCashReturn, totalInvestment, lvr}
+    //   financial_calculations.loanDetails.{interestRate, monthlyPayment, weeklyPayment, loanType, lvrTier, totalInterest}
+    //   financial_calculations.projections.{conservative,moderate,optimistic}[year-1].{annualRent,cashFlow,equity,propertyValue,roi}
+    //   financial_calculations.assumptions.{capitalGrowth, occupancyWeeks}
+    //   investment_score.{totalScore, grade, recommendation, strengths[], weaknesses[], risks[], opportunities[]}
+    //   investment_score.breakdown.{yieldScore,growthScore,locationScore,demandScore,riskScore}.{score,weight,details}
     const propertiesData = reports.map((report, index) => {
-      // Parse JSONB fields safely (null is also typeof 'object' so we need to check for it)
-      const investmentScore = (typeof report.investment_score === 'object' && report.investment_score !== null) ? report.investment_score : {};
-      const financials = (typeof report.financial_calculations === 'object' && report.financial_calculations !== null) ? report.financial_calculations : {};
-      const demographics = (typeof report.demographics_data === 'object' && report.demographics_data !== null) ? report.demographics_data : {};
-      const location = (typeof report.location_intelligence === 'object' && report.location_intelligence !== null) ? report.location_intelligence : {};
-      const economics = (typeof report.economic_data === 'object' && report.economic_data !== null) ? report.economic_data : {};
-      
-      // Extract report text for analysis if structured data is missing
-      // IMPORTANT: Truncate to prevent payload size / token limit issues
-      const reportText = (report.report_content || '').substring(0, 4000);
+      const investmentScore: any = (typeof report.investment_score === 'object' && report.investment_score !== null) ? report.investment_score : {};
+      const breakdown: any = investmentScore.breakdown || {};
+      const financials: any = (typeof report.financial_calculations === 'object' && report.financial_calculations !== null) ? report.financial_calculations : {};
+      const initialCosts: any = financials.initialCosts || {};
+      const income: any = financials.income || {};
+      const keyMetrics: any = financials.keyMetrics || {};
+      const loanDetails: any = financials.loanDetails || {};
+      const projections: any = financials.projections || {};
+      const moderate: any[] = Array.isArray(projections.moderate) ? projections.moderate : [];
+      const assumptions: any = financials.assumptions || {};
+      const demographics: any = (typeof report.demographics_data === 'object' && report.demographics_data !== null) ? report.demographics_data : {};
+      const location: any = (typeof report.location_intelligence === 'object' && report.location_intelligence !== null) ? report.location_intelligence : {};
+      const economics: any = (typeof report.economic_data === 'object' && report.economic_data !== null) ? report.economic_data : {};
+
+      // Derive missing values from real data
+      const weeklyRent = income.weeklyRent ?? null;
+      const occupancyWeeks = assumptions.occupancyWeeks ?? 50;
+      const annualRent = weeklyRent != null ? Math.round(weeklyRent * occupancyWeeks) : null;
+      const weeklyNet = keyMetrics.weeklyNet ?? null;
+      // Monthly cash flow derived using exact 52/12 multiplier (project standard)
+      const monthlyCashFlow = weeklyNet != null ? Math.round(weeklyNet * (52 / 12)) : null;
+      const year5 = moderate.find((y) => y?.year === 5) || moderate[4] || null;
+      const year10 = moderate.find((y) => y?.year === 10) || moderate[9] || null;
+
+      // Trim reportText aggressively — it must NOT be the source of differentiation.
+      // We keep a small slice only as a last-resort context hint.
+      const reportText = (report.report_content || '').substring(0, 800);
 
       return {
         propertyNumber: index + 1,
         address: report.property_address,
-        reportText: reportText, // Truncated report content for analysis
-        
-        // Investment Scoring
-        overallScore: investmentScore.totalScore || null,
-        letterGrade: investmentScore.letterGrade || null,
-        recommendation: investmentScore.recommendation || null,
+        reportTextSnippet: reportText,
+
+        // Investment Scoring (from real schema)
+        overallScore: investmentScore.totalScore ?? null,
+        letterGrade: investmentScore.grade ?? null,
+        recommendation: investmentScore.recommendation ?? null,
         scoreBreakdown: {
-          yield: investmentScore.yieldScore || null,
-          growth: investmentScore.growthScore || null,
-          location: investmentScore.locationScore || null,
-          demand: investmentScore.demandScore || null,
-          risk: investmentScore.riskScore || null
+          yield: breakdown.yieldScore?.score ?? null,
+          growth: breakdown.growthScore?.score ?? null,
+          location: breakdown.locationScore?.score ?? null,
+          demand: breakdown.demandScore?.score ?? null,
+          risk: breakdown.riskScore?.score ?? null,
         },
-        
-        // Financial Metrics
+        scoreDetails: {
+          yield: breakdown.yieldScore?.details ?? null,
+          growth: breakdown.growthScore?.details ?? null,
+          location: breakdown.locationScore?.details ?? null,
+          demand: breakdown.demandScore?.details ?? null,
+          risk: breakdown.riskScore?.details ?? null,
+        },
+
+        // Financial Metrics (from nested schema)
         financialMetrics: {
-          purchasePrice: financials.purchasePrice || null,
-          weeklyRent: financials.weeklyRent || null,
-          annualRent: financials.annualRent || null,
-          rentalYield: financials.rentalYield || null,
-          cashFlow: financials.monthlyCashFlow || null,
-          roi5Year: financials.projections?.fiveYear?.totalReturn || null,
-          roi10Year: financials.projections?.tenYear?.totalReturn || null,
-          appreciation: financials.projections?.tenYear?.appreciation || null
+          purchasePrice: initialCosts.propertyValue ?? null,
+          buildPrice: initialCosts.buildPrice ?? null,
+          landPrice: initialCosts.landPrice ?? null,
+          loanAmount: initialCosts.loanAmount ?? loanDetails.loanAmount ?? null,
+          lvr: keyMetrics.lvr ?? loanDetails.lvr ?? initialCosts.lvr ?? null,
+          stampDuty: initialCosts.stampDuty ?? null,
+          lmi: initialCosts.lmi ?? null,
+          totalUpfront: initialCosts.totalUpfront ?? null,
+          weeklyRent,
+          annualRent,
+          grossRentalYield: keyMetrics.grossRentalYield ?? null,
+          netRentalYield: keyMetrics.netRentalYield ?? null,
+          weeklyNet,
+          annualNet: keyMetrics.annualNet ?? null,
+          monthlyCashFlow,
+          cashOnCashReturn: keyMetrics.cashOnCashReturn ?? null,
+          interestRate: loanDetails.interestRate ?? null,
+          weeklyLoanPayment: loanDetails.weeklyPayment ?? null,
+          capitalGrowthAssumption: assumptions.capitalGrowth ?? null,
+          year5: year5 ? {
+            cashFlow: year5.cashFlow ?? null,
+            equity: year5.equity ?? null,
+            propertyValue: year5.propertyValue ?? null,
+            roi: year5.roi ?? null,
+          } : null,
+          year10: year10 ? {
+            cashFlow: year10.cashFlow ?? null,
+            equity: year10.equity ?? null,
+            propertyValue: year10.propertyValue ?? null,
+            roi: year10.roi ?? null,
+            cumulativeCashFlow: year10.cumulativeCashFlow ?? null,
+          } : null,
         },
-        
+
         // Location Intelligence
         locationData: {
-          walkScore: location.walkScore || null,
-          transitScore: location.transitScore || null,
-          schoolRating: location.averageSchoolRating || null,
-          nearbySchools: location.schoolsNearby || null,
-          amenitiesCount: location.amenitiesNearby || null,
-          distanceToCity: location.distanceToCity || null
+          walkScore: location.walkScore ?? null,
+          transitScore: location.transitScore ?? null,
+          schoolRating: location.averageSchoolRating ?? null,
+          nearbySchools: location.schoolsNearby ?? null,
+          amenitiesCount: location.amenitiesNearby ?? null,
+          distanceToCity: location.distanceToCity ?? null,
         },
-        
-        // Demographics
+
+        // Demographics (often null — surface as N/A, do NOT fabricate)
         demographics: {
-          population: demographics.population || null,
-          medianIncome: demographics.medianIncome || null,
-          medianAge: demographics.medianAge || 0,
-          employmentRate: demographics.employmentRate || 0,
-          housingAffordability: demographics.housingAffordability || 'N/A'
+          population: demographics.population ?? null,
+          medianIncome: demographics.medianIncome ?? null,
+          medianAge: demographics.medianAge ?? null,
+          employmentRate: demographics.employmentRate ?? null,
+          housingAffordability: demographics.housingAffordability ?? null,
         },
-        
-        // Risk Factors
-        risks: investmentScore.swotAnalysis?.threats || [],
-        strengths: investmentScore.swotAnalysis?.strengths || [],
-        
+
+        // Qualitative — from real schema (no swotAnalysis nesting)
+        risks: Array.isArray(investmentScore.risks) ? investmentScore.risks : [],
+        strengths: Array.isArray(investmentScore.strengths) ? investmentScore.strengths : [],
+        weaknesses: Array.isArray(investmentScore.weaknesses) ? investmentScore.weaknesses : [],
+        opportunities: Array.isArray(investmentScore.opportunities) ? investmentScore.opportunities : [],
+
         // Market Data
         marketData: {
-          vacancyRate: economics.vacancyRate || 0,
-          supplyGrowth: economics.supplyGrowth || 0,
-          interestRate: economics.cashRate || 0
-        }
+          vacancyRate: economics.vacancyRate ?? null,
+          supplyGrowth: economics.supplyGrowth ?? null,
+          interestRate: economics.cashRate ?? null,
+        },
       };
     });
 
