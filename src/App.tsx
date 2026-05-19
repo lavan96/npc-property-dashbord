@@ -309,6 +309,9 @@ const App = () => (
                 <Route path="reports/analytics" element={<ReportsAnalytics />} />
                 <Route path="model-hub" element={<ModelHub />} />
                 <Route path="billing/usage" element={<TokenUsageHistory />} />
+                <Route path="billing/topup" element={<BillingTopup />} />
+                <Route path="billing/seats" element={<BillingSeats />} />
+                <Route path="billing/catalog" element={<BillingCatalog />} />
                 <Route path="admin/token-audit" element={<TokenAuditLog />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
