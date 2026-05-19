@@ -318,6 +318,19 @@ export function BulkGenerationModal({
               </p>
             </div>
 
+            {/* Token cost + balance status (scales with selection) */}
+            <ReportGenerationStatus
+              estimate={estimateTokens('report.bulk-item') * Math.max(1, selectedProperties.length)}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Projected token cost ({selectedProperties.length} × ~{estimateTokens('report.bulk-item').toLocaleString()} per report)
+              </span>
+              <TokenCostEstimate
+                estimate={estimateTokens('report.bulk-item') * Math.max(1, selectedProperties.length)}
+              />
+            </div>
+
             <div className="flex gap-3">
               <Button onClick={() => startGeneration(false)} disabled={isGenerating} size="lg" className="flex-1">
                 {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
