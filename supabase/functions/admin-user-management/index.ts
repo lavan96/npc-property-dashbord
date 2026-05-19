@@ -924,6 +924,12 @@ Deno.serve(async (req: Request) => {
           console.warn('[seat] release on purge threw', e);
         }
       }
+      try {
+        const r = await releaseDevice({ externalUserId: user_id, reason: 'user_purged' });
+        if (!r.ok) console.warn(`[device] release on purge failed: ${r.error}`);
+      } catch (e) {
+        console.warn('[device] release on purge threw', e);
+      }
 
       console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);
       return new Response(
