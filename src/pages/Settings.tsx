@@ -331,6 +331,9 @@ export default function Settings() {
       {/* Mission Control Key (superadmin only — card hides itself otherwise) */}
       <MissionControlKeyCard />
 
+      {/* Plan & Seats (superadmin only) */}
+      <SeatEntitlementCard />
+
       {/* Security Settings */}
       <Card>
         <CardHeader>
