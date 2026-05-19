@@ -896,8 +896,7 @@ export function EnhancedInvestmentReportModal({
                   and detailed financial projections with 10-year scenarios.
                 </p>
                 <ReportGenerationStatus
-                  kind="report.investment.executive"
-                  options={{ aiNarrative: true, extraSections: 1 }}
+                  estimate={estimateTokens('report.investment.executive', { aiNarrative: true, extraSections: 1 })}
                   className="text-left"
                 />
                 <div className="flex items-center justify-center">
