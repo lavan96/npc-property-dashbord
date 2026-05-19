@@ -111,7 +111,20 @@ export function withReportMetering(
       plan = null;
     }
 
+    console.log("[reportMetering] plan resolved", {
+      hasPlan: !!plan,
+      hasUserId: !!plan?.userId,
+      hasIdempotencyKey: !!plan?.idempotencyKey,
+      kind: plan?.kind,
+    });
+
     if (!plan || !plan.userId || !plan.idempotencyKey) {
+      console.warn("[reportMetering] bypassing metering — plan/userId/idempotencyKey missing", {
+        hasBody: body !== undefined,
+        hasPlan: !!plan,
+        userId: plan?.userId ?? null,
+        idempotencyKey: plan?.idempotencyKey ?? null,
+      });
       return handler(forwardReq);
     }
 
