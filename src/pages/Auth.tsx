@@ -510,6 +510,15 @@ export default function Auth() {
           </div>
         </motion.div>
       </main>
+
+      <ManageDevicesDialog
+        open={Boolean(deviceLimit)}
+        onOpenChange={handleDeviceDialogChange}
+        devicesActive={deviceLimit?.devices_active ?? 0}
+        deviceLimit={deviceLimit?.device_limit ?? 0}
+        devices={deviceLimit?.devices ?? []}
+        onDeviceRevoked={handleDeviceRevoked}
+      />
     </div>
   );
 }
