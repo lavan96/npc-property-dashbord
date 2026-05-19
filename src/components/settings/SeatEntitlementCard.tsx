@@ -126,7 +126,7 @@ export function SeatEntitlementCard() {
                   </Badge>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/billing/seats')}>
+              <Button variant="outline" size="sm" onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}>
                 Manage plan
                 <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
