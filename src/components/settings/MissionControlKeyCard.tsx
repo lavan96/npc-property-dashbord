@@ -25,6 +25,8 @@ export function MissionControlKeyCard() {
   const { toast } = useToast();
   const [info, setInfo] = useState<KeyInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [testing, setTesting] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [graceHours, setGraceHours] = useState(1);
@@ -33,13 +35,21 @@ export function MissionControlKeyCard() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
+    setForbidden(false);
     try {
       const { data, error } = await invokeSecureFunction<KeyInfo>("mission-control-key-info", {});
-      if (error) throw new Error(error.message ?? "Failed");
+      if (error) {
+        const msg = (error.message ?? "").toLowerCase();
+        if (msg.includes("forbid")) setForbidden(true);
+        else setLoadError(error.message ?? "Failed to load");
+        setInfo(null);
+        return;
+      }
       setInfo(data ?? null);
     } catch (e: any) {
-      // Silent — non-superadmins get 403 and shouldn't see noise.
       console.warn("[MissionControlKeyCard] load", e);
+      setLoadError(e?.message ?? "Failed to load");
       setInfo(null);
     } finally {
       setLoading(false);
@@ -87,8 +97,9 @@ export function MissionControlKeyCard() {
     }
   };
 
-  // Hide entirely for non-superadmins (info will be null after a 403).
-  if (!loading && !info) return null;
+  // Hide silently only for non-superadmins (403). Always show otherwise so
+  // the card is discoverable even when MC isn't configured yet or the lookup fails.
+  if (forbidden) return null;
 
   return (
     <Card>
@@ -101,6 +112,16 @@ export function MissionControlKeyCard() {
       <CardContent className="space-y-4">
         {loading ? (
           <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : loadError ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>Couldn't load Mission Control status: {loadError}</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={load}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Retry
+            </Button>
+          </div>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
