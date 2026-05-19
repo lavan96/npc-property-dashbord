@@ -13,6 +13,9 @@ import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface BulkGenerationModalProps {
   open: boolean;
@@ -313,6 +316,19 @@ export function BulkGenerationModal({
                 This will generate {selectedProperties.length} investment reports. 
                 Estimated time: {Math.ceil(selectedProperties.length * 0.8)} - {Math.ceil(selectedProperties.length * 1.2)} minutes.
               </p>
+            </div>
+
+            {/* Token cost + balance status (scales with selection) */}
+            <ReportGenerationStatus
+              estimate={estimateTokens('report.bulk-item') * Math.max(1, selectedProperties.length)}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Projected token cost ({selectedProperties.length} × ~{estimateTokens('report.bulk-item').toLocaleString()} per report)
+              </span>
+              <TokenCostEstimate
+                estimate={estimateTokens('report.bulk-item') * Math.max(1, selectedProperties.length)}
+              />
             </div>
 
             <div className="flex gap-3">

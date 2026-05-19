@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import jsPDF from 'jspdf';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface InvestmentReportModalProps {
   isOpen: boolean;
@@ -454,12 +457,19 @@ export function InvestmentReportModal({
         <div className="flex-1 flex flex-col min-h-0">
           {!hasStartedGeneration && !reportContent && (
             <div className="flex-1 flex items-center justify-center p-8">
-              <div className="text-center space-y-4">
+              <div className="w-full max-w-md text-center space-y-4">
                 <h3 className="text-lg font-medium">Generate Investment Report</h3>
-                <p className="text-muted-foreground max-w-md">
+                <p className="text-muted-foreground">
                   Click below to generate a comprehensive property investment analysis 
                   including financial projections, market analysis, and growth potential.
                 </p>
+                <ReportGenerationStatus
+                  estimate={estimateTokens('report.investment.snapshot', { aiNarrative: true })}
+                  className="text-left"
+                />
+                <div className="flex items-center justify-center">
+                  <TokenCostEstimate kind="report.investment.snapshot" options={{ aiNarrative: true }} />
+                </div>
                 <Button onClick={() => generateReport()} size="lg" disabled={isGenerating}>
                   Generate Analysis
                 </Button>

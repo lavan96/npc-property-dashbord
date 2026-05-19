@@ -8,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MarketIntelligenceHistoryModal } from './MarketIntelligenceHistoryModal';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface MarketIntelligenceExportButtonProps {
   reportType?: 'full' | 'market_pulse' | 'hotspot_deep_dive' | 'strategy_insight' | 'finance_update' | 'deal_breakdown' | 'myth_busting' | 'development_spotlight';
@@ -115,8 +118,14 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
     }
   };
 
+  const miEstimate = estimateTokens('report.market-intelligence', {
+    aiNarrative: true,
+    extraSections: reportType === 'full' ? 2 : 0,
+  });
+
   return (
     <div className="space-y-2">
+      <ReportGenerationStatus estimate={miEstimate} />
       <div className="flex items-center gap-1.5">
         <Button
           onClick={handleGenerate}
@@ -172,6 +181,7 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
         >
           <History className="h-3.5 w-3.5" />
         </Button>
+        <TokenCostEstimate estimate={miEstimate} compact className="ml-1" />
       </div>
 
       {generationState.status === 'success' && (

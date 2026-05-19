@@ -24,6 +24,9 @@ import { BuildTypeSelector } from './shared/BuildTypeSelector';
 import { BuildType } from '@/types/overrideFields';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { useSearchParams } from 'react-router-dom';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface RecentReport {
   id: string;
@@ -1878,6 +1881,20 @@ export function InvestmentReportGenerator() {
                 </div>
               </div>
 
+              {/* Token cost + balance status */}
+              <ReportGenerationStatus
+                kind="report.investment.compass"
+                estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 })}
+                className="mb-3"
+              />
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="text-xs text-muted-foreground">Projected token cost (updates with inputs)</span>
+                <TokenCostEstimate
+                  kind="report.investment.compass"
+                  options={{ aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 }}
+                />
+              </div>
+
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
@@ -2168,6 +2185,20 @@ export function InvestmentReportGenerator() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Token cost + balance status */}
+                  <ReportGenerationStatus
+                    kind="report.investment.compass"
+                    estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: 2 })}
+                    className="mb-3"
+                  />
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-xs text-muted-foreground">Projected token cost (URL ingest + AI narrative)</span>
+                    <TokenCostEstimate
+                      kind="report.investment.compass"
+                      options={{ aiNarrative: true, extraSections: 2 }}
+                    />
                   </div>
 
                   {/* Generate Button - At bottom after overrides */}
@@ -2500,6 +2531,20 @@ export function InvestmentReportGenerator() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Token cost + balance status */}
+                  <ReportGenerationStatus
+                    kind="report.investment.compass"
+                    estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: 2 })}
+                    className="mb-3"
+                  />
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-xs text-muted-foreground">Projected token cost (PDF parse + AI narrative)</span>
+                    <TokenCostEstimate
+                      kind="report.investment.compass"
+                      options={{ aiNarrative: true, extraSections: 2 }}
+                    />
                   </div>
 
                   {/* Generate Button - At bottom after overrides */}

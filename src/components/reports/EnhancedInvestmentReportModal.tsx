@@ -15,6 +15,9 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface EnhancedInvestmentReportModalProps {
   isOpen: boolean;
@@ -886,12 +889,22 @@ export function EnhancedInvestmentReportModal({
         <div className="flex-1 flex flex-col min-h-0">
           {!hasStartedGeneration && !reportContent && (
             <div className="flex-1 flex items-center justify-center p-8">
-              <div className="text-center space-y-4">
+              <div className="w-full max-w-md text-center space-y-4">
                 <h3 className="text-lg font-medium">Generate Enhanced Investment Report</h3>
-                <p className="text-muted-foreground max-w-md">
+                <p className="text-muted-foreground">
                   Generate a comprehensive analysis including ABS demographic data, RBA economic indicators, 
                   and detailed financial projections with 10-year scenarios.
                 </p>
+                <ReportGenerationStatus
+                  estimate={estimateTokens('report.investment.executive', { aiNarrative: true, extraSections: 1 })}
+                  className="text-left"
+                />
+                <div className="flex items-center justify-center">
+                  <TokenCostEstimate
+                    kind="report.investment.executive"
+                    options={{ aiNarrative: true, extraSections: 1 }}
+                  />
+                </div>
                 <Button onClick={() => generateReport(false)} size="lg" disabled={isGenerating}>
                   Generate Enhanced Analysis
                 </Button>
