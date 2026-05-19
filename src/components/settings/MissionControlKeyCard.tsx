@@ -97,8 +97,9 @@ export function MissionControlKeyCard() {
     }
   };
 
-  // Hide entirely for non-superadmins (info will be null after a 403).
-  if (!loading && !info) return null;
+  // Hide silently only for non-superadmins (403). Always show otherwise so
+  // the card is discoverable even when MC isn't configured yet or the lookup fails.
+  if (forbidden) return null;
 
   return (
     <Card>
