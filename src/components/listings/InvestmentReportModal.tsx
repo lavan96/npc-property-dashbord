@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import jsPDF from 'jspdf';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface InvestmentReportModalProps {
   isOpen: boolean;
