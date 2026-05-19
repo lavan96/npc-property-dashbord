@@ -12,6 +12,10 @@ export interface SeatReserveInput {
   email?: string;
   displayName?: string;
   idempotencyKey: string;
+  /** Optional pricing-catalog role slug; forwarded as `metadata.role_slug`. */
+  roleSlug?: string;
+  /** Arbitrary additional metadata merged into the reservation payload. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface SeatReserveSuccess {
