@@ -85,22 +85,32 @@ export function estimateTokens(
 }
 
 export async function fetchTokenBalance(): Promise<TokenBalance> {
-  const { data, error } = await supabase.functions.invoke("mission-control-balance", {
-    method: "GET",
-  });
+  const { invokeSecureFunction } = await import("@/lib/secureInvoke");
+  const { data, error } = await invokeSecureFunction<TokenBalance>(
+    "mission-control-balance",
+    {},
+  );
   if (error) throw new Error(error.message ?? "Failed to fetch balance");
-  if (!data || typeof data.available !== "number") {
+  if (!data || typeof (data as any).available !== "number") {
     throw new Error("Invalid balance response");
   }
   return data as TokenBalance;
 }
 
 export async function fetchTopupPacks(): Promise<TopupPacksResult> {
-  const { data, error } = await supabase.functions.invoke("mission-control-packs", {
-    method: "GET",
-  });
+  const { invokeSecureFunction } = await import("@/lib/secureInvoke");
+  const { data, error } = await invokeSecureFunction<TopupPacksResult>(
+    "mission-control-packs",
+    {},
+  );
   if (error) throw new Error(error.message ?? "Failed to fetch top-up packs");
-  return (data as TopupPacksResult) ?? { packs: [], topupUrl: null, pagination: { limit: 50, offset: 0, total: 0, hasMore: false, nextOffset: null } };
+  return (
+    data ?? {
+      packs: [],
+      topupUrl: null,
+      pagination: { limit: 50, offset: 0, total: 0, hasMore: false, nextOffset: null },
+    }
+  );
 }
 
 /** Throws InsufficientTokensError if available < estimate. Returns balance otherwise. */
