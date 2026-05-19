@@ -9,6 +9,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
  * Mount near the top of report-generation pages.
  */
 export function TokenBalanceBanner() {
+  const navigate = useNavigate();
   const { balance, lowBalance } = useTokenBalance();
   if (!lowBalance || !balance) return null;
 
@@ -28,7 +29,7 @@ export function TokenBalanceBanner() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener")}
+          onClick={() => navigate("/billing/topup")}
         >
           Top up
         </Button>
