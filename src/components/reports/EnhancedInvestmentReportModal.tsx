@@ -17,6 +17,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
 import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
 import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface EnhancedInvestmentReportModalProps {
   isOpen: boolean;
