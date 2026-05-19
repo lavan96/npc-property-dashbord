@@ -18,6 +18,7 @@ import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts
 import { PushNotificationToggle } from '@/components/settings/PushNotificationToggle';
 import { MissionControlKeyCard } from '@/components/settings/MissionControlKeyCard';
 import { SeatEntitlementCard } from '@/components/settings/SeatEntitlementCard';
+import { PricingCatalogCard } from '@/components/settings/PricingCatalogCard';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
