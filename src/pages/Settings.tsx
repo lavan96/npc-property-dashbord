@@ -16,6 +16,7 @@ import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigr
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts';
 import { PushNotificationToggle } from '@/components/settings/PushNotificationToggle';
+import { MissionControlKeyCard } from '@/components/settings/MissionControlKeyCard';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -326,6 +327,9 @@ export default function Settings() {
 
       {/* Comparison Score Migration */}
       <ComparisonScoreMigration />
+
+      {/* Mission Control Key (superadmin only — card hides itself otherwise) */}
+      <MissionControlKeyCard />
 
       {/* Security Settings */}
       <Card>
