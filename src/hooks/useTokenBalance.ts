@@ -1,21 +1,33 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchTokenBalance, type TokenBalance } from "@/lib/missionControl";
+import { onTokensUsed, onOutOfTokens } from "@/lib/tokenEvents";
 
 interface UseTokenBalanceOptions {
-  /** Auto-refetch interval in ms. 0 = no polling. Default 60s. */
+  /** Auto-refetch interval in ms. 0 = no polling. Default 3 minutes. */
   pollMs?: number;
   /** Skip the initial fetch (e.g. while auth resolves). */
   enabled?: boolean;
+  /** Also refetch when the tab regains focus / becomes visible. Default true. */
+  refetchOnFocus?: boolean;
+  /** Also refetch when a token event fires (tokens-used / out-of-tokens). Default true. */
+  refetchOnTokenEvent?: boolean;
 }
 
 export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
-  const { pollMs = 60_000, enabled = true } = opts;
+  const {
+    pollMs = 180_000,
+    enabled = true,
+    refetchOnFocus = true,
+    refetchOnTokenEvent = true,
+  } = opts;
   const [balance, setBalance] = useState<TokenBalance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const lastFetchRef = useRef(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    lastFetchRef.current = Date.now();
     try {
       const b = await fetchTokenBalance();
       setBalance(b);
@@ -27,6 +39,7 @@ export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
     }
   }, []);
 
+  // Initial + polling
   useEffect(() => {
     if (!enabled) return;
     refresh();
@@ -36,8 +49,40 @@ export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
     }
   }, [enabled, pollMs, refresh]);
 
+  // Refetch on tab focus / visibility (throttled to once / 30s)
+  useEffect(() => {
+    if (!enabled || !refetchOnFocus) return;
+    const maybeRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastFetchRef.current < 30_000) return;
+      refresh();
+    };
+    window.addEventListener("focus", maybeRefresh);
+    document.addEventListener("visibilitychange", maybeRefresh);
+    return () => {
+      window.removeEventListener("focus", maybeRefresh);
+      document.removeEventListener("visibilitychange", maybeRefresh);
+    };
+  }, [enabled, refetchOnFocus, refresh]);
+
+  // Refetch immediately when a generator emits a token event so the pill reflects spend in real-time.
+  useEffect(() => {
+    if (!enabled || !refetchOnTokenEvent) return;
+    const offUsed = onTokensUsed(() => {
+      // small debounce so we don't hammer when multiple chunks land at once
+      setTimeout(() => refresh(), 750);
+    });
+    const offOut = onOutOfTokens(() => refresh());
+    return () => {
+      offUsed();
+      offOut();
+    };
+  }, [enabled, refetchOnTokenEvent, refresh]);
+
   const lowBalance =
     balance != null && balance.allowance > 0 && balance.available / balance.allowance < 0.1;
+  const criticalBalance =
+    balance != null && balance.allowance > 0 && balance.available / balance.allowance < 0.05;
 
-  return { balance, loading, error, refresh, lowBalance };
+  return { balance, loading, error, refresh, lowBalance, criticalBalance };
 }
