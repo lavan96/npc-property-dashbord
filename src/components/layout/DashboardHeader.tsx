@@ -112,6 +112,8 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
             <span className="sr-only">Theme: {getThemeLabel()}</span>
           </Button>
 
+          <TokenBalancePill />
+
           <NotificationsDropdown />
 
           <DropdownMenu>
