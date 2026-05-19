@@ -963,7 +963,7 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position
       status: 500, headers: { ...createCorsHeaders(), 'Content-Type': 'application/json' },
     });
   }
-});
+};
 
 Deno.serve(withReportMetering(async (body, req) => {
   if (!body) return null;
