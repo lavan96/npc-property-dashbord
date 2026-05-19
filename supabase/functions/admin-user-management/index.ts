@@ -875,7 +875,7 @@ Deno.serve(async (req: Request) => {
       // Verify user is soft-deleted before allowing purge
       const { data: targetUser } = await supabase
         .from('custom_users')
-        .select('id, deleted_at, username')
+        .select('id, deleted_at, username, email')
         .eq('id', user_id)
         .single();
 
