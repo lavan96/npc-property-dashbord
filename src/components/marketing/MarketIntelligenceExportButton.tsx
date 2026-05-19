@@ -118,8 +118,14 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
     }
   };
 
+  const miEstimate = estimateTokens('report.market-intelligence', {
+    aiNarrative: true,
+    extraSections: reportType === 'full' ? 2 : 0,
+  });
+
   return (
     <div className="space-y-2">
+      <ReportGenerationStatus estimate={miEstimate} />
       <div className="flex items-center gap-1.5">
         <Button
           onClick={handleGenerate}
