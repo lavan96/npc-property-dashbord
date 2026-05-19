@@ -58,7 +58,7 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/billing/seats")}
+            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
           >
             Upgrade plan
           </Button>
