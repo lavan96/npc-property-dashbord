@@ -41,6 +41,7 @@ interface RequestBody {
   email_signature?: string;
   include_deleted?: boolean;
   restore?: boolean;
+  idempotency_key?: string;
 }
 
 // Helper to verify authentication and check if user is superadmin
