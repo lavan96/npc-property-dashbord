@@ -273,13 +273,14 @@ This comparison MUST contain ALL of the following 10 sections in exact order. Mi
 9. RED FLAGS & CONCERNS (specific concerns per property with severity ratings)
 10. FINAL RECOMMENDATION (best overall, runners-up, properties to avoid/reconsider)
 
-**DATA QUALITY INSTRUCTIONS:**
-    - **SCORING SCALE**: ALL finalScore values MUST be on a 0-100 scale (e.g., 85.2, not 8.5). Use the overallScore provided in the data when available.
-    - Some properties may have incomplete structured data - if data is null, analyze the reportText field to extract relevant information
-    - When structured data is missing, extract key metrics and insights from the reportText field
-    - If certain metrics are unavailable for a property, note this clearly (use "N/A" or "Data unavailable")
-    - **CRITICAL**: Double-check all finalScore values are 0-100 scale before submitting (typical good scores: 70-85, excellent: 85+, poor: <60)
-    ${customWeights ? `- **CUSTOM SCORING WEIGHTS**: Apply these custom weights when calculating rankings: Growth ${customWeights.growth}%, Location ${customWeights.location}%, Yield ${customWeights.yield}%, Demand ${customWeights.demand}%, Risk ${customWeights.risk}%` : ''}
+    **DATA QUALITY INSTRUCTIONS:**
+    - **SCORING SCALE**: ALL finalScore values MUST be on a 0-100 scale (e.g., 85.2, not 8.5). PREFER the overallScore provided in the data. If overallScore is null, compute from scoreBreakdown using standard weights (yield 15, growth 40, location 25, demand 15, risk 5) — never invent.
+    - **STRICT GROUNDING**: Every numeric claim MUST come from structured fields under financialMetrics / scoreBreakdown / scoreDetails / locationData. If a field is null, write "Data unavailable" — do NOT estimate or back-fill from reportTextSnippet.
+    - **NO PARAPHRASING**: reportTextSnippet is context only. You MUST NOT copy, paraphrase, or restate it across multiple properties. Differentiate properties ONLY on structured metric differences (purchasePrice, grossRentalYield, weeklyNet, monthlyCashFlow, year5/year10 roi, scoreBreakdown deltas, walkScore, schoolRating, lvr, interestRate, capitalGrowthAssumption).
+    - **TIED SCORES**: If two or more properties share the same overallScore, do NOT duplicate strengths/concerns text. Explicitly note the tie and differentiate on underlying scoreBreakdown numbers and financialMetrics deltas (e.g. "Ties Property 3 on overall but leads on grossRentalYield 4.31% vs 3.82%").
+    - **DIFFERENTIATION REQUIREMENT**: primaryStrengths, primaryConcerns, competitiveAdvantages and redFlags MUST be unique per property. Cite the specific numeric metric that justifies each bullet (e.g. "Strong yield 4.31% gross vs basket avg 3.95%"). Generic statements that could apply to every property are forbidden.
+    - **MISSING DATA**: If demographics or marketData fields are null, omit them. Do not fabricate medianIncome, vacancyRate, etc.
+    ${customWeights ? `- **CUSTOM SCORING WEIGHTS**: Apply these custom weights when ranking: Growth ${customWeights.growth}%, Location ${customWeights.location}%, Yield ${customWeights.yield}%, Demand ${customWeights.demand}%, Risk ${customWeights.risk}%` : ''}
     
     **ANALYSIS DEPTH:** ${analysisDepth}
     **INVESTOR PROFILE:** ${investorProfile}
