@@ -56,6 +56,8 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
+  const [deviceLimit, setDeviceLimit] = useState<DeviceLimitInfo | null>(null);
+
   const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
 
   useEffect(() => {
