@@ -906,6 +906,15 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Mission Control: release the seat (idempotent even if soft-delete already did).
+      if (targetUser.email) {
+        try {
+          const released = await releaseSeat(targetUser.email, 'user_purged');
+          if (!released.ok) console.warn(`[seat] release on purge failed: ${released.error}`);
+        } catch (e) {
+          console.warn('[seat] release on purge threw', e);
+        }
+
       console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User permanently deleted' }),
