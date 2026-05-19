@@ -808,6 +808,13 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Look up email first so we can release the Mission Control seat.
+      const { data: victim } = await supabase
+        .from('custom_users')
+        .select('email')
+        .eq('id', user_id)
+        .single();
+
       // Soft-delete: set deleted_at and deactivate
       const { error } = await supabase
         .from('custom_users')
@@ -830,6 +837,16 @@ Deno.serve(async (req: Request) => {
         .from('user_sessions')
         .delete()
         .eq('user_id', user_id);
+
+      // Mission Control: release the seat (idempotent — safe on repeat).
+      if (victim?.email) {
+        try {
+          const released = await releaseSeat(victim.email, 'user_soft_deleted');
+          if (!released.ok) console.warn(`[seat] release failed: ${released.error}`);
+        } catch (e) {
+          console.warn('[seat] release threw', e);
+        }
+      }
 
       console.log(`User ${user_id} soft-deleted by ${adminUser.username}`);
       return new Response(
