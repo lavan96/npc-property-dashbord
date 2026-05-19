@@ -61,11 +61,20 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[mission-control-seats]", e);
-    return new Response(JSON.stringify({
-      error: "internal_error",
-      message: e instanceof Error ? e.message : String(e),
-    }), {
-      status: 500,
+    const isMc = e instanceof MissionControlError;
+    const status = isMc ? (e.status === 401 ? 502 : e.status) : 500;
+    const payload = isMc
+      ? {
+          error: e.code,
+          message:
+            e.code === "unauthorized"
+              ? "Mission Control rejected the seat-entitlement request. The clone API key may not be entitled for the seats endpoints — please verify in Mission Control."
+              : e.message,
+          mc_status: e.status,
+        }
+      : { error: "internal_error", message: e instanceof Error ? e.message : String(e) };
+    return new Response(JSON.stringify(payload), {
+      status,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   }
