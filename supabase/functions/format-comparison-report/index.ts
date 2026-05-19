@@ -40,7 +40,7 @@ function sanitizeFormattedContent(content: string): string {
   return sanitized;
 }
 
-Deno.serve(async (req) => {
+const __formatComparisonReportHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
@@ -352,4 +352,24 @@ Return ONLY the formatted markdown report. Do not include any commentary or expl
       }
     );
   }
-});
+};
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const propertyCount: number = Array.isArray(body?.comparisonData?.properties)
+    ? body.comparisonData.properties.length
+    : (body?.propertyCount ?? 2);
+  return {
+    kind: 'report.chart-analysis' as const,
+    userId,
+    idempotencyKey: buildIdempotencyKey('format-comparison', [
+      body?.comparisonData?.id,
+      body?.comparisonId,
+      propertyCount,
+    ]),
+    estimateOptions: { aiNarrative: true, multiplier: Math.max(1, propertyCount / 2) },
+    requestPayload: { propertyCount },
+  };
+}, __formatComparisonReportHandler));
