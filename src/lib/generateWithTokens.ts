@@ -19,6 +19,13 @@ export interface GenerateWithTokensOptions {
   estimate?: { extraSections?: number; aiNarrative?: boolean; multiplier?: number };
   /** Explicit estimate (bypasses heuristic). */
   estimatedTokens?: number;
+  /**
+   * Optional Mission Control catalog report slug. When provided we resolve
+   * the per-report `credit_cost` and forward it to the server (which converts
+   * it into tokens). Preflight still uses the local heuristic; the catalog
+   * cost is authoritative only at reserve time on the server.
+   */
+  reportSlug?: string;
   /** Skip preflight balance fetch (server still gates on reserve). */
   skipPreflight?: boolean;
   /** Timeout in ms. */
@@ -31,6 +38,18 @@ export async function generateWithTokens<T = any>(
   opts: GenerateWithTokensOptions,
 ): Promise<InvokeResult<T>> {
   const estimate = opts.estimatedTokens ?? estimateTokens(opts.kind, opts.estimate);
+
+  // Resolve catalog credit cost best-effort; forward to server which is the
+  // source of truth for the actual reservation amount.
+  let catalogCredits: number | null = null;
+  if (opts.reportSlug) {
+    try {
+      const { getReportCreditCost } = await import("@/lib/missionControlCatalog");
+      catalogCredits = await getReportCreditCost(opts.reportSlug);
+    } catch (e) {
+      console.warn("[generateWithTokens] catalog lookup failed", e);
+    }
+  }
 
   if (!opts.skipPreflight) {
     try {
