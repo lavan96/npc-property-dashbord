@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Ban, Coins, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -10,6 +9,9 @@ import {
   fetchTopupPacks,
   type TokenKind,
   estimateTokens,
+  MISSION_CONTROL_TOPUP_URL,
+  MISSION_CONTROL_SEATS_URL,
+  openMissionControl,
 } from "@/lib/missionControl";
 
 interface ReportGenerationStatusProps {
