@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Ban, Coins, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -6,8 +7,6 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import {
-  MISSION_CONTROL_BILLING_URL,
-  MISSION_CONTROL_TOPUP_URL,
   fetchTopupPacks,
   type TokenKind,
   estimateTokens,
@@ -40,8 +39,9 @@ export function ReportGenerationStatus({
   onBlockedChange,
   className,
 }: ReportGenerationStatusProps) {
+  const navigate = useNavigate();
   const { balance, loading, error, lowBalance, criticalBalance } = useTokenBalance();
-  const [topupUrl, setTopupUrl] = useState<string>(MISSION_CONTROL_TOPUP_URL);
+  const [topupUrl, setTopupUrl] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -66,8 +66,11 @@ export function ReportGenerationStatus({
   if (!balance) return null;
   if (!insufficient && !lowBalance && !criticalBalance) return null;
 
-  const openTopup = () => window.open(topupUrl, "_blank", "noopener,noreferrer");
-  const openBilling = () => window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener,noreferrer");
+  const openTopup = () => {
+    if (topupUrl) window.open(topupUrl, "_blank", "noopener,noreferrer");
+    else navigate("/billing/topup");
+  };
+  const openBilling = () => navigate("/billing/seats");
 
   // Hard block: estimated cost exceeds available
   if (insufficient) {

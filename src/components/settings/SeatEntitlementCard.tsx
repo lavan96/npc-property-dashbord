@@ -3,6 +3,7 @@
  * list. Superadmin-only; hides itself for everyone else.
  */
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -11,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Users, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { MISSION_CONTROL_BILLING_URL } from '@/lib/missionControl';
 import { formatDistanceToNow } from 'date-fns';
 
 interface SeatRow {
@@ -36,6 +36,7 @@ interface Payload {
 }
 
 export function SeatEntitlementCard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -126,11 +127,9 @@ export function SeatEntitlementCard() {
                   </Badge>
                 </div>
               </div>
-              <Button asChild variant="outline" size="sm">
-                <a href={MISSION_CONTROL_BILLING_URL} target="_blank" rel="noopener noreferrer">
-                  Manage plan
-                  <ExternalLink className="h-3 w-3 ml-2" />
-                </a>
+              <Button variant="outline" size="sm" onClick={() => navigate('/billing/seats')}>
+                Manage plan
+                <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
             </div>
 
