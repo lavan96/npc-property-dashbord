@@ -35,6 +35,10 @@ interface AuthContextType {
     turnstileToken?: string,
   ) => Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }>;
   signOut: () => Promise<void>;
+  /** Retry device registration after the user revokes a device in the dialog. */
+  retryDeviceRegistration: () => Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }>;
+  /** Cancel a sign-in that is blocked on the device cap and log out the tokens. */
+  cancelPendingSession: () => Promise<void>;
 }
 
 
