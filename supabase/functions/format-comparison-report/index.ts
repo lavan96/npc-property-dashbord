@@ -109,6 +109,8 @@ const __formatComparisonReportHandler = async (req: Request): Promise<Response> 
 
 2. **COMPLETE RANKINGS**: The Overall Rankings section MUST include ALL ${propertyCount} properties with their FULL ADDRESSES.
 
+2a. **NO DUPLICATED CONTENT**: Per-property bullets (strengths, concerns, advantages, red flags, reasoning) MUST be unique to each property. If the source analysis repeats identical text across properties, do NOT carry that repetition through — instead surface the underlying numeric differences from the source data (yield %, weeklyNet, ROI, walkScore, lvr, score breakdown deltas). Generic statements that apply to every property are forbidden.
+
 3. **PROPERTY NUMBERING**: Use consistent property numbering throughout:
 ${numberedProperties}
 
