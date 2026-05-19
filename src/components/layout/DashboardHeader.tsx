@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSearch } from '@/contexts/SearchContext';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { TokenBalancePill } from '@/components/billing/TokenBalancePill';
 
 type Theme = 'light' | 'dark' | 'system';
 
