@@ -97,13 +97,46 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDeviceLimit(null);
     if (!turnstileToken) { setError('Please complete the security check'); return; }
     setIsLoading(true);
     const result = await signIn(username, password, turnstileToken);
-    if (result.error) { setTurnstileToken(null); setError(result.error); }
-    else navigate('/', { replace: true });
+    if (result.deviceLimit) {
+      setDeviceLimit(result.deviceLimit);
+      setError(result.error || 'Device limit reached.');
+    } else if (result.error) {
+      setTurnstileToken(null);
+      setError(result.error);
+    } else {
+      navigate('/', { replace: true });
+    }
     setIsLoading(false);
   };
+
+  const handleDeviceRevoked = async () => {
+    const result = await retryDeviceRegistration();
+    if (result.deviceLimit) {
+      setDeviceLimit(result.deviceLimit);
+      setError(result.error || 'Device limit still reached.');
+      return;
+    }
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setDeviceLimit(null);
+    setError('');
+    navigate('/', { replace: true });
+  };
+
+  const handleDeviceDialogChange = async (open: boolean) => {
+    if (!open) {
+      setDeviceLimit(null);
+      await cancelPendingSession();
+      setTurnstileToken(null);
+    }
+  };
+
 
   const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
