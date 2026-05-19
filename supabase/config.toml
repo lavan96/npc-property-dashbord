@@ -664,3 +664,9 @@ verify_jwt = false
 
 [functions.mission-control-balance]
 verify_jwt = false
+
+[functions.mission-control-key-info]
+verify_jwt = false
+
+[functions.mission-control-rotate-key]
+verify_jwt = false
