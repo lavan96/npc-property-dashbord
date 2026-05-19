@@ -1,12 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
+const __compareInvestmentReportsHandler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
@@ -562,4 +563,26 @@ Format your response as valid JSON with this structure:
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+};
+
+Deno.serve(withReportMetering(async (body, req) => {
+  if (!body) return null;
+  const userId = await resolveUserId(req, body);
+  if (!userId) return null;
+  const reportIds: string[] = Array.isArray(body?.reportIds) ? body.reportIds : [];
+  return {
+    kind: 'report.qualitative-regen' as const,
+    userId,
+    idempotencyKey: buildIdempotencyKey('compare-inv', [
+      reportIds.slice().sort().join(','),
+      body?.analysisDepth,
+      body?.timeHorizon,
+      body?.riskTolerance,
+    ]),
+    estimateOptions: { aiNarrative: true, multiplier: Math.max(1, reportIds.length) },
+    requestPayload: {
+      reportCount: reportIds.length,
+      analysisDepth: body?.analysisDepth,
+    },
+  };
+}, __compareInvestmentReportsHandler));
