@@ -75,7 +75,7 @@ export function PricingCatalogCard() {
         <Separator />
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Read-only — edits happen in Mission Control.</span>
-          <Button variant="outline" size="sm" onClick={() => navigate('/billing/catalog')}>
+          <Button variant="outline" size="sm" onClick={() => openMissionControl(MISSION_CONTROL_CATALOG_URL)}>
             Open catalog
             <ExternalLink className="ml-1.5 h-3 w-3" />
           </Button>
