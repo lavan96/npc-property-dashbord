@@ -41,7 +41,6 @@ export function ReportGenerationStatus({
   onBlockedChange,
   className,
 }: ReportGenerationStatusProps) {
-  const navigate = useNavigate();
   const { balance, loading, error, lowBalance, criticalBalance } = useTokenBalance();
   const [topupUrl, setTopupUrl] = useState<string>("");
 
@@ -68,11 +67,8 @@ export function ReportGenerationStatus({
   if (!balance) return null;
   if (!insufficient && !lowBalance && !criticalBalance) return null;
 
-  const openTopup = () => {
-    if (topupUrl) window.open(topupUrl, "_blank", "noopener,noreferrer");
-    else navigate("/billing/topup");
-  };
-  const openBilling = () => navigate("/billing/seats");
+  const openTopup = () => openMissionControl(topupUrl || MISSION_CONTROL_TOPUP_URL);
+  const openBilling = () => openMissionControl(MISSION_CONTROL_SEATS_URL);
 
   // Hard block: estimated cost exceeds available
   if (insufficient) {
