@@ -169,6 +169,8 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               {getThemeIcon()}
             </Button>
 
+            <TokenBalancePill compact />
+
             <NotificationsDropdown />
 
             <DropdownMenu>
