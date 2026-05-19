@@ -34,7 +34,6 @@ function Section({
 }
 
 export function PricingCatalogCard() {
-  const navigate = useNavigate();
   const { catalog, loading, error, refresh } = useMissionControlCatalog();
 
   return (
