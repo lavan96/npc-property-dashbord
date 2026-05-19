@@ -132,10 +132,45 @@ Deno.serve(async (req) => {
         }
         break;
       }
-      case "tokens.key.rotated":
+      case "tokens.key.rotated": {
+        // If MC pushed the new secret to us, update the project secret so
+        // workers adopt it on next cold start. (Manual rotation does this inline.)
+        const newKey: string | undefined = data?.new_key ?? data?.key ?? data?.secret;
+        let secretUpdated = false;
+        if (newKey && typeof newKey === "string" && newKey.length > 8) {
+          try {
+            const token = Deno.env.get("SUPABASE_ACCESS_TOKEN") ?? "";
+            const ref = (Deno.env.get("SUPABASE_URL") ?? "").match(/https:\/\/([^.]+)\./)?.[1] ?? "";
+            if (token && ref) {
+              const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/secrets`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify([{ name: "MISSION_CONTROL_CLONE_API_KEY", value: newKey }]),
+              });
+              secretUpdated = r.ok;
+              if (!r.ok) console.error("[mc-webhook] secret update failed", r.status, await r.text());
+            }
+          } catch (err) {
+            console.error("[mc-webhook] secret update error", err);
+          }
+        }
+        if (client) {
+          await client.from("token_audit_log").insert({
+            event: "webhook:tokens.key.rotated",
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "ok",
+            request_payload: {
+              key_prefix: data?.key_prefix ?? null,
+              revoke_at: data?.revoke_at ?? null,
+              secret_updated: secretUpdated,
+              had_new_key: Boolean(newKey),
+            },
+          });
+        }
+        break;
+      }
       case "tokens.key.revoked":
       case "tokens.alert":
-        // Persist into audit log so admins can see it on /admin/token-audit.
         if (client) {
           await client.from("token_audit_log").insert({
             event: `webhook:${event}`,
