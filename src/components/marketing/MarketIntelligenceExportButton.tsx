@@ -8,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MarketIntelligenceHistoryModal } from './MarketIntelligenceHistoryModal';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
+import { estimateTokens } from '@/lib/missionControl';
 
 interface MarketIntelligenceExportButtonProps {
   reportType?: 'full' | 'market_pulse' | 'hotspot_deep_dive' | 'strategy_insight' | 'finance_update' | 'deal_breakdown' | 'myth_busting' | 'development_spotlight';
