@@ -120,10 +120,32 @@ export function withReportMetering(
       catch { return "unknown"; }
     })();
 
+    // Catalog override: if the caller forwarded a `__catalog.report_slug`, look
+    // up the canonical credit_cost in Mission Control's pricing catalog and
+    // convert credits → tokens via MC_TOKENS_PER_CREDIT (default 1000).
+    let catalogTokens: number | null = null;
+    const catalogHint = body?.__catalog;
+    if (catalogHint?.report_slug) {
+      try {
+        const { getReportCreditCost } = await import("./missionControlCatalog.ts");
+        const credits =
+          (typeof catalogHint?.credit_cost === "number" && catalogHint.credit_cost > 0)
+            ? catalogHint.credit_cost
+            : await getReportCreditCost(String(catalogHint.report_slug));
+        if (credits && credits > 0) {
+          const perCredit = Number(Deno.env.get("MC_TOKENS_PER_CREDIT") ?? "1000");
+          catalogTokens = Math.max(1, Math.ceil(credits * (isFinite(perCredit) ? perCredit : 1000)));
+        }
+      } catch (e) {
+        console.warn("[reportMetering] catalog lookup failed", e);
+      }
+    }
+
     const estimated =
-      plan.estimatedTokensOverride && plan.estimatedTokensOverride > 0
+      catalogTokens ??
+      (plan.estimatedTokensOverride && plan.estimatedTokensOverride > 0
         ? plan.estimatedTokensOverride
-        : estimateTokens(plan.kind, plan.estimateOptions);
+        : estimateTokens(plan.kind, plan.estimateOptions));
 
     const startedAt = Date.now();
     let reservation: ReserveResult | null = null;
