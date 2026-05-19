@@ -181,6 +181,7 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
         >
           <History className="h-3.5 w-3.5" />
         </Button>
+        <TokenCostEstimate estimate={miEstimate} compact className="ml-1" />
       </div>
 
       {generationState.status === 'success' && (
