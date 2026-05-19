@@ -36,7 +36,7 @@ const formVariants = {
 };
 
 export default function Auth() {
-  const { signIn, user, loading } = useAuth();
+  const { signIn, user, loading, retryDeviceRegistration, cancelPendingSession } = useAuth();
   const { settings } = useWhiteLabel();
   const navigate = useNavigate();
   const formRef = useRef<HTMLDivElement>(null);
