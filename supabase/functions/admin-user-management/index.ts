@@ -231,6 +231,18 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // Mission Control: commit the seat reservation tied to this invite.
+      try {
+        if (invite.mc_seat_id) {
+          const commit = await commitSeat(invite.mc_seat_id);
+          if (!commit.ok) {
+            console.warn(`[seat] commit failed for invite ${invite.id}: ${commit.error}`);
+          }
+        }
+      } catch (e) {
+        console.warn('[seat] commit threw', e);
+      }
+
       // Mark invite as used
       await supabase
         .from('permission_invite_tokens')
