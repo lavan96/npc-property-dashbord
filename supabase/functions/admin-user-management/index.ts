@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
+import { reserveSeat, commitSeat, releaseSeat } from "../_shared/missionControlSeats.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
