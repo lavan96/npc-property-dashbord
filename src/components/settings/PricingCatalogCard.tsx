@@ -3,6 +3,7 @@
  * catalogue (seat roles, add-on modules, setup packages, per-report credit
  * costs). All edits happen in Mission Control's /billing/catalog.
  */
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ import { Separator } from '@/components/ui/separator';
 import { RefreshCw, Sparkles, Layers, Coins, UserCog, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useMissionControlCatalog } from '@/hooks/useMissionControlCatalog';
 import { formatPriceRange, type MissionControlCatalog } from '@/lib/missionControlCatalog';
-import { MISSION_CONTROL_BILLING_URL } from '@/lib/missionControl';
 
 function Section({
   icon: Icon, title, count, children,
@@ -34,6 +34,7 @@ function Section({
 }
 
 export function PricingCatalogCard() {
+  const navigate = useNavigate();
   const { catalog, loading, error, refresh } = useMissionControlCatalog();
 
   return (
@@ -75,11 +76,9 @@ export function PricingCatalogCard() {
         <Separator />
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Read-only — edits happen in Mission Control.</span>
-          <Button variant="outline" size="sm" asChild>
-            <a href={MISSION_CONTROL_BILLING_URL} target="_blank" rel="noopener noreferrer">
-              Open catalog
-              <ExternalLink className="ml-1.5 h-3 w-3" />
-            </a>
+          <Button variant="outline" size="sm" onClick={() => navigate('/billing/catalog')}>
+            Open catalog
+            <ExternalLink className="ml-1.5 h-3 w-3" />
           </Button>
         </div>
       </CardContent>

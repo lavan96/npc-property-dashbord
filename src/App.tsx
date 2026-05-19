@@ -79,6 +79,9 @@ import ReportsAnalytics from "./pages/ReportsAnalytics";
 import ModelHub from "./pages/ModelHub";
 import TokenUsageHistory from "./pages/TokenUsageHistory";
 import TokenAuditLog from "./pages/TokenAuditLog";
+import BillingTopup from "./pages/BillingTopup";
+import BillingSeats from "./pages/BillingSeats";
+import BillingCatalog from "./pages/BillingCatalog";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -306,6 +309,9 @@ const App = () => (
                 <Route path="reports/analytics" element={<ReportsAnalytics />} />
                 <Route path="model-hub" element={<ModelHub />} />
                 <Route path="billing/usage" element={<TokenUsageHistory />} />
+                <Route path="billing/topup" element={<BillingTopup />} />
+                <Route path="billing/seats" element={<BillingSeats />} />
+                <Route path="billing/catalog" element={<BillingCatalog />} />
                 <Route path="admin/token-audit" element={<TokenAuditLog />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

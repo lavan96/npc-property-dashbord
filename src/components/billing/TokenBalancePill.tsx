@@ -10,10 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
-import {
-  MISSION_CONTROL_BILLING_URL,
-  MISSION_CONTROL_TOPUP_URL,
-} from "@/lib/missionControl";
 
 interface TokenBalancePillProps {
   /** Compact icon-only trigger for mobile/narrow headers. */
@@ -171,21 +167,16 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() =>
-              window.open(MISSION_CONTROL_TOPUP_URL, "_blank", "noopener")
-            }
+            onClick={() => navigate("/billing/topup")}
           >
             <Coins className="mr-2 h-4 w-4" />
             Top up credits
-            <ExternalLink className="ml-auto h-3 w-3 opacity-60" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() =>
-              window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener")
-            }
+            onClick={() => navigate("/billing/seats")}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             Manage billing plan
