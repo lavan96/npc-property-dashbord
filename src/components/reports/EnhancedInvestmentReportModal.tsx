@@ -15,6 +15,8 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
+import { ReportGenerationStatus } from '@/components/billing/ReportGenerationStatus';
+import { TokenCostEstimate } from '@/components/billing/TokenCostEstimate';
 
 interface EnhancedInvestmentReportModalProps {
   isOpen: boolean;
