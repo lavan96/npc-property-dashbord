@@ -849,6 +849,13 @@ Deno.serve(async (req: Request) => {
           console.warn('[seat] release threw', e);
         }
       }
+      // Mission Control: release ALL of this user's device slots too.
+      try {
+        const r = await releaseDevice({ externalUserId: user_id, reason: 'user_soft_deleted' });
+        if (!r.ok) console.warn(`[device] release failed: ${r.error}`);
+      } catch (e) {
+        console.warn('[device] release threw', e);
+      }
 
       console.log(`User ${user_id} soft-deleted by ${adminUser.username}`);
       return new Response(
