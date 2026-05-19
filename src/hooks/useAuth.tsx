@@ -351,7 +351,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const currentUser = user;
-    
+
+    // Release the device slot BEFORE the session token is invalidated so
+    // the edge function can still authenticate the request.
+    try { await releaseCurrentDevice('user_signed_out'); } catch { /* best effort */ }
+
     try {
       await invokeEdgeFunction('custom-auth-logout');
     } catch (error) {
@@ -370,6 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     clearAuthState();
   };
+
 
   return (
     <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, accessToken, signIn, signOut }}>
