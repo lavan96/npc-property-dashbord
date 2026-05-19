@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { MobileSidebar } from './MobileSidebar';
 import { BrandLockup } from '@/components/branding/BrandAssets';
+import { TokenBalancePill } from '@/components/billing/TokenBalancePill';
 
 type Theme = 'light' | 'dark' | 'system';
 
