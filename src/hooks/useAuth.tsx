@@ -325,7 +325,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
           };
         }
-        console.warn('[Auth] Device registration failed:', deviceResult.message);
+        if (deviceResult.code === 'error') {
+          console.warn('[Auth] Device registration failed:', deviceResult.message);
+        }
+
       }
 
 
