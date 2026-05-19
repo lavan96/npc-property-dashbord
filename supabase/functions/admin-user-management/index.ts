@@ -1010,6 +1010,40 @@ Deno.serve(async (req: Request) => {
         tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
       }
 
+      // Mission Control: reserve a seat BEFORE we persist the invite, so a full
+      // tenant returns HTTP 402 with `seat_limit_reached` and no invite is created.
+      // Idempotency key = invite token, so a retried request reuses the reservation.
+      const seatIdempotencyKey = (body as any)?.idempotency_key || token;
+      let mcSeatId: string | null = null;
+      try {
+        const reservation = await reserveSeat({
+          externalUserId: invite_data.email,
+          email: invite_data.email,
+          displayName: invite_data.username,
+          idempotencyKey: seatIdempotencyKey,
+        });
+        if (!reservation.ok) {
+          if (reservation.error === 'seat_limit_reached') {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'seat_limit_reached',
+                message: `Seat limit reached on the ${reservation.plan} plan (${reservation.seats_used}/${reservation.seat_limit}). Upgrade to invite more team members.`,
+                seat_limit: reservation.seat_limit,
+                seats_used: reservation.seats_used,
+                plan: reservation.plan,
+              }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.warn(`[seat] reserve failed (${reservation.error}); continuing without seat tracking`);
+        } else {
+          mcSeatId = reservation.seat_id;
+        }
+      } catch (e) {
+        console.warn('[seat] reserve threw; continuing without seat tracking', e);
+      }
+
       const { error: insertError } = await supabase
         .from('permission_invite_tokens')
         .insert({
@@ -1021,10 +1055,16 @@ Deno.serve(async (req: Request) => {
           permissions: invite_data.permissions,
           invited_by: adminUser.id,
           expires_at: expiresAt.toISOString(),
+          mc_seat_id: mcSeatId,
+          mc_seat_idempotency_key: seatIdempotencyKey,
         });
 
       if (insertError) {
         console.error('Failed to create invite:', insertError);
+        // Roll back the seat reservation so the slot isn't wasted.
+        if (mcSeatId) {
+          try { await releaseSeat(invite_data.email, 'invite_persist_failed'); } catch { /* ignore */ }
+        }
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to create invite' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
