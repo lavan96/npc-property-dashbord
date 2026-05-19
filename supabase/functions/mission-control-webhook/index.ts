@@ -185,6 +185,70 @@ Deno.serve(async (req) => {
           });
         }
         break;
+
+      // ── Seat events ──
+      case "seats.reserved":
+      case "seats.committed":
+      case "seats.released":
+        if (client) {
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "ok",
+            request_payload: data,
+          });
+        }
+        break;
+      case "seats.limit.approaching":
+        if (client) {
+          await client.from("system_alerts").insert({
+            kind: "seats.limit.approaching",
+            severity: "warning",
+            message: `Seat usage at ${data?.seats_used ?? "?"}/${data?.seat_limit ?? "?"} on plan ${data?.plan ?? "?"} — approaching limit.`,
+            payload: data,
+          });
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "ok",
+            request_payload: data,
+          });
+        }
+        break;
+      case "seats.limit.reached":
+        if (client) {
+          await client.from("system_alerts").insert({
+            kind: "seats.limit.reached",
+            severity: "critical",
+            message: `Seat limit reached (${data?.seat_limit ?? "?"}) on plan ${data?.plan ?? "?"} — new invites are blocked until you upgrade.`,
+            payload: data,
+          });
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "error",
+            request_payload: data,
+            error_message: "seat_limit_reached",
+          });
+        }
+        break;
+      case "seats.plan.changed":
+        if (client) {
+          await client.from("system_alerts").insert({
+            kind: "seats.plan.changed",
+            severity: "info",
+            message: `Plan changed to ${data?.plan?.name ?? data?.plan ?? "new plan"} (seat limit ${data?.plan?.seat_limit ?? "?"}).`,
+            payload: data,
+          });
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "ok",
+            request_payload: data,
+          });
+        }
+        break;
+
       default:
         console.log("[mission-control-webhook] unhandled event", event);
     }
