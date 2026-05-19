@@ -915,6 +915,7 @@ Deno.serve(async (req: Request) => {
         } catch (e) {
           console.warn('[seat] release on purge threw', e);
         }
+      }
 
       console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);
       return new Response(
