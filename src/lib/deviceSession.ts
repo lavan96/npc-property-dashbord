@@ -64,6 +64,7 @@ export async function registerCurrentDevice(): Promise<DeviceRegisterOutcome> {
   if (id) persistDeviceId(id);
   return {
     ok: true,
+    code: 'ok',
     device_id: id,
     devices_active: Number(data.devices_active ?? 0),
     device_limit: Number(data.device_limit ?? 0),
