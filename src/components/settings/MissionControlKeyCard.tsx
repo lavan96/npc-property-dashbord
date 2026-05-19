@@ -25,6 +25,8 @@ export function MissionControlKeyCard() {
   const { toast } = useToast();
   const [info, setInfo] = useState<KeyInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [testing, setTesting] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [graceHours, setGraceHours] = useState(1);
@@ -33,13 +35,21 @@ export function MissionControlKeyCard() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
+    setForbidden(false);
     try {
       const { data, error } = await invokeSecureFunction<KeyInfo>("mission-control-key-info", {});
-      if (error) throw new Error(error.message ?? "Failed");
+      if (error) {
+        const msg = (error.message ?? "").toLowerCase();
+        if (msg.includes("forbid")) setForbidden(true);
+        else setLoadError(error.message ?? "Failed to load");
+        setInfo(null);
+        return;
+      }
       setInfo(data ?? null);
     } catch (e: any) {
-      // Silent — non-superadmins get 403 and shouldn't see noise.
       console.warn("[MissionControlKeyCard] load", e);
+      setLoadError(e?.message ?? "Failed to load");
       setInfo(null);
     } finally {
       setLoading(false);
