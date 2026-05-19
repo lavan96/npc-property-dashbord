@@ -340,6 +340,10 @@ export default function Settings() {
       {/* Pricing & Catalog */}
       <PricingCatalogCard />
 
+      {/* Active Devices */}
+      <DeviceManagementCard />
+
+
 
       {/* Security Settings */}
       <Card>
