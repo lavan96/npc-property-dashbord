@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth } from "../_shared/auth.ts";
 import { getSeatEntitlement, listSeats } from "../_shared/missionControlSeats.ts";
+import { MissionControlError } from "../_shared/missionControl.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
