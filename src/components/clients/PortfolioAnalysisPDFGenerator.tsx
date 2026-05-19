@@ -3166,21 +3166,29 @@ export function PortfolioAnalysisPDFGenerator({
     }
   };
 
+  const portfolioEstimate = estimateTokens('report.portfolio-review', {
+    aiNarrative: true,
+    extraSections: includeBorrowingCapacity ? 1 : 0,
+  });
+
   return (
     <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={generateAnalysis}
-        disabled={isGenerating}
-      >
-        {isGenerating ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          <TrendingUp className="h-4 w-4 mr-2" />
-        )}
-        {isGenerating ? 'Analyzing...' : 'Portfolio Analysis'}
-      </Button>
+      <div className="inline-flex flex-col items-stretch gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={generateAnalysis}
+          disabled={isGenerating}
+        >
+          {isGenerating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <TrendingUp className="h-4 w-4 mr-2" />
+          )}
+          {isGenerating ? 'Analyzing...' : 'Portfolio Analysis'}
+        </Button>
+        <TokenCostEstimate estimate={portfolioEstimate} compact />
+      </div>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
