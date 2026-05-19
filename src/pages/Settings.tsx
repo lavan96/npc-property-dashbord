@@ -19,6 +19,7 @@ import { PushNotificationToggle } from '@/components/settings/PushNotificationTo
 import { MissionControlKeyCard } from '@/components/settings/MissionControlKeyCard';
 import { SeatEntitlementCard } from '@/components/settings/SeatEntitlementCard';
 import { PricingCatalogCard } from '@/components/settings/PricingCatalogCard';
+import { DeviceManagementCard } from '@/components/settings/DeviceManagementCard';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -338,6 +339,10 @@ export default function Settings() {
 
       {/* Pricing & Catalog */}
       <PricingCatalogCard />
+
+      {/* Active Devices */}
+      <DeviceManagementCard />
+
 
 
       {/* Security Settings */}
