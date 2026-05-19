@@ -72,9 +72,13 @@ export async function generateWithTokens<T = any>(
     }
   }
 
-  const result = await invokeSecureFunction<T>(functionName, body, {
-    timeoutMs: opts.timeoutMs,
-  });
+  const result = await invokeSecureFunction<T>(
+    functionName,
+    opts.reportSlug
+      ? { ...body, __catalog: { report_slug: opts.reportSlug, credit_cost: catalogCredits } }
+      : body,
+    { timeoutMs: opts.timeoutMs },
+  );
   // Emit handled inside invokeSecureFunction; pass-through here.
   return result;
 }
