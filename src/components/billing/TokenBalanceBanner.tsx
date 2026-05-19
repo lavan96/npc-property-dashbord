@@ -1,7 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { MISSION_CONTROL_BILLING_URL } from "@/lib/missionControl";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 
 /**
