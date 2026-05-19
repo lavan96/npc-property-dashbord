@@ -1037,6 +1037,7 @@ Deno.serve(async (req: Request) => {
           email: invite_data.email,
           displayName: invite_data.username,
           idempotencyKey: seatIdempotencyKey,
+          roleSlug: (invite_data as any).role_slug || (body as any)?.role_slug || undefined,
         });
         if (!reservation.ok) {
           if (reservation.error === 'seat_limit_reached') {

@@ -12,6 +12,10 @@ export interface SeatReserveInput {
   email?: string;
   displayName?: string;
   idempotencyKey: string;
+  /** Optional pricing-catalog role slug; forwarded as `metadata.role_slug`. */
+  roleSlug?: string;
+  /** Arbitrary additional metadata merged into the reservation payload. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface SeatReserveSuccess {
@@ -101,6 +105,8 @@ async function parseJson(res: Response): Promise<any> {
 
 /** Reserve a seat. Returns a discriminated result; never throws for `seat_limit_reached`. */
 export async function reserveSeat(input: SeatReserveInput): Promise<SeatReserveResult> {
+  const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.roleSlug) metadata.role_slug = input.roleSlug;
   const res = await call("/api/public/seats/reserve", {
     method: "POST",
     body: JSON.stringify({
@@ -108,6 +114,7 @@ export async function reserveSeat(input: SeatReserveInput): Promise<SeatReserveR
       email: input.email ?? null,
       display_name: input.displayName ?? null,
       idempotency_key: input.idempotencyKey,
+      ...(Object.keys(metadata).length ? { metadata } : {}),
     }),
   });
   const body = await parseJson(res);

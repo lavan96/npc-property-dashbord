@@ -676,3 +676,6 @@ verify_jwt = false
 
 [functions.mission-control-devices]
 verify_jwt = false
+
+[functions.mission-control-catalog]
+verify_jwt = false
