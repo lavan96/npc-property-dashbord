@@ -336,6 +336,10 @@ export default function Settings() {
       {/* Plan & Seats (superadmin only) */}
       <SeatEntitlementCard />
 
+      {/* Pricing & Catalog */}
+      <PricingCatalogCard />
+
+
       {/* Security Settings */}
       <Card>
         <CardHeader>
