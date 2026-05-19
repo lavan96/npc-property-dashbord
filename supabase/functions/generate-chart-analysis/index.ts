@@ -454,7 +454,7 @@ const __chartAnalysisHandler = async (req: Request): Promise<Response> => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
 Deno.serve(withReportMetering(async (body, req) => {
   if (!body) return null;
   const userId = await resolveUserId(req, body);
