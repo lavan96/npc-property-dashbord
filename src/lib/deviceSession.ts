@@ -23,7 +23,7 @@ export interface DeviceRow {
 }
 
 export type DeviceRegisterOutcome =
-  | { ok: true; device_id: string; devices_active: number; device_limit: number }
+  | { ok: true; code: 'ok'; device_id: string; devices_active: number; device_limit: number }
   | {
       ok: false;
       code: 'device_limit_reached';
@@ -32,6 +32,7 @@ export type DeviceRegisterOutcome =
       devices: DeviceRow[];
     }
   | { ok: false; code: 'error'; message: string };
+
 
 /**
  * Register the current browser as a device on Mission Control.
