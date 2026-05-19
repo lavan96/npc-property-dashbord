@@ -3,7 +3,6 @@
  * catalogue (seat roles, add-on modules, setup packages, per-report credit
  * costs). All edits happen in Mission Control's /billing/catalog.
  */
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { RefreshCw, Sparkles, Layers, Coins, UserCog, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useMissionControlCatalog } from '@/hooks/useMissionControlCatalog';
 import { formatPriceRange, type MissionControlCatalog } from '@/lib/missionControlCatalog';
+import { MISSION_CONTROL_CATALOG_URL, openMissionControl } from '@/lib/missionControl';
 
 function Section({
   icon: Icon, title, count, children,
