@@ -1,10 +1,9 @@
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  MISSION_CONTROL_BILLING_URL,
-  MISSION_CONTROL_TOPUP_URL,
   fetchTopupPacks,
 } from "@/lib/missionControl";
 
@@ -20,8 +19,9 @@ interface OutOfTokensBannerProps {
  * routes the operator straight to the hosted top-up page.
  */
 export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfTokensBannerProps) {
+  const navigate = useNavigate();
   const short = Math.max(0, requested - available);
-  const [topupUrl, setTopupUrl] = useState<string>(MISSION_CONTROL_TOPUP_URL);
+  const [topupUrl, setTopupUrl] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +32,11 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
       .catch(() => {/* keep fallback URL */});
     return () => { cancelled = true; };
   }, []);
+
+  const openTopup = () => {
+    if (topupUrl) window.open(topupUrl, "_blank", "noopener,noreferrer");
+    else navigate("/billing/topup");
+  };
 
   return (
     <Alert variant="destructive">
@@ -48,14 +53,14 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            onClick={() => window.open(topupUrl, "_blank", "noopener,noreferrer")}
+            onClick={openTopup}
           >
             Top up credits
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(MISSION_CONTROL_BILLING_URL, "_blank", "noopener,noreferrer")}
+            onClick={() => navigate("/billing/seats")}
           >
             Upgrade plan
           </Button>
