@@ -172,7 +172,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => navigate("/billing/topup")}
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
           >
             <Coins className="mr-2 h-4 w-4" />
             Top up credits
@@ -181,7 +181,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => navigate("/billing/seats")}
+            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             Manage billing plan
