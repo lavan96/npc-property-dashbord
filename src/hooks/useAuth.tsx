@@ -1,13 +1,25 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { logActivity } from '@/hooks/useActivityLogger';
 import { resetAuthFailures } from '@/lib/secureInvoke';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  registerCurrentDevice,
+  heartbeatCurrentDevice,
+  releaseCurrentDevice,
+  type DeviceRow,
+} from '@/lib/deviceSession';
 
 interface User {
   id: string;
   username: string;
   role: string;
+}
+
+export interface DeviceLimitInfo {
+  devices_active: number;
+  device_limit: number;
+  devices: DeviceRow[];
 }
 
 interface AuthContextType {
@@ -17,9 +29,14 @@ interface AuthContextType {
   isAdmin: boolean;
   roles: string[];
   accessToken: string | null;
-  signIn: (username: string, password: string, turnstileToken?: string) => Promise<{ error?: string }>;
+  signIn: (
+    username: string,
+    password: string,
+    turnstileToken?: string,
+  ) => Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }>;
   signOut: () => Promise<void>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
