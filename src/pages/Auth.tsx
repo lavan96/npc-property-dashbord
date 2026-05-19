@@ -18,6 +18,8 @@ import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 import { OtpInput } from '@/components/finance-portal/OtpInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
+import { ManageDevicesDialog } from '@/components/auth/ManageDevicesDialog';
+import type { DeviceLimitInfo } from '@/hooks/useAuth';
 
 const FEATURES = [
   { icon: BarChart3, title: 'Analytics & Reports', desc: 'Investment reports, market intelligence, and portfolio analytics.' },
