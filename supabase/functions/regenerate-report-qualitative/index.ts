@@ -1912,7 +1912,7 @@ YOUR DEDICATED PROPERTY PARTNER
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
 
 function buildOverrideSummary(overrides: Record<string, any>, financials?: Record<string, any>): string {
   const summaryLines: string[] = [];

@@ -748,7 +748,7 @@ Format your response as valid JSON with this structure:
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+};
 
 Deno.serve(withReportMetering(async (body, req) => {
   if (!body) return null;
