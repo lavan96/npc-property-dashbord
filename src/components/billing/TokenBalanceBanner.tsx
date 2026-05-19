@@ -1,15 +1,14 @@
-import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { MISSION_CONTROL_TOPUP_URL, openMissionControl } from "@/lib/missionControl";
 
 /**
  * Low-balance warning. Renders only when remaining tokens drop below 10% of allowance.
  * Mount near the top of report-generation pages.
  */
 export function TokenBalanceBanner() {
-  const navigate = useNavigate();
   const { balance, lowBalance } = useTokenBalance();
   if (!lowBalance || !balance) return null;
 
@@ -29,7 +28,7 @@ export function TokenBalanceBanner() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate("/billing/topup")}
+          onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
         >
           Top up
         </Button>
