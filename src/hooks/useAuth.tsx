@@ -307,7 +307,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setRoles(data.roles || []);
       resetAuthFailures();
-      
+
+      // Register this browser as a device on Mission Control. If the user
+      // is at their device cap we tear the session back down and surface
+      // a structured error so the UI can offer a "Manage devices" flow.
+      const deviceResult = await registerCurrentDevice();
+      if (!deviceResult.ok && deviceResult.code === 'device_limit_reached') {
+        // Roll back the session — we did not consume a device slot.
+        try { await invokeEdgeFunction('custom-auth-logout'); } catch { /* ignore */ }
+        clearAuthState();
+        return {
+          error: `You have reached the maximum of ${deviceResult.device_limit} active devices for your plan. Sign out of another device to continue.`,
+          deviceLimit: {
+            devices_active: deviceResult.devices_active,
+            device_limit: deviceResult.device_limit,
+            devices: deviceResult.devices,
+          },
+        };
+      }
+      if (!deviceResult.ok) {
+        console.warn('[Auth] Device registration failed:', deviceResult.message);
+      }
+
       logActivity({
         userId: data.user.id,
         username: data.user.username,
@@ -316,8 +337,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         entityName: data.user.username,
         metadata: { roles: data.roles || [] }
       });
-      
+
       return {};
+
     } catch (error) {
       console.error('Sign in error:', error);
       return { error: 'Login failed' };
