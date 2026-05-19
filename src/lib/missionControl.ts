@@ -122,8 +122,16 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
   return balance;
 }
 
-/** Mission Control billing/top-up URL — override per deployment if needed. */
+/** Mission Control billing URLs — override per deployment if needed. */
 export const MISSION_CONTROL_BILLING_URL =
   "https://aurixa-mission-control.lovable.app/billing";
 export const MISSION_CONTROL_TOPUP_URL =
   "https://aurixa-mission-control.lovable.app/billing/topup";
+export const MISSION_CONTROL_SEATS_URL =
+  "https://aurixa-mission-control.lovable.app/billing/seats";
+export const MISSION_CONTROL_CATALOG_URL =
+  "https://aurixa-mission-control.lovable.app/billing/catalog";
+
+export function openMissionControl(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}

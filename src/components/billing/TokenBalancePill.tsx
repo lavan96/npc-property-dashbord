@@ -10,6 +10,11 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
+import {
+  MISSION_CONTROL_TOPUP_URL,
+  MISSION_CONTROL_SEATS_URL,
+  openMissionControl,
+} from "@/lib/missionControl";
 
 interface TokenBalancePillProps {
   /** Compact icon-only trigger for mobile/narrow headers. */
@@ -167,7 +172,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => navigate("/billing/topup")}
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
           >
             <Coins className="mr-2 h-4 w-4" />
             Top up credits
@@ -176,7 +181,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => navigate("/billing/seats")}
+            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             Manage billing plan

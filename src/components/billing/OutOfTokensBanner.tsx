@@ -1,10 +1,12 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   fetchTopupPacks,
+  MISSION_CONTROL_TOPUP_URL,
+  MISSION_CONTROL_SEATS_URL,
+  openMissionControl,
 } from "@/lib/missionControl";
 
 interface OutOfTokensBannerProps {
@@ -19,7 +21,6 @@ interface OutOfTokensBannerProps {
  * routes the operator straight to the hosted top-up page.
  */
 export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfTokensBannerProps) {
-  const navigate = useNavigate();
   const short = Math.max(0, requested - available);
   const [topupUrl, setTopupUrl] = useState<string>("");
 
@@ -33,10 +34,7 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
     return () => { cancelled = true; };
   }, []);
 
-  const openTopup = () => {
-    if (topupUrl) window.open(topupUrl, "_blank", "noopener,noreferrer");
-    else navigate("/billing/topup");
-  };
+  const openTopup = () => openMissionControl(topupUrl || MISSION_CONTROL_TOPUP_URL);
 
   return (
     <Alert variant="destructive">
@@ -60,7 +58,7 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/billing/seats")}
+            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
           >
             Upgrade plan
           </Button>

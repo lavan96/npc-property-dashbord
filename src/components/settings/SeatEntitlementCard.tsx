@@ -3,7 +3,7 @@
  * list. Superadmin-only; hides itself for everyone else.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { MISSION_CONTROL_SEATS_URL, openMissionControl } from '@/lib/missionControl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -36,7 +36,6 @@ interface Payload {
 }
 
 export function SeatEntitlementCard() {
-  const navigate = useNavigate();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,7 +126,7 @@ export function SeatEntitlementCard() {
                   </Badge>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/billing/seats')}>
+              <Button variant="outline" size="sm" onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}>
                 Manage plan
                 <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
