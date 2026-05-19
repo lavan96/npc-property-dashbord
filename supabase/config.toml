@@ -670,3 +670,6 @@ verify_jwt = false
 
 [functions.mission-control-rotate-key]
 verify_jwt = false
+
+[functions.mission-control-seats]
+verify_jwt = false
