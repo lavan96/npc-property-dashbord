@@ -112,6 +112,16 @@ export function MissionControlKeyCard() {
       <CardContent className="space-y-4">
         {loading ? (
           <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : loadError ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>Couldn't load Mission Control status: {loadError}</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={load}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Retry
+            </Button>
+          </div>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
