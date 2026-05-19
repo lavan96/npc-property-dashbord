@@ -188,6 +188,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
+  // Heartbeat the registered device every 5 min while signed in.
+  const heartbeatRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    // Fire one immediately so the device's `last_seen_at` updates on page load.
+    heartbeatCurrentDevice().catch(() => { /* best effort */ });
+    const id = window.setInterval(() => {
+      heartbeatCurrentDevice().catch(() => { /* best effort */ });
+    }, 5 * 60 * 1000);
+    heartbeatRef.current = id;
+    return () => {
+      if (heartbeatRef.current != null) window.clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    };
+  }, [user?.id]);
+
+
+
   const checkSession = async () => {
     try {
       const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
