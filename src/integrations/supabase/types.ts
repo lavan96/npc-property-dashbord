@@ -9777,6 +9777,8 @@ export type Database = {
           id: string
           invite_type: string
           invited_by: string
+          mc_seat_id: string | null
+          mc_seat_idempotency_key: string | null
           permissions: Json
           temporary_password: string | null
           token: string
@@ -9790,6 +9792,8 @@ export type Database = {
           id?: string
           invite_type?: string
           invited_by: string
+          mc_seat_id?: string | null
+          mc_seat_idempotency_key?: string | null
           permissions?: Json
           temporary_password?: string | null
           token: string
@@ -9803,6 +9807,8 @@ export type Database = {
           id?: string
           invite_type?: string
           invited_by?: string
+          mc_seat_id?: string | null
+          mc_seat_idempotency_key?: string | null
           permissions?: Json
           temporary_password?: string | null
           token?: string
@@ -11068,6 +11074,39 @@ export type Database = {
           postcode?: string
           state?: string
           suburb?: string
+        }
+        Relationships: []
+      }
+      system_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          payload: Json | null
+          severity: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          payload?: Json | null
+          severity?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          payload?: Json | null
+          severity?: string
         }
         Relationships: []
       }
