@@ -2187,6 +2187,20 @@ export function InvestmentReportGenerator() {
                     </div>
                   </div>
 
+                  {/* Token cost + balance status */}
+                  <ReportGenerationStatus
+                    kind="report.investment.compass"
+                    estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: 2 })}
+                    className="mb-3"
+                  />
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-xs text-muted-foreground">Projected token cost (URL ingest + AI narrative)</span>
+                    <TokenCostEstimate
+                      kind="report.investment.compass"
+                      options={{ aiNarrative: true, extraSections: 2 }}
+                    />
+                  </div>
+
                   {/* Generate Button - At bottom after overrides */}
                   <Button
                     onClick={handleGenerateFromUrl}
