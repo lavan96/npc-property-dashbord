@@ -18,6 +18,8 @@ import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 import { OtpInput } from '@/components/finance-portal/OtpInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
+import { ManageDevicesDialog } from '@/components/auth/ManageDevicesDialog';
+import type { DeviceLimitInfo } from '@/hooks/useAuth';
 
 const FEATURES = [
   { icon: BarChart3, title: 'Analytics & Reports', desc: 'Investment reports, market intelligence, and portfolio analytics.' },
@@ -34,7 +36,7 @@ const formVariants = {
 };
 
 export default function Auth() {
-  const { signIn, user, loading } = useAuth();
+  const { signIn, user, loading, retryDeviceRegistration, cancelPendingSession } = useAuth();
   const { settings } = useWhiteLabel();
   const navigate = useNavigate();
   const formRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,8 @@ export default function Auth() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const [deviceLimit, setDeviceLimit] = useState<DeviceLimitInfo | null>(null);
 
   const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
 
@@ -93,13 +97,46 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDeviceLimit(null);
     if (!turnstileToken) { setError('Please complete the security check'); return; }
     setIsLoading(true);
     const result = await signIn(username, password, turnstileToken);
-    if (result.error) { setTurnstileToken(null); setError(result.error); }
-    else navigate('/', { replace: true });
+    if (result.deviceLimit) {
+      setDeviceLimit(result.deviceLimit);
+      setError(result.error || 'Device limit reached.');
+    } else if (result.error) {
+      setTurnstileToken(null);
+      setError(result.error);
+    } else {
+      navigate('/', { replace: true });
+    }
     setIsLoading(false);
   };
+
+  const handleDeviceRevoked = async () => {
+    const result = await retryDeviceRegistration();
+    if (result.deviceLimit) {
+      setDeviceLimit(result.deviceLimit);
+      setError(result.error || 'Device limit still reached.');
+      return;
+    }
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setDeviceLimit(null);
+    setError('');
+    navigate('/', { replace: true });
+  };
+
+  const handleDeviceDialogChange = async (open: boolean) => {
+    if (!open) {
+      setDeviceLimit(null);
+      await cancelPendingSession();
+      setTurnstileToken(null);
+    }
+  };
+
 
   const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -473,6 +510,15 @@ export default function Auth() {
           </div>
         </motion.div>
       </main>
+
+      <ManageDevicesDialog
+        open={Boolean(deviceLimit)}
+        onOpenChange={handleDeviceDialogChange}
+        devicesActive={deviceLimit?.devices_active ?? 0}
+        deviceLimit={deviceLimit?.device_limit ?? 0}
+        devices={deviceLimit?.devices ?? []}
+        onDeviceRevoked={handleDeviceRevoked}
+      />
     </div>
   );
 }

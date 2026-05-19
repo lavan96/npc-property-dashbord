@@ -1,13 +1,25 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { logActivity } from '@/hooks/useActivityLogger';
 import { resetAuthFailures } from '@/lib/secureInvoke';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  registerCurrentDevice,
+  heartbeatCurrentDevice,
+  releaseCurrentDevice,
+  type DeviceRow,
+} from '@/lib/deviceSession';
 
 interface User {
   id: string;
   username: string;
   role: string;
+}
+
+export interface DeviceLimitInfo {
+  devices_active: number;
+  device_limit: number;
+  devices: DeviceRow[];
 }
 
 interface AuthContextType {
@@ -17,9 +29,18 @@ interface AuthContextType {
   isAdmin: boolean;
   roles: string[];
   accessToken: string | null;
-  signIn: (username: string, password: string, turnstileToken?: string) => Promise<{ error?: string }>;
+  signIn: (
+    username: string,
+    password: string,
+    turnstileToken?: string,
+  ) => Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }>;
   signOut: () => Promise<void>;
+  /** Retry device registration after the user revokes a device in the dialog. */
+  retryDeviceRegistration: () => Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }>;
+  /** Cancel a sign-in that is blocked on the device cap and log out the tokens. */
+  cancelPendingSession: () => Promise<void>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -171,6 +192,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
+  // Heartbeat the registered device every 5 min while signed in.
+  const heartbeatRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    // Fire one immediately so the device's `last_seen_at` updates on page load.
+    heartbeatCurrentDevice().catch(() => { /* best effort */ });
+    const id = window.setInterval(() => {
+      heartbeatCurrentDevice().catch(() => { /* best effort */ });
+    }, 5 * 60 * 1000);
+    heartbeatRef.current = id;
+    return () => {
+      if (heartbeatRef.current != null) window.clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    };
+  }, [user?.id]);
+
+
+
   const checkSession = async () => {
     try {
       const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
@@ -235,14 +274,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
   };
 
+  // Holds an authenticated session that has NOT yet been granted a device
+  // slot. We keep the tokens stored so the Manage Devices dialog can revoke
+  // other devices, but we don't set `user`/`roles` until the device slot is
+  // acquired — that's what gates access to protected routes.
+  const pendingSessionRef = useRef<null | {
+    user: User;
+    roles: string[];
+  }>(null);
+
+  const cancelPendingSession = async () => {
+    pendingSessionRef.current = null;
+    try { await invokeEdgeFunction('custom-auth-logout'); } catch { /* ignore */ }
+    clearAuthState();
+  };
+
+  const finalizePendingSession = () => {
+    const pending = pendingSessionRef.current;
+    if (!pending) return;
+    pendingSessionRef.current = null;
+    setUser(pending.user);
+    setRoles(pending.roles);
+    resetAuthFailures();
+    sessionStorage.setItem('current_user', JSON.stringify({
+      id: pending.user.id,
+      username: pending.user.username,
+    }));
+    logActivity({
+      userId: pending.user.id,
+      username: pending.user.username,
+      actionType: 'login',
+      entityType: 'session',
+      entityName: pending.user.username,
+      metadata: { roles: pending.roles }
+    });
+  };
+
+  const retryDeviceRegistration = async (): Promise<{ error?: string; deviceLimit?: DeviceLimitInfo }> => {
+    if (!pendingSessionRef.current) return { error: 'No pending sign-in to retry.' };
+    const deviceResult = await registerCurrentDevice();
+    if (deviceResult.ok) {
+      finalizePendingSession();
+      return {};
+    }
+    if (deviceResult.code === 'device_limit_reached') {
+      return {
+        error: `You have reached the maximum of ${deviceResult.device_limit} active devices for your plan.`,
+        deviceLimit: {
+          devices_active: deviceResult.devices_active,
+          device_limit: deviceResult.device_limit,
+          devices: deviceResult.devices,
+        },
+      };
+    }
+    const message = deviceResult.code === 'error' ? deviceResult.message : 'Device registration failed.';
+    return { error: message };
+  };
+
   const signIn = async (username: string, password: string, turnstileToken?: string) => {
     try {
       // Clear any stale tokens BEFORE login
       clearStoredValue(ACCESS_TOKEN_KEY);
       clearStoredValue(SESSION_TOKEN_KEY);
-      
-      const { data, error } = await invokeEdgeFunction('custom-auth-login', { 
-        username, 
+      pendingSessionRef.current = null;
+
+      const { data, error } = await invokeEdgeFunction('custom-auth-login', {
+        username,
         password,
         turnstile_token: turnstileToken,
       });
@@ -251,47 +348,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: data?.error || 'Login failed' };
       }
 
-      // Store fresh tokens
+      // Persist tokens so the device-management edge function can authenticate,
+      // but DO NOT set user/roles until a device slot is acquired.
       if (data.access_token) {
         persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
         setAccessToken(data.access_token);
       }
-      
       if (data.session_token) {
         persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
       }
-      
-      // Stamp current auth version on successful login
       try { localStorage.setItem(AUTH_VERSION_KEY, String(AUTH_VERSION)); } catch { /* ignore */ }
-      
-      sessionStorage.setItem('current_user', JSON.stringify({
-        id: data.user.id,
-        username: data.user.username
-      }));
-      
-      setUser(data.user);
-      setRoles(data.roles || []);
-      resetAuthFailures();
-      
-      logActivity({
-        userId: data.user.id,
-        username: data.user.username,
-        actionType: 'login',
-        entityType: 'session',
-        entityName: data.user.username,
-        metadata: { roles: data.roles || [] }
-      });
-      
+
+      pendingSessionRef.current = {
+        user: data.user,
+        roles: data.roles || [],
+      };
+
+      const deviceResult = await registerCurrentDevice();
+      if (!deviceResult.ok) {
+        if (deviceResult.code === 'device_limit_reached') {
+          // Tokens stay in place so the dialog can revoke another device.
+          // The caller MUST resolve this by calling either
+          // `retryDeviceRegistration` or `cancelPendingSession`.
+          return {
+            error: `You have reached the maximum of ${deviceResult.device_limit} active devices for your plan. Sign out of another device to continue.`,
+            deviceLimit: {
+              devices_active: deviceResult.devices_active,
+              device_limit: deviceResult.device_limit,
+              devices: deviceResult.devices,
+            },
+          };
+        }
+        if (deviceResult.code === 'error') {
+          console.warn('[Auth] Device registration failed:', deviceResult.message);
+        }
+      }
+
+      finalizePendingSession();
       return {};
     } catch (error) {
       console.error('Sign in error:', error);
+      pendingSessionRef.current = null;
       return { error: 'Login failed' };
     }
   };
 
+
   const signOut = async () => {
     const currentUser = user;
-    
+
+    // Release the device slot BEFORE the session token is invalidated so
+    // the edge function can still authenticate the request.
+    try { await releaseCurrentDevice('user_signed_out'); } catch { /* best effort */ }
+
     try {
       await invokeEdgeFunction('custom-auth-logout');
     } catch (error) {
@@ -311,8 +420,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearAuthState();
   };
 
+
   return (
-    <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, accessToken, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, accessToken, signIn, signOut, retryDeviceRegistration, cancelPendingSession }}>
       {children}
     </AuthContext.Provider>
   );

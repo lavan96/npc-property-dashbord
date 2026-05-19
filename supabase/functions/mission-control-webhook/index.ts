@@ -249,6 +249,36 @@ Deno.serve(async (req) => {
         }
         break;
 
+      // ── Device-cap events ──
+      case "devices.registered":
+      case "devices.released":
+        if (client) {
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "ok",
+            request_payload: data,
+          });
+        }
+        break;
+      case "devices.limit.reached":
+        if (client) {
+          await client.from("system_alerts").insert({
+            kind: "devices.limit.reached",
+            severity: "warning",
+            message: `Device limit reached for user ${data?.external_user_id ?? "?"} (${data?.devices_active ?? "?"}/${data?.device_limit ?? "?"}).`,
+            payload: data,
+          });
+          await client.from("token_audit_log").insert({
+            event: `webhook:${event}`,
+            agency_ref: data?.tenant?.external_ref ?? null,
+            status: "error",
+            request_payload: data,
+            error_message: "device_limit_reached",
+          });
+        }
+        break;
+
       default:
         console.log("[mission-control-webhook] unhandled event", event);
     }

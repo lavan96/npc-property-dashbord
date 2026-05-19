@@ -5,6 +5,7 @@ import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 import { reserveSeat, commitSeat, releaseSeat } from "../_shared/missionControlSeats.ts";
+import { releaseDevice } from "../_shared/missionControlDevices.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -848,6 +849,13 @@ Deno.serve(async (req: Request) => {
           console.warn('[seat] release threw', e);
         }
       }
+      // Mission Control: release ALL of this user's device slots too.
+      try {
+        const r = await releaseDevice({ externalUserId: user_id, reason: 'user_soft_deleted' });
+        if (!r.ok) console.warn(`[device] release failed: ${r.error}`);
+      } catch (e) {
+        console.warn('[device] release threw', e);
+      }
 
       console.log(`User ${user_id} soft-deleted by ${adminUser.username}`);
       return new Response(
@@ -915,6 +923,12 @@ Deno.serve(async (req: Request) => {
         } catch (e) {
           console.warn('[seat] release on purge threw', e);
         }
+      }
+      try {
+        const r = await releaseDevice({ externalUserId: user_id, reason: 'user_purged' });
+        if (!r.ok) console.warn(`[device] release on purge failed: ${r.error}`);
+      } catch (e) {
+        console.warn('[device] release on purge threw', e);
       }
 
       console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);

@@ -1,0 +1,111 @@
+// Authenticated proxy for the Mission Control device-cap endpoints.
+// Actions: register, heartbeat, release, list, revoke.
+// All actions are scoped to the calling user. Superadmins may pass an
+// explicit `external_user_id` to manage another user's devices.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth } from "../_shared/auth.ts";
+import {
+  registerDevice,
+  heartbeatDevice,
+  releaseDevice,
+  listDevices,
+} from "../_shared/missionControlDevices.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-session-token",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "content-type": "application/json" },
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    let body: any = {};
+    try { body = await req.json(); } catch { /* empty */ }
+
+    const auth = await verifyAuth(supabase, req.headers, body);
+    if (auth.error || !auth.userId) return json({ error: "Unauthorized" }, 401);
+
+    const action = String(body?.action ?? "").toLowerCase();
+    if (!action) return json({ error: "missing_action" }, 400);
+
+    // Resolve target user — only superadmins can target someone else.
+    let targetUserId = auth.userId;
+    if (body?.external_user_id && body.external_user_id !== auth.userId) {
+      const { data: role } = await supabase
+        .from("user_roles").select("role")
+        .eq("user_id", auth.userId).eq("role", "superadmin").maybeSingle();
+      if (!role) return json({ error: "forbidden" }, 403);
+      targetUserId = String(body.external_user_id);
+    }
+
+    switch (action) {
+      case "register": {
+        const fp = String(body?.device_fingerprint ?? "");
+        if (!fp) return json({ error: "missing_device_fingerprint" }, 400);
+        const result = await registerDevice({
+          externalUserId: targetUserId,
+          deviceFingerprint: fp,
+          deviceLabel: body?.device_label ?? undefined,
+          userAgent: body?.user_agent ?? undefined,
+          platform: body?.platform ?? undefined,
+        });
+        if (!result.ok && result.error === "device_limit_reached") {
+          return json(result, 402);
+        }
+        if (!result.ok) return json(result, 502);
+        return json(result, 200);
+      }
+      case "heartbeat": {
+        const id = String(body?.device_id ?? "");
+        if (!id) return json({ error: "missing_device_id" }, 400);
+        const result = await heartbeatDevice(id);
+        return json(result, result.ok ? 200 : 502);
+      }
+      case "release": {
+        const result = await releaseDevice({
+          deviceId: body?.device_id ?? undefined,
+          externalUserId: body?.device_id ? undefined : targetUserId,
+          deviceFingerprint: body?.device_fingerprint ?? undefined,
+          reason: body?.reason ?? "user_signed_out",
+        });
+        return json(result, result.ok ? 200 : 502);
+      }
+      case "list": {
+        const result = await listDevices(targetUserId);
+        return json(result, 200);
+      }
+      case "revoke": {
+        const id = String(body?.device_id ?? "");
+        if (!id) return json({ error: "missing_device_id" }, 400);
+        const result = await releaseDevice({
+          deviceId: id,
+          reason: body?.reason ?? "user_revoked",
+        });
+        return json(result, result.ok ? 200 : 502);
+      }
+      default:
+        return json({ error: "unknown_action" }, 400);
+    }
+  } catch (e) {
+    console.error("[mission-control-devices]", e);
+    return json({
+      error: "internal_error",
+      message: e instanceof Error ? e.message : String(e),
+    }, 500);
+  }
+});

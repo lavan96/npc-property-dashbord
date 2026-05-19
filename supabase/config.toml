@@ -673,3 +673,6 @@ verify_jwt = false
 
 [functions.mission-control-seats]
 verify_jwt = false
+
+[functions.mission-control-devices]
+verify_jwt = false
