@@ -401,9 +401,10 @@ export function PropertyComparisonModal({
     }
 
     try {
-      const { data, error } = await supabase
-        .from('comparison_analysis_templates')
-        .insert({
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'insert',
+        table: 'comparison_analysis_templates',
+        data: {
           name: templateName.trim(),
           description: templateDescription.trim() || null,
           settings: {
@@ -415,11 +416,11 @@ export function PropertyComparisonModal({
             customWeights: useCustomWeights ? customWeights : undefined
           },
           created_by: user.id
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      const inserted = data?.record;
 
       setSavedTemplates(prev => [data, ...prev]);
       setSaveTemplateOpen(false);
