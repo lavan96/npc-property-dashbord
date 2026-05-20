@@ -605,12 +605,14 @@ export default function GeneratedReports() {
   // Archive/unarchive a comparison
   const archiveComparison = async (comparisonId: string, archive: boolean) => {
     try {
-      const { error } = await (supabase as any)
-        .from('property_comparisons')
-        .update({ is_archived: archive })
-        .eq('id', comparisonId);
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'property_comparisons',
+        recordId: comparisonId,
+        data: { is_archived: archive },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       // Update local state
       setComparisons(prev =>
@@ -633,11 +635,11 @@ export default function GeneratedReports() {
 
   const fetchComparisons = async () => {
     try {
-      // Cast to any to bypass TypeScript for property_comparisons table
-      const { data, error } = await (supabase as any)
-        .from('property_comparisons')
-        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags, is_archived, created_by')
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'property_comparisons',
+        listOptions: { orderBy: 'created_at', orderAsc: false },
+      });
 
       if (error) {
         console.error('Error fetching comparisons:', error);
@@ -649,7 +651,7 @@ export default function GeneratedReports() {
         return;
       }
 
-      setComparisons((data || []) as ComparisonAnalysis[]);
+      setComparisons((data?.records || []) as ComparisonAnalysis[]);
     } catch (error) {
       console.error('Error:', error);
     }
