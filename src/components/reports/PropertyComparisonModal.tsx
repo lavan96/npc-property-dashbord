@@ -422,14 +422,14 @@ export function PropertyComparisonModal({
       if (error) throw new Error(error.message);
       const inserted = data?.record;
 
-      setSavedTemplates(prev => [data, ...prev]);
+      setSavedTemplates(prev => [inserted, ...prev]);
       setSaveTemplateOpen(false);
       setTemplateName('');
       setTemplateDescription('');
 
       toast({
         title: "Template Saved",
-        description: `Template "${data.name}" has been saved successfully`,
+        description: `Template "${inserted?.name}" has been saved successfully`,
       });
     } catch (error) {
       console.error('Error saving template:', error);
