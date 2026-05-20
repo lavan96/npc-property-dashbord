@@ -144,13 +144,14 @@ export function PropertyComparisonModal({
 
   const loadTemplates = async () => {
     try {
-      const { data, error } = await supabase
-        .from('comparison_analysis_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'comparison_analysis_templates',
+        listOptions: { orderBy: 'created_at', orderAsc: false },
+      });
 
-      if (error) throw error;
-      setSavedTemplates(data || []);
+      if (error) throw new Error(error.message);
+      setSavedTemplates(data?.records || []);
     } catch (error) {
       console.error('Error loading templates:', error);
       toast({
@@ -400,9 +401,10 @@ export function PropertyComparisonModal({
     }
 
     try {
-      const { data, error } = await supabase
-        .from('comparison_analysis_templates')
-        .insert({
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'insert',
+        table: 'comparison_analysis_templates',
+        data: {
           name: templateName.trim(),
           description: templateDescription.trim() || null,
           settings: {
@@ -414,20 +416,20 @@ export function PropertyComparisonModal({
             customWeights: useCustomWeights ? customWeights : undefined
           },
           created_by: user.id
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      const inserted = data?.record;
 
-      setSavedTemplates(prev => [data, ...prev]);
+      setSavedTemplates(prev => [inserted, ...prev]);
       setSaveTemplateOpen(false);
       setTemplateName('');
       setTemplateDescription('');
 
       toast({
         title: "Template Saved",
-        description: `Template "${data.name}" has been saved successfully`,
+        description: `Template "${inserted?.name}" has been saved successfully`,
       });
     } catch (error) {
       console.error('Error saving template:', error);
@@ -461,12 +463,13 @@ export function PropertyComparisonModal({
   // Delete a template
   const deleteTemplate = async (templateId: string) => {
     try {
-      const { error } = await supabase
-        .from('comparison_analysis_templates')
-        .delete()
-        .eq('id', templateId);
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'delete',
+        table: 'comparison_analysis_templates',
+        recordId: templateId,
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
 

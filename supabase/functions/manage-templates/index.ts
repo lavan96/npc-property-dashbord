@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-type TableName = 'report_structure_templates' | 'client_branding_profiles' | 'integration_configs' | 'depreciation_comps' | 'depreciation_estimator_runs' | 'charts' | 'chart_analysis' | 'chart_configurations' | 'global_report_settings' | 'finance_agent_contacts' | 'bulk_generation_jobs' | 'property_comparisons' | 'portfolio_analysis_templates' | 'checklist_templates' | 'checklist_template_sections' | 'checklist_template_items' | 'checklist_instances' | 'checklist_instance_items' | 'game_plans' | 'game_plan_phases' | 'game_plan_milestones' | 'game_plan_kpis' | 'game_plan_notes' | 'game_plan_actions' | 'custom_users' | 'cover_page_overlays' | 'report_templates' | 'report_template_versions';
+type TableName = 'report_structure_templates' | 'client_branding_profiles' | 'integration_configs' | 'depreciation_comps' | 'depreciation_estimator_runs' | 'charts' | 'chart_analysis' | 'chart_configurations' | 'global_report_settings' | 'finance_agent_contacts' | 'bulk_generation_jobs' | 'property_comparisons' | 'portfolio_analysis_templates' | 'checklist_templates' | 'checklist_template_sections' | 'checklist_template_items' | 'checklist_instances' | 'checklist_instance_items' | 'game_plans' | 'game_plan_phases' | 'game_plan_milestones' | 'game_plan_kpis' | 'game_plan_notes' | 'game_plan_actions' | 'custom_users' | 'cover_page_overlays' | 'report_templates' | 'report_template_versions' | 'comparison_analysis_templates';
 
 interface RequestBody {
   // Operation type
@@ -64,6 +64,7 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   cover_page_overlays: '*',
   report_templates: '*',
   report_template_versions: '*',
+  comparison_analysis_templates: '*',
 };
 
 Deno.serve(async (req) => {
@@ -94,7 +95,7 @@ Deno.serve(async (req) => {
     const { operation, table, recordId, listOptions = {}, data, onConflict, rpcName, rpcParams } = body;
 
     // Validate table
-    const validTables: TableName[] = ['report_structure_templates', 'client_branding_profiles', 'integration_configs', 'depreciation_comps', 'depreciation_estimator_runs', 'charts', 'chart_analysis', 'chart_configurations', 'global_report_settings', 'finance_agent_contacts', 'bulk_generation_jobs', 'property_comparisons', 'portfolio_analysis_templates', 'checklist_templates', 'checklist_template_sections', 'checklist_template_items', 'checklist_instances', 'checklist_instance_items', 'game_plans', 'game_plan_phases', 'game_plan_milestones', 'game_plan_kpis', 'game_plan_notes', 'game_plan_actions', 'custom_users', 'cover_page_overlays', 'report_templates', 'report_template_versions'];
+    const validTables: TableName[] = ['report_structure_templates', 'client_branding_profiles', 'integration_configs', 'depreciation_comps', 'depreciation_estimator_runs', 'charts', 'chart_analysis', 'chart_configurations', 'global_report_settings', 'finance_agent_contacts', 'bulk_generation_jobs', 'property_comparisons', 'portfolio_analysis_templates', 'checklist_templates', 'checklist_template_sections', 'checklist_template_items', 'checklist_instances', 'checklist_instance_items', 'game_plans', 'game_plan_phases', 'game_plan_milestones', 'game_plan_kpis', 'game_plan_notes', 'game_plan_actions', 'custom_users', 'cover_page_overlays', 'report_templates', 'report_template_versions', 'comparison_analysis_templates'];
     if (!validTables.includes(table)) {
       return new Response(
         JSON.stringify({ error: `Invalid table: ${table}` }),
