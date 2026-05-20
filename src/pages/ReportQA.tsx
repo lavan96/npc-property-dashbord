@@ -60,6 +60,8 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, Sparkles } from 'lucide-react';
 
 // Feature components
 import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcuts';
@@ -1822,21 +1824,32 @@ export default function ReportQA() {
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Reports ({uploadedReports.length})
-            </CardTitle>
-            <CardDescription>
-              Upload PDF reports to use as context. Add multiple for comparison.
-            </CardDescription>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4" />
+                Reports
+                {uploadedReports.length > 0 && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    ({uploadedReports.length})
+                  </span>
+                )}
+              </CardTitle>
+              <ReportLibraryPicker
+                onAdd={handleLibraryAdd}
+                existingNames={uploadedReports.map((r) => r.name)}
+                disabled={isUploading}
+              />
+            </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden">
-            {/* Upload Zone */}
+          <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-4">
+            {/* Compact Upload Zone */}
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
-                ${isDragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}
-                ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
+              className={cn(
+                "border border-dashed rounded-md py-3 px-3 text-center transition-colors cursor-pointer",
+                isDragOver ? 'border-primary bg-primary/5' : 'border-border/60 hover:border-primary/50 hover:bg-muted/30',
+                isUploading && 'pointer-events-none opacity-50'
+              )}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -1854,27 +1867,18 @@ export default function ReportQA() {
                 }}
               />
               {isUploading ? (
-                <div className="space-y-2">
-                  <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Processing...</p>
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <p className="text-xs text-muted-foreground">Processing…</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Drop PDFs here or click to browse
+                <div className="flex items-center justify-center gap-2">
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Drop PDFs or click to upload
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Library picker (existing investment reports) */}
-            <div className="flex justify-center">
-              <ReportLibraryPicker
-                onAdd={handleLibraryAdd}
-                existingNames={uploadedReports.map((r) => r.name)}
-                disabled={isUploading}
-              />
             </div>
 
             {/* Upload Progress */}
@@ -1892,75 +1896,106 @@ export default function ReportQA() {
               </div>
             )}
 
-            {/* Reports Toolbar */}
+            {/* Search across reports */}
             {uploadedReports.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <ReportSwitcher
-                  reports={uploadedReports}
-                  activeReportIndex={activeReportIndex}
-                  onSelectReport={setActiveReportIndex}
-                />
-                <ReportSearch
-                  reports={uploadedReports}
-                  onResultClick={(reportIndex, _snippet) => {
-                    setActiveReportIndex(reportIndex);
-                    toast({
-                      title: 'Report selected',
-                      description: `Focused on ${uploadedReports[reportIndex].name}`,
-                    });
-                  }}
-                />
-              </div>
+              <ReportSearch
+                reports={uploadedReports}
+                onResultClick={(reportIndex) => {
+                  setActiveReportIndex(reportIndex);
+                  toast({
+                    title: 'Report selected',
+                    description: `Focused on ${uploadedReports[reportIndex].name}`,
+                  });
+                }}
+              />
             )}
 
-            {/* Uploaded Reports Grid */}
+            {/* Uploaded Reports — compact list */}
             {uploadedReports.length > 0 && (
-              <ScrollArea className="flex-1">
-                <div className="grid grid-cols-2 gap-2">
-                  {uploadedReports.map((report, index) => (
-                    <PDFThumbnail
-                      key={report.name}
-                      fileName={report.name}
-                      content={report.content}
-                      uploadedAt={report.uploadedAt}
-                      fileSizeBytes={report.fileSizeBytes}
-                      totalPages={report.totalPages}
-                      isActive={activeReportIndex === index}
-                      onClick={() => setActiveReportIndex(
-                        activeReportIndex === index ? null : index
-                      )}
-                      onRemove={() => {
-                        removeReport(report.name);
-                        if (activeReportIndex === index) {
-                          setActiveReportIndex(null);
-                        }
-                      }}
-                    />
-                  ))}
+              <ScrollArea className="flex-1 -mx-1 px-1">
+                <div className="space-y-1.5">
+                  {uploadedReports.map((report, index) => {
+                    const isActive = activeReportIndex === index;
+                    const sizeKB = report.fileSizeBytes
+                      ? report.fileSizeBytes < 1024 * 1024
+                        ? `${Math.round(report.fileSizeBytes / 1024)} KB`
+                        : `${(report.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
+                      : `${Math.round(report.content.length / 1024)} KB`;
+                    return (
+                      <div
+                        key={report.name}
+                        onClick={() => setActiveReportIndex(isActive ? null : index)}
+                        className={cn(
+                          "group flex items-center gap-2.5 rounded-md border p-2 cursor-pointer transition-all",
+                          isActive
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                            : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
+                          isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                        )}>
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate" title={report.name}>
+                            {report.name.replace(/\.pdf$/i, '')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {report.totalPages ?? '—'} pages · {sizeKB}
+                            {isActive && <span className="ml-1.5 text-primary font-medium">· Active</span>}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeReport(report.name);
+                            if (isActive) setActiveReportIndex(null);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             )}
 
             {/* Comparison Badge */}
             {uploadedReports.length > 1 && activeReportIndex === null && (
-              <div className="flex items-center gap-2 p-2 bg-blue-500/10 rounded-lg">
-                <GitCompare className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-blue-600 dark:text-blue-400">Comparison mode active</span>
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/10 rounded-md">
+                <GitCompare className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs text-primary font-medium">Comparing all reports</span>
               </div>
             )}
 
-            <Separator />
-
-            {/* Smart Suggestions */}
-            <SmartSuggestions
-              hasReports={uploadedReports.length > 0}
-              isComparison={uploadedReports.length > 1}
-              messageCount={messages.length}
-              onSelect={setInputMessage}
-            />
+            {/* Smart Suggestions — collapsible */}
+            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="border-t pt-3 -mx-4 px-4">
+              <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3" />
+                  Smart suggestions
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <SmartSuggestions
+                  hasReports={uploadedReports.length > 0}
+                  isComparison={uploadedReports.length > 1}
+                  messageCount={messages.length}
+                  onSelect={setInputMessage}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
         )}
+
 
         {/* Chat Section */}
         <Card className={cn("flex flex-col overflow-hidden min-h-0 min-w-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
