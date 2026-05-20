@@ -144,13 +144,14 @@ export function PropertyComparisonModal({
 
   const loadTemplates = async () => {
     try {
-      const { data, error } = await supabase
-        .from('comparison_analysis_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'comparison_analysis_templates',
+        listOptions: { orderBy: 'created_at', orderAsc: false },
+      });
 
-      if (error) throw error;
-      setSavedTemplates(data || []);
+      if (error) throw new Error(error.message);
+      setSavedTemplates(data?.records || []);
     } catch (error) {
       console.error('Error loading templates:', error);
       toast({
