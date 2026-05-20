@@ -463,12 +463,13 @@ export function PropertyComparisonModal({
   // Delete a template
   const deleteTemplate = async (templateId: string) => {
     try {
-      const { error } = await supabase
-        .from('comparison_analysis_templates')
-        .delete()
-        .eq('id', templateId);
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'delete',
+        table: 'comparison_analysis_templates',
+        recordId: templateId,
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
 
