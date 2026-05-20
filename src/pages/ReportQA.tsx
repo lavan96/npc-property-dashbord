@@ -61,7 +61,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 
 // Feature components
 import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcuts';
