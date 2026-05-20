@@ -64,6 +64,7 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   cover_page_overlays: '*',
   report_templates: '*',
   report_template_versions: '*',
+  comparison_analysis_templates: '*',
 };
 
 Deno.serve(async (req) => {
