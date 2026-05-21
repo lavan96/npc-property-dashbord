@@ -2624,16 +2624,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           const purchasePrice = baseFinancialData.purchasePrice;
           const depositValue = baseFinancialData.depositValue || (purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
           const depositPct = purchasePrice > 0 ? Math.round((depositValue / purchasePrice) * 100) : 0;
-          drawBrkRow('Purchase Price', formatCurrency(purchasePrice));
+          // Purchase Price shown standalone (reference only — not added to upfront total)
+          drawBrkRow('Purchase Price (reference)', formatCurrency(purchasePrice));
           drawBrkRow(`Deposit (${depositPct}% — from your funds)`, formatCurrency(depositValue));
           drawBrkRow('Stamp Duty', formatCurrency(baseFinancialData.stampDuty));
-          drawBrkRow('Solicitor Cost', formatCurrency(baseFinancialData.solicitorFees));
+          drawBrkRow('Solicitor / Conveyancer Cost', formatCurrency(baseFinancialData.solicitorFees));
           drawBrkRow('Agent Fee', formatCurrency(baseFinancialData.agentFee || 0));
           if (baseFinancialData.lmiAmount > 0) {
             drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
           }
-          // Deposit is part of Purchase Price — not added again to total
-          totalExpenditure = purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
+          // Total Upfront Cost = funds the buyer actually outlays (deposit + acquisition costs)
+          const totalUpfront = depositValue + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
+          drawBrkRow('Total Upfront Cost', formatCurrency(totalUpfront), { bold: true, bg: { r: 235, g: 235, b: 235 } });
+          totalExpenditure = totalUpfront;
         }
 
         // Grand Total highlight box (yellow/amber)
