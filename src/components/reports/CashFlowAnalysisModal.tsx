@@ -5548,10 +5548,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                     <TableCell className="text-right">{formatCurrency(r.value)}</TableCell>
                                   </TableRow>
                                 ))}
-                                <TableRow>
-                                  <TableCell className="font-medium">Total Upfront Costs</TableCell>
-                                  <TableCell className="text-right">{formatCurrency(totalUpfront)}</TableCell>
-                                </TableRow>
                                 <TableRow className="bg-primary/10">
                                   <TableCell className="font-bold text-primary">Total Overall Expenditure to Completion</TableCell>
                                   <TableCell className="text-right font-bold text-primary">{formatCurrency(totalOverall)}</TableCell>
