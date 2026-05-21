@@ -1308,8 +1308,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const totalUpfrontCost = tenPercentLand + fivePercentBuild + stampDuty + solicitorFees + agentFee + lmiAmount;
 
     // Total interest during construction
-    const totalLandInterest = monthlyLandInterest * durationMonths;
-    const stagedProgressInterest = Math.round((totalLandInterest + totalBuildInterest) * 100) / 100;
+    // IMPORTANT: Sum the already-rounded per-row values so the footer total
+    // matches what users see when adding the visible monthly column.
+    const totalLandInterestRounded = stageResults.reduce((sum, r) => sum + (r.landInterest || 0), 0);
+    const totalBuildInterestRounded = stageResults.reduce((sum, r) => sum + (r.buildInterest || 0), 0);
+    const totalCombinedRepaymentRounded = stageResults.reduce((sum, r) => sum + (r.totalMonthlyInterest || 0), 0);
+    const stagedProgressInterest = Math.round((totalLandInterestRounded + totalBuildInterestRounded) * 100) / 100;
 
     return {
       landPrice,
@@ -1320,10 +1324,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       stages: stageResults,
       monthlyLandInterest: Math.round(monthlyLandInterest * 100) / 100,
       totals: {
-        landInterest: Math.round(totalLandInterest * 100) / 100,
-        buildInterest: Math.round(totalBuildInterest * 100) / 100,
+        landInterest: Math.round(totalLandInterestRounded * 100) / 100,
+        buildInterest: Math.round(totalBuildInterestRounded * 100) / 100,
         totalInterest: stagedProgressInterest,
-        totalCombinedRepayment: Math.round(totalCombinedRepayment * 100) / 100,
+        totalCombinedRepayment: Math.round(totalCombinedRepaymentRounded * 100) / 100,
       },
       upfrontCosts: {
         tenPercentLand,
