@@ -2622,13 +2622,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           totalExpenditure = constructionProgressSchedule.grandTotal;
         } else {
           const purchasePrice = baseFinancialData.purchasePrice;
+          const depositValue = baseFinancialData.depositValue || (purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
+          const depositPct = purchasePrice > 0 ? Math.round((depositValue / purchasePrice) * 100) : 0;
           drawBrkRow('Purchase Price', formatCurrency(purchasePrice));
+          drawBrkRow(`Deposit (${depositPct}% — from your funds)`, formatCurrency(depositValue));
           drawBrkRow('Stamp Duty', formatCurrency(baseFinancialData.stampDuty));
           drawBrkRow('Solicitor Cost', formatCurrency(baseFinancialData.solicitorFees));
           drawBrkRow('Agent Fee', formatCurrency(baseFinancialData.agentFee || 0));
           if (baseFinancialData.lmiAmount > 0) {
             drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
           }
+          // Deposit is part of Purchase Price — not added again to total
           totalExpenditure = purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
         }
 
@@ -3589,6 +3593,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
                 ` : `
                    <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+                   <tr><td style="font-weight: 500;">Deposit (${baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</td></tr>
                    <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
                    <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
                     <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
@@ -5422,6 +5427,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                  <TableCell className="font-medium w-1/2">Purchase Price</TableCell>
                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
                                </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">
+                                  Deposit
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</TableCell>
+                              </TableRow>
                               <TableRow>
                                 <TableCell className="font-medium">Stamp Duty</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
