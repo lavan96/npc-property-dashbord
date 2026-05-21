@@ -2687,11 +2687,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== CONSTRUCTION PROGRESS SCHEDULE ==========
+      // ALWAYS start the construction progress schedule on its own dedicated page
+      // so the entire table fits on a single page (no mid-table page breaks),
+      // and the 10-Year Projections table follows immediately on the next page.
       if (isNewBuild && includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0) {
-        if (yPos > pageHeight - 85) {
-          pdf.addPage();
-          yPos = margin + 10;
-        }
+        pdf.addPage();
+        yPos = margin + 5;
 
         // Section header with accent line
         pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
@@ -2728,10 +2729,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         constructionProgressSchedule.stages.forEach((stage, idx) => {
-          if (yPos > pageHeight - 20) {
-            pdf.addPage();
-            yPos = margin;
-          }
+          // Page break suppressed: construction schedule must remain on a single page.
+          // Stage counts (typically <= 12 rows) comfortably fit on one A4 page.
+
           
           // Zebra striping
           if (idx % 2 === 0) {
