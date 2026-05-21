@@ -2780,6 +2780,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== 10-YEAR PROJECTIONS TABLE ==========
+      // ALWAYS start the 10-year projections table on its own dedicated page
+      // so the entire table is never split across page boundaries.
+      pdf.addPage();
+      yPos = margin + 5;
+
       // Section header with accent line
       pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
       pdf.rect(margin, yPos, 3, 5, 'F');
@@ -2788,6 +2793,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setTextColor(darkText.r, darkText.g, darkText.b);
       pdf.text('10-Year Projections', margin + 6, yPos + 4);
       yPos += 8;
+
 
       // Table configuration - compact for portrait orientation
       const colWidths = [34, ...Array(11).fill((pageWidth - margin * 2 - 34) / 11)]; // Slightly wider first column
@@ -2799,13 +2805,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
         const currentRowHeight = isSection ? sectionRowHeight : rowHeight;
         
-        // Check if this row would overflow into footer area - if so, add page break
-        const neededSpace = isSection ? currentRowHeight + 1 : currentRowHeight; // Section has extra padding
-        if (yPos + neededSpace > contentMaxY) {
-          pdf.addPage();
-          yPos = margin + 5;
-          tableRowCount = 0; // Reset zebra striping for new page
-        }
+        // Page break suppressed: the 10-Year Projections table must always
+        // render as a single contiguous block on its dedicated page.
+        // (Row sizing is calibrated to fit all rows + sections on one A4 page.)
+
         
         if (isSection) {
           // Section header row - remove slash from section names
@@ -2937,18 +2940,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
       drawRow(['Depreciation $', '', ...years1to10.map(p => formatCurrency(p.depreciation))]);
       
-      // ========== CHECK IF SUMMARY WILL FIT BEFORE DRAWING LAST SECTION ==========
-      // Calculate space needed for remaining rows + summary box
-      const remainingRows = 6; // SUMMARY section + 5 data rows
-      const remainingSectionRows = 1;
-      const spaceNeededForSummarySection = (remainingRows * rowHeight) + (remainingSectionRows * (sectionRowHeight + 1)) + summarySpacing + summaryBoxHeight;
-      
-      // If summary section + summary box won't fit, force page break now
-      if (yPos + spaceNeededForSummarySection > contentMaxY) {
-        pdf.addPage();
-        yPos = margin + 5;
-        tableRowCount = 0;
-      }
+      // Mid-table page break suppressed - table must stay on single page.
+
       
       drawRow(['SUMMARY'], false, true);
       drawRow(['Total Deductions $', '', ...years1to10.map(p => formatCurrency(p.totalDeductions))]);
