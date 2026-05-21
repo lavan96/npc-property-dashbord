@@ -5490,9 +5490,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ];
                         totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
                         overallExtraRows = [
-                          { label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest },
+                          { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
                         ];
-                        totalOverall = totalUpfront + stagedInterest;
+                        totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal;
                       } else {
                         upfrontRows = [
                           { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
@@ -5504,8 +5507,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
                         overallExtraRows = [
                           { label: 'Purchase Price', value: baseFinancialData.purchasePrice },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: 'Agent Fee', value: agentFee },
                         ];
-                        totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+                        totalOverall = baseFinancialData.purchasePrice + stampDuty + solicitorFees + agentFee;
                       }
 
                       return (
