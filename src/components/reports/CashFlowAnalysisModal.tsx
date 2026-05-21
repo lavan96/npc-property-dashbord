@@ -5428,6 +5428,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
                                </TableRow>
                               <TableRow>
+                                <TableCell className="font-medium">
+                                  Deposit
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</TableCell>
+                              </TableRow>
+                              <TableRow>
                                 <TableCell className="font-medium">Stamp Duty</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
                               </TableRow>
