@@ -2552,41 +2552,77 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           drawInputRow('', '', 'LMI:', formatCurrency(baseFinancialData.lmiAmount));
         }
 
-        // ===== Total Overall Expenditure to Completion — Breakdown Table =====
+        // ===== Total Upfront Costs + Total Overall Expenditure to Completion =====
         yPos += 4;
 
-        // Check if we need a new page for the breakdown table
-        const breakdownRowCount = isNewBuild && constructionProgressSchedule
-          ? 5 + (baseFinancialData.lmiAmount > 0 ? 1 : 0) + 2 // upfront items + subtotal + staged + grand total
-          : 4 + (baseFinancialData.lmiAmount > 0 ? 1 : 0) + 1; // items + subtotal + total
-        const breakdownEstHeight = breakdownRowCount * 5.5 + 18; // rows + header + highlight box
-        if (yPos + breakdownEstHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPos = margin + 10;
+        // Build row data for both sections
+        const _purchasePrice = baseFinancialData.purchasePrice;
+        const _depositValue = baseFinancialData.depositValue || (_purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
+        const _depositPct = _purchasePrice > 0 ? Math.round((_depositValue / _purchasePrice) * 100) : 0;
+        const _stampDuty = baseFinancialData.stampDuty || 0;
+        const _solicitorFees = baseFinancialData.solicitorFees || 0;
+        const _agentFee = baseFinancialData.agentFee || 0;
+        const _lmiAmount = baseFinancialData.lmiAmount || 0;
+
+        let upfrontRows: { label: string; value: number }[] = [];
+        let overallExtraRows: { label: string; value: number }[] = [];
+        let totalUpfront = 0;
+        let totalOverall = 0;
+
+        if (isNewBuild && constructionProgressSchedule) {
+          const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
+          const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
+          const constructionProgressTotal = constructionProgressSchedule.buildPrice;
+          const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+          const remainingProgress = Math.max(0, constructionProgressTotal - buildDeposit);
+          upfrontRows = [
+            { label: '10% Land Deposit', value: landDeposit },
+            { label: '5% Build Contract Deposit', value: buildDeposit },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: 'Construction Progress Payments (remaining)', value: remainingProgress },
+            ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
+          ];
+          totalUpfront = landDeposit + buildDeposit + _stampDuty + _solicitorFees + remainingProgress + _lmiAmount;
+          overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
+          totalOverall = totalUpfront + stagedInterest;
+        } else {
+          upfrontRows = [
+            { label: `Deposit (${_depositPct}% — from your funds)`, value: _depositValue },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: 'Agent Fee', value: _agentFee },
+            ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
+          ];
+          totalUpfront = _depositValue + _stampDuty + _solicitorFees + _agentFee + _lmiAmount;
+          overallExtraRows = [{ label: 'Purchase Price', value: _purchasePrice }];
+          totalOverall = _purchasePrice + totalUpfront;
         }
 
-        // Section title
-        pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        pdf.rect(margin, yPos, 3, 5, 'F');
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        pdf.text('Total Overall Expenditure to Completion', margin + 6, yPos + 4);
-        yPos += 8;
-
-        // Table header
         const brkTableWidth = pageWidth - margin * 2;
         const brkColLabel = brkTableWidth * 0.65;
-        pdf.setFillColor(240, 240, 240);
-        pdf.rect(margin, yPos, brkTableWidth, 5, 'F');
-        pdf.setFontSize(7);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        pdf.text('Item', margin + 3, yPos + 3.5);
-        pdf.text('Amount', margin + brkColLabel + 3, yPos + 3.5);
-        yPos += 5.5;
 
-        // Helper to draw a breakdown row
+        const drawSectionTitle = (title: string) => {
+          pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+          pdf.rect(margin, yPos, 3, 5, 'F');
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text(title, margin + 6, yPos + 4);
+          yPos += 8;
+        };
+
+        const drawTableHeader = () => {
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, yPos, brkTableWidth, 5, 'F');
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.text('Item', margin + 3, yPos + 3.5);
+          pdf.text('Amount', margin + brkColLabel + 3, yPos + 3.5);
+          yPos += 5.5;
+        };
+
         const drawBrkRow = (label: string, amount: string, options?: { bold?: boolean; bg?: { r: number; g: number; b: number }; textColor?: { r: number; g: number; b: number } }) => {
           if (options?.bg) {
             pdf.setFillColor(options.bg.r, options.bg.g, options.bg.b);
@@ -2601,56 +2637,43 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           yPos += 5;
         };
 
-        // Draw light grid lines
+        // Pagination check
+        const totalRows = upfrontRows.length + overallExtraRows.length + 4; // section titles + headers + totals
+        const breakdownEstHeight = totalRows * 5.5 + 30;
+        if (yPos + breakdownEstHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPos = margin + 10;
+        }
+
         pdf.setDrawColor(220, 220, 220);
         pdf.setLineWidth(0.2);
 
-        let totalExpenditure: number;
+        // ----- Total Upfront Costs section -----
+        drawSectionTitle('Total Upfront Costs');
+        drawTableHeader();
+        upfrontRows.forEach(r => drawBrkRow(r.label, formatCurrency(r.value)));
+        drawBrkRow('Total Upfront Costs', formatCurrency(totalUpfront), { bold: true, bg: { r: 235, g: 235, b: 235 } });
 
-        if (isNewBuild && constructionProgressSchedule) {
-          drawBrkRow('10% Land Purchase Price', formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand));
-          drawBrkRow('5% Build Contract Price', formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild));
-          drawBrkRow('Stamp Duty', formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty));
-          drawBrkRow('Solicitor Cost', formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees));
-          if (baseFinancialData.lmiAmount > 0) {
-            drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
-          }
-          // Subtotal row
-          drawBrkRow('Total Upfront Cost', formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost), { bold: true, bg: { r: 235, g: 235, b: 235 } });
-          // Staged interest
-          drawBrkRow(`${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, formatCurrency(constructionProgressSchedule.totals.totalInterest));
-          totalExpenditure = constructionProgressSchedule.grandTotal;
-        } else {
-          const purchasePrice = baseFinancialData.purchasePrice;
-          const depositValue = baseFinancialData.depositValue || (purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
-          const depositPct = purchasePrice > 0 ? Math.round((depositValue / purchasePrice) * 100) : 0;
-          // Purchase Price shown standalone (reference only — not added to upfront total)
-          drawBrkRow('Purchase Price (reference)', formatCurrency(purchasePrice));
-          drawBrkRow(`Deposit (${depositPct}% — from your funds)`, formatCurrency(depositValue));
-          drawBrkRow('Stamp Duty', formatCurrency(baseFinancialData.stampDuty));
-          drawBrkRow('Solicitor / Conveyancer Cost', formatCurrency(baseFinancialData.solicitorFees));
-          drawBrkRow('Agent Fee', formatCurrency(baseFinancialData.agentFee || 0));
-          if (baseFinancialData.lmiAmount > 0) {
-            drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
-          }
-          // Total Upfront Cost = funds the buyer actually outlays (deposit + acquisition costs)
-          const totalUpfront = depositValue + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
-          drawBrkRow('Total Upfront Cost', formatCurrency(totalUpfront), { bold: true, bg: { r: 235, g: 235, b: 235 } });
-          totalExpenditure = totalUpfront;
-        }
+        yPos += 4;
 
-        // Grand Total highlight box (yellow/amber)
-        yPos += 6;
-        pdf.setFillColor(254, 243, 199); // amber-100
+        // ----- Total Overall Expenditure to Completion section -----
+        drawSectionTitle('Total Overall Expenditure to Completion');
+        drawTableHeader();
+        overallExtraRows.forEach(r => drawBrkRow(r.label, formatCurrency(r.value)));
+        drawBrkRow('Total Upfront Costs', formatCurrency(totalUpfront));
+
+        // Highlight box for grand total
+        yPos += 4;
+        pdf.setFillColor(254, 243, 199);
         pdf.roundedRect(margin, yPos - 3, brkTableWidth, 7, 1, 1, 'F');
-        pdf.setDrawColor(245, 158, 11); // amber-500 border
+        pdf.setDrawColor(245, 158, 11);
         pdf.setLineWidth(0.4);
         pdf.roundedRect(margin, yPos - 3, brkTableWidth, 7, 1, 1, 'S');
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(146, 64, 14); // amber-800 text
+        pdf.setTextColor(146, 64, 14);
         pdf.text('Total Overall Expenditure to Completion:', margin + 4, yPos + 1);
-        pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos + 1);
+        pdf.text(formatCurrency(totalOverall), margin + 80, yPos + 1);
         yPos += 10;
       }
 
