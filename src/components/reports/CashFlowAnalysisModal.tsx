@@ -3639,8 +3639,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
               ];
               totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
-              overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
-              totalOverall = totalUpfront + stagedInterest;
+              overallExtraRows = [
+                { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
+              ];
+              totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal;
             } else {
               upfrontRows = [
                 { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
@@ -3650,8 +3655,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
               ];
               totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
-              overallExtraRows = [{ label: 'Purchase Price', value: baseFinancialData.purchasePrice }];
-              totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+              overallExtraRows = [
+                { label: 'Purchase Price', value: baseFinancialData.purchasePrice },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: 'Agent Fee', value: agentFee },
+              ];
+              totalOverall = baseFinancialData.purchasePrice + stampDuty + solicitorFees + agentFee;
             }
             const rowsHtml = (rows: { label: string; value: number }[]) => rows.map(r =>
               `<tr><td style="font-weight: 500;">${r.label}</td><td style="text-align: right;">${formatCurrency(r.value)}</td></tr>`
