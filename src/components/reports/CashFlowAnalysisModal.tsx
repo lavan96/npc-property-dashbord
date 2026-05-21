@@ -3581,32 +3581,71 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
             </tbody>
           </table>
-          <div style="margin-top: 16px; padding-top: 12px; border-top: 2px solid #ccc;">
-            <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">Total Overall Expenditure to Completion</h4>
-            <table style="margin-bottom: 0; font-size: 11px;">
-              <tbody>
-                ${isNewBuild && constructionProgressSchedule ? `
-                  <tr><td style="font-weight: 500; width: 50%;">10% Land Purchase price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</td></tr>
-                  <tr><td style="font-weight: 500;">5% Build Contract Price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</td></tr>
-                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</td></tr>
-                   <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</td></tr>
-                   ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
-                   <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</td></tr>
-                  <tr><td style="font-weight: 500;">${constructionProgressSchedule.durationMonths} Month Staged Progress</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
-                  <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
-                ` : `
-                   <tr><td style="font-weight: 500; width: 50%;">Purchase Price <span style="color:#888;font-size:11px;">(reference)</span></td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
-                   <tr><td style="font-weight: 500;">Deposit (${baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</td></tr>
-                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
-                    <tr><td style="font-weight: 500;">Solicitor / Conveyancer Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
-                    <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
-                    ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
-                    <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0))}</td></tr>
-                    <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0))}</td></tr>
-                `}
-              </tbody>
-            </table>
-          </div>
+          ${(() => {
+            const depositValue = baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
+            const depositPct = baseFinancialData.purchasePrice > 0 ? Math.round((depositValue / baseFinancialData.purchasePrice) * 100) : 0;
+            const stampDuty = baseFinancialData.stampDuty || 0;
+            const solicitorFees = baseFinancialData.solicitorFees || 0;
+            const agentFee = baseFinancialData.agentFee || 0;
+            const lmiAmount = baseFinancialData.lmiAmount || 0;
+            let upfrontRows: { label: string; value: number }[] = [];
+            let overallExtraRows: { label: string; value: number }[] = [];
+            let totalUpfront = 0;
+            let totalOverall = 0;
+            if (isNewBuild && constructionProgressSchedule) {
+              const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
+              const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
+              const constructionProgressTotal = constructionProgressSchedule.buildPrice;
+              const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+              const remainingProgress = Math.max(0, constructionProgressTotal - buildDeposit);
+              upfrontRows = [
+                { label: '10% Land Deposit', value: landDeposit },
+                { label: '5% Build Contract Deposit', value: buildDeposit },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: 'Construction Progress Payments (remaining)', value: remainingProgress },
+                ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
+              ];
+              totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
+              overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
+              totalOverall = totalUpfront + stagedInterest;
+            } else {
+              upfrontRows = [
+                { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: 'Agent Fee', value: agentFee },
+                ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
+              ];
+              totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
+              overallExtraRows = [{ label: 'Purchase Price', value: baseFinancialData.purchasePrice }];
+              totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+            }
+            const rowsHtml = (rows: { label: string; value: number }[]) => rows.map(r =>
+              `<tr><td style="font-weight: 500;">${r.label}</td><td style="text-align: right;">${formatCurrency(r.value)}</td></tr>`
+            ).join('');
+            return `
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 2px solid #ccc;">
+                <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">Total Upfront Costs</h4>
+                <table style="margin-bottom: 0; font-size: 11px;">
+                  <tbody>
+                    ${rowsHtml(upfrontRows)}
+                    <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Costs</td><td style="text-align: right; font-weight: 600;">${formatCurrency(totalUpfront)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 2px solid #ccc;">
+                <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">Total Overall Expenditure to Completion</h4>
+                <table style="margin-bottom: 0; font-size: 11px;">
+                  <tbody>
+                    ${rowsHtml(overallExtraRows)}
+                    <tr><td style="font-weight: 500;">Total Upfront Costs</td><td style="text-align: right;">${formatCurrency(totalUpfront)}</td></tr>
+                    <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total Overall Expenditure to Completion</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(totalOverall)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            `;
+          })()}
         </div>
         ` : ''}
         
