@@ -5488,9 +5488,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
                           { label: 'Stamp Duty', value: stampDuty },
                           { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
-                          { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
+                          { label: 'Build Price', value: constructionProgressTotal },
+                          { label: `Construction Progress Payment Interest (${constructionProgressSchedule.durationMonths} months)`, value: stagedInterest },
                         ];
-                        totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal;
+                        totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal + stagedInterest;
                       } else {
                         upfrontRows = [
                           { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
