@@ -5380,114 +5380,102 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </Table>
                     </div>
                     
-                    {/* Total Overall Expenditure to Completion */}
-                    <div className="mt-6 pt-4 border-t-2 border-muted">
-                      <div className="border-b border-muted pb-2 mb-3">
-                        <h4 className="text-sm font-bold">Total Overall Expenditure to Completion</h4>
-                      </div>
-                      <Table>
-                        <TableBody>
-                          {isNewBuild && constructionProgressSchedule ? (
-                            <>
-                              <TableRow>
-                                <TableCell className="font-medium w-1/2">10% Land Purchase price</TableCell>
-                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">5% Build Contract Price</TableCell>
-                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Stamp Duty</TableCell>
-                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Solicitor Cost</TableCell>
-                               <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</TableCell>
-                              </TableRow>
-                              {baseFinancialData.lmiAmount > 0 && (
-                                <TableRow>
-                                  <TableCell className="font-medium">LMI (Lenders Mortgage Insurance)</TableCell>
-                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.lmiAmount)}</TableCell>
+                    {/* Total Upfront Costs + Total Overall Expenditure to Completion */}
+                    {(() => {
+                      const depositValue = baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
+                      const depositPct = baseFinancialData.purchasePrice > 0 ? Math.round((depositValue / baseFinancialData.purchasePrice) * 100) : 0;
+                      const stampDuty = baseFinancialData.stampDuty || 0;
+                      const solicitorFees = baseFinancialData.solicitorFees || 0;
+                      const agentFee = baseFinancialData.agentFee || 0;
+                      const lmiAmount = baseFinancialData.lmiAmount || 0;
+
+                      let upfrontRows: { label: string; value: number }[] = [];
+                      let overallExtraRows: { label: string; value: number }[] = [];
+                      let totalUpfront = 0;
+                      let totalOverall = 0;
+
+                      if (isNewBuild && constructionProgressSchedule) {
+                        const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
+                        const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
+                        const constructionProgressTotal = constructionProgressSchedule.buildPrice;
+                        const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+                        const remainingProgress = Math.max(0, constructionProgressTotal - buildDeposit);
+                        upfrontRows = [
+                          { label: '10% Land Deposit', value: landDeposit },
+                          { label: '5% Build Contract Deposit', value: buildDeposit },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: 'Construction Progress Payments (remaining)', value: remainingProgress },
+                          ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
+                        ];
+                        totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
+                        overallExtraRows = [
+                          { label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest },
+                        ];
+                        totalOverall = totalUpfront + stagedInterest;
+                      } else {
+                        upfrontRows = [
+                          { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: 'Agent Fee', value: agentFee },
+                          ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
+                        ];
+                        totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
+                        overallExtraRows = [
+                          { label: 'Purchase Price', value: baseFinancialData.purchasePrice },
+                        ];
+                        totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+                      }
+
+                      return (
+                        <>
+                          <div className="mt-6 pt-4 border-t-2 border-muted">
+                            <div className="border-b border-muted pb-2 mb-3">
+                              <h4 className="text-sm font-bold">Total Upfront Costs</h4>
+                            </div>
+                            <Table>
+                              <TableBody>
+                                {upfrontRows.map((r, i) => (
+                                  <TableRow key={`up-${i}`}>
+                                    <TableCell className="font-medium w-1/2">{r.label}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(r.value)}</TableCell>
+                                  </TableRow>
+                                ))}
+                                <TableRow className="bg-muted/30">
+                                  <TableCell className="font-semibold">Total Upfront Costs</TableCell>
+                                  <TableCell className="text-right font-semibold">{formatCurrency(totalUpfront)}</TableCell>
                                 </TableRow>
-                              )}
-                              <TableRow className="bg-muted/30">
-                                <TableCell className="font-semibold">Total Upfront Cost</TableCell>
-                                <TableCell className="text-right font-semibold">{formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">{constructionProgressSchedule.durationMonths} Month Staged Progress</TableCell>
-                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.totals.totalInterest)}</TableCell>
-                              </TableRow>
-                              <TableRow className="bg-primary/10">
-                                <TableCell className="font-bold text-primary">Total</TableCell>
-                                <TableCell className="text-right font-bold text-primary">{formatCurrency(constructionProgressSchedule.grandTotal)}</TableCell>
-                              </TableRow>
-                            </>
-                          ) : (
-                            <>
-                              <TableRow>
-                                 <TableCell className="font-medium w-1/2">
-                                   Purchase Price
-                                   <span className="text-xs text-muted-foreground ml-1">(reference)</span>
-                                 </TableCell>
-                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
-                               </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">
-                                  Deposit
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    ({baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)
-                                  </span>
-                                </TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Stamp Duty</TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Solicitor / Conveyancer Cost</TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
-                              </TableRow>
-                               <TableRow>
-                                <TableCell className="font-medium">Agent Fee</TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.agentFee)}</TableCell>
-                              </TableRow>
-                              {baseFinancialData.lmiAmount > 0 && (
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          <div className="mt-6 pt-4 border-t-2 border-muted">
+                            <div className="border-b border-muted pb-2 mb-3">
+                              <h4 className="text-sm font-bold">Total Overall Expenditure to Completion</h4>
+                            </div>
+                            <Table>
+                              <TableBody>
+                                {overallExtraRows.map((r, i) => (
+                                  <TableRow key={`ov-${i}`}>
+                                    <TableCell className="font-medium w-1/2">{r.label}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(r.value)}</TableCell>
+                                  </TableRow>
+                                ))}
                                 <TableRow>
-                                  <TableCell className="font-medium">LMI (Lenders Mortgage Insurance)</TableCell>
-                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.lmiAmount)}</TableCell>
+                                  <TableCell className="font-medium">Total Upfront Costs</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(totalUpfront)}</TableCell>
                                 </TableRow>
-                              )}
-                              <TableRow className="bg-muted/30">
-                                <TableCell className="font-semibold">Total Upfront Cost</TableCell>
-                                 <TableCell className="text-right font-semibold">
-                                   {formatCurrency(
-                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
-                                     baseFinancialData.stampDuty +
-                                     baseFinancialData.solicitorFees +
-                                     (baseFinancialData.agentFee || 0) +
-                                     (baseFinancialData.lmiAmount || 0)
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                              <TableRow className="bg-primary/10">
-                                <TableCell className="font-bold text-primary">Total</TableCell>
-                                <TableCell className="text-right font-bold text-primary">
-                                   {formatCurrency(
-                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
-                                     baseFinancialData.stampDuty +
-                                     baseFinancialData.solicitorFees +
-                                     (baseFinancialData.agentFee || 0) +
-                                     (baseFinancialData.lmiAmount || 0)
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            </>
-                          )}
-                        </TableBody>
-                      </Table>
+                                <TableRow className="bg-primary/10">
+                                  <TableCell className="font-bold text-primary">Total Overall Expenditure to Completion</TableCell>
+                                  <TableCell className="text-right font-bold text-primary">{formatCurrency(totalOverall)}</TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </>
+                      );
+                    })()}
                     </div>
                   </CardContent>
                 </CollapsibleContent>
