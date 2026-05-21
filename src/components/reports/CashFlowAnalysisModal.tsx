@@ -3681,7 +3681,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <table style="margin-bottom: 0; font-size: 11px;">
                   <tbody>
                     ${rowsHtml(overallExtraRows)}
-                    <tr><td style="font-weight: 500;">Total Upfront Costs</td><td style="text-align: right;">${formatCurrency(totalUpfront)}</td></tr>
                     <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total Overall Expenditure to Completion</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(totalOverall)}</td></tr>
                   </tbody>
                 </table>
