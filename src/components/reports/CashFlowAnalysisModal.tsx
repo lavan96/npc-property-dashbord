@@ -5469,16 +5469,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
                         const constructionProgressTotal = constructionProgressSchedule.buildPrice;
                         const stagedInterest = constructionProgressSchedule.totals.totalInterest;
-                        const remainingProgress = Math.max(0, constructionProgressTotal - buildDeposit);
                         upfrontRows = [
                           { label: '10% Land Deposit', value: landDeposit },
                           { label: '5% Build Contract Deposit', value: buildDeposit },
                           { label: 'Stamp Duty', value: stampDuty },
                           { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
-                          { label: 'Construction Progress Payments (remaining)', value: remainingProgress },
+                          { label: `Construction Progress Payment Interest (${constructionProgressSchedule.durationMonths} months)`, value: stagedInterest },
                           ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
                         ];
-                        totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
+                        totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + stagedInterest + lmiAmount;
                         overallExtraRows = [
                           { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
                           { label: 'Stamp Duty', value: stampDuty },
