@@ -2687,12 +2687,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== CONSTRUCTION PROGRESS SCHEDULE ==========
-      // ALWAYS start the construction progress schedule on its own dedicated page
-      // so the entire table fits on a single page (no mid-table page breaks),
-      // and the 10-Year Projections table follows immediately on the next page.
+      // Render inline directly after the expenditure breakdown on the same (first) page.
+      // No page break here — the 10-Year Projections table immediately below will
+      // force its own fresh page.
       if (isNewBuild && includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0) {
-        pdf.addPage();
-        yPos = margin + 5;
+        yPos += 4;
 
         // Section header with accent line
         pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
