@@ -2729,10 +2729,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         constructionProgressSchedule.stages.forEach((stage, idx) => {
-          if (yPos > pageHeight - 20) {
-            pdf.addPage();
-            yPos = margin;
-          }
+          // Page break suppressed: construction schedule must remain on a single page.
+          // Stage counts (typically <= 12 rows) comfortably fit on one A4 page.
+
           
           // Zebra striping
           if (idx % 2 === 0) {
