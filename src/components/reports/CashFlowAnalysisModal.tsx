@@ -3408,14 +3408,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           continue;
         }
         
-        // Footer separator line - at contentMaxY boundary
-        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-        pdf.setLineWidth(0.5);
-        pdf.line(margin, contentMaxY + 2, pageWidth - margin, contentMaxY + 2);
-        
-        // Disclaimer - positioned in footer zone with adequate spacing
-        // Skip on the first content page (i === 2) so the construction schedule table renders without overlap
+        // Footer separator line and disclaimer — skip on first content page
+        // so the construction schedule table renders without overlap
         if (i !== coverPageIndex + 1) {
+          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+          pdf.setLineWidth(0.5);
+          pdf.line(margin, contentMaxY + 2, pageWidth - margin, contentMaxY + 2);
+
           pdf.setFontSize(6.5);
           pdf.setFont('helvetica', 'italic');
           pdf.setTextColor(grayText.r, grayText.g, grayText.b);
