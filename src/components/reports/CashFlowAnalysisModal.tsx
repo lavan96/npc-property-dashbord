@@ -3414,11 +3414,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.line(margin, contentMaxY + 2, pageWidth - margin, contentMaxY + 2);
         
         // Disclaimer - positioned in footer zone with adequate spacing
-        pdf.setFontSize(6.5);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        const disclaimerLinesFooter = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2.5);
-        pdf.text(disclaimerLinesFooter, pageWidth / 2, contentMaxY + 8, { align: 'center' });
+        // Skip on the first content page (i === 2) so the construction schedule table renders without overlap
+        if (i !== coverPageIndex + 1) {
+          pdf.setFontSize(6.5);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          const disclaimerLinesFooter = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2.5);
+          pdf.text(disclaimerLinesFooter, pageWidth / 2, contentMaxY + 8, { align: 'center' });
+        }
+
         
         // Contact info and page number at very bottom
         pdf.setFontSize(7);
