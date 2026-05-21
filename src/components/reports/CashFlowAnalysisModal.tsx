@@ -5476,7 +5476,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         </>
                       );
                     })()}
-                    </div>
                   </CardContent>
                 </CollapsibleContent>
               </Card>
