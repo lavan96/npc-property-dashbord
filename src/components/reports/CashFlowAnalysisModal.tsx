@@ -2805,13 +2805,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
         const currentRowHeight = isSection ? sectionRowHeight : rowHeight;
         
-        // Check if this row would overflow into footer area - if so, add page break
-        const neededSpace = isSection ? currentRowHeight + 1 : currentRowHeight; // Section has extra padding
-        if (yPos + neededSpace > contentMaxY) {
-          pdf.addPage();
-          yPos = margin + 5;
-          tableRowCount = 0; // Reset zebra striping for new page
-        }
+        // Page break suppressed: the 10-Year Projections table must always
+        // render as a single contiguous block on its dedicated page.
+        // (Row sizing is calibrated to fit all rows + sections on one A4 page.)
+
         
         if (isSection) {
           // Section header row - remove slash from section names
