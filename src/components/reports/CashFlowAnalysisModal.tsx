@@ -2584,8 +2584,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
           ];
           totalUpfront = landDeposit + buildDeposit + _stampDuty + _solicitorFees + remainingProgress + _lmiAmount;
-          overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
-          totalOverall = totalUpfront + stagedInterest;
+          overallExtraRows = [
+            { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
+          ];
+          totalOverall = constructionProgressSchedule.landPrice + _stampDuty + _solicitorFees + constructionProgressTotal;
         } else {
           upfrontRows = [
             { label: `Deposit (${_depositPct}% — from your funds)`, value: _depositValue },
@@ -2595,8 +2600,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
           ];
           totalUpfront = _depositValue + _stampDuty + _solicitorFees + _agentFee + _lmiAmount;
-          overallExtraRows = [{ label: 'Purchase Price', value: _purchasePrice }];
-          totalOverall = _purchasePrice + totalUpfront;
+          overallExtraRows = [
+            { label: 'Purchase Price', value: _purchasePrice },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: 'Agent Fee', value: _agentFee },
+          ];
+          totalOverall = _purchasePrice + _stampDuty + _solicitorFees + _agentFee;
         }
 
         const brkTableWidth = pageWidth - margin * 2;
@@ -2660,7 +2670,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         drawSectionTitle('Total Overall Expenditure to Completion');
         drawTableHeader();
         overallExtraRows.forEach(r => drawBrkRow(r.label, formatCurrency(r.value)));
-        drawBrkRow('Total Upfront Costs', formatCurrency(totalUpfront));
 
         // Highlight box for grand total
         yPos += 4;
@@ -3630,8 +3639,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
               ];
               totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
-              overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
-              totalOverall = totalUpfront + stagedInterest;
+              overallExtraRows = [
+                { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
+              ];
+              totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal;
             } else {
               upfrontRows = [
                 { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
@@ -3641,8 +3655,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 ...(lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: lmiAmount }] : []),
               ];
               totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
-              overallExtraRows = [{ label: 'Purchase Price', value: baseFinancialData.purchasePrice }];
-              totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+              overallExtraRows = [
+                { label: 'Purchase Price', value: baseFinancialData.purchasePrice },
+                { label: 'Stamp Duty', value: stampDuty },
+                { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                { label: 'Agent Fee', value: agentFee },
+              ];
+              totalOverall = baseFinancialData.purchasePrice + stampDuty + solicitorFees + agentFee;
             }
             const rowsHtml = (rows: { label: string; value: number }[]) => rows.map(r =>
               `<tr><td style="font-weight: 500;">${r.label}</td><td style="text-align: right;">${formatCurrency(r.value)}</td></tr>`
@@ -3662,7 +3681,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <table style="margin-bottom: 0; font-size: 11px;">
                   <tbody>
                     ${rowsHtml(overallExtraRows)}
-                    <tr><td style="font-weight: 500;">Total Upfront Costs</td><td style="text-align: right;">${formatCurrency(totalUpfront)}</td></tr>
                     <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total Overall Expenditure to Completion</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(totalOverall)}</td></tr>
                   </tbody>
                 </table>
@@ -5472,9 +5490,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ];
                         totalUpfront = landDeposit + buildDeposit + stampDuty + solicitorFees + remainingProgress + lmiAmount;
                         overallExtraRows = [
-                          { label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest },
+                          { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
                         ];
-                        totalOverall = totalUpfront + stagedInterest;
+                        totalOverall = constructionProgressSchedule.landPrice + stampDuty + solicitorFees + constructionProgressTotal;
                       } else {
                         upfrontRows = [
                           { label: `Deposit (${depositPct}% — from your funds)`, value: depositValue },
@@ -5486,8 +5507,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         totalUpfront = depositValue + stampDuty + solicitorFees + agentFee + lmiAmount;
                         overallExtraRows = [
                           { label: 'Purchase Price', value: baseFinancialData.purchasePrice },
+                          { label: 'Stamp Duty', value: stampDuty },
+                          { label: 'Solicitor / Conveyancer Cost', value: solicitorFees },
+                          { label: 'Agent Fee', value: agentFee },
                         ];
-                        totalOverall = baseFinancialData.purchasePrice + totalUpfront;
+                        totalOverall = baseFinancialData.purchasePrice + stampDuty + solicitorFees + agentFee;
                       }
 
                       return (
@@ -5524,10 +5548,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                     <TableCell className="text-right">{formatCurrency(r.value)}</TableCell>
                                   </TableRow>
                                 ))}
-                                <TableRow>
-                                  <TableCell className="font-medium">Total Upfront Costs</TableCell>
-                                  <TableCell className="text-right">{formatCurrency(totalUpfront)}</TableCell>
-                                </TableRow>
                                 <TableRow className="bg-primary/10">
                                   <TableCell className="font-bold text-primary">Total Overall Expenditure to Completion</TableCell>
                                   <TableCell className="text-right font-bold text-primary">{formatCurrency(totalOverall)}</TableCell>
