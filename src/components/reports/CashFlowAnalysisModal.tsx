@@ -2780,6 +2780,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== 10-YEAR PROJECTIONS TABLE ==========
+      // ALWAYS start the 10-year projections table on its own dedicated page
+      // so the entire table is never split across page boundaries.
+      pdf.addPage();
+      yPos = margin + 5;
+
       // Section header with accent line
       pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
       pdf.rect(margin, yPos, 3, 5, 'F');
@@ -2788,6 +2793,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setTextColor(darkText.r, darkText.g, darkText.b);
       pdf.text('10-Year Projections', margin + 6, yPos + 4);
       yPos += 8;
+
 
       // Table configuration - compact for portrait orientation
       const colWidths = [34, ...Array(11).fill((pageWidth - margin * 2 - 34) / 11)]; // Slightly wider first column
