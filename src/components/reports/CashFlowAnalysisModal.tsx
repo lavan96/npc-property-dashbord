@@ -2624,16 +2624,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           const purchasePrice = baseFinancialData.purchasePrice;
           const depositValue = baseFinancialData.depositValue || (purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100));
           const depositPct = purchasePrice > 0 ? Math.round((depositValue / purchasePrice) * 100) : 0;
-          drawBrkRow('Purchase Price', formatCurrency(purchasePrice));
+          // Purchase Price shown standalone (reference only — not added to upfront total)
+          drawBrkRow('Purchase Price (reference)', formatCurrency(purchasePrice));
           drawBrkRow(`Deposit (${depositPct}% — from your funds)`, formatCurrency(depositValue));
           drawBrkRow('Stamp Duty', formatCurrency(baseFinancialData.stampDuty));
-          drawBrkRow('Solicitor Cost', formatCurrency(baseFinancialData.solicitorFees));
+          drawBrkRow('Solicitor / Conveyancer Cost', formatCurrency(baseFinancialData.solicitorFees));
           drawBrkRow('Agent Fee', formatCurrency(baseFinancialData.agentFee || 0));
           if (baseFinancialData.lmiAmount > 0) {
             drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
           }
-          // Deposit is part of Purchase Price — not added again to total
-          totalExpenditure = purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
+          // Total Upfront Cost = funds the buyer actually outlays (deposit + acquisition costs)
+          const totalUpfront = depositValue + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
+          drawBrkRow('Total Upfront Cost', formatCurrency(totalUpfront), { bold: true, bg: { r: 235, g: 235, b: 235 } });
+          totalExpenditure = totalUpfront;
         }
 
         // Grand Total highlight box (yellow/amber)
@@ -3592,14 +3595,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <tr><td style="font-weight: 500;">${constructionProgressSchedule.durationMonths} Month Staged Progress</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
                   <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
                 ` : `
-                   <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+                   <tr><td style="font-weight: 500; width: 50%;">Purchase Price <span style="color:#888;font-size:11px;">(reference)</span></td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
                    <tr><td style="font-weight: 500;">Deposit (${baseFinancialData.purchasePrice > 0 ? Math.round(((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) / baseFinancialData.purchasePrice) * 100) : 0}% — from your funds)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100)))}</td></tr>
                    <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
-                   <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
+                    <tr><td style="font-weight: 500;">Solicitor / Conveyancer Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
                     <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
                     ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
-                    <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
-                    <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
+                    <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0))}</td></tr>
+                    <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0))}</td></tr>
                 `}
               </tbody>
             </table>
@@ -5424,7 +5427,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           ) : (
                             <>
                               <TableRow>
-                                 <TableCell className="font-medium w-1/2">Purchase Price</TableCell>
+                                 <TableCell className="font-medium w-1/2">
+                                   Purchase Price
+                                   <span className="text-xs text-muted-foreground ml-1">(reference)</span>
+                                 </TableCell>
                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
                                </TableRow>
                               <TableRow>
@@ -5441,7 +5447,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
                               </TableRow>
                               <TableRow>
-                                <TableCell className="font-medium">Solicitor Cost</TableCell>
+                                <TableCell className="font-medium">Solicitor / Conveyancer Cost</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
                               </TableRow>
                                <TableRow>
@@ -5458,10 +5464,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
                                  <TableCell className="text-right font-semibold">
                                    {formatCurrency(
-                                     baseFinancialData.purchasePrice +
+                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
                                      baseFinancialData.stampDuty +
                                      baseFinancialData.solicitorFees +
-                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.agentFee || 0) +
                                      (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
@@ -5470,10 +5476,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-bold text-primary">Total</TableCell>
                                 <TableCell className="text-right font-bold text-primary">
                                    {formatCurrency(
-                                     baseFinancialData.purchasePrice +
+                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
                                      baseFinancialData.stampDuty +
                                      baseFinancialData.solicitorFees +
-                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.agentFee || 0) +
                                      (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
