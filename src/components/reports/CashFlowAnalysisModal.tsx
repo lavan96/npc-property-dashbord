@@ -2577,7 +2577,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
           const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
           const constructionProgressTotal = constructionProgressSchedule.buildPrice;
-          const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+          const stagedInterest = constructionProgressSchedule.totals.totalCombinedRepayment;
           upfrontRows = [
             { label: '10% Land Deposit', value: landDeposit },
             { label: '5% Build Contract Deposit', value: buildDeposit },
@@ -3631,7 +3631,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
               const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
               const constructionProgressTotal = constructionProgressSchedule.buildPrice;
-              const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+              const stagedInterest = constructionProgressSchedule.totals.totalCombinedRepayment;
               upfrontRows = [
                 { label: '10% Land Deposit', value: landDeposit },
                 { label: '5% Build Contract Deposit', value: buildDeposit },
@@ -5481,7 +5481,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         const landDeposit = constructionProgressSchedule.upfrontCosts.tenPercentLand;
                         const buildDeposit = constructionProgressSchedule.upfrontCosts.fivePercentBuild;
                         const constructionProgressTotal = constructionProgressSchedule.buildPrice;
-                        const stagedInterest = constructionProgressSchedule.totals.totalInterest;
+                        const stagedInterest = constructionProgressSchedule.totals.totalCombinedRepayment;
                         upfrontRows = [
                           { label: '10% Land Deposit', value: landDeposit },
                           { label: '5% Build Contract Deposit', value: buildDeposit },
