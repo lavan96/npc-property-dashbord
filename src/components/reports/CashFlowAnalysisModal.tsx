@@ -5427,7 +5427,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           ) : (
                             <>
                               <TableRow>
-                                 <TableCell className="font-medium w-1/2">Purchase Price</TableCell>
+                                 <TableCell className="font-medium w-1/2">
+                                   Purchase Price
+                                   <span className="text-xs text-muted-foreground ml-1">(reference)</span>
+                                 </TableCell>
                                  <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
                                </TableRow>
                               <TableRow>
@@ -5444,7 +5447,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
                               </TableRow>
                               <TableRow>
-                                <TableCell className="font-medium">Solicitor Cost</TableCell>
+                                <TableCell className="font-medium">Solicitor / Conveyancer Cost</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
                               </TableRow>
                                <TableRow>
@@ -5461,10 +5464,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
                                  <TableCell className="text-right font-semibold">
                                    {formatCurrency(
-                                     baseFinancialData.purchasePrice +
+                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
                                      baseFinancialData.stampDuty +
                                      baseFinancialData.solicitorFees +
-                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.agentFee || 0) +
                                      (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
@@ -5473,10 +5476,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-bold text-primary">Total</TableCell>
                                 <TableCell className="text-right font-bold text-primary">
                                    {formatCurrency(
-                                     baseFinancialData.purchasePrice +
+                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - (baseFinancialData.loanToValueRatio || 80) / 100))) +
                                      baseFinancialData.stampDuty +
                                      baseFinancialData.solicitorFees +
-                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.agentFee || 0) +
                                      (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
