@@ -2584,8 +2584,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
           ];
           totalUpfront = landDeposit + buildDeposit + _stampDuty + _solicitorFees + remainingProgress + _lmiAmount;
-          overallExtraRows = [{ label: `${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, value: stagedInterest }];
-          totalOverall = totalUpfront + stagedInterest;
+          overallExtraRows = [
+            { label: 'Purchase Price (Land)', value: constructionProgressSchedule.landPrice },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: `Construction Progress Payments (${constructionProgressSchedule.durationMonths} months)`, value: constructionProgressTotal },
+          ];
+          totalOverall = constructionProgressSchedule.landPrice + _stampDuty + _solicitorFees + constructionProgressTotal;
         } else {
           upfrontRows = [
             { label: `Deposit (${_depositPct}% — from your funds)`, value: _depositValue },
@@ -2595,8 +2600,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             ...(_lmiAmount > 0 ? [{ label: 'LMI (Lenders Mortgage Insurance)', value: _lmiAmount }] : []),
           ];
           totalUpfront = _depositValue + _stampDuty + _solicitorFees + _agentFee + _lmiAmount;
-          overallExtraRows = [{ label: 'Purchase Price', value: _purchasePrice }];
-          totalOverall = _purchasePrice + totalUpfront;
+          overallExtraRows = [
+            { label: 'Purchase Price', value: _purchasePrice },
+            { label: 'Stamp Duty', value: _stampDuty },
+            { label: 'Solicitor / Conveyancer Cost', value: _solicitorFees },
+            { label: 'Agent Fee', value: _agentFee },
+          ];
+          totalOverall = _purchasePrice + _stampDuty + _solicitorFees + _agentFee;
         }
 
         const brkTableWidth = pageWidth - margin * 2;
