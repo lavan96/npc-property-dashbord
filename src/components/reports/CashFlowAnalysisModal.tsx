@@ -2755,7 +2755,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           yPos += 4;
         });
 
-        // Totals row
+        // Totals row — ensure it isn't cut off at the page bottom
+        if (yPos + 8 > pageHeight - margin) {
+          pdf.addPage();
+          yPos = margin + 5;
+        }
         pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
         pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 5, 'F');
         pdf.setFont('helvetica', 'bold');
