@@ -2940,18 +2940,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
       drawRow(['Depreciation $', '', ...years1to10.map(p => formatCurrency(p.depreciation))]);
       
-      // ========== CHECK IF SUMMARY WILL FIT BEFORE DRAWING LAST SECTION ==========
-      // Calculate space needed for remaining rows + summary box
-      const remainingRows = 6; // SUMMARY section + 5 data rows
-      const remainingSectionRows = 1;
-      const spaceNeededForSummarySection = (remainingRows * rowHeight) + (remainingSectionRows * (sectionRowHeight + 1)) + summarySpacing + summaryBoxHeight;
-      
-      // If summary section + summary box won't fit, force page break now
-      if (yPos + spaceNeededForSummarySection > contentMaxY) {
-        pdf.addPage();
-        yPos = margin + 5;
-        tableRowCount = 0;
-      }
+      // Mid-table page break suppressed - table must stay on single page.
+
       
       drawRow(['SUMMARY'], false, true);
       drawRow(['Total Deductions $', '', ...years1to10.map(p => formatCurrency(p.totalDeductions))]);
