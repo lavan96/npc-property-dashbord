@@ -2670,7 +2670,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         drawSectionTitle('Total Overall Expenditure to Completion');
         drawTableHeader();
         overallExtraRows.forEach(r => drawBrkRow(r.label, formatCurrency(r.value)));
-        drawBrkRow('Total Upfront Costs', formatCurrency(totalUpfront));
 
         // Highlight box for grand total
         yPos += 4;
