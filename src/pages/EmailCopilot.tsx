@@ -852,17 +852,17 @@ export default function EmailCopilot() {
 
       if (error) throw error;
       
-      const typedReplies: SentReply[] = (data?.replies || []).map((reply: any) => ({
-        id: reply.id,
-        original_email_id: reply.original_email_id,
-        recipient: reply.recipient,
-        subject: reply.subject,
-        body: reply.body,
-        cc_recipients: (reply.cc_recipients as string[]) || [],
-        bcc_recipients: (reply.bcc_recipients as string[]) || [],
-        attachments: (reply.attachments as unknown as SentAttachment[]) || [],
-        sent_at: reply.sent_at,
-        mailbox_source: (reply.mailbox_source as 'admin' | 'personal') || 'admin',
+      const typedReplies: SentReply[] = (Array.isArray(data?.replies) ? data.replies : []).map((reply: any) => ({
+        id: toSafeString(reply?.id),
+        original_email_id: reply?.original_email_id || null,
+        recipient: toSafeString(reply?.recipient, 'Unknown'),
+        subject: toSafeString(reply?.subject, '(No Subject)'),
+        body: toSafeString(reply?.body),
+        cc_recipients: toStringArray(reply?.cc_recipients),
+        bcc_recipients: toStringArray(reply?.bcc_recipients),
+        attachments: normalizeSentAttachments(reply?.attachments),
+        sent_at: toSafeString(reply?.sent_at ?? reply?.created_at ?? new Date().toISOString()),
+        mailbox_source: reply?.mailbox_source === 'personal' ? 'personal' : 'admin',
       }));
       
       setSentReplies(typedReplies);
@@ -875,26 +875,27 @@ export default function EmailCopilot() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const mapEmailData = (email: any): Email => ({
-    id: email.id,
-    sender: email.sender,
-    subject: email.subject,
-    body: email.body,
+    id: toSafeString(email?.id),
+    sender: toSafeString(email?.sender ?? email?.from, 'Unknown'),
+    subject: toSafeString(email?.subject, '(No Subject)'),
+    body: toSafeString(email?.body ?? email?.body_preview),
+    body_html: email?.body_html ?? null,
     received_at: email.received_at,
-    summary: email.summary as unknown as EmailSummary | null,
-    draft_reply: email.draft_reply,
-    urgency_level: email.urgency_level as 'low' | 'medium' | 'high' | null,
-    linked_property_address: email.linked_property_address,
-    linked_report_id: email.linked_report_id,
-    status: email.status as Email['status'],
-    created_at: email.created_at,
-    to_recipients: (email.to_recipients as string[]) || [],
-    cc_recipients: (email.cc_recipients as string[]) || [],
-    bcc_recipients: (email.bcc_recipients as string[]) || [],
-    attachments: (email.attachments as unknown as EmailAttachment[]) || [],
-    mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
-    folder: (email.folder as 'inbox' | 'sent') || 'inbox',
-    client_id: email.client_id || null,
-    client_name: email.client_name || null,
+    summary: normalizeSummary(email?.summary),
+    draft_reply: email?.draft_reply ? toSafeString(email.draft_reply) : null,
+    urgency_level: email?.urgency_level === 'high' || email?.urgency_level === 'medium' || email?.urgency_level === 'low' ? email.urgency_level : null,
+    linked_property_address: email?.linked_property_address || null,
+    linked_report_id: email?.linked_report_id || null,
+    status: ['unread', 'read', 'summarized', 'drafted', 'replied', 'archived'].includes(toSafeString(email?.status)) ? email.status : 'read',
+    created_at: toSafeString(email?.created_at ?? email?.received_at ?? new Date().toISOString()),
+    to_recipients: toStringArray(email?.to_recipients),
+    cc_recipients: toStringArray(email?.cc_recipients),
+    bcc_recipients: toStringArray(email?.bcc_recipients),
+    attachments: normalizeEmailAttachments(email?.attachments),
+    mailbox_source: email?.mailbox_source === 'personal' ? 'personal' : 'admin',
+    folder: email?.folder === 'sent' ? 'sent' : 'inbox',
+    client_id: email?.client_id || null,
+    client_name: email?.client_name || null,
   });
 
   const fetchEmails = async (attempt = 0) => {
@@ -918,7 +919,7 @@ export default function EmailCopilot() {
         throw error;
       }
       
-      const typedEmails: Email[] = (data?.emails || []).map(mapEmailData);
+      const typedEmails: Email[] = (Array.isArray(data?.emails) ? data.emails : []).map(mapEmailData);
       
       setEmails(typedEmails);
       setHasMoreEmails(data?.hasMore === true);
@@ -949,7 +950,7 @@ export default function EmailCopilot() {
 
       if (error) throw error;
       
-      const moreEmails: Email[] = (data?.emails || []).map(mapEmailData);
+      const moreEmails: Email[] = (Array.isArray(data?.emails) ? data.emails : []).map(mapEmailData);
       setEmails(prev => [...prev, ...moreEmails]);
       setHasMoreEmails(data?.hasMore === true);
     } catch (error) {
