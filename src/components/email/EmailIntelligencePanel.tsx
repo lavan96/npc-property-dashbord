@@ -341,13 +341,13 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
                 <p className="text-foreground leading-relaxed">{threadSummary.tldr}</p>
               </div>
 
-              {threadSummary.actionItems?.length > 0 && (
+              {actionItems.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <CheckSquare className="h-3 w-3" /> Action items
                   </div>
                   <ul className="space-y-1">
-                    {threadSummary.actionItems.map((a, i) => (
+                    {actionItems.map((a, i) => (
                       <li key={i} className="flex gap-2 text-foreground">
                         <span className="text-primary">•</span>
                         <span><strong className="text-primary">{a.owner}:</strong> {a.task}</span>
@@ -357,24 +357,24 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
                 </div>
               )}
 
-              {threadSummary.openQuestions?.length > 0 && (
+              {openQuestions.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <HelpCircle className="h-3 w-3" /> Open questions
                   </div>
                   <ul className="space-y-1">
-                    {threadSummary.openQuestions.map((q, i) => (
+                    {openQuestions.map((q, i) => (
                       <li key={i} className="flex gap-2 text-foreground"><span className="text-warning">•</span>{q}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {threadSummary.decisions?.length > 0 && (
+              {decisions.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1">Decisions made</div>
                   <ul className="space-y-1">
-                    {threadSummary.decisions.map((d, i) => (
+                    {decisions.map((d, i) => (
                       <li key={i} className="flex gap-2 text-foreground"><span className="text-success">✓</span>{d}</li>
                     ))}
                   </ul>
