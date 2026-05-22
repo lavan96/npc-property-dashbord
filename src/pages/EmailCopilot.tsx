@@ -668,10 +668,10 @@ export default function EmailCopilot() {
         const full = data.email;
         fullBodyFetchedRef.current.add(targetId);
         const patch = {
-          body: full.body || '',
+          body: toSafeString(full.body ?? full.body_preview),
           body_html: full.body_html ?? null,
-          attachments: full.attachments || [],
-          summary: full.summary ?? null,
+          attachments: normalizeEmailAttachments(full.attachments),
+          summary: normalizeSummary(full.summary),
         };
         setSelectedEmail(prev => (prev && prev.id === targetId ? { ...prev, ...patch } : prev));
         setEmails(prev => prev.map(e => (e.id === targetId ? { ...e, ...patch } : e)));
@@ -725,9 +725,9 @@ export default function EmailCopilot() {
   };
   
   // Group emails by thread (based on subject similarity)
-  const getThreadKey = (subject: string): string => {
+  const getThreadKey = (subject: string | null | undefined): string => {
     // Remove common reply/forward prefixes and normalize
-    return subject
+    return toSafeString(subject, '(No Subject)')
       .replace(/^(re:|fwd?:|fw:)\s*/gi, '')
       .toLowerCase()
       .trim();
@@ -789,7 +789,7 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       const mailboxLabel = selectedMailbox === 'personal' ? 'personal mailbox' : 'admin inbox';
-      if (data.inserted > 0) {
+      if ((data?.inserted || 0) > 0) {
         toast.success(`Synced ${data.inserted} new emails from ${mailboxLabel}`);
       } else {
         toast.info(`No new emails to sync from ${mailboxLabel}`);
@@ -1153,11 +1153,12 @@ export default function EmailCopilot() {
   };
 
   // Extract recipient email from sender string
-  const extractEmailAddress = (sender: string): string => {
-    const match = sender.match(/<([^>]+)>/);
+  const extractEmailAddress = (sender: string | null | undefined): string => {
+    const safeSender = toSafeString(sender);
+    const match = safeSender.match(/<([^>]+)>/);
     if (match) return match[1];
-    if (sender.includes('@')) return sender.trim();
-    return sender;
+    if (safeSender.includes('@')) return safeSender.trim();
+    return safeSender;
   };
 
   // Parse comma-separated emails
@@ -1179,7 +1180,7 @@ export default function EmailCopilot() {
     
     if (!selectedEmail) return;
     setReplyTo(extractEmailAddress(selectedEmail.sender));
-    const subject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+    const subject = toSafeString(selectedEmail.subject).toLowerCase().startsWith('re:') 
       ? selectedEmail.subject 
       : `Re: ${selectedEmail.subject}`;
     setReplySubject(subject);
