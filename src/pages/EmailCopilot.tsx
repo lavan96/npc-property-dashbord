@@ -2277,7 +2277,7 @@ export default function EmailCopilot() {
                                   <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {reply.attachments.length}
                                 </Badge>
                               )}
-                              {reply.cc_recipients.length > 0 && (
+                              {reply.cc_recipients && reply.cc_recipients.length > 0 && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {reply.cc_recipients.length}
                                 </Badge>
