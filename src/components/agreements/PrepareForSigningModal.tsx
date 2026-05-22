@@ -87,13 +87,14 @@ const FIELD_CATALOG: Array<{ type: SigningTabType; label: string; defaultW: numb
 ];
 
 const RECIPIENT_COLORS = [
-  'hsl(45 70% 55%)',   // gold
   'hsl(200 70% 55%)',  // blue
   'hsl(140 50% 50%)',  // green
   'hsl(0 70% 60%)',    // red
   'hsl(280 60% 60%)',  // purple
   'hsl(30 80% 55%)',   // orange
+  'hsl(180 60% 45%)',  // teal
 ];
+const SENDER_COLOR = 'hsl(45 80% 55%)'; // gold — reserved for the sender
 
 interface PageDim { width: number; height: number; renderScale: number; }
 
