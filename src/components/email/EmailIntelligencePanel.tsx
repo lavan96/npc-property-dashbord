@@ -38,6 +38,39 @@ interface Props {
   onIntelligenceUpdate?: (next: EmailIntelligence) => void;
 }
 
+const toSafeString = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => toSafeString(item).trim()).filter(Boolean);
+};
+
+const toActionItems = (value: unknown): { owner: string; task: string }[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item: any) => ({
+      owner: toSafeString(item?.owner, 'Owner'),
+      task: toSafeString(item?.task ?? item?.description ?? item),
+    }))
+    .filter(item => item.task);
+};
+
+const normalizeThreadSummary = (summary: unknown): ThreadSummaryData | null => {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return null;
+  const source = summary as Record<string, unknown>;
+  return {
+    tldr: toSafeString(source.tldr ?? source.summary),
+    decisions: toStringArray(source.decisions),
+    openQuestions: toStringArray(source.openQuestions ?? source.open_questions),
+    actionItems: toActionItems(source.actionItems ?? source.action_items),
+    nextStep: toSafeString(source.nextStep ?? source.next_step),
+  };
+};
+
 const SENTIMENT_CONFIG: Record<Sentiment, { label: string; icon: typeof Smile; cls: string }> = {
   positive: { label: 'Positive', icon: Smile, cls: 'text-success border-success/30 bg-success/10' },
   neutral: { label: 'Neutral', icon: Meh, cls: 'text-muted-foreground border-border bg-muted/40' },
@@ -93,7 +126,11 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
   const detectedLang = intelligence?.language;
   const isForeign = detectedLang && detectedLang.toLowerCase().slice(0, 2) !== 'en';
 
-  const threadSize = useMemo(() => threadEmails.length + 1, [threadEmails]);
+  const safeThreadEmails = Array.isArray(threadEmails) ? threadEmails : [];
+  const actionItems = toActionItems(threadSummary?.actionItems);
+  const openQuestions = toStringArray(threadSummary?.openQuestions);
+  const decisions = toStringArray(threadSummary?.decisions);
+  const threadSize = useMemo(() => safeThreadEmails.length + 1, [safeThreadEmails.length]);
 
   const runAnalyze = async () => {
     setAnalyzing(true);
@@ -152,11 +189,12 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
       const { data, error } = await invokeSecureFunction('email-copilot', {
         action: 'thread_summary',
         email: { sender: email.sender, subject: email.subject, body: email.body, received_at: email.received_at },
-        threadEmails,
+          threadEmails: safeThreadEmails,
       });
       if (error) throw error;
-      if (data?.summary) {
-        setThreadSummary(data.summary);
+      const nextSummary = normalizeThreadSummary(data?.summary);
+      if (nextSummary) {
+        setThreadSummary(nextSummary);
       }
     } catch (e: any) {
       toast.error(e?.message || 'Failed to summarize thread');
@@ -303,13 +341,13 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
                 <p className="text-foreground leading-relaxed">{threadSummary.tldr}</p>
               </div>
 
-              {threadSummary.actionItems?.length > 0 && (
+              {actionItems.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <CheckSquare className="h-3 w-3" /> Action items
                   </div>
                   <ul className="space-y-1">
-                    {threadSummary.actionItems.map((a, i) => (
+                    {actionItems.map((a, i) => (
                       <li key={i} className="flex gap-2 text-foreground">
                         <span className="text-primary">•</span>
                         <span><strong className="text-primary">{a.owner}:</strong> {a.task}</span>
@@ -319,24 +357,24 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
                 </div>
               )}
 
-              {threadSummary.openQuestions?.length > 0 && (
+              {openQuestions.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <HelpCircle className="h-3 w-3" /> Open questions
                   </div>
                   <ul className="space-y-1">
-                    {threadSummary.openQuestions.map((q, i) => (
+                    {openQuestions.map((q, i) => (
                       <li key={i} className="flex gap-2 text-foreground"><span className="text-warning">•</span>{q}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {threadSummary.decisions?.length > 0 && (
+              {decisions.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1">Decisions made</div>
                   <ul className="space-y-1">
-                    {threadSummary.decisions.map((d, i) => (
+                    {decisions.map((d, i) => (
                       <li key={i} className="flex gap-2 text-foreground"><span className="text-success">✓</span>{d}</li>
                     ))}
                   </ul>

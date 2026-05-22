@@ -156,14 +156,78 @@ interface SentReply {
   mailbox_source: 'admin' | 'personal';
 }
 
+const toSafeString = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => toSafeString(item).trim())
+    .filter(Boolean);
+};
+
+const toObjectArray = (value: unknown): any[] => Array.isArray(value) ? value : [];
+
+const isNonEmptyArray = (value: unknown): value is any[] => Array.isArray(value) && value.length > 0;
+
+const normalizeUrgencyLevel = (value: unknown): EmailSummary['urgencyLevel'] => {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
+};
+
+const normalizeSentiment = (value: unknown): EmailSummary['sentiment'] | undefined => {
+  return value === 'positive' || value === 'neutral' || value === 'negative' || value === 'angry' ? value : undefined;
+};
+
+const normalizeCategory = (value: unknown): EmailSummary['category'] | undefined => {
+  const allowed = ['inquiry', 'complaint', 'opportunity', 'admin', 'fyi', 'scheduling', 'document_request', 'other'];
+  return allowed.includes(toSafeString(value)) ? (value as EmailSummary['category']) : undefined;
+};
+
+const normalizeSummary = (summary: unknown): EmailSummary | null => {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return null;
+  const source = summary as Record<string, unknown>;
+  return {
+    tldr: toSafeString(source.tldr ?? source.tl_dr ?? source.summary),
+    keyPoints: toStringArray(source.keyPoints ?? source.key_points),
+    requiredActions: toStringArray(source.requiredActions ?? source.required_actions),
+    urgencyLevel: normalizeUrgencyLevel(source.urgencyLevel ?? source.urgency_level ?? source.urgency),
+    sentiment: normalizeSentiment(source.sentiment),
+    category: normalizeCategory(source.category),
+    language: source.language ? toSafeString(source.language) : undefined,
+  };
+};
+
+const normalizeEmailAttachments = (attachments: unknown): EmailAttachment[] => {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.map((attachment: any) => ({
+    name: toSafeString(attachment?.name, 'Attachment'),
+    contentType: toSafeString(attachment?.contentType ?? attachment?.content_type, 'application/octet-stream'),
+    size: Number(attachment?.size) || 0,
+    storageUrl: toSafeString(attachment?.storageUrl ?? attachment?.storage_url),
+  }));
+};
+
+const normalizeSentAttachments = (attachments: unknown): SentAttachment[] => {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.map((attachment: any) => ({
+    name: toSafeString(attachment?.name, 'Attachment'),
+    contentType: toSafeString(attachment?.contentType ?? attachment?.content_type, 'application/octet-stream'),
+    size: Number(attachment?.size) || 0,
+  }));
+};
+
 // Helper to extract sender name from email
-function extractSenderName(sender: string): string {
+function extractSenderName(sender: string | null | undefined): string {
+  const safeSender = toSafeString(sender, 'Unknown');
   // If it looks like "Name <email@domain.com>", extract the name
-  const match = sender.match(/^([^<]+)</);
+  const match = safeSender.match(/^([^<]+)</);
   if (match) return match[1].trim();
   
   // If it's just an email, extract the part before @
-  const emailMatch = sender.match(/^([^@]+)@/);
+  const emailMatch = safeSender.match(/^([^@]+)@/);
   if (emailMatch) {
     // Convert to title case
     return emailMatch[1]
@@ -172,11 +236,11 @@ function extractSenderName(sender: string): string {
       .join(' ');
   }
   
-  return sender;
+  return safeSender;
 }
 
 // Helper to get initials from sender
-function getSenderInitials(sender: string): string {
+function getSenderInitials(sender: string | null | undefined): string {
   const name = extractSenderName(sender);
   const parts = name.split(' ').filter(Boolean);
   if (parts.length >= 2) {
@@ -186,8 +250,9 @@ function getSenderInitials(sender: string): string {
 }
 
 // Helper to format date intelligently
-function formatEmailDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatEmailDate(dateStr: string | null | undefined): string {
+  const date = new Date(toSafeString(dateStr));
+  if (Number.isNaN(date.getTime())) return '';
   if (isToday(date)) {
     return format(date, 'h:mm a');
   }
@@ -198,13 +263,14 @@ function formatEmailDate(dateStr: string): string {
 }
 
 // Helper to format full date
-function formatFullDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatFullDate(dateStr: string | null | undefined): string {
+  const date = new Date(toSafeString(dateStr));
+  if (Number.isNaN(date.getTime())) return 'Unknown date';
   return format(date, "EEEE, MMMM d, yyyy 'at' h:mm a");
 }
 
 // Helper to format email body with proper paragraphs
-function formatEmailBody(body: string): string {
+function formatEmailBody(body: string | null | undefined): string {
   if (!body) return '';
   
   // Clean up excessive whitespace but preserve paragraph breaks
@@ -386,9 +452,10 @@ export default function EmailCopilot() {
                 bodyParts.push(`\nThis document contains a comprehensive summary of our ${context.messageCount}-message discussion.`);
               }
               
-              if (context.sampleQuestions && context.sampleQuestions.length > 0) {
+              const sampleQuestions = toStringArray(context.sampleQuestions);
+              if (sampleQuestions.length > 0) {
                 bodyParts.push(`\nKey topics covered include:`);
-                context.sampleQuestions.forEach((q: string) => {
+                sampleQuestions.forEach((q: string) => {
                   bodyParts.push(`  • ${q}${q.length >= 100 ? '...' : ''}`);
                 });
               }
@@ -606,10 +673,10 @@ export default function EmailCopilot() {
         const full = data.email;
         fullBodyFetchedRef.current.add(targetId);
         const patch = {
-          body: full.body || '',
+          body: toSafeString(full.body ?? full.body_preview),
           body_html: full.body_html ?? null,
-          attachments: full.attachments || [],
-          summary: full.summary ?? null,
+          attachments: normalizeEmailAttachments(full.attachments),
+          summary: normalizeSummary(full.summary),
         };
         setSelectedEmail(prev => (prev && prev.id === targetId ? { ...prev, ...patch } : prev));
         setEmails(prev => prev.map(e => (e.id === targetId ? { ...e, ...patch } : e)));
@@ -663,9 +730,9 @@ export default function EmailCopilot() {
   };
   
   // Group emails by thread (based on subject similarity)
-  const getThreadKey = (subject: string): string => {
+  const getThreadKey = (subject: string | null | undefined): string => {
     // Remove common reply/forward prefixes and normalize
-    return subject
+    return toSafeString(subject, '(No Subject)')
       .replace(/^(re:|fwd?:|fw:)\s*/gi, '')
       .toLowerCase()
       .trim();
@@ -727,7 +794,7 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       const mailboxLabel = selectedMailbox === 'personal' ? 'personal mailbox' : 'admin inbox';
-      if (data.inserted > 0) {
+      if ((data?.inserted || 0) > 0) {
         toast.success(`Synced ${data.inserted} new emails from ${mailboxLabel}`);
       } else {
         toast.info(`No new emails to sync from ${mailboxLabel}`);
@@ -790,17 +857,17 @@ export default function EmailCopilot() {
 
       if (error) throw error;
       
-      const typedReplies: SentReply[] = (data?.replies || []).map((reply: any) => ({
-        id: reply.id,
-        original_email_id: reply.original_email_id,
-        recipient: reply.recipient,
-        subject: reply.subject,
-        body: reply.body,
-        cc_recipients: (reply.cc_recipients as string[]) || [],
-        bcc_recipients: (reply.bcc_recipients as string[]) || [],
-        attachments: (reply.attachments as unknown as SentAttachment[]) || [],
-        sent_at: reply.sent_at,
-        mailbox_source: (reply.mailbox_source as 'admin' | 'personal') || 'admin',
+      const typedReplies: SentReply[] = (Array.isArray(data?.replies) ? data.replies : []).map((reply: any) => ({
+        id: toSafeString(reply?.id),
+        original_email_id: reply?.original_email_id || null,
+        recipient: toSafeString(reply?.recipient, 'Unknown'),
+        subject: toSafeString(reply?.subject, '(No Subject)'),
+        body: toSafeString(reply?.body),
+        cc_recipients: toStringArray(reply?.cc_recipients),
+        bcc_recipients: toStringArray(reply?.bcc_recipients),
+        attachments: normalizeSentAttachments(reply?.attachments),
+        sent_at: toSafeString(reply?.sent_at ?? reply?.created_at ?? new Date().toISOString()),
+        mailbox_source: reply?.mailbox_source === 'personal' ? 'personal' : 'admin',
       }));
       
       setSentReplies(typedReplies);
@@ -813,26 +880,27 @@ export default function EmailCopilot() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const mapEmailData = (email: any): Email => ({
-    id: email.id,
-    sender: email.sender,
-    subject: email.subject,
-    body: email.body,
-    received_at: email.received_at,
-    summary: email.summary as unknown as EmailSummary | null,
-    draft_reply: email.draft_reply,
-    urgency_level: email.urgency_level as 'low' | 'medium' | 'high' | null,
-    linked_property_address: email.linked_property_address,
-    linked_report_id: email.linked_report_id,
-    status: email.status as Email['status'],
-    created_at: email.created_at,
-    to_recipients: (email.to_recipients as string[]) || [],
-    cc_recipients: (email.cc_recipients as string[]) || [],
-    bcc_recipients: (email.bcc_recipients as string[]) || [],
-    attachments: (email.attachments as unknown as EmailAttachment[]) || [],
-    mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
-    folder: (email.folder as 'inbox' | 'sent') || 'inbox',
-    client_id: email.client_id || null,
-    client_name: email.client_name || null,
+    id: toSafeString(email?.id),
+    sender: toSafeString(email?.sender ?? email?.from, 'Unknown'),
+    subject: toSafeString(email?.subject, '(No Subject)'),
+    body: toSafeString(email?.body ?? email?.body_preview),
+    body_html: email?.body_html ?? null,
+    received_at: toSafeString(email?.received_at ?? email?.created_at ?? new Date().toISOString()),
+    summary: normalizeSummary(email?.summary),
+    draft_reply: email?.draft_reply ? toSafeString(email.draft_reply) : null,
+    urgency_level: email?.urgency_level === 'high' || email?.urgency_level === 'medium' || email?.urgency_level === 'low' ? email.urgency_level : null,
+    linked_property_address: email?.linked_property_address || null,
+    linked_report_id: email?.linked_report_id || null,
+    status: (['unread', 'read', 'summarized', 'drafted', 'replied', 'archived'].includes(toSafeString(email?.status)) ? email.status : 'read') as Email['status'],
+    created_at: toSafeString(email?.created_at ?? email?.received_at ?? new Date().toISOString()),
+    to_recipients: toStringArray(email?.to_recipients),
+    cc_recipients: toStringArray(email?.cc_recipients),
+    bcc_recipients: toStringArray(email?.bcc_recipients),
+    attachments: normalizeEmailAttachments(email?.attachments),
+    mailbox_source: email?.mailbox_source === 'personal' ? 'personal' : 'admin',
+    folder: email?.folder === 'sent' ? 'sent' : 'inbox',
+    client_id: email?.client_id || null,
+    client_name: email?.client_name || null,
   });
 
   const fetchEmails = async (attempt = 0) => {
@@ -856,7 +924,7 @@ export default function EmailCopilot() {
         throw error;
       }
       
-      const typedEmails: Email[] = (data?.emails || []).map(mapEmailData);
+      const typedEmails: Email[] = (Array.isArray(data?.emails) ? data.emails : []).map(mapEmailData);
       
       setEmails(typedEmails);
       setHasMoreEmails(data?.hasMore === true);
@@ -887,7 +955,7 @@ export default function EmailCopilot() {
 
       if (error) throw error;
       
-      const moreEmails: Email[] = (data?.emails || []).map(mapEmailData);
+      const moreEmails: Email[] = (Array.isArray(data?.emails) ? data.emails : []).map(mapEmailData);
       setEmails(prev => [...prev, ...moreEmails]);
       setHasMoreEmails(data?.hasMore === true);
     } catch (error) {
@@ -948,16 +1016,22 @@ export default function EmailCopilot() {
       toast.success('Email summarized');
 
       // Update local state (skip refetch to avoid clobbering the freshly-written summary)
+      const nextSummary = normalizeSummary(data?.summary) || {
+        tldr: '',
+        keyPoints: [],
+        requiredActions: [],
+        urgencyLevel: 'low' as const,
+      };
       setSelectedEmail({
         ...selectedEmail,
-        summary: data.summary,
-        urgency_level: data.summary.urgencyLevel,
+        summary: nextSummary,
+        urgency_level: nextSummary.urgencyLevel,
         status: 'summarized'
       });
       setEmails(prev => prev.map(e => e.id === selectedEmail.id ? {
         ...e,
-        summary: data.summary,
-        urgency_level: data.summary.urgencyLevel,
+        summary: nextSummary,
+        urgency_level: nextSummary.urgencyLevel,
         status: 'summarized',
       } : e));
     } catch (error) {
@@ -1090,17 +1164,19 @@ export default function EmailCopilot() {
   };
 
   // Extract recipient email from sender string
-  const extractEmailAddress = (sender: string): string => {
-    const match = sender.match(/<([^>]+)>/);
+  const extractEmailAddress = (sender: string | null | undefined): string => {
+    const safeSender = toSafeString(sender);
+    const match = safeSender.match(/<([^>]+)>/);
     if (match) return match[1];
-    if (sender.includes('@')) return sender.trim();
-    return sender;
+    if (safeSender.includes('@')) return safeSender.trim();
+    return safeSender;
   };
 
   // Parse comma-separated emails
   const parseEmailList = (emails: string): string[] => {
-    if (!emails.trim()) return [];
-    return emails.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+    const safeEmails = toSafeString(emails);
+    if (!safeEmails.trim()) return [];
+    return safeEmails.split(',').map(e => e.trim()).filter(e => e.includes('@'));
   };
 
   // Initialize reply fields when opening draft modal
@@ -1116,7 +1192,7 @@ export default function EmailCopilot() {
     
     if (!selectedEmail) return;
     setReplyTo(extractEmailAddress(selectedEmail.sender));
-    const subject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+    const subject = toSafeString(selectedEmail.subject).toLowerCase().startsWith('re:') 
       ? selectedEmail.subject 
       : `Re: ${selectedEmail.subject}`;
     setReplySubject(subject);
@@ -1673,6 +1749,11 @@ export default function EmailCopilot() {
 
   // Filter and search emails
   const filteredEmails = emails.filter(email => {
+    const senderText = toSafeString(email.sender).toLowerCase();
+    const subjectText = toSafeString(email.subject).toLowerCase();
+    const bodyText = toSafeString(email.body).toLowerCase();
+    const toRecipients = toStringArray(email.to_recipients);
+
     // Folder filter based on viewMode
     const targetFolder = viewMode === 'sent' ? 'sent' : 'inbox';
     if (email.folder !== targetFolder) return false;
@@ -1691,11 +1772,11 @@ export default function EmailCopilot() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const matchesSender = email.sender.toLowerCase().includes(query);
-      const matchesSubject = email.subject.toLowerCase().includes(query);
-      const matchesBody = email.body.toLowerCase().includes(query);
+      const matchesSender = senderText.includes(query);
+      const matchesSubject = subjectText.includes(query);
+      const matchesBody = bodyText.includes(query);
       // For sent emails, also search in recipients
-      const matchesRecipients = email.to_recipients?.some(r => r.toLowerCase().includes(query));
+      const matchesRecipients = toRecipients.some(r => r.toLowerCase().includes(query));
       if (!matchesSender && !matchesSubject && !matchesBody && !matchesRecipients) return false;
     }
     
@@ -2219,12 +2300,12 @@ export default function EmailCopilot() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-primary border-primary/30">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
                               </Badge>
-                              {email.attachments && email.attachments.length > 0 && (
+                              {isNonEmptyArray(email.attachments) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {email.attachments.length}
                                 </Badge>
                               )}
-                              {email.cc_recipients?.length > 0 && (
+                              {isNonEmptyArray(email.cc_recipients) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {email.cc_recipients.length}
                                 </Badge>
@@ -2272,12 +2353,12 @@ export default function EmailCopilot() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent via Copilot
                               </Badge>
-                              {reply.attachments && reply.attachments.length > 0 && (
+                              {isNonEmptyArray(reply.attachments) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {reply.attachments.length}
                                 </Badge>
                               )}
-                              {reply.cc_recipients && reply.cc_recipients.length > 0 && (
+                              {isNonEmptyArray(reply.cc_recipients) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {reply.cc_recipients.length}
                                 </Badge>
@@ -2331,16 +2412,16 @@ export default function EmailCopilot() {
                         <span className="text-sm font-medium">To:</span>
                         <span className="text-sm text-muted-foreground">{selectedSentReply.recipient}</span>
                       </div>
-                      {selectedSentReply.cc_recipients && selectedSentReply.cc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedSentReply.cc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">CC:</span>
-                          <span>{selectedSentReply.cc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedSentReply.cc_recipients).join(', ')}</span>
                         </div>
                       )}
-                      {selectedSentReply.bcc_recipients && selectedSentReply.bcc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedSentReply.bcc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">BCC:</span>
-                          <span>{selectedSentReply.bcc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedSentReply.bcc_recipients).join(', ')}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -2361,13 +2442,13 @@ export default function EmailCopilot() {
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-4">
                   {/* Attachments Section */}
-                  {selectedSentReply.attachments && selectedSentReply.attachments.length > 0 && (
+                  {isNonEmptyArray(selectedSentReply.attachments) && (
                     <div className="bg-muted/30 rounded-lg p-4">
                       <Label className="text-xs uppercase text-muted-foreground font-semibold mb-3 block">
                         Attachments ({selectedSentReply.attachments.length})
                       </Label>
                       <div className="space-y-2">
-                        {selectedSentReply.attachments.map((attachment, index) => (
+                        {toObjectArray(selectedSentReply.attachments).map((attachment, index) => (
                           <div 
                             key={index}
                             className="flex items-center gap-3 p-2 bg-background rounded-lg border"
@@ -2430,24 +2511,24 @@ export default function EmailCopilot() {
                         {!isMobile && <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>}
                       </div>
                       {/* To Recipients */}
-                      {selectedEmail.to_recipients && selectedEmail.to_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.to_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">To:</span>
-                          <span>{selectedEmail.to_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.to_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* CC Recipients */}
-                      {selectedEmail.cc_recipients && selectedEmail.cc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.cc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">CC:</span>
-                          <span>{selectedEmail.cc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.cc_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* BCC Recipients */}
-                      {selectedEmail.bcc_recipients && selectedEmail.bcc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.bcc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">BCC:</span>
-                          <span>{selectedEmail.bcc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.bcc_recipients).join(', ')}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -2556,7 +2637,7 @@ export default function EmailCopilot() {
                   </div>
 
                   {/* Attachments Section */}
-                  {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                  {isNonEmptyArray(selectedEmail.attachments) && (
                     <EmailAttachmentsList attachments={selectedEmail.attachments} />
                   )}
 
@@ -2577,11 +2658,11 @@ export default function EmailCopilot() {
                           <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
                           <p className="text-sm mt-1">{selectedEmail.summary.tldr}</p>
                         </div>
-                        {selectedEmail.summary.keyPoints.length > 0 && (
+                        {toStringArray(selectedEmail.summary.keyPoints).length > 0 && (
                           <div>
                             <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
                             <ul className="mt-1 space-y-1">
-                              {selectedEmail.summary.keyPoints.map((point, i) => (
+                              {toStringArray(selectedEmail.summary.keyPoints).map((point, i) => (
                                 <li key={i} className="text-sm flex items-start gap-2">
                                   <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                                   <span>{point}</span>
@@ -2590,11 +2671,11 @@ export default function EmailCopilot() {
                             </ul>
                           </div>
                         )}
-                        {selectedEmail.summary.requiredActions.length > 0 && (
+                        {toStringArray(selectedEmail.summary.requiredActions).length > 0 && (
                           <div>
                             <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
                             <ul className="mt-1 space-y-1">
-                              {selectedEmail.summary.requiredActions.map((action, i) => (
+                              {toStringArray(selectedEmail.summary.requiredActions).map((action, i) => (
                                 <li key={i} className="text-sm flex items-start gap-2">
                                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                                   <span>{action}</span>
@@ -3183,11 +3264,11 @@ export default function EmailCopilot() {
                   <p className="text-sm mt-2 p-3 bg-muted/50 rounded-lg">{selectedEmail.summary.tldr}</p>
                 </div>
                 
-                {selectedEmail.summary.keyPoints.length > 0 && (
+                {toStringArray(selectedEmail.summary.keyPoints).length > 0 && (
                   <div>
                     <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
                     <ul className="mt-2 space-y-2">
-                      {selectedEmail.summary.keyPoints.map((point, i) => (
+                      {toStringArray(selectedEmail.summary.keyPoints).map((point, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 p-2 bg-muted/30 rounded-lg">
                           <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                           <span>{point}</span>
@@ -3197,11 +3278,11 @@ export default function EmailCopilot() {
                   </div>
                 )}
                 
-                {selectedEmail.summary.requiredActions.length > 0 && (
+                {toStringArray(selectedEmail.summary.requiredActions).length > 0 && (
                   <div>
                     <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
                     <ul className="mt-2 space-y-2">
-                      {selectedEmail.summary.requiredActions.map((action, i) => (
+                      {toStringArray(selectedEmail.summary.requiredActions).map((action, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 p-2 bg-green-500/10 rounded-lg">
                           <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                           <span>{action}</span>
