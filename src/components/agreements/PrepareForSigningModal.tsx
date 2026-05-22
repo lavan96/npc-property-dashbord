@@ -272,6 +272,8 @@ export function PrepareForSigningModal({
 
   // Click-on-page to place an active field
   const handlePageClick = (pageIdx: number, evt: React.MouseEvent<HTMLDivElement>) => {
+    // Suppress placement if a drag just finished
+    if (isDraggingRef.current) return;
     if (!activeFieldType || !activeRecipientId) return;
     // Ignore clicks that originated on an existing tab overlay
     if ((evt.target as HTMLElement).closest('[data-signing-tab]')) return;
@@ -280,7 +282,6 @@ export function PrepareForSigningModal({
     const rect = evt.currentTarget.getBoundingClientRect();
     const xCss = evt.clientX - rect.left;
     const yCss = evt.clientY - rect.top;
-    // Convert CSS pixels → PDF points
     const scaleX = dim.width / rect.width;
     const scaleY = dim.height / rect.height;
     const xPt = xCss * scaleX;
@@ -297,30 +298,37 @@ export function PrepareForSigningModal({
       height: fieldDef.defaultH,
       required: true,
     };
-    setTabs(prev => [...prev, tab]);
+    commitTabs(prev => [...prev, tab]);
     setSelectedTabId(tab.id);
-    // Clear active field so the next click doesn't spam duplicates
     setActiveFieldType(null);
   };
 
   const updateTab = (id: string, patch: Partial<SigningTab>) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+    commitTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
   };
   const deleteTab = (id: string) => {
-    setTabs(prev => prev.filter(t => t.id !== id));
+    commitTabs(prev => prev.filter(t => t.id !== id));
     if (selectedTabId === id) setSelectedTabId(null);
   };
 
-  // Pointer-drag to move an existing tab
+  // Pointer-drag to move an existing tab (touch + mouse + pen)
+  const DRAG_THRESHOLD_PX = 5;
   const beginTabDrag = (
     e: React.PointerEvent<HTMLDivElement>,
     tab: SigningTab,
     pageEl: HTMLElement,
     dim: PageDim,
   ) => {
+    // Only primary button for mouse; allow touch/pen always
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
     setSelectedTabId(tab.id);
+
+    const target = e.currentTarget as HTMLDivElement;
+    const pointerId = e.pointerId;
+    try { target.setPointerCapture(pointerId); } catch { /* noop */ }
+
     const startClientX = e.clientX;
     const startClientY = e.clientY;
     const startX = tab.x;
@@ -328,30 +336,58 @@ export function PrepareForSigningModal({
     const rect = pageEl.getBoundingClientRect();
     const scaleX = dim.width / rect.width;
     const scaleY = dim.height / rect.height;
-    let moved = false;
+    let dragging = false;
+    let lastX = startX;
+    let lastY = startY;
+    let rafId: number | null = null;
+
+    const flush = () => {
+      rafId = null;
+      setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, x: lastX, y: lastY } : t));
+    };
 
     const onMove = (ev: PointerEvent) => {
-      const dxPt = (ev.clientX - startClientX) * scaleX;
-      const dyPt = (ev.clientY - startClientY) * scaleY;
-      if (!moved && Math.abs(ev.clientX - startClientX) + Math.abs(ev.clientY - startClientY) < 3) return;
-      moved = true;
+      const totalDx = ev.clientX - startClientX;
+      const totalDy = ev.clientY - startClientY;
+      if (!dragging) {
+        if (Math.hypot(totalDx, totalDy) < DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        isDraggingRef.current = true;
+        // Snapshot the pre-drag state so the entire drag is one undo step
+        undoStackRef.current.push(tabs);
+        if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+        redoStackRef.current = [];
+      }
       const w = tab.width || 80;
       const h = tab.height || 20;
-      const nx = Math.max(0, Math.min(dim.width - w, startX + dxPt));
-      const ny = Math.max(0, Math.min(dim.height - h, startY + dyPt));
-      setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, x: nx, y: ny } : t));
+      lastX = Math.max(0, Math.min(dim.width - w, startX + totalDx * scaleX));
+      lastY = Math.max(0, Math.min(dim.height - h, startY + totalDy * scaleY));
+      if (rafId === null) rafId = requestAnimationFrame(flush);
     };
-    const onUp = (ev: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      // Swallow the trailing click so the page-click placer doesn't fire
-      if (moved) {
+
+    const cleanup = () => {
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      target.removeEventListener('pointercancel', onUp);
+      try { target.releasePointerCapture(pointerId); } catch { /* noop */ }
+    };
+
+    const onUp = () => {
+      if (rafId !== null) { cancelAnimationFrame(rafId); flush(); }
+      cleanup();
+      if (dragging) {
+        setHistoryVersion(v => v + 1);
+        // Swallow the trailing click so the page-click placer doesn't fire
         const stop = (cev: MouseEvent) => { cev.stopPropagation(); cev.preventDefault(); };
         window.addEventListener('click', stop, { capture: true, once: true });
+        // Release drag-suppression after the synthetic click cycle
+        setTimeout(() => { isDraggingRef.current = false; }, 0);
       }
     };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+    target.addEventListener('pointercancel', onUp);
   };
 
   const addRecipient = () => {
@@ -364,7 +400,7 @@ export function PrepareForSigningModal({
   };
   const removeRecipient = (id: string) => {
     setRecipients(prev => prev.filter(r => r.id !== id));
-    setTabs(prev => prev.filter(t => t.recipientId !== id));
+    commitTabs(prev => prev.filter(t => t.recipientId !== id));
   };
 
   const callFn = async (action: 'save_signing_layout' | 'send_freeform') => {
