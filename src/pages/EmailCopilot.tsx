@@ -1743,6 +1743,11 @@ export default function EmailCopilot() {
 
   // Filter and search emails
   const filteredEmails = emails.filter(email => {
+    const senderText = toSafeString(email.sender).toLowerCase();
+    const subjectText = toSafeString(email.subject).toLowerCase();
+    const bodyText = toSafeString(email.body).toLowerCase();
+    const toRecipients = toStringArray(email.to_recipients);
+
     // Folder filter based on viewMode
     const targetFolder = viewMode === 'sent' ? 'sent' : 'inbox';
     if (email.folder !== targetFolder) return false;
@@ -1761,11 +1766,11 @@ export default function EmailCopilot() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const matchesSender = email.sender.toLowerCase().includes(query);
-      const matchesSubject = email.subject.toLowerCase().includes(query);
-      const matchesBody = email.body.toLowerCase().includes(query);
+      const matchesSender = senderText.includes(query);
+      const matchesSubject = subjectText.includes(query);
+      const matchesBody = bodyText.includes(query);
       // For sent emails, also search in recipients
-      const matchesRecipients = email.to_recipients?.some(r => r.toLowerCase().includes(query));
+      const matchesRecipients = toRecipients.some(r => r.toLowerCase().includes(query));
       if (!matchesSender && !matchesSubject && !matchesBody && !matchesRecipients) return false;
     }
     
