@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Send, Save, Trash2, X, Users, MousePointer2 } from 'lucide-react';
+import { Loader2, Plus, Send, Save, Trash2, X, Users, MousePointer2, Undo2, Redo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
