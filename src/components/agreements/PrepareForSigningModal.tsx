@@ -400,8 +400,17 @@ export function PrepareForSigningModal({
   };
 
   const addRecipient = () => {
-    const r: SigningRecipient = { id: uid(), name: '', email: '', routingOrder: 1, roleLabel: '' };
+    const r: SigningRecipient = { id: uid(), name: '', email: '', routingOrder: 1, roleLabel: '', party: 'recipient' };
     setRecipients(prev => [...prev, r]);
+    setActiveRecipientId(r.id);
+  };
+  const addSender = () => {
+    if (senderRecipient) {
+      setActiveRecipientId(senderRecipient.id);
+      return;
+    }
+    const r: SigningRecipient = { id: uid(), name: '', email: '', routingOrder: 1, roleLabel: 'Sender', party: 'sender' };
+    setRecipients(prev => [r, ...prev]);
     setActiveRecipientId(r.id);
   };
   const updateRecipient = (id: string, patch: Partial<SigningRecipient>) => {
