@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       .is('body_html', null);
 
     return new Response(JSON.stringify({
-      success: true, scanned: candidates.length, updated, missing, errors, remaining,
+      success: true, scanned: (candidates || []).length, updated, missing, errors, remaining,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ success: false, error: (e as Error).message }),
