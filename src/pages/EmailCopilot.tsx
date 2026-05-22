@@ -156,14 +156,74 @@ interface SentReply {
   mailbox_source: 'admin' | 'personal';
 }
 
+const toSafeString = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => toSafeString(item).trim())
+    .filter(Boolean);
+};
+
+const normalizeUrgencyLevel = (value: unknown): EmailSummary['urgencyLevel'] => {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
+};
+
+const normalizeSentiment = (value: unknown): EmailSummary['sentiment'] | undefined => {
+  return value === 'positive' || value === 'neutral' || value === 'negative' || value === 'angry' ? value : undefined;
+};
+
+const normalizeCategory = (value: unknown): EmailSummary['category'] | undefined => {
+  const allowed = ['inquiry', 'complaint', 'opportunity', 'admin', 'fyi', 'scheduling', 'document_request', 'other'];
+  return allowed.includes(toSafeString(value)) ? (value as EmailSummary['category']) : undefined;
+};
+
+const normalizeSummary = (summary: unknown): EmailSummary | null => {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return null;
+  const source = summary as Record<string, unknown>;
+  return {
+    tldr: toSafeString(source.tldr ?? source.tl_dr ?? source.summary),
+    keyPoints: toStringArray(source.keyPoints ?? source.key_points),
+    requiredActions: toStringArray(source.requiredActions ?? source.required_actions),
+    urgencyLevel: normalizeUrgencyLevel(source.urgencyLevel ?? source.urgency_level ?? source.urgency),
+    sentiment: normalizeSentiment(source.sentiment),
+    category: normalizeCategory(source.category),
+    language: source.language ? toSafeString(source.language) : undefined,
+  };
+};
+
+const normalizeEmailAttachments = (attachments: unknown): EmailAttachment[] => {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.map((attachment: any) => ({
+    name: toSafeString(attachment?.name, 'Attachment'),
+    contentType: toSafeString(attachment?.contentType ?? attachment?.content_type, 'application/octet-stream'),
+    size: Number(attachment?.size) || 0,
+    storageUrl: toSafeString(attachment?.storageUrl ?? attachment?.storage_url),
+  }));
+};
+
+const normalizeSentAttachments = (attachments: unknown): SentAttachment[] => {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.map((attachment: any) => ({
+    name: toSafeString(attachment?.name, 'Attachment'),
+    contentType: toSafeString(attachment?.contentType ?? attachment?.content_type, 'application/octet-stream'),
+    size: Number(attachment?.size) || 0,
+  }));
+};
+
 // Helper to extract sender name from email
-function extractSenderName(sender: string): string {
+function extractSenderName(sender: string | null | undefined): string {
+  const safeSender = toSafeString(sender, 'Unknown');
   // If it looks like "Name <email@domain.com>", extract the name
-  const match = sender.match(/^([^<]+)</);
+  const match = safeSender.match(/^([^<]+)</);
   if (match) return match[1].trim();
   
   // If it's just an email, extract the part before @
-  const emailMatch = sender.match(/^([^@]+)@/);
+  const emailMatch = safeSender.match(/^([^@]+)@/);
   if (emailMatch) {
     // Convert to title case
     return emailMatch[1]
@@ -172,11 +232,11 @@ function extractSenderName(sender: string): string {
       .join(' ');
   }
   
-  return sender;
+  return safeSender;
 }
 
 // Helper to get initials from sender
-function getSenderInitials(sender: string): string {
+function getSenderInitials(sender: string | null | undefined): string {
   const name = extractSenderName(sender);
   const parts = name.split(' ').filter(Boolean);
   if (parts.length >= 2) {
@@ -186,8 +246,9 @@ function getSenderInitials(sender: string): string {
 }
 
 // Helper to format date intelligently
-function formatEmailDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatEmailDate(dateStr: string | null | undefined): string {
+  const date = new Date(toSafeString(dateStr));
+  if (Number.isNaN(date.getTime())) return '';
   if (isToday(date)) {
     return format(date, 'h:mm a');
   }
@@ -198,13 +259,14 @@ function formatEmailDate(dateStr: string): string {
 }
 
 // Helper to format full date
-function formatFullDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatFullDate(dateStr: string | null | undefined): string {
+  const date = new Date(toSafeString(dateStr));
+  if (Number.isNaN(date.getTime())) return 'Unknown date';
   return format(date, "EEEE, MMMM d, yyyy 'at' h:mm a");
 }
 
 // Helper to format email body with proper paragraphs
-function formatEmailBody(body: string): string {
+function formatEmailBody(body: string | null | undefined): string {
   if (!body) return '';
   
   // Clean up excessive whitespace but preserve paragraph breaks
