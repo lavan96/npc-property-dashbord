@@ -2412,16 +2412,16 @@ export default function EmailCopilot() {
                         <span className="text-sm font-medium">To:</span>
                         <span className="text-sm text-muted-foreground">{selectedSentReply.recipient}</span>
                       </div>
-                      {selectedSentReply.cc_recipients && selectedSentReply.cc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedSentReply.cc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">CC:</span>
-                          <span>{selectedSentReply.cc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedSentReply.cc_recipients).join(', ')}</span>
                         </div>
                       )}
-                      {selectedSentReply.bcc_recipients && selectedSentReply.bcc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedSentReply.bcc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">BCC:</span>
-                          <span>{selectedSentReply.bcc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedSentReply.bcc_recipients).join(', ')}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -2442,13 +2442,13 @@ export default function EmailCopilot() {
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-4">
                   {/* Attachments Section */}
-                  {selectedSentReply.attachments && selectedSentReply.attachments.length > 0 && (
+                  {isNonEmptyArray(selectedSentReply.attachments) && (
                     <div className="bg-muted/30 rounded-lg p-4">
                       <Label className="text-xs uppercase text-muted-foreground font-semibold mb-3 block">
                         Attachments ({selectedSentReply.attachments.length})
                       </Label>
                       <div className="space-y-2">
-                        {selectedSentReply.attachments.map((attachment, index) => (
+                        {toObjectArray(selectedSentReply.attachments).map((attachment, index) => (
                           <div 
                             key={index}
                             className="flex items-center gap-3 p-2 bg-background rounded-lg border"
