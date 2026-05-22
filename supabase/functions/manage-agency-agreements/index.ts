@@ -468,164 +468,166 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
-      // Trigger Gamma generation
+      // Trigger Gamma generation — run the ENTIRE Gamma call chain in the
+      // background so this request returns immediately and the frontend
+      // (60s fetch timeout) does not abort while Gamma is still working.
+      // The frontend polls agency_agreements.pdf_storage_path for readiness.
       const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
       const gammaTemplateId = resolvedGammaTemplateId;
 
       console.log('[generate] GAMMA_API_KEY present:', !!gammaApiKey, 'GAMMA_TEMPLATE_ID:', gammaTemplateId);
 
       if (gammaApiKey && gammaTemplateId) {
-        try {
-          console.log('[generate] Calling Gamma API for agreement:', agreement.id);
+        // Mark as pending immediately so the UI shows the right state.
+        await supabase.from('agency_agreements')
+          .update({ status: 'pending_pdf' })
+          .eq('id', agreement.id);
 
-          const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
+        const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
 
-          // Build prompt from placeholder mappings if available
-          const fieldValues: Record<string, string> = {
-            buyer_names,
-            buyer_address: buyer_address || 'N/A',
-            buyer_phone: buyer_phone || 'N/A',
-            buyer_email,
-            initial_commitment_fee: initial_commitment_fee || '$1,500.00 + GST',
-            secondary_buyer_name: secondary_buyer_name || '',
-            agreement_date: agreement_date || new Date().toISOString().split('T')[0],
-            notes: notes || '',
-          };
+        // Build prompt from placeholder mappings if available
+        const fieldValues: Record<string, string> = {
+          buyer_names,
+          buyer_address: buyer_address || 'N/A',
+          buyer_phone: buyer_phone || 'N/A',
+          buyer_email,
+          initial_commitment_fee: initial_commitment_fee || '$1,500.00 + GST',
+          secondary_buyer_name: secondary_buyer_name || '',
+          agreement_date: agreement_date || new Date().toISOString().split('T')[0],
+          notes: notes || '',
+        };
 
-          let promptLines: string[];
-          if (placeholderMappings && placeholderMappings.length > 0) {
-            promptLines = placeholderMappings
-              .filter((m: any) => m.placeholder && m.field)
-              .map((m: any) => `${m.placeholder} → ${fieldValues[m.field] || m.defaultValue || 'N/A'}`);
-          } else {
-            promptLines = [
-              `[Buyer's Name] → ${buyer_names}`,
-              `[Address] → ${buyer_address || 'N/A'}`,
-              `[Phone Number] → ${buyer_phone || 'N/A'}`,
-              `[Email] → ${buyer_email}`,
-              `[Initial Commitment Fee] → ${initial_commitment_fee || '$1,500.00 + GST'}`,
-            ];
-          }
+        let promptLines: string[];
+        if (placeholderMappings && placeholderMappings.length > 0) {
+          promptLines = placeholderMappings
+            .filter((m: any) => m.placeholder && m.field)
+            .map((m: any) => `${m.placeholder} → ${fieldValues[m.field] || m.defaultValue || 'N/A'}`);
+        } else {
+          promptLines = [
+            `[Buyer's Name] → ${buyer_names}`,
+            `[Address] → ${buyer_address || 'N/A'}`,
+            `[Phone Number] → ${buyer_phone || 'N/A'}`,
+            `[Email] → ${buyer_email}`,
+            `[Initial Commitment Fee] → ${initial_commitment_fee || '$1,500.00 + GST'}`,
+          ];
+        }
 
-          const prompt = `Replace the placeholders in this agreement template with the following details. Do NOT change any other content, formatting, structure, or wording — only replace the bracketed placeholders exactly:\n\n${promptLines.join('\n')}\n\nKeep everything else exactly as-is.`;
+        const prompt = `Replace the placeholders in this agreement template with the following details. Do NOT change any other content, formatting, structure, or wording — only replace the bracketed placeholders exactly:\n\n${promptLines.join('\n')}\n\nKeep everything else exactly as-is.`;
 
-          console.log('[Gamma] POST /generations/from-template with gammaId:', gammaTemplateId);
-          const createRes = await fetch(`${GAMMA_API_URL}/generations/from-template`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-API-KEY': gammaApiKey,
-            },
-            body: JSON.stringify({
-              gammaId: gammaTemplateId,
-              prompt,
-              exportAs: 'pdf',
-            }),
-          });
+        const backgroundTask = (async () => {
+          try {
+            console.log('[Gamma:bg] POST /generations/from-template with gammaId:', gammaTemplateId);
+            const createRes = await fetch(`${GAMMA_API_URL}/generations/from-template`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': gammaApiKey,
+              },
+              body: JSON.stringify({
+                gammaId: gammaTemplateId,
+                prompt,
+                exportAs: 'pdf',
+              }),
+            });
 
-          const createText = await createRes.text();
-          console.log('[Gamma] Create response status:', createRes.status, 'body:', createText.substring(0, 500));
-          
-          let createData: any;
-          try { createData = JSON.parse(createText); } catch { createData = {}; }
+            const createText = await createRes.text();
+            console.log('[Gamma:bg] Create response status:', createRes.status, 'body:', createText.substring(0, 500));
 
-          if (createRes.ok) {
+            let createData: any;
+            try { createData = JSON.parse(createText); } catch { createData = {}; }
+
+            if (!createRes.ok) {
+              console.error('[Gamma:bg] Create failed - status:', createRes.status);
+              await supabase.from('agency_agreements')
+                .update({ status: 'generated' })
+                .eq('id', agreement.id);
+              return;
+            }
+
             const generationId = createData.generationId || createData.id;
-            console.log('[Gamma] Generation started, generationId:', generationId);
+            console.log('[Gamma:bg] Generation started, generationId:', generationId);
 
-            // Store generationId immediately and mark as pending_pdf.
-            // The actual polling + PDF download happens in a background task
-            // (EdgeRuntime.waitUntil) so we don't block the request and hit the
-            // edge function timeout. The frontend / retry_pdf action will pick
-            // up the completed PDF once it's ready.
             await supabase.from('agency_agreements').update({
-              status: 'pending_pdf',
               gamma_document_id: generationId,
             }).eq('id', agreement.id);
 
-            const backgroundTask = (async () => {
-              try {
-                let gammaResult: any = null;
-                for (let i = 0; i < 50; i++) {
-                  await new Promise(r => setTimeout(r, 3000));
-                  const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
-                    headers: { 'X-API-KEY': gammaApiKey },
-                  });
-                  const pollText = await pollRes.text();
-                  let pollData: any;
-                  try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
-                  console.log(`[Gamma:bg] Poll ${i + 1}/50: status=${pollData.status}`);
+            let gammaResult: any = null;
+            for (let i = 0; i < 50; i++) {
+              await new Promise(r => setTimeout(r, 3000));
+              const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+                headers: { 'X-API-KEY': gammaApiKey },
+              });
+              const pollText = await pollRes.text();
+              let pollData: any;
+              try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
+              console.log(`[Gamma:bg] Poll ${i + 1}/50: status=${pollData.status}`);
 
-                  if (pollData.status === 'completed') {
-                    gammaResult = pollData;
-                    break;
-                  } else if (pollData.status === 'failed' || pollData.status === 'error') {
-                    console.error('[Gamma:bg] Generation failed:', JSON.stringify(pollData));
-                    return;
-                  }
-                }
-
-                if (!gammaResult) {
-                  console.warn('[Gamma:bg] Polling timed out — generationId stored for deferred retry:', generationId);
-                  return;
-                }
-
-                const gammaUrl = gammaResult.gammaUrl || gammaResult.url;
-                const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl || gammaResult.fileUrl;
-                const gammaDocId = gammaResult.gammaId || generationId;
-
-                const updateData: Record<string, any> = {
-                  status: 'generated',
-                  gamma_document_id: gammaDocId,
-                  gamma_document_url: gammaUrl,
-                };
-
-                const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
-                if (pdfBuffer) {
-                  const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                  const { error: uploadErr } = await supabase.storage
-                    .from('agency-agreements')
-                    .upload(storagePath, new Uint8Array(pdfBuffer), {
-                      contentType: 'application/pdf',
-                      upsert: true,
-                    });
-                  if (!uploadErr) {
-                    updateData.pdf_storage_path = storagePath;
-                    console.log('[Gamma:bg] PDF stored at:', storagePath);
-                  } else {
-                    console.error('[Gamma:bg] PDF upload error:', uploadErr.message);
-                  }
-                } else {
-                  console.warn('[Gamma:bg] Could not obtain a valid PDF for this agreement');
-                }
-
-                await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
-                console.log('[Gamma:bg] Agreement record updated');
-              } catch (bgErr: any) {
-                console.error('[Gamma:bg] Background task error:', bgErr.message, bgErr.stack);
+              if (pollData.status === 'completed') {
+                gammaResult = pollData;
+                break;
+              } else if (pollData.status === 'failed' || pollData.status === 'error') {
+                console.error('[Gamma:bg] Generation failed:', JSON.stringify(pollData));
+                return;
               }
-            })();
-
-            // @ts-ignore - EdgeRuntime is available in Supabase Edge Runtime
-            if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-              // @ts-ignore
-              EdgeRuntime.waitUntil(backgroundTask);
-            } else {
-              // Fallback: don't await, but the runtime may kill it
-              backgroundTask;
             }
-          } else {
-            console.error('[Gamma] Create failed - status:', createRes.status, 'body:', createText.substring(0, 500));
-            await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
+
+            if (!gammaResult) {
+              console.warn('[Gamma:bg] Polling timed out — generationId stored for deferred retry:', generationId);
+              return;
+            }
+
+            const gammaUrl = gammaResult.gammaUrl || gammaResult.url;
+            const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl || gammaResult.fileUrl;
+            const gammaDocId = gammaResult.gammaId || generationId;
+
+            const updateData: Record<string, any> = {
+              status: 'generated',
+              gamma_document_id: gammaDocId,
+              gamma_document_url: gammaUrl,
+            };
+
+            const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
+            if (pdfBuffer) {
+              const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+              const { error: uploadErr } = await supabase.storage
+                .from('agency-agreements')
+                .upload(storagePath, new Uint8Array(pdfBuffer), {
+                  contentType: 'application/pdf',
+                  upsert: true,
+                });
+              if (!uploadErr) {
+                updateData.pdf_storage_path = storagePath;
+                console.log('[Gamma:bg] PDF stored at:', storagePath);
+              } else {
+                console.error('[Gamma:bg] PDF upload error:', uploadErr.message);
+              }
+            } else {
+              console.warn('[Gamma:bg] Could not obtain a valid PDF for this agreement');
+            }
+
+            await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
+            console.log('[Gamma:bg] Agreement record updated');
+          } catch (bgErr: any) {
+            console.error('[Gamma:bg] Background task error:', bgErr.message, bgErr.stack);
+            await supabase.from('agency_agreements')
+              .update({ status: 'generated' })
+              .eq('id', agreement.id);
           }
-        } catch (gammaErr: any) {
-          console.error('[Gamma] Unhandled error:', gammaErr.message, gammaErr.stack);
-          await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
+        })();
+
+        // @ts-ignore - EdgeRuntime is available in Supabase Edge Runtime
+        if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(backgroundTask);
+        } else {
+          backgroundTask;
         }
       } else {
         console.warn('[generate] Gamma not configured, skipping. API key present:', !!gammaApiKey, 'Template ID present:', !!gammaTemplateId);
         await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
       }
+
+
 
       // Re-fetch the updated agreement
       const { data: updatedAgreement } = await supabase
