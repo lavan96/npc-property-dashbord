@@ -1174,8 +1174,9 @@ export default function EmailCopilot() {
 
   // Parse comma-separated emails
   const parseEmailList = (emails: string): string[] => {
-    if (!emails.trim()) return [];
-    return emails.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+    const safeEmails = toSafeString(emails);
+    if (!safeEmails.trim()) return [];
+    return safeEmails.split(',').map(e => e.trim()).filter(e => e.includes('@'));
   };
 
   // Initialize reply fields when opening draft modal
