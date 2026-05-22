@@ -462,6 +462,73 @@ export function PrepareForSigningModal({
           {/* LEFT: Recipients + Field palette */}
           <div className="border-r flex flex-col min-h-0 bg-muted/20">
             <div className="p-3 border-b">
+              {/* ───── SENDER ───── */}
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs uppercase tracking-wide flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-sm" style={{ background: SENDER_COLOR }} />
+                  Sender
+                </Label>
+                {!senderRecipient && (
+                  <Button size="sm" variant="ghost" onClick={addSender} className="h-7 px-2" title="Add sender">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              {!senderRecipient && (
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Add the sender (you) to place signature/initial/date fields the sender will sign.
+                </p>
+              )}
+              {senderRecipient && (
+                <div
+                  onClick={() => setActiveRecipientId(senderRecipient.id)}
+                  className={`p-2 rounded border cursor-pointer space-y-1 mb-3 ${activeRecipientId === senderRecipient.id ? 'border-primary bg-background' : 'border-border bg-background/50'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: SENDER_COLOR }} />
+                    <Input
+                      placeholder="Sender name"
+                      value={senderRecipient.name}
+                      onChange={(e) => updateRecipient(senderRecipient.id, { name: e.target.value })}
+                      className="h-7 text-xs flex-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); removeRecipient(senderRecipient.id); }} className="h-7 w-7 p-0">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <Input
+                    placeholder="sender@example.com"
+                    type="email"
+                    value={senderRecipient.email}
+                    onChange={(e) => updateRecipient(senderRecipient.id, { email: e.target.value })}
+                    className="h-7 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="flex items-center gap-1">
+                    <Input
+                      placeholder="Role (e.g. Agent)"
+                      value={senderRecipient.roleLabel || ''}
+                      onChange={(e) => updateRecipient(senderRecipient.id, { roleLabel: e.target.value })}
+                      className="h-7 text-xs flex-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      value={senderRecipient.routingOrder ?? 1}
+                      onChange={(e) => updateRecipient(senderRecipient.id, { routingOrder: Number(e.target.value) || 1 })}
+                      className="h-7 text-xs w-14"
+                      title="Routing order (1 = parallel)"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Separator className="my-2" />
+
+              {/* ───── RECIPIENTS ───── */}
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs uppercase tracking-wide flex items-center gap-1">
                   <Users className="h-3 w-3" /> Recipients
@@ -470,12 +537,12 @@ export function PrepareForSigningModal({
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
-              <ScrollArea className="max-h-[200px]">
+              <ScrollArea className="max-h-[220px]">
                 <div className="space-y-2">
-                  {recipients.length === 0 && (
+                  {externalRecipients.length === 0 && (
                     <p className="text-xs text-muted-foreground">No recipients yet. Add one to begin.</p>
                   )}
-                  {recipients.map((r, idx) => (
+                  {externalRecipients.map((r, idx) => (
                     <div
                       key={r.id}
                       onClick={() => setActiveRecipientId(r.id)}
