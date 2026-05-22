@@ -49,6 +49,8 @@ export interface SigningRecipient {
   email: string;
   roleLabel?: string;
   routingOrder?: number;
+  /** 'sender' = the agency/internal party sending the envelope; 'recipient' = external signer (default). */
+  party?: 'sender' | 'recipient';
 }
 
 export interface SigningTab {
