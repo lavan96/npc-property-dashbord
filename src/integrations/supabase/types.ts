@@ -12014,6 +12014,16 @@ export type Database = {
           pending_count: number
         }[]
       }
+      list_truncated_email_ids: {
+        Args: { _limit?: number }
+        Returns: {
+          body: string
+          id: string
+          received_at: string
+          sender: string
+          subject: string
+        }[]
+      }
       log_activity: {
         Args: {
           p_action_type: Database["public"]["Enums"]["activity_action_type"]
