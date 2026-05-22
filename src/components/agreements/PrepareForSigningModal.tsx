@@ -131,6 +131,43 @@ export function PrepareForSigningModal({
   const [busy, setBusy] = useState<'save' | 'send' | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Undo/redo history of tab snapshots
+  const undoStackRef = useRef<SigningTab[][]>([]);
+  const redoStackRef = useRef<SigningTab[][]>([]);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const isDraggingRef = useRef(false);
+
+  const commitTabs = useCallback((updater: SigningTab[] | ((prev: SigningTab[]) => SigningTab[])) => {
+    setTabs(prev => {
+      const next = typeof updater === 'function' ? (updater as (p: SigningTab[]) => SigningTab[])(prev) : updater;
+      undoStackRef.current.push(prev);
+      if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+      redoStackRef.current = [];
+      setHistoryVersion(v => v + 1);
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    if (!undoStackRef.current.length) return;
+    setTabs(prev => {
+      const previous = undoStackRef.current.pop()!;
+      redoStackRef.current.push(prev);
+      setHistoryVersion(v => v + 1);
+      return previous;
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    if (!redoStackRef.current.length) return;
+    setTabs(prev => {
+      const next = redoStackRef.current.pop()!;
+      undoStackRef.current.push(prev);
+      setHistoryVersion(v => v + 1);
+      return next;
+    });
+  }, []);
+
   // Reset when record changes
   useEffect(() => {
     if (open) {
@@ -139,9 +176,31 @@ export function PrepareForSigningModal({
       setActiveRecipientId(initialRecipients[0]?.id || '');
       setActiveFieldType(null);
       setSelectedTabId(null);
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      setHistoryVersion(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, recordId]);
+
+  // Keyboard shortcuts for undo/redo (only while modal is open)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, undo, redo]);
 
   // Render PDF pages to canvases
   useEffect(() => {
