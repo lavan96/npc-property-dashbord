@@ -38,6 +38,39 @@ interface Props {
   onIntelligenceUpdate?: (next: EmailIntelligence) => void;
 }
 
+const toSafeString = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => toSafeString(item).trim()).filter(Boolean);
+};
+
+const toActionItems = (value: unknown): { owner: string; task: string }[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item: any) => ({
+      owner: toSafeString(item?.owner, 'Owner'),
+      task: toSafeString(item?.task ?? item?.description ?? item),
+    }))
+    .filter(item => item.task);
+};
+
+const normalizeThreadSummary = (summary: unknown): ThreadSummaryData | null => {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return null;
+  const source = summary as Record<string, unknown>;
+  return {
+    tldr: toSafeString(source.tldr ?? source.summary),
+    decisions: toStringArray(source.decisions),
+    openQuestions: toStringArray(source.openQuestions ?? source.open_questions),
+    actionItems: toActionItems(source.actionItems ?? source.action_items),
+    nextStep: toSafeString(source.nextStep ?? source.next_step),
+  };
+};
+
 const SENTIMENT_CONFIG: Record<Sentiment, { label: string; icon: typeof Smile; cls: string }> = {
   positive: { label: 'Positive', icon: Smile, cls: 'text-success border-success/30 bg-success/10' },
   neutral: { label: 'Neutral', icon: Meh, cls: 'text-muted-foreground border-border bg-muted/40' },
@@ -155,8 +188,9 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
         threadEmails,
       });
       if (error) throw error;
-      if (data?.summary) {
-        setThreadSummary(data.summary);
+      const nextSummary = normalizeThreadSummary(data?.summary);
+      if (nextSummary) {
+        setThreadSummary(nextSummary);
       }
     } catch (e: any) {
       toast.error(e?.message || 'Failed to summarize thread');
