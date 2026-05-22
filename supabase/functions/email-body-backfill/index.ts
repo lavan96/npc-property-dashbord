@@ -84,31 +84,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Microsoft credentials missing' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const { limit = 20 } = await req.json().catch(() => ({}));
+    const { limit = 25 } = await req.json().catch(() => ({}));
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Paginate through all rows with NULL body_html and collect those whose
-    // body was truncated at the old 10K cap. PostgREST cannot filter by
-    // length(body) directly, so we scan in-memory.
-    const candidates: Array<{ id: string; sender: string; subject: string; received_at: string; body: string }> = [];
-    const pageSize = 1000;
-    for (let from = 0; candidates.length < limit; from += pageSize) {
-      const { data: page, error } = await supabase
-        .from('email_copilot_emails')
-        .select('id, sender, subject, received_at, body')
-        .is('body_html', null)
-        .order('received_at', { ascending: false })
-        .range(from, from + pageSize - 1);
-      if (error) throw error;
-      if (!page || page.length === 0) break;
-      for (const row of page) {
-        if ((row.body?.length || 0) >= 10000) {
-          candidates.push(row as any);
-          if (candidates.length >= limit) break;
-        }
-      }
-      if (page.length < pageSize) break;
-    }
+    // Use server-side RPC to find truncated rows efficiently (avoids
+    // statement timeouts from paginating the whole table from the client).
+    const { data: candidates, error: rpcErr } = await supabase
+      .rpc('list_truncated_email_ids', { _limit: limit });
+    if (rpcErr) throw rpcErr;
 
     const token = await getAccessToken();
     let updated = 0, missing = 0, errors = 0;
