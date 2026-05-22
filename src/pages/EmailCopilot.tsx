@@ -169,6 +169,10 @@ const toStringArray = (value: unknown): string[] => {
     .filter(Boolean);
 };
 
+const toObjectArray = (value: unknown): any[] => Array.isArray(value) ? value : [];
+
+const isNonEmptyArray = (value: unknown): value is any[] => Array.isArray(value) && value.length > 0;
+
 const normalizeUrgencyLevel = (value: unknown): EmailSummary['urgencyLevel'] => {
   return value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
 };
