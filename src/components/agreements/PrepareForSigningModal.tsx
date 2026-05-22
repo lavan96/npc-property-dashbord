@@ -214,6 +214,8 @@ export function PrepareForSigningModal({
   // Click-on-page to place an active field
   const handlePageClick = (pageIdx: number, evt: React.MouseEvent<HTMLDivElement>) => {
     if (!activeFieldType || !activeRecipientId) return;
+    // Ignore clicks that originated on an existing tab overlay
+    if ((evt.target as HTMLElement).closest('[data-signing-tab]')) return;
     const dim = pages[pageIdx];
     if (!dim) return;
     const rect = evt.currentTarget.getBoundingClientRect();
@@ -238,6 +240,8 @@ export function PrepareForSigningModal({
     };
     setTabs(prev => [...prev, tab]);
     setSelectedTabId(tab.id);
+    // Clear active field so the next click doesn't spam duplicates
+    setActiveFieldType(null);
   };
 
   const updateTab = (id: string, patch: Partial<SigningTab>) => {
@@ -246,6 +250,49 @@ export function PrepareForSigningModal({
   const deleteTab = (id: string) => {
     setTabs(prev => prev.filter(t => t.id !== id));
     if (selectedTabId === id) setSelectedTabId(null);
+  };
+
+  // Pointer-drag to move an existing tab
+  const beginTabDrag = (
+    e: React.PointerEvent<HTMLDivElement>,
+    tab: SigningTab,
+    pageEl: HTMLElement,
+    dim: PageDim,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedTabId(tab.id);
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const startX = tab.x;
+    const startY = tab.y;
+    const rect = pageEl.getBoundingClientRect();
+    const scaleX = dim.width / rect.width;
+    const scaleY = dim.height / rect.height;
+    let moved = false;
+
+    const onMove = (ev: PointerEvent) => {
+      const dxPt = (ev.clientX - startClientX) * scaleX;
+      const dyPt = (ev.clientY - startClientY) * scaleY;
+      if (!moved && Math.abs(ev.clientX - startClientX) + Math.abs(ev.clientY - startClientY) < 3) return;
+      moved = true;
+      const w = tab.width || 80;
+      const h = tab.height || 20;
+      const nx = Math.max(0, Math.min(dim.width - w, startX + dxPt));
+      const ny = Math.max(0, Math.min(dim.height - h, startY + dyPt));
+      setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, x: nx, y: ny } : t));
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      // Swallow the trailing click so the page-click placer doesn't fire
+      if (moved) {
+        const stop = (cev: MouseEvent) => { cev.stopPropagation(); cev.preventDefault(); };
+        window.addEventListener('click', stop, { capture: true, once: true });
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
   const addRecipient = () => {
@@ -436,8 +483,13 @@ export function PrepareForSigningModal({
                           return (
                             <div
                               key={t.id}
+                              data-signing-tab={t.id}
                               onClick={(e) => { e.stopPropagation(); setSelectedTabId(t.id); }}
-                              className="absolute flex items-center justify-center text-[9px] font-medium border-2 rounded-sm overflow-hidden"
+                              onPointerDown={(e) => {
+                                const pageEl = (e.currentTarget.parentElement as HTMLElement);
+                                beginTabDrag(e, t, pageEl, dim);
+                              }}
+                              className="absolute flex items-center justify-center text-[9px] font-medium border-2 rounded-sm overflow-hidden select-none touch-none"
                               style={{
                                 left, top, width: w, height: h,
                                 borderColor: color,
