@@ -263,15 +263,21 @@ export function PrepareForSigningModal({
     return () => { cancelled = true; };
   }, [open, pdfUrl]);
 
-  const activeColor = useMemo(() => {
-    const idx = recipients.findIndex(r => r.id === activeRecipientId);
-    return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] || RECIPIENT_COLORS[0];
-  }, [recipients, activeRecipientId]);
+  // Split recipients into sender (max 1) and external recipients for UI sections.
+  const senderRecipient = useMemo(() => recipients.find(r => r.party === 'sender') || null, [recipients]);
+  const externalRecipients = useMemo(() => recipients.filter(r => r.party !== 'sender'), [recipients]);
 
   const colorFor = useCallback((recipientId: string) => {
-    const idx = recipients.findIndex(r => r.id === recipientId);
+    const r = recipients.find(x => x.id === recipientId);
+    if (!r) return RECIPIENT_COLORS[0];
+    if (r.party === 'sender') return SENDER_COLOR;
+    const idx = externalRecipients.findIndex(x => x.id === recipientId);
     return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] || RECIPIENT_COLORS[0];
-  }, [recipients]);
+  }, [recipients, externalRecipients]);
+
+  const activeColor = useMemo(() => {
+    return activeRecipientId ? colorFor(activeRecipientId) : RECIPIENT_COLORS[0];
+  }, [activeRecipientId, colorFor]);
 
   // Click-on-page to place an active field
   const handlePageClick = (pageIdx: number, evt: React.MouseEvent<HTMLDivElement>) => {
