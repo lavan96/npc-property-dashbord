@@ -3264,11 +3264,11 @@ export default function EmailCopilot() {
                   <p className="text-sm mt-2 p-3 bg-muted/50 rounded-lg">{selectedEmail.summary.tldr}</p>
                 </div>
                 
-                {selectedEmail.summary.keyPoints.length > 0 && (
+                {toStringArray(selectedEmail.summary.keyPoints).length > 0 && (
                   <div>
                     <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
                     <ul className="mt-2 space-y-2">
-                      {selectedEmail.summary.keyPoints.map((point, i) => (
+                      {toStringArray(selectedEmail.summary.keyPoints).map((point, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 p-2 bg-muted/30 rounded-lg">
                           <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                           <span>{point}</span>
@@ -3278,11 +3278,11 @@ export default function EmailCopilot() {
                   </div>
                 )}
                 
-                {selectedEmail.summary.requiredActions.length > 0 && (
+                {toStringArray(selectedEmail.summary.requiredActions).length > 0 && (
                   <div>
                     <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
                     <ul className="mt-2 space-y-2">
-                      {selectedEmail.summary.requiredActions.map((action, i) => (
+                      {toStringArray(selectedEmail.summary.requiredActions).map((action, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 p-2 bg-green-500/10 rounded-lg">
                           <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                           <span>{action}</span>
