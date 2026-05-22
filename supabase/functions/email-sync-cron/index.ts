@@ -190,6 +190,10 @@ Deno.serve(async (req) => {
     let skippedCount = 0;
 
     for (const email of emails) {
+      // Preserve the original Outlook HTML alongside a structured plain-text
+      // fallback so the dashboard can render rich formatting (tables/links)
+      // and long emails are not silently truncated.
+      const rawHtml = email.body?.contentType === 'html' ? (email.body.content || '') : '';
       const bodyContent = email.body?.contentType === 'html'
         ? convertHtmlToStructuredText(email.body.content)
         : email.body?.content || email.bodyPreview || '';
@@ -204,7 +208,8 @@ Deno.serve(async (req) => {
         .insert({
           sender: email.from?.emailAddress?.address || 'unknown',
           subject: email.subject || '(No Subject)',
-          body: bodyContent.substring(0, 10000),
+          body: bodyContent.substring(0, 200000),
+          body_html: rawHtml ? rawHtml.substring(0, 500000) : null,
           received_at: email.receivedDateTime,
           status: 'unread',
           to_recipients: toRecipients,
