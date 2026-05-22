@@ -2511,24 +2511,24 @@ export default function EmailCopilot() {
                         {!isMobile && <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>}
                       </div>
                       {/* To Recipients */}
-                      {selectedEmail.to_recipients && selectedEmail.to_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.to_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">To:</span>
-                          <span>{selectedEmail.to_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.to_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* CC Recipients */}
-                      {selectedEmail.cc_recipients && selectedEmail.cc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.cc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">CC:</span>
-                          <span>{selectedEmail.cc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.cc_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* BCC Recipients */}
-                      {selectedEmail.bcc_recipients && selectedEmail.bcc_recipients.length > 0 && (
+                      {isNonEmptyArray(selectedEmail.bcc_recipients) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/70">BCC:</span>
-                          <span>{selectedEmail.bcc_recipients.join(', ')}</span>
+                          <span>{toStringArray(selectedEmail.bcc_recipients).join(', ')}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -2637,7 +2637,7 @@ export default function EmailCopilot() {
                   </div>
 
                   {/* Attachments Section */}
-                  {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                  {isNonEmptyArray(selectedEmail.attachments) && (
                     <EmailAttachmentsList attachments={selectedEmail.attachments} />
                   )}
 
@@ -2658,11 +2658,11 @@ export default function EmailCopilot() {
                           <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
                           <p className="text-sm mt-1">{selectedEmail.summary.tldr}</p>
                         </div>
-                        {selectedEmail.summary.keyPoints.length > 0 && (
+                        {toStringArray(selectedEmail.summary.keyPoints).length > 0 && (
                           <div>
                             <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
                             <ul className="mt-1 space-y-1">
-                              {selectedEmail.summary.keyPoints.map((point, i) => (
+                              {toStringArray(selectedEmail.summary.keyPoints).map((point, i) => (
                                 <li key={i} className="text-sm flex items-start gap-2">
                                   <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                                   <span>{point}</span>
@@ -2671,11 +2671,11 @@ export default function EmailCopilot() {
                             </ul>
                           </div>
                         )}
-                        {selectedEmail.summary.requiredActions.length > 0 && (
+                        {toStringArray(selectedEmail.summary.requiredActions).length > 0 && (
                           <div>
                             <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
                             <ul className="mt-1 space-y-1">
-                              {selectedEmail.summary.requiredActions.map((action, i) => (
+                              {toStringArray(selectedEmail.summary.requiredActions).map((action, i) => (
                                 <li key={i} className="text-sm flex items-start gap-2">
                                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                                   <span>{action}</span>
