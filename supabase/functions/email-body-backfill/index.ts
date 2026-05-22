@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     const token = await getAccessToken();
     let updated = 0, missing = 0, errors = 0;
 
-    for (const row of candidates) {
+    for (const row of (candidates || [])) {
       try {
         const msg = await findMessageOnGraph(token, row.sender, row.received_at, row.subject);
         if (!msg) {
