@@ -1011,16 +1011,22 @@ export default function EmailCopilot() {
       toast.success('Email summarized');
 
       // Update local state (skip refetch to avoid clobbering the freshly-written summary)
+      const nextSummary = normalizeSummary(data?.summary) || {
+        tldr: '',
+        keyPoints: [],
+        requiredActions: [],
+        urgencyLevel: 'low' as const,
+      };
       setSelectedEmail({
         ...selectedEmail,
-        summary: data.summary,
-        urgency_level: data.summary.urgencyLevel,
+        summary: nextSummary,
+        urgency_level: nextSummary.urgencyLevel,
         status: 'summarized'
       });
       setEmails(prev => prev.map(e => e.id === selectedEmail.id ? {
         ...e,
-        summary: data.summary,
-        urgency_level: data.summary.urgencyLevel,
+        summary: nextSummary,
+        urgency_level: nextSummary.urgencyLevel,
         status: 'summarized',
       } : e));
     } catch (error) {
