@@ -483,8 +483,13 @@ export function PrepareForSigningModal({
                           return (
                             <div
                               key={t.id}
+                              data-signing-tab={t.id}
                               onClick={(e) => { e.stopPropagation(); setSelectedTabId(t.id); }}
-                              className="absolute flex items-center justify-center text-[9px] font-medium border-2 rounded-sm overflow-hidden"
+                              onPointerDown={(e) => {
+                                const pageEl = (e.currentTarget.parentElement as HTMLElement);
+                                beginTabDrag(e, t, pageEl, dim);
+                              }}
+                              className="absolute flex items-center justify-center text-[9px] font-medium border-2 rounded-sm overflow-hidden select-none touch-none"
                               style={{
                                 left, top, width: w, height: h,
                                 borderColor: color,
