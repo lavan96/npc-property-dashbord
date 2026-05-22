@@ -2300,12 +2300,12 @@ export default function EmailCopilot() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-primary border-primary/30">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
                               </Badge>
-                              {email.attachments && email.attachments.length > 0 && (
+                              {isNonEmptyArray(email.attachments) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {email.attachments.length}
                                 </Badge>
                               )}
-                              {email.cc_recipients?.length > 0 && (
+                              {isNonEmptyArray(email.cc_recipients) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {email.cc_recipients.length}
                                 </Badge>
@@ -2353,12 +2353,12 @@ export default function EmailCopilot() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent via Copilot
                               </Badge>
-                              {reply.attachments && reply.attachments.length > 0 && (
+                              {isNonEmptyArray(reply.attachments) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {reply.attachments.length}
                                 </Badge>
                               )}
-                              {reply.cc_recipients && reply.cc_recipients.length > 0 && (
+                              {isNonEmptyArray(reply.cc_recipients) && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {reply.cc_recipients.length}
                                 </Badge>
