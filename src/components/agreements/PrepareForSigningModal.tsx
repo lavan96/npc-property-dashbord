@@ -702,7 +702,28 @@ export function PrepareForSigningModal({
             Tagging for: <strong>{recipients.find(r => r.id === activeRecipientId)?.name || '(no recipient)'}</strong>
             {activeFieldType && <span>· Field: <strong>{FIELD_CATALOG.find(f => f.type === activeFieldType)?.label}</strong></span>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={undo}
+              disabled={undoStackRef.current.length === 0 || !!busy}
+              title="Undo (Ctrl/Cmd+Z)"
+              data-history-version={historyVersion}
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={redo}
+              disabled={redoStackRef.current.length === 0 || !!busy}
+              title="Redo (Ctrl/Cmd+Shift+Z)"
+              data-history-version={historyVersion}
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-6 mx-1" />
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={!!busy}>Cancel</Button>
             <Button variant="secondary" onClick={() => callFn('save_signing_layout')} disabled={!!busy}>
               {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
