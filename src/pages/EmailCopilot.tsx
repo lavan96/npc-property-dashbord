@@ -452,9 +452,10 @@ export default function EmailCopilot() {
                 bodyParts.push(`\nThis document contains a comprehensive summary of our ${context.messageCount}-message discussion.`);
               }
               
-              if (context.sampleQuestions && context.sampleQuestions.length > 0) {
+              const sampleQuestions = toStringArray(context.sampleQuestions);
+              if (sampleQuestions.length > 0) {
                 bodyParts.push(`\nKey topics covered include:`);
-                context.sampleQuestions.forEach((q: string) => {
+                sampleQuestions.forEach((q: string) => {
                   bodyParts.push(`  • ${q}${q.length >= 100 ? '...' : ''}`);
                 });
               }
