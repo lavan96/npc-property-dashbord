@@ -126,7 +126,11 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
   const detectedLang = intelligence?.language;
   const isForeign = detectedLang && detectedLang.toLowerCase().slice(0, 2) !== 'en';
 
-  const threadSize = useMemo(() => threadEmails.length + 1, [threadEmails]);
+  const safeThreadEmails = Array.isArray(threadEmails) ? threadEmails : [];
+  const actionItems = toActionItems(threadSummary?.actionItems);
+  const openQuestions = toStringArray(threadSummary?.openQuestions);
+  const decisions = toStringArray(threadSummary?.decisions);
+  const threadSize = useMemo(() => safeThreadEmails.length + 1, [safeThreadEmails.length]);
 
   const runAnalyze = async () => {
     setAnalyzing(true);
@@ -185,7 +189,7 @@ export function EmailIntelligencePanel({ email, threadEmails, intelligence, onIn
       const { data, error } = await invokeSecureFunction('email-copilot', {
         action: 'thread_summary',
         email: { sender: email.sender, subject: email.subject, body: email.body, received_at: email.received_at },
-        threadEmails,
+          threadEmails: safeThreadEmails,
       });
       if (error) throw error;
       const nextSummary = normalizeThreadSummary(data?.summary);
