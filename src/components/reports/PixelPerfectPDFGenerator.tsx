@@ -2592,18 +2592,55 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         /^title\s*page$/i,
         /^disclaimer$/i,
         /^back\s*cover$/i,
+        // Compass / Compass-40: financial-leak sections that must never render
+        /^investment\s+highlights$/i,
+        /^key\s+findings$/i,
+        /^headline\s+scores?$/i,
+        /^overall\s+investment\s+profile$/i,
+        /^investment\s+score\s+analysis$/i,
+        /^macro\s+investment\s+scorecard$/i,
+        /^property\s+snapshot\s*[-–—]\s*non[-\s]?financial$/i,
       ];
+      // Collapse adjacent repeated words/phrases that occasionally appear in
+      // model-generated headings (e.g. "Industry 4 Industry & Employment",
+      // "Amenity Amenity & Livability", "SEIFA IFA", "Key Strengths Key Strengths").
+      const dedupeRepeatedWords = (s: string): string => {
+        if (!s) return s;
+        let out = s;
+        out = out.replace(/\b(\w+)\s+\d+\s+\1\b/gi, '$1');
+        out = out.replace(/\b((?:\w+\s+){1,3}\w+)\s+\d+\s+\1\b/gi, '$1');
+        for (let i = 0; i < 2; i++) {
+          out = out.replace(/\b((?:\w+\s+){0,3}\w+)\s+\1\b/gi, '$1');
+        }
+        out = out.replace(/(\b\w+\b)\s*,\s*\1\b/gi, '$1');
+        out = out.replace(/\b(\w*?)(\w{3,})\s+\2\b/gi, '$1$2');
+        return out.replace(/\s{2,}/g, ' ').trim();
+      };
       const isMetaSectionName = (raw: string) => {
-        const cleaned = raw
+        const cleaned = dedupeRepeatedWords(raw
           .replace(/^#{1,6}\s*/, '')
           .replace(/^\d+(\.\d+)*\.?\s+/, '')
           .replace(/:\s*$/, '')
-          .trim();
+          .trim());
         return META_SECTION_PATTERNS.some((p) => p.test(cleaned));
       };
-      const allSectionNames = Object.keys(sections).filter(name =>
-        name && sections[name] && sections[name].trim().length > 0 && !isMetaSectionName(name)
-      );
+      // De-duplicate sections that the model produces twice (e.g. "Property
+      // Snapshot" appears once on its own and once as "Property Snapshot —
+      // Non-Financial"). Keep the first occurrence of each canonical name.
+      const seenCanonical = new Set<string>();
+      const allSectionNames = Object.keys(sections).filter(name => {
+        if (!name || !sections[name] || sections[name].trim().length < 40) return false;
+        if (isMetaSectionName(name)) return false;
+        const canonical = dedupeRepeatedWords(name
+          .replace(/^#{1,6}\s*/, '')
+          .replace(/^\d+(\.\d+)*\.?\s+/, '')
+          .replace(/:\s*$/, '')
+          .trim()).toLowerCase();
+        if (seenCanonical.has(canonical)) return false;
+        seenCanonical.add(canonical);
+        return true;
+      });
+
 
       console.log('Found sections to include in PDF:', allSectionNames);
       
