@@ -4,6 +4,7 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
+import { compassSections, financialSections, type CompassSectionDefinition as CanonicalSectionDefinition } from '../_shared/compassSectionRegistry.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -362,6 +363,52 @@ function getDefaultSectionsForScope(scope: string): ReportSectionDefinition[] {
     case 'statewide': return [...DEFAULT_STATEWIDE_SECTIONS];
     default: return [...DEFAULT_REPORT_SECTIONS];
   }
+}
+
+function normaliseGenerationTier(raw: unknown): 'compass-40' | 'financial-analysis' {
+  const tier = String(raw ?? '').toLowerCase().trim();
+  return tier.startsWith('financial') ? 'financial-analysis' : 'compass-40';
+}
+
+function canonicalSectionsToGenerationSections(
+  canonicalSections: CanonicalSectionDefinition[],
+  prefix: string,
+): ReportSectionDefinition[] {
+  return canonicalSections.map((section, index) => ({
+    id: `${prefix}${index}`,
+    name: section.name,
+    sections: [section.name],
+    maxTokens: Math.min(5000, Math.max(1200, section.maxWordCount * 4)),
+    minContentLength: Math.min(4500, Math.max(600, section.maxWordCount * 3)),
+    requiredKeywords: section.sourceHeadings.slice(0, 3).map((heading) => heading.split(/\s+/)[0]?.toLowerCase()).filter(Boolean),
+  }));
+}
+
+function getCanonicalSectionsForTier(tier: 'compass-40' | 'financial-analysis'): ReportSectionDefinition[] {
+  return tier === 'financial-analysis'
+    ? canonicalSectionsToGenerationSections(financialSections(), 'financialSection')
+    : canonicalSectionsToGenerationSections(compassSections(), 'compassSection');
+}
+
+function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'): string {
+  const sections = tier === 'financial-analysis' ? financialSections() : compassSections();
+  const title = tier === 'financial-analysis'
+    ? 'Financial Analysis Report Structure'
+    : 'Investor Compass 40-Page Structure';
+
+  return [
+    `# ${title}`,
+    '',
+    ...sections.flatMap((section) => [
+      `## ${section.name}`,
+      `- Page budget: ${section.pageBudget}`,
+      `- Purpose: ${section.purpose}`,
+      `- Maximum narrative words: ${section.maxWordCount}`,
+      section.visualComponents.length ? `- Required visual/data components: ${section.visualComponents.join(', ')}` : '- Required visual/data components: narrative only',
+      section.allowDecisionBox ? '- Include one concise "What This Means"/decision box.' : '- Do not include a decision box in this section.',
+      '',
+    ]),
+  ].join('\n');
 }
 
 // Dynamic sections - populated from database template at runtime
@@ -847,7 +894,7 @@ async function generateReportSection(
 ): Promise<{ content: string; citations: any[]; error?: string }> {
   // For section10 (Projections & SWOT), inject explicit investment score data
   let investmentScoreContext = '';
-  if (sectionDef.id === 'section10' && enhancedData?.investmentScore) {
+  if ((sectionDef.id === 'section10' || sectionDef.name.toLowerCase().includes('score')) && enhancedData?.investmentScore) {
     const score = enhancedData.investmentScore;
     console.log('📊 Injecting investment score data into section10 (Projections & SWOT):', {
       totalScore: score.totalScore,
@@ -888,7 +935,7 @@ ${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
-2. Follow the exact markdown formatting with proper headings (# for main sections)
+ 2. Follow the exact markdown formatting with ## for main section headings and ### for subsections
 3. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows per table). Prefer well-written narrative paragraphs over tables for general information
 4. After every table or significant data point, include a brief "What This Means" explanation in plain English
 5. Lead each section with a clear insight or takeaway before presenting supporting data
@@ -1190,7 +1237,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope')
+          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope, report_tier')
           .eq('id', reportId)
           .single();
         
@@ -1204,6 +1251,14 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
           console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
+        }
+
+        if (existingReport?.report_tier && !propertyDetails?.reportTier) {
+          propertyDetails = {
+            ...(propertyDetails || {}),
+            reportTier: existingReport.report_tier,
+          };
+          console.log(`📋 Restored report_tier from existing report: ${existingReport.report_tier}`);
         }
 
         // Capture existing enhanced fields so we can avoid overwriting already-persisted values
@@ -3983,11 +4038,11 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
     try {
       console.log('🔍 Fetching AI structure template directly from database...');
       
-      // Map frontend tier names to database tier names
-      // Frontend sends 'briefing' but database stores 'executive'
       const rawTier = propertyDetails?.reportTier || 'compass';
+      const canonicalTier = normaliseGenerationTier(rawTier);
+      const usesCanonicalCompassArchitecture = ['compass', 'compass-40', 'financial', 'financial-analysis'].includes(rawTier);
       const tierMapping: Record<string, string> = {
-        'compass-40': 'compass', // Compass-40 UI tier uses the legacy Compass AI template
+        'compass-40': 'compass',
         'briefing': 'executive',  // Executive Briefing tier mapping
         'compass': 'compass',     // Investor Compass
         'snapshot': 'snapshot',   // Suburb Snapshot
@@ -4003,10 +4058,17 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       };
       const reportCategory = scopeCategoryMap[reportScope] || 'investment';
       
-      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
+      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}" (canonical: ${canonicalTier})`);
       
       // Initialize REPORT_SECTIONS based on scope before template fetch
-      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+      REPORT_SECTIONS = usesCanonicalCompassArchitecture
+        ? getCanonicalSectionsForTier(canonicalTier)
+        : getDefaultSectionsForScope(reportScope);
+
+      if (usesCanonicalCompassArchitecture) {
+        templateContext = buildCanonicalTemplateContext(canonicalTier);
+        console.log(`✓ Using canonical ${canonicalTier} registry (${REPORT_SECTIONS.length} sections) instead of legacy DB template`);
+      }
 
       // Query report_structure_templates directly for the matching template
       const templateClient = createClient(
@@ -4015,15 +4077,19 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       );
       
       // First try to find a template matching the specific tier and category
-      let { data: templates, error: templateError } = await templateClient
-        .from('report_structure_templates')
-        .select('id, name, parsed_content, report_tier, report_category')
-        .eq('template_type', 'ai_structure')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
+      let { data: templates, error: templateError } = usesCanonicalCompassArchitecture
+        ? { data: null, error: null }
+        : await templateClient
+          .from('report_structure_templates')
+          .select('id, name, parsed_content, report_tier, report_category')
+          .eq('template_type', 'ai_structure')
+          .eq('is_active', true)
+          .order('priority', { ascending: false });
       
       if (templateError) {
         console.log('⚠️ Template query error:', templateError.message);
+      } else if (usesCanonicalCompassArchitecture) {
+        console.log('ℹ️ Legacy DB template lookup skipped for canonical Compass/Financial generation');
       } else if (templates && templates.length > 0) {
         // Find best matching template: exact match > tier match > category match > any active
         let selectedTemplate = templates.find(t => 

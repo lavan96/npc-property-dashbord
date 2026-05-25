@@ -169,5 +169,5 @@ export function normaliseReportTier(raw: unknown): NormalisedTier {
 export function sectionCountForTier(raw: unknown): number {
   return normaliseReportTier(raw) === 'financial-analysis'
     ? FINANCIAL_ANALYSIS_SECTIONS.length
-    : 12;
+    : COMPASS_40_SECTIONS.length;
 }

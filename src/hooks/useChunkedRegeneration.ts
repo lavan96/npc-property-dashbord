@@ -77,9 +77,10 @@ export function useChunkedRegeneration() {
         Math.max(Number(report?.last_completed_section) || 0, 0),
         totalSections,
       );
+      const isInterruptedRun = ['processing', 'failed', 'pending'].includes(String(report?.status || '').toLowerCase());
       const hasPartialProgress = Boolean(report?.report_content) && existingCompletedSection > 0;
-      const shouldResumeGeneration = hasPartialProgress && existingCompletedSection < totalSections;
-      const shouldResumePostProcessing = hasPartialProgress && existingCompletedSection >= totalSections;
+      const shouldResumeGeneration = isInterruptedRun && hasPartialProgress && existingCompletedSection < totalSections;
+      const shouldResumePostProcessing = isInterruptedRun && hasPartialProgress && existingCompletedSection >= totalSections;
 
       setState({
         isRegenerating: true,
@@ -97,7 +98,7 @@ export function useChunkedRegeneration() {
         status: 'processing',
         error_message: null,
       };
-      if (!hasPartialProgress) {
+      if (!shouldResumeGeneration && !shouldResumePostProcessing) {
         startPayload.last_completed_section = 0;
       }
 

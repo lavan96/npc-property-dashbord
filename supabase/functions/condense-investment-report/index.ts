@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const requestBody = await req.json();
-    const { parentReportId, targetTier } = requestBody;
+    const { parentReportId, targetTier, reportId, tier } = requestBody;
     
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, requestBody);
     if (authError) {
@@ -300,7 +300,58 @@ Deno.serve(async (req) => {
     }
     console.log(`[condense-investment-report] Authenticated user: ${userId}`);
 
-    console.log('Request params:', { parentReportId, targetTier });
+    console.log('Request params:', { parentReportId, targetTier, reportId, tier });
+
+    // In-place canonical post-processing path used after chunked regeneration.
+    // This does NOT create a child report; it trims/QA-checks the regenerated
+    // Compass-40 or Financial Analysis content already saved on the same row.
+    if (reportId && tier && ['compass-40', 'financial-analysis'].includes(tier)) {
+      const { data: report, error: reportError } = await supabase
+        .from('investment_reports')
+        .select('id, report_content')
+        .eq('id', reportId)
+        .single();
+
+      if (reportError || !report?.report_content) {
+        return new Response(JSON.stringify({
+          error: 'Report content not found for post-processing',
+          success: false,
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { postProcessReportMarkdown } = await import('../_shared/compassPostProcessor.ts');
+      const { runQAValidation } = await import('../_shared/compassQAValidator.ts');
+      const result = postProcessReportMarkdown(report.report_content, tier);
+      const qaReport = runQAValidation(result.markdown, tier);
+
+      const { error: updateError } = await supabase
+        .from('investment_reports')
+        .update({
+          report_content: result.markdown,
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reportId);
+
+      if (updateError) {
+        throw new Error(`Failed to save post-processed report: ${updateError.message}`);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        reportId,
+        tier,
+        postProcessReport: result.report,
+        qaReport,
+        message: 'Canonical report post-processing complete',
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Validate inputs
     if (!parentReportId) {
