@@ -4964,6 +4964,7 @@ Deno.serve(withReportMetering(async (body, req) => {
       : 'report.investment.compass')
     : (tier === 'executive' ? 'report.investment.executive'
       : tier === 'snapshot' ? 'report.investment.snapshot'
+      : tier === 'financial' ? 'report.investment.financial'
       : 'report.investment.compass');
   const idempotencyKey = buildIdempotencyKey('inv-report', [
     body?.reportId,
