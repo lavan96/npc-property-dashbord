@@ -131,3 +131,41 @@ describe('DCF engine', () => {
     expect(r.equityMultiple).toBeGreaterThan(1);
   });
 });
+
+import { calculateCommercialBc } from '../commercialBorrowingCapacity';
+
+describe('Commercial Borrowing Capacity', () => {
+  it('returns the lesser of ICR / DSCR / LVR caps', () => {
+    const r = calculateCommercialBc({
+      noi: 250_000,
+      propertyValue: 3_500_000,
+      interestRatePct: 7.25,
+      bufferPct: 1.0,
+      loanTermYears: 25,
+      maxLvr: 0.65,
+      minIcr: 1.5,
+      minDscr: 1.25,
+    });
+    expect(r.maxLoan).toBeGreaterThan(0);
+    expect(r.maxLoan).toBeLessThanOrEqual(r.caps.icrCap);
+    expect(r.maxLoan).toBeLessThanOrEqual(r.caps.dscrCap);
+    expect(r.maxLoan).toBeLessThanOrEqual(r.caps.lvrCap);
+    expect(['icr', 'dscr', 'lvr']).toContain(r.bindingConstraint);
+    expect(r.coverageAtMax.icr).toBeGreaterThanOrEqual(1.5 - 0.01);
+  });
+
+  it('returns zero loan when NOI is zero', () => {
+    const r = calculateCommercialBc({ noi: 0, propertyValue: 1_000_000, interestRatePct: 7 });
+    expect(r.maxLoan).toBe(0);
+    expect(r.bindingConstraint).toBe('none');
+  });
+
+  it('applies sponsor liquidity cap when binding', () => {
+    const r = calculateCommercialBc({
+      noi: 500_000, propertyValue: 10_000_000, interestRatePct: 7,
+      sponsorLiquidity: 200_000, sponsorLiquidityMultiplier: 2,
+    });
+    expect(r.caps.liquidityCap).toBe(400_000);
+    expect(r.maxLoan).toBeLessThanOrEqual(400_000);
+  });
+});
