@@ -437,6 +437,160 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'bindable', key: 'slotKey', label: 'Slot key (e.g. header, footer)' },
     ],
   },
+  // ─── Compass-40 visual components (Phase 4) ────────────────────────────────
+  scorecard: {
+    type: 'scorecard',
+    label: 'Macro Scorecard',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Macro Investment Scorecard',
+      items: [
+        { category: 'Capital growth outlook', rating: 'Strong',   note: '10-yr CAGR above national median.' },
+        { category: 'Rental demand',          rating: 'Strong',   note: 'Vacancy under 2%.' },
+        { category: 'Infrastructure pipeline',rating: 'Moderate', note: 'Funded short-term projects.' },
+        { category: 'Demographics',           rating: 'Strong',   note: 'Family-skew, growing income.' },
+        { category: 'Employment depth',       rating: 'Moderate', note: 'Diverse but concentrated.' },
+        { category: 'Planning risk',          rating: 'Watch',    note: 'Active rezoning nearby.' },
+        { category: 'Environmental risk',     rating: 'Moderate', note: 'Climate exposure noted.' },
+        { category: 'Liquidity',              rating: 'Strong',   note: 'Days-on-market below median.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Categories' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'risk-register': {
+    type: 'risk-register',
+    label: 'Risk Register',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Risk Register',
+      items: [
+        { risk: 'Flood (1-in-100)',  rating: 'Medium', confidence: 'Verified',   why: 'Property within mapped flood overlay.', ddAction: 'Order flood-risk certificate.' },
+        { risk: 'Bushfire',          rating: 'Low',    confidence: 'Verified',   why: 'Outside BAL zones.',                    ddAction: 'Confirm at council.' },
+        { risk: 'Heat / climate',    rating: 'Medium', confidence: 'Indicative', why: 'Rising summer extremes.',                ddAction: 'Check insulation & cooling.' },
+        { risk: 'Crime — property',  rating: 'Low',    confidence: 'Verified',   why: 'Below LGA average.',                     ddAction: 'Review 12-mo BOCSAR data.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Risk items' },
+    ],
+  },
+  'infra-timeline': {
+    type: 'infra-timeline',
+    label: 'Infrastructure Timeline',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 220,
+      title: 'Infrastructure & Growth Pipeline',
+      items: [
+        { phase: 'Existing', label: 'Train station upgrade',     year: 2024, confidence: 'Verified' },
+        { phase: 'Short',    label: 'New primary school',        year: 2026, confidence: 'Planned' },
+        { phase: 'Medium',   label: 'Town-centre revitalisation', year: 2029, confidence: 'Planned' },
+        { phase: 'Long',     label: 'Light-rail extension',      year: 2032, confidence: 'Indicative' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Pipeline items' },
+      { kind: 'number', key: 'height', label: 'Height' },
+    ],
+  },
+  'amenity-matrix': {
+    type: 'amenity-matrix',
+    label: 'Amenity Matrix',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Amenity & Livability Matrix',
+      items: [
+        { amenity: 'Schools',    current: '3 within 2km', future: '+1 by 2027',         relevance: 'Drives family demand.' },
+        { amenity: 'Transport',  current: 'Bus + train',  future: 'Light-rail station',  relevance: 'Improves liquidity & rent.' },
+        { amenity: 'Retail',     current: 'Local strip',  future: 'Town-centre revamp', relevance: 'Lifestyle premium.' },
+        { amenity: 'Healthcare', current: 'GP + clinic',  future: 'No change planned',   relevance: 'Adequate for owner-occ.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Amenities' },
+    ],
+  },
+  'planning-table': {
+    type: 'planning-table',
+    label: 'Planning Action Table',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Zoning & Planning — Action Table',
+      items: [
+        { item: 'Rezoning to R3',  status: 'Lodged',   relevance: 'Could lift land value & density.', action: 'Track council decision Q3.' },
+        { item: 'Heritage overlay', status: 'Approved', relevance: 'Restricts external works.',         action: 'Plan compliant cosmetic uplift.' },
+        { item: 'DA for adjacent',  status: 'Pending',  relevance: 'May change view / amenity.',         action: 'Object or monitor depending on use.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Planning items' },
+    ],
+  },
+  'dd-checklist': {
+    type: 'dd-checklist',
+    label: 'DD Checklist',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Due-Diligence Checklist',
+      items: [
+        { action: 'Order Section 32 / contract review',  owner: 'Solicitor',     timing: 'Week 1', done: false },
+        { action: 'Building & pest inspection',          owner: 'Buyer',         timing: 'Week 1', done: false },
+        { action: 'Flood-risk certificate',              owner: 'Buyer agent',   timing: 'Week 2', done: false },
+        { action: 'Finance pre-approval refresh',        owner: 'Broker',        timing: 'Week 2', done: false },
+        { action: 'Rental appraisal x 2',                owner: 'Property mgr.', timing: 'Week 2', done: false },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Checklist items' },
+    ],
+  },
+  'decision-box': {
+    type: 'decision-box',
+    label: 'Decision Box (What this means)',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      heading: 'What this means',
+      body: 'Short, plain-English takeaway. Max 60 words. Use one per section to summarise the investor implication.',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'heading', label: 'Heading' },
+      { kind: 'bindable', key: 'body', label: 'Body (≤60 words)', multiline: true },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'strengths-watch': {
+    type: 'strengths-watch',
+    label: 'Strengths & Watch Points',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      strengthsTitle: 'Strengths',
+      watchTitle: 'Watch Points',
+      strengths: [
+        'Sub-2% vacancy and growing tenant pool.',
+        'Funded transport upgrade within 5 years.',
+        'Family-skew demographic supporting demand.',
+      ],
+      watch: [
+        'Active rezoning on adjacent lot.',
+        'Climate / heat exposure rising.',
+        'Single-employer concentration in suburb.',
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'strengthsTitle', label: 'Strengths title' },
+      { kind: 'bindable', key: 'watchTitle', label: 'Watch title' },
+      { kind: 'list-strings', key: 'strengths', label: 'Strengths' },
+      { kind: 'list-strings', key: 'watch', label: 'Watch points' },
+    ],
+  },
   free: {
     type: 'free',
     label: 'Free / overlays',
