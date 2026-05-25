@@ -36,6 +36,7 @@ import {
   Map,
   Cpu,
   Coins,
+  Factory,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -56,6 +57,7 @@ const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
   { title: 'Commercial', url: '/commercial', icon: Building2, moduleKey: '__always__' },
+  { title: 'Industrial', url: '/industrial', icon: Factory, moduleKey: '__always__' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
