@@ -483,6 +483,12 @@ export default function Overview() {
         />
       </div>
 
+      {/* Commercial Portfolio KPIs */}
+      <div className="animate-fade-in">
+        <CommercialPortfolioWidget />
+      </div>
+
+
       {/* Charts Section */}
       <div className="space-y-4 md:space-y-8">
         {/* Row 1: Suburbs and Property Types */}
