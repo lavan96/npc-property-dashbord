@@ -308,6 +308,13 @@ export default function GeneratedReports() {
     };
   }, []);
 
+  // Re-fetch investment reports when the date range filter changes
+  useEffect(() => {
+    fetchInvestmentReports();
+    setInvestmentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange, customFromIso, customToIso]);
+
   // Handle deep-linking: auto-open report from URL params (e.g., /generated-reports?reportId=...)
   useEffect(() => {
     if (investmentReports.length === 0) return;
