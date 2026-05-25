@@ -7,6 +7,7 @@ import {
   LayoutTemplate, BarChart3, Table as TableIcon, Heading, AlignJustify, Minus,
   Hash, Columns2, MessageSquare, Images, ArrowUp, ArrowDown, QrCode, Tag, ListOrdered,
   PenLine, Space, GripVertical,
+  Gauge, ShieldAlert, Milestone, Grid3x3, ClipboardList, CheckSquare, Lightbulb, ThumbsUp,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
