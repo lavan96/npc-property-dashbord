@@ -72,9 +72,16 @@ export default function CommercialPropertyDetail() {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Pencil className="h-4 w-4 mr-2" /> Edit Details
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerateReport} disabled={generating}>
+            {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Generate Report
+          </Button>
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" /> Edit Details
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="overview">
