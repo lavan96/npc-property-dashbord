@@ -390,6 +390,27 @@ function getCanonicalSectionsForTier(tier: 'compass-40' | 'financial-analysis'):
     : canonicalSectionsToGenerationSections(compassSections(), 'compassSection');
 }
 
+function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'): string {
+  const sections = tier === 'financial-analysis' ? financialSections() : compassSections();
+  const title = tier === 'financial-analysis'
+    ? 'Financial Analysis Report Structure'
+    : 'Investor Compass 40-Page Structure';
+
+  return [
+    `# ${title}`,
+    '',
+    ...sections.flatMap((section) => [
+      `## ${section.name}`,
+      `- Page budget: ${section.pageBudget}`,
+      `- Purpose: ${section.purpose}`,
+      `- Maximum narrative words: ${section.maxWordCount}`,
+      section.visualComponents.length ? `- Required visual/data components: ${section.visualComponents.join(', ')}` : '- Required visual/data components: narrative only',
+      section.allowDecisionBox ? '- Include one concise "What This Means"/decision box.' : '- Do not include a decision box in this section.',
+      '',
+    ]),
+  ].join('\n');
+}
+
 // Dynamic sections - populated from database template at runtime
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
