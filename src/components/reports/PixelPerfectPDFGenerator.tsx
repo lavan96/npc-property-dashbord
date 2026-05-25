@@ -2724,8 +2724,20 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       let sectionCount = 0;
       for (const sectionName of allSectionNames) {
         sectionCount++;
-        const content = sections[sectionName];
+        let content = sections[sectionName];
         if (!content) continue;
+
+        // Strip orphan "What This Means:" labels with no body before next heading/EOF.
+        content = content.replace(
+          /(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?=\n\s*(?:#{1,4}\s|$))/g,
+          '$1'
+        );
+        // Strip leftover [citation] / (citation) tokens that slipped past the edge sanitizer.
+        content = content
+          .replace(/\[(citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\]/gi, '')
+          .replace(/\((citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\)/gi, '')
+          .replace(/\[\d+\](?:\[\d+\])*/g, '');
+
 
         // Clean section name and strip emojis + dedupe repeated word/phrase artefacts
         const cleanSectionName = dedupeRepeatedWords(stripEmojis(
