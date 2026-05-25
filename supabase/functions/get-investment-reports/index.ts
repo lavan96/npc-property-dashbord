@@ -25,6 +25,7 @@ interface RequestBody {
     orderBy?: string;
     orderAsc?: boolean;
     limit?: number;
+    offset?: number;
     createdAfter?: string; // ISO date string
     createdBefore?: string; // ISO date string
     hasPropertyListingId?: boolean; // For filtering auto-generated reports
@@ -142,6 +143,7 @@ Deno.serve(async (req) => {
         orderBy = 'created_at',
         orderAsc = false,
         limit, // No default limit - fetch all by default
+        offset,
         createdAfter,
         createdBefore,
         hasPropertyListingId
@@ -200,8 +202,11 @@ Deno.serve(async (req) => {
       // Apply ordering
       query = query.order(orderBy, { ascending: orderAsc });
 
-      // Apply limit
-      if (limit) {
+      // Apply limit / pagination
+      if (typeof offset === 'number' && offset > 0) {
+        const rangeEnd = (limit ? offset + limit : offset + 1000) - 1;
+        query = query.range(offset, rangeEnd);
+      } else if (limit) {
         query = query.limit(limit);
       }
 

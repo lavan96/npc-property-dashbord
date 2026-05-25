@@ -39,6 +39,9 @@ export default function CashFlowAnalysis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<InvestmentReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [openingReportId, setOpeningReportId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [buildTypeFilter, setBuildTypeFilter] = useState<BuildTypeFilter>('all');
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
@@ -46,6 +49,7 @@ export default function CashFlowAnalysis() {
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   const [dateRange, setDateRange] = useState<'30' | '90' | '180' | '365' | 'all'>('30');
 
+  const PAGE_SIZE = 200;
   const { toast } = useToast();
 
   const dateRangeCutoff = useMemo(() => {
@@ -78,26 +82,15 @@ export default function CashFlowAnalysis() {
     const action = searchParams.get('action'); // 'view' or 'analyze' (default: analyze)
     
     if (reportId) {
-      const report = reports.find(r => r.id === reportId);
-      if (report) {
-        if (action === 'view') {
-          // For viewing the full report, redirect to Generated Reports page
-          navigate(`/generated-reports?reportId=${reportId}`, { replace: true });
-        } else {
-          // Default action is to open cash flow analysis modal
-          setSelectedReport(report);
-          setAnalysisModalOpen(true);
-          // Clear URL params after handling
-          setSearchParams({}, { replace: true });
-        }
-      } else {
-        toast({
-          title: "Report not found",
-          description: "The requested report could not be found or doesn't have required cash flow data.",
-          variant: "destructive",
-        });
-        setSearchParams({}, { replace: true });
+      if (action === 'view') {
+        navigate(`/generated-reports?reportId=${reportId}`, { replace: true });
+        setHasHandledDeepLink(true);
+        return;
       }
+      const summary = reports.find(r => r.id === reportId);
+      // Fetch full payload by ID even if it's not in the loaded list (paginated/older reports)
+      openAnalysisForReport(summary || ({ id: reportId, property_address: '' } as InvestmentReport));
+      setSearchParams({}, { replace: true });
       setHasHandledDeepLink(true);
     }
   }, [loading, reports, searchParams, hasHandledDeepLink, navigate]);
@@ -119,18 +112,18 @@ export default function CashFlowAnalysis() {
     return 'existing_property';
   };
 
-  const fetchReports = async () => {
+  const fetchReports = async (append = false, currentOffset = 0) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true); else setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
-      // Apply 30-day cutoff and exclude archived reports
       const listOptions: Record<string, any> = {
         select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
         status: 'completed',
         isArchived: false,
         orderBy: 'created_at',
         orderAsc: false,
-        limit: 500,
+        limit: PAGE_SIZE,
+        offset: currentOffset,
       };
       if (dateRangeCutoff) {
         listOptions.createdAfter = dateRangeCutoff.toISOString();
@@ -141,10 +134,11 @@ export default function CashFlowAnalysis() {
       });
 
       if (error) throw new Error(error.message);
-      
-      // Filter to only include reports with required cash flow data
-      const reportsWithCashFlowData = (data?.reports || []).filter(hasRequiredData);
-      setReports(reportsWithCashFlowData);
+
+      const fetched: InvestmentReport[] = data?.reports || [];
+      const reportsWithCashFlowData = fetched.filter(hasRequiredData);
+      setReports(prev => append ? [...prev, ...reportsWithCashFlowData] : reportsWithCashFlowData);
+      setHasMore(fetched.length === PAGE_SIZE);
     } catch (error: any) {
       console.error('Error fetching reports:', error);
       toast({
@@ -154,7 +148,12 @@ export default function CashFlowAnalysis() {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    fetchReports(true, reports.length);
   };
 
   const filteredReports = reports.filter(report => {
@@ -177,18 +176,41 @@ export default function CashFlowAnalysis() {
     return { grade: 'F', color: 'bg-red-600' };
   };
 
+  const FULL_REPORT_SELECT = 'id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence';
+
+  const openAnalysisForReport = async (reportSummary: InvestmentReport) => {
+    setOpeningReportId(reportSummary.id);
+    try {
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        reportId: reportSummary.id,
+        listOptions: { select: FULL_REPORT_SELECT },
+      });
+      if (error) throw new Error(error.message);
+      const fullReport = data?.report || reportSummary;
+      setSelectedReport(fullReport);
+      setAnalysisModalOpen(true);
+
+      logActivityDirect({
+        actionType: 'cash_flow_created',
+        entityType: 'cash_flow_analysis',
+        entityId: fullReport.id,
+        entityName: fullReport.property_address,
+        metadata: { action: 'view_analysis' }
+      });
+    } catch (err: any) {
+      console.error('Error loading full report:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load full report data",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningReportId(null);
+    }
+  };
+
   const handleViewAnalysis = (report: InvestmentReport) => {
-    setSelectedReport(report);
-    setAnalysisModalOpen(true);
-    
-    // Log cash flow analysis viewed
-    logActivityDirect({
-      actionType: 'cash_flow_created',
-      entityType: 'cash_flow_analysis',
-      entityId: report.id,
-      entityName: report.property_address,
-      metadata: { action: 'view_analysis' }
-    });
+    openAnalysisForReport(report);
   };
 
   return (
@@ -363,10 +385,11 @@ export default function CashFlowAnalysis() {
                         size="sm"
                         className="flex-1"
                         onClick={() => handleViewAnalysis(report)}
+                        disabled={openingReportId === report.id}
                       >
                         <Calculator className="h-4 w-4 mr-1" />
-                        Cash Flow
-                        <ArrowRight className="h-3 w-3 ml-1" />
+                        {openingReportId === report.id ? 'Loading...' : 'Cash Flow'}
+                        {openingReportId !== report.id && <ArrowRight className="h-3 w-3 ml-1" />}
                       </Button>
                     </div>
                   </CardContent>
@@ -375,6 +398,27 @@ export default function CashFlowAnalysis() {
             })}
           </div>
         )}
+
+        {/* Pagination footer */}
+        {!loading && reports.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredReports.length} of {reports.length} loaded report{reports.length === 1 ? '' : 's'}
+              {hasMore ? ' — more available' : ''}
+            </p>
+            {hasMore && (
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more reports'}
+              </Button>
+            )}
+          </div>
+        )}
+
+
 
         {/* Cash Flow Analysis Modal */}
         <CashFlowAnalysisModal
