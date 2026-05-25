@@ -168,14 +168,14 @@ export function RegenerateReportButton({
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        <span className="font-medium text-foreground">Location & Property Fit (≈38 pages)</span>
+                        <span className="font-medium text-foreground">Compass-40 (Trimmed Legacy)</span>
                         <Badge className="text-[10px]">New</Badge>
                         {currentEngine === 'compass-40' && (
                           <Badge variant="outline" className="text-[10px]">Current</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        New client-decision engine: 17 consolidated sections, takeaway / why / watch / NPC-view style, no financial dashboard. All cashflow, yield, loan and 10-year projections live in the separate Financial Analysis Report.
+                        Same legacy structure, trimmed to ~38–42 pages. Keeps location, demand, risk and recommendation in full; compresses education / transport / amenity sections; removes all purchase price, yield, LVR, loan and 10-year cashflow content. Financial modelling lives in the separate Financial Analysis Report.
                       </p>
 
                     </div>
