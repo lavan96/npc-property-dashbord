@@ -385,10 +385,11 @@ export default function CashFlowAnalysis() {
                         size="sm"
                         className="flex-1"
                         onClick={() => handleViewAnalysis(report)}
+                        disabled={openingReportId === report.id}
                       >
                         <Calculator className="h-4 w-4 mr-1" />
-                        Cash Flow
-                        <ArrowRight className="h-3 w-3 ml-1" />
+                        {openingReportId === report.id ? 'Loading...' : 'Cash Flow'}
+                        {openingReportId !== report.id && <ArrowRight className="h-3 w-3 ml-1" />}
                       </Button>
                     </div>
                   </CardContent>
