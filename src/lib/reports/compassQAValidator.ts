@@ -45,14 +45,33 @@ export interface QAReport {
 const FINANCIAL_KEYWORDS = [
   /\bgross yield\b/i,
   /\bnet yield\b/i,
+  /\brental yield\b/i,
   /\bLVR\b/,
   /\bLMI\b/,
   /\bP&I\b/,
   /\bweekly rent\b/i,
-  /\b10-year (cashflow|projection)/i,
+  /\bpurchase price\b/i,
+  /\bstamp duty\b/i,
+  /\bloan amount\b/i,
+  /\bmonthly repayment/i,
+  /\bannual repayment/i,
+  /\binterest rate sensitivity\b/i,
+  /\b10[- ]year (cashflow|projection|cash contribution)/i,
   /\bsensitivity analysis\b/i,
   /\bafter[- ]tax cashflow\b/i,
+  /\bnegative cashflow\b/i,
+  /\bnegative gearing\b/i,
   /\bdepreciation schedule\b/i,
+  /\bcumulative cashflow\b/i,
+  /\bequity after\s+\d+\s+years?\b/i,
+  /\bcapital growth (assumption|rate)\b/i,
+];
+
+const FORBIDDEN_PLACEHOLDERS = [
+  /\[citation\]/i,
+  /\[source\s+needed\]/i,
+  /\[TBD\]/i,
+  /\bcitation needed\b/i,
 ];
 
 const SUBURB_KEYWORDS = [
