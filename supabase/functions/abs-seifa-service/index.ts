@@ -107,12 +107,12 @@ async function fetchSEIFAData(postcode: string, state?: string) {
             ier: {
               score: parsedData.ier || null,
               decile: parsedData.ierDecile || null,
-              description: 'Index of Education and Occupation'
+              description: 'Index of Economic Resources'
             },
             ieo: {
               score: parsedData.ieo || null,
               decile: parsedData.ieoDecile || null,
-              description: 'Index of Economic Resources'
+              description: 'Index of Education and Occupation'
             },
             summary: getSEIFASummary(parsedData.irsadDecile),
             dataSource: 'Australian Bureau of Statistics (ABS) - 2021 Census',
