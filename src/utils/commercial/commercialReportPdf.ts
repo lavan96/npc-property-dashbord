@@ -219,12 +219,14 @@ function aggregateRentRoll(leases: CommercialLease[]) {
   const occupiedNla = occupied.reduce((s, l) => s + (l.nla_sqm || 0), 0);
   const occupancy = totalNla > 0 ? (occupiedNla / totalNla) : 0;
   const wale = calculateWale(occupied.map(l => ({
-    annualRent: l.base_rent_pa || 0,
-    nlaSqm: l.nla_sqm || 0,
-    leaseEnd: l.lease_end || new Date().toISOString(),
+    base_rent_pa: l.base_rent_pa || 0,
+    nla_sqm: l.nla_sqm || 0,
+    lease_end: l.lease_end || new Date().toISOString(),
+    status: l.status,
   })));
   return { totalRent, totalNla, occupiedNla, occupancy, wale, occupied };
 }
+
 
 function expiryProfile(leases: CommercialLease[]) {
   const buckets: Record<string, number> = { '0-1y': 0, '1-3y': 0, '3-5y': 0, '5y+': 0, 'Vacant/MTM': 0 };
