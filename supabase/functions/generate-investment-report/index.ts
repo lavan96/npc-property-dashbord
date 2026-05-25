@@ -4366,9 +4366,14 @@ Aim for ~38–42 pages total after these trims. If the template would push you l
 
 ---
 `;
-      prompt = prompt + compass40Overlay;
-      console.log(`✓ Compass-40 overlay injected. Prompt length now: ${prompt.length}`);
+      // Append at end AND prepend a short hard-rule banner at the very start
+      // so the model sees the financial exclusions before any legacy template
+      // language it may still be biased by from training data.
+      const compass40Banner = `\n**⚠️ COMPASS-40 HARD RULES (read first, apply globally)**\n- This is a Location & Property Fit report. NO financial modelling appears anywhere: no purchase price, weekly rent, LVR, gross/net yield, loan amount, interest rate, monthly/annual repayment, cashflow, sensitivity, 10-year projections, stamp duty, deposit, LMI, depreciation, negative gearing, land tax.\n- NO KPI dashboard tiles or rows. NO "Purchase Price | $X | Weekly Rent | $Y" tables.\n- NO inline citation markers like [1] [2] [1][2] — name the real source inline or omit the claim.\n- Finish every sentence and paragraph. Do NOT stop mid-thought. If running out of room, end the section cleanly.\n- Render Education, Transport and Employment exactly ONCE, in their own dedicated sections, never repeated under other sections.\n---\n`;
+      prompt = compass40Banner + prompt + compass40Overlay;
+      console.log(`✓ Compass-40 banner + overlay injected. Prompt length now: ${prompt.length}`);
     }
+
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
     const _brandSys = await getBrandConfig();
