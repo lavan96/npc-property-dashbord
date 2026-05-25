@@ -169,6 +169,7 @@ export function useChunkedRegeneration() {
             propertyDetails: {
               queryType: report?.report_scope || 'address',
               reportTier: tier,
+              generationEngine: effectiveEngine,
               manualOverrides: manualOverrides || report?.manual_overrides || {},
               ...financialCalculations,
               ...(report?.financial_calculations || {}),
