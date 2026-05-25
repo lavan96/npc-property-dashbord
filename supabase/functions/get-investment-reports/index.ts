@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
         orderBy = 'created_at',
         orderAsc = false,
         limit, // No default limit - fetch all by default
+        offset,
         createdAfter,
         createdBefore,
         hasPropertyListingId
