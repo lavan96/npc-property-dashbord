@@ -1,75 +1,146 @@
-# Industrial Investment Module — Implementation Plan
 
-Mirror the commercial build but tuned to the industrial asset class (warehousing, logistics, manufacturing, distribution, cold storage, flex/industrial estates). Industrial differs from commercial in driver economics: rent is quoted per sqm of GLA, site cover / clearance / hardstand drive value, outgoings are typically net (tenant pays), and key risks shift to tenant covenant + functional obsolescence (truck access, clearance, power, floor load).
+# Compass Report 40-Page Condensation — Implementation Plan
 
-## Step 1 — Schema & Persistence
+## What the brief is asking for
 
-Create three tables mirroring the commercial schema, plus an industrial-specific spec table.
+The brief is a **rendering-layer specification**, not a backend rewrite. Three core directives:
 
-- `industrial_properties` — address, asset_subtype (warehouse | logistics_hub | manufacturing | cold_storage | flex | data_centre), purchase_price, current_valuation, valuation_date, gla_sqm, site_area_sqm, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa, zoning, year_built, condition_rating, status, notes.
-- `industrial_tenancies` — property_id, tenant_name, anzsic_industry, unit_label, gla_sqm, lease_start, lease_end, base_rent_per_sqm_pa, base_rent_pa, outgoings_recovery_type (net | semi_gross | gross), annual_review_type (cpi | fixed | market | hybrid), review_rate_pct, option_terms_years, bank_guarantee_months, incentive_pct, make_good_status.
-- `industrial_capex` — property_id, year, amount, category (roof | hardstand | racking | compliance | sprinkler | other), notes.
-- Same `service_role`-only RLS pattern; add tables to `ALLOWED_TABLES` whitelist in `manage-industrial-data` edge function and to `supabase_realtime` publication.
+1. **Condense** the current ~87–90 page Compass output to a **~40 page** client-facing report focused on suburb / macro / infrastructure / planning / zoning / risk / non-financial property fit.
+2. **Split out** all detailed financial content (yield, LVR, loan, cashflow, sensitivity, 10-yr, tax) into a **separate "Financial Analysis Report"** generated from the same underlying data.
+3. **Preserve** every existing API, data source, calculation engine, and the user's ability to generate the full financial breakdown when needed.
 
-## Step 2 — Edge Function & API Layer
+The transformation is achieved through: section classification flags, word caps, structured visual components (scorecards / matrices / risk registers), confidence tags, and priority-driven page-pressure trimming.
 
-- New edge function `manage-industrial-data` (mirror of `manage-commercial-data`) with CRUD ops on the 3 tables and `effectiveUserId` resolution.
-- New client wrapper `src/utils/industrial/industrialApi.ts` using `invokeSecureFunction`.
+---
 
-## Step 3 — Industrial Math Engine
+## Target 40-page architecture (21 sections, fixed page budget)
 
-`src/utils/industrial/` — pure functions, fully unit-tested:
+```text
+1.  Cover                                        1pt
+2.  Contents & Reading Guide                     1pt
+3.  Executive Summary                            2pt
+4.  Property Snapshot (non-financial)            1pt
+5.  Macro Investment Scorecard                   1pt
+6.  Strengths & Watch Points                     1pt
+7.  Location Overview                            3pt
+8.  Future Infrastructure & Growth Pipeline      2pt   [PROTECTED]
+9.  Population & Development Trends              2pt
+10. Suburb Character & Lifestyle                 1pt
+11. Market Performance & Macro Demand            3pt
+12. Economic Context                             1pt
+13. Demographics, SEIFA, Employment, Demand      3pt
+14. Education & Family Demand                    2pt
+15. Amenity & Livability Matrix                  2pt
+16. Connectivity & Transport                     2pt
+17. Crime/Climate/Environmental Risk Register    4pt   [PROTECTED]
+18. Property-Level Non-Financial Assessment      2pt
+19. Zoning & Planning Analysis                   3pt   [PROTECTED]
+20. Due Diligence & Final Recommendation         2pt   [PROTECTED]
+21. Disclaimer & Source Appendix                 1pt
+                                          Total: 40pt
+```
 
-- `rentPerSqm.ts` — gross/net rent per sqm normalisation.
-- `noi.ts` — industrial NOI: gross rent − vacancy − outgoings (where applicable) − non-recoverable opex − capex reserve.
-- `siteMetrics.ts` — site cover %, office-to-warehouse ratio, $/sqm GLA, $/sqm site, hardstand ratio.
-- `wale.ts` — WALE by income and by GLA.
-- `yields.ts` — passing, market and equivalent yield.
-- `dcf.ts` — 10-year DCF with rent reviews, lease expiry re-letting assumption, downtime, incentive amortisation, capex schedule.
-- `industrialBorrowingCapacity.ts` — ICR (≥1.75x typical) + DSCR (≥1.35x) + LVR cap (typically 60–65% industrial) + sponsor liquidity cap. Returns lesser of caps with binding constraint and band.
-- `index.ts` barrel export.
-- `__tests__/industrial.test.ts` covering each engine.
+---
 
-## Step 4 — Pages, Hooks, Modals
+## Implementation plan (7 phases)
 
-Mirror commercial structure:
+### Phase 1 — Content classification layer
+Add per-block metadata so the same generated content can be routed across three render modes:
 
-- `src/pages/industrial/IndustrialProperties.tsx` — list view with filters (subtype, status, valuation range, GLA range).
-- `src/pages/industrial/IndustrialPropertyDetail.tsx` — overview, financial snapshot, tenancy schedule, capex, generate report button.
-- `src/pages/industrial/IndustrialCalculators.tsx` — calculator hub.
-- `src/hooks/useIndustrialProperties.ts` — list + mutations.
-- `src/components/industrial/IndustrialPropertyFormModal.tsx`, `TenancyFormModal.tsx`, `TenancyScheduleTable.tsx`, `FinancialSnapshot.tsx`.
-- Route added in `App.tsx` and sidebar entry in `DashboardSidebar.tsx` under a new "Industrial" group.
+- `includeInCompass`, `includeInFinancialReport`, `includeInAppendix`, `isInternalOnly`
+- `sectionPriority` = `Protected | High | Medium | Low | Excluded`
+- `maxWordCount` per block
+- `confidence` = `Verified | Indicative | Planned | UnderConstruction | Unverified | NotAvailable`
 
-## Step 5 — Calculator Cards
+Apply to the section registry in `generate-investment-report` and to `report_content` JSON.
 
-`src/components/industrial/calculators/`:
+### Phase 2 — Compass 40-page template
+Create a new `report_tier` (or schema preset) named **`compass-40`** in `report_templates` with the 21-section structure above, fixed page budgets, and the "What This Means" box rule (max **one** per section).
 
-- `NoiCalculatorCard.tsx`
-- `CapRateCalculatorCard.tsx`
-- `DcfCalculatorCard.tsx`
-- `IcrDscrCalculatorCard.tsx`
-- `RentPerSqmCalculatorCard.tsx` — gross↔net per sqm conversion.
-- `SiteCoverCalculatorCard.tsx` — site cover %, $/sqm GLA & site, hardstand share.
-- `IndustrialBorrowingCapacityCard.tsx` — wraps `calculateIndustrialBc`.
+### Phase 3 — Financial Analysis Report split
+- Add a separate report tier **`financial-analysis`** that renders only the financial blocks (purchase costs, yield, LVR, loan, cashflow, sensitivity, 10-yr projections, tax, equity, buffers).
+- Add a "Generate Financial Analysis Report" action next to the existing Compass generator on the property/listing/client surfaces.
+- Compass shows a single approved sentence pointing the client to the financial report.
 
-## Step 6 — Industrial Investment Report (PDF)
+### Phase 4 — Visual components library
+Build reusable PDF/UI block renderers (jsPDF + on-screen viewer):
 
-`src/utils/industrial/industrialReportPdf.ts` — branded Dark & Gold jsPDF report, 10 sections: Cover, Executive Summary, Asset Specification (clearance, dock doors, power, floor load, site cover), Tenancy Schedule, Income & Outgoings, Valuation & Yield, 10-Year DCF, Debt Structure (ICR/DSCR), Risk Assessment (covenant, expiry, functional obsolescence), Recommendations. Triggered from `IndustrialPropertyDetail`.
+| Component | Used in |
+|---|---|
+| KPI tile grid (4–6 tiles) | Exec Summary, Snapshot, Market |
+| Macro Scorecard (8 categories, Strong/Moderate/Watch) | §5 |
+| Strengths / Watch-Points two-column | §6, lifestyle, property |
+| Infrastructure Pipeline timeline (Existing → Long-Term + confidence) | §8 |
+| Amenity Matrix (Amenity / Current / Future / Relevance) | §15 |
+| Risk Register (Rating / Confidence / Why / DD Action) | §17 |
+| Planning Action Table (Item / Status / Relevance / Action) | §19 |
+| Due-Diligence Checklist | §20 |
+| Decision Box (≤60 words, one per section) | every section |
+| Confidence chips ("Indicative", "Planned", "Unverified") | infra/risk/planning |
 
-## Step 7 — Dashboard Widget
+### Phase 5 — Word-cap governance
+Enforce caps at generation time (prompt-level + post-generation trim):
 
-`src/components/industrial/IndustrialPortfolioWidget.tsx` — asset count, total valuation, total GLA, passing rent, NOI, weighted yield, WALE, occupancy, 12-month expiries. Rendered in `Overview.tsx` beside the commercial widget.
+| Block | Cap |
+|---|---|
+| Executive Summary total | 450–600 |
+| Section opening takeaway | 35–50 |
+| Standard paragraph | 45–80 |
+| "What This Means" box | 40–60 |
+| Risk item explanation | 25–45 |
+| Planning item | 40–70 |
+| Final recommendation | 150–250 |
 
-## Step 8 — QA Pass
+Strip thesis-style transitions ("As we move into…", "This flows naturally…"), repeated address mentions, "[citation]" / "pre-calculated" artefacts.
 
-Typecheck, run full vitest, smoke-test routes in preview, fix issues.
+### Phase 6 — Page-pressure trimming engine
+If rendered page count > 42, trim in this strict order before touching protected sections:
+1. Repeated transition paragraphs
+2. Collapse duplicate "What This Means" boxes
+3. Cap school / amenity / transport lists to top 5
+4. Merge duplicate demographic/employment commentary
+5. Move long lists to appendix
+6. Reduce economic context to 1 page
+7. Reduce lifestyle narrative to 1 page
 
-## Technical Notes
+Never trim §8, §17, §19, §20.
 
-- Reuse `commercialReportPdf` jsPDF primitives (header, footer, table, KPI tile, risk chip) by extracting them into a shared `src/utils/pdf/primitives.ts` first if duplication grows — keep this optional and only refactor if Step 6 demands it.
-- All money values rounded to 2 dp; rent per sqm to 2 dp; yields to 2 dp; ICR/DSCR to 2 dp.
-- All new tables registered in `ALLOWED_TABLES` whitelist and `supabase_realtime` publication, per project standards.
-- Use semantic theme tokens only — no hardcoded colours.
+### Phase 7 — QA automation & acceptance
+Automated post-render checks:
+- 38 ≤ pages ≤ 42
+- Zero financial calculation blocks in Compass
+- No duplicate Education / Transport / Employment / Amenity sections
+- No internal artefacts (`[citation]`, prompt fragments, debug labels)
+- §8, §17, §19 present (or explicitly marked unavailable)
+- Final recommendation is macro-only, not financial advice
+- Financial Analysis Report generates successfully from same input
 
-Ready to start at Step 1 (schema migration) on approval.
+---
+
+## Technical surface affected
+
+- **Edge functions**: `generate-investment-report` (section registry, prompts, scope branch), new `generate-financial-analysis-report` (or a `report_tier` branch in the same function), `regenerate-report-qualitative` (word caps).
+- **DB**: extend `report_templates` schema with `report_tier in ('compass-40','financial-analysis')`; add classification fields to section JSON (no schema break — JSON metadata).
+- **Frontend**: `ReportScopeTierPicker`, `InvestmentReportGenerator`, `InvestmentReportViewer`, `ClientPDFGenerator` / `PixelPerfectPDFGenerator` to render the new components and the two-report toggle.
+- **Renderer**: new block types in `src/lib/reportTemplate/blocks/` (scorecard, riskRegister, infraTimeline, amenityMatrix, planningTable, ddChecklist, decisionBox, confidenceChip).
+- **No removal** of existing financial calculation, API integration, or backend logic.
+
+---
+
+## Acceptance criteria (from brief)
+
+> A Compass Report is successful when a client can understand the opportunity, suburb logic, future infrastructure, planning position, property fit and major risks within 15–20 minutes, while the detailed financial analysis remains available as a separate document.
+
+---
+
+## Recommended sequencing
+
+I suggest we execute in this order, with your approval gate between each:
+
+1. **Phase 1 + 2** together (classification + Compass template skeleton) — foundation.
+2. **Phase 3** (Financial Analysis Report split) — unblocks dual-report generation.
+3. **Phase 4** (visual components) — biggest readability uplift.
+4. **Phase 5 + 6** (word caps + trimming) — locks 40-page target.
+5. **Phase 7** (QA automation) — production hardening.
+
+Approve this plan and I'll start with Phase 1 + 2.
