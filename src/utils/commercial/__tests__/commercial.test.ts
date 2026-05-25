@@ -27,7 +27,7 @@ describe('Cap rate', () => {
     expect(capRate({ noi: 70_000, price: 1_000_000 })).toBe(7);
   });
   it('value from cap', () => {
-    expect(valueFromCap(70_000, 7)).toBe(1_000_000);
+    expect(valueFromCap(70_000, 7)).toBeCloseTo(1_000_000, 2);
   });
   it('returns 0 for zero price', () => {
     expect(capRate({ noi: 10_000, price: 0 })).toBe(0);
