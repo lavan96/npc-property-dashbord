@@ -41,13 +41,21 @@ Second box content here.`;
 
 // ─── Phase 6 — page-pressure trimming ───────────────────────────────────────
 
-Deno.test('postProcessor: caps bullet lists to top 5', () => {
+Deno.test('postProcessor: caps bullet lists to top 5 under page pressure', () => {
   const bullets = Array(20).fill(0).map((_, i) => `- bullet ${i}`).join('\n');
-  // Force page pressure by padding with words
-  const padding = Array(20000).fill('w').join(' ');
-  const md = `## Location Overview\n${padding}\n\n## Suburb Character & Lifestyle\n${bullets}`;
+  // Force page pressure via tables in a protected section (won't be trimmed,
+  // but inflates page estimate so capListsToTop5 fires on the non-protected one).
+  const tableRows = Array(2000).fill(0).map((_, i) => `| item${i} | val${i} |`).join('\n');
+  const md = `## Future Infrastructure & Growth Pipeline
+| Project | Status |
+|---|---|
+${tableRows}
+
+## Suburb Character & Lifestyle
+${bullets}`;
   const { markdown } = postProcessReportMarkdown(md, 'compass-40');
-  const bulletCount = (markdown.match(/^- bullet/gm) ?? []).length;
+  const lifestyleSlice = markdown.split('## Suburb Character')[1] ?? '';
+  const bulletCount = (lifestyleSlice.match(/^- bullet/gm) ?? []).length;
   assert(bulletCount <= 5, `bullets should be capped to 5, got ${bulletCount}`);
 });
 
