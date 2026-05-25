@@ -4307,6 +4307,265 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_dcf_runs: {
+        Row: {
+          capex_schedule: Json
+          created_at: string
+          discount_rate: number
+          equity_multiple: number | null
+          hold_period_years: number
+          id: string
+          interest_rate: number | null
+          irr: number | null
+          loan_amount: number | null
+          loan_term_years: number | null
+          npv: number | null
+          outputs: Json
+          peak_equity: number | null
+          property_id: string
+          rental_growth_assumptions: Json
+          scenario_name: string
+          terminal_cap_rate: number
+          updated_at: string
+          user_id: string
+          vacancy_allowance_pct: number
+        }
+        Insert: {
+          capex_schedule?: Json
+          created_at?: string
+          discount_rate?: number
+          equity_multiple?: number | null
+          hold_period_years?: number
+          id?: string
+          interest_rate?: number | null
+          irr?: number | null
+          loan_amount?: number | null
+          loan_term_years?: number | null
+          npv?: number | null
+          outputs?: Json
+          peak_equity?: number | null
+          property_id: string
+          rental_growth_assumptions?: Json
+          scenario_name?: string
+          terminal_cap_rate?: number
+          updated_at?: string
+          user_id: string
+          vacancy_allowance_pct?: number
+        }
+        Update: {
+          capex_schedule?: Json
+          created_at?: string
+          discount_rate?: number
+          equity_multiple?: number | null
+          hold_period_years?: number
+          id?: string
+          interest_rate?: number | null
+          irr?: number | null
+          loan_amount?: number | null
+          loan_term_years?: number | null
+          npv?: number | null
+          outputs?: Json
+          peak_equity?: number | null
+          property_id?: string
+          rental_growth_assumptions?: Json
+          scenario_name?: string
+          terminal_cap_rate?: number
+          updated_at?: string
+          user_id?: string
+          vacancy_allowance_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_dcf_runs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commercial_leases: {
+        Row: {
+          base_rent_pa: number
+          cash_incentive: number | null
+          created_at: string
+          fitout_contribution: number | null
+          id: string
+          lease_end: string | null
+          lease_start: string | null
+          next_review_date: string | null
+          nla_sqm: number | null
+          notes: string | null
+          option_terms: Json
+          outgoings_recovery_pct: number | null
+          property_id: string
+          rent_basis: Database["public"]["Enums"]["commercial_rent_basis"]
+          rent_free_months: number | null
+          review_amount: number | null
+          review_freq_months: number | null
+          review_type: Database["public"]["Enums"]["commercial_review_type"]
+          security_amount: number | null
+          security_type: Database["public"]["Enums"]["commercial_security_type"]
+          status: Database["public"]["Enums"]["commercial_lease_status"]
+          suite_unit: string | null
+          tenant_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_rent_pa?: number
+          cash_incentive?: number | null
+          created_at?: string
+          fitout_contribution?: number | null
+          id?: string
+          lease_end?: string | null
+          lease_start?: string | null
+          next_review_date?: string | null
+          nla_sqm?: number | null
+          notes?: string | null
+          option_terms?: Json
+          outgoings_recovery_pct?: number | null
+          property_id: string
+          rent_basis?: Database["public"]["Enums"]["commercial_rent_basis"]
+          rent_free_months?: number | null
+          review_amount?: number | null
+          review_freq_months?: number | null
+          review_type?: Database["public"]["Enums"]["commercial_review_type"]
+          security_amount?: number | null
+          security_type?: Database["public"]["Enums"]["commercial_security_type"]
+          status?: Database["public"]["Enums"]["commercial_lease_status"]
+          suite_unit?: string | null
+          tenant_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_rent_pa?: number
+          cash_incentive?: number | null
+          created_at?: string
+          fitout_contribution?: number | null
+          id?: string
+          lease_end?: string | null
+          lease_start?: string | null
+          next_review_date?: string | null
+          nla_sqm?: number | null
+          notes?: string | null
+          option_terms?: Json
+          outgoings_recovery_pct?: number | null
+          property_id?: string
+          rent_basis?: Database["public"]["Enums"]["commercial_rent_basis"]
+          rent_free_months?: number | null
+          review_amount?: number | null
+          review_freq_months?: number | null
+          review_type?: Database["public"]["Enums"]["commercial_review_type"]
+          security_amount?: number | null
+          security_type?: Database["public"]["Enums"]["commercial_security_type"]
+          status?: Database["public"]["Enums"]["commercial_lease_status"]
+          suite_unit?: string | null
+          tenant_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_leases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commercial_properties: {
+        Row: {
+          acquisition_date: string | null
+          address: string
+          asset_class: Database["public"]["Enums"]["commercial_asset_class"]
+          asset_sub_type: string | null
+          client_id: string | null
+          created_at: string
+          gfa_sqm: number | null
+          gst_treatment: Database["public"]["Enums"]["commercial_gst_treatment"]
+          id: string
+          industrial_specs: Json
+          nla_sqm: number | null
+          notes: string | null
+          outgoings_recoverable: Json
+          parking_bays: number | null
+          postcode: string | null
+          purchase_price: number | null
+          site_area_sqm: number | null
+          state: string | null
+          suburb: string | null
+          tenure: Database["public"]["Enums"]["commercial_tenure"]
+          updated_at: string
+          user_id: string
+          valuation: number | null
+          valuation_date: string | null
+          valuer: string | null
+          year_built: number | null
+          zoning: string | null
+        }
+        Insert: {
+          acquisition_date?: string | null
+          address: string
+          asset_class?: Database["public"]["Enums"]["commercial_asset_class"]
+          asset_sub_type?: string | null
+          client_id?: string | null
+          created_at?: string
+          gfa_sqm?: number | null
+          gst_treatment?: Database["public"]["Enums"]["commercial_gst_treatment"]
+          id?: string
+          industrial_specs?: Json
+          nla_sqm?: number | null
+          notes?: string | null
+          outgoings_recoverable?: Json
+          parking_bays?: number | null
+          postcode?: string | null
+          purchase_price?: number | null
+          site_area_sqm?: number | null
+          state?: string | null
+          suburb?: string | null
+          tenure?: Database["public"]["Enums"]["commercial_tenure"]
+          updated_at?: string
+          user_id: string
+          valuation?: number | null
+          valuation_date?: string | null
+          valuer?: string | null
+          year_built?: number | null
+          zoning?: string | null
+        }
+        Update: {
+          acquisition_date?: string | null
+          address?: string
+          asset_class?: Database["public"]["Enums"]["commercial_asset_class"]
+          asset_sub_type?: string | null
+          client_id?: string | null
+          created_at?: string
+          gfa_sqm?: number | null
+          gst_treatment?: Database["public"]["Enums"]["commercial_gst_treatment"]
+          id?: string
+          industrial_specs?: Json
+          nla_sqm?: number | null
+          notes?: string | null
+          outgoings_recoverable?: Json
+          parking_bays?: number | null
+          postcode?: string | null
+          purchase_price?: number | null
+          site_area_sqm?: number | null
+          state?: string | null
+          suburb?: string | null
+          tenure?: Database["public"]["Enums"]["commercial_tenure"]
+          updated_at?: string
+          user_id?: string
+          valuation?: number | null
+          valuation_date?: string | null
+          valuer?: string | null
+          year_built?: number | null
+          zoning?: string | null
+        }
+        Relationships: []
+      }
       commission_ledger: {
         Row: {
           aggregator_fee: number
@@ -12247,6 +12506,39 @@ export type Database = {
         | "manual"
         | "csv_import"
         | "backfill"
+      commercial_asset_class:
+        | "office"
+        | "retail"
+        | "industrial"
+        | "mixed_use"
+        | "medical"
+        | "childcare"
+        | "hospitality"
+        | "other"
+      commercial_gst_treatment:
+        | "going_concern"
+        | "margin_scheme"
+        | "standard"
+        | "input_taxed"
+      commercial_lease_status:
+        | "occupied"
+        | "vacant"
+        | "holdover"
+        | "under_offer"
+        | "expired"
+      commercial_rent_basis: "gross" | "net" | "semi_gross"
+      commercial_review_type:
+        | "cpi"
+        | "fixed_percent"
+        | "market"
+        | "hybrid"
+        | "none"
+      commercial_security_type:
+        | "bond"
+        | "bank_guarantee"
+        | "personal_guarantee"
+        | "none"
+      commercial_tenure: "freehold" | "leasehold" | "strata"
       commission_status:
         | "forecast"
         | "invoiced"
@@ -12626,6 +12918,44 @@ export const Constants = {
         "csv_import",
         "backfill",
       ],
+      commercial_asset_class: [
+        "office",
+        "retail",
+        "industrial",
+        "mixed_use",
+        "medical",
+        "childcare",
+        "hospitality",
+        "other",
+      ],
+      commercial_gst_treatment: [
+        "going_concern",
+        "margin_scheme",
+        "standard",
+        "input_taxed",
+      ],
+      commercial_lease_status: [
+        "occupied",
+        "vacant",
+        "holdover",
+        "under_offer",
+        "expired",
+      ],
+      commercial_rent_basis: ["gross", "net", "semi_gross"],
+      commercial_review_type: [
+        "cpi",
+        "fixed_percent",
+        "market",
+        "hybrid",
+        "none",
+      ],
+      commercial_security_type: [
+        "bond",
+        "bank_guarantee",
+        "personal_guarantee",
+        "none",
+      ],
+      commercial_tenure: ["freehold", "leasehold", "strata"],
       commission_status: [
         "forecast",
         "invoiced",
