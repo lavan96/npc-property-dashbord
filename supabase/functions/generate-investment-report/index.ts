@@ -3991,6 +3991,7 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
         'compass': 'compass',     // Investor Compass
         'snapshot': 'snapshot',   // Suburb Snapshot
         'executive': 'executive', // Direct match (in case already mapped)
+        'financial': 'financial', // Financial Analysis Report (Phase 3)
       };
       const reportTier = tierMapping[rawTier] || rawTier;
       const scopeCategoryMap: Record<string, string> = {
