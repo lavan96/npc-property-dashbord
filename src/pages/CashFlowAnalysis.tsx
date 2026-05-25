@@ -399,6 +399,27 @@ export default function CashFlowAnalysis() {
           </div>
         )}
 
+        {/* Pagination footer */}
+        {!loading && reports.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredReports.length} of {reports.length} loaded report{reports.length === 1 ? '' : 's'}
+              {hasMore ? ' — more available' : ''}
+            </p>
+            {hasMore && (
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more reports'}
+              </Button>
+            )}
+          </div>
+        )}
+
+
+
         {/* Cash Flow Analysis Modal */}
         <CashFlowAnalysisModal
           report={selectedReport}
