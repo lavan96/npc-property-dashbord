@@ -72,7 +72,7 @@ export function RegenerateReportButton({
     addNotification({
       type: 'report_regeneration_started',
       title: 'Report Regeneration Started',
-      message: `Regenerating report for ${propertyAddress} using ${engine === 'compass-40' ? 'Location & Property Fit (New)' : 'Legacy Compass (Stable)'} engine...`,
+      message: `Regenerating report for ${propertyAddress} using ${engine === 'compass-40' ? 'Compass-40 (Trimmed Legacy)' : 'Legacy Compass (Stable)'} engine...`,
       entityId: reportId
     });
 
