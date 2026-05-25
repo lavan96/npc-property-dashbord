@@ -20,6 +20,7 @@ import {
   type AutoContinueSettings,
   type ReportProgress,
 } from './progress/parts';
+import { sectionCountForTier } from '@/lib/reports/compassSectionRegistry';
 
 /* ---------- Settings persistence ---------- */
 
