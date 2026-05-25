@@ -163,7 +163,7 @@ export function useChunkedRegeneration() {
             },
             continueFrom: true,
             singleSection: true,
-          });
+          }, { timeoutMs: 180000 });
 
           if (error) {
             lastError = error.message || 'Unknown error';
@@ -194,7 +194,7 @@ export function useChunkedRegeneration() {
         toast.loading('Condensing report (word caps + page pressure)…', { id: toastId });
 
         try {
-          await invokeSecureFunction('condense-investment-report', { reportId, tier });
+          await invokeSecureFunction('condense-investment-report', { reportId, tier }, { timeoutMs: 180000 });
         } catch (e: any) {
           console.warn('[ChunkedRegeneration] Condense step soft-failed:', e?.message);
         }
