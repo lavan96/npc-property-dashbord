@@ -120,11 +120,12 @@ export const PAGE_PRESSURE_TRIM_ORDER = [
 ] as const;
 
 export const PROTECTED_SECTION_IDS: ReadonlySet<string> = new Set([
-  'compass.futureInfrastructure',
-  'compass.riskRegister',
-  'compass.zoningPlanning',
-  'compass.dueDiligence',
-  'compass.propertyAssessment',
+  'compass.executiveVerdict',
+  'compass.whyLocationMatters',
+  'compass.propertyFit',
+  'compass.riskDashboard',
+  'compass.dueDiligenceChecklist',
+  'compass.finalRecommendation',
 ]);
 
 export const COMPASS_FINANCIAL_HANDOFF_COPY =
