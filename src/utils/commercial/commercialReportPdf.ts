@@ -381,13 +381,13 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
   sectionTitle(state, 5, 'Valuation & Yield');
   const yields = calculateYields({
     passingNoi: noiResult.noi,
-    marketNoi: noiResult.noi * 1.05, // 5% reversion proxy
-    value: property.valuation || property.purchase_price || 0,
+    marketNoi: noiResult.noi * 1.05,
+    price: property.valuation || property.purchase_price || 0,
   });
   kvGrid(state, [
-    ['Passing Yield', fmtPct(yields.passingYield * 100)],
-    ['Reversionary Yield', fmtPct(yields.reversionaryYield * 100)],
-    ['Equivalent Yield', fmtPct(yields.equivalentYield * 100)],
+    ['Passing Yield', fmtPct(yields.passingYield)],
+    ['Reversionary Yield', fmtPct(yields.reversionaryYield)],
+    ['Equivalent Yield', fmtPct(yields.equivalentYield)],
     ['Valuation Date', fmtDate(property.valuation_date)],
     ['Valuer', property.valuer ?? '—'],
     ['Acquisition Yield', property.purchase_price ? fmtPct((noiResult.noi / property.purchase_price) * 100) : '—'],
@@ -402,11 +402,10 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
     discountRatePct: 8.5,
     terminalCapRatePct: 6.5,
     rentalGrowthPct: 3.0,
-    expenseGrowthPct: 2.5,
     vacancyAllowancePct: 5,
-    capexSchedule: {},
+    capexSchedule: [],
     loanAmount: (property.purchase_price || 0) * 0.6,
-    loanRatePct: 7.25,
+    interestRatePct: 7.25,
     loanTermYears: 25,
     sellingCostsPct: 1.5,
   });
@@ -415,28 +414,30 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
     ['Terminal Cap', '6.50%'],
     ['Rental Growth', '3.00%'],
     ['Hold Period', '10 years'],
-    ['Unlevered IRR', dcf.unleveredIrr != null ? fmtPct(dcf.unleveredIrr * 100) : '—'],
-    ['Levered IRR', dcf.leveredIrr != null ? fmtPct(dcf.leveredIrr * 100) : '—'],
+    ['Unlevered IRR', dcf.unleveredIrr != null ? fmtPct(dcf.unleveredIrr) : '—'],
+    ['Levered IRR', dcf.leveredIrr != null ? fmtPct(dcf.leveredIrr) : '—'],
     ['NPV (unlevered)', fmtAud(dcf.unleveredNpv)],
     ['NPV (levered)', fmtAud(dcf.leveredNpv)],
     ['Equity Multiple', fmtRatio(dcf.equityMultiple)],
     ['Terminal Value', fmtAud(dcf.terminalValue)],
   ], 3);
 
-  if (dcf.yearly && dcf.yearly.length > 0) {
+  if (dcf.rows && dcf.rows.length > 0) {
     bodyText(state, 'Annual cash flow projection', { bold: true, size: 9.5 });
     table(state,
-      ['Yr', 'NOI', 'Capex', 'Debt Svc', 'Cash Flow'],
-      dcf.yearly.slice(0, 10).map(y => [
+      ['Yr', 'NOI', 'Capex', 'Debt Svc', 'Levered CF'],
+      dcf.rows.slice(0, 10).map(y => [
         String(y.year),
         fmtAud(y.noi),
         fmtAud(y.capex || 0),
         fmtAud(y.debtService || 0),
-        fmtAud(y.cashFlow),
+        fmtAud(y.leveredCf),
       ]),
       { colWidths: [12, 40, 35, 40, 47], align: ['center', 'right', 'right', 'right', 'right'] }
     );
   }
+
+
 
   // ── 8. DEBT STRUCTURE ──────────────────────────────────────────────────
   sectionTitle(state, 7, 'Debt Structure (ICR / DSCR)');
