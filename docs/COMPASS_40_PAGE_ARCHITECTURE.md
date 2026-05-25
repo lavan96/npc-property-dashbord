@@ -100,8 +100,8 @@ summary pointing to the Financial Analysis Report
 | 2 — Compass-40 section registry + UI tier | **Done** |
 | 3 — Financial Analysis Report generator branch | **Done** |
 | 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | **Done** — 8 blocks live: `scorecard`, `strengths-watch`, `risk-register`, `infra-timeline`, `amenity-matrix`, `planning-table`, `dd-checklist`, `decision-box`. Registered in `BLOCK_RENDERERS` + `BLOCK_DEFS` + Template Builder palette |
-| 5 — Word-cap enforcement (prompt + post-trim) | Next |
-| 6 — Page-pressure trimming engine | Pending |
+| 5 — Word-cap enforcement (prompt + post-trim) | **Done** |
+| 6 — Page-pressure trimming engine | **Done** |
 | 7 — QA automation (page band, financial exclusion, duplicates, artefacts) | Pending |
 
 ## Phase 4 block reference
@@ -120,3 +120,32 @@ summary pointing to the Financial Analysis Report
 All blocks share `src/lib/reportTemplate/blocks/_shared.ts` for rating chips,
 confidence chips, and colour parsing. Each is bindable (`{{path | filter}}`)
 and theme-token aware (`token:primary`).
+
+
+## Phase 5 + 6 — Post-processor (`compassPostProcessor.ts`)
+
+Shared module at `supabase/functions/_shared/compassPostProcessor.ts`
+(mirrored at `src/lib/reports/compassPostProcessor.ts`). Wired into
+`condense-investment-report` for both `compass-40` and `financial-analysis` tiers.
+
+**Phase 5 — Word-cap enforcement**
+- Decision-box governance: at most one `What this means` per section, hard-capped to 60 words; removed entirely from sections where `allowDecisionBox=false`.
+- Executive Summary: hard-capped to 600 words.
+- Per-section narrative cap: each section trimmed to `maxWordCount`. Tables, bullets and headings are preserved.
+
+**Phase 6 — Page-pressure trimming engine**
+Estimator: `320 words/page + 18 words/table-row + 30 words/heading`. If pages > band max (Compass 42, Financial 22), runs `PAGE_PRESSURE_TRIM_ORDER` in sequence until under budget:
+1. Strip transition paragraphs
+2. Collapse duplicate decision boxes
+3. Cap school / amenity / transport lists to top 5
+4. Merge duplicate demographic / employment subsections
+5. Move long lists to appendix (second-pass cap)
+6. Reduce Economic Context to one page
+7. Reduce Suburb Character / Lifestyle to one page
+
+Sections in `PROTECTED_SECTION_IDS` (`futureInfrastructure`, `riskRegister`,
+`zoningPlanning`, `dueDiligence`, `propertyAssessment`) are NEVER trimmed.
+
+Returns a `PostProcessReport` (initial/final word count, estimated pages,
+trims applied, sections trimmed, warnings) which is logged and returned in
+the function response for QA / observability.
