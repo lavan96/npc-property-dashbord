@@ -1,19 +1,38 @@
-// Placeholder for Step 4 — Standalone Commercial Calculators
-import { Card, CardContent } from '@/components/ui/card';
 import { Calculator } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
+import { CapRateCalculatorCard } from '@/components/commercial/calculators/CapRateCalculatorCard';
+import { IcrDscrCalculatorCard } from '@/components/commercial/calculators/IcrDscrCalculatorCard';
+import { GstCalculatorCard } from '@/components/commercial/calculators/GstCalculatorCard';
+import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalculatorCard';
 
 export default function CommercialCalculators() {
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2 mb-6">
-        <Calculator className="h-7 w-7 text-primary" />
-        Commercial Calculators
-      </h1>
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Standalone NOI · Cap Rate · DCF · ICR/DSCR · GST calculators coming in Step 4.
-        </CardContent>
-      </Card>
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Calculator className="h-7 w-7 text-primary" />
+          Commercial Calculators
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          NOI, cap rate, ICR/DSCR, GST and DCF — standalone tools for commercial property analysis.
+        </p>
+      </div>
+
+      <Tabs defaultValue="noi" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+          <TabsTrigger value="noi">NOI</TabsTrigger>
+          <TabsTrigger value="cap">Cap Rate</TabsTrigger>
+          <TabsTrigger value="icr">ICR / DSCR</TabsTrigger>
+          <TabsTrigger value="gst">GST</TabsTrigger>
+          <TabsTrigger value="dcf">DCF</TabsTrigger>
+        </TabsList>
+        <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
+        <TabsContent value="cap" className="mt-4"><CapRateCalculatorCard /></TabsContent>
+        <TabsContent value="icr" className="mt-4"><IcrDscrCalculatorCard /></TabsContent>
+        <TabsContent value="gst" className="mt-4"><GstCalculatorCard /></TabsContent>
+        <TabsContent value="dcf" className="mt-4"><DcfCalculatorCard /></TabsContent>
+      </Tabs>
     </div>
   );
 }
