@@ -132,12 +132,39 @@ export default function GeneratedReports() {
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
-  // 30-day cutoff for active reports
-  const thirtyDaysAgo = useMemo(() => {
+  // Date range filter for active reports (days back, or 'all', or 'custom')
+  const [dateRange, setDateRange] = useState<string>('30');
+  const [customFrom, setCustomFrom] = useState<string>(''); // yyyy-mm-dd
+  const [customTo, setCustomTo] = useState<string>('');
+
+  const dateRangeCutoff = useMemo(() => {
+    if (dateRange === 'all' || dateRange === 'custom') return undefined;
+    const days = parseInt(dateRange, 10);
+    if (!Number.isFinite(days) || days <= 0) return undefined;
     const date = new Date();
-    date.setDate(date.getDate() - 30);
+    date.setDate(date.getDate() - days);
     return date.toISOString();
-  }, []);
+  }, [dateRange]);
+
+  const customFromIso = useMemo(
+    () => (dateRange === 'custom' && customFrom ? new Date(customFrom + 'T00:00:00').toISOString() : undefined),
+    [dateRange, customFrom]
+  );
+  const customToIso = useMemo(
+    () => (dateRange === 'custom' && customTo ? new Date(customTo + 'T23:59:59').toISOString() : undefined),
+    [dateRange, customTo]
+  );
+
+  const dateRangeLabel = useMemo(() => {
+    if (dateRange === 'all') return 'Showing all time';
+    if (dateRange === 'custom') {
+      if (customFrom && customTo) return `Showing ${customFrom} → ${customTo}`;
+      if (customFrom) return `Showing from ${customFrom}`;
+      if (customTo) return `Showing up to ${customTo}`;
+      return 'Pick a custom range';
+    }
+    return `Showing last ${dateRange} days`;
+  }, [dateRange, customFrom, customTo]);
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
