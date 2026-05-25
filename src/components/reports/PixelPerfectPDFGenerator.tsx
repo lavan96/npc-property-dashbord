@@ -2219,6 +2219,12 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
       // Helper to detect KPI-style content and extract metrics
       const extractKPIMetrics = (sectionName: string, content: string, enhancedData: any): { row1: Array<{ label: string; value: string; subtitle?: string }>; row2?: Array<{ label: string; value: string; subtitle?: string }> } | null => {
+        // Compass / Compass-40 reports are explicitly NON-financial under the
+        // current product brief — purchase price, LVR, yield, rent and similar
+        // KPI tiles must never render. KPI tiles are reserved for the separate
+        // Financial Analysis report tier.
+        if (reportTier !== 'financial') return null;
+
         const sectionLower = sectionName.toLowerCase();
         const financialData = enhancedData?.financialData || {};
         const keyMetrics = financialData?.keyMetrics || {};
@@ -2231,6 +2237,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         if (sectionLower.includes('financial') || sectionLower.includes('investment snapshot') || 
             sectionLower.includes('key metric') || sectionLower.includes('market kpi') ||
             sectionLower.includes('property snapshot') || sectionLower.includes('executive summary')) {
+
           
           const row1: Array<{ label: string; value: string; subtitle?: string }> = [];
           
