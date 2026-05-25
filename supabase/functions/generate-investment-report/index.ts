@@ -470,16 +470,65 @@ const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
   /\|\s*(Gross|Net)\s+Yield\s*\|/i,
   /\|\s*Weekly\s+Rent\s*\|/i,
   /\|\s*Purchase\s+Price\s*\|/i,
+  /\|\s*Score\s*\(?\/?\s*100/i,
+  /\|\s*Weight\s*\|/i,
 ];
+
+// Whole sections (H2/H3) that must be dropped under Compass-40.
+const COMPASS40_FORBIDDEN_HEADINGS: RegExp[] = [
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Highlights\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Key\s+Findings\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Headline\s+Scores?\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Profile\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Score\s+Analysis\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Macro\s+Investment\s+Scorecard\s*$/i,
+  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*[-–—]\s*Non[-\s]?Financial\s*$/i,
+];
+
+// Sentences containing these are dropped (financial leaks in prose).
+const COMPASS40_FORBIDDEN_SENTENCE_REGEX =
+  /\b(LVR|loan-to-value|gross\s+yield|net\s+yield|rental\s+yield|cash\s*flow|cashflow|negatively?\s+geared|negative\s+gearing|stamp\s+duty|interest\s+rate|monthly\s+repayment|annual\s+repayment|purchase\s+price|deposit\s+required|loan\s+amount|weekly\s+rent|annual\s+rent|investment\s+grade|hold\s+recommendation|out[-\s]?of[-\s]?pocket)\b/i;
+
+// Adjacent word/phrase duplications that the model occasionally produces in headings
+// (e.g. "Industry 4 Industry & Employment Structure", "Amenity Amenity & Livability",
+//  "SEIFA IFA & Socio-Economic", "Key Strengths Key Strengths & Watch Points").
+export function dedupeRepeatedWords(s: string): string {
+  if (!s) return s;
+  let out = s;
+  // "Word N Word" -> "Word"
+  out = out.replace(/\b(\w+)\s+\d+\s+\1\b/gi, '$1');
+  // "Phrase N Phrase" (1-3 word phrase with intervening digit)
+  out = out.replace(/\b((?:\w+\s+){1,3}\w+)\s+\d+\s+\1\b/gi, '$1');
+  // "Word Word" -> "Word" / "Phrase Phrase" -> "Phrase"
+  for (let i = 0; i < 2; i++) {
+    out = out.replace(/\b((?:\w+\s+){0,3}\w+)\s+\1\b/gi, '$1');
+  }
+  // ", Competition , Competition" -> ", Competition"
+  out = out.replace(/(\b\w+\b)\s*,\s*\1\b/gi, '$1');
+  // "SEIFA IFA" -> "SEIFA" (second word is a >=3 char suffix of the first)
+  out = out.replace(/\b(\w*?)(\w{3,})\s+\2\b/gi, '$1$2');
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
 
 function sanitizeCompass40Content(raw: string): string {
   if (!raw) return raw;
   const lines = raw.split('\n');
   const kept: string[] = [];
   let inForbiddenTable = false;
+  let inForbiddenSection = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
+
+    // Headings: drop off-script sections, dedupe word repetition in kept ones.
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    if (headingMatch) {
+      inForbiddenSection = COMPASS40_FORBIDDEN_HEADINGS.some((p) => p.test(trimmed));
+      if (inForbiddenSection) continue;
+      kept.push(`${headingMatch[1]} ${dedupeRepeatedWords(headingMatch[2])}`);
+      continue;
+    }
+    if (inForbiddenSection) continue;
 
     if (trimmed.startsWith('|')) {
       if (COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(trimmed))
@@ -494,6 +543,15 @@ function sanitizeCompass40Content(raw: string): string {
 
     if (COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(line))) continue;
 
+    // Sentence-level financial leak scrub for prose lines
+    if (line && !line.startsWith('|') && /[.!?]/.test(line)) {
+      const sentences = line.split(/(?<=[.!?])\s+/);
+      const scrubbed = sentences.filter((s) => !COMPASS40_FORBIDDEN_SENTENCE_REGEX.test(s));
+      if (scrubbed.length === 0) continue;
+      kept.push(scrubbed.join(' '));
+      continue;
+    }
+
     kept.push(line);
   }
 
@@ -502,8 +560,12 @@ function sanitizeCompass40Content(raw: string): string {
   // Strip Perplexity-style inline citation markers like [1], [2], [1][3]
   out = out.replace(/\[\d+\](?:\[\d+\])*/g, '');
 
-  // Strip placeholder tokens.
-  out = out.replace(/\[(citation|source needed|TBD|placeholder)\]/gi, '');
+  // Strip placeholder tokens — broadened to also match `(citation needed)` etc.
+  out = out.replace(/\[(citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\]/gi, '');
+  out = out.replace(/\((citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\)/gi, '');
+
+  // Drop orphaned "What This Means" / "WHAT THIS MEANS" labels with no body before next heading.
+  out = out.replace(/(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?=\n\s*(?:#{1,4}\s|$))/g, '$1');
 
   // Trim trailing partial sentence (when model hit max_tokens mid-thought).
   out = trimDanglingSentence(out);

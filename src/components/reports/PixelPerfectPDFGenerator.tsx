@@ -2219,6 +2219,12 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
       // Helper to detect KPI-style content and extract metrics
       const extractKPIMetrics = (sectionName: string, content: string, enhancedData: any): { row1: Array<{ label: string; value: string; subtitle?: string }>; row2?: Array<{ label: string; value: string; subtitle?: string }> } | null => {
+        // Compass / Compass-40 reports are explicitly NON-financial under the
+        // current product brief — purchase price, LVR, yield, rent and similar
+        // KPI tiles must never render. KPI tiles are reserved for the separate
+        // Financial Analysis report tier.
+        if (reportTier !== 'financial') return null;
+
         const sectionLower = sectionName.toLowerCase();
         const financialData = enhancedData?.financialData || {};
         const keyMetrics = financialData?.keyMetrics || {};
@@ -2231,6 +2237,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         if (sectionLower.includes('financial') || sectionLower.includes('investment snapshot') || 
             sectionLower.includes('key metric') || sectionLower.includes('market kpi') ||
             sectionLower.includes('property snapshot') || sectionLower.includes('executive summary')) {
+
           
           const row1: Array<{ label: string; value: string; subtitle?: string }> = [];
           
@@ -2575,7 +2582,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
       // Get ALL sections from the report dynamically instead of hardcoded list
       // Filter out meta/cover/contents entries that should never appear as numbered TOC items
-      const META_SECTION_PATTERNS = [
+      const META_SECTION_PATTERNS: RegExp[] = [
         /^cover\s*page?$/i,
         /^cover$/i,
         /^contents?$/i,
@@ -2586,17 +2593,60 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         /^disclaimer$/i,
         /^back\s*cover$/i,
       ];
+      // Compass / Compass-40 only: financial-leak sections that must never render.
+      // These are still valid for the Financial Analysis tier.
+      if (reportTier !== 'financial') {
+        META_SECTION_PATTERNS.push(
+          /^investment\s+highlights$/i,
+          /^key\s+findings$/i,
+          /^headline\s+scores?$/i,
+          /^overall\s+investment\s+profile$/i,
+          /^investment\s+score\s+analysis$/i,
+          /^macro\s+investment\s+scorecard$/i,
+          /^property\s+snapshot\s*[-–—]\s*non[-\s]?financial$/i,
+        );
+      }
+
+      // Collapse adjacent repeated words/phrases that occasionally appear in
+      // model-generated headings (e.g. "Industry 4 Industry & Employment",
+      // "Amenity Amenity & Livability", "SEIFA IFA", "Key Strengths Key Strengths").
+      const dedupeRepeatedWords = (s: string): string => {
+        if (!s) return s;
+        let out = s;
+        out = out.replace(/\b(\w+)\s+\d+\s+\1\b/gi, '$1');
+        out = out.replace(/\b((?:\w+\s+){1,3}\w+)\s+\d+\s+\1\b/gi, '$1');
+        for (let i = 0; i < 2; i++) {
+          out = out.replace(/\b((?:\w+\s+){0,3}\w+)\s+\1\b/gi, '$1');
+        }
+        out = out.replace(/(\b\w+\b)\s*,\s*\1\b/gi, '$1');
+        out = out.replace(/\b(\w*?)(\w{3,})\s+\2\b/gi, '$1$2');
+        return out.replace(/\s{2,}/g, ' ').trim();
+      };
       const isMetaSectionName = (raw: string) => {
-        const cleaned = raw
+        const cleaned = dedupeRepeatedWords(raw
           .replace(/^#{1,6}\s*/, '')
           .replace(/^\d+(\.\d+)*\.?\s+/, '')
           .replace(/:\s*$/, '')
-          .trim();
+          .trim());
         return META_SECTION_PATTERNS.some((p) => p.test(cleaned));
       };
-      const allSectionNames = Object.keys(sections).filter(name =>
-        name && sections[name] && sections[name].trim().length > 0 && !isMetaSectionName(name)
-      );
+      // De-duplicate sections that the model produces twice (e.g. "Property
+      // Snapshot" appears once on its own and once as "Property Snapshot —
+      // Non-Financial"). Keep the first occurrence of each canonical name.
+      const seenCanonical = new Set<string>();
+      const allSectionNames = Object.keys(sections).filter(name => {
+        if (!name || !sections[name] || sections[name].trim().length < 40) return false;
+        if (isMetaSectionName(name)) return false;
+        const canonical = dedupeRepeatedWords(name
+          .replace(/^#{1,6}\s*/, '')
+          .replace(/^\d+(\.\d+)*\.?\s+/, '')
+          .replace(/:\s*$/, '')
+          .trim()).toLowerCase();
+        if (seenCanonical.has(canonical)) return false;
+        seenCanonical.add(canonical);
+        return true;
+      });
+
 
       console.log('Found sections to include in PDF:', allSectionNames);
       
@@ -2680,16 +2730,29 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       let sectionCount = 0;
       for (const sectionName of allSectionNames) {
         sectionCount++;
-        const content = sections[sectionName];
+        let content = sections[sectionName];
         if (!content) continue;
 
-        // Clean section name and strip emojis
-        const cleanSectionName = stripEmojis(
+        // Strip orphan "What This Means:" labels with no body before next heading/EOF.
+        content = content.replace(
+          /(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?=\n\s*(?:#{1,4}\s|$))/g,
+          '$1'
+        );
+        // Strip leftover [citation] / (citation) tokens that slipped past the edge sanitizer.
+        content = content
+          .replace(/\[(citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\]/gi, '')
+          .replace(/\((citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\)/gi, '')
+          .replace(/\[\d+\](?:\[\d+\])*/g, '');
+
+
+        // Clean section name and strip emojis + dedupe repeated word/phrase artefacts
+        const cleanSectionName = dedupeRepeatedWords(stripEmojis(
           sectionName
             .replace(/^#{1,6}\s*/, '')
             .replace(/:\s*$/, '')
             .trim()
-        );
+        ));
+
         
         console.log(`  📝 Section ${sectionCount}/${allSectionNames.length}: "${cleanSectionName}"`);
 
@@ -3159,13 +3222,14 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         
         for (const sectionName of allSectionNames) {
           // sectionName is already cleaned (no ## or ### prefix) - it's the key from sections object
-          const cleanName = stripEmojis(
+          const cleanName = dedupeRepeatedWords(stripEmojis(
             sectionName
               .replace(/^#{1,6}\s*/, '') // Remove markdown heading prefix (if any remaining)
               .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11.1 ")
               .replace(/:\s*$/, '') // Remove trailing colon
               .trim()
-          );
+          ));
+
           
           if (!cleanName || cleanName.length < 3) continue;
           
