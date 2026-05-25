@@ -240,6 +240,18 @@ export default function CashFlowAnalysis() {
               className="pl-10"
             />
           </div>
+          <Select value={dateRange} onValueChange={(value: typeof dateRange) => setDateRange(value)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="180">Last 6 months</SelectItem>
+              <SelectItem value="365">Last 12 months</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={buildTypeFilter} onValueChange={(value: BuildTypeFilter) => setBuildTypeFilter(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Build Type" />
