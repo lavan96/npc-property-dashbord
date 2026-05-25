@@ -454,40 +454,62 @@ const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
   /^[\s>*\-]*\**\s*(Gross|Net)\s+(Rental\s+)?Yield\b/i,
   /^[\s>*\-]*\**\s*Annual\s+Rental\s+Income\b/i,
   /^[\s>*\-]*\**\s*Loan\s+Amount\b/i,
-  /^[\s>*\-]*\**\s*Interest\s+Rate\s+Assumption\b/i,
+  /^[\s>*\-]*\**\s*Interest\s+Rate\b/i,
+  /^[\s>*\-]*\**\s*Capital\s+Growth\b/i,
   /^[\s>*\-]*\**\s*Deposit\s+Required\b/i,
   /^[\s>*\-]*\**\s*Stamp\s+Duty\b/i,
   /^[\s>*\-]*\**\s*Monthly\s+Repayment\b/i,
   /^[\s>*\-]*\**\s*Cashflow\b/i,
   /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
+  /^[\s>*\-]*\**\s*Investment\s+Grade\b/i,
+  /^[\s>*\-]*\**\s*Total\s+Investment\s+Score\b/i,
+  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b.*\d+\s*\/\s*100/i,
 ];
 
-// Table rows / KPI cells we should drop wholesale.
+// Table rows / KPI cells we should drop wholesale. Also used to detect entire
+// financial tables (any matching cell taints the whole table block).
 const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
   /\|\s*\$\d[\d,]*\s*\|/,
-  /\|\s*\d+(\.\d+)?\s*%\s*\|/,
   /\|\s*[Ll][Vv][Rr]\s*\|/,
   /\|\s*(Gross|Net)\s+Yield\s*\|/i,
   /\|\s*Weekly\s+Rent\s*\|/i,
-  /\|\s*Purchase\s+Price\s*\|/i,
+  /\|\s*(Estimated\s+)?Purchase\s+Price\s*\|/i,
+  /\|\s*Loan\s+Amount\s*\|/i,
+  /\|\s*Interest\s+Rate\s*\|/i,
+  /\|\s*Stamp\s+Duty\s*\|/i,
   /\|\s*Score\s*\(?\/?\s*100/i,
   /\|\s*Weight\s*\|/i,
+  /\|\s*(Total\s+)?Investment\s+Score\s*\|/i,
+  /\|\s*Investment\s+Grade\s*\|/i,
+  /\|\s*Recommendation\s*\|/i,
+  /\|\s*HOLD\b/i,
+  /\|\s*Capital\s+Growth\b/i,
 ];
 
 // Whole sections (H2/H3) that must be dropped under Compass-40.
 const COMPASS40_FORBIDDEN_HEADINGS: RegExp[] = [
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Highlights\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Key\s+Findings\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Headline\s+Scores?\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Profile\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Score\s+Analysis\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Macro\s+Investment\s+Scorecard\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*[-–—]\s*Non[-\s]?Financial\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Highlights\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Key\s+Findings\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Headline\s+Scores?\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Profile\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Position\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Score\s+Analysis\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Macro\s+Investment\s+Scorecard\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*[-–—]?\s*Non[-\s]?Financial\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Category\s+Breakdown\b/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?(Growth|Location|Yield|Demand|Risk)\s+Score\b/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Recommendation\s*$/i,
 ];
 
 // Sentences containing these are dropped (financial leaks in prose).
 const COMPASS40_FORBIDDEN_SENTENCE_REGEX =
-  /\b(LVR|loan-to-value|gross\s+yield|net\s+yield|rental\s+yield|cash\s*flow|cashflow|negatively?\s+geared|negative\s+gearing|stamp\s+duty|interest\s+rate|monthly\s+repayment|annual\s+repayment|purchase\s+price|deposit\s+required|loan\s+amount|weekly\s+rent|annual\s+rent|investment\s+grade|hold\s+recommendation|out[-\s]?of[-\s]?pocket)\b/i;
+  /\b(LVR|loan-to-value|gross\s+(rental\s+)?yield|net\s+(rental\s+)?yield|rental\s+yield|cash\s*flow|cashflow|negatively?\s+geared|negative\s+gearing|stamp\s+duty|interest\s+rate|monthly\s+repayment|annual\s+repayment|purchase\s+price|deposit\s+required|loan\s+amount|weekly\s+rent|annual\s+rent|investment\s+grade|hold\s+recommendation|out[-\s]?of[-\s]?pocket|capital\s+growth\s*:|sensitivity\s+analysis|negative\s+cashflow|tipping\s+in\s+cash)\b/i;
+
+// Bullet/line-level leak (no period required) — drops short bullets that pair a
+// finance keyword with a $ amount or % figure (e.g. "Gross rental yield: 3.74%").
+const COMPASS40_FORBIDDEN_BULLET_REGEX =
+  /\b(yield|rent|LVR|loan|deposit|stamp\s+duty|purchase\s+price|cashflow|cash\s+flow|interest\s+rate|capital\s+growth|repayment|land\s+tax|annual\s+(rental\s+)?income|annual\s+costs?|negatively?\s+geared|investment\s+grade|total\s+investment\s+score)\b[^.\n]{0,80}(\$[\d,]+|\d+(\.\d+)?\s*%)/i;
 
 // Adjacent word/phrase duplications that the model occasionally produces in headings
 // (e.g. "Industry 4 Industry & Employment Structure", "Amenity Amenity & Livability",
