@@ -132,12 +132,39 @@ export default function GeneratedReports() {
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
-  // 30-day cutoff for active reports
-  const thirtyDaysAgo = useMemo(() => {
+  // Date range filter for active reports (days back, or 'all', or 'custom')
+  const [dateRange, setDateRange] = useState<string>('30');
+  const [customFrom, setCustomFrom] = useState<string>(''); // yyyy-mm-dd
+  const [customTo, setCustomTo] = useState<string>('');
+
+  const dateRangeCutoff = useMemo(() => {
+    if (dateRange === 'all' || dateRange === 'custom') return undefined;
+    const days = parseInt(dateRange, 10);
+    if (!Number.isFinite(days) || days <= 0) return undefined;
     const date = new Date();
-    date.setDate(date.getDate() - 30);
+    date.setDate(date.getDate() - days);
     return date.toISOString();
-  }, []);
+  }, [dateRange]);
+
+  const customFromIso = useMemo(
+    () => (dateRange === 'custom' && customFrom ? new Date(customFrom + 'T00:00:00').toISOString() : undefined),
+    [dateRange, customFrom]
+  );
+  const customToIso = useMemo(
+    () => (dateRange === 'custom' && customTo ? new Date(customTo + 'T23:59:59').toISOString() : undefined),
+    [dateRange, customTo]
+  );
+
+  const dateRangeLabel = useMemo(() => {
+    if (dateRange === 'all') return 'Showing all time';
+    if (dateRange === 'custom') {
+      if (customFrom && customTo) return `Showing ${customFrom} → ${customTo}`;
+      if (customFrom) return `Showing from ${customFrom}`;
+      if (customTo) return `Showing up to ${customTo}`;
+      return 'Pick a custom range';
+    }
+    return `Showing last ${dateRange} days`;
+  }, [dateRange, customFrom, customTo]);
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -280,6 +307,13 @@ export default function GeneratedReports() {
       window.removeEventListener('refreshComparisons', handleRefreshComparisons);
     };
   }, []);
+
+  // Re-fetch investment reports when the date range filter changes
+  useEffect(() => {
+    fetchInvestmentReports();
+    setInvestmentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange, customFromIso, customToIso]);
 
   // Handle deep-linking: auto-open report from URL params (e.g., /generated-reports?reportId=...)
   useEffect(() => {
@@ -424,17 +458,22 @@ export default function GeneratedReports() {
       console.log('🔍 Fetching investment reports (list view)...');
 
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
-      // Apply 30-day cutoff for non-archived reports to reduce payload
       // Filter out client reports (is_client_report = true) - those are only accessible from clients page
+      const listOptions: Record<string, unknown> = {
+        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
+        status: ['completed', 'pending', 'failed', 'processing'],
+        isArchived: false,
+        isClientReport: false,
+      };
+      if (dateRange === 'custom') {
+        if (customFromIso) listOptions.createdAfter = customFromIso;
+        if (customToIso) listOptions.createdBefore = customToIso;
+      } else if (dateRangeCutoff) {
+        listOptions.createdAfter = dateRangeCutoff;
+      }
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
-        listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
-          status: ['completed', 'pending', 'failed', 'processing'],
-          createdAfter: thirtyDaysAgo,
-          isArchived: false,
-          isClientReport: false
-        }
+        listOptions,
       });
 
       console.log('📊 Investment reports response:', { count: data?.reports?.length, error });
@@ -1166,13 +1205,54 @@ export default function GeneratedReports() {
                 </>
               )}
 
+              {!showArchived && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger className="w-[170px] h-9">
+                      <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Date range" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="7">Last 7 days</SelectItem>
+                      <SelectItem value="30">Last 30 days</SelectItem>
+                      <SelectItem value="90">Last 90 days</SelectItem>
+                      <SelectItem value="180">Last 6 months</SelectItem>
+                      <SelectItem value="365">Last 12 months</SelectItem>
+                      <SelectItem value="all">All time</SelectItem>
+                      <SelectItem value="custom">Custom range…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {dateRange === 'custom' && (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="date"
+                        value={customFrom}
+                        max={customTo || undefined}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                        className="h-9 w-[150px]"
+                        aria-label="From date"
+                      />
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <Input
+                        type="date"
+                        value={customTo}
+                        min={customFrom || undefined}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                        className="h-9 w-[150px]"
+                        aria-label="To date"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Badge variant="secondary" className="hidden md:inline-flex">
                 {filteredInvestmentReports.length} of {investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length} reports
               </Badge>
-              
+
               {!showArchived && (
                 <span className="text-xs text-muted-foreground hidden md:inline">
-                  Showing last 30 days
+                  {dateRangeLabel}
                 </span>
               )}
             </div>
