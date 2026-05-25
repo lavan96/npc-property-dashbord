@@ -2634,6 +2634,14 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       // Snapshot" appears once on its own and once as "Property Snapshot —
       // Non-Financial"). Keep the first occurrence of each canonical name.
       const seenCanonical = new Set<string>();
+      const seenTopic = new Set<string>();
+      const topicOf = (name: string): string | null => {
+        const n = name.toLowerCase();
+        if (/\b(transport|connectivity|commute|rail access|road network|public transport)\b/.test(n)) return 'transport';
+        if (/\bpopulation\s+(growth|trends|&|and)\b/.test(n)) return 'population';
+        if (/\bfuture\s+infrastructure\b/.test(n)) return 'infrastructure';
+        return null;
+      };
       const allSectionNames = Object.keys(sections).filter(name => {
         if (!name || !sections[name] || sections[name].trim().length < 40) return false;
         if (isMetaSectionName(name)) return false;
@@ -2644,6 +2652,14 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           .trim()).toLowerCase();
         if (seenCanonical.has(canonical)) return false;
         seenCanonical.add(canonical);
+        // Fuzzy topic dedup — only one H2 per topic group (Compass tier only).
+        if (reportTier !== 'financial') {
+          const t = topicOf(canonical);
+          if (t) {
+            if (seenTopic.has(t)) return false;
+            seenTopic.add(t);
+          }
+        }
         return true;
       });
 

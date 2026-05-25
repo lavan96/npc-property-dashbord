@@ -454,40 +454,62 @@ const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
   /^[\s>*\-]*\**\s*(Gross|Net)\s+(Rental\s+)?Yield\b/i,
   /^[\s>*\-]*\**\s*Annual\s+Rental\s+Income\b/i,
   /^[\s>*\-]*\**\s*Loan\s+Amount\b/i,
-  /^[\s>*\-]*\**\s*Interest\s+Rate\s+Assumption\b/i,
+  /^[\s>*\-]*\**\s*Interest\s+Rate\b/i,
+  /^[\s>*\-]*\**\s*Capital\s+Growth\b/i,
   /^[\s>*\-]*\**\s*Deposit\s+Required\b/i,
   /^[\s>*\-]*\**\s*Stamp\s+Duty\b/i,
   /^[\s>*\-]*\**\s*Monthly\s+Repayment\b/i,
   /^[\s>*\-]*\**\s*Cashflow\b/i,
   /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
+  /^[\s>*\-]*\**\s*Investment\s+Grade\b/i,
+  /^[\s>*\-]*\**\s*Total\s+Investment\s+Score\b/i,
+  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b.*\d+\s*\/\s*100/i,
 ];
 
-// Table rows / KPI cells we should drop wholesale.
+// Table rows / KPI cells we should drop wholesale. Also used to detect entire
+// financial tables (any matching cell taints the whole table block).
 const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
   /\|\s*\$\d[\d,]*\s*\|/,
-  /\|\s*\d+(\.\d+)?\s*%\s*\|/,
   /\|\s*[Ll][Vv][Rr]\s*\|/,
   /\|\s*(Gross|Net)\s+Yield\s*\|/i,
   /\|\s*Weekly\s+Rent\s*\|/i,
-  /\|\s*Purchase\s+Price\s*\|/i,
+  /\|\s*(Estimated\s+)?Purchase\s+Price\s*\|/i,
+  /\|\s*Loan\s+Amount\s*\|/i,
+  /\|\s*Interest\s+Rate\s*\|/i,
+  /\|\s*Stamp\s+Duty\s*\|/i,
   /\|\s*Score\s*\(?\/?\s*100/i,
   /\|\s*Weight\s*\|/i,
+  /\|\s*(Total\s+)?Investment\s+Score\s*\|/i,
+  /\|\s*Investment\s+Grade\s*\|/i,
+  /\|\s*Recommendation\s*\|/i,
+  /\|\s*HOLD\b/i,
+  /\|\s*Capital\s+Growth\b/i,
 ];
 
 // Whole sections (H2/H3) that must be dropped under Compass-40.
 const COMPASS40_FORBIDDEN_HEADINGS: RegExp[] = [
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Highlights\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Key\s+Findings\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Headline\s+Scores?\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Profile\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Score\s+Analysis\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Macro\s+Investment\s+Scorecard\s*$/i,
-  /^#{1,3}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*[-–—]\s*Non[-\s]?Financial\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Highlights\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Key\s+Findings\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Headline\s+Scores?\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Profile\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Overall\s+Investment\s+Position\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Score\s+Analysis\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Macro\s+Investment\s+Scorecard\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*[-–—]?\s*Non[-\s]?Financial\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Property\s+Snapshot\s*$/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Category\s+Breakdown\b/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?(Growth|Location|Yield|Demand|Risk)\s+Score\b/i,
+  /^#{1,4}\s*(?:\d+(?:\.\d+)*\.?\s+)?Investment\s+Recommendation\s*$/i,
 ];
 
 // Sentences containing these are dropped (financial leaks in prose).
 const COMPASS40_FORBIDDEN_SENTENCE_REGEX =
-  /\b(LVR|loan-to-value|gross\s+yield|net\s+yield|rental\s+yield|cash\s*flow|cashflow|negatively?\s+geared|negative\s+gearing|stamp\s+duty|interest\s+rate|monthly\s+repayment|annual\s+repayment|purchase\s+price|deposit\s+required|loan\s+amount|weekly\s+rent|annual\s+rent|investment\s+grade|hold\s+recommendation|out[-\s]?of[-\s]?pocket)\b/i;
+  /\b(LVR|loan-to-value|gross\s+(rental\s+)?yield|net\s+(rental\s+)?yield|rental\s+yield|cash\s*flow|cashflow|negatively?\s+geared|negative\s+gearing|stamp\s+duty|interest\s+rate|monthly\s+repayment|annual\s+repayment|purchase\s+price|deposit\s+required|loan\s+amount|weekly\s+rent|annual\s+rent|investment\s+grade|hold\s+recommendation|out[-\s]?of[-\s]?pocket|capital\s+growth\s*:|sensitivity\s+analysis|negative\s+cashflow|tipping\s+in\s+cash)\b/i;
+
+// Bullet/line-level leak (no period required) — drops short bullets that pair a
+// finance keyword with a $ amount or % figure (e.g. "Gross rental yield: 3.74%").
+const COMPASS40_FORBIDDEN_BULLET_REGEX =
+  /\b(yield|rent|LVR|loan|deposit|stamp\s+duty|purchase\s+price|cashflow|cash\s+flow|interest\s+rate|capital\s+growth|repayment|land\s+tax|annual\s+(rental\s+)?income|annual\s+costs?|negatively?\s+geared|investment\s+grade|total\s+investment\s+score)\b[^.\n]{0,80}(\$[\d,]+|\d+(\.\d+)?\s*%)/i;
 
 // Adjacent word/phrase duplications that the model occasionally produces in headings
 // (e.g. "Industry 4 Industry & Employment Structure", "Amenity Amenity & Livability",
@@ -512,39 +534,96 @@ export function dedupeRepeatedWords(s: string): string {
 
 function sanitizeCompass40Content(raw: string): string {
   if (!raw) return raw;
-  const lines = raw.split('\n');
+  const rawLines = raw.split('\n');
+
+  // ---- Pass 1: collect line metadata, group table blocks ----
+  type Block = { kind: 'line' | 'table'; lines: string[]; startIdx: number };
+  const blocks: Block[] = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    const t = rawLines[i].trim();
+    if (t.startsWith('|')) {
+      const tbl: string[] = [];
+      const startIdx = i;
+      while (i < rawLines.length && rawLines[i].trim().startsWith('|')) {
+        tbl.push(rawLines[i]);
+        i++;
+      }
+      blocks.push({ kind: 'table', lines: tbl, startIdx });
+    } else {
+      blocks.push({ kind: 'line', lines: [rawLines[i]], startIdx: i });
+      i++;
+    }
+  }
+
+  // ---- Pass 2: filter blocks ----
   const kept: string[] = [];
-  let inForbiddenTable = false;
   let inForbiddenSection = false;
+  const seenH2Topics = new Set<string>();
+  const topicOf = (heading: string): string | null => {
+    const h = heading.toLowerCase();
+    if (/\b(transport|connectivity|commute|rail|road network)\b/.test(h)) return 'transport';
+    if (/\bpopulation\s+(growth|trends)\b/.test(h)) return 'population';
+    if (/\beducation\b/.test(h) && /\bfamily\b/.test(h)) return 'education-family';
+    return null;
+  };
 
-  for (const line of lines) {
+  for (const blk of blocks) {
+    if (blk.kind === 'table') {
+      // Drop the entire table if ANY row matches a forbidden cell/header.
+      const tainted = blk.lines.some(
+        (ln) =>
+          COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(ln)) ||
+          COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(ln.replace(/^\|\s*/, '')))
+      );
+      if (tainted || inForbiddenSection) continue;
+
+      // SEIFA validation: if all deciles identical, drop table (templated/fake).
+      const isSeifa = blk.lines.some((ln) => /\b(SEIFA|IRSAD|IRSD|IEO|IER)\b/i.test(ln));
+      if (isSeifa) {
+        const deciles = blk.lines
+          .map((ln) => ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|/))
+          .filter(Boolean)
+          .map((m) => m![1]);
+        if (deciles.length >= 3 && new Set(deciles).size === 1) {
+          continue; // all identical → fabricated
+        }
+      }
+      kept.push(...blk.lines);
+      continue;
+    }
+
+    const line = blk.lines[0];
     const trimmed = line.trim();
-
-    // Headings: drop off-script sections, dedupe word repetition in kept ones.
-    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.*)$/);
     if (headingMatch) {
-      inForbiddenSection = COMPASS40_FORBIDDEN_HEADINGS.some((p) => p.test(trimmed));
-      if (inForbiddenSection) continue;
-      kept.push(`${headingMatch[1]} ${dedupeRepeatedWords(headingMatch[2])}`);
+      if (COMPASS40_FORBIDDEN_HEADINGS.some((p) => p.test(trimmed))) {
+        inForbiddenSection = true;
+        continue;
+      }
+      // Topic-collision dedup for H2 headings (transport, population, ...).
+      const level = headingMatch[1].length;
+      const cleanHeading = dedupeRepeatedWords(headingMatch[2]);
+      const topic = level <= 2 ? topicOf(cleanHeading) : null;
+      if (topic && seenH2Topics.has(topic)) {
+        inForbiddenSection = true;
+        continue;
+      }
+      if (topic) seenH2Topics.add(topic);
+      inForbiddenSection = false;
+      kept.push(`${headingMatch[1]} ${cleanHeading}`);
       continue;
     }
     if (inForbiddenSection) continue;
 
-    if (trimmed.startsWith('|')) {
-      if (COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(trimmed))
-          || COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(trimmed))) {
-        inForbiddenTable = true;
-        continue;
-      }
-      if (inForbiddenTable) continue;
-    } else if (inForbiddenTable) {
-      inForbiddenTable = false;
-    }
-
+    // Line-start forbidden patterns (e.g. "Estimated Purchase Price ...").
     if (COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(line))) continue;
 
-    // Sentence-level financial leak scrub for prose lines
-    if (line && !line.startsWith('|') && /[.!?]/.test(line)) {
+    // Bullet-level financial leak ($X or N% paired with finance keyword).
+    if (COMPASS40_FORBIDDEN_BULLET_REGEX.test(line)) continue;
+
+    // Sentence-level financial leak scrub for prose lines.
+    if (line && /[.!?]/.test(line)) {
       const sentences = line.split(/(?<=[.!?])\s+/);
       const scrubbed = sentences.filter((s) => !COMPASS40_FORBIDDEN_SENTENCE_REGEX.test(s));
       if (scrubbed.length === 0) continue;
@@ -560,12 +639,19 @@ function sanitizeCompass40Content(raw: string): string {
   // Strip Perplexity-style inline citation markers like [1], [2], [1][3]
   out = out.replace(/\[\d+\](?:\[\d+\])*/g, '');
 
-  // Strip placeholder tokens — broadened to also match `(citation needed)` etc.
+  // Strip placeholder tokens
   out = out.replace(/\[(citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\]/gi, '');
   out = out.replace(/\((citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\)/gi, '');
 
-  // Drop orphaned "What This Means" / "WHAT THIS MEANS" labels with no body before next heading.
-  out = out.replace(/(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?=\n\s*(?:#{1,4}\s|$))/g, '$1');
+  // Strip leaked binding labels left in prose (e.g. "Interest Rate: 6.5%",
+  // "Capital Growth: 5% per annum") — these come from the override-injection.
+  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:p\.?\s*a\.?)?\)?/gi, '');
+
+  // Drop orphaned "What This Means" labels with no body before next heading.
+  out = out.replace(
+    /(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?:[-–—]{1,3})?\s*(?=\n\s*(?:#{1,4}\s|$))/g,
+    '$1'
+  );
 
   // Trim trailing partial sentence (when model hit max_tokens mid-thought).
   out = trimDanglingSentence(out);
@@ -1201,9 +1287,22 @@ Generate the ${sectionDef.name} sections now:`;
       // to continue from where it left off so the last paragraph isn't cut
       // off on the final PDF page. Up to 2 continuation rounds per section.
       let continuationRounds = 0;
-      while (finishReason === 'length' && continuationRounds < 2) {
+      // Treat content as truncated if API said so OR the tail ends mid-thought:
+      //   • trailing comma / colon / dash / ellipsis
+      //   • dangling "First,", "Second," etc.
+      //   • last paragraph is suspiciously short for a real conclusion
+      const endsMidThought = (s: string): boolean => {
+        const tail = s.trimEnd().slice(-200);
+        if (!tail) return false;
+        if (/[,:;\-–—]$/.test(tail)) return true;
+        if (/\.{3}$/.test(tail) || /…$/.test(tail)) return true;
+        if (/\b(First|Second|Third|Finally|In summary|Importantly|Crucially),?\s*$/i.test(tail)) return true;
+        if (!/[.!?")\]}]$/.test(tail)) return true;
+        return false;
+      };
+      while ((finishReason === 'length' || endsMidThought(content)) && continuationRounds < 2) {
         continuationRounds++;
-        console.log(`↪️  Section ${sectionDef.name} hit max_tokens — requesting continuation (round ${continuationRounds})`);
+        console.log(`↪️  Section ${sectionDef.name} appears truncated (finish=${finishReason}) — continuation round ${continuationRounds}`);
         const tail = content.slice(-1200);
         const continuePrompt = `You were writing the "${sectionDef.name}" section of an investment report and were cut off mid-thought. Continue writing from EXACTLY where you stopped. Do NOT repeat any earlier text, do NOT restart the section, do NOT add a preamble. Simply resume the next words and finish the section cleanly.\n\nLast 1200 characters you produced (your reply will be appended directly after the final character):\n\n${tail}`;
         try {
@@ -4082,6 +4181,38 @@ ${sourceSpecificInstructions}
     // Area reports (suburb/postcode/statewide) do NOT use property-level overrides
     // isAreaReport already defined at top of function
     const manualOverrides = isAreaReport ? null : (propertyDetails?.manualOverrides || null);
+    // Compass-40 is a NON-financial location/property-fit report. Injecting
+    // financial labels (Purchase Price: $X, Interest Rate: 6.5%, Capital Growth:
+    // 5% p.a.) caused the model to regurgitate them verbatim into narrative
+    // prose. For Compass-40 we strip every financial override line at the
+    // source so the LLM never sees them.
+    const __compass40Mode =
+      (propertyDetails?.generationEngine === 'compass-40') &&
+      ['compass', 'compass-40'].includes(propertyDetails?.reportTier || 'compass');
+    const __FINANCIAL_OVERRIDE_KEYS = new Set<string>([
+      'purchasePrice','landPrice','buildPrice','weeklyRent','depositValue',
+      'loanToValueRatio','interestRate','loanType','loanTermYears','loanAmount',
+      'interestOnlyPeriodYears','repaymentFrequency','extraRepaymentPerMonth','offsetBalance',
+      'capitalGrowth','cpiGrowthRate',
+      'stampDuty','solicitorFees','agentFee','isFirstHomeBuyer',
+      'bodyCorporateFees','strataAdminFund','strataSinkingFund','strataSpecialLevies',
+      'landTax','councilRates','waterRates','buildingLandlordInsurance',
+      'propertyManagementFees','repairsMaintenance','lettingFees',
+      'depreciation','taxRate','occupancyRate','marketValueNow',
+    ]);
+    if (__compass40Mode && manualOverrides) {
+      const filtered: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(manualOverrides)) {
+        if (!__FINANCIAL_OVERRIDE_KEYS.has(k)) filtered[k] = v;
+      }
+      const dropped = Object.keys(manualOverrides).length - Object.keys(filtered).length;
+      if (dropped > 0) {
+        console.log(`🛡️ Compass-40: stripped ${dropped} financial override keys from prompt context`);
+      }
+      Object.keys(manualOverrides).forEach((k) => {
+        if (!filtered.hasOwnProperty(k)) delete (manualOverrides as Record<string, unknown>)[k];
+      });
+    }
     if (manualOverrides && Object.keys(manualOverrides).length > 0) {
       console.log('📝 Injecting manual overrides into prompt...');
       const overrideLines: string[] = [];
