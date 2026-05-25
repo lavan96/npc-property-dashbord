@@ -98,8 +98,25 @@ summary pointing to the Financial Analysis Report
 |---|---|
 | 1 — Classification metadata layer | **Done** |
 | 2 — Compass-40 section registry + UI tier | **Done** |
-| 3 — Financial Analysis Report generator branch | **Done** — `condense-investment-report` accepts `targetTier='financial'`, structure guide added, TierSwitcher surfaces the action |
-| 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | Next |
-| 5 — Word-cap enforcement (prompt + post-trim) | Pending |
+| 3 — Financial Analysis Report generator branch | **Done** |
+| 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | **Done** — 8 blocks live: `scorecard`, `strengths-watch`, `risk-register`, `infra-timeline`, `amenity-matrix`, `planning-table`, `dd-checklist`, `decision-box`. Registered in `BLOCK_RENDERERS` + `BLOCK_DEFS` + Template Builder palette |
+| 5 — Word-cap enforcement (prompt + post-trim) | Next |
 | 6 — Page-pressure trimming engine | Pending |
 | 7 — QA automation (page band, financial exclusion, duplicates, artefacts) | Pending |
+
+## Phase 4 block reference
+
+| Block type | Compass section | Visual |
+|---|---|---|
+| `scorecard` | §5 Macro Scorecard | 8-row table with Strong / Moderate / Watch chips |
+| `strengths-watch` | §6 Strengths & Watch Points | Two-column green/amber lists |
+| `infra-timeline` | §8 Infrastructure Pipeline (PROTECTED) | Horizontal timeline: Existing → Long-term, with confidence chips |
+| `amenity-matrix` | §15 Amenity Matrix | Amenity / Current / Future / Relevance grid |
+| `risk-register` | §17 Risk Register (PROTECTED) | Risk / Rating / Confidence / Why / DD Action |
+| `planning-table` | §19 Planning (PROTECTED) | Item / Status pill / Relevance / Action |
+| `dd-checklist` | §20 Due Diligence (PROTECTED) | Checkbox list with owner + timing |
+| `decision-box` | Every section ("What this means") | Accent-bar panel, ≤60 words enforced |
+
+All blocks share `src/lib/reportTemplate/blocks/_shared.ts` for rating chips,
+confidence chips, and colour parsing. Each is bindable (`{{path | filter}}`)
+and theme-token aware (`token:primary`).
