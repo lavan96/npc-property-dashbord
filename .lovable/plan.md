@@ -1,95 +1,129 @@
-# Report Q&A Agent — Phased Enhancement Plan
 
-All 25 brainstormed items, grouped into 5 delivery phases. Functionality first; UI/UX polish layered in later phases. Each item keeps its original number from the brainstorm for traceability.
+# Commercial & Industrial Property Module — Phase 1 Plan
 
----
-
-## Phase 1 — Foundations & Trust (must-haves)
-
-Goal: make every answer verifiable, persistent, and recoverable. This unlocks everything else.
-
-1. **#2 Inline citations + deep-linking** — every claim links back to the exact report section/page; clicking jumps the PDF/report viewer to that anchor.
-2. **#6 Persistent threads** — store Q&A threads in DB (conversation + messages tables) instead of in-memory; reload on revisit.
-3. **#1 Cross-report synthesis & comparison mode** — first-class "compare these N reports" intent, side-by-side answer structure.
-4. **#11 Streaming responses with token-level progress** — replace blocking calls with SSE/streaming so long answers feel responsive.
-5. **#19 Robust error recovery + auto-retry** — typed errors, exponential backoff, resumable on network drop (mirrors the report-generation retry pattern we just fixed).
-
-Exit criteria: every answer has citations, threads survive refresh, comparisons work, streaming is live, no silent failures.
+Based on your answers:
+1. **Commercial first** (industrial later as a sub-type)
+2. **Multi-tenant** support from day one
+3. **DCF** included alongside direct cap & cash-on-cash
+4. **GST/depreciation/scheme** modelled up front
+5. **Manual entry** for cap rates / market rents (no data feed yet)
+6. **Borrowing capacity engine extended** to ICR/DSCR (not a separate broker tool)
 
 ---
 
-## Phase 2 — Agentic Capabilities (tools & reasoning)
+## Scope of Phase 1
 
-Goal: turn the chatbot into a real agent that can compute, look up live data, and plan multi-step answers.
+Build a parallel "Commercial" track that mirrors the existing residential surface but uses CRE-native inputs, math, and outputs. Residential code stays untouched — no regressions to current reports or calculators.
 
-6. **#3 Calculator tool** — yield, LVR, cash-flow, CGT, depreciation, stamp duty, borrowing capacity — exposed as agent tools reusing existing engines.
-7. **#4 Live data tools** — suburb stats, comparable sales, rental yields, vacancy, demographics from existing integrations.
-8. **#5 Tool-use transparency** — show which tool ran, inputs, outputs (collapsible), so users can audit the agent's reasoning.
-9. **#14 Scenario modeling** — "what if rates rise 1%", "what if rent drops 10%" — agent calls calculator tool with overrides.
-10. **#8 Suggested follow-up questions** — generated after each answer, context-aware, one-click.
+### Deliverables
 
-Exit criteria: agent can answer numeric questions by computing (not hallucinating), pull live data on demand, and surface its work.
-
----
-
-## Phase 3 — Memory, Scale & Knowledge (RAG + context)
-
-Goal: handle large report sets and long-running client relationships without context-window failures.
-
-11. **#20 RAG over report PDFs** — chunk, embed, store in pgvector; retrieve top-k passages per query instead of stuffing whole reports.
-12. **#7 Per-client memory** — agent remembers client goals, risk profile, prior decisions across threads.
-13. **#21 Hybrid retrieval** — semantic + keyword + metadata filters (suburb, date, report type).
-14. **#22 Context window budgeting** — token accounting, smart truncation, summarization of older turns.
-15. **#10 Multi-report selection UX improvements** — search, filters, recently-used, "all reports for client X" presets.
-
-Exit criteria: agent handles 50+ reports per thread, remembers client context across sessions, retrieval is fast and relevant.
+1. **Commercial Property record** (new table + UI)
+2. **Lease / Tenancy Schedule** (multi-tenant rent roll)
+3. **Commercial Financial Calculator suite** (cap rate, NOI, cash-on-cash, ICR/DSCR, GST, depreciation, outgoings recovery)
+4. **DCF Engine** (10-year hold, terminal cap, IRR, NPV, equity multiple)
+5. **Commercial Investment Report** (CRE-specific template + PDF)
+6. **Borrowing Capacity extension** — ICR/DSCR pathway alongside resi DTI/serviceability
+7. **Dashboard cards** — commercial portfolio KPIs (WALE, occupancy, weighted cap rate)
 
 ---
 
-## Phase 4 — Output & Actions (make answers actionable)
-
-Goal: let users take answers out of the chat and into work product.
-
-16. **#12 Structured outputs** — tables, charts, side-by-side cards rendered inline (not just markdown prose).
-17. **#13 Export answers** — to PDF, DOCX, email draft, or pin into a client report as a "Q&A appendix".
-18. **#15 Action handoffs** — "create task", "schedule appointment", "draft email to client", "add note to deal" — agent triggers existing app workflows.
-19. **#9 Voice input / dictation** — Web Speech API for hands-free questions on mobile.
-20. **#16 Shareable answer links** — permalink to a specific answer with full citation context for team review.
-
-Exit criteria: answers become artifacts (exports, tasks, emails), not just chat bubbles.
-
----
-
-## Phase 5 — Polish, Governance & Quality (UI/UX + safety)
-
-Goal: production-grade UX, auditability, and quality controls.
-
-21. **#17 Answer quality feedback** — thumbs up/down + reason; feeds into eval dataset.
-22. **#18 Eval harness** — golden Q&A set, regression tests on prompt/model changes, run in CI.
-23. **#23 Prompt & model version tracking** — log which prompt revision and model answered each question; A/B compare.
-24. **#24 Branching from any point in the thread** — fork a conversation to explore alternatives without losing the main line.
-25. **#25 Pinned answers** — pin important Q&As to the top of a thread for quick reference.
-
-Exit criteria: every answer is rated-and-traceable, prompt changes are safe to ship, power-user navigation is in place.
-
----
-
-## Sequencing Notes
+## 1. Data Model (new tables)
 
 ```text
-Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 ──► Phase 5
-  trust       agent       scale      action       polish
+commercial_properties
+  ├─ asset_class (office | retail | industrial | mixed_use | medical | childcare | hospitality)
+  ├─ tenure (freehold | leasehold)
+  ├─ zoning, GFA, NLA, site_area, parking_bays, year_built
+  ├─ purchase_price, acquisition_date, gst_treatment (going_concern | margin | standard)
+  ├─ valuation, valuation_date, valuer
+  └─ outgoings_recoverable (jsonb: council, water, land_tax, insurance, mgmt, R&M)
+
+commercial_leases (rent roll — one row per tenancy)
+  ├─ property_id, tenant_name, suite/unit, NLA_sqm
+  ├─ lease_start, lease_end, option_terms (jsonb)
+  ├─ base_rent_pa, rent_basis (gross | net | semi_gross)
+  ├─ review_type (CPI | fixed % | market | hybrid), review_freq, next_review_date
+  ├─ incentives (rent_free_months, fitout_contribution, cash_incentive)
+  ├─ outgoings_recovery_pct, security (bond | bank_guarantee), guarantee_amount
+  └─ status (occupied | vacant | holdover | under_offer)
+
+commercial_dcf_runs
+  ├─ property_id, scenario_name (base | upside | downside)
+  ├─ hold_period_years, discount_rate, terminal_cap_rate
+  ├─ rental_growth_assumptions (jsonb per year)
+  ├─ vacancy_allowance_pct, capex_schedule (jsonb)
+  └─ outputs: noi_by_year, cashflows, irr, npv, equity_multiple, peak_equity
 ```
 
-- Phases 1–3 are roughly sequential (each builds on the prior).
-- Phase 4 items can start in parallel once Phase 2 lands.
-- Phase 5 items (especially #17 feedback and #22 evals) should ideally be seeded in Phase 1 so we collect data from day one — full UI can wait.
+Existing `properties` table left alone. New module is namespaced.
 
-## Open Decisions (need your input before Phase 1 starts)
+## 2. Math Engine (`src/utils/commercial/`)
 
-- Persistence scope for #6: per-user, per-client, or both?
-- Citation granularity for #2: section-level, paragraph-level, or page-level on the PDF?
-- Streaming transport for #11: SSE via edge function, or WebSocket?
-- RAG store for #20: pgvector in Lovable Cloud (preferred) vs external (Pinecone/Weaviate)?
+- `noiCalculator.ts` — gross income → vacancy → outgoings → NOI
+- `capRateCalculator.ts` — passing yield, equivalent yield, reversionary yield
+- `dcfEngine.ts` — full DCF with terminal value, IRR (Newton-Raphson), NPV, equity multiple
+- `waleCalculator.ts` — weighted average lease expiry (by income & area)
+- `icrDscrCalculator.ts` — Interest Coverage Ratio + Debt Service Coverage Ratio
+- `gstCommercial.ts` — going concern vs margin scheme stamp duty/GST impact
+- `outgoingsRecovery.ts` — recoverable vs non-recoverable split
 
-Approve this phasing (or reshuffle items) and I'll start Phase 1.
+All multipliers exact (per Financial Math Standards memory). Rates rounded to 2 dp.
+
+## 3. Borrowing Capacity Extension
+
+Add a `loanType: 'resi' | 'commercial'` switch in the BC engine:
+
+- **Commercial path** uses **ICR (typically ≥1.5x)** and **DSCR (≥1.25–1.35x)** instead of DTI.
+- Net rental income from rent roll → debt-serviceable amount at lender's assessment rate.
+- Reuses existing lender shading profiles but with CRE-specific LVR caps (max ~65–70%) and rate margins.
+- New lender policy fields: `commercial_max_lvr`, `min_icr`, `min_dscr`, `assessment_rate_margin_cre`.
+
+## 4. UI Surface
+
+- **New route** `/commercial` with sub-pages:
+  - `/commercial/properties` — list + add
+  - `/commercial/properties/:id` — overview, rent roll, financials, DCF, reports
+  - `/commercial/calculators` — standalone calc suite (NOI, Cap Rate, DCF, ICR/DSCR, GST)
+- **Sidebar** — new "Commercial" section, kept distinct from "Residential" for clarity.
+- **Dashboard** — new "Commercial Portfolio" widget card alongside existing resi KPIs.
+- Reuses `OverrideFieldGroup`, `OverrideInput`, modal layout, dark-gold theme.
+
+## 5. Commercial Investment Report
+
+New schema variant (parallel to `INVESTMENT_REPORT_SCHEMA`):
+
+```text
+1. Executive Summary (deal snapshot, WALE, passing yield)
+2. Asset Overview (class, zoning, GFA/NLA, services)
+3. Tenancy Schedule (full rent roll table)
+4. Income Analysis (gross → net, recoveries, vacancy)
+5. Valuation & Yield (passing, equivalent, reversionary, market comps)
+6. DCF & Returns (10-year cashflow, IRR, NPV, sensitivity matrix)
+7. Debt Structure (ICR/DSCR, lender comparison)
+8. Risk Assessment (tenant concentration, lease expiry profile, market)
+9. Recommendation & Exit Strategy
+10. Disclaimer
+```
+
+PDF generator extends existing jsPDF primitives.
+
+## 6. Rollout Order (suggested execution sequence)
+
+```text
+Step 1  Migrations: commercial_properties, commercial_leases, commercial_dcf_runs (+ RLS)
+Step 2  Math utils (NOI, cap rate, DCF, ICR/DSCR, WALE, GST) + unit tests
+Step 3  Commercial properties CRUD UI + rent-roll editor
+Step 4  Standalone CRE calculators page
+Step 5  BC engine commercial path + lender policy fields
+Step 6  Commercial report schema + generation edge function
+Step 7  Dashboard commercial KPI widget
+Step 8  QA pass on PDF (per memory: image-QA every page)
+```
+
+Industrial-specific fields (clearance height, hardstand, power supply, truck access) plug in as an asset-class sub-form in Step 3 — no separate module needed.
+
+---
+
+## What I need from you to start building
+
+Confirm and I'll kick off **Step 1 (migrations) + Step 2 (math utils with tests)** in the next turn. Or if you want to sequence differently (e.g., calculators first, then properties), say the word.
