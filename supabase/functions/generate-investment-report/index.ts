@@ -534,39 +534,96 @@ export function dedupeRepeatedWords(s: string): string {
 
 function sanitizeCompass40Content(raw: string): string {
   if (!raw) return raw;
-  const lines = raw.split('\n');
+  const rawLines = raw.split('\n');
+
+  // ---- Pass 1: collect line metadata, group table blocks ----
+  type Block = { kind: 'line' | 'table'; lines: string[]; startIdx: number };
+  const blocks: Block[] = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    const t = rawLines[i].trim();
+    if (t.startsWith('|')) {
+      const tbl: string[] = [];
+      const startIdx = i;
+      while (i < rawLines.length && rawLines[i].trim().startsWith('|')) {
+        tbl.push(rawLines[i]);
+        i++;
+      }
+      blocks.push({ kind: 'table', lines: tbl, startIdx });
+    } else {
+      blocks.push({ kind: 'line', lines: [rawLines[i]], startIdx: i });
+      i++;
+    }
+  }
+
+  // ---- Pass 2: filter blocks ----
   const kept: string[] = [];
-  let inForbiddenTable = false;
   let inForbiddenSection = false;
+  const seenH2Topics = new Set<string>();
+  const topicOf = (heading: string): string | null => {
+    const h = heading.toLowerCase();
+    if (/\b(transport|connectivity|commute|rail|road network)\b/.test(h)) return 'transport';
+    if (/\bpopulation\s+(growth|trends)\b/.test(h)) return 'population';
+    if (/\beducation\b/.test(h) && /\bfamily\b/.test(h)) return 'education-family';
+    return null;
+  };
 
-  for (const line of lines) {
+  for (const blk of blocks) {
+    if (blk.kind === 'table') {
+      // Drop the entire table if ANY row matches a forbidden cell/header.
+      const tainted = blk.lines.some(
+        (ln) =>
+          COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(ln)) ||
+          COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(ln.replace(/^\|\s*/, '')))
+      );
+      if (tainted || inForbiddenSection) continue;
+
+      // SEIFA validation: if all deciles identical, drop table (templated/fake).
+      const isSeifa = blk.lines.some((ln) => /\b(SEIFA|IRSAD|IRSD|IEO|IER)\b/i.test(ln));
+      if (isSeifa) {
+        const deciles = blk.lines
+          .map((ln) => ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|/))
+          .filter(Boolean)
+          .map((m) => m![1]);
+        if (deciles.length >= 3 && new Set(deciles).size === 1) {
+          continue; // all identical → fabricated
+        }
+      }
+      kept.push(...blk.lines);
+      continue;
+    }
+
+    const line = blk.lines[0];
     const trimmed = line.trim();
-
-    // Headings: drop off-script sections, dedupe word repetition in kept ones.
-    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.*)$/);
     if (headingMatch) {
-      inForbiddenSection = COMPASS40_FORBIDDEN_HEADINGS.some((p) => p.test(trimmed));
-      if (inForbiddenSection) continue;
-      kept.push(`${headingMatch[1]} ${dedupeRepeatedWords(headingMatch[2])}`);
+      if (COMPASS40_FORBIDDEN_HEADINGS.some((p) => p.test(trimmed))) {
+        inForbiddenSection = true;
+        continue;
+      }
+      // Topic-collision dedup for H2 headings (transport, population, ...).
+      const level = headingMatch[1].length;
+      const cleanHeading = dedupeRepeatedWords(headingMatch[2]);
+      const topic = level <= 2 ? topicOf(cleanHeading) : null;
+      if (topic && seenH2Topics.has(topic)) {
+        inForbiddenSection = true;
+        continue;
+      }
+      if (topic) seenH2Topics.add(topic);
+      inForbiddenSection = false;
+      kept.push(`${headingMatch[1]} ${cleanHeading}`);
       continue;
     }
     if (inForbiddenSection) continue;
 
-    if (trimmed.startsWith('|')) {
-      if (COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(trimmed))
-          || COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(trimmed))) {
-        inForbiddenTable = true;
-        continue;
-      }
-      if (inForbiddenTable) continue;
-    } else if (inForbiddenTable) {
-      inForbiddenTable = false;
-    }
-
+    // Line-start forbidden patterns (e.g. "Estimated Purchase Price ...").
     if (COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(line))) continue;
 
-    // Sentence-level financial leak scrub for prose lines
-    if (line && !line.startsWith('|') && /[.!?]/.test(line)) {
+    // Bullet-level financial leak ($X or N% paired with finance keyword).
+    if (COMPASS40_FORBIDDEN_BULLET_REGEX.test(line)) continue;
+
+    // Sentence-level financial leak scrub for prose lines.
+    if (line && /[.!?]/.test(line)) {
       const sentences = line.split(/(?<=[.!?])\s+/);
       const scrubbed = sentences.filter((s) => !COMPASS40_FORBIDDEN_SENTENCE_REGEX.test(s));
       if (scrubbed.length === 0) continue;
@@ -582,12 +639,19 @@ function sanitizeCompass40Content(raw: string): string {
   // Strip Perplexity-style inline citation markers like [1], [2], [1][3]
   out = out.replace(/\[\d+\](?:\[\d+\])*/g, '');
 
-  // Strip placeholder tokens — broadened to also match `(citation needed)` etc.
+  // Strip placeholder tokens
   out = out.replace(/\[(citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\]/gi, '');
   out = out.replace(/\((citation(?:\s+needed)?|source(?:\s+needed)?|TBD|placeholder)\)/gi, '');
 
-  // Drop orphaned "What This Means" / "WHAT THIS MEANS" labels with no body before next heading.
-  out = out.replace(/(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?=\n\s*(?:#{1,4}\s|$))/g, '$1');
+  // Strip leaked binding labels left in prose (e.g. "Interest Rate: 6.5%",
+  // "Capital Growth: 5% per annum") — these come from the override-injection.
+  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:p\.?\s*a\.?)?\)?/gi, '');
+
+  // Drop orphaned "What This Means" labels with no body before next heading.
+  out = out.replace(
+    /(^|\n)(?:>\s*)?\**\s*(?:#{1,4}\s*)?(?:WHAT\s+THIS\s+MEANS|What\s+This\s+Means)\s*:?\s*\**\s*(?:[-–—]{1,3})?\s*(?=\n\s*(?:#{1,4}\s|$))/g,
+    '$1'
+  );
 
   // Trim trailing partial sentence (when model hit max_tokens mid-thought).
   out = trimDanglingSentence(out);
