@@ -185,6 +185,9 @@ Deno.serve(async (req) => {
         if (createdAfter) {
           query = query.gte('created_at', createdAfter);
         }
+        if (createdBefore) {
+          query = query.lte('created_at', createdBefore);
+        }
 
         // Filter for auto-generated reports (have property_listing_id)
         if (hasPropertyListingId === true) {
