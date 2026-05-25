@@ -305,7 +305,7 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
   bodyText(state,
     `${property.address} is a ${property.asset_class.replace('_', ' ')} asset with ${leases.length} ` +
     `tenanc${leases.length === 1 ? 'y' : 'ies'} generating ${fmtAud(rentRoll.totalRent)} pa in passing rent. ` +
-    `Weighted Average Lease Expiry (WALE) by income is ${rentRoll.wale.byIncome.toFixed(2)} years; ` +
+    `Weighted Average Lease Expiry (WALE) by income is ${rentRoll.wale.waleByIncome.toFixed(2)} years; ` +
     `occupancy by area is ${(rentRoll.occupancy * 100).toFixed(1)}%. ` +
     `On the current valuation of ${fmtAud(property.valuation || 0)}, the passing yield is ${fmtPct(passingYield)}.`
   );
@@ -315,8 +315,8 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
     ['NOI (est.)', fmtAud(noiResult.noi)],
     ['Passing Yield', fmtPct(passingYield)],
     ['Valuation', fmtAud(property.valuation || 0)],
-    ['WALE (income)', `${rentRoll.wale.byIncome.toFixed(2)} yrs`],
-    ['WALE (area)', `${rentRoll.wale.byArea.toFixed(2)} yrs`],
+    ['WALE (income)', `${rentRoll.wale.waleByIncome.toFixed(2)} yrs`],
+    ['WALE (area)', `${rentRoll.wale.waleByArea.toFixed(2)} yrs`],
     ['Occupancy', `${(rentRoll.occupancy * 100).toFixed(1)}%`],
     ['Total NLA', rentRoll.totalNla ? `${rentRoll.totalNla.toLocaleString()} m²` : '—'],
   ]);
@@ -505,7 +505,7 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
   // Traffic-light risk chips
   ensureSpace(state, 18);
   const concRisk = concentration > 50 ? RED : concentration > 25 ? AMBER : GREEN;
-  const waleRisk = rentRoll.wale.byIncome < 2 ? RED : rentRoll.wale.byIncome < 4 ? AMBER : GREEN;
+  const waleRisk = rentRoll.wale.waleByIncome < 2 ? RED : rentRoll.wale.waleByIncome < 4 ? AMBER : GREEN;
   const covRisk = coverage.icr < 1.25 ? RED : coverage.icr < 1.5 ? AMBER : GREEN;
   const yLabel = state.y;
   setText(state.doc, BODY_TEXT);
@@ -515,18 +515,18 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
   state.y = yLabel + 5;
   const chipsY = state.y;
   drawChip(state.doc, MARGIN, chipsY, `Concentration ${concentration.toFixed(0)}%`, concRisk);
-  drawChip(state.doc, MARGIN + 50, chipsY, `WALE ${rentRoll.wale.byIncome.toFixed(1)}y`, waleRisk);
+  drawChip(state.doc, MARGIN + 50, chipsY, `WALE ${rentRoll.wale.waleByIncome.toFixed(1)}y`, waleRisk);
   drawChip(state.doc, MARGIN + 95, chipsY, `ICR ${coverage.icr.toFixed(2)}x`, covRisk);
   state.y += 10;
 
   // ── 10. RECOMMENDATION ─────────────────────────────────────────────────
   sectionTitle(state, 9, 'Recommendation & Exit Strategy');
   const verdict = (() => {
-    if (bc.band === 'green' && rentRoll.wale.byIncome >= 4 && concentration <= 40) {
+    if (bc.band === 'green' && rentRoll.wale.waleByIncome >= 4 && concentration <= 40) {
       return { label: 'PROCEED', color: GREEN, body:
         'Asset metrics support acquisition at the indicative debt structure. WALE provides meaningful income runway and tenant concentration is within tolerance.' };
     }
-    if (bc.band === 'amber' || rentRoll.wale.byIncome < 4 || concentration > 40) {
+    if (bc.band === 'amber' || rentRoll.wale.waleByIncome < 4 || concentration > 40) {
       return { label: 'PROCEED WITH CONDITIONS', color: AMBER, body:
         'Acquisition is supportable but requires mitigation — consider reduced LVR, tenant covenant strength review, or repositioning of short-WALE income.' };
     }
