@@ -573,11 +573,12 @@ export const PAGE_PRESSURE_TRIM_ORDER: ReadonlyArray<{
 // ─── Protected section ids (never trim under page pressure) ─────────────────
 
 export const PROTECTED_SECTION_IDS: ReadonlySet<string> = new Set([
-  'compass.futureInfrastructure',
-  'compass.riskRegister',
-  'compass.zoningPlanning',
-  'compass.dueDiligence',
-  'compass.propertyAssessment',
+  'compass.executiveVerdict',
+  'compass.whyLocationMatters',
+  'compass.propertyFit',
+  'compass.riskDashboard',
+  'compass.dueDiligenceChecklist',
+  'compass.finalRecommendation',
 ]);
 
 // ─── Approved hand-off copy (placed at the bottom of Exec Summary) ──────────
