@@ -91,13 +91,6 @@ export default function CashFlowAnalysis() {
       // Fetch full payload by ID even if it's not in the loaded list (paginated/older reports)
       openAnalysisForReport(summary || ({ id: reportId, property_address: '' } as InvestmentReport));
       setSearchParams({}, { replace: true });
-        toast({
-          title: "Report not found",
-          description: "The requested report could not be found or doesn't have required cash flow data.",
-          variant: "destructive",
-        });
-        setSearchParams({}, { replace: true });
-      }
       setHasHandledDeepLink(true);
     }
   }, [loading, reports, searchParams, hasHandledDeepLink, navigate]);
