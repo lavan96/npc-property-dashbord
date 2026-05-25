@@ -1287,9 +1287,22 @@ Generate the ${sectionDef.name} sections now:`;
       // to continue from where it left off so the last paragraph isn't cut
       // off on the final PDF page. Up to 2 continuation rounds per section.
       let continuationRounds = 0;
-      while (finishReason === 'length' && continuationRounds < 2) {
+      // Treat content as truncated if API said so OR the tail ends mid-thought:
+      //   • trailing comma / colon / dash / ellipsis
+      //   • dangling "First,", "Second," etc.
+      //   • last paragraph is suspiciously short for a real conclusion
+      const endsMidThought = (s: string): boolean => {
+        const tail = s.trimEnd().slice(-200);
+        if (!tail) return false;
+        if (/[,:;\-–—]$/.test(tail)) return true;
+        if (/\.{3}$/.test(tail) || /…$/.test(tail)) return true;
+        if (/\b(First|Second|Third|Finally|In summary|Importantly|Crucially),?\s*$/i.test(tail)) return true;
+        if (!/[.!?")\]}]$/.test(tail)) return true;
+        return false;
+      };
+      while ((finishReason === 'length' || endsMidThought(content)) && continuationRounds < 2) {
         continuationRounds++;
-        console.log(`↪️  Section ${sectionDef.name} hit max_tokens — requesting continuation (round ${continuationRounds})`);
+        console.log(`↪️  Section ${sectionDef.name} appears truncated (finish=${finishReason}) — continuation round ${continuationRounds}`);
         const tail = content.slice(-1200);
         const continuePrompt = `You were writing the "${sectionDef.name}" section of an investment report and were cut off mid-thought. Continue writing from EXACTLY where you stopped. Do NOT repeat any earlier text, do NOT restart the section, do NOT add a preamble. Simply resume the next words and finish the section cleanly.\n\nLast 1200 characters you produced (your reply will be appended directly after the final character):\n\n${tail}`;
         try {
