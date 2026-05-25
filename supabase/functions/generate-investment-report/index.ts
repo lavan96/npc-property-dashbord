@@ -436,6 +436,101 @@ function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'
   ].join('\n');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Compass-40 content sanitizer
+//
+// Compass-40 is the "Location & Property Fit" report. Even with the prompt
+// overlay + canonical section list, Perplexity occasionally leaks financial
+// KPI rows ("Purchase Price | $681,000"), KPI dashboard tiles, citation
+// placeholders ("[1][2]") and stops mid-sentence when it hits max_tokens.
+// This sanitizer scrubs the leaks and trims trailing partial sentences so
+// the rendered PDF never shows a half-finished paragraph.
+// ─────────────────────────────────────────────────────────────────────────────
+const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
+  /^[\s>*\-]*\**\s*(Estimated\s+)?Purchase\s+Price\b/i,
+  /^[\s>*\-]*\**\s*(Estimated\s+)?Weekly\s+Rent\b/i,
+  /^[\s>*\-]*\**\s*Loan[-\s]?to[-\s]?Value\b/i,
+  /^[\s>*\-]*\**\s*LVR\b/i,
+  /^[\s>*\-]*\**\s*(Gross|Net)\s+(Rental\s+)?Yield\b/i,
+  /^[\s>*\-]*\**\s*Annual\s+Rental\s+Income\b/i,
+  /^[\s>*\-]*\**\s*Loan\s+Amount\b/i,
+  /^[\s>*\-]*\**\s*Interest\s+Rate\s+Assumption\b/i,
+  /^[\s>*\-]*\**\s*Deposit\s+Required\b/i,
+  /^[\s>*\-]*\**\s*Stamp\s+Duty\b/i,
+  /^[\s>*\-]*\**\s*Monthly\s+Repayment\b/i,
+  /^[\s>*\-]*\**\s*Cashflow\b/i,
+  /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
+];
+
+// Table rows / KPI cells we should drop wholesale.
+const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
+  /\|\s*\$\d[\d,]*\s*\|/,
+  /\|\s*\d+(\.\d+)?\s*%\s*\|/,
+  /\|\s*[Ll][Vv][Rr]\s*\|/,
+  /\|\s*(Gross|Net)\s+Yield\s*\|/i,
+  /\|\s*Weekly\s+Rent\s*\|/i,
+  /\|\s*Purchase\s+Price\s*\|/i,
+];
+
+function sanitizeCompass40Content(raw: string): string {
+  if (!raw) return raw;
+  const lines = raw.split('\n');
+  const kept: string[] = [];
+  let inForbiddenTable = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('|')) {
+      if (COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(trimmed))
+          || COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(trimmed))) {
+        inForbiddenTable = true;
+        continue;
+      }
+      if (inForbiddenTable) continue;
+    } else if (inForbiddenTable) {
+      inForbiddenTable = false;
+    }
+
+    if (COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(line))) continue;
+
+    kept.push(line);
+  }
+
+  let out = kept.join('\n');
+
+  // Strip Perplexity-style inline citation markers like [1], [2], [1][3]
+  out = out.replace(/\[\d+\](?:\[\d+\])*/g, '');
+
+  // Strip placeholder tokens.
+  out = out.replace(/\[(citation|source needed|TBD|placeholder)\]/gi, '');
+
+  // Trim trailing partial sentence (when model hit max_tokens mid-thought).
+  out = trimDanglingSentence(out);
+
+  // Collapse 3+ blank lines that result from dropped rows.
+  out = out.replace(/\n{3,}/g, '\n\n').trimEnd();
+
+  return out;
+}
+
+function trimDanglingSentence(text: string): string {
+  if (!text) return text;
+  if (/[.!?")\]}]\s*$/.test(text)) return text;
+  const lastTerminator = Math.max(
+    text.lastIndexOf('. '),
+    text.lastIndexOf('! '),
+    text.lastIndexOf('? '),
+    text.lastIndexOf('.\n'),
+    text.lastIndexOf('!\n'),
+    text.lastIndexOf('?\n'),
+  );
+  if (lastTerminator > text.length - 800 && lastTerminator > 200) {
+    return text.slice(0, lastTerminator + 1).trimEnd();
+  }
+  return text;
+}
+
 // Dynamic sections - populated from database template at runtime
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
@@ -4093,67 +4188,88 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
       console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
 
-      // Always start from legacy default sections; compass-40 reuses this base.
-      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+      // ── COMPASS-40 SHORT-CIRCUIT ──────────────────────────────────────────
+      // When the user picks the Compass-40 engine we DO NOT load the legacy
+      // 12-group section list or the legacy DB AI-structure template. The
+      // legacy template is what was forcing financial KPI rows, P&I cashflow,
+      // 10-year projections and the duplicate "Property Snapshot" pages into
+      // the output. Instead we use the curated 17-section canonical Compass
+      // registry (no financials) and a thin canonical template context. The
+      // Compass-40 overlay below still runs on top to enforce style rules.
+      if (compass40OverlayActive) {
+        REPORT_SECTIONS = getCanonicalSectionsForTier('compass-40');
+        templateContext = buildCanonicalTemplateContext('compass-40');
+        // Bump per-section tokens by ~30% to stop mid-sentence truncations
+        // observed in the legacy output. Cap at 6000 to protect latency.
+        REPORT_SECTIONS = REPORT_SECTIONS.map((s) => ({
+          ...s,
+          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.3)),
+        }));
+        console.log(`✓ Compass-40: using canonical ${REPORT_SECTIONS.length}-section registry (legacy template bypassed)`);
+      } else {
+        // Always start from legacy default sections; legacy engine reuses this base.
+        REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
 
-      const templateClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
+        const templateClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
 
-      let { data: templates, error: templateError } = await templateClient
-        .from('report_structure_templates')
-        .select('id, name, parsed_content, report_tier, report_category')
-        .eq('template_type', 'ai_structure')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
+        let { data: templates, error: templateError } = await templateClient
+          .from('report_structure_templates')
+          .select('id, name, parsed_content, report_tier, report_category')
+          .eq('template_type', 'ai_structure')
+          .eq('is_active', true)
+          .order('priority', { ascending: false });
 
-      if (templateError) {
-        console.log('⚠️ Template query error:', templateError.message);
-      } else if (templates && templates.length > 0) {
-        let selectedTemplate = templates.find(t =>
-          t.report_tier === reportTier && t.report_category === reportCategory
-        ) || templates.find(t =>
-          t.report_tier === reportTier && !t.report_category
-        ) || templates.find(t =>
-          !t.report_tier && t.report_category === reportCategory
-        ) || templates.find(t =>
-          !t.report_tier && !t.report_category
-        ) || templates[0];
+        if (templateError) {
+          console.log('⚠️ Template query error:', templateError.message);
+        } else if (templates && templates.length > 0) {
+          let selectedTemplate = templates.find(t =>
+            t.report_tier === reportTier && t.report_category === reportCategory
+          ) || templates.find(t =>
+            t.report_tier === reportTier && !t.report_category
+          ) || templates.find(t =>
+            !t.report_tier && t.report_category === reportCategory
+          ) || templates.find(t =>
+            !t.report_tier && !t.report_category
+          ) || templates[0];
 
-        if (selectedTemplate?.parsed_content) {
-          templateContext = selectedTemplate.parsed_content;
-          console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
-          console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
-          console.log(`  Content size: ${templateContext.length} chars`);
+          if (selectedTemplate?.parsed_content) {
+            templateContext = selectedTemplate.parsed_content;
+            console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
+            console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
+            console.log(`  Content size: ${templateContext.length} chars`);
 
-          console.log('\n📋 Parsing template structure...');
-          const parsedStructure = parseTemplateStructure(
-            templateContext,
-            selectedTemplate.name,
-            selectedTemplate.id
-          );
+            console.log('\n📋 Parsing template structure...');
+            const parsedStructure = parseTemplateStructure(
+              templateContext,
+              selectedTemplate.name,
+              selectedTemplate.id
+            );
 
-          if (parsedStructure.sections.length > 0) {
-            REPORT_SECTIONS = parsedStructure.sections;
-            console.log(`✓ REPORT_SECTIONS updated with ${REPORT_SECTIONS.length} sections from template`);
-            console.log(`  Template headings found: ${parsedStructure.headings.length}`);
+            if (parsedStructure.sections.length > 0) {
+              REPORT_SECTIONS = parsedStructure.sections;
+              console.log(`✓ REPORT_SECTIONS updated with ${REPORT_SECTIONS.length} sections from template`);
+              console.log(`  Template headings found: ${parsedStructure.headings.length}`);
+            } else {
+              console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
+              REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+            }
           } else {
-            console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
+            console.log('⚠️ Template found but parsed_content is empty');
             REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
           }
         } else {
-          console.log('⚠️ Template found but parsed_content is empty');
+          console.log('ℹ️ No active AI structure templates found in database');
           REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
         }
-      } else {
-        console.log('ℹ️ No active AI structure templates found in database');
-        REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
       }
     } catch (templateError: any) {
       console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
       REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
     }
+
 
     // Inject template context into prompt if available
     if (templateContext) {
@@ -4250,9 +4366,14 @@ Aim for ~38–42 pages total after these trims. If the template would push you l
 
 ---
 `;
-      prompt = prompt + compass40Overlay;
-      console.log(`✓ Compass-40 overlay injected. Prompt length now: ${prompt.length}`);
+      // Append at end AND prepend a short hard-rule banner at the very start
+      // so the model sees the financial exclusions before any legacy template
+      // language it may still be biased by from training data.
+      const compass40Banner = `\n**⚠️ COMPASS-40 HARD RULES (read first, apply globally)**\n- This is a Location & Property Fit report. NO financial modelling appears anywhere: no purchase price, weekly rent, LVR, gross/net yield, loan amount, interest rate, monthly/annual repayment, cashflow, sensitivity, 10-year projections, stamp duty, deposit, LMI, depreciation, negative gearing, land tax.\n- NO KPI dashboard tiles or rows. NO "Purchase Price | $X | Weekly Rent | $Y" tables.\n- NO inline citation markers like [1] [2] [1][2] — name the real source inline or omit the claim.\n- Finish every sentence and paragraph. Do NOT stop mid-thought. If running out of room, end the section cleanly.\n- Render Education, Transport and Employment exactly ONCE, in their own dedicated sections, never repeated under other sections.\n---\n`;
+      prompt = compass40Banner + prompt + compass40Overlay;
+      console.log(`✓ Compass-40 banner + overlay injected. Prompt length now: ${prompt.length}`);
     }
+
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
     const _brandSys = await getBrandConfig();
@@ -4472,6 +4593,16 @@ YOUR DEDICATED PROPERTY PARTNER
             .replace(/^(Here|I will|Let me|Now|The following).*?:\s*/im, '')
             .replace(/^(Certainly|Sure|Of course).*?\n/im, '')
             .trim();
+
+          // Compass-40: scrub financial leaks, citation markers, dangling sentences.
+          if (compass40OverlayActive) {
+            const before = cleanContent.length;
+            cleanContent = sanitizeCompass40Content(cleanContent);
+            if (cleanContent.length !== before) {
+              console.log(`🧼 Compass-40 sanitizer: ${before} → ${cleanContent.length} chars (section "${sectionDef.name}")`);
+            }
+          }
+
           
           // Validate section content
           const validation = validateSectionContent(sectionDef, cleanContent);
