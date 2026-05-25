@@ -3,7 +3,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useAuth } from '@/hooks/useAuth';
 
 export type ReportScope = 'address' | 'suburb' | 'zipcode' | 'state';
-export type ReportTier = 'compass' | 'strategic' | 'briefing' | 'snapshot';
+export type ReportTier = 'compass' | 'strategic' | 'briefing' | 'snapshot' | 'financial';
 
 export interface ReportPreferences {
   default_scope: ReportScope;

@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
-import { Compass, FileText, Zap } from 'lucide-react';
+import { Compass, FileText, Zap, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ReportTier = 'compass' | 'briefing' | 'snapshot';
+export type ReportTier = 'compass' | 'briefing' | 'snapshot' | 'financial';
 
 interface TierBadgeProps {
   tier: ReportTier;
@@ -15,10 +15,20 @@ export const TIER_INFO = {
   compass: {
     name: "Investor's Compass",
     shortName: 'Compass',
-    description: 'Comprehensive 50+ page in-depth analysis',
-    pages: '50+',
+    // 40-page client-facing macro / suburb / planning / risk / property-fit report.
+    description: 'Client-facing 40-page macro, suburb, planning & risk report',
+    pages: '~40',
     icon: Compass,
     color: 'bg-amber-500 text-white hover:bg-amber-600',
+    badgeVariant: 'default' as const,
+  },
+  financial: {
+    name: 'Financial Analysis',
+    shortName: 'Financial',
+    description: 'Separate financial breakdown: yield, loan, cashflow, 10-yr, tax',
+    pages: '~20',
+    icon: Calculator,
+    color: 'bg-emerald-600 text-white hover:bg-emerald-700',
     badgeVariant: 'default' as const,
   },
   briefing: {
