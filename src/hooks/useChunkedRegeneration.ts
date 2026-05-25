@@ -5,9 +5,12 @@ import { sectionCountForTier, normaliseReportTier } from '@/lib/reports/compassS
 
 export type RegenerationPhase = 'idle' | 'generate' | 'condense' | 'qa' | 'done';
 
+export type GenerationEngine = 'legacy' | 'compass-40';
+
 interface ChunkedRegenerationOptions {
   reportId: string;
   propertyAddress: string;
+  generationEngine?: GenerationEngine;
   manualOverrides?: Record<string, any>;
   financialCalculations?: Record<string, any>;
   currentReportContent?: string;
