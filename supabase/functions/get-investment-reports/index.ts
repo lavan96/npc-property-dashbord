@@ -25,6 +25,7 @@ interface RequestBody {
     orderBy?: string;
     orderAsc?: boolean;
     limit?: number;
+    offset?: number;
     createdAfter?: string; // ISO date string
     createdBefore?: string; // ISO date string
     hasPropertyListingId?: boolean; // For filtering auto-generated reports
