@@ -66,7 +66,7 @@ export function useChunkedRegeneration() {
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier, generation_engine'
         }
       });
 
