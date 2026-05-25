@@ -4093,67 +4093,88 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
       console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
 
-      // Always start from legacy default sections; compass-40 reuses this base.
-      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+      // ── COMPASS-40 SHORT-CIRCUIT ──────────────────────────────────────────
+      // When the user picks the Compass-40 engine we DO NOT load the legacy
+      // 12-group section list or the legacy DB AI-structure template. The
+      // legacy template is what was forcing financial KPI rows, P&I cashflow,
+      // 10-year projections and the duplicate "Property Snapshot" pages into
+      // the output. Instead we use the curated 17-section canonical Compass
+      // registry (no financials) and a thin canonical template context. The
+      // Compass-40 overlay below still runs on top to enforce style rules.
+      if (compass40OverlayActive) {
+        REPORT_SECTIONS = getCanonicalSectionsForTier('compass-40');
+        templateContext = buildCanonicalTemplateContext('compass-40');
+        // Bump per-section tokens by ~30% to stop mid-sentence truncations
+        // observed in the legacy output. Cap at 6000 to protect latency.
+        REPORT_SECTIONS = REPORT_SECTIONS.map((s) => ({
+          ...s,
+          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.3)),
+        }));
+        console.log(`✓ Compass-40: using canonical ${REPORT_SECTIONS.length}-section registry (legacy template bypassed)`);
+      } else {
+        // Always start from legacy default sections; legacy engine reuses this base.
+        REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
 
-      const templateClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
+        const templateClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
 
-      let { data: templates, error: templateError } = await templateClient
-        .from('report_structure_templates')
-        .select('id, name, parsed_content, report_tier, report_category')
-        .eq('template_type', 'ai_structure')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
+        let { data: templates, error: templateError } = await templateClient
+          .from('report_structure_templates')
+          .select('id, name, parsed_content, report_tier, report_category')
+          .eq('template_type', 'ai_structure')
+          .eq('is_active', true)
+          .order('priority', { ascending: false });
 
-      if (templateError) {
-        console.log('⚠️ Template query error:', templateError.message);
-      } else if (templates && templates.length > 0) {
-        let selectedTemplate = templates.find(t =>
-          t.report_tier === reportTier && t.report_category === reportCategory
-        ) || templates.find(t =>
-          t.report_tier === reportTier && !t.report_category
-        ) || templates.find(t =>
-          !t.report_tier && t.report_category === reportCategory
-        ) || templates.find(t =>
-          !t.report_tier && !t.report_category
-        ) || templates[0];
+        if (templateError) {
+          console.log('⚠️ Template query error:', templateError.message);
+        } else if (templates && templates.length > 0) {
+          let selectedTemplate = templates.find(t =>
+            t.report_tier === reportTier && t.report_category === reportCategory
+          ) || templates.find(t =>
+            t.report_tier === reportTier && !t.report_category
+          ) || templates.find(t =>
+            !t.report_tier && t.report_category === reportCategory
+          ) || templates.find(t =>
+            !t.report_tier && !t.report_category
+          ) || templates[0];
 
-        if (selectedTemplate?.parsed_content) {
-          templateContext = selectedTemplate.parsed_content;
-          console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
-          console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
-          console.log(`  Content size: ${templateContext.length} chars`);
+          if (selectedTemplate?.parsed_content) {
+            templateContext = selectedTemplate.parsed_content;
+            console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
+            console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
+            console.log(`  Content size: ${templateContext.length} chars`);
 
-          console.log('\n📋 Parsing template structure...');
-          const parsedStructure = parseTemplateStructure(
-            templateContext,
-            selectedTemplate.name,
-            selectedTemplate.id
-          );
+            console.log('\n📋 Parsing template structure...');
+            const parsedStructure = parseTemplateStructure(
+              templateContext,
+              selectedTemplate.name,
+              selectedTemplate.id
+            );
 
-          if (parsedStructure.sections.length > 0) {
-            REPORT_SECTIONS = parsedStructure.sections;
-            console.log(`✓ REPORT_SECTIONS updated with ${REPORT_SECTIONS.length} sections from template`);
-            console.log(`  Template headings found: ${parsedStructure.headings.length}`);
+            if (parsedStructure.sections.length > 0) {
+              REPORT_SECTIONS = parsedStructure.sections;
+              console.log(`✓ REPORT_SECTIONS updated with ${REPORT_SECTIONS.length} sections from template`);
+              console.log(`  Template headings found: ${parsedStructure.headings.length}`);
+            } else {
+              console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
+              REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+            }
           } else {
-            console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
+            console.log('⚠️ Template found but parsed_content is empty');
             REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
           }
         } else {
-          console.log('⚠️ Template found but parsed_content is empty');
+          console.log('ℹ️ No active AI structure templates found in database');
           REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
         }
-      } else {
-        console.log('ℹ️ No active AI structure templates found in database');
-        REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
       }
     } catch (templateError: any) {
       console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
       REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
     }
+
 
     // Inject template context into prompt if available
     if (templateContext) {
