@@ -221,7 +221,7 @@ export default function CashFlowAnalysis() {
                   First, configure the required fields (purchase price, rent, interest rate, etc.) 
                   in the Manual Data Override modal, then generate the 10-year projection here.
                   <span className="block mt-1 text-xs opacity-75">
-                    Showing reports from the last 30 days. Archived reports are hidden.
+                    Showing reports from {dateRangeLabel}. Archived reports are hidden.
                   </span>
                 </p>
               </div>
