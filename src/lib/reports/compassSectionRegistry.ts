@@ -162,10 +162,12 @@ export function normaliseReportTier(raw: unknown): NormalisedTier {
 
 /**
  * Number of generation chunks the chunked-regeneration loop should run
- * for a given tier. Drives the "X / Y" progress indicator.
+ * for a given tier. This is intentionally NOT the final rendered section/page
+ * count: the generator still emits larger source chunks, then the Compass
+ * post-processor maps them into the 40-page architecture.
  */
 export function sectionCountForTier(raw: unknown): number {
   return normaliseReportTier(raw) === 'financial-analysis'
-    ? financialSections().length
-    : compassSections().length;
+    ? FINANCIAL_ANALYSIS_SECTIONS.length
+    : 12;
 }
