@@ -44,19 +44,31 @@ export default function CashFlowAnalysis() {
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
-  
+  const [dateRange, setDateRange] = useState<'30' | '90' | '180' | '365' | 'all'>('30');
+
   const { toast } = useToast();
-  
-  // 30-day cutoff for active reports - memoized to prevent recreation on each render
-  const thirtyDaysAgo = useMemo(() => {
+
+  const dateRangeCutoff = useMemo(() => {
+    if (dateRange === 'all') return null;
     const date = new Date();
-    date.setDate(date.getDate() - 30);
+    date.setDate(date.getDate() - parseInt(dateRange, 10));
     return date;
-  }, []);
+  }, [dateRange]);
+
+  const dateRangeLabel = useMemo(() => {
+    switch (dateRange) {
+      case '30': return 'last 30 days';
+      case '90': return 'last 90 days';
+      case '180': return 'last 6 months';
+      case '365': return 'last 12 months';
+      case 'all': return 'all time';
+    }
+  }, [dateRange]);
 
   useEffect(() => {
     fetchReports();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange]);
 
   // Handle deep-linking: auto-open analysis from URL params
   useEffect(() => {
@@ -112,16 +124,20 @@ export default function CashFlowAnalysis() {
       setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Apply 30-day cutoff and exclude archived reports
+      const listOptions: Record<string, any> = {
+        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
+        status: 'completed',
+        isArchived: false,
+        orderBy: 'created_at',
+        orderAsc: false,
+        limit: 500,
+      };
+      if (dateRangeCutoff) {
+        listOptions.createdAfter = dateRangeCutoff.toISOString();
+      }
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
-        listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
-          status: 'completed',
-          isArchived: false,
-          createdAfter: thirtyDaysAgo.toISOString(),
-          orderBy: 'created_at',
-          orderAsc: false
-        }
+        listOptions,
       });
 
       if (error) throw new Error(error.message);
@@ -205,7 +221,7 @@ export default function CashFlowAnalysis() {
                   First, configure the required fields (purchase price, rent, interest rate, etc.) 
                   in the Manual Data Override modal, then generate the 10-year projection here.
                   <span className="block mt-1 text-xs opacity-75">
-                    Showing reports from the last 30 days. Archived reports are hidden.
+                    Showing reports from {dateRangeLabel}. Archived reports are hidden.
                   </span>
                 </p>
               </div>
@@ -224,6 +240,18 @@ export default function CashFlowAnalysis() {
               className="pl-10"
             />
           </div>
+          <Select value={dateRange} onValueChange={(value: typeof dateRange) => setDateRange(value)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="180">Last 6 months</SelectItem>
+              <SelectItem value="365">Last 12 months</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={buildTypeFilter} onValueChange={(value: BuildTypeFilter) => setBuildTypeFilter(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Build Type" />
