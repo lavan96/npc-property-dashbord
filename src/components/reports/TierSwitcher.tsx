@@ -163,7 +163,7 @@ export function TierSwitcher({
         <DropdownMenuLabel>Report Versions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {(['compass', 'briefing', 'snapshot'] as ReportTier[]).map((tier) => {
+        {(['compass', 'financial', 'briefing', 'snapshot'] as ReportTier[]).map((tier) => {
           const info = TIER_INFO[tier];
           const Icon = getTierIcon(tier);
           const isCurrentTier = tier === currentTier;
