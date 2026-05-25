@@ -82,19 +82,15 @@ export default function CashFlowAnalysis() {
     const action = searchParams.get('action'); // 'view' or 'analyze' (default: analyze)
     
     if (reportId) {
-      const report = reports.find(r => r.id === reportId);
-      if (report) {
-        if (action === 'view') {
-          // For viewing the full report, redirect to Generated Reports page
-          navigate(`/generated-reports?reportId=${reportId}`, { replace: true });
-        } else {
-          // Default action is to open cash flow analysis modal
-          setSelectedReport(report);
-          setAnalysisModalOpen(true);
-          // Clear URL params after handling
-          setSearchParams({}, { replace: true });
-        }
-      } else {
+      if (action === 'view') {
+        navigate(`/generated-reports?reportId=${reportId}`, { replace: true });
+        setHasHandledDeepLink(true);
+        return;
+      }
+      const summary = reports.find(r => r.id === reportId);
+      // Fetch full payload by ID even if it's not in the loaded list (paginated/older reports)
+      openAnalysisForReport(summary || ({ id: reportId, property_address: '' } as InvestmentReport));
+      setSearchParams({}, { replace: true });
         toast({
           title: "Report not found",
           description: "The requested report could not be found or doesn't have required cash flow data.",
