@@ -22,8 +22,8 @@ import {
   COMPASS_PAGE_BAND,
   PROTECTED_SECTION_IDS,
   type CompassSectionDefinition,
-} from './compassSectionRegistry.ts';
-import { countWords, estimatePages } from './compassPostProcessor.ts';
+} from './compassSectionRegistry';
+import { countWords, estimatePages } from './compassPostProcessor';
 
 export type QASeverity = 'error' | 'warning' | 'info';
 
