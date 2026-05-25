@@ -96,10 +96,10 @@ summary pointing to the Financial Analysis Report
 
 | Phase | Status |
 |---|---|
-| 1 — Classification metadata layer | **Done** (this PR) |
-| 2 — Compass-40 section registry + UI tier | **Done** (this PR) |
-| 3 — Financial Analysis Report generator branch | Next |
-| 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | Pending |
+| 1 — Classification metadata layer | **Done** |
+| 2 — Compass-40 section registry + UI tier | **Done** |
+| 3 — Financial Analysis Report generator branch | **Done** — `condense-investment-report` accepts `targetTier='financial'`, structure guide added, TierSwitcher surfaces the action |
+| 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | Next |
 | 5 — Word-cap enforcement (prompt + post-trim) | Pending |
 | 6 — Page-pressure trimming engine | Pending |
 | 7 — QA automation (page band, financial exclusion, duplicates, artefacts) | Pending |
