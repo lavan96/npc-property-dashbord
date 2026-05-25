@@ -2200,18 +2200,36 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       // Helper to detect and extract "What This Means" callout content
       const isCalloutParagraph = (text: string): { isCallout: boolean; content: string } => {
         const calloutPatterns = [
-          /^\*?\*?What This Means\*?\*?[:\s]*(.*)/is,
-          /^\*?\*?What this means for you\*?\*?[:\s]*(.*)/is,
-          /^\*?\*?Key Takeaway\*?\*?[:\s]*(.*)/is,
-          /^\*?\*?Practical Implication\*?\*?[:\s]*(.*)/is,
-          /^\*?\*?Bottom Line\*?\*?[:\s]*(.*)/is,
-          /^\*?\*?In Practice\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?\s*#{0,6}\s*What\s*This\s*Means(?:\s*for\s*you)?\*?\*?[:\s\-–—]*([\s\S]*)/i,
+          /^\*?\*?\s*#{0,6}\s*Key\s*Takeaway\*?\*?[:\s\-–—]*([\s\S]*)/i,
+          /^\*?\*?\s*#{0,6}\s*Practical\s*Implication\*?\*?[:\s\-–—]*([\s\S]*)/i,
+          /^\*?\*?\s*#{0,6}\s*Bottom\s*Line\*?\*?[:\s\-–—]*([\s\S]*)/i,
+          /^\*?\*?\s*#{0,6}\s*In\s*Practice\*?\*?[:\s\-–—]*([\s\S]*)/i,
         ];
-        
+
         for (const pattern of calloutPatterns) {
           const match = text.match(pattern);
           if (match) {
-            return { isCallout: true, content: match[1]?.trim() || text };
+            let content = (match[1] ?? '').trim();
+            // Strip nested/repeated label prefixes (e.g. "**What This Means**\nWhat This Means: ...")
+            for (let i = 0; i < 3; i++) {
+              const inner = content.match(
+                /^\*?\*?\s*#{0,6}\s*(?:What\s*This\s*Means(?:\s*for\s*you)?|Key\s*Takeaway|Practical\s*Implication|Bottom\s*Line|In\s*Practice)\*?\*?[:\s\-–—]*([\s\S]*)/i,
+              );
+              if (!inner) break;
+              content = (inner[1] ?? '').trim();
+            }
+            // Strip citation/placeholder noise
+            const stripped = content
+              .replace(/\[(?:provided[^\]]*|citation[^\]]*|n\/?a|tbd|todo|pending|placeholder)\]/gi, '')
+              .replace(/\((?:citation[^)]*|provided[^)]*)\)/gi, '')
+              .trim();
+            const junk = /^(?:[-–—_*•\s]+|n\/?a|tbd|todo|pending|placeholder)$/i;
+            if (!stripped || junk.test(stripped) || stripped.length < 15) {
+              // Empty/junk body → drop the entire paragraph so we never render an empty box or orphan label.
+              return { isCallout: true, content: '' };
+            }
+            return { isCallout: true, content: stripped };
           }
         }
         return { isCallout: false, content: text };
