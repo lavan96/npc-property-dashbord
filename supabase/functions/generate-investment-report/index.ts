@@ -4040,7 +4040,7 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       
       const rawTier = propertyDetails?.reportTier || 'compass';
       const canonicalTier = normaliseGenerationTier(rawTier);
-      const usesCanonicalCompassArchitecture = rawTier === 'compass-40' || rawTier === 'financial-analysis';
+      const usesCanonicalCompassArchitecture = ['compass', 'compass-40', 'financial', 'financial-analysis'].includes(rawTier);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
         'briefing': 'executive',  // Executive Briefing tier mapping
