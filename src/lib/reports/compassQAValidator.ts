@@ -160,6 +160,17 @@ export function runQAValidation(
     }
   }
 
+  // Rule 2b — forbidden placeholders / unresolved citations (both tiers)
+  for (const pat of FORBIDDEN_PLACEHOLDERS) {
+    if (pat.test(markdown)) {
+      findings.push({
+        rule: 'forbidden-placeholder',
+        severity: 'error',
+        message: `Report contains unresolved placeholder matching ${pat}. Replace with a real source reference or remove and consolidate into the source appendix.`,
+      });
+    }
+  }
+
   // Rule 3 — suburb-narrative exclusion (Financial only)
   if (tier === 'financial-analysis') {
     for (const pat of SUBURB_KEYWORDS) {
