@@ -1237,7 +1237,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope')
+          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope, report_tier')
           .eq('id', reportId)
           .single();
         
@@ -1251,6 +1251,14 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
           console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
+        }
+
+        if (existingReport?.report_tier && !propertyDetails?.reportTier) {
+          propertyDetails = {
+            ...(propertyDetails || {}),
+            reportTier: existingReport.report_tier,
+          };
+          console.log(`📋 Restored report_tier from existing report: ${existingReport.report_tier}`);
         }
 
         // Capture existing enhanced fields so we can avoid overwriting already-persisted values
