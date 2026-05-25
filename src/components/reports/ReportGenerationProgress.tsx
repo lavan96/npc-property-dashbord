@@ -20,6 +20,7 @@ import {
   type AutoContinueSettings,
   type ReportProgress,
 } from './progress/parts';
+import { sectionCountForTier } from '@/lib/reports/compassSectionRegistry';
 
 /* ---------- Settings persistence ---------- */
 
@@ -304,7 +305,7 @@ function ReportGenerationProgressInner() {
       listMode: true,
       listOptions: {
         select:
-          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id',
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
@@ -364,12 +365,14 @@ function ReportGenerationProgressInner() {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       const dbSection = report.last_completed_section || 0;
+      // Tier-aware total: Compass-40 ≈ 21 sections, Financial-Analysis ≈ 11 sections.
+      const total = sectionCountForTier(report.report_tier);
       return {
         id: report.id,
         property_address: report.property_address,
         status: report.status,
         sectionsCompleted: Math.max(sectionsCompleted, dbSection),
-        totalSections: 12,
+        totalSections: total,
         contentLength: content.length,
         error_message: report.error_message,
         lastUpdated: new Date(report.updated_at),

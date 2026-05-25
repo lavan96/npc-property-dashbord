@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
+import { sectionCountForTier, normaliseReportTier } from '@/lib/reports/compassSectionRegistry';
+
+export type RegenerationPhase = 'idle' | 'generate' | 'condense' | 'qa' | 'done';
 
 interface ChunkedRegenerationOptions {
   reportId: string;
@@ -8,7 +11,7 @@ interface ChunkedRegenerationOptions {
   manualOverrides?: Record<string, any>;
   financialCalculations?: Record<string, any>;
   currentReportContent?: string;
-  onProgress?: (section: number, total: number) => void;
+  onProgress?: (section: number, total: number, phase: RegenerationPhase) => void;
   onComplete?: () => void;
   onError?: (error: string) => void;
 }
@@ -17,20 +20,24 @@ interface RegenerationState {
   isRegenerating: boolean;
   currentSection: number;
   totalSections: number;
+  phase: RegenerationPhase;
+  tier: 'compass-40' | 'financial-analysis';
   error: string | null;
 }
 
-const TOTAL_SECTIONS = 12;
 const MAX_RETRIES_PER_SECTION = 2;
+const DEFAULT_TIER: 'compass-40' = 'compass-40';
 
 export function useChunkedRegeneration() {
   const [state, setState] = useState<RegenerationState>({
     isRegenerating: false,
     currentSection: 0,
-    totalSections: TOTAL_SECTIONS,
-    error: null
+    totalSections: sectionCountForTier(DEFAULT_TIER),
+    phase: 'idle',
+    tier: DEFAULT_TIER,
+    error: null,
   });
-  
+
   const abortRef = useRef(false);
 
   const regenerate = useCallback(async (options: ChunkedRegenerationOptions) => {
@@ -39,25 +46,23 @@ export function useChunkedRegeneration() {
       propertyAddress,
       manualOverrides = {},
       financialCalculations = {},
-      currentReportContent = '',
       onProgress,
       onComplete,
-      onError
+      onError,
     } = options;
 
     abortRef.current = false;
-    setState({ isRegenerating: true, currentSection: 0, totalSections: TOTAL_SECTIONS, error: null });
 
     const toastId = toast.loading('Starting regeneration...', {
       description: 'Preparing to regenerate report in chunks...'
     });
 
     try {
-      // Fetch current report state to get data for regeneration
+      // Fetch current report state — include `report_tier` so we know the section count.
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier'
         }
       });
 
@@ -66,42 +71,47 @@ export function useChunkedRegeneration() {
       }
 
       const report = reportData?.report;
-      let startSection = 0;
-      
-      // For regeneration, we want to start fresh - reset last_completed_section to 0
-      // But first, archive the current version
-      if (report?.report_content && report?.current_version) {
-        console.log(`[ChunkedRegeneration] Archiving current version ${report.current_version} before regeneration`);
-        // The version archiving is handled by the edge function when it detects existing content
-      }
+      const tier = normaliseReportTier(report?.report_tier);
+      const totalSections = sectionCountForTier(tier);
 
-      // Reset for fresh regeneration - set last_completed_section to 0
+      setState({
+        isRegenerating: true,
+        currentSection: 0,
+        totalSections,
+        phase: 'generate',
+        tier,
+        error: null,
+      });
+
+      // Reset for fresh regeneration
       await invokeSecureFunction('manage-investment-reports', {
         action: 'update',
         reportId,
-        data: { 
-          status: 'processing', 
+        data: {
+          status: 'processing',
           error_message: null,
-          last_completed_section: 0 // Reset for fresh generation
+          last_completed_section: 0,
         }
       });
-      
-      // Use property address from existing report if not provided
-      const effectivePropertyAddress = propertyAddress || report?.property_address || '';
 
-      // Generate sections one at a time
-      for (let section = startSection; section < TOTAL_SECTIONS; section++) {
+      const effectivePropertyAddress = propertyAddress || report?.property_address || '';
+      const startSection = 0;
+
+      // ── Phase 1: Generate sections ────────────────────────────────────────
+      for (let section = startSection; section < totalSections; section++) {
         if (abortRef.current) {
           console.log('[ChunkedRegeneration] Aborted by user');
           break;
         }
 
-        setState(prev => ({ ...prev, currentSection: section + 1 }));
-        onProgress?.(section + 1, TOTAL_SECTIONS);
+        setState(prev => ({ ...prev, currentSection: section + 1, phase: 'generate' }));
+        onProgress?.(section + 1, totalSections, 'generate');
 
-        toast.loading(`Generating section ${section + 1}/${TOTAL_SECTIONS}...`, {
+        toast.loading(`Generating section ${section + 1}/${totalSections}…`, {
           id: toastId,
-          description: 'Using Perplexity AI for fresh qualitative analysis'
+          description: tier === 'financial-analysis'
+            ? 'Financial Analysis Report'
+            : 'Compass-40 Report',
         });
 
         let sectionSuccess = false;
@@ -109,23 +119,21 @@ export function useChunkedRegeneration() {
 
         for (let retry = 0; retry < MAX_RETRIES_PER_SECTION && !sectionSuccess; retry++) {
           if (retry > 0) {
-            console.log(`[ChunkedRegeneration] Retry ${retry + 1} for section ${section + 1}`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
 
-          // Use the main generate-investment-report function with singleSection mode
-          // CRITICAL: Pass queryType from existing report's report_scope to prevent scope misclassification
           const { data, error } = await invokeSecureFunction('generate-investment-report', {
             reportId,
             propertyAddress: effectivePropertyAddress,
             propertyDetails: {
-              queryType: report?.report_scope || 'address', // Preserve the original scope
+              queryType: report?.report_scope || 'address',
+              reportTier: tier,
               manualOverrides: manualOverrides || report?.manual_overrides || {},
               ...financialCalculations,
-              ...(report?.financial_calculations || {})
+              ...(report?.financial_calculations || {}),
             },
             continueFrom: true,
-            singleSection: true // Key flag for chunked mode - generates one section per call
+            singleSection: true,
           });
 
           if (error) {
@@ -136,8 +144,6 @@ export function useChunkedRegeneration() {
 
           if (data?.success) {
             sectionSuccess = true;
-            
-            // Check if this was the final section
             if (data.isComplete) {
               console.log('[ChunkedRegeneration] All sections complete');
               break;
@@ -152,21 +158,48 @@ export function useChunkedRegeneration() {
         }
       }
 
-      // Fetch final status to confirm completion
+      // ── Phase 2: Condense + page-pressure trim ────────────────────────────
+      if (!abortRef.current) {
+        setState(prev => ({ ...prev, phase: 'condense', currentSection: totalSections }));
+        onProgress?.(totalSections, totalSections, 'condense');
+        toast.loading('Condensing report (word caps + page pressure)…', { id: toastId });
+
+        try {
+          await invokeSecureFunction('condense-investment-report', { reportId, tier });
+        } catch (e: any) {
+          console.warn('[ChunkedRegeneration] Condense step soft-failed:', e?.message);
+        }
+      }
+
+      // ── Phase 3: QA validation (server returns qaReport inside condense response;
+      //              we surface the phase for UX even though the work happens
+      //              inside the same edge call). ───────────────────────────────
+      if (!abortRef.current) {
+        setState(prev => ({ ...prev, phase: 'qa' }));
+        onProgress?.(totalSections, totalSections, 'qa');
+        toast.loading('Running QA checks…', { id: toastId });
+      }
+
+      // Final status check
       const { data: finalData } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: { select: 'status, current_version, last_completed_section' }
       });
 
       const finalReport = finalData?.report;
-      
-      if (finalReport?.last_completed_section >= TOTAL_SECTIONS) {
+
+      if (finalReport?.last_completed_section >= totalSections) {
         toast.success('Report regenerated successfully', {
           id: toastId,
-          description: `Version ${finalReport.current_version || 'new'} created with updated analysis`
+          description: `Version ${finalReport.current_version || 'new'} created`,
         });
-        
-        setState(prev => ({ ...prev, isRegenerating: false, currentSection: TOTAL_SECTIONS }));
+
+        setState(prev => ({
+          ...prev,
+          isRegenerating: false,
+          currentSection: totalSections,
+          phase: 'done',
+        }));
         onComplete?.();
       } else {
         throw new Error('Report regeneration incomplete');
@@ -175,15 +208,11 @@ export function useChunkedRegeneration() {
     } catch (error: any) {
       console.error('[ChunkedRegeneration] Error:', error);
       const errorMessage = error.message || 'Regeneration failed';
-      
-      setState(prev => ({ ...prev, isRegenerating: false, error: errorMessage }));
-      
-      toast.error('Regeneration failed', {
-        id: toastId,
-        description: errorMessage
-      });
 
-      // Mark report as failed
+      setState(prev => ({ ...prev, isRegenerating: false, phase: 'idle', error: errorMessage }));
+
+      toast.error('Regeneration failed', { id: toastId, description: errorMessage });
+
       await invokeSecureFunction('manage-investment-reports', {
         action: 'update',
         reportId,
@@ -201,6 +230,6 @@ export function useChunkedRegeneration() {
   return {
     ...state,
     regenerate,
-    abort
+    abort,
   };
 }
