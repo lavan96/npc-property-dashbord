@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCommercialLeases } from '@/hooks/useCommercialProperties';
 import {
-  calculateNoi, calculateYields, calculateCoverage, calculateCommercialGst,
-  type CommercialProperty as _CP
+  calculateNoi, calculateYields, calculateCoverage, calculateCommercialGst
 } from '@/utils/commercial';
 import type { CommercialProperty } from '@/hooks/useCommercialProperties';
 
