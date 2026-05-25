@@ -123,18 +123,18 @@ export default function CashFlowAnalysis() {
     return 'existing_property';
   };
 
-  const fetchReports = async () => {
+  const fetchReports = async (append = false, currentOffset = 0) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true); else setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
-      // Apply 30-day cutoff and exclude archived reports
       const listOptions: Record<string, any> = {
         select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
         status: 'completed',
         isArchived: false,
         orderBy: 'created_at',
         orderAsc: false,
-        limit: 500,
+        limit: PAGE_SIZE,
+        offset: currentOffset,
       };
       if (dateRangeCutoff) {
         listOptions.createdAfter = dateRangeCutoff.toISOString();
@@ -145,10 +145,11 @@ export default function CashFlowAnalysis() {
       });
 
       if (error) throw new Error(error.message);
-      
-      // Filter to only include reports with required cash flow data
-      const reportsWithCashFlowData = (data?.reports || []).filter(hasRequiredData);
-      setReports(reportsWithCashFlowData);
+
+      const fetched: InvestmentReport[] = data?.reports || [];
+      const reportsWithCashFlowData = fetched.filter(hasRequiredData);
+      setReports(prev => append ? [...prev, ...reportsWithCashFlowData] : reportsWithCashFlowData);
+      setHasMore(fetched.length === PAGE_SIZE);
     } catch (error: any) {
       console.error('Error fetching reports:', error);
       toast({
@@ -158,7 +159,12 @@ export default function CashFlowAnalysis() {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    fetchReports(true, reports.length);
   };
 
   const filteredReports = reports.filter(report => {
