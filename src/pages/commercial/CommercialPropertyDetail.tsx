@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Building2, Pencil } from 'lucide-react';
+import { ArrowLeft, Building2, Pencil, FileDown, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { RentRollTable } from '@/components/commercial/RentRollTable';
 import { FinancialSnapshot } from '@/components/commercial/FinancialSnapshot';
+import { generateCommercialInvestmentReport } from '@/utils/commercial/commercialReportPdf';
+
 
 const ASSET_LABEL: Record<string, string> = {
   office: 'Office', retail: 'Retail', industrial: 'Industrial', mixed_use: 'Mixed Use',
@@ -21,6 +24,21 @@ export default function CommercialPropertyDetail() {
   const [property, setProperty] = useState<CommercialProperty | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateReport = async () => {
+    if (!id) return;
+    setGenerating(true);
+    try {
+      await generateCommercialInvestmentReport(id);
+      toast.success('Commercial investment report generated');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to generate report');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
 
   const load = async () => {
     if (!id) return;
@@ -54,9 +72,16 @@ export default function CommercialPropertyDetail() {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Pencil className="h-4 w-4 mr-2" /> Edit Details
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerateReport} disabled={generating}>
+            {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Generate Report
+          </Button>
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" /> Edit Details
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="overview">
