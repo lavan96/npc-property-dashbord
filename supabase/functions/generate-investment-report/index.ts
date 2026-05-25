@@ -894,7 +894,7 @@ async function generateReportSection(
 ): Promise<{ content: string; citations: any[]; error?: string }> {
   // For section10 (Projections & SWOT), inject explicit investment score data
   let investmentScoreContext = '';
-  if (sectionDef.id === 'section10' && enhancedData?.investmentScore) {
+  if ((sectionDef.id === 'section10' || sectionDef.name.toLowerCase().includes('score')) && enhancedData?.investmentScore) {
     const score = enhancedData.investmentScore;
     console.log('📊 Injecting investment score data into section10 (Projections & SWOT):', {
       totalScore: score.totalScore,
@@ -935,7 +935,7 @@ ${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
-2. Follow the exact markdown formatting with proper headings (# for main sections)
+ 2. Follow the exact markdown formatting with ## for main section headings and ### for subsections
 3. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows per table). Prefer well-written narrative paragraphs over tables for general information
 4. After every table or significant data point, include a brief "What This Means" explanation in plain English
 5. Lead each section with a clear insight or takeaway before presenting supporting data
