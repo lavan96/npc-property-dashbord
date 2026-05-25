@@ -77,7 +77,9 @@ export function useChunkedRegeneration() {
         Math.max(Number(report?.last_completed_section) || 0, 0),
         totalSections,
       );
-      const shouldResume = Boolean(report?.report_content) && existingCompletedSection > 0 && existingCompletedSection < totalSections;
+      const hasPartialProgress = Boolean(report?.report_content) && existingCompletedSection > 0;
+      const shouldResumeGeneration = hasPartialProgress && existingCompletedSection < totalSections;
+      const shouldResumePostProcessing = hasPartialProgress && existingCompletedSection >= totalSections;
 
       setState({
         isRegenerating: true,
@@ -95,7 +97,7 @@ export function useChunkedRegeneration() {
         status: 'processing',
         error_message: null,
       };
-      if (!shouldResume) {
+      if (!hasPartialProgress) {
         startPayload.last_completed_section = 0;
       }
 
@@ -124,7 +126,7 @@ export function useChunkedRegeneration() {
       }
 
       const effectivePropertyAddress = propertyAddress || report?.property_address || '';
-      const startSection = shouldResume ? existingCompletedSection : 0;
+      const startSection = shouldResumeGeneration || shouldResumePostProcessing ? existingCompletedSection : 0;
 
       // ── Phase 1: Generate sections ────────────────────────────────────────
       for (let section = startSection; section < totalSections; section++) {
