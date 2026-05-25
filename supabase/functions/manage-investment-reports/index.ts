@@ -94,17 +94,21 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Slim return payload — never re-select the huge `report_content`
+        // column on update. Re-selecting the full row was contributing to
+        // statement-timeouts (Postgres 57014) when combined with the
+        // archive_report_version trigger + concurrent dashboard polling.
         const { data: report, error: updateError } = await supabase
           .from('investment_reports')
           .update({ ...data, updated_at: new Date().toISOString() })
           .eq('id', reportId)
-          .select()
+          .select('id, status, current_version, last_completed_section, updated_at, error_message')
           .single();
 
         if (updateError) {
           console.error('Error updating investment report:', updateError);
           return new Response(
-            JSON.stringify({ error: 'Failed to update report', details: updateError.message }),
+            JSON.stringify({ error: 'Failed to update report', details: updateError.message, code: (updateError as any).code }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
