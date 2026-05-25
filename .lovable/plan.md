@@ -1,129 +1,75 @@
+# Industrial Investment Module — Implementation Plan
 
-# Commercial & Industrial Property Module — Phase 1 Plan
+Mirror the commercial build but tuned to the industrial asset class (warehousing, logistics, manufacturing, distribution, cold storage, flex/industrial estates). Industrial differs from commercial in driver economics: rent is quoted per sqm of GLA, site cover / clearance / hardstand drive value, outgoings are typically net (tenant pays), and key risks shift to tenant covenant + functional obsolescence (truck access, clearance, power, floor load).
 
-Based on your answers:
-1. **Commercial first** (industrial later as a sub-type)
-2. **Multi-tenant** support from day one
-3. **DCF** included alongside direct cap & cash-on-cash
-4. **GST/depreciation/scheme** modelled up front
-5. **Manual entry** for cap rates / market rents (no data feed yet)
-6. **Borrowing capacity engine extended** to ICR/DSCR (not a separate broker tool)
+## Step 1 — Schema & Persistence
 
----
+Create three tables mirroring the commercial schema, plus an industrial-specific spec table.
 
-## Scope of Phase 1
+- `industrial_properties` — address, asset_subtype (warehouse | logistics_hub | manufacturing | cold_storage | flex | data_centre), purchase_price, current_valuation, valuation_date, gla_sqm, site_area_sqm, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa, zoning, year_built, condition_rating, status, notes.
+- `industrial_tenancies` — property_id, tenant_name, anzsic_industry, unit_label, gla_sqm, lease_start, lease_end, base_rent_per_sqm_pa, base_rent_pa, outgoings_recovery_type (net | semi_gross | gross), annual_review_type (cpi | fixed | market | hybrid), review_rate_pct, option_terms_years, bank_guarantee_months, incentive_pct, make_good_status.
+- `industrial_capex` — property_id, year, amount, category (roof | hardstand | racking | compliance | sprinkler | other), notes.
+- Same `service_role`-only RLS pattern; add tables to `ALLOWED_TABLES` whitelist in `manage-industrial-data` edge function and to `supabase_realtime` publication.
 
-Build a parallel "Commercial" track that mirrors the existing residential surface but uses CRE-native inputs, math, and outputs. Residential code stays untouched — no regressions to current reports or calculators.
+## Step 2 — Edge Function & API Layer
 
-### Deliverables
+- New edge function `manage-industrial-data` (mirror of `manage-commercial-data`) with CRUD ops on the 3 tables and `effectiveUserId` resolution.
+- New client wrapper `src/utils/industrial/industrialApi.ts` using `invokeSecureFunction`.
 
-1. **Commercial Property record** (new table + UI)
-2. **Lease / Tenancy Schedule** (multi-tenant rent roll)
-3. **Commercial Financial Calculator suite** (cap rate, NOI, cash-on-cash, ICR/DSCR, GST, depreciation, outgoings recovery)
-4. **DCF Engine** (10-year hold, terminal cap, IRR, NPV, equity multiple)
-5. **Commercial Investment Report** (CRE-specific template + PDF)
-6. **Borrowing Capacity extension** — ICR/DSCR pathway alongside resi DTI/serviceability
-7. **Dashboard cards** — commercial portfolio KPIs (WALE, occupancy, weighted cap rate)
+## Step 3 — Industrial Math Engine
 
----
+`src/utils/industrial/` — pure functions, fully unit-tested:
 
-## 1. Data Model (new tables)
+- `rentPerSqm.ts` — gross/net rent per sqm normalisation.
+- `noi.ts` — industrial NOI: gross rent − vacancy − outgoings (where applicable) − non-recoverable opex − capex reserve.
+- `siteMetrics.ts` — site cover %, office-to-warehouse ratio, $/sqm GLA, $/sqm site, hardstand ratio.
+- `wale.ts` — WALE by income and by GLA.
+- `yields.ts` — passing, market and equivalent yield.
+- `dcf.ts` — 10-year DCF with rent reviews, lease expiry re-letting assumption, downtime, incentive amortisation, capex schedule.
+- `industrialBorrowingCapacity.ts` — ICR (≥1.75x typical) + DSCR (≥1.35x) + LVR cap (typically 60–65% industrial) + sponsor liquidity cap. Returns lesser of caps with binding constraint and band.
+- `index.ts` barrel export.
+- `__tests__/industrial.test.ts` covering each engine.
 
-```text
-commercial_properties
-  ├─ asset_class (office | retail | industrial | mixed_use | medical | childcare | hospitality)
-  ├─ tenure (freehold | leasehold)
-  ├─ zoning, GFA, NLA, site_area, parking_bays, year_built
-  ├─ purchase_price, acquisition_date, gst_treatment (going_concern | margin | standard)
-  ├─ valuation, valuation_date, valuer
-  └─ outgoings_recoverable (jsonb: council, water, land_tax, insurance, mgmt, R&M)
+## Step 4 — Pages, Hooks, Modals
 
-commercial_leases (rent roll — one row per tenancy)
-  ├─ property_id, tenant_name, suite/unit, NLA_sqm
-  ├─ lease_start, lease_end, option_terms (jsonb)
-  ├─ base_rent_pa, rent_basis (gross | net | semi_gross)
-  ├─ review_type (CPI | fixed % | market | hybrid), review_freq, next_review_date
-  ├─ incentives (rent_free_months, fitout_contribution, cash_incentive)
-  ├─ outgoings_recovery_pct, security (bond | bank_guarantee), guarantee_amount
-  └─ status (occupied | vacant | holdover | under_offer)
+Mirror commercial structure:
 
-commercial_dcf_runs
-  ├─ property_id, scenario_name (base | upside | downside)
-  ├─ hold_period_years, discount_rate, terminal_cap_rate
-  ├─ rental_growth_assumptions (jsonb per year)
-  ├─ vacancy_allowance_pct, capex_schedule (jsonb)
-  └─ outputs: noi_by_year, cashflows, irr, npv, equity_multiple, peak_equity
-```
+- `src/pages/industrial/IndustrialProperties.tsx` — list view with filters (subtype, status, valuation range, GLA range).
+- `src/pages/industrial/IndustrialPropertyDetail.tsx` — overview, financial snapshot, tenancy schedule, capex, generate report button.
+- `src/pages/industrial/IndustrialCalculators.tsx` — calculator hub.
+- `src/hooks/useIndustrialProperties.ts` — list + mutations.
+- `src/components/industrial/IndustrialPropertyFormModal.tsx`, `TenancyFormModal.tsx`, `TenancyScheduleTable.tsx`, `FinancialSnapshot.tsx`.
+- Route added in `App.tsx` and sidebar entry in `DashboardSidebar.tsx` under a new "Industrial" group.
 
-Existing `properties` table left alone. New module is namespaced.
+## Step 5 — Calculator Cards
 
-## 2. Math Engine (`src/utils/commercial/`)
+`src/components/industrial/calculators/`:
 
-- `noiCalculator.ts` — gross income → vacancy → outgoings → NOI
-- `capRateCalculator.ts` — passing yield, equivalent yield, reversionary yield
-- `dcfEngine.ts` — full DCF with terminal value, IRR (Newton-Raphson), NPV, equity multiple
-- `waleCalculator.ts` — weighted average lease expiry (by income & area)
-- `icrDscrCalculator.ts` — Interest Coverage Ratio + Debt Service Coverage Ratio
-- `gstCommercial.ts` — going concern vs margin scheme stamp duty/GST impact
-- `outgoingsRecovery.ts` — recoverable vs non-recoverable split
+- `NoiCalculatorCard.tsx`
+- `CapRateCalculatorCard.tsx`
+- `DcfCalculatorCard.tsx`
+- `IcrDscrCalculatorCard.tsx`
+- `RentPerSqmCalculatorCard.tsx` — gross↔net per sqm conversion.
+- `SiteCoverCalculatorCard.tsx` — site cover %, $/sqm GLA & site, hardstand share.
+- `IndustrialBorrowingCapacityCard.tsx` — wraps `calculateIndustrialBc`.
 
-All multipliers exact (per Financial Math Standards memory). Rates rounded to 2 dp.
+## Step 6 — Industrial Investment Report (PDF)
 
-## 3. Borrowing Capacity Extension
+`src/utils/industrial/industrialReportPdf.ts` — branded Dark & Gold jsPDF report, 10 sections: Cover, Executive Summary, Asset Specification (clearance, dock doors, power, floor load, site cover), Tenancy Schedule, Income & Outgoings, Valuation & Yield, 10-Year DCF, Debt Structure (ICR/DSCR), Risk Assessment (covenant, expiry, functional obsolescence), Recommendations. Triggered from `IndustrialPropertyDetail`.
 
-Add a `loanType: 'resi' | 'commercial'` switch in the BC engine:
+## Step 7 — Dashboard Widget
 
-- **Commercial path** uses **ICR (typically ≥1.5x)** and **DSCR (≥1.25–1.35x)** instead of DTI.
-- Net rental income from rent roll → debt-serviceable amount at lender's assessment rate.
-- Reuses existing lender shading profiles but with CRE-specific LVR caps (max ~65–70%) and rate margins.
-- New lender policy fields: `commercial_max_lvr`, `min_icr`, `min_dscr`, `assessment_rate_margin_cre`.
+`src/components/industrial/IndustrialPortfolioWidget.tsx` — asset count, total valuation, total GLA, passing rent, NOI, weighted yield, WALE, occupancy, 12-month expiries. Rendered in `Overview.tsx` beside the commercial widget.
 
-## 4. UI Surface
+## Step 8 — QA Pass
 
-- **New route** `/commercial` with sub-pages:
-  - `/commercial/properties` — list + add
-  - `/commercial/properties/:id` — overview, rent roll, financials, DCF, reports
-  - `/commercial/calculators` — standalone calc suite (NOI, Cap Rate, DCF, ICR/DSCR, GST)
-- **Sidebar** — new "Commercial" section, kept distinct from "Residential" for clarity.
-- **Dashboard** — new "Commercial Portfolio" widget card alongside existing resi KPIs.
-- Reuses `OverrideFieldGroup`, `OverrideInput`, modal layout, dark-gold theme.
+Typecheck, run full vitest, smoke-test routes in preview, fix issues.
 
-## 5. Commercial Investment Report
+## Technical Notes
 
-New schema variant (parallel to `INVESTMENT_REPORT_SCHEMA`):
+- Reuse `commercialReportPdf` jsPDF primitives (header, footer, table, KPI tile, risk chip) by extracting them into a shared `src/utils/pdf/primitives.ts` first if duplication grows — keep this optional and only refactor if Step 6 demands it.
+- All money values rounded to 2 dp; rent per sqm to 2 dp; yields to 2 dp; ICR/DSCR to 2 dp.
+- All new tables registered in `ALLOWED_TABLES` whitelist and `supabase_realtime` publication, per project standards.
+- Use semantic theme tokens only — no hardcoded colours.
 
-```text
-1. Executive Summary (deal snapshot, WALE, passing yield)
-2. Asset Overview (class, zoning, GFA/NLA, services)
-3. Tenancy Schedule (full rent roll table)
-4. Income Analysis (gross → net, recoveries, vacancy)
-5. Valuation & Yield (passing, equivalent, reversionary, market comps)
-6. DCF & Returns (10-year cashflow, IRR, NPV, sensitivity matrix)
-7. Debt Structure (ICR/DSCR, lender comparison)
-8. Risk Assessment (tenant concentration, lease expiry profile, market)
-9. Recommendation & Exit Strategy
-10. Disclaimer
-```
-
-PDF generator extends existing jsPDF primitives.
-
-## 6. Rollout Order (suggested execution sequence)
-
-```text
-Step 1  Migrations: commercial_properties, commercial_leases, commercial_dcf_runs (+ RLS)
-Step 2  Math utils (NOI, cap rate, DCF, ICR/DSCR, WALE, GST) + unit tests
-Step 3  Commercial properties CRUD UI + rent-roll editor
-Step 4  Standalone CRE calculators page
-Step 5  BC engine commercial path + lender policy fields
-Step 6  Commercial report schema + generation edge function
-Step 7  Dashboard commercial KPI widget
-Step 8  QA pass on PDF (per memory: image-QA every page)
-```
-
-Industrial-specific fields (clearance height, hardstand, power supply, truck access) plug in as an asset-class sub-form in Step 3 — no separate module needed.
-
----
-
-## What I need from you to start building
-
-Confirm and I'll kick off **Step 1 (migrations) + Step 2 (math utils with tests)** in the next turn. Or if you want to sequence differently (e.g., calculators first, then properties), say the word.
+Ready to start at Step 1 (schema migration) on approval.
