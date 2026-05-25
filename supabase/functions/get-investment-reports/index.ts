@@ -202,8 +202,11 @@ Deno.serve(async (req) => {
       // Apply ordering
       query = query.order(orderBy, { ascending: orderAsc });
 
-      // Apply limit
-      if (limit) {
+      // Apply limit / pagination
+      if (typeof offset === 'number' && offset > 0) {
+        const rangeEnd = (limit ? offset + limit : offset + 1000) - 1;
+        query = query.range(offset, rangeEnd);
+      } else if (limit) {
         query = query.limit(limit);
       }
 
