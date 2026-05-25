@@ -509,10 +509,10 @@ export default function GeneratedReports() {
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score, generated_by',
           status: ['completed', 'pending'],
           isArchived: true,
-          limit: 100
+          limit: 2000
         }
       });
 
