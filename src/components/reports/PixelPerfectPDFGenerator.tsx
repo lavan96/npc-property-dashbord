@@ -3059,10 +3059,25 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           // ─── Callout Panel: Detect "What This Means" paragraphs ───────────
           const calloutCheck = isCalloutParagraph(paragraph);
           if (calloutCheck.isCallout) {
-            // Empty / junk body → skip entirely (no orphan label, no empty box)
+            // Empty body: try to absorb the next paragraph as the body (model often emits the
+            // label as its own paragraph then the prose after a blank line).
             if (!calloutCheck.content || calloutCheck.content.length < 15) {
-              console.log('     ⏭ Skipping empty/junk "What This Means" callout');
-              continue;
+              const next = paragraphs[pIdx + 1]?.trim() ?? '';
+              const nextIsStructural =
+                !next ||
+                next.startsWith('#') ||
+                next.startsWith('|') ||
+                next.startsWith('- ') ||
+                next.startsWith('* ') ||
+                /^-{3,}$/.test(next) ||
+                isCalloutParagraph(next).isCallout;
+              if (next && !nextIsStructural && next.length >= 15) {
+                calloutCheck.content = next.replace(/^\*+|\*+$/g, '').trim();
+                pIdx += 1; // consume the absorbed paragraph
+              } else {
+                console.log('     ⏭ Skipping empty/junk "What This Means" callout');
+                continue;
+              }
             }
             console.log('     ✓ Detected callout paragraph, rendering styled panel');
             let calloutResult = drawCalloutPanel(
