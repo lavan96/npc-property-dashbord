@@ -12,6 +12,8 @@ import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
 import { UpcomingRemindersWidget } from '@/components/overview/UpcomingRemindersWidget';
+import { CommercialPortfolioWidget } from '@/components/commercial/CommercialPortfolioWidget';
+
 import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
