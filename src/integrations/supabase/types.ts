@@ -8338,6 +8338,220 @@ export type Database = {
         }
         Relationships: []
       }
+      industrial_capex: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "industrial_capex_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "industrial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      industrial_properties: {
+        Row: {
+          asset_subtype: string
+          clearance_metres: number | null
+          client_id: string | null
+          condition_rating: string | null
+          created_at: string
+          current_valuation: number | null
+          dock_doors: number | null
+          gla_sqm: number | null
+          ground_floor_load_kpa: number | null
+          hardstand_sqm: number | null
+          id: string
+          notes: string | null
+          office_pct: number | null
+          postcode: string | null
+          power_kva: number | null
+          property_name: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          site_area_sqm: number | null
+          site_cover_pct: number | null
+          state: string | null
+          status: string
+          street: string | null
+          suburb: string | null
+          updated_at: string
+          user_id: string
+          valuation_date: string | null
+          year_built: number | null
+          zoning: string | null
+        }
+        Insert: {
+          asset_subtype?: string
+          clearance_metres?: number | null
+          client_id?: string | null
+          condition_rating?: string | null
+          created_at?: string
+          current_valuation?: number | null
+          dock_doors?: number | null
+          gla_sqm?: number | null
+          ground_floor_load_kpa?: number | null
+          hardstand_sqm?: number | null
+          id?: string
+          notes?: string | null
+          office_pct?: number | null
+          postcode?: string | null
+          power_kva?: number | null
+          property_name?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          site_area_sqm?: number | null
+          site_cover_pct?: number | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          suburb?: string | null
+          updated_at?: string
+          user_id: string
+          valuation_date?: string | null
+          year_built?: number | null
+          zoning?: string | null
+        }
+        Update: {
+          asset_subtype?: string
+          clearance_metres?: number | null
+          client_id?: string | null
+          condition_rating?: string | null
+          created_at?: string
+          current_valuation?: number | null
+          dock_doors?: number | null
+          gla_sqm?: number | null
+          ground_floor_load_kpa?: number | null
+          hardstand_sqm?: number | null
+          id?: string
+          notes?: string | null
+          office_pct?: number | null
+          postcode?: string | null
+          power_kva?: number | null
+          property_name?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          site_area_sqm?: number | null
+          site_cover_pct?: number | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          suburb?: string | null
+          updated_at?: string
+          user_id?: string
+          valuation_date?: string | null
+          year_built?: number | null
+          zoning?: string | null
+        }
+        Relationships: []
+      }
+      industrial_tenancies: {
+        Row: {
+          annual_review_type: string
+          anzsic_industry: string | null
+          bank_guarantee_months: number | null
+          base_rent_pa: number | null
+          base_rent_per_sqm_pa: number | null
+          created_at: string
+          gla_sqm: number | null
+          id: string
+          incentive_pct: number | null
+          lease_end: string | null
+          lease_start: string | null
+          make_good_status: string | null
+          notes: string | null
+          option_terms_years: number | null
+          outgoings_recovery_type: string
+          property_id: string
+          review_rate_pct: number | null
+          tenant_name: string
+          unit_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          annual_review_type?: string
+          anzsic_industry?: string | null
+          bank_guarantee_months?: number | null
+          base_rent_pa?: number | null
+          base_rent_per_sqm_pa?: number | null
+          created_at?: string
+          gla_sqm?: number | null
+          id?: string
+          incentive_pct?: number | null
+          lease_end?: string | null
+          lease_start?: string | null
+          make_good_status?: string | null
+          notes?: string | null
+          option_terms_years?: number | null
+          outgoings_recovery_type?: string
+          property_id: string
+          review_rate_pct?: number | null
+          tenant_name: string
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          annual_review_type?: string
+          anzsic_industry?: string | null
+          bank_guarantee_months?: number | null
+          base_rent_pa?: number | null
+          base_rent_per_sqm_pa?: number | null
+          created_at?: string
+          gla_sqm?: number | null
+          id?: string
+          incentive_pct?: number | null
+          lease_end?: string | null
+          lease_start?: string | null
+          make_good_status?: string | null
+          notes?: string | null
+          option_terms_years?: number | null
+          outgoings_recovery_type?: string
+          property_id?: string
+          review_rate_pct?: number | null
+          tenant_name?: string
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "industrial_tenancies_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "industrial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_configs: {
         Row: {
           created_at: string
