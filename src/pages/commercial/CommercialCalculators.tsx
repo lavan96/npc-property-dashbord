@@ -5,6 +5,7 @@ import { CapRateCalculatorCard } from '@/components/commercial/calculators/CapRa
 import { IcrDscrCalculatorCard } from '@/components/commercial/calculators/IcrDscrCalculatorCard';
 import { GstCalculatorCard } from '@/components/commercial/calculators/GstCalculatorCard';
 import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalculatorCard';
+import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
 
 export default function CommercialCalculators() {
   return (
@@ -15,18 +16,20 @@ export default function CommercialCalculators() {
           Commercial Calculators
         </h1>
         <p className="text-muted-foreground mt-1">
-          NOI, cap rate, ICR/DSCR, GST and DCF — standalone tools for commercial property analysis.
+          NOI, cap rate, ICR/DSCR, GST, DCF and commercial borrowing capacity.
         </p>
       </div>
 
-      <Tabs defaultValue="noi" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+      <Tabs defaultValue="bc" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+          <TabsTrigger value="bc">Borrowing</TabsTrigger>
           <TabsTrigger value="noi">NOI</TabsTrigger>
           <TabsTrigger value="cap">Cap Rate</TabsTrigger>
           <TabsTrigger value="icr">ICR / DSCR</TabsTrigger>
           <TabsTrigger value="gst">GST</TabsTrigger>
           <TabsTrigger value="dcf">DCF</TabsTrigger>
         </TabsList>
+        <TabsContent value="bc" className="mt-4"><CommercialBorrowingCapacityCard /></TabsContent>
         <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
         <TabsContent value="cap" className="mt-4"><CapRateCalculatorCard /></TabsContent>
         <TabsContent value="icr" className="mt-4"><IcrDscrCalculatorCard /></TabsContent>
