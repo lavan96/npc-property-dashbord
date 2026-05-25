@@ -298,7 +298,8 @@ export async function generateCommercialInvestmentReport(propertyId: string): Pr
     outgoings: property.outgoings_recoverable || {},
   });
   const passingYield = property.valuation && property.valuation > 0
-    ? capRate(noiResult.noi, property.valuation) * 100 : 0;
+    ? capRate({ noi: noiResult.noi, price: property.valuation }) : 0;
+
   const rentRoll = aggregateRentRoll(leases);
 
   sectionTitle(state, 1, 'Executive Summary');
