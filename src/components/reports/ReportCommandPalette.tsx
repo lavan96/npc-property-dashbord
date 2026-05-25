@@ -36,12 +36,14 @@ const TIER_LABEL: Record<ReportTier, string> = {
   strategic: 'Strategic',
   briefing: 'Briefing',
   snapshot: 'Snapshot',
+  financial: 'Financial',
 };
 const TIER_ICON = {
   compass: BarChart3,
   strategic: Sparkles,
   briefing: FileText,
   snapshot: Zap,
+  financial: BarChart3,
 } as const;
 
 export interface ReportCommandPaletteProps {

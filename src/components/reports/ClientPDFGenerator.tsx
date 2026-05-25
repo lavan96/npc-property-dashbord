@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { PixelPerfectPDFGenerator, type PixelPerfectPDFGeneratorHandle } from './PixelPerfectPDFGenerator';
 
-type ReportTier = 'compass' | 'briefing' | 'snapshot';
+type ReportTier = 'compass' | 'briefing' | 'snapshot' | 'financial';
 
 interface InvestmentReportData {
   id: string;

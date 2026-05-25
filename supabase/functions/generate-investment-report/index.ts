@@ -3991,6 +3991,7 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
         'compass': 'compass',     // Investor Compass
         'snapshot': 'snapshot',   // Suburb Snapshot
         'executive': 'executive', // Direct match (in case already mapped)
+        'financial': 'financial', // Financial Analysis Report (Phase 3)
       };
       const reportTier = tierMapping[rawTier] || rawTier;
       const scopeCategoryMap: Record<string, string> = {
@@ -4963,6 +4964,7 @@ Deno.serve(withReportMetering(async (body, req) => {
       : 'report.investment.compass')
     : (tier === 'executive' ? 'report.investment.executive'
       : tier === 'snapshot' ? 'report.investment.snapshot'
+      : tier === 'financial' ? 'report.investment.financial'
       : 'report.investment.compass');
   const idempotencyKey = buildIdempotencyKey('inv-report', [
     body?.reportId,

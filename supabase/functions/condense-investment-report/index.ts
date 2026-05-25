@@ -198,6 +198,78 @@ REPORT STRUCTURE (~5 PAGES):
 ## Quick Recommendation
 - 2-3 sentences summarizing the investment thesis
 `
+  },
+  financial: {
+    name: 'Financial Analysis Report',
+    targetPages: 20,
+    contentRatio: 0.35,
+    sections: [
+      'Property & Purchase Snapshot',
+      'Purchase & Acquisition Costs',
+      'Annual Holding Costs',
+      'Rental Income & Yield Analysis',
+      'Loan Structure & Serviceability (LVR, LMI, P&I vs IO)',
+      'Year-1 Cashflow Summary',
+      'Sensitivity Analysis (interest rate, rent, vacancy)',
+      '10-Year Projections (value, rent, cashflow, equity)',
+      'Tax Position & Depreciation',
+      'Equity & Exit Scenarios',
+      'Financial Assumptions & Data Sources',
+    ],
+    structureGuide: `
+FINANCIAL ANALYSIS REPORT STRUCTURE (~20 PAGES):
+This report contains ONLY financial / numerical analysis. Do NOT include
+suburb narrative, infrastructure, demographics, planning, education,
+amenity, transport, crime or climate sections — those live in the
+Investor Compass Report.
+
+## Property & Purchase Snapshot
+- Address, property type, bed/bath/parking, year built
+- Purchase price, settlement date, deposit, loan structure (single line each)
+
+## Purchase & Acquisition Costs
+| Cost item | Amount | Source / formula |
+- Stamp duty, legal/conveyancing, building & pest, LMI, lender fees,
+  buyers agent, other. Show TOTAL UPFRONT separately.
+
+## Annual Holding Costs
+| Cost item | Annual | Monthly | Notes |
+- Council, water, strata, landlord insurance, property management,
+  letting fees, repairs/maintenance, land tax. TOTAL line at bottom.
+
+## Rental Income & Yield Analysis
+| Metric | Calculation | Value |
+- Weekly rent, annual rent, gross yield, net yield, vacancy assumption.
+
+## Loan Structure & Serviceability
+- LVR, loan amount, LMI (with formula), interest rate
+- P&I vs Interest-Only comparison table (monthly + annual)
+- Serviceability summary (DTI / coverage if available)
+
+## Year-1 Cashflow Summary
+| Item | Annual | Monthly | Weekly |
+- Income, costs, interest, principal, pre-tax cashflow, after-tax cashflow.
+
+## Sensitivity Analysis
+| Scenario | Interest rate | Rent change | Annual cashflow | Δ vs base |
+- At minimum: base, +1%, +2% rates; -10% rent; 6-week vacancy.
+
+## 10-Year Projections
+| Year | Property value | Weekly rent | Annual cashflow | Equity | LVR |
+- Years 1, 3, 5, 7, 10. Show conservative + base columns.
+
+## Tax Position & Depreciation
+- Depreciation (capital works + plant & equipment) if available
+- Negative gearing add-back, marginal tax rate assumption
+- After-tax position summary
+
+## Equity & Exit Scenarios
+- Equity growth schedule, refinance window, CGT exposure on hypothetical sale
+
+## Financial Assumptions & Data Sources
+- Bullet list of every assumption (rate, growth, CPI, vacancy, MTR)
+- Source attribution for each data point
+`
   }
 };
 
@@ -241,9 +313,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!targetTier || !['briefing', 'snapshot'].includes(targetTier)) {
+    if (!targetTier || !['briefing', 'snapshot', 'financial'].includes(targetTier)) {
       return new Response(JSON.stringify({ 
-        error: 'Target tier must be "briefing" or "snapshot"',
+        error: 'Target tier must be "briefing", "snapshot" or "financial"',
         success: false 
       }), {
         status: 400,
@@ -385,7 +457,7 @@ IMPORTANT:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      maxTokens: targetTier === 'briefing' ? 16000 : 6000,
+      maxTokens: targetTier === 'briefing' ? 16000 : targetTier === 'financial' ? 14000 : 6000,
       temperature: 0.3,
     });
 

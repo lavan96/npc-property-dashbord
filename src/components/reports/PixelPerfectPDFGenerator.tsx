@@ -9,7 +9,7 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 
-type ReportTier = 'compass' | 'briefing' | 'snapshot';
+type ReportTier = 'compass' | 'briefing' | 'snapshot' | 'financial';
 
 interface InvestmentReportData {
   id: string;
@@ -2622,7 +2622,8 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       // Use the property address directly as the title (which admins can edit)
       // For different tiers, use appropriate prefix
       const tierPrefix = reportTier === 'compass' ? 'Investment Report' : 
-                         reportTier === 'briefing' ? 'Executive Brief' : 'Snapshot Report';
+                         reportTier === 'briefing' ? 'Executive Brief' : 
+                         reportTier === 'financial' ? 'Financial Analysis' : 'Snapshot Report';
       const titleText = stripEmojis(`${tierPrefix}: ${report.address}`);
       let titleResult = drawTextWithWrap(
         currentPage,

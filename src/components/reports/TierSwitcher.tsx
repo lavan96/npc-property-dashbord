@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { Loader2, ChevronDown, Compass, FileText, Zap, Check } from 'lucide-react';
+import { Loader2, ChevronDown, Compass, FileText, Zap, Check, Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
@@ -134,6 +134,8 @@ export function TierSwitcher({
       case 'compass': return Compass;
       case 'briefing': return FileText;
       case 'snapshot': return Zap;
+      case 'financial': return Calculator;
+      default: return Compass;
     }
   };
 
@@ -161,7 +163,7 @@ export function TierSwitcher({
         <DropdownMenuLabel>Report Versions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {(['compass', 'briefing', 'snapshot'] as ReportTier[]).map((tier) => {
+        {(['compass', 'financial', 'briefing', 'snapshot'] as ReportTier[]).map((tier) => {
           const info = TIER_INFO[tier];
           const Icon = getTierIcon(tier);
           const isCurrentTier = tier === currentTier;
