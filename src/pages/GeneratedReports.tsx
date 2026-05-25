@@ -1205,13 +1205,54 @@ export default function GeneratedReports() {
                 </>
               )}
 
+              {!showArchived && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger className="w-[170px] h-9">
+                      <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Date range" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="7">Last 7 days</SelectItem>
+                      <SelectItem value="30">Last 30 days</SelectItem>
+                      <SelectItem value="90">Last 90 days</SelectItem>
+                      <SelectItem value="180">Last 6 months</SelectItem>
+                      <SelectItem value="365">Last 12 months</SelectItem>
+                      <SelectItem value="all">All time</SelectItem>
+                      <SelectItem value="custom">Custom range…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {dateRange === 'custom' && (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="date"
+                        value={customFrom}
+                        max={customTo || undefined}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                        className="h-9 w-[150px]"
+                        aria-label="From date"
+                      />
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <Input
+                        type="date"
+                        value={customTo}
+                        min={customFrom || undefined}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                        className="h-9 w-[150px]"
+                        aria-label="To date"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Badge variant="secondary" className="hidden md:inline-flex">
                 {filteredInvestmentReports.length} of {investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length} reports
               </Badge>
-              
+
               {!showArchived && (
                 <span className="text-xs text-muted-foreground hidden md:inline">
-                  Showing last 30 days
+                  {dateRangeLabel}
                 </span>
               )}
             </div>
