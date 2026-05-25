@@ -3204,13 +3204,14 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         
         for (const sectionName of allSectionNames) {
           // sectionName is already cleaned (no ## or ### prefix) - it's the key from sections object
-          const cleanName = stripEmojis(
+          const cleanName = dedupeRepeatedWords(stripEmojis(
             sectionName
               .replace(/^#{1,6}\s*/, '') // Remove markdown heading prefix (if any remaining)
               .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11.1 ")
               .replace(/:\s*$/, '') // Remove trailing colon
               .trim()
-          );
+          ));
+
           
           if (!cleanName || cleanName.length < 3) continue;
           
