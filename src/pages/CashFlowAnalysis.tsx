@@ -44,19 +44,31 @@ export default function CashFlowAnalysis() {
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
-  
+  const [dateRange, setDateRange] = useState<'30' | '90' | '180' | '365' | 'all'>('30');
+
   const { toast } = useToast();
-  
-  // 30-day cutoff for active reports - memoized to prevent recreation on each render
-  const thirtyDaysAgo = useMemo(() => {
+
+  const dateRangeCutoff = useMemo(() => {
+    if (dateRange === 'all') return null;
     const date = new Date();
-    date.setDate(date.getDate() - 30);
+    date.setDate(date.getDate() - parseInt(dateRange, 10));
     return date;
-  }, []);
+  }, [dateRange]);
+
+  const dateRangeLabel = useMemo(() => {
+    switch (dateRange) {
+      case '30': return 'last 30 days';
+      case '90': return 'last 90 days';
+      case '180': return 'last 6 months';
+      case '365': return 'last 12 months';
+      case 'all': return 'all time';
+    }
+  }, [dateRange]);
 
   useEffect(() => {
     fetchReports();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange]);
 
   // Handle deep-linking: auto-open analysis from URL params
   useEffect(() => {
