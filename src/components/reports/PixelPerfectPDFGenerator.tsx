@@ -9,7 +9,7 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 
-type ReportTier = 'compass' | 'briefing' | 'snapshot';
+type ReportTier = 'compass' | 'briefing' | 'snapshot' | 'financial';
 
 interface InvestmentReportData {
   id: string;
