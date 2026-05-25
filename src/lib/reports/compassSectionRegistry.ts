@@ -145,3 +145,27 @@ export function totalWordBudget(tier: 'compass-40' | 'financial-analysis'): numb
   const list = tier === 'compass-40' ? compassSections() : financialSections();
   return list.reduce((sum, s) => sum + s.maxWordCount, 0);
 }
+
+/**
+ * Normalise the many tier aliases used across the codebase
+ * (`compass`, `compass-40`, `strategic`, `briefing`, `snapshot`, `financial`,
+ *  `financial-analysis`) to one of the two registry tiers.
+ */
+export type NormalisedTier = 'compass-40' | 'financial-analysis';
+
+export function normaliseReportTier(raw: unknown): NormalisedTier {
+  const t = String(raw ?? '').toLowerCase().trim();
+  if (t.startsWith('financial')) return 'financial-analysis';
+  // Everything else (compass / strategic / briefing / snapshot / unknown) maps to Compass.
+  return 'compass-40';
+}
+
+/**
+ * Number of generation chunks the chunked-regeneration loop should run
+ * for a given tier. Drives the "X / Y" progress indicator.
+ */
+export function sectionCountForTier(raw: unknown): number {
+  return normaliseReportTier(raw) === 'financial-analysis'
+    ? financialSections().length
+    : compassSections().length;
+}
