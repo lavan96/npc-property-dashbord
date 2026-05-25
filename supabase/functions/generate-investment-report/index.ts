@@ -4038,11 +4038,11 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
     try {
       console.log('🔍 Fetching AI structure template directly from database...');
       
-      // Map frontend tier names to database tier names
-      // Frontend sends 'briefing' but database stores 'executive'
       const rawTier = propertyDetails?.reportTier || 'compass';
+      const canonicalTier = normaliseGenerationTier(rawTier);
+      const usesCanonicalCompassArchitecture = rawTier === 'compass-40' || rawTier === 'financial-analysis';
       const tierMapping: Record<string, string> = {
-        'compass-40': 'compass', // Compass-40 UI tier uses the legacy Compass AI template
+        'compass-40': 'compass',
         'briefing': 'executive',  // Executive Briefing tier mapping
         'compass': 'compass',     // Investor Compass
         'snapshot': 'snapshot',   // Suburb Snapshot
@@ -4058,10 +4058,17 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       };
       const reportCategory = scopeCategoryMap[reportScope] || 'investment';
       
-      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
+      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}" (canonical: ${canonicalTier})`);
       
       // Initialize REPORT_SECTIONS based on scope before template fetch
-      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+      REPORT_SECTIONS = usesCanonicalCompassArchitecture
+        ? getCanonicalSectionsForTier(canonicalTier)
+        : getDefaultSectionsForScope(reportScope);
+
+      if (usesCanonicalCompassArchitecture) {
+        templateContext = buildCanonicalTemplateContext(canonicalTier);
+        console.log(`✓ Using canonical ${canonicalTier} registry (${REPORT_SECTIONS.length} sections) instead of legacy DB template`);
+      }
 
       // Query report_structure_templates directly for the matching template
       const templateClient = createClient(
@@ -4070,15 +4077,19 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       );
       
       // First try to find a template matching the specific tier and category
-      let { data: templates, error: templateError } = await templateClient
-        .from('report_structure_templates')
-        .select('id, name, parsed_content, report_tier, report_category')
-        .eq('template_type', 'ai_structure')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
+      let { data: templates, error: templateError } = usesCanonicalCompassArchitecture
+        ? { data: null, error: null }
+        : await templateClient
+          .from('report_structure_templates')
+          .select('id, name, parsed_content, report_tier, report_category')
+          .eq('template_type', 'ai_structure')
+          .eq('is_active', true)
+          .order('priority', { ascending: false });
       
       if (templateError) {
         console.log('⚠️ Template query error:', templateError.message);
+      } else if (usesCanonicalCompassArchitecture) {
+        console.log('ℹ️ Legacy DB template lookup skipped for canonical Compass/Financial generation');
       } else if (templates && templates.length > 0) {
         // Find best matching template: exact match > tier match > category match > any active
         let selectedTemplate = templates.find(t => 
