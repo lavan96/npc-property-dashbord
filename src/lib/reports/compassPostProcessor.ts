@@ -25,7 +25,7 @@ import {
   PAGE_PRESSURE_TRIM_ORDER,
   PROTECTED_SECTION_IDS,
   type CompassSectionDefinition,
-} from './compassSectionRegistry.ts';
+} from './compassSectionRegistry';
 
 export type PostProcessTier = 'compass-40' | 'financial-analysis';
 
