@@ -39,6 +39,9 @@ export default function CashFlowAnalysis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<InvestmentReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [openingReportId, setOpeningReportId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [buildTypeFilter, setBuildTypeFilter] = useState<BuildTypeFilter>('all');
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
@@ -46,6 +49,7 @@ export default function CashFlowAnalysis() {
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   const [dateRange, setDateRange] = useState<'30' | '90' | '180' | '365' | 'all'>('30');
 
+  const PAGE_SIZE = 200;
   const { toast } = useToast();
 
   const dateRangeCutoff = useMemo(() => {
