@@ -134,6 +134,8 @@ export function TierSwitcher({
       case 'compass': return Compass;
       case 'briefing': return FileText;
       case 'snapshot': return Zap;
+      case 'financial': return Calculator;
+      default: return Compass;
     }
   };
 
