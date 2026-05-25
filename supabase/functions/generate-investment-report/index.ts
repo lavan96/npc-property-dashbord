@@ -365,6 +365,31 @@ function getDefaultSectionsForScope(scope: string): ReportSectionDefinition[] {
   }
 }
 
+function normaliseGenerationTier(raw: unknown): 'compass-40' | 'financial-analysis' {
+  const tier = String(raw ?? '').toLowerCase().trim();
+  return tier.startsWith('financial') ? 'financial-analysis' : 'compass-40';
+}
+
+function canonicalSectionsToGenerationSections(
+  canonicalSections: CanonicalSectionDefinition[],
+  prefix: string,
+): ReportSectionDefinition[] {
+  return canonicalSections.map((section, index) => ({
+    id: `${prefix}${index}`,
+    name: section.name,
+    sections: [section.name],
+    maxTokens: Math.min(5000, Math.max(1200, section.maxWordCount * 4)),
+    minContentLength: Math.min(4500, Math.max(600, section.maxWordCount * 3)),
+    requiredKeywords: section.sourceHeadings.slice(0, 3).map((heading) => heading.split(/\s+/)[0]?.toLowerCase()).filter(Boolean),
+  }));
+}
+
+function getCanonicalSectionsForTier(tier: 'compass-40' | 'financial-analysis'): ReportSectionDefinition[] {
+  return tier === 'financial-analysis'
+    ? canonicalSectionsToGenerationSections(financialSections(), 'financialSection')
+    : canonicalSectionsToGenerationSections(compassSections(), 'compassSection');
+}
+
 // Dynamic sections - populated from database template at runtime
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
