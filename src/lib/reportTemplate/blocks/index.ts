@@ -72,6 +72,15 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   toc: drawTocBlock,
   signature: drawSignatureBlock,
   slot: drawSlotBlock,
+  // Compass-40 visual components (Phase 4)
+  scorecard: drawScorecardBlock,
+  'risk-register': drawRiskRegisterBlock,
+  'infra-timeline': drawInfraTimelineBlock,
+  'amenity-matrix': drawAmenityMatrixBlock,
+  'planning-table': drawPlanningTableBlock,
+  'dd-checklist': drawDDChecklistBlock,
+  'decision-box': drawDecisionBoxBlock,
+  'strengths-watch': drawStrengthsWatchBlock,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
