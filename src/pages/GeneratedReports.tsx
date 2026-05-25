@@ -464,6 +464,7 @@ export default function GeneratedReports() {
         status: ['completed', 'pending', 'failed', 'processing'],
         isArchived: false,
         isClientReport: false,
+        limit: 500,
       };
       if (dateRange === 'custom') {
         if (customFromIso) listOptions.createdAfter = customFromIso;
@@ -471,6 +472,7 @@ export default function GeneratedReports() {
       } else if (dateRangeCutoff) {
         listOptions.createdAfter = dateRangeCutoff;
       }
+
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions,
