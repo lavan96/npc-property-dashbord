@@ -457,7 +457,7 @@ IMPORTANT:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      maxTokens: targetTier === 'briefing' ? 16000 : 6000,
+      maxTokens: targetTier === 'briefing' ? 16000 : targetTier === 'financial' ? 14000 : 6000,
       temperature: 0.3,
     });
 
