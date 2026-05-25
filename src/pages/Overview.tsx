@@ -13,6 +13,7 @@ import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
 import { UpcomingRemindersWidget } from '@/components/overview/UpcomingRemindersWidget';
 import { CommercialPortfolioWidget } from '@/components/commercial/CommercialPortfolioWidget';
+import { IndustrialPortfolioWidget } from '@/components/industrial/IndustrialPortfolioWidget';
 
 import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
@@ -486,6 +487,7 @@ export default function Overview() {
       {/* Commercial Portfolio KPIs */}
       <div className="animate-fade-in">
         <CommercialPortfolioWidget />
+        <IndustrialPortfolioWidget />
       </div>
 
 
