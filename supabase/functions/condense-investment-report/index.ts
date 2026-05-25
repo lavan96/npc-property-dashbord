@@ -313,9 +313,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!targetTier || !['briefing', 'snapshot'].includes(targetTier)) {
+    if (!targetTier || !['briefing', 'snapshot', 'financial'].includes(targetTier)) {
       return new Response(JSON.stringify({ 
-        error: 'Target tier must be "briefing" or "snapshot"',
+        error: 'Target tier must be "briefing", "snapshot" or "financial"',
         success: false 
       }), {
         status: 400,
