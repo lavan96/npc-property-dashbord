@@ -187,18 +187,41 @@ export default function CashFlowAnalysis() {
     return { grade: 'F', color: 'bg-red-600' };
   };
 
+  const FULL_REPORT_SELECT = 'id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence';
+
+  const openAnalysisForReport = async (reportSummary: InvestmentReport) => {
+    setOpeningReportId(reportSummary.id);
+    try {
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        reportId: reportSummary.id,
+        listOptions: { select: FULL_REPORT_SELECT },
+      });
+      if (error) throw new Error(error.message);
+      const fullReport = data?.report || reportSummary;
+      setSelectedReport(fullReport);
+      setAnalysisModalOpen(true);
+
+      logActivityDirect({
+        actionType: 'cash_flow_created',
+        entityType: 'cash_flow_analysis',
+        entityId: fullReport.id,
+        entityName: fullReport.property_address,
+        metadata: { action: 'view_analysis' }
+      });
+    } catch (err: any) {
+      console.error('Error loading full report:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load full report data",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningReportId(null);
+    }
+  };
+
   const handleViewAnalysis = (report: InvestmentReport) => {
-    setSelectedReport(report);
-    setAnalysisModalOpen(true);
-    
-    // Log cash flow analysis viewed
-    logActivityDirect({
-      actionType: 'cash_flow_created',
-      entityType: 'cash_flow_analysis',
-      entityId: report.id,
-      entityName: report.property_address,
-      metadata: { action: 'view_analysis' }
-    });
+    openAnalysisForReport(report);
   };
 
   return (
