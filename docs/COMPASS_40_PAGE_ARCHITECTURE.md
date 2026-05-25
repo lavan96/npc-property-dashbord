@@ -102,7 +102,7 @@ summary pointing to the Financial Analysis Report
 | 4 — Visual component library (scorecard, riskRegister, infraTimeline, matrices) | **Done** — 8 blocks live: `scorecard`, `strengths-watch`, `risk-register`, `infra-timeline`, `amenity-matrix`, `planning-table`, `dd-checklist`, `decision-box`. Registered in `BLOCK_RENDERERS` + `BLOCK_DEFS` + Template Builder palette |
 | 5 — Word-cap enforcement (prompt + post-trim) | **Done** |
 | 6 — Page-pressure trimming engine | **Done** |
-| 7 — QA automation (page band, financial exclusion, duplicates, artefacts) | Pending |
+| 7 — QA automation (page band, financial exclusion, duplicates, artefacts) | **Done** |
 
 ## Phase 4 block reference
 
@@ -149,3 +149,25 @@ Sections in `PROTECTED_SECTION_IDS` (`futureInfrastructure`, `riskRegister`,
 Returns a `PostProcessReport` (initial/final word count, estimated pages,
 trims applied, sections trimmed, warnings) which is logged and returned in
 the function response for QA / observability.
+
+
+## Phase 7 — QA validator (`compassQAValidator.ts`)
+
+Shared module at `supabase/functions/_shared/compassQAValidator.ts` (mirrored at
+`src/lib/reports/compassQAValidator.ts`). Returns a `QAReport` with severity-tagged
+findings; wired into the `condense-investment-report` response as `qaReport`.
+
+**Rules enforced**
+1. **page-band** — Compass 38–42, Financial 18–22 (error if over, warning if under)
+2. **financial-exclusion** — Compass markdown must not match `gross yield`, `LVR`, `LMI`, `P&I`, `weekly rent`, `10-year cashflow`, `sensitivity analysis`, `after-tax cashflow`, `depreciation schedule`
+3. **suburb-exclusion** — Financial Analysis must not match `SEIFA`, `school catchment`, `crime`, `flood`, `bushfire`, `demograph`, `infrastructure pipeline`, `zoning overlay`
+4. **duplicate-h2** — no repeated H2 headings
+5. **duplicate-decision-box** / **forbidden-decision-box** — per-section governance
+6. **missing-protected-section** — Compass must include all `PROTECTED_SECTION_IDS`
+7. **word-cap** — per-section narrative ≤ 110% of `maxWordCount`
+
+**Test coverage** (`compassPostProcessor_test.ts`, 9 tests, all passing):
+- Exec summary cap • Forbidden decision-box removal • Duplicate decision-box collapse
+- Bullet cap under page pressure • Protected sections immune to trims
+- QA: financial-content detection, duplicate H2, missing protected section
+- Page estimator sanity bounds
