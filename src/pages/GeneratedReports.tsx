@@ -460,11 +460,11 @@ export default function GeneratedReports() {
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Filter out client reports (is_client_report = true) - those are only accessible from clients page
       const listOptions: Record<string, unknown> = {
-        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
+        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score, generated_by',
         status: ['completed', 'pending', 'failed', 'processing'],
         isArchived: false,
         isClientReport: false,
-        limit: 500,
+        limit: 2000,
       };
       if (dateRange === 'custom') {
         if (customFromIso) listOptions.createdAfter = customFromIso;
@@ -509,10 +509,10 @@ export default function GeneratedReports() {
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score, generated_by',
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score, generated_by',
           status: ['completed', 'pending'],
           isArchived: true,
-          limit: 100
+          limit: 2000
         }
       });
 
