@@ -304,7 +304,7 @@ function ReportGenerationProgressInner() {
       listMode: true,
       listOptions: {
         select:
-          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id',
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
