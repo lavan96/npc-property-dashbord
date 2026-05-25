@@ -4256,11 +4256,14 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       if (compass40OverlayActive) {
         REPORT_SECTIONS = getCanonicalSectionsForTier('compass-40');
         templateContext = buildCanonicalTemplateContext('compass-40');
-        // Bump per-section tokens by ~30% to stop mid-sentence truncations
-        // observed in the legacy output. Cap at 6000 to protect latency.
+        // Bump per-section tokens for Compass-40 to stop mid-sentence
+        // truncations observed in the legacy output. The generateReportSection
+        // helper also runs a continuation pass when finish_reason==='length',
+        // but a more generous initial budget means most sections finish in one
+        // shot. Cap at 6000 to protect latency.
         REPORT_SECTIONS = REPORT_SECTIONS.map((s) => ({
           ...s,
-          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.3)),
+          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.6)),
         }));
         console.log(`✓ Compass-40: using canonical ${REPORT_SECTIONS.length}-section registry (legacy template bypassed)`);
       } else {
