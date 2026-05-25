@@ -4060,95 +4060,81 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
     // ========== DIRECT TEMPLATE INJECTION (Hard Enforced) ==========
     // Fetch AI structure template directly from database - bypasses RAG similarity search
     let templateContext = '';
+    let compass40OverlayActive = false;
     try {
       console.log('🔍 Fetching AI structure template directly from database...');
-      
+
       const rawTier = propertyDetails?.reportTier || 'compass';
-      const canonicalTier = normaliseGenerationTier(rawTier);
-      // Engine selector: 'legacy' forces the original DB-template path even for compass tiers.
-      // 'compass-40' uses the new canonical 21-section registry. Default = 'legacy' (stable).
+      // Engine selector:
+      //   'legacy'     → original DB-template path, untouched.
+      //   'compass-40' → SAME legacy DB-template path, plus a Compass-40 overlay
+      //                  appended to the prompt that strips financial sections
+      //                  and compresses the remainder per the client brief.
       const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
-      const usesCanonicalCompassArchitecture = generationEngine === 'compass-40'
-        && ['compass', 'compass-40', 'financial', 'financial-analysis'].includes(rawTier);
-      console.log(`⚙️ Generation engine: ${generationEngine} (canonical injection: ${usesCanonicalCompassArchitecture})`);
+      compass40OverlayActive = generationEngine === 'compass-40'
+        && ['compass', 'compass-40'].includes(rawTier);
+      console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
-        'briefing': 'executive',  // Executive Briefing tier mapping
-        'compass': 'compass',     // Investor Compass
-        'snapshot': 'snapshot',   // Suburb Snapshot
-        'executive': 'executive', // Direct match (in case already mapped)
-        'financial': 'financial', // Financial Analysis Report (Phase 3)
+        'briefing': 'executive',
+        'compass': 'compass',
+        'snapshot': 'snapshot',
+        'executive': 'executive',
+        'financial': 'financial',
         'financial-analysis': 'financial',
       };
       const reportTier = tierMapping[rawTier] || rawTier;
       const scopeCategoryMap: Record<string, string> = {
         'suburb': 'suburb',
-        'postcode': 'postcode', 
+        'postcode': 'postcode',
         'statewide': 'statewide',
       };
       const reportCategory = scopeCategoryMap[reportScope] || 'investment';
-      
-      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}" (canonical: ${canonicalTier})`);
-      
-      // Initialize REPORT_SECTIONS based on scope before template fetch
-      REPORT_SECTIONS = usesCanonicalCompassArchitecture
-        ? getCanonicalSectionsForTier(canonicalTier)
-        : getDefaultSectionsForScope(reportScope);
 
-      if (usesCanonicalCompassArchitecture) {
-        templateContext = buildCanonicalTemplateContext(canonicalTier);
-        console.log(`✓ Using canonical ${canonicalTier} registry (${REPORT_SECTIONS.length} sections) instead of legacy DB template`);
-      }
+      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
 
-      // Query report_structure_templates directly for the matching template
+      // Always start from legacy default sections; compass-40 reuses this base.
+      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+
       const templateClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
-      
-      // First try to find a template matching the specific tier and category
-      let { data: templates, error: templateError } = usesCanonicalCompassArchitecture
-        ? { data: null, error: null }
-        : await templateClient
-          .from('report_structure_templates')
-          .select('id, name, parsed_content, report_tier, report_category')
-          .eq('template_type', 'ai_structure')
-          .eq('is_active', true)
-          .order('priority', { ascending: false });
-      
+
+      let { data: templates, error: templateError } = await templateClient
+        .from('report_structure_templates')
+        .select('id, name, parsed_content, report_tier, report_category')
+        .eq('template_type', 'ai_structure')
+        .eq('is_active', true)
+        .order('priority', { ascending: false });
+
       if (templateError) {
         console.log('⚠️ Template query error:', templateError.message);
-      } else if (usesCanonicalCompassArchitecture) {
-        console.log('ℹ️ Legacy DB template lookup skipped for canonical Compass/Financial generation');
       } else if (templates && templates.length > 0) {
-        // Find best matching template: exact match > tier match > category match > any active
-        let selectedTemplate = templates.find(t => 
+        let selectedTemplate = templates.find(t =>
           t.report_tier === reportTier && t.report_category === reportCategory
-        ) || templates.find(t => 
+        ) || templates.find(t =>
           t.report_tier === reportTier && !t.report_category
-        ) || templates.find(t => 
+        ) || templates.find(t =>
           !t.report_tier && t.report_category === reportCategory
-        ) || templates.find(t => 
+        ) || templates.find(t =>
           !t.report_tier && !t.report_category
-        ) || templates[0]; // Fallback to highest priority
-        
+        ) || templates[0];
+
         if (selectedTemplate?.parsed_content) {
           templateContext = selectedTemplate.parsed_content;
           console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
           console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
           console.log(`  Content size: ${templateContext.length} chars`);
-          
-          // ========== DYNAMIC SECTION PARSING ==========
-          // Parse the template to extract section headings and update REPORT_SECTIONS
+
           console.log('\n📋 Parsing template structure...');
           const parsedStructure = parseTemplateStructure(
             templateContext,
             selectedTemplate.name,
             selectedTemplate.id
           );
-          
+
           if (parsedStructure.sections.length > 0) {
-            // Update the global REPORT_SECTIONS with dynamically parsed sections
             REPORT_SECTIONS = parsedStructure.sections;
             console.log(`✓ REPORT_SECTIONS updated with ${REPORT_SECTIONS.length} sections from template`);
             console.log(`  Template headings found: ${parsedStructure.headings.length}`);
@@ -4156,21 +4142,16 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
             console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
             REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
           }
-          // ========== END DYNAMIC SECTION PARSING ==========
-          
         } else {
           console.log('⚠️ Template found but parsed_content is empty');
-          console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
-            REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+          REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
         }
       } else {
         console.log('ℹ️ No active AI structure templates found in database');
-        console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
-          REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+        REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
       }
     } catch (templateError: any) {
       console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
-      console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
       REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
     }
 
@@ -4189,6 +4170,88 @@ ${templateContext}
 `;
       prompt = templateSection + prompt;
       console.log('✓ Template context injected into prompt. New length:', prompt.length);
+    }
+
+    // ========== COMPASS-40 OVERLAY (Client brief: trim legacy report) ==========
+    // Applied ONLY when generationEngine === 'compass-40'. Built on top of the
+    // legacy structure: KEEP Priority-1 sections, COMPRESS Priority-2 sections,
+    // REMOVE all financial modelling (Priority-3). See client brief for the
+    // exact priority list — these overrides WIN over the template above.
+    if (compass40OverlayActive) {
+      const compass40Overlay = `
+
+---
+**COMPASS-40 OVERLAY — MANDATORY OVERRIDES TO THE TEMPLATE ABOVE**
+
+You are generating the trimmed, client-facing version of the Investor Compass report. Use the template structure above as the base, but apply ALL of the following overrides. These overrides WIN over anything in the template.
+
+### 1. KEEP (Priority 1) — write these in full, but strip every financial figure
+
+- **Executive Summary** — exactly ONE page. Cover: location verdict, property fit, tenant demand, key risks, recommendation. DO NOT include purchase price, LVR, yield, weekly rent, loan or cashflow figures. No KPI dashboard row.
+- **Property Snapshot** — physical and strategic only: property type, bed/bath/car, land size, estate, suburb, target tenant, locality fit. DO NOT include price, rent, yield, LVR or loan details.
+- **Location Overview** — strengthen. This is a core section explaining why the area matters.
+- **Population & Development Trends** — keep in full (macro demand, master-planned growth corridor).
+- **Suburb Character & Lifestyle** — keep but REDUCE. Who lives there, why tenants/buyers want it.
+- **Demand Drivers** — major client-facing section: tenant demand, family formation, employment access, master-planned amenity.
+- **Property-Level Information** — non-financial only: layout, land size, dwelling type, position within estate, tenant suitability, strengths, limitations.
+- **Risk Summary** — consolidate crime + environmental + planning + supply into ONE clear risk dashboard table (Risk / Rating / Why it matters / What to verify).
+- **Final Recommendation** — rewrite as a simple verdict: **Proceed**, **Proceed with caution**, or **Not suitable**, followed by 150–250 words of plain rationale tied to location, tenant demand and risk. No financial verdict.
+
+### 2. COMPRESS (Priority 2) — cap pages as specified, no padding
+
+- **Education** — max 2–3 pages total. Do NOT split into multiple school sections.
+- **Healthcare** — max 1 page (½ page is fine).
+- **Shopping & Dining** — max 1 page. Daily convenience only, no long descriptive paragraphs.
+- **Parks & Recreation** — max 1 page.
+- **Transport** — consolidate public transport, commute, bus, road links and future upgrades into ONE 2–3 page section.
+- **SEIFA / Socioeconomic Profile** — small evidence box only. Do NOT explain the index methodology.
+- **Employment & Industry Composition** — render ONCE. Remove any duplicate employment sections appearing later in the template.
+
+### 3. REMOVE ENTIRELY (Priority 3) — these sections and items MUST NOT appear anywhere
+
+Sections to omit completely:
+- Purchase Costs / Purchase & Ongoing Costs
+- Annual Ongoing Costs
+- Rental Yield Calculations (Gross & Net)
+- Loan Assumptions
+- Cashflow Analysis (P&I Scenario, any scenario)
+- Interest Rate Sensitivity / Debt Serviceability Pressure
+- 10-Year Projections (Property Value, Rental Income, Annual Cashflow, Cumulative)
+- Loan Balance & Equity After 10 Years
+- Capital Appreciation Potential – 10-Year Projection
+- Structural Cashflow Deficit
+- Rental Assessment & Yield Calculation
+- Yield Comparison to Benchmarks
+- Land Tax Note
+- Income Potential – Pre-Calculated Yields (or rewrite as a short "tenant demand profile" with NO numbers)
+- Growth Outlook – 5% p.a. Capital Growth Assumption
+- Clear Yield Profile / Yield Below National Averages / Negative Cashflow Under 90% LVR
+
+Dashboard / KPI items to omit (no card, no table cell, no inline mention):
+- Purchase Price / Estimated Purchase Price
+- Weekly Rent / Estimated Weekly Rent
+- LVR
+- Net Yield / Gross Rental Yield / Net Rental Yield
+- Annual Rental Income
+- Occupancy Assumption
+- Loan amount and interest rate commentary
+
+### 4. STYLE RULES
+
+- Remove repeated transition paragraphs ("As we move into…", "Building on the above…", "This flows naturally…"). They make the report artificially long.
+- ONE "What This Means" / client takeaway box per section maximum — not after every few paragraphs.
+- Do NOT emit \`[citation]\`, \`[source needed]\`, \`[TBD]\` or any placeholder. Name the real source inline or omit the claim.
+- Bed / bath / car / land size / property type stated in the Property Snapshot MUST match every later reference exactly.
+- Where the legacy template would emit a financial figure, replace it with a single approved sentence: *"Detailed cashflow, yield, loan and 10-year projections are provided in the separate Financial Analysis Report."* Use this sentence AT MOST ONCE in the whole report.
+
+### 5. PAGE TARGET
+
+Aim for ~38–42 pages total after these trims. If the template would push you longer, trim Priority-2 sections further — never trim Priority-1 sections.
+
+---
+`;
+      prompt = prompt + compass40Overlay;
+      console.log(`✓ Compass-40 overlay injected. Prompt length now: ${prompt.length}`);
     }
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
