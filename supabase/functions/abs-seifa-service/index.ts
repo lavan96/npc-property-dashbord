@@ -461,12 +461,12 @@ function generateSEIFAEstimate(postcode: string, state?: string): any {
     ier: {
       score: score + 10,
       decile: decile,
-      description: 'Index of Education and Occupation'
+      description: 'Index of Economic Resources'
     },
     ieo: {
       score: score + 20,
       decile: decile,
-      description: 'Index of Economic Resources'
+      description: 'Index of Education and Occupation'
     },
     summary: getSEIFASummary(decile),
     dataSource: 'Estimated based on ABS SEIFA patterns',
