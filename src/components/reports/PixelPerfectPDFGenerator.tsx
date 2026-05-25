@@ -3317,6 +3317,25 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       }
       console.log(`✓ Page numbering complete (pages 2-${totalPages - 1})`);
 
+      // Set clean PDF metadata (overrides any stray template metadata)
+      try {
+        const cleanSuburb = String(suburb || '').trim();
+        const cleanState = String(state || '').trim();
+        const locationLabel = [cleanSuburb, cleanState].filter(Boolean).join(', ');
+        const pdfTitle = locationLabel
+          ? `Investment Report — ${locationLabel}`
+          : 'Investment Report';
+        pdfDoc.setTitle(pdfTitle);
+        pdfDoc.setAuthor('NPC Services');
+        pdfDoc.setSubject('Property Investment Report');
+        pdfDoc.setCreator('NPC Command Centre');
+        pdfDoc.setProducer('NPC Command Centre');
+        pdfDoc.setCreationDate(new Date());
+        pdfDoc.setModificationDate(new Date());
+      } catch (metaErr) {
+        console.warn('⚠️ Failed to set PDF metadata:', metaErr);
+      }
+
       // Save the PDF
       console.log('💾 Step 6: Saving PDF document...');
       const pdfBytes = await pdfDoc.save();
