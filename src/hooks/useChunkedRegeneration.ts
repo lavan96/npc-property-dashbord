@@ -47,6 +47,7 @@ export function useChunkedRegeneration() {
     const {
       reportId,
       propertyAddress,
+      generationEngine,
       manualOverrides = {},
       financialCalculations = {},
       onProgress,
