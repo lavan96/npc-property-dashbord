@@ -3987,11 +3987,13 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       // Frontend sends 'briefing' but database stores 'executive'
       const rawTier = propertyDetails?.reportTier || 'compass';
       const tierMapping: Record<string, string> = {
+        'compass-40': 'compass', // Compass-40 UI tier uses the legacy Compass AI template
         'briefing': 'executive',  // Executive Briefing tier mapping
         'compass': 'compass',     // Investor Compass
         'snapshot': 'snapshot',   // Suburb Snapshot
         'executive': 'executive', // Direct match (in case already mapped)
         'financial': 'financial', // Financial Analysis Report (Phase 3)
+        'financial-analysis': 'financial',
       };
       const reportTier = tierMapping[rawTier] || rawTier;
       const scopeCategoryMap: Record<string, string> = {

@@ -73,6 +73,13 @@ export function useChunkedRegeneration() {
       const report = reportData?.report;
       const tier = normaliseReportTier(report?.report_tier);
       const totalSections = sectionCountForTier(tier);
+      const existingCompletedSection = Math.min(
+        Math.max(Number(report?.last_completed_section) || 0, 0),
+        totalSections,
+      );
+      const hasPartialProgress = Boolean(report?.report_content) && existingCompletedSection > 0;
+      const shouldResumeGeneration = hasPartialProgress && existingCompletedSection < totalSections;
+      const shouldResumePostProcessing = hasPartialProgress && existingCompletedSection >= totalSections;
 
       setState({
         isRegenerating: true,
@@ -83,7 +90,18 @@ export function useChunkedRegeneration() {
         error: null,
       });
 
-      // Reset for fresh regeneration — retry on transient statement-timeouts
+      // Mark processing without destroying resume state. Reset to section 0 only
+      // when there is no usable partial progress; otherwise continue from the
+      // last successfully saved section.
+      const startPayload: Record<string, any> = {
+        status: 'processing',
+        error_message: null,
+      };
+      if (!hasPartialProgress) {
+        startPayload.last_completed_section = 0;
+      }
+
+      // Retry on transient statement-timeouts
       // (Postgres 57014) and other 5xx blips. The first reset writes
       // status='processing' which fires the archive_report_version trigger;
       // under polling contention that single call can occasionally exceed the
@@ -97,11 +115,7 @@ export function useChunkedRegeneration() {
         const { error } = await invokeSecureFunction('manage-investment-reports', {
           action: 'update',
           reportId,
-          data: {
-            status: 'processing',
-            error_message: null,
-            last_completed_section: 0,
-          }
+          data: startPayload,
         });
         if (!error) { resetOk = true; break; }
         resetErr = error;
@@ -112,7 +126,7 @@ export function useChunkedRegeneration() {
       }
 
       const effectivePropertyAddress = propertyAddress || report?.property_address || '';
-      const startSection = 0;
+      const startSection = shouldResumeGeneration || shouldResumePostProcessing ? existingCompletedSection : 0;
 
       // ── Phase 1: Generate sections ────────────────────────────────────────
       for (let section = startSection; section < totalSections; section++) {
@@ -151,7 +165,7 @@ export function useChunkedRegeneration() {
             },
             continueFrom: true,
             singleSection: true,
-          });
+          }, { timeoutMs: 180000 });
 
           if (error) {
             lastError = error.message || 'Unknown error';
@@ -182,7 +196,7 @@ export function useChunkedRegeneration() {
         toast.loading('Condensing report (word caps + page pressure)…', { id: toastId });
 
         try {
-          await invokeSecureFunction('condense-investment-report', { reportId, tier });
+          await invokeSecureFunction('condense-investment-report', { reportId, tier }, { timeoutMs: 180000 });
         } catch (e: any) {
           console.warn('[ChunkedRegeneration] Condense step soft-failed:', e?.message);
         }
