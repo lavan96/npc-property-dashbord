@@ -29,6 +29,14 @@ import { drawBadgeListBlock } from './badgeList';
 import { drawTocBlock } from './toc';
 import { drawSignatureBlock } from './signature';
 import { drawSlotBlock } from './slot';
+import { drawScorecardBlock } from './scorecard';
+import { drawRiskRegisterBlock } from './riskRegister';
+import { drawInfraTimelineBlock } from './infraTimeline';
+import { drawAmenityMatrixBlock } from './amenityMatrix';
+import { drawPlanningTableBlock } from './planningTable';
+import { drawDDChecklistBlock } from './ddChecklist';
+import { drawDecisionBoxBlock } from './decisionBox';
+import { drawStrengthsWatchBlock } from './strengthsWatch';
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
