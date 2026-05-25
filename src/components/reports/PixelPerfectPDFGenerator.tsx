@@ -2574,10 +2574,30 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       };
 
       // Get ALL sections from the report dynamically instead of hardcoded list
-      const allSectionNames = Object.keys(sections).filter(name => 
-        name && sections[name] && sections[name].trim().length > 0
+      // Filter out meta/cover/contents entries that should never appear as numbered TOC items
+      const META_SECTION_PATTERNS = [
+        /^cover\s*page?$/i,
+        /^cover$/i,
+        /^contents?$/i,
+        /^table\s+of\s+contents$/i,
+        /^reading\s+guide$/i,
+        /^naidu/i,
+        /^title\s*page$/i,
+        /^disclaimer$/i,
+        /^back\s*cover$/i,
+      ];
+      const isMetaSectionName = (raw: string) => {
+        const cleaned = raw
+          .replace(/^#{1,6}\s*/, '')
+          .replace(/^\d+(\.\d+)*\.?\s+/, '')
+          .replace(/:\s*$/, '')
+          .trim();
+        return META_SECTION_PATTERNS.some((p) => p.test(cleaned));
+      };
+      const allSectionNames = Object.keys(sections).filter(name =>
+        name && sections[name] && sections[name].trim().length > 0 && !isMetaSectionName(name)
       );
-      
+
       console.log('Found sections to include in PDF:', allSectionNames);
       
       // Track section page numbers as we render (used for TOC in compass tier)
@@ -3296,6 +3316,25 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         console.log(`  ✓ Added styled footer with page ${pageNumber} to page index ${i}`);
       }
       console.log(`✓ Page numbering complete (pages 2-${totalPages - 1})`);
+
+      // Set clean PDF metadata (overrides any stray template metadata)
+      try {
+        const cleanSuburb = String(suburb || '').trim();
+        const cleanState = String(state || '').trim();
+        const locationLabel = [cleanSuburb, cleanState].filter(Boolean).join(', ');
+        const pdfTitle = locationLabel
+          ? `Investment Report — ${locationLabel}`
+          : 'Investment Report';
+        pdfDoc.setTitle(pdfTitle);
+        pdfDoc.setAuthor('NPC Services');
+        pdfDoc.setSubject('Property Investment Report');
+        pdfDoc.setCreator('NPC Command Centre');
+        pdfDoc.setProducer('NPC Command Centre');
+        pdfDoc.setCreationDate(new Date());
+        pdfDoc.setModificationDate(new Date());
+      } catch (metaErr) {
+        console.warn('⚠️ Failed to set PDF metadata:', metaErr);
+      }
 
       // Save the PDF
       console.log('💾 Step 6: Saving PDF document...');

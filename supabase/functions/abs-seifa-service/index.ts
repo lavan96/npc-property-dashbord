@@ -107,12 +107,12 @@ async function fetchSEIFAData(postcode: string, state?: string) {
             ier: {
               score: parsedData.ier || null,
               decile: parsedData.ierDecile || null,
-              description: 'Index of Education and Occupation'
+              description: 'Index of Economic Resources'
             },
             ieo: {
               score: parsedData.ieo || null,
               decile: parsedData.ieoDecile || null,
-              description: 'Index of Economic Resources'
+              description: 'Index of Education and Occupation'
             },
             summary: getSEIFASummary(parsedData.irsadDecile),
             dataSource: 'Australian Bureau of Statistics (ABS) - 2021 Census',
@@ -159,12 +159,12 @@ async function fetchSEIFAData(postcode: string, state?: string) {
             ier: {
               score: record.IER_SCORE || null,
               decile: record.IER_DECILE || null,
-              description: 'Index of Education and Occupation'
+              description: 'Index of Economic Resources'
             },
             ieo: {
               score: record.IEO_SCORE || null,
               decile: record.IEO_DECILE || null,
-              description: 'Index of Economic Resources'
+              description: 'Index of Education and Occupation'
             },
             summary: getSEIFASummary(record.IRSAD_DECILE),
             dataSource: 'Australian Bureau of Statistics (ABS) via data.gov.au - 2021 Census',
@@ -461,12 +461,12 @@ function generateSEIFAEstimate(postcode: string, state?: string): any {
     ier: {
       score: score + 10,
       decile: decile,
-      description: 'Index of Education and Occupation'
+      description: 'Index of Economic Resources'
     },
     ieo: {
       score: score + 20,
       decile: decile,
-      description: 'Index of Economic Resources'
+      description: 'Index of Education and Occupation'
     },
     summary: getSEIFASummary(decile),
     dataSource: 'Estimated based on ABS SEIFA patterns',
