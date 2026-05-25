@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Building2, Pencil } from 'lucide-react';
+import { ArrowLeft, Building2, Pencil, FileDown, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { RentRollTable } from '@/components/commercial/RentRollTable';
 import { FinancialSnapshot } from '@/components/commercial/FinancialSnapshot';
+import { generateCommercialInvestmentReport } from '@/utils/commercial/commercialReportPdf';
+
 
 const ASSET_LABEL: Record<string, string> = {
   office: 'Office', retail: 'Retail', industrial: 'Industrial', mixed_use: 'Mixed Use',
