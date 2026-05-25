@@ -65,6 +65,15 @@ const PALETTE: PaletteItem[] = [
   { label: 'Contents', icon: ListOrdered, build: () => blockFromDef('toc') },
   { label: 'Signature', icon: PenLine, build: () => blockFromDef('signature') },
   { label: 'Free / overlays', icon: Layers, build: () => blockFromDef('free') },
+  // ─── Compass-40 visual components (Phase 4) ───
+  { label: 'Macro Scorecard',         icon: Gauge,         build: () => blockFromDef('scorecard') },
+  { label: 'Strengths & Watch',       icon: ThumbsUp,      build: () => blockFromDef('strengths-watch') },
+  { label: 'Risk Register',           icon: ShieldAlert,   build: () => blockFromDef('risk-register') },
+  { label: 'Infra Timeline',          icon: Milestone,     build: () => blockFromDef('infra-timeline') },
+  { label: 'Amenity Matrix',          icon: Grid3x3,       build: () => blockFromDef('amenity-matrix') },
+  { label: 'Planning Action Table',   icon: ClipboardList, build: () => blockFromDef('planning-table') },
+  { label: 'DD Checklist',            icon: CheckSquare,   build: () => blockFromDef('dd-checklist') },
+  { label: 'Decision Box',            icon: Lightbulb,     build: () => blockFromDef('decision-box') },
   {
     label: 'Text overlay',
     icon: Type,
