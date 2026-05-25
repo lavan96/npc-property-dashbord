@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { Loader2, ChevronDown, Compass, FileText, Zap, Check } from 'lucide-react';
+import { Loader2, ChevronDown, Compass, FileText, Zap, Check, Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
