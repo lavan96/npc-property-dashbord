@@ -83,16 +83,33 @@ export function useChunkedRegeneration() {
         error: null,
       });
 
-      // Reset for fresh regeneration
-      await invokeSecureFunction('manage-investment-reports', {
-        action: 'update',
-        reportId,
-        data: {
-          status: 'processing',
-          error_message: null,
-          last_completed_section: 0,
+      // Reset for fresh regeneration — retry on transient statement-timeouts
+      // (Postgres 57014) and other 5xx blips. The first reset writes
+      // status='processing' which fires the archive_report_version trigger;
+      // under polling contention that single call can occasionally exceed the
+      // DB statement timeout. Retrying keeps the regeneration alive.
+      let resetOk = false;
+      let resetErr: any = null;
+      for (let attempt = 0; attempt < 3 && !resetOk; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, 1500 * attempt));
         }
-      });
+        const { error } = await invokeSecureFunction('manage-investment-reports', {
+          action: 'update',
+          reportId,
+          data: {
+            status: 'processing',
+            error_message: null,
+            last_completed_section: 0,
+          }
+        });
+        if (!error) { resetOk = true; break; }
+        resetErr = error;
+        console.warn(`[ChunkedRegeneration] Reset attempt ${attempt + 1} failed:`, error.message || error);
+      }
+      if (!resetOk) {
+        throw new Error(`Failed to start regeneration: ${resetErr?.message || 'unknown error'}`);
+      }
 
       const effectivePropertyAddress = propertyAddress || report?.property_address || '';
       const startSection = 0;
