@@ -2582,7 +2582,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
       // Get ALL sections from the report dynamically instead of hardcoded list
       // Filter out meta/cover/contents entries that should never appear as numbered TOC items
-      const META_SECTION_PATTERNS = [
+      const META_SECTION_PATTERNS: RegExp[] = [
         /^cover\s*page?$/i,
         /^cover$/i,
         /^contents?$/i,
@@ -2592,15 +2592,21 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         /^title\s*page$/i,
         /^disclaimer$/i,
         /^back\s*cover$/i,
-        // Compass / Compass-40: financial-leak sections that must never render
-        /^investment\s+highlights$/i,
-        /^key\s+findings$/i,
-        /^headline\s+scores?$/i,
-        /^overall\s+investment\s+profile$/i,
-        /^investment\s+score\s+analysis$/i,
-        /^macro\s+investment\s+scorecard$/i,
-        /^property\s+snapshot\s*[-–—]\s*non[-\s]?financial$/i,
       ];
+      // Compass / Compass-40 only: financial-leak sections that must never render.
+      // These are still valid for the Financial Analysis tier.
+      if (reportTier !== 'financial') {
+        META_SECTION_PATTERNS.push(
+          /^investment\s+highlights$/i,
+          /^key\s+findings$/i,
+          /^headline\s+scores?$/i,
+          /^overall\s+investment\s+profile$/i,
+          /^investment\s+score\s+analysis$/i,
+          /^macro\s+investment\s+scorecard$/i,
+          /^property\s+snapshot\s*[-–—]\s*non[-\s]?financial$/i,
+        );
+      }
+
       // Collapse adjacent repeated words/phrases that occasionally appear in
       // model-generated headings (e.g. "Industry 4 Industry & Employment",
       // "Amenity Amenity & Livability", "SEIFA IFA", "Key Strengths Key Strengths").
