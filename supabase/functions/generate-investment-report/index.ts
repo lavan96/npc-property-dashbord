@@ -4588,6 +4588,16 @@ YOUR DEDICATED PROPERTY PARTNER
             .replace(/^(Here|I will|Let me|Now|The following).*?:\s*/im, '')
             .replace(/^(Certainly|Sure|Of course).*?\n/im, '')
             .trim();
+
+          // Compass-40: scrub financial leaks, citation markers, dangling sentences.
+          if (compass40OverlayActive) {
+            const before = cleanContent.length;
+            cleanContent = sanitizeCompass40Content(cleanContent);
+            if (cleanContent.length !== before) {
+              console.log(`🧼 Compass-40 sanitizer: ${before} → ${cleanContent.length} chars (section "${sectionDef.name}")`);
+            }
+          }
+
           
           // Validate section content
           const validation = validateSectionContent(sectionDef, cleanContent);
