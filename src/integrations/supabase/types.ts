@@ -8592,6 +8592,7 @@ export type Database = {
           error_message: string | null
           financial_calculations: Json | null
           generated_by: string | null
+          generation_engine: string
           id: string
           investment_score: Json | null
           is_archived: boolean
@@ -8624,6 +8625,7 @@ export type Database = {
           error_message?: string | null
           financial_calculations?: Json | null
           generated_by?: string | null
+          generation_engine?: string
           id?: string
           investment_score?: Json | null
           is_archived?: boolean
@@ -8656,6 +8658,7 @@ export type Database = {
           error_message?: string | null
           financial_calculations?: Json | null
           generated_by?: string | null
+          generation_engine?: string
           id?: string
           investment_score?: Json | null
           is_archived?: boolean

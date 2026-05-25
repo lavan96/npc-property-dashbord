@@ -5,9 +5,12 @@ import { sectionCountForTier, normaliseReportTier } from '@/lib/reports/compassS
 
 export type RegenerationPhase = 'idle' | 'generate' | 'condense' | 'qa' | 'done';
 
+export type GenerationEngine = 'legacy' | 'compass-40';
+
 interface ChunkedRegenerationOptions {
   reportId: string;
   propertyAddress: string;
+  generationEngine?: GenerationEngine;
   manualOverrides?: Record<string, any>;
   financialCalculations?: Record<string, any>;
   currentReportContent?: string;
@@ -44,6 +47,7 @@ export function useChunkedRegeneration() {
     const {
       reportId,
       propertyAddress,
+      generationEngine,
       manualOverrides = {},
       financialCalculations = {},
       onProgress,
@@ -62,7 +66,7 @@ export function useChunkedRegeneration() {
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier, generation_engine'
         }
       });
 
@@ -94,9 +98,14 @@ export function useChunkedRegeneration() {
       // Mark processing without destroying resume state. Reset to section 0 only
       // when there is no usable partial progress; otherwise continue from the
       // last successfully saved section.
+      // Resolve effective engine: explicit option wins; else stored value; else default 'legacy'.
+      const effectiveEngine: GenerationEngine =
+        generationEngine ?? (report?.generation_engine === 'compass-40' ? 'compass-40' : 'legacy');
+
       const startPayload: Record<string, any> = {
         status: 'processing',
         error_message: null,
+        generation_engine: effectiveEngine,
       };
       if (!shouldResumeGeneration && !shouldResumePostProcessing) {
         startPayload.last_completed_section = 0;
@@ -160,6 +169,7 @@ export function useChunkedRegeneration() {
             propertyDetails: {
               queryType: report?.report_scope || 'address',
               reportTier: tier,
+              generationEngine: effectiveEngine,
               manualOverrides: manualOverrides || report?.manual_overrides || {},
               ...financialCalculations,
               ...(report?.financial_calculations || {}),

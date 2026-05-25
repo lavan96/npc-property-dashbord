@@ -4040,7 +4040,12 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       
       const rawTier = propertyDetails?.reportTier || 'compass';
       const canonicalTier = normaliseGenerationTier(rawTier);
-      const usesCanonicalCompassArchitecture = ['compass', 'compass-40', 'financial', 'financial-analysis'].includes(rawTier);
+      // Engine selector: 'legacy' forces the original DB-template path even for compass tiers.
+      // 'compass-40' uses the new canonical 21-section registry. Default = 'legacy' (stable).
+      const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
+      const usesCanonicalCompassArchitecture = generationEngine === 'compass-40'
+        && ['compass', 'compass-40', 'financial', 'financial-analysis'].includes(rawTier);
+      console.log(`⚙️ Generation engine: ${generationEngine} (canonical injection: ${usesCanonicalCompassArchitecture})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
         'briefing': 'executive',  // Executive Briefing tier mapping
