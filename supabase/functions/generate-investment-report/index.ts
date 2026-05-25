@@ -436,6 +436,101 @@ function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'
   ].join('\n');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Compass-40 content sanitizer
+//
+// Compass-40 is the "Location & Property Fit" report. Even with the prompt
+// overlay + canonical section list, Perplexity occasionally leaks financial
+// KPI rows ("Purchase Price | $681,000"), KPI dashboard tiles, citation
+// placeholders ("[1][2]") and stops mid-sentence when it hits max_tokens.
+// This sanitizer scrubs the leaks and trims trailing partial sentences so
+// the rendered PDF never shows a half-finished paragraph.
+// ─────────────────────────────────────────────────────────────────────────────
+const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
+  /^[\s>*\-]*\**\s*(Estimated\s+)?Purchase\s+Price\b/i,
+  /^[\s>*\-]*\**\s*(Estimated\s+)?Weekly\s+Rent\b/i,
+  /^[\s>*\-]*\**\s*Loan[-\s]?to[-\s]?Value\b/i,
+  /^[\s>*\-]*\**\s*LVR\b/i,
+  /^[\s>*\-]*\**\s*(Gross|Net)\s+(Rental\s+)?Yield\b/i,
+  /^[\s>*\-]*\**\s*Annual\s+Rental\s+Income\b/i,
+  /^[\s>*\-]*\**\s*Loan\s+Amount\b/i,
+  /^[\s>*\-]*\**\s*Interest\s+Rate\s+Assumption\b/i,
+  /^[\s>*\-]*\**\s*Deposit\s+Required\b/i,
+  /^[\s>*\-]*\**\s*Stamp\s+Duty\b/i,
+  /^[\s>*\-]*\**\s*Monthly\s+Repayment\b/i,
+  /^[\s>*\-]*\**\s*Cashflow\b/i,
+  /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
+];
+
+// Table rows / KPI cells we should drop wholesale.
+const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
+  /\|\s*\$\d[\d,]*\s*\|/,
+  /\|\s*\d+(\.\d+)?\s*%\s*\|/,
+  /\|\s*[Ll][Vv][Rr]\s*\|/,
+  /\|\s*(Gross|Net)\s+Yield\s*\|/i,
+  /\|\s*Weekly\s+Rent\s*\|/i,
+  /\|\s*Purchase\s+Price\s*\|/i,
+];
+
+function sanitizeCompass40Content(raw: string): string {
+  if (!raw) return raw;
+  const lines = raw.split('\n');
+  const kept: string[] = [];
+  let inForbiddenTable = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('|')) {
+      if (COMPASS40_FORBIDDEN_CELL_PATTERNS.some((p) => p.test(trimmed))
+          || COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(trimmed))) {
+        inForbiddenTable = true;
+        continue;
+      }
+      if (inForbiddenTable) continue;
+    } else if (inForbiddenTable) {
+      inForbiddenTable = false;
+    }
+
+    if (COMPASS40_FORBIDDEN_LINE_PATTERNS.some((p) => p.test(line))) continue;
+
+    kept.push(line);
+  }
+
+  let out = kept.join('\n');
+
+  // Strip Perplexity-style inline citation markers like [1], [2], [1][3]
+  out = out.replace(/\[\d+\](?:\[\d+\])*/g, '');
+
+  // Strip placeholder tokens.
+  out = out.replace(/\[(citation|source needed|TBD|placeholder)\]/gi, '');
+
+  // Trim trailing partial sentence (when model hit max_tokens mid-thought).
+  out = trimDanglingSentence(out);
+
+  // Collapse 3+ blank lines that result from dropped rows.
+  out = out.replace(/\n{3,}/g, '\n\n').trimEnd();
+
+  return out;
+}
+
+function trimDanglingSentence(text: string): string {
+  if (!text) return text;
+  if (/[.!?")\]}]\s*$/.test(text)) return text;
+  const lastTerminator = Math.max(
+    text.lastIndexOf('. '),
+    text.lastIndexOf('! '),
+    text.lastIndexOf('? '),
+    text.lastIndexOf('.\n'),
+    text.lastIndexOf('!\n'),
+    text.lastIndexOf('?\n'),
+  );
+  if (lastTerminator > text.length - 800 && lastTerminator > 200) {
+    return text.slice(0, lastTerminator + 1).trimEnd();
+  }
+  return text;
+}
+
 // Dynamic sections - populated from database template at runtime
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
