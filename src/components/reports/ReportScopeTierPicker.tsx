@@ -29,10 +29,11 @@ const SCOPE_META: Record<ReportScope, { label: string; icon: typeof MapPin; hint
 };
 
 const TIER_META: Record<ReportTier, { label: string; icon: typeof BarChart3; hint: string; pages: string }> = {
-  compass:   { label: 'Compass',   icon: BarChart3, hint: 'Full deep-dive analysis',     pages: '~60p' },
-  strategic: { label: 'Strategic', icon: Sparkles,  hint: 'Strategic advisor narrative', pages: '~30p' },
-  briefing:  { label: 'Briefing',  icon: FileText,  hint: 'Executive briefing',          pages: '~20p' },
-  snapshot:  { label: 'Snapshot',  icon: Zap,       hint: 'Quick decision snapshot',     pages: '~5p' },
+  compass:   { label: 'Compass',   icon: BarChart3, hint: '40-page macro + planning + risk',  pages: '~40p' },
+  financial: { label: 'Financial', icon: FileText,  hint: 'Yield, loan, cashflow, 10-yr',     pages: '~20p' },
+  strategic: { label: 'Strategic', icon: Sparkles,  hint: 'Strategic advisor narrative',       pages: '~30p' },
+  briefing:  { label: 'Briefing',  icon: FileText,  hint: 'Executive briefing',                pages: '~20p' },
+  snapshot:  { label: 'Snapshot',  icon: Zap,       hint: 'Quick decision snapshot',           pages: '~5p' },
 };
 
 /**
@@ -46,7 +47,7 @@ export function ReportScopeTierPicker({
   defaultScope,
   defaultTier,
   availableScopes = ['address', 'suburb', 'zipcode', 'state'],
-  availableTiers = ['compass', 'strategic', 'briefing', 'snapshot'],
+  availableTiers = ['compass', 'financial', 'strategic', 'briefing', 'snapshot'],
   onChange,
   onSaveDefault,
   onConfirm,
