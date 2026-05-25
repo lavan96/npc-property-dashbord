@@ -488,13 +488,28 @@ IMPORTANT:
     }
 
     const aiData = await aiResponse.json();
-    const condensedContent = aiData.choices?.[0]?.message?.content;
+    let condensedContent = aiData.choices?.[0]?.message?.content;
 
     if (!condensedContent) {
       throw new Error('No content received from AI');
     }
 
     console.log('AI condensation complete, content length:', condensedContent.length);
+
+    // Phase 5+6: word-cap enforcement + page-pressure trimming
+    let postProcessReport: unknown = null;
+    if (targetTier === 'briefing' || targetTier === 'financial') {
+      try {
+        const { postProcessReportMarkdown } = await import('../_shared/compassPostProcessor.ts');
+        const tier = targetTier === 'financial' ? 'financial-analysis' : 'compass-40';
+        const result = postProcessReportMarkdown(condensedContent, tier);
+        condensedContent = result.markdown;
+        postProcessReport = result.report;
+        console.log('Post-processor report:', JSON.stringify(result.report, null, 2));
+      } catch (ppErr) {
+        console.error('Post-processor failed (continuing with raw content):', ppErr);
+      }
+    }
 
     // Update the condensed report with the content
     const { error: updateError } = await supabase
@@ -518,6 +533,7 @@ IMPORTANT:
       reportId: condensedReport.id,
       tier: targetTier,
       tierName: tierConfig.name,
+      postProcessReport,
       message: `${tierConfig.name} generated successfully`
     }), {
       status: 200,
