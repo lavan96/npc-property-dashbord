@@ -497,17 +497,22 @@ IMPORTANT:
     console.log('AI condensation complete, content length:', condensedContent.length);
 
     // Phase 5+6: word-cap enforcement + page-pressure trimming
+    // Phase 7: QA validation (returned in response for observability)
     let postProcessReport: unknown = null;
+    let qaReport: unknown = null;
     if (targetTier === 'briefing' || targetTier === 'financial') {
       try {
         const { postProcessReportMarkdown } = await import('../_shared/compassPostProcessor.ts');
+        const { runQAValidation } = await import('../_shared/compassQAValidator.ts');
         const tier = targetTier === 'financial' ? 'financial-analysis' : 'compass-40';
         const result = postProcessReportMarkdown(condensedContent, tier);
         condensedContent = result.markdown;
         postProcessReport = result.report;
+        qaReport = runQAValidation(condensedContent, tier);
         console.log('Post-processor report:', JSON.stringify(result.report, null, 2));
+        console.log('QA report:', JSON.stringify(qaReport, null, 2));
       } catch (ppErr) {
-        console.error('Post-processor failed (continuing with raw content):', ppErr);
+        console.error('Post-processor/QA failed (continuing):', ppErr);
       }
     }
 
@@ -534,6 +539,7 @@ IMPORTANT:
       tier: targetTier,
       tierName: tierConfig.name,
       postProcessReport,
+      qaReport,
       message: `${tierConfig.name} generated successfully`
     }), {
       status: 200,
