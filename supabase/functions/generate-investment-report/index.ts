@@ -394,7 +394,31 @@ function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'
   const sections = tier === 'financial-analysis' ? financialSections() : compassSections();
   const title = tier === 'financial-analysis'
     ? 'Financial Analysis Report Structure'
-    : 'Investor Compass 40-Page Structure';
+    : 'Investment Location & Property Fit Report Structure (≈38 pages)';
+
+  const compassStyleRules = tier === 'compass-40' ? [
+    '',
+    '## MANDATORY WRITING STYLE — every narrative section uses this 4-block format',
+    '1. **Key takeaway** — one clear sentence telling the client what matters.',
+    '2. **Why this matters** — two to three short paragraphs (45–80 words each) explaining the investment relevance in plain English.',
+    '3. **What to watch** — one practical limitation or risk.',
+    '4. **NPC view** — a short advisory-style conclusion (one paragraph).',
+    '',
+    '## HARD EXCLUSIONS (Compass / Location & Property Fit Report)',
+    '- DO NOT include purchase price, deposit, stamp duty, LMI, LVR, weekly rent, gross/net yield, loan amount, interest rate, monthly/annual repayments, cashflow, sensitivity, 10-year projections, capital growth %, equity-after-X-years, depreciation, negative gearing, land tax. ALL financial modelling lives in the separate Financial Analysis Report.',
+    '- DO NOT include a dashboard / KPI row of financial figures in the Executive Verdict or anywhere else.',
+    '- DO NOT emit `[citation]`, `[source needed]`, `[TBD]` or any placeholder. Either name the real source inline, or omit the claim and let the Source Appendix carry it.',
+    '- DO NOT repeat education, transport or employment content across multiple sections. Each is rendered ONCE in its dedicated section.',
+    '- DO NOT include transition paragraphs ("As we move into…", "Building on the above…"). At most one "What This Means" / decision box per section.',
+    '',
+    '## CONSISTENCY CHECKS',
+    '- Bed / bath / car / land size stated in the Property & Locality Snapshot MUST match every later reference (Property Fit, Risk Dashboard, Final Recommendation).',
+    '- Property type (house / townhouse / unit) MUST be identical everywhere it is mentioned.',
+    '',
+    '## RECOMMENDATION FORMAT',
+    'The Final Recommendation must use one of three labels: **Proceed**, **Proceed with caution**, or **Not suitable**, followed by 150–250 words of plain rationale tied to location, tenant demand and risk — no financial verdict.',
+    '',
+  ].join('\n') : '';
 
   return [
     `# ${title}`,
@@ -408,6 +432,7 @@ function buildCanonicalTemplateContext(tier: 'compass-40' | 'financial-analysis'
       section.allowDecisionBox ? '- Include one concise "What This Means"/decision box.' : '- Do not include a decision box in this section.',
       '',
     ]),
+    compassStyleRules,
   ].join('\n');
 }
 
