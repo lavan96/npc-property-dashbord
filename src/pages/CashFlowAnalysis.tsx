@@ -124,16 +124,20 @@ export default function CashFlowAnalysis() {
       setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Apply 30-day cutoff and exclude archived reports
+      const listOptions: Record<string, any> = {
+        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
+        status: 'completed',
+        isArchived: false,
+        orderBy: 'created_at',
+        orderAsc: false,
+        limit: 500,
+      };
+      if (dateRangeCutoff) {
+        listOptions.createdAfter = dateRangeCutoff.toISOString();
+      }
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
-        listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
-          status: 'completed',
-          isArchived: false,
-          createdAfter: thirtyDaysAgo.toISOString(),
-          orderBy: 'created_at',
-          orderAsc: false
-        }
+        listOptions,
       });
 
       if (error) throw new Error(error.message);
