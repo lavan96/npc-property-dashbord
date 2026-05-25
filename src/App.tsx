@@ -79,6 +79,9 @@ import ReportsAnalytics from "./pages/ReportsAnalytics";
 import ModelHub from "./pages/ModelHub";
 import TokenUsageHistory from "./pages/TokenUsageHistory";
 import TokenAuditLog from "./pages/TokenAuditLog";
+import CommercialProperties from "./pages/commercial/CommercialProperties";
+import CommercialPropertyDetail from "./pages/commercial/CommercialPropertyDetail";
+import CommercialCalculators from "./pages/commercial/CommercialCalculators";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -307,6 +310,9 @@ const App = () => (
                 <Route path="model-hub" element={<ModelHub />} />
                 <Route path="billing/usage" element={<TokenUsageHistory />} />
                 <Route path="admin/token-audit" element={<TokenAuditLog />} />
+                <Route path="commercial" element={<CommercialProperties />} />
+                <Route path="commercial/calculators" element={<CommercialCalculators />} />
+                <Route path="commercial/:id" element={<CommercialPropertyDetail />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
