@@ -24,6 +24,21 @@ export default function CommercialPropertyDetail() {
   const [property, setProperty] = useState<CommercialProperty | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateReport = async () => {
+    if (!id) return;
+    setGenerating(true);
+    try {
+      await generateCommercialInvestmentReport(id);
+      toast.success('Commercial investment report generated');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to generate report');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
 
   const load = async () => {
     if (!id) return;
