@@ -2727,13 +2727,14 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const content = sections[sectionName];
         if (!content) continue;
 
-        // Clean section name and strip emojis
-        const cleanSectionName = stripEmojis(
+        // Clean section name and strip emojis + dedupe repeated word/phrase artefacts
+        const cleanSectionName = dedupeRepeatedWords(stripEmojis(
           sectionName
             .replace(/^#{1,6}\s*/, '')
             .replace(/:\s*$/, '')
             .trim()
-        );
+        ));
+
         
         console.log(`  📝 Section ${sectionCount}/${allSectionNames.length}: "${cleanSectionName}"`);
 
