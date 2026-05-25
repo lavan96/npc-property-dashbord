@@ -98,9 +98,14 @@ export function useChunkedRegeneration() {
       // Mark processing without destroying resume state. Reset to section 0 only
       // when there is no usable partial progress; otherwise continue from the
       // last successfully saved section.
+      // Resolve effective engine: explicit option wins; else stored value; else default 'legacy'.
+      const effectiveEngine: GenerationEngine =
+        generationEngine ?? (report?.generation_engine === 'compass-40' ? 'compass-40' : 'legacy');
+
       const startPayload: Record<string, any> = {
         status: 'processing',
         error_message: null,
+        generation_engine: effectiveEngine,
       };
       if (!shouldResumeGeneration && !shouldResumePostProcessing) {
         startPayload.last_completed_section = 0;
