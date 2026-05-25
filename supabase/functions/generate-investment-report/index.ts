@@ -1113,9 +1113,10 @@ Generate the ${sectionDef.name} sections now:`;
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || '';
+      let content = data.choices?.[0]?.message?.content || '';
       const citations = data.citations || [];
-      
+      let finishReason = data.choices?.[0]?.finish_reason || '';
+
       // Log Perplexity API usage
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -1131,9 +1132,65 @@ Generate the ${sectionDef.name} sections now:`;
         status: 'success',
         metadata: { function: 'generate-investment-report', section: sectionDef.name },
       });
-      
-      console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars`);
-      
+
+      console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars (finish_reason=${finishReason})`);
+
+      // CONTINUATION: if the model stopped because it hit max_tokens, ask it
+      // to continue from where it left off so the last paragraph isn't cut
+      // off on the final PDF page. Up to 2 continuation rounds per section.
+      let continuationRounds = 0;
+      while (finishReason === 'length' && continuationRounds < 2) {
+        continuationRounds++;
+        console.log(`↪️  Section ${sectionDef.name} hit max_tokens — requesting continuation (round ${continuationRounds})`);
+        const tail = content.slice(-1200);
+        const continuePrompt = `You were writing the "${sectionDef.name}" section of an investment report and were cut off mid-thought. Continue writing from EXACTLY where you stopped. Do NOT repeat any earlier text, do NOT restart the section, do NOT add a preamble. Simply resume the next words and finish the section cleanly.\n\nLast 1200 characters you produced (your reply will be appended directly after the final character):\n\n${tail}`;
+        try {
+          const contResp = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${perplexityApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'sonar-pro',
+              max_tokens: Math.min(2500, sectionDef.maxTokens),
+              temperature: 0.1,
+              messages: [
+                { role: 'system', content: systemMessage },
+                { role: 'user', content: sectionPrompt },
+                { role: 'assistant', content: content },
+                { role: 'user', content: continuePrompt },
+              ],
+            }),
+          }, 120000, 'perplexity-api');
+          if (!contResp.ok) {
+            console.warn(`   continuation HTTP ${contResp.status} — stopping continuation loop`);
+            break;
+          }
+          const contData = await contResp.json();
+          const addition = contData.choices?.[0]?.message?.content || '';
+          finishReason = contData.choices?.[0]?.finish_reason || '';
+          if (!addition.trim()) {
+            console.warn('   continuation returned empty content — stopping');
+            break;
+          }
+          // Strip any echoed overlap with the existing tail before appending.
+          let joinedAddition = addition;
+          const maxOverlap = Math.min(120, addition.length);
+          for (let k = maxOverlap; k > 12; k--) {
+            if (content.endsWith(addition.slice(0, k))) {
+              joinedAddition = addition.slice(k);
+              break;
+            }
+          }
+          content = content + joinedAddition;
+          console.log(`   continuation added ${joinedAddition.length} chars (new total ${content.length}, finish=${finishReason})`);
+        } catch (contErr: any) {
+          console.warn('   continuation call failed:', contErr?.message);
+          break;
+        }
+      }
+
       return { content, citations };
     } catch (error: any) {
       console.error(`❌ Error generating section ${sectionDef.id} (attempt ${attempt}):`, error?.message);
@@ -4199,11 +4256,14 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       if (compass40OverlayActive) {
         REPORT_SECTIONS = getCanonicalSectionsForTier('compass-40');
         templateContext = buildCanonicalTemplateContext('compass-40');
-        // Bump per-section tokens by ~30% to stop mid-sentence truncations
-        // observed in the legacy output. Cap at 6000 to protect latency.
+        // Bump per-section tokens for Compass-40 to stop mid-sentence
+        // truncations observed in the legacy output. The generateReportSection
+        // helper also runs a continuation pass when finish_reason==='length',
+        // but a more generous initial budget means most sections finish in one
+        // shot. Cap at 6000 to protect latency.
         REPORT_SECTIONS = REPORT_SECTIONS.map((s) => ({
           ...s,
-          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.3)),
+          maxTokens: Math.min(6000, Math.round(s.maxTokens * 1.6)),
         }));
         console.log(`✓ Compass-40: using canonical ${REPORT_SECTIONS.length}-section registry (legacy template bypassed)`);
       } else {
