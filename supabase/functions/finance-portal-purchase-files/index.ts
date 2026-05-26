@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
     }
 
 
-    // ─── Get one file ───
+    // ─── Get one file (with linked deal summary) ───
     if (operation === 'get_file') {
       const fileId = body.file_id;
       if (!fileId) return jsonResponse({ error: 'file_id required' }, 400);
@@ -190,7 +190,108 @@ Deno.serve(async (req) => {
         .eq('id', fileId)
         .maybeSingle();
       if (error) return jsonResponse({ error: error.message }, 500);
-      return jsonResponse({ file });
+
+      let linked_deal: any = null;
+      if (file?.client_deal_id) {
+        const { data: deal } = await supabase
+          .from('client_deals')
+          .select('id, deal_type, current_stage, current_stage_number, risk_status, total_contract_price, settlement_date, property_address, commission_estimate, created_at')
+          .eq('id', file.client_deal_id)
+          .maybeSingle();
+        if (deal) {
+          const [stagesRes, paymentsRes, paymentsDoneRes] = await Promise.all([
+            supabase.from('deal_stages').select('id', { count: 'exact', head: true }).eq('deal_id', deal.id),
+            supabase.from('build_progress_payments').select('id', { count: 'exact', head: true }).eq('deal_id', deal.id),
+            supabase.from('build_progress_payments').select('id', { count: 'exact', head: true }).eq('deal_id', deal.id).eq('status', 'paid'),
+          ]);
+          linked_deal = {
+            ...deal,
+            stage_count: stagesRes.count || 0,
+            build_payments_total: paymentsRes.count || 0,
+            build_payments_paid: paymentsDoneRes.count || 0,
+          };
+        }
+      }
+      return jsonResponse({ file, linked_deal });
+    }
+
+    // ─── List candidate deals for linking (same client) ───
+    if (operation === 'list_candidate_deals') {
+      const clientId = body.client_id;
+      if (!clientId) return jsonResponse({ error: 'client_id required' }, 400);
+      const perms = await getEffectivePermissions(clientId);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const { data, error } = await supabase
+        .from('client_deals')
+        .select('id, deal_type, current_stage, risk_status, total_contract_price, settlement_date, property_address, purchase_file_id, created_at')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ deals: data || [] });
+    }
+
+    // ─── Link purchase file → client deal ───
+    if (operation === 'link_to_deal') {
+      const fileId = body.file_id;
+      const dealId = body.client_deal_id;
+      if (!fileId || !dealId) return jsonResponse({ error: 'file_id and client_deal_id required' }, 400);
+      const clientId = await getClientForFile(fileId);
+      if (!clientId) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(clientId);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data: deal } = await supabase
+        .from('client_deals')
+        .select('id, client_id, purchase_file_id')
+        .eq('id', dealId)
+        .maybeSingle();
+      if (!deal || deal.client_id !== clientId) {
+        return jsonResponse({ error: 'Deal does not belong to this client' }, 400);
+      }
+      if (deal.purchase_file_id && deal.purchase_file_id !== fileId) {
+        return jsonResponse({ error: 'Deal is already linked to another file' }, 409);
+      }
+
+      const { error } = await supabase
+        .from('purchase_files')
+        .update({ client_deal_id: dealId })
+        .eq('id', fileId);
+      if (error) return jsonResponse({ error: error.message }, 500);
+
+      await supabase.from('purchase_file_deal_link_audit').insert({
+        purchase_file_id: fileId, client_deal_id: dealId, client_id: clientId,
+        action: 'linked', source: 'manual', actor_user_id: portalUser.id,
+      });
+      return jsonResponse({ ok: true });
+    }
+
+    // ─── Unlink ───
+    if (operation === 'unlink_deal') {
+      const fileId = body.file_id;
+      if (!fileId) return jsonResponse({ error: 'file_id required' }, 400);
+      const clientId = await getClientForFile(fileId);
+      if (!clientId) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(clientId);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data: f } = await supabase
+        .from('purchase_files')
+        .select('client_deal_id')
+        .eq('id', fileId)
+        .maybeSingle();
+      const prevDealId = f?.client_deal_id || null;
+
+      const { error } = await supabase
+        .from('purchase_files')
+        .update({ client_deal_id: null })
+        .eq('id', fileId);
+      if (error) return jsonResponse({ error: error.message }, 500);
+
+      await supabase.from('purchase_file_deal_link_audit').insert({
+        purchase_file_id: fileId, client_deal_id: prevDealId, client_id: clientId,
+        action: 'unlinked', source: 'manual', actor_user_id: portalUser.id,
+      });
+      return jsonResponse({ ok: true });
     }
 
     // ─── Create file ───

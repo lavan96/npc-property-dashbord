@@ -213,6 +213,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "agency_agreements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
+          {
             foreignKeyName: "agency_agreements_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -1419,6 +1426,13 @@ export type Database = {
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "build_progress_payments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
         ]
       }
       builder_invoices: {
@@ -1493,6 +1507,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_invoices_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
         ]
       }
@@ -2490,6 +2511,7 @@ export type Database = {
           notes: string | null
           property_address: string | null
           property_id: string | null
+          purchase_file_id: string | null
           responsible_person: string | null
           risk_status: Database["public"]["Enums"]["deal_risk_status"]
           settlement_date: string | null
@@ -2536,6 +2558,7 @@ export type Database = {
           notes?: string | null
           property_address?: string | null
           property_id?: string | null
+          purchase_file_id?: string | null
           responsible_person?: string | null
           risk_status?: Database["public"]["Enums"]["deal_risk_status"]
           settlement_date?: string | null
@@ -2582,6 +2605,7 @@ export type Database = {
           notes?: string | null
           property_address?: string | null
           property_id?: string | null
+          purchase_file_id?: string | null
           responsible_person?: string | null
           risk_status?: Database["public"]["Enums"]["deal_risk_status"]
           settlement_date?: string | null
@@ -2613,6 +2637,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_properties"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_deals_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_deals_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -4676,6 +4714,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commission_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
+          {
             foreignKeyName: "commission_ledger_submission_id_fkey"
             columns: ["submission_id"]
             isOneToOne: false
@@ -4846,6 +4891,13 @@ export type Database = {
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "compliance_pack_exports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
         ]
       }
       compliance_records: {
@@ -4944,6 +4996,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_records_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
         ]
       }
@@ -5251,6 +5310,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stages_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
         ]
       }
@@ -5695,6 +5761,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
           {
             foreignKeyName: "document_requirement_instances_template_id_fkey"
@@ -6365,6 +6438,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "finance_partner_commissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
+          {
             foreignKeyName: "finance_partner_commissions_finance_contact_id_fkey"
             columns: ["finance_contact_id"]
             isOneToOne: false
@@ -6377,6 +6457,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
           {
             foreignKeyName: "fpc_statement_fk"
@@ -7576,6 +7663,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
           {
             foreignKeyName: "generated_documents_submission_id_fkey"
@@ -9358,6 +9452,13 @@ export type Database = {
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lead_source_attributions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
         ]
       }
       legacy_wipe_jobs: {
@@ -9483,6 +9584,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_comparison_sheets_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
         ]
       }
@@ -9793,6 +9901,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client_deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_submissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
         ]
       }
@@ -11098,6 +11213,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_file_conditions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+          {
             foreignKeyName: "purchase_file_conditions_satisfied_by_finance_user_id_fkey"
             columns: ["satisfied_by_finance_user_id"]
             isOneToOne: false
@@ -11148,7 +11270,50 @@ export type Database = {
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_file_critical_dates_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
         ]
+      }
+      purchase_file_deal_link_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          client_deal_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          note: string | null
+          purchase_file_id: string | null
+          source: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          client_deal_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          purchase_file_id?: string | null
+          source?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          client_deal_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          purchase_file_id?: string | null
+          source?: string
+        }
+        Relationships: []
       }
       purchase_file_finance_decisions: {
         Row: {
@@ -11223,6 +11388,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_finance_decisions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -11299,6 +11471,13 @@ export type Database = {
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_file_risks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
         ]
       }
       purchase_file_status_history: {
@@ -11342,6 +11521,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_status_history_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -11447,6 +11633,13 @@ export type Database = {
             referencedRelation: "purchase_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_file_valuations_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
         ]
       }
       purchase_files: {
@@ -11458,6 +11651,7 @@ export type Database = {
           borrowing_snapshot_updated_at: string | null
           borrowing_snapshot_updated_by_finance_user_id: string | null
           client_contribution: number | null
+          client_deal_id: string | null
           client_id: string
           created_at: string
           created_by: string | null
@@ -11489,6 +11683,7 @@ export type Database = {
           borrowing_snapshot_updated_at?: string | null
           borrowing_snapshot_updated_by_finance_user_id?: string | null
           client_contribution?: number | null
+          client_deal_id?: string | null
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -11520,6 +11715,7 @@ export type Database = {
           borrowing_snapshot_updated_at?: string | null
           borrowing_snapshot_updated_by_finance_user_id?: string | null
           client_contribution?: number | null
+          client_deal_id?: string | null
           client_id?: string
           created_at?: string
           created_by?: string | null
@@ -11557,6 +11753,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "custom_users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_files_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_files_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
           },
           {
             foreignKeyName: "purchase_files_client_id_fkey"
@@ -13084,6 +13294,31 @@ export type Database = {
           to_value: string | null
         }
         Relationships: []
+      }
+      v_purchase_file_deal_drift: {
+        Row: {
+          address_drift: boolean | null
+          client_deal_id: string | null
+          client_id: string | null
+          deal_address: string | null
+          deal_price: number | null
+          deal_settlement_date: string | null
+          pf_address: string | null
+          pf_price: number | null
+          pf_settlement_date: string | null
+          price_drift: boolean | null
+          purchase_file_id: string | null
+          settlement_drift: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_files_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_broker_scorecard: {
         Row: {
