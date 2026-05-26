@@ -97,6 +97,9 @@ export default function DealPipeline() {
       {/* Commission Forecast */}
       <CommissionForecastWidget deals={deals} />
 
+      {/* Linked Finance Files */}
+      <LinkedFinanceFilesPanel deals={filteredDeals} />
+
       {/* Global Pipeline Toolbar */}
       <PipelineToolbar
         deals={deals}
