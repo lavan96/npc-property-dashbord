@@ -27,22 +27,44 @@ interface InvestmentScoringInput {
   propertyType?: string;
 }
 
+interface DimensionScore {
+  score: number;
+  weight: number;
+  details: string;
+  hasData: boolean;
+  dataPoints: string[]; // names of real inputs present (drives confidence)
+  excluded?: boolean;   // true if dimension was dropped from the headline score
+}
+
 interface InvestmentScore {
-  totalScore: number;
+  totalScore: number | null;
   grade: string;
   recommendation: string;
   breakdown: {
-    yieldScore: { score: number; weight: number; details: string };
-    growthScore: { score: number; weight: number; details: string };
-    locationScore: { score: number; weight: number; details: string };
-    demandScore: { score: number; weight: number; details: string };
-    riskScore: { score: number; weight: number; details: string };
+    yieldScore: DimensionScore;
+    growthScore: DimensionScore;
+    locationScore: DimensionScore;
+    demandScore: DimensionScore;
+    riskScore: DimensionScore;
+  };
+  coverage: {
+    dimensionsScored: number;
+    totalDimensions: number;
+    coverageRatio: number;       // 0..1
+    weightCovered: number;       // sum of nominal weights of scored dims (0..1)
+    dataInsufficient: boolean;   // true when < 3 dimensions had data
+    partialLabel: string;        // e.g. "Score based on 3 of 5 dimensions"
+    cotalityReady: true;         // structural marker: drop-in for cotality-service envelopes
   };
   strengths: string[];
   weaknesses: string[];
   opportunities: string[];
   risks: string[];
 }
+
+// Minimum number of dimensions required to publish a quantitative headline score.
+// Below this, the renderer should fall back to qualitative SWOT only.
+const MIN_DIMENSIONS_FOR_HEADLINE_SCORE = 3;
 
 // Transform nested input structure to flat structure expected by scoring logic
 function transformInputData(rawInput: any): InvestmentScoringInput {
@@ -113,17 +135,26 @@ interface AreaScoringInput {
 }
 
 interface AreaScore {
-  totalScore: number;
+  totalScore: number | null;
   grade: string;
   recommendation: string;
   scoreType: 'area';
   scope: string;
   breakdown: {
-    marketMomentum: { score: number; weight: number; details: string };
-    economicStrength: { score: number; weight: number; details: string };
-    livability: { score: number; weight: number; details: string };
-    rentalMarket: { score: number; weight: number; details: string };
-    futureOutlook: { score: number; weight: number; details: string };
+    marketMomentum: DimensionScore;
+    economicStrength: DimensionScore;
+    livability: DimensionScore;
+    rentalMarket: DimensionScore;
+    futureOutlook: DimensionScore;
+  };
+  coverage: {
+    dimensionsScored: number;
+    totalDimensions: number;
+    coverageRatio: number;
+    weightCovered: number;
+    dataInsufficient: boolean;
+    partialLabel: string;
+    cotalityReady: true;
   };
   strengths: string[];
   weaknesses: string[];
@@ -156,12 +187,118 @@ function transformAreaInput(rawInput: any): AreaScoringInput {
   };
 }
 
+/**
+ * Confidence-weighted aggregator.
+ *
+ * Each dimension declares hasData (does it have any real inputs?). Dimensions
+ * with no data are dropped from the headline score and their weight is
+ * proportionally redistributed across the remaining dimensions. If fewer than
+ * MIN_DIMENSIONS_FOR_HEADLINE_SCORE dimensions have data, the headline score
+ * is suppressed (totalScore = null) and consumers should fall back to the
+ * qualitative SWOT only.
+ *
+ * Cotality-ready: when the cotality-service starts returning live envelopes
+ * for growth / vacancy / DOM / median price / unemployment etc., hasData
+ * simply flips true on the relevant dimensions and the math works unchanged.
+ */
+function aggregateDimensions<K extends string>(
+  dims: Record<K, { score: number; details: string; hasData: boolean; dataPoints: string[] }>,
+  weights: Record<K, number>,
+): {
+  totalScore: number | null;
+  breakdown: Record<K, DimensionScore>;
+  coverage: InvestmentScore['coverage'];
+} {
+  const keys = Object.keys(dims) as K[];
+  const scored = keys.filter((k) => dims[k].hasData);
+  const weightCovered = scored.reduce((s, k) => s + weights[k], 0);
+
+  const dataInsufficient = scored.length < MIN_DIMENSIONS_FOR_HEADLINE_SCORE || weightCovered <= 0;
+
+  let totalScore: number | null = null;
+  if (!dataInsufficient) {
+    const weighted = scored.reduce((s, k) => s + dims[k].score * (weights[k] / weightCovered), 0);
+    totalScore = Math.round(Math.max(0, Math.min(100, weighted)));
+  }
+
+  const breakdown = {} as Record<K, DimensionScore>;
+  for (const k of keys) {
+    const d = dims[k];
+    breakdown[k] = {
+      score: d.score,
+      // effective weight after rebalance (0 if excluded), expressed as %
+      weight: d.hasData && !dataInsufficient ? Math.round((weights[k] / weightCovered) * 100) : 0,
+      details: d.details,
+      hasData: d.hasData,
+      dataPoints: d.dataPoints,
+      excluded: !d.hasData,
+    };
+  }
+
+  const partialLabel = dataInsufficient
+    ? `Insufficient data — qualitative review only (${scored.length} of ${keys.length} dimensions)`
+    : scored.length === keys.length
+      ? `Full coverage (${keys.length} of ${keys.length} dimensions)`
+      : `Partial score: ${scored.length} of ${keys.length} dimensions`;
+
+  return {
+    totalScore,
+    breakdown,
+    coverage: {
+      dimensionsScored: scored.length,
+      totalDimensions: keys.length,
+      coverageRatio: scored.length / keys.length,
+      weightCovered,
+      dataInsufficient,
+      partialLabel,
+      cotalityReady: true,
+    },
+  };
+}
+
 function calculateAreaScore(input: AreaScoringInput): AreaScore {
   const marketMomentum = calcMarketMomentum(input);
   const economicStrength = calcEconomicStrength(input);
   const livability = calcLivability(input);
   const rentalMarket = calcRentalMarket(input);
   const futureOutlook = calcFutureOutlook(input);
+
+  // Per-dimension data presence (real inputs only — no defaults counted).
+  const hasNum = (v: any) => typeof v === 'number' && !Number.isNaN(v);
+
+
+  const mmPoints: string[] = [];
+  if (hasNum(input.priceGrowth1Year)) mmPoints.push('priceGrowth1Year');
+  if (hasNum(input.priceGrowth3Year)) mmPoints.push('priceGrowth3Year');
+  if (hasNum(input.daysOnMarket)) mmPoints.push('daysOnMarket');
+
+  const esPoints: string[] = [];
+  if (hasNum(input.unemploymentRate)) esPoints.push('unemploymentRate');
+  if (hasNum(input.medianIncome)) esPoints.push('medianIncome');
+  if (hasNum(input.populationGrowth)) esPoints.push('populationGrowth');
+
+  const livPoints: string[] = [];
+  if (hasNum(input.walkScore)) livPoints.push('walkScore');
+  if (hasNum(input.schoolsNearby)) livPoints.push('schoolsNearby');
+  if (hasNum(input.commuteTimeCBD)) livPoints.push('commuteTimeCBD');
+
+  const rmPoints: string[] = [];
+  if (hasNum(input.vacancyRate)) rmPoints.push('vacancyRate');
+  if (hasNum(input.rentalYield)) rmPoints.push('rentalYield');
+
+  const foPoints: string[] = [];
+  if (hasNum(input.populationGrowth)) foPoints.push('populationGrowth');
+  if (hasNum(input.infrastructureSpend)) foPoints.push('infrastructureSpend');
+  if (hasNum(input.supplyPipeline)) foPoints.push('supplyPipeline');
+  if (hasNum(input.priceGrowth1Year)) foPoints.push('priceGrowth1Year');
+
+  const dims = {
+    marketMomentum: { ...marketMomentum, hasData: mmPoints.length > 0, dataPoints: mmPoints },
+    economicStrength: { ...economicStrength, hasData: esPoints.length > 0, dataPoints: esPoints },
+    livability: { ...livability, hasData: livPoints.length > 0, dataPoints: livPoints },
+    rentalMarket: { ...rentalMarket, hasData: rmPoints.length > 0, dataPoints: rmPoints },
+    futureOutlook: { ...futureOutlook, hasData: foPoints.length > 0, dataPoints: foPoints },
+  };
 
   const weights = {
     marketMomentum: 0.30,
@@ -171,15 +308,12 @@ function calculateAreaScore(input: AreaScoringInput): AreaScore {
     futureOutlook: 0.15,
   };
 
-  const totalScore = Math.round(
-    marketMomentum.score * weights.marketMomentum +
-    economicStrength.score * weights.economicStrength +
-    livability.score * weights.livability +
-    rentalMarket.score * weights.rentalMarket +
-    futureOutlook.score * weights.futureOutlook
-  );
+  const { totalScore, breakdown, coverage } = aggregateDimensions(dims, weights);
 
-  const { grade, recommendation } = determineAreaGrade(totalScore, input.scope);
+  const { grade, recommendation } = coverage.dataInsufficient
+    ? { grade: 'N/A', recommendation: `Insufficient quantitative data for ${input.scope} grade — see qualitative review below` }
+    : determineAreaGrade(totalScore as number, input.scope);
+
   const swot = analyzeAreaSWOT(input, { marketMomentum, economicStrength, livability, rentalMarket, futureOutlook });
 
   return {
@@ -188,16 +322,12 @@ function calculateAreaScore(input: AreaScoringInput): AreaScore {
     recommendation,
     scoreType: 'area',
     scope: input.scope,
-    breakdown: {
-      marketMomentum: { ...marketMomentum, weight: weights.marketMomentum * 100 },
-      economicStrength: { ...economicStrength, weight: weights.economicStrength * 100 },
-      livability: { ...livability, weight: weights.livability * 100 },
-      rentalMarket: { ...rentalMarket, weight: weights.rentalMarket * 100 },
-      futureOutlook: { ...futureOutlook, weight: weights.futureOutlook * 100 },
-    },
+    breakdown,
+    coverage,
     ...swot,
   };
 }
+
 
 function calcMarketMomentum(input: AreaScoringInput): { score: number; details: string } {
   let score = 50;
@@ -445,52 +575,85 @@ function calculateInvestmentScore(input: InvestmentScoringInput): InvestmentScor
   const demandScore = calculateDemandScore(input);
   const riskScore = calculateRiskScore(input);
 
-  // Weighted scoring
-  const weights = {
-    growth: 0.40, // 40% - Capital appreciation potential
-    location: 0.25, // 25% - Location quality and amenities
-    yield: 0.15,  // 15% - Cash flow generation
-    demand: 0.15, // 15% - Supply/demand dynamics
-    risk: 0.05    // 5% - Risk factors
+  const hasNum = (v: any) => typeof v === 'number' && !Number.isNaN(v);
+
+  // Per-dimension data presence (no defaults masquerading as signal).
+  // Cotality-ready: when cotality-service envelopes land, these flip true.
+  const yieldPoints: string[] = [];
+  if (hasNum(input.propertyPrice) && input.propertyPrice > 0) yieldPoints.push('propertyPrice');
+  if (hasNum(input.weeklyRent) && input.weeklyRent > 0) yieldPoints.push('weeklyRent');
+  if (hasNum(input.cashFlow)) yieldPoints.push('cashFlow');
+  // Yield needs BOTH price and rent to be meaningful
+  const yieldHasData = yieldPoints.includes('propertyPrice') && yieldPoints.includes('weeklyRent');
+
+  const growthPoints: string[] = [];
+  if (hasNum(input.priceGrowth1Year)) growthPoints.push('priceGrowth1Year');
+  if (hasNum(input.priceGrowth3Year)) growthPoints.push('priceGrowth3Year');
+  if (hasNum(input.populationGrowth)) growthPoints.push('populationGrowth');
+
+  const locationPoints: string[] = [];
+  if (hasNum(input.walkScore)) locationPoints.push('walkScore');
+  if (hasNum(input.commuteTimeCBD)) locationPoints.push('commuteTimeCBD');
+  if (hasNum(input.schoolsNearby) && (input.schoolsNearby as number) > 0) locationPoints.push('schoolsNearby');
+
+  const demandPoints: string[] = [];
+  if (hasNum(input.vacancyRate)) demandPoints.push('vacancyRate');
+  if (hasNum(input.daysOnMarket)) demandPoints.push('daysOnMarket');
+  if (hasNum(input.medianSuburbPrice) && (input.medianSuburbPrice as number) > 0) demandPoints.push('medianSuburbPrice');
+  if (hasNum(input.unemploymentRate)) demandPoints.push('unemploymentRate');
+
+  const riskPoints: string[] = [];
+  if (hasNum(input.lvr)) riskPoints.push('lvr');
+  if (hasNum(input.cashFlow)) riskPoints.push('cashFlow');
+  if (hasNum(input.vacancyRate)) riskPoints.push('vacancyRate');
+  if (hasNum(input.daysOnMarket)) riskPoints.push('daysOnMarket');
+  if (hasNum(input.priceGrowth1Year)) riskPoints.push('priceGrowth1Year');
+
+  const dims = {
+    yieldScore: { ...yieldScore, hasData: yieldHasData, dataPoints: yieldPoints },
+    growthScore: { ...growthScore, hasData: growthPoints.length > 0, dataPoints: growthPoints },
+    locationScore: { ...locationScore, hasData: locationPoints.length > 0, dataPoints: locationPoints },
+    demandScore: { ...demandScore, hasData: demandPoints.length > 0, dataPoints: demandPoints },
+    riskScore: { ...riskScore, hasData: riskPoints.length > 0, dataPoints: riskPoints },
   };
 
-  const totalScore = Math.round(
-    (yieldScore.score * weights.yield) +
-    (growthScore.score * weights.growth) +
-    (locationScore.score * weights.location) +
-    (demandScore.score * weights.demand) +
-    (riskScore.score * weights.risk)
-  );
+  const weights = {
+    yieldScore: 0.15,
+    growthScore: 0.40,   // capital appreciation potential
+    locationScore: 0.25,
+    demandScore: 0.15,
+    riskScore: 0.05,
+  };
 
-  // Determine grade and recommendation
-  const { grade, recommendation } = determineGradeAndRecommendation(totalScore, input);
+  const { totalScore, breakdown, coverage } = aggregateDimensions(dims, weights);
 
-  // Analyze SWOT
+  const { grade, recommendation } = coverage.dataInsufficient
+    ? { grade: 'N/A', recommendation: 'Insufficient quantitative data for a headline grade — qualitative SWOT below' }
+    : determineGradeAndRecommendation(totalScore as number, input);
+
+  // Analyze SWOT (always — qualitative output works even with sparse data)
   const { strengths, weaknesses, opportunities, risks } = analyzeSWOT(input, {
     yieldScore,
     growthScore,
     locationScore,
     demandScore,
-    riskScore
+    riskScore,
   });
 
   return {
     totalScore,
     grade,
     recommendation,
-    breakdown: {
-      yieldScore: { ...yieldScore, weight: weights.yield * 100 },
-      growthScore: { ...growthScore, weight: weights.growth * 100 },
-      locationScore: { ...locationScore, weight: weights.location * 100 },
-      demandScore: { ...demandScore, weight: weights.demand * 100 },
-      riskScore: { ...riskScore, weight: weights.risk * 100 }
-    },
+    breakdown,
+    coverage,
     strengths,
     weaknesses,
     opportunities,
-    risks
+    risks,
   };
 }
+
+
 
 function calculateYieldScore(input: InvestmentScoringInput) {
   const annualRent = (input.weeklyRent || 0) * 52;
