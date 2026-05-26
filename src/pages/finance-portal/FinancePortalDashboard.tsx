@@ -13,6 +13,7 @@ import {
   Clock, FileWarning, Gavel, CalendarClock, Inbox, FolderOpen, Briefcase,
   TrendingUp, Wallet,
 } from 'lucide-react';
+import { TodayPanel } from '@/components/finance-portal/TodayPanel';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -198,6 +199,11 @@ export default function FinancePortalDashboard() {
             {user?.company || 'Independent Finance Partner'} · {user?.email}
           </p>
         </motion.div>
+
+        {/* Today — partner triage feed */}
+        <TodayPanel />
+
+
 
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">

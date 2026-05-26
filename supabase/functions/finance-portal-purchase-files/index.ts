@@ -67,6 +67,11 @@ function pickAllowed(payload: any, allowed: string[]) {
   return out;
 }
 
+function emptyTodayBuckets() {
+  return { breaching: [], stale: [], settling: [], at_risk: [] };
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -153,7 +158,7 @@ Deno.serve(async (req) => {
           purchase_price, deposit_amount, max_approved_budget, lender,
           estimated_rent_weekly, client_contribution, settlement_date,
           finance_clause_date, assigned_finance_user_id, assigned_team_user_id,
-          risk_level, notes, created_at, updated_at, archived_at,
+          risk_level, notes, created_at, updated_at, archived_at, last_partner_action_at,
           clients!inner(id, primary_first_name, primary_surname, primary_email),
           purchase_file_critical_dates(id, date_type, due_date, status)
         `)
@@ -166,8 +171,21 @@ Deno.serve(async (req) => {
         console.error('[finance-portal-purchase-files] list_files error:', error);
         return jsonResponse({ error: error.message }, 500);
       }
-      return jsonResponse({ files });
+
+      const { data: watches } = await supabase
+        .from('finance_portal_pf_watchers')
+        .select('purchase_file_id')
+        .eq('finance_user_id', portalUser.id);
+      const watchedSet = new Set((watches || []).map((w: any) => w.purchase_file_id));
+
+      const enriched = (files || []).map((f: any) => ({
+        ...f,
+        is_watched: watchedSet.has(f.id),
+        is_mine: f.assigned_finance_user_id === portalUser.id,
+      }));
+      return jsonResponse({ files: enriched, me: portalUser.id });
     }
+
 
 
     // ─── Get one file (with linked deal summary) ───
@@ -419,7 +437,98 @@ Deno.serve(async (req) => {
       return jsonResponse({ files: data });
     }
 
+    // ─── Toggle watch on a purchase file ───
+    if (operation === 'toggle_watch') {
+      const fileId = body.file_id;
+      if (!fileId) return jsonResponse({ error: 'file_id required' }, 400);
+      const clientId = await getClientForFile(fileId);
+      if (!clientId) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(clientId);
+      if (!perms?.purchase_files?.view) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data: existing } = await supabase
+        .from('finance_portal_pf_watchers')
+        .select('id')
+        .eq('purchase_file_id', fileId)
+        .eq('finance_user_id', portalUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('finance_portal_pf_watchers').delete().eq('id', existing.id);
+        return jsonResponse({ ok: true, is_watched: false });
+      }
+      const { error } = await supabase.from('finance_portal_pf_watchers').insert({
+        purchase_file_id: fileId,
+        finance_user_id: portalUser.id,
+      });
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ ok: true, is_watched: true });
+    }
+
+    // ─── Today: triaged action feed for the partner ───
+    if (operation === 'list_today') {
+      const { data: assignments } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id')
+        .eq('finance_user_id', portalUser.id);
+      const clientIds = (assignments || []).map((a: any) => a.client_id);
+      if (clientIds.length === 0) return jsonResponse({ buckets: emptyTodayBuckets() });
+
+      const nowISO = new Date().toISOString();
+      const in24h = new Date(Date.now() + 24 * 3600_000).toISOString();
+      const in7d  = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      const stale72h = new Date(Date.now() - 72 * 3600_000).toISOString();
+
+      const { data: files } = await supabase
+        .from('purchase_files')
+        .select(`
+          id, client_id, title, lender, finance_status, status, risk_level,
+          property_address, settlement_date, finance_clause_date,
+          assigned_finance_user_id, last_partner_action_at, updated_at,
+          clients!inner(primary_first_name, primary_surname),
+          purchase_file_critical_dates(id, date_type, due_date, status)
+        `)
+        .in('client_id', clientIds)
+        .is('archived_at', null)
+        .limit(500);
+
+      const mine = (files || []).filter((f: any) => f.assigned_finance_user_id === portalUser.id);
+
+      const breaching = mine.filter((f: any) => {
+        if (f.finance_clause_date && f.finance_clause_date <= in24h && f.finance_status !== 'unconditional_approval' && f.finance_status !== 'settled') return true;
+        if ((f.purchase_file_critical_dates || []).some((d: any) =>
+          d.status !== 'completed' && d.due_date && d.due_date >= nowISO && d.due_date <= in24h)) return true;
+        return false;
+      });
+
+      const stale = mine.filter((f: any) =>
+        ['in_review','docs_requested','application_lodged','conditional_approval','valuation_pending'].includes(f.finance_status)
+        && (f.last_partner_action_at || f.updated_at) < stale72h
+      );
+
+      const settling = mine.filter((f: any) =>
+        f.settlement_date && f.settlement_date >= nowISO && f.settlement_date <= in7d
+      );
+
+      const atRisk = mine.filter((f: any) => f.status === 'at_risk' || f.risk_level === 'high');
+
+      // De-dupe across buckets while preserving order of priority
+      const seen = new Set<string>();
+      const dedupe = (arr: any[]) => arr.filter((f: any) => seen.has(f.id) ? false : (seen.add(f.id), true));
+
+      return jsonResponse({
+        buckets: {
+          breaching: dedupe(breaching),
+          stale: dedupe(stale),
+          settling: dedupe(settling),
+          at_risk: dedupe(atRisk),
+        },
+        total_assigned: mine.length,
+      });
+    }
+
     return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
+
   } catch (err: any) {
     console.error('[finance-portal-purchase-files] Unhandled error:', err?.stack || err);
     return jsonResponse({ error: err?.message || 'Unexpected error' }, 500);

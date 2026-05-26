@@ -7080,6 +7080,93 @@ export type Database = {
           },
         ]
       }
+      finance_portal_pf_watchers: {
+        Row: {
+          created_at: string
+          finance_user_id: string
+          id: string
+          purchase_file_id: string
+        }
+        Insert: {
+          created_at?: string
+          finance_user_id: string
+          id?: string
+          purchase_file_id: string
+        }
+        Update: {
+          created_at?: string
+          finance_user_id?: string
+          id?: string
+          purchase_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_pf_watchers_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_pf_watchers_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_pf_watchers_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      finance_portal_saved_views: {
+        Row: {
+          created_at: string
+          filters: Json
+          finance_user_id: string
+          id: string
+          is_default: boolean
+          name: string
+          scope: string
+          sort: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          finance_user_id: string
+          id?: string
+          is_default?: boolean
+          name: string
+          scope: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          finance_user_id?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          scope?: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_saved_views_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_portal_threads: {
         Row: {
           client_id: string
@@ -11660,6 +11747,7 @@ export type Database = {
           finance_clause_date: string | null
           finance_status: Database["public"]["Enums"]["purchase_finance_status"]
           id: string
+          last_partner_action_at: string | null
           lender: string | null
           max_approved_budget: number | null
           notes: string | null
@@ -11692,6 +11780,7 @@ export type Database = {
           finance_clause_date?: string | null
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
           id?: string
+          last_partner_action_at?: string | null
           lender?: string | null
           max_approved_budget?: number | null
           notes?: string | null
@@ -11724,6 +11813,7 @@ export type Database = {
           finance_clause_date?: string | null
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
           id?: string
+          last_partner_action_at?: string | null
           lender?: string | null
           max_approved_budget?: number | null
           notes?: string | null

@@ -14,13 +14,24 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Briefcase, Plus, Search, ChevronRight, AlertTriangle, Clock, CheckCircle2, Loader2,
+  Briefcase, Plus, Search, ChevronRight, AlertTriangle, Clock, CheckCircle2, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNowStrict } from 'date-fns';
+
+function agingTone(iso: string | null | undefined) {
+  if (!iso) return { label: 'no activity', cls: 'bg-muted text-muted-foreground' };
+  const hrs = (Date.now() - new Date(iso).getTime()) / 3600_000;
+  const label = formatDistanceToNowStrict(new Date(iso));
+  if (hrs >= 168) return { label, cls: 'bg-destructive/15 text-destructive border-destructive/30' };
+  if (hrs >= 72)  return { label, cls: 'bg-amber-500/15 text-amber-500 border-amber-500/30' };
+  return { label, cls: 'bg-muted text-muted-foreground' };
+}
 
 const FINANCE_STATUS_LABEL: Record<string, string> = {
   not_started: 'Not Started',
@@ -84,37 +95,56 @@ export default function FinancePortalPurchaseFiles() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [inbox, setInbox] = useState<'mine' | 'team' | 'watching'>('mine');
   const [newOpen, setNewOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: payload, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-files'],
     queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', { operation: 'list_files' });
       if (error) throw new Error(error.message);
-      return data?.files ?? [];
+      return data ?? { files: [] };
     },
   });
+  const data = payload?.files ?? [];
+
+  const toggleWatch = async (fileId: string) => {
+    const { data: res, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'toggle_watch', file_id: fileId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(res?.is_watched ? 'Watching this file' : 'Removed from watchlist');
+    queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-files'] });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (data || []).filter((f: any) => {
+      if (inbox === 'mine' && !f.is_mine) return false;
+      if (inbox === 'watching' && !f.is_watched) return false;
+      if (inbox === 'team' && f.is_mine) return false;
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (!q) return true;
       const haystack = [
-        f.title,
-        f.property_address,
-        f.lender,
+        f.title, f.property_address, f.lender,
         smartCapitalize(`${f.clients?.primary_first_name || ''} ${f.clients?.primary_surname || ''}`),
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [data, search, statusFilter]);
+  }, [data, search, statusFilter, inbox]);
+
+  const counts = useMemo(() => ({
+    mine: (data || []).filter((f: any) => f.is_mine).length,
+    team: (data || []).filter((f: any) => !f.is_mine).length,
+    watching: (data || []).filter((f: any) => f.is_watched).length,
+  }), [data]);
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = { active: [], at_risk: [], on_hold: [], draft: [], settled: [], cancelled: [] };
     for (const f of filtered) (map[f.status] ||= []).push(f);
     return map;
   }, [filtered]);
+
 
   return (
     <div className="container mx-auto max-w-7xl py-8 px-4">
@@ -132,6 +162,14 @@ export default function FinancePortalPurchaseFiles() {
           <Plus className="h-4 w-4" /> New Purchase File
         </Button>
       </div>
+
+      <Tabs value={inbox} onValueChange={(v) => setInbox(v as any)} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="mine">Mine <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.mine}</span></TabsTrigger>
+          <TabsTrigger value="team">Team <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.team}</span></TabsTrigger>
+          <TabsTrigger value="watching">Watching <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.watching}</span></TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 min-w-[240px]">
@@ -155,6 +193,7 @@ export default function FinancePortalPurchaseFiles() {
           </SelectContent>
         </Select>
       </div>
+
 
       {isLoading ? (
         <div className="grid gap-3">
@@ -213,7 +252,16 @@ export default function FinancePortalPurchaseFiles() {
                                     <AlertTriangle className="h-3 w-3" /> High risk
                                   </Badge>
                                 )}
+                                {(() => { const a = agingTone(file.last_partner_action_at); return (
+                                  <Badge variant="outline" className={cn('text-[10px]', a.cls)} title="Time since last partner action">
+                                    {a.label}
+                                  </Badge>
+                                ); })()}
+                                {file.is_watched && (
+                                  <Badge variant="outline" className="text-[10px] gap-1"><Eye className="h-3 w-3" /> Watching</Badge>
+                                )}
                               </div>
+
                               <p className="text-sm text-muted-foreground truncate mt-0.5">
                                 {clientName} · {PURCHASE_TYPE_LABEL[file.purchase_type] || file.purchase_type}
                                 {file.property_address ? ` · ${file.property_address}` : ''}
