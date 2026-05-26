@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Banknote, Calendar, MapPin, Landmark, Clock, ListChecks,
-  TrendingUp, AlertCircle, CheckCircle2, ArrowRight,
+  TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Briefcase, PieChart,
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
