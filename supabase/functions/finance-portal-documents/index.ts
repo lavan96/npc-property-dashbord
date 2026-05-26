@@ -332,6 +332,30 @@ Deno.serve(async (req) => {
         });
       if (sErr) throw sErr;
       await audit('download_document', doc.id, { filename: doc.original_filename });
+
+      // Chunk 8: sensitive-access audit event (tamper-evident chain)
+      const fp = extractRequestFingerprint(req);
+      await recordAuditEvent(supabase, {
+        purchase_file_id: doc.purchase_file_id ?? null,
+        client_id,
+        actor_type: 'finance_partner',
+        actor_finance_user_id: portalUser.id,
+        severity: 'notice',
+        category: 'document',
+        action: 'download_document',
+        target_type: 'finance_portal_document',
+        target_id: doc.id,
+        fields_accessed: ['storage_path', 'original_filename'],
+        description: `Downloaded ${doc.original_filename}`,
+        metadata: {
+          finance_email: portalUser.email,
+          category: doc.category,
+          file_size: doc.file_size,
+        },
+        ip_address: fp.ip_address,
+        user_agent: fp.user_agent,
+      });
+
       return jsonResponse({ success: true, url: signed.signedUrl, document: doc });
     }
 
