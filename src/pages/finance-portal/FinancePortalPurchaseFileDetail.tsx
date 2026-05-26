@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks,
+  ShieldAlert, Calculator, ListChecks, Ship,
 } from 'lucide-react';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
@@ -32,6 +32,8 @@ import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileS
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
 import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
+import { LenderPacketHistoryCard } from '@/components/finance-portal/LenderPacketHistoryCard';
+import { SettlementRunwayTab } from '@/components/finance-portal/SettlementRunwayTab';
 
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
