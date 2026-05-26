@@ -150,7 +150,7 @@ export function FinancePortalNotificationBell() {
             <div className="divide-y">
               {items.map(item => {
                 const clientName = item.clients
-                  ? `${item.clients.first_name} ${item.clients.surname}`.trim()
+                  ? `${smartCapitalize(item.clients.first_name)} ${smartCapitalize(item.clients.surname)}`.trim()
                   : null;
                 return (
                   <button
