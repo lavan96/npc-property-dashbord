@@ -580,6 +580,21 @@ export default function FinancePortalAdmin() {
         onSaved={(m) => setDefaultPermissions(m)}
       />
 
+      <GlobalPartnerPermissionsDialog
+        open={!!globalPermsForUser}
+        onOpenChange={(o) => { if (!o) setGlobalPermsForUser(null); }}
+        partner={
+          globalPermsForUser?.portal_user
+            ? {
+                portal_user_id: globalPermsForUser.portal_user.id,
+                contact_name: globalPermsForUser.name,
+                contact_email: globalPermsForUser.email,
+              }
+            : null
+        }
+        onSaved={() => loadAll()}
+      />
+
       <ActivityLogDialog
         open={activityOpen}
         onOpenChange={setActivityOpen}
