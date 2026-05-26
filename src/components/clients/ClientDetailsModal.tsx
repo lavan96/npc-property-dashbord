@@ -52,6 +52,7 @@ import {
   ClipboardCheck,
   Inbox,
   FileSignature,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
