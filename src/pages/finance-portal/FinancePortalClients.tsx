@@ -18,10 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search, Users, Loader2, X, ArrowUpDown, UserCheck, Clock, SortAsc,
   ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
+  Briefcase, AlertTriangle, CalendarClock, Gavel, TrendingUp, Wallet,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,7 @@ import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
 import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 
-type SortKey = 'name' | 'date' | 'status';
+type SortKey = 'name' | 'date' | 'status' | 'urgency' | 'settlement' | 'finance_clause' | 'risk' | 'recent';
 type IntakeMode = 'manual' | 'pdf';
 
 interface NewClientFormData {
@@ -493,6 +494,11 @@ export default function FinancePortalClients() {
     }
 
     list.sort((a: any, b: any) => {
+      const aPf = a.active_purchase_file;
+      const bPf = b.active_purchase_file;
+      const aNext = a.next_deadline?.due_date || '';
+      const bNext = b.next_deadline?.due_date || '';
+      const riskRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
       if (sortKey === 'name') {
         return (a.client?.primary_contact_name || '').localeCompare(b.client?.primary_contact_name || '');
       }
@@ -501,6 +507,35 @@ export default function FinancePortalClients() {
       }
       if (sortKey === 'status') {
         return (a.client?.status || '').localeCompare(b.client?.status || '');
+      }
+      if (sortKey === 'urgency') {
+        // PFs with a next deadline first, soonest first; then those without
+        if (!aNext && !bNext) return 0;
+        if (!aNext) return 1;
+        if (!bNext) return -1;
+        return aNext.localeCompare(bNext);
+      }
+      if (sortKey === 'settlement') {
+        const aS = aPf?.settlement_date || '';
+        const bS = bPf?.settlement_date || '';
+        if (!aS && !bS) return 0;
+        if (!aS) return 1;
+        if (!bS) return -1;
+        return aS.localeCompare(bS);
+      }
+      if (sortKey === 'finance_clause') {
+        const aF = aPf?.finance_clause_date || '';
+        const bF = bPf?.finance_clause_date || '';
+        if (!aF && !bF) return 0;
+        if (!aF) return 1;
+        if (!bF) return -1;
+        return aF.localeCompare(bF);
+      }
+      if (sortKey === 'risk') {
+        return (riskRank[bPf?.risk_level] || 0) - (riskRank[aPf?.risk_level] || 0);
+      }
+      if (sortKey === 'recent') {
+        return (bPf?.updated_at || b.assigned_at || '').localeCompare(aPf?.updated_at || a.assigned_at || '');
       }
       return 0;
     });
@@ -571,7 +606,17 @@ export default function FinancePortalClients() {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  const sortLabel = sortKey === 'name' ? 'Name' : sortKey === 'date' ? 'Date Assigned' : 'Status';
+  const SORT_LABELS: Record<SortKey, string> = {
+    name: 'Name',
+    date: 'Date Assigned',
+    status: 'Status',
+    urgency: 'Urgency',
+    settlement: 'Settlement Date',
+    finance_clause: 'Finance Clause',
+    risk: 'Risk Level',
+    recent: 'Recently Updated',
+  };
+  const sortLabel = SORT_LABELS[sortKey];
 
   return (
     <>
@@ -666,7 +711,8 @@ export default function FinancePortalClients() {
                   <span className="hidden sm:inline">{sortLabel}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Basic</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setSortKey('name')} className={cn(sortKey === 'name' && 'text-primary font-medium')}>
                   <SortAsc className="h-4 w-4 mr-2" /> Name
                 </DropdownMenuItem>
@@ -675,6 +721,23 @@ export default function FinancePortalClients() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortKey('status')} className={cn(sortKey === 'status' && 'text-primary font-medium')}>
                   <UserCheck className="h-4 w-4 mr-2" /> Status
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Deal flow</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setSortKey('urgency')} className={cn(sortKey === 'urgency' && 'text-primary font-medium')}>
+                  <AlertTriangle className="h-4 w-4 mr-2" /> Urgency
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('finance_clause')} className={cn(sortKey === 'finance_clause' && 'text-primary font-medium')}>
+                  <Gavel className="h-4 w-4 mr-2" /> Finance Clause
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('settlement')} className={cn(sortKey === 'settlement' && 'text-primary font-medium')}>
+                  <CalendarClock className="h-4 w-4 mr-2" /> Settlement Date
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('risk')} className={cn(sortKey === 'risk' && 'text-primary font-medium')}>
+                  <TrendingUp className="h-4 w-4 mr-2" /> Risk Level
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('recent')} className={cn(sortKey === 'recent' && 'text-primary font-medium')}>
+                  <Clock className="h-4 w-4 mr-2" /> Recently Updated
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -786,6 +849,22 @@ export default function FinancePortalClients() {
                 const status = (record.client?.status || 'active').toLowerCase();
                 const statusColor = STATUS_COLORS[status] || 'bg-zinc-400';
                 const avatarBg = getAvatarColor(name);
+                const pf = record.active_purchase_file;
+                const pfCount = record.purchase_file_count || 0;
+                const nextDeadline = record.next_deadline;
+                const daysToDeadline = nextDeadline?.due_date
+                  ? Math.round((new Date(nextDeadline.due_date).getTime() - Date.now()) / 86400000)
+                  : null;
+                const riskTone = pf?.risk_level === 'high'
+                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : pf?.risk_level === 'medium'
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    : '';
+                const deadlineTone = daysToDeadline != null && daysToDeadline <= 2
+                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : daysToDeadline != null && daysToDeadline <= 7
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-muted text-muted-foreground';
 
                 return (
                   <motion.div
@@ -850,6 +929,47 @@ export default function FinancePortalClients() {
                           </div>
                           {record.client?.primary_contact_phone && (
                             <div className="text-xs text-muted-foreground xs:hidden">{record.client.primary_contact_phone}</div>
+                          )}
+
+                          {pf && (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/20 bg-primary/5 text-primary">
+                                <Briefcase className="h-2.5 w-2.5" />
+                                {pf.title || 'Purchase file'}
+                                {pfCount > 1 && <span className="opacity-70">+{pfCount - 1}</span>}
+                              </Badge>
+                              {pf.finance_status && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                                  {pf.finance_status.replace(/_/g, ' ')}
+                                </Badge>
+                              )}
+                              {pf.lender && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                                  {pf.lender}
+                                </Badge>
+                              )}
+                              {pf.max_approved_budget != null && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground gap-1">
+                                  <Wallet className="h-2.5 w-2.5" />
+                                  ${Number(pf.max_approved_budget).toLocaleString('en-AU')}
+                                </Badge>
+                              )}
+                              {pf.risk_level && (
+                                <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 capitalize gap-1', riskTone)}>
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                  {pf.risk_level}
+                                </Badge>
+                              )}
+                              {nextDeadline && (
+                                <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', deadlineTone)}>
+                                  <CalendarClock className="h-2.5 w-2.5" />
+                                  {nextDeadline.date_type.replace(/_/g, ' ')}
+                                  {daysToDeadline != null && (
+                                    <span>· {daysToDeadline < 0 ? `${-daysToDeadline}d overdue` : `${daysToDeadline}d`}</span>
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
 

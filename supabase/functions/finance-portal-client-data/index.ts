@@ -351,6 +351,25 @@ Deno.serve(async (req) => {
         .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, created_at')
         .in('id', clientIds);
 
+      // Phase 4: active purchase-file rollup per client
+      const { data: purchaseFiles } = await supabase
+        .from('purchase_files')
+        .select(`
+          id, client_id, title, status, finance_status, lender,
+          max_approved_budget, risk_level, settlement_date, finance_clause_date, updated_at,
+          purchase_file_critical_dates(id, date_type, due_date, status)
+        `)
+        .in('client_id', clientIds)
+        .is('archived_at', null)
+        .order('updated_at', { ascending: false });
+
+      const pfByClient = new Map<string, any[]>();
+      for (const f of purchaseFiles || []) {
+        const list = pfByClient.get(f.client_id) || [];
+        list.push(f);
+        pfByClient.set(f.client_id, list);
+      }
+
       const cMap = new Map((clients || []).map((c: any) => {
         const primary_contact_name = [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null;
         const secondary_contact_name = [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null;
@@ -364,13 +383,38 @@ Deno.serve(async (req) => {
           created_at: c.created_at,
         }];
       }));
-      const records = (assignments || []).map((a: any) => ({
-        assignment_id: a.id,
-        client_id: a.client_id,
-        permissions: mergePermissions(portalUser.global_permissions, a.permissions),
-        assigned_at: a.assigned_at,
-        client: cMap.get(a.client_id) || null,
-      }));
+      const records = (assignments || []).map((a: any) => {
+        const files = pfByClient.get(a.client_id) || [];
+        const active = files[0] || null;
+        let next_deadline: { date_type: string; due_date: string } | null = null;
+        if (active) {
+          const upcoming = (active.purchase_file_critical_dates || [])
+            .filter((d: any) => d.due_date && d.status !== 'completed')
+            .sort((x: any, y: any) => (x.due_date || '').localeCompare(y.due_date || ''))[0];
+          if (upcoming) next_deadline = { date_type: upcoming.date_type, due_date: upcoming.due_date };
+          else if (active.finance_clause_date) next_deadline = { date_type: 'finance_clause', due_date: active.finance_clause_date };
+          else if (active.settlement_date) next_deadline = { date_type: 'settlement', due_date: active.settlement_date };
+        }
+        return {
+          assignment_id: a.id,
+          client_id: a.client_id,
+          permissions: mergePermissions(portalUser.global_permissions, a.permissions),
+          assigned_at: a.assigned_at,
+          client: cMap.get(a.client_id) || null,
+          active_purchase_file: active ? {
+            id: active.id,
+            title: active.title,
+            status: active.status,
+            finance_status: active.finance_status,
+            lender: active.lender,
+            max_approved_budget: active.max_approved_budget,
+            risk_level: active.risk_level,
+            updated_at: active.updated_at,
+          } : null,
+          purchase_file_count: files.length,
+          next_deadline,
+        };
+      });
 
       return jsonResponse({ success: true, records });
     }

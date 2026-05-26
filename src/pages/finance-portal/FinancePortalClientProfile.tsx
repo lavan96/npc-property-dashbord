@@ -13,13 +13,14 @@ import {
   Loader2, ArrowLeft, Mail, Phone, Lock, Copy, Check,
   Building2, DollarSign, CreditCard, Briefcase, PiggyBank,
   FileText, Users, MapPin, StickyNote, FolderOpen,
-  Calculator, MessageSquare, ChevronRight, Shield, LockOpen, ChevronLeft
+  Calculator, MessageSquare, ChevronRight, Shield, LockOpen, ChevronLeft,
 } from 'lucide-react';
 import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
 import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
+import { ClientPurchaseFilesPanel } from '@/components/finance-portal/ClientPurchaseFilesPanel';
 import { cn } from '@/lib/utils';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { toast } from 'sonner';
@@ -154,6 +155,10 @@ export default function FinancePortalClientProfile() {
     });
 
     // Special tabs
+    // Phase 4: Purchase Files tab — default-allow, mirrors the matrix default in the edge fn
+    const pfVisible = permissions.purchase_files ? !!permissions.purchase_files.view : true;
+    tabs.push({ key: 'purchase_files', label: 'Purchase Files', icon: Briefcase, locked: !pfVisible });
+
     const docsVisible = permissions.documents ? !!permissions.documents.view : true;
     tabs.push({ key: 'documents', label: 'Documents', icon: FolderOpen, locked: !docsVisible, count: counts.documents });
 
@@ -404,6 +409,7 @@ export default function FinancePortalClientProfile() {
               {activeTab === 'documents' && <DocumentVaultPanel clientId={clientId!} />}
               {activeTab === 'borrowing_capacity' && <BorrowingCapacityPanel clientId={clientId!} />}
               {activeTab === 'messages' && <FinancePortalMessagesPanel clientId={clientId!} />}
+              {activeTab === 'purchase_files' && <ClientPurchaseFilesPanel clientId={clientId!} />}
             </motion.div>
           </AnimatePresence>
         </>
