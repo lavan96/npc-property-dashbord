@@ -213,6 +213,18 @@ export default function FinancePortalPurchaseFileDetail() {
           <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
         </TabsContent>
 
+        <TabsContent value="decisions">
+          <FinanceDecisionsTab fileId={fileId!} />
+        </TabsContent>
+
+        <TabsContent value="conditions">
+          <ConditionsTab fileId={fileId!} />
+        </TabsContent>
+
+        <TabsContent value="valuation">
+          <ValuationsTab fileId={fileId!} />
+        </TabsContent>
+
         <TabsContent value="activity">
           <Card>
             <CardHeader><CardTitle className="text-base">Status & activity history</CardTitle></CardHeader>
