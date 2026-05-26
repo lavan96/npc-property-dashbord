@@ -1,139 +1,113 @@
+# Phase 6 — Link Internal Deals ↔ Finance Purchase Files (Option A)
 
-# Finance Portal v2 — Deal Execution System
+## Goal
 
-## Vision
+Stop the drift between `client_deals` (internal Deal Pipeline) and `purchase_files` (Finance Portal Deal Room) by adding a bidirectional link and lightweight cross-module surfaces. Both modules keep their specialised UIs; neither is migrated or rewritten.
 
-Today's portal answers *"Who are my clients?"*. v2 must answer:
-*"Which clients are ready to buy, which files are at risk, what's missing, what milestone are we at, what's next?"*
+## Scope
 
-The structural shift: **Client → Finance File → Purchase File (Deal Room)**. A client can have many purchase files over time; each is a self-contained workflow that mirrors the real acquisition journey and syncs back into Command Centre.
+In scope:
+- Bidirectional FK between `client_deals` and `purchase_files`
+- "Link / Unlink / Create from" actions in both directions
+- Read-only cross-module panels (Deal Room shows internal deal; Deal Pipeline row shows finance status)
+- Shared-field divergence indicator (price / settlement date / address mismatch warning)
+- Commission rollup honours the link (uses `purchase_file_id` already on `commissions`)
 
-This is a large body of work. The plan below scopes it into 5 phases, prioritising the items the user nominated as MVP (§21 in the brief) and explicitly deferring nice-to-haves so we can ship value fast without overbuilding.
+Explicitly out of scope:
+- Auto-mirroring of shared fields (we surface drift, don't silently overwrite)
+- Merging `deal_stages` into `purchase_files` or vice versa
+- Touching build payments / builder invoices schema
+- Legal/builder portal work
 
----
-
-## Phase 1 — Foundation: Purchase Files + Finance Status (MVP core)
-
-The single biggest unlock. Everything else hangs off this.
-
-**Data model (new tables)**
-- `purchase_files` — one row per acquisition. Belongs to a client. Fields: purchase_type (existing / OTP / H&L / land / build / dual-occ / SMSF / commercial / refinance), property_address, purchase_price, deposit, settlement_date, status, finance_status, assigned finance partner, assigned NPC consultant, lender, max_approved_budget, risk_level, archived_at.
-- `purchase_file_critical_dates` — typed date rows (offer, contract, cooling-off, finance clause, B&P, deposit due, valuation due, loan approval target, settlement) with status (on_track / due_soon / overdue).
-- `purchase_file_status_history` — append-only audit of finance_status transitions.
-- Extend `client_finance_status` enum: not_started, docs_requested, docs_received, in_review, pre_approved, purchase_specific_review, application_lodged, conditional_approval, valuation_pending, valuation_returned, unconditional_approval, ready_for_settlement, settled, at_risk.
-
-**Edge functions**
-- New `finance-portal-purchase-files` (list / get / create / update / archive) — RLS-mediated via the same OR-merge permission resolver already shipped for global permissions. Add `purchase_files` to `ALLOWED_TABLES`.
-- New permission scopes added to the matrix: `view_purchase_files`, `edit_purchase_files`, `set_finance_status`, `set_green_light`.
-
-**UI**
-- New finance-portal route **Active Purchase Files** (sidebar entry above "My Clients"). Card list grouped by status with urgency colour coding.
-- Purchase File detail page = the **Deal Room** shell (tabs scaffolded but only Overview + Critical Dates filled in this phase).
-- Client profile gets a new **Purchase Files** tab listing all files for that client.
-- Command Centre: mirror page under `ClientDetailsModal` so internal staff see the same files and can create/edit them. Realtime publication added.
-
-**Why first:** unblocks every later phase. Without a purchase-file entity there is nowhere to attach conditions, valuations, green lights, or critical-date alerts.
-
----
-
-## Phase 2 — Document Matrix + Request-from-Client
-
-Replaces the "upload anything" vault with a structured checklist.
-
-- New table `document_requirements` (template rows per purchase_type) and `document_requirement_instances` (per purchase_file, with status: required / requested / uploaded / verified / expired, owner, visibility flags for finance / legal / NPC / client, expiry_date, notes).
-- Document upload UI changes from a flat list into category groups (Identity, Income, Self-employed, Bank statements, Existing loans, Assets, Liabilities, Purchase docs, Deposit proof, Valuation, Loan approval, Settlement).
-- "Request documents from client" action: finance partner ticks needed items → triggers existing notification + Web Push pipeline → client portal shows pending requests on dashboard.
-- Verification toggle (finance partner only).
-- Reuses existing `secure-storage-mediation` pattern — no new bucket policies needed.
-
----
-
-## Phase 3 — Finance Green Light + Conditions + Valuation Trackers
-
-The three trackers that make a file auditable.
-
-**Green Light**
-- New table `purchase_file_finance_decisions` — one row per decision event. Outcome enum: green_light / proceed_with_caution / not_suitable / need_more_info / subject_to_valuation / subject_to_lender_review / subject_to_equity / subject_to_deposit. Includes rationale, decided_by, decided_at. Latest row surfaces as the "current finance position" on the Deal Room overview.
-- Big button on Deal Room → modal capturing property snapshot (price, rent, client contribution) + outcome + notes.
-
-**Conditions tracker**
-- `purchase_file_conditions` — title, owner (client / NPC / broker / legal), status (pending / in_progress / uploaded / satisfied / waived), due_date, linked document, notes.
-- Auto-generated checklist when `finance_status` flips to `conditional_approval` (via DB trigger) using a per-lender template (lender templates added in Phase 5; defaults used until then).
-
-**Valuation tracker**
-- `purchase_file_valuations` — ordered_date, valuer, agent_contact, access_required, returned_date, contract_price, valuation_result, shortfall, risk_level, next_action, status.
-
-All three render as collapsible cards inside the Deal Room. Each writes to `purchase_file_status_history` so the activity log gets it for free.
-
----
-
-## Phase 4 — Operational Dashboard + Client List Upgrades
-
-Make day-to-day work obvious.
-
-**Dashboard widgets** (replace current "Recent clients" block, keep account-status card)
-- Finance files requiring action
-- Approvals due this week
-- Documents pending (count + drill-down)
-- Valuations pending
-- At-risk files (red ribbon)
-- Settlements upcoming (7 / 14 / 30 day toggle)
-- Broker response required (where NPC is waiting)
-
-Implemented via a single new edge function `finance-portal-dashboard-metrics` returning all widget data in one round-trip.
-
-**My Clients table** — add columns: Finance status, Active purchase file, Max approved budget, Lender, Next deadline, Last activity, Risk flag, Assigned NPC consultant. New sort modes: Urgency, Settlement date, Finance clause expiry, Missing documents, Recently updated, Risk level.
-
-**Client detail tab reorg** to match the brief (Profile / Finance Snapshot / Income / Expenses / Assets / Liabilities / Purchase Files / Documents / Notes & Activity). Existing tab content is moved, not rewritten.
-
----
-
-## Phase 5 — Notes split, Activity log, Risk register, Borrowing snapshot, Commission linkage, Automations
-
-Polish + accountability layer.
-
-- **Notes** — add `visibility` enum on existing notes table (`shared` vs `internal_npc`). Finance portal only ever sees `shared`.
-- **Activity log** — already half-built via `purchase_file_status_history`; broaden into `purchase_file_activity` capturing document uploads, decisions, condition updates, date changes, message events. Renders as a unified timeline on the Deal Room.
-- **Risk register** — `purchase_file_risks` (category, severity, owner, due_date, resolution_note). Top 3 risks shown on Deal Room header.
-- **Borrowing capacity snapshot** — small editable card on the client's Finance Snapshot tab; manual entry now, hook into existing borrowing-capacity engine later.
-- **Commission linkage** — extend `commissions` with `purchase_file_id` and `milestone` (referred / lodged / approved / settled / statement_received / paid). Earnings page groups by file.
-- **Automation triggers** — pg_cron + existing notification dispatcher:
-  - Missing docs >48h → reminder
-  - Finance clause T-5 / T-2 → alert + escalation
-  - Valuation not returned >3d → follow-up task
-  - Conditional approval received → auto-generate conditions checklist
-  - Unconditional uploaded → notify legal + NPC
-  - Settlement T-7 → readiness checklist
-  - File marked settled → post-settlement workflow
-
-**Explicitly deferred (mentioned in brief, not built yet)**
-- Legal partner portal (§12) — schema designed so roles can be added later; no UI built.
-- Per-lender condition templates (only defaults in Phase 3).
-- Builder / PM / developer portals.
-
----
-
-## Cross-cutting concerns
-
-- **Permissions** — every new scope plugs into the existing OR-merge resolver (`mergePermissions`) so the global-permissions work from the previous turn keeps working unchanged.
-- **Realtime** — all new tables added to `supabase_realtime` publication per project standards.
-- **Notifications** — extend `notifications_type_check` with new types (purchase_file_*, condition_*, valuation_*, finance_decision_*). Reuse Web Push dispatcher.
-- **Naming** — Australian English, "Postcode", `smartCapitalize` on all rendered names.
-- **Theme** — semantic tokens only (dark-gold), no hardcoded colours.
-- **No business-logic regressions** — Phase 1 ships behind the existing nav; old "My Clients" page stays intact until Phase 4's reorg.
-
----
-
-## Build order recap (matches brief §21)
+## Data model changes
 
 ```text
-Phase 1 → Purchase Files + Finance Status + Critical Dates
-Phase 2 → Document Matrix + Request-from-Client
-Phase 3 → Green Light + Conditions + Valuation trackers
-Phase 4 → Dashboard widgets + Client list/detail reorg
-Phase 5 → Notes split, Activity log, Risk register, Borrowing snapshot, Commissions, Automations
+client_deals
+  + purchase_file_id  uuid  nullable  FK → purchase_files(id) ON DELETE SET NULL
+  + index on (purchase_file_id)
+
+purchase_files
+  + client_deal_id    uuid  nullable  FK → client_deals(id) ON DELETE SET NULL
+  + index on (client_deal_id)
 ```
 
-## What I recommend we do right now
+Both sides nullable because legacy rows exist on both. A trigger keeps the two sides consistent: setting one side populates the other; unlinking one clears the other. Unique partial indexes prevent a single deal or file being linked to more than one counterpart.
 
-Approve **Phase 1** and I'll start with the migration (new tables + enums + RLS + realtime), then the edge function, then the Active Purchase Files page and Deal Room shell with Critical Dates. Each subsequent phase will be its own approval so we can adjust scope as you see it land.
+## Edge function changes
+
+- `finance-portal-purchase-files`: add `link_to_deal` and `unlink_deal` operations; include linked deal summary in `get` responses (deal id, current_stage, risk_status, total_contract_price, settlement_date, stage count, build-payment count).
+- `manage-client-data` / `get-client-data`: add `client_deals` link/unlink support and include `purchase_file` summary in deal payloads (finance_status, lender, latest finance_decision outcome, condition counts, next critical date).
+- Add `client_deals` to `ALLOWED_TABLES` read path for the finance portal edge fn (read-only, scoped to linked rows only).
+
+## UI changes
+
+**Finance Portal — Deal Room (`PurchaseFileDetail`)**
+- New "Internal Deal" card under the Overview tab. States:
+  - Not linked → button "Link to existing deal" (searches `client_deals` for this client) and "Mark as standalone".
+  - Linked → read-only summary: deal type, current stage, risk, build payments completed (N/M), commission estimate, link to open in Command Centre. Unlink button.
+  - Drift warning chip if address / price / settlement date differ between the two rows.
+
+**Internal Deal Pipeline (`/DealPipeline`)**
+- New "Finance" column on the table: finance_status pill + lender. Empty when not linked.
+- Row action menu: "Link finance file" / "Open finance Deal Room" / "Unlink".
+- Filter by `has_finance_file` and by `finance_status`.
+
+**Command Centre — `ClientDetailsModal`**
+- Purchase Files tab already exists. Add a small "Linked deal" chip on each PF card.
+- Deals tab gets the same "Linked finance file" chip.
+
+**Picker component (shared)**
+- `LinkCounterpartDialog` — lists candidate deals/files for the same `client_id`, shows address/price/date side-by-side, confirms link. Reused on both sides.
+
+## Permissions
+
+- Reuse existing OR-merge resolver. New scope keys:
+  - `link_purchase_file_to_deal` (finance side, default allow for finance partners with `edit_purchase_files`)
+  - `link_deal_to_purchase_file` (internal side, gated by existing `deals` edit permission)
+- Read-only cross-module summary requires only view permission on the counterpart's parent client.
+
+## Drift detection
+
+A SQL view `v_purchase_file_deal_drift` returning rows where linked pairs disagree on:
+- normalised address (lowercased, whitespace-collapsed)
+- price (>$5k delta)
+- settlement_date (different non-null values)
+
+Surfaced as a Phase 4 dashboard widget ("Linked files with drift") and as the inline chip in both UIs. No auto-correction — user chooses which side is canonical and edits manually.
+
+## Migration & backfill
+
+- Migration adds columns + indexes + trigger + view.
+- Backfill script (one-off, idempotent) attempts auto-link where:
+  - same `client_id`
+  - normalised address matches exactly
+  - exactly one candidate on each side
+- All auto-links written with `linked_by = 'auto_backfill'` audit field on a new `purchase_file_deal_link_audit` table so they can be reviewed and reversed.
+- Ambiguous matches stay unlinked and appear in a "Needs review" widget for staff to resolve manually.
+
+## Realtime & notifications
+
+- Add updated tables to `supabase_realtime` publication.
+- New notification type `purchase_file_linked` (notifies assigned NPC + finance partner when a link is created or broken).
+- Extend `notifications_type_check`.
+
+## Memory updates
+
+After ship, add a memory note documenting the link contract, drift policy, and backfill audit table.
+
+## Rollout order
+
+1. Migration (columns, indexes, trigger, view, audit table, realtime, notification type)
+2. Edge fn updates (link/unlink ops + summary payloads + ALLOWED_TABLES)
+3. Shared `LinkCounterpartDialog` component
+4. Finance Portal Deal Room "Internal Deal" card
+5. Internal Deal Pipeline finance column + row actions
+6. ClientDetailsModal chips on both tabs
+7. Backfill script + drift widget
+8. Notifications wiring + memory note
+
+Each step is independently shippable; nothing breaks if we stop after step 4.
+
+## What I'll do on approval
+
+Start with step 1 — the migration — and pause for your review before moving to the edge function changes. After the migration approves, I'll proceed through steps 2–8 in one pass unless you tell me to gate further.
