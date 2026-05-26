@@ -92,17 +92,19 @@ export default function FinancePortalPurchaseFileDetail() {
   const queryClient = useQueryClient();
   const [savingStatus, setSavingStatus] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: getRes, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-file', fileId],
     queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
         operation: 'get_file', file_id: fileId,
       });
       if (error) throw new Error(error.message);
-      return data?.file;
+      return data;
     },
     enabled: !!fileId,
   });
+  const data = getRes?.file;
+  const linkedDeal = getRes?.linked_deal || null;
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-file', fileId] });
