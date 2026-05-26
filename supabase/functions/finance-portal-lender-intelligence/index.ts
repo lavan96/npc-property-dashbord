@@ -166,7 +166,10 @@ Deno.serve(async (req) => {
 
     // -----------------------------------------------------------------------
     if (operation === 'upsert_playbook') {
-      if (!isSuperadmin) return json({ error: 'Superadmin required' }, 403);
+      // Any active partner can update workspace lender knowledge.
+      void isSuperadmin;
+
+
 
       const payload = body?.payload || {};
       const lender_key = normalizeKey(payload.lender_key || payload.lender_label || '');
