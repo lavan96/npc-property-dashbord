@@ -67,6 +67,11 @@ function pickAllowed(payload: any, allowed: string[]) {
   return out;
 }
 
+function emptyTodayBuckets() {
+  return { breaching: [], stale: [], settling: [], at_risk: [] };
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
