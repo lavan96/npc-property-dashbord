@@ -11995,54 +11995,90 @@ export type Database = {
       }
       purchase_file_finance_decisions: {
         Row: {
+          broker_notes: string | null
           client_id: string
           created_at: string
           decided_at: string
           decided_by_finance_user_id: string | null
           decided_by_team_user_id: string | null
+          decision_expiry_date: string | null
+          deposit_required: number | null
+          estimated_borrowing_cap: number | null
           id: string
+          lmi_amount: number | null
+          lmi_applicable: boolean | null
+          lvr: number | null
+          max_comfortable_price: number | null
           outcome: Database["public"]["Enums"]["finance_decision_outcome"]
+          preferred_lender_pathway: string | null
+          proposed_loan_amount: number | null
           purchase_file_id: string
           rationale: string | null
+          shortfall_required: number | null
           snapshot_client_contribution: number | null
           snapshot_estimated_rent_weekly: number | null
           snapshot_lender: string | null
           snapshot_max_approved_budget: number | null
           snapshot_purchase_price: number | null
+          supporting_document_id: string | null
           updated_at: string
         }
         Insert: {
+          broker_notes?: string | null
           client_id: string
           created_at?: string
           decided_at?: string
           decided_by_finance_user_id?: string | null
           decided_by_team_user_id?: string | null
+          decision_expiry_date?: string | null
+          deposit_required?: number | null
+          estimated_borrowing_cap?: number | null
           id?: string
+          lmi_amount?: number | null
+          lmi_applicable?: boolean | null
+          lvr?: number | null
+          max_comfortable_price?: number | null
           outcome: Database["public"]["Enums"]["finance_decision_outcome"]
+          preferred_lender_pathway?: string | null
+          proposed_loan_amount?: number | null
           purchase_file_id: string
           rationale?: string | null
+          shortfall_required?: number | null
           snapshot_client_contribution?: number | null
           snapshot_estimated_rent_weekly?: number | null
           snapshot_lender?: string | null
           snapshot_max_approved_budget?: number | null
           snapshot_purchase_price?: number | null
+          supporting_document_id?: string | null
           updated_at?: string
         }
         Update: {
+          broker_notes?: string | null
           client_id?: string
           created_at?: string
           decided_at?: string
           decided_by_finance_user_id?: string | null
           decided_by_team_user_id?: string | null
+          decision_expiry_date?: string | null
+          deposit_required?: number | null
+          estimated_borrowing_cap?: number | null
           id?: string
+          lmi_amount?: number | null
+          lmi_applicable?: boolean | null
+          lvr?: number | null
+          max_comfortable_price?: number | null
           outcome?: Database["public"]["Enums"]["finance_decision_outcome"]
+          preferred_lender_pathway?: string | null
+          proposed_loan_amount?: number | null
           purchase_file_id?: string
           rationale?: string | null
+          shortfall_required?: number | null
           snapshot_client_contribution?: number | null
           snapshot_estimated_rent_weekly?: number | null
           snapshot_lender?: string | null
           snapshot_max_approved_budget?: number | null
           snapshot_purchase_price?: number | null
+          supporting_document_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -12073,6 +12109,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_purchase_file_deal_drift"
             referencedColumns: ["purchase_file_id"]
+          },
+          {
+            foreignKeyName: "purchase_file_finance_decisions_supporting_document_id_fkey"
+            columns: ["supporting_document_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_documents"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -14654,6 +14697,7 @@ export type Database = {
         | "subject_to_lender_review"
         | "subject_to_equity"
         | "subject_to_deposit"
+        | "subject_to_lmi_approval"
       generated_doc_status:
         | "draft"
         | "generated"
@@ -14722,13 +14766,17 @@ export type Database = {
         | "docs_requested"
         | "docs_received"
         | "in_review"
+        | "pre_approval_in_progress"
         | "pre_approved"
         | "purchase_specific_review"
+        | "green_light_given"
+        | "proceed_with_caution"
         | "application_lodged"
         | "conditional_approval"
         | "valuation_pending"
         | "valuation_returned"
         | "unconditional_approval"
+        | "loan_docs_issued"
         | "ready_for_settlement"
         | "settled"
         | "at_risk"
@@ -15186,6 +15234,7 @@ export const Constants = {
         "subject_to_lender_review",
         "subject_to_equity",
         "subject_to_deposit",
+        "subject_to_lmi_approval",
       ],
       generated_doc_status: [
         "draft",
@@ -15263,13 +15312,17 @@ export const Constants = {
         "docs_requested",
         "docs_received",
         "in_review",
+        "pre_approval_in_progress",
         "pre_approved",
         "purchase_specific_review",
+        "green_light_given",
+        "proceed_with_caution",
         "application_lodged",
         "conditional_approval",
         "valuation_pending",
         "valuation_returned",
         "unconditional_approval",
+        "loan_docs_issued",
         "ready_for_settlement",
         "settled",
         "at_risk",
