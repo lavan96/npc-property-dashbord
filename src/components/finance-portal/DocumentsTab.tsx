@@ -16,10 +16,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   Send, Plus, Trash2, CheckCircle2, ShieldCheck, AlertCircle, Clock, FileCheck,
-  Sparkles, Loader2, FileText, Eye, EyeOff,
+  Sparkles, Loader2, FileText, Eye, EyeOff, Package, ScanLine, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { LenderPacketDialog } from './LenderPacketDialog';
+
 
 const CATEGORY_LABEL: Record<string, string> = {
   identity: 'Identity',
