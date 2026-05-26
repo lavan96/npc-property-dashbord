@@ -128,10 +128,11 @@ Deno.serve(async (req) => {
     }
 
     async function loadHandoffPending() {
+      // Client-portal invites that have not been redeemed within 7 days.
       const { data } = await supabase
-        .from('finance_portal_handoff_invites')
-        .select('id, finance_user_id, email, created_at, redeemed_at, expires_at')
-        .is('redeemed_at', null)
+        .from('client_portal_users')
+        .select('id, client_id, email, status, created_at')
+        .eq('status', 'invited')
         .lt('created_at', SINCE_7D);
       return { pending: data || [] };
     }
