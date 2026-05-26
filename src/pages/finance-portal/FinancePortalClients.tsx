@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBrand } from '@/branding/useBrand';
 import { parseVownetPdf } from '@/utils/vownetPdfParser';
