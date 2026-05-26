@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, TrendingUp,
 } from 'lucide-react';
 
 import {
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
   { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
   { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false },
+  { to: '/finance/forecasting', label: 'Forecasting', icon: TrendingUp, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
 ];
 
