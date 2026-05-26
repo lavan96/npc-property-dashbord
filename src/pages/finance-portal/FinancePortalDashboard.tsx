@@ -202,8 +202,13 @@ export default function FinancePortalDashboard() {
           </p>
         </motion.div>
 
-        {/* Today — partner triage feed */}
-        <TodayPanel />
+        {/* Today — partner triage feed + document expiry watchlist */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2"><TodayPanel /></div>
+          <DocumentExpiryWatchlist withinDays={30} />
+        </div>
+
+
 
 
 
