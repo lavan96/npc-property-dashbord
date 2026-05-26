@@ -23,6 +23,11 @@ const PURCHASE_FILE_COLUMNS = [
   'property_state','property_postcode','purchase_price','deposit_amount','max_approved_budget',
   'lender','estimated_rent_weekly','client_contribution','settlement_date','finance_clause_date',
   'assigned_finance_user_id','assigned_team_user_id','risk_level','notes',
+  // Chunk 12 — deal-type adaptive fields
+  'deal_type_fields',
+  'land_price','build_price','land_settlement_date','construction_start_date',
+  'construction_completion_estimate','construction_stage',
+  'commercial_loan_type','gst_treatment','lease_in_place','lease_term_months','net_rental_yield',
 ];
 
 const CRITICAL_DATE_COLUMNS = ['date_type','due_date','status','notes','completed_at'];
