@@ -688,7 +688,7 @@ export default function FinancePortalEarnings() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <p className="text-base font-semibold leading-tight text-foreground break-words">
-                              {c.client_name_snapshot || '—'}
+                              {smartCapitalize(c.client_name_snapshot) || '—'}
                             </p>
                             <p className="text-xs text-muted-foreground break-words sm:text-sm">
                               {c.deal_type_snapshot || 'Deal type unavailable'}
