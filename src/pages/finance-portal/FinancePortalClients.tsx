@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Search, Users, Loader2, ExternalLink, X, ArrowUpDown, UserCheck, Clock, SortAsc,
+  Search, Users, Loader2, X, ArrowUpDown, UserCheck, Clock, SortAsc,
   ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
 } from 'lucide-react';
 import {
@@ -445,7 +445,7 @@ export default function FinancePortalClients() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [handoffBusyId, setHandoffBusyId] = useState<string | null>(null);
+  
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -553,31 +553,6 @@ export default function FinancePortalClients() {
     [filtered]
   );
 
-  const openClientPortal = async (clientId: string, readonly = true) => {
-    setHandoffBusyId(clientId);
-    try {
-      const { data, error } = await invokeFinanceFunction('finance-portal-handoff-create', {
-        client_id: clientId,
-        readonly,
-      });
-      if (error || !data?.success || !data?.token) {
-        throw new Error(data?.error || error?.message || 'Failed to create handoff link');
-      }
-      if (!data?.target_portal_user_id) {
-        throw new Error('No client portal profile is linked to this client yet');
-      }
-
-      const url = new URL('/client/handoff', window.location.origin);
-      url.searchParams.set('token', data.token);
-      url.searchParams.set('portalUserId', data.target_portal_user_id);
-      url.searchParams.set('clientId', clientId);
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (error: any) {
-      toast.error(error?.message || 'Could not open client portal view');
-    } finally {
-      setHandoffBusyId(null);
-    }
-  };
 
   const handleClientCreated = async (clientId: string) => {
     await refetch();
@@ -810,7 +785,6 @@ export default function FinancePortalClients() {
                 const totalTables = 12;
                 const status = (record.client?.status || 'active').toLowerCase();
                 const statusColor = STATUS_COLORS[status] || 'bg-zinc-400';
-                const isBusy = handoffBusyId === record.client_id;
                 const avatarBg = getAvatarColor(name);
 
                 return (
@@ -891,26 +865,6 @@ export default function FinancePortalClients() {
                         </div>
 
                         <div className="hidden sm:flex items-center gap-2 shrink-0 relative z-10">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              event.preventDefault();
-                              openClientPortal(record.client_id, true);
-                            }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            disabled={isBusy}
-                            title="Open this client’s portal in a new tab (read-only)"
-                            className="gap-1.5 rounded-lg text-xs"
-                          >
-                            {isBusy ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            )}
-                            View as client
-                          </Button>
                           <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
                         </div>
                       </div>
