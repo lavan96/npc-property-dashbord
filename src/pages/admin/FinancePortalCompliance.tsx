@@ -21,6 +21,9 @@ import { useBrand } from '@/branding/useBrand';
 interface PartnerOption { id: string; name: string; email: string; }
 interface ExportRow {
   timestamp: string;
+  source?: 'auth' | 'audit';
+  severity?: 'info' | 'notice' | 'warn' | 'critical';
+  category?: string;
   partner_name: string | null;
   partner_email: string | null;
   client_name: string | null;
@@ -90,7 +93,7 @@ export default function FinancePortalCompliance() {
 
   const exportCsv = () => {
     if (rows.length === 0) { toast.error('Run a report first'); return; }
-    const headers = ['timestamp', 'partner_name', 'partner_email', 'client_name', 'client_email', 'actor_type', 'action', 'entity_type', 'entity_id', 'ip_address', 'metadata'];
+    const headers = ['timestamp', 'source', 'severity', 'category', 'partner_name', 'partner_email', 'client_name', 'client_email', 'actor_type', 'action', 'entity_type', 'entity_id', 'ip_address', 'metadata'];
     const lines = [headers.join(',')];
     for (const r of rows) {
       lines.push(headers.map(h => csvEscape((r as any)[h])).join(','));
@@ -248,8 +251,21 @@ export default function FinancePortalCompliance() {
                         <div>{r.client_name || '—'}</div>
                         <div className="text-[10px] text-muted-foreground">{r.client_email}</div>
                       </TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px] capitalize">{r.actor_type}</Badge></TableCell>
-                      <TableCell className="text-sm font-medium">{r.action}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="text-[10px] capitalize w-fit">{r.actor_type}</Badge>
+                          {r.severity && r.severity !== 'info' && (
+                            <Badge variant="outline" className={`text-[10px] capitalize w-fit ${
+                              r.severity === 'critical' ? 'border-destructive/40 text-destructive' :
+                              r.severity === 'warn' ? 'border-warning/40 text-warning' : 'border-primary/40 text-primary'
+                            }`}>{r.severity}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {r.action}
+                        {r.category && <div className="text-[10px] text-muted-foreground capitalize">{r.category.replace(/_/g, ' ')}</div>}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {r.entity_type || '—'}
                         {r.entity_id && <span className="ml-1 font-mono">{r.entity_id.slice(0, 8)}</span>}
