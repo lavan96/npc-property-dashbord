@@ -839,6 +839,14 @@ The Team`
               />
             </TabsContent>
 
+            <TabsContent value="portal-messages" className="mt-4 w-full min-w-0">
+              <ClientPortalMessagesPanel
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+              />
+            </TabsContent>
+
+
             <TabsContent value="appointments" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientAppointmentsTab
                 clientId={client.id}
