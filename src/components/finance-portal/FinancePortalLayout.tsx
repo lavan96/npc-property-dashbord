@@ -24,8 +24,10 @@ const NAV_ITEMS = [
   { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false },
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
   { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
+  { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
 ];
+
 
 function getInitials(name?: string | null, email?: string | null): string {
   const source = name || email || 'F';
