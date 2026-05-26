@@ -181,6 +181,8 @@ Deno.serve(async (req) => {
       impersonation: {
         is_readonly: handoff.is_readonly,
         finance_user_id: handoff.finance_user_id,
+        staff_user_id: handoff.staff_user_id ?? null,
+        actor_type: isStaffHandoff ? 'staff' : 'finance_partner',
       },
     });
   } catch (err: any) {
