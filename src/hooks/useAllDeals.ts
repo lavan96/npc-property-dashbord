@@ -92,7 +92,7 @@ export function useAllDeals() {
       // Fetch stages & build payments for all deals
       const dealIds = deals.map((d: any) => d.id);
 
-      const [stagesRes, paymentsRes, invoicesRes, attributionsRes] = await Promise.all([
+      const [stagesRes, paymentsRes, invoicesRes, attributionsRes, purchaseFilesRes] = await Promise.all([
         invokeSecureFunction('get-client-data', {
           listMode: true,
           listOptions: { table: 'deal_stages', select: '*', orderBy: 'display_order', orderAsc: true },
@@ -109,12 +109,21 @@ export function useAllDeals() {
           listMode: true,
           listOptions: { table: 'lead_source_attributions', select: 'client_id,utm_source,utm_campaign', orderBy: 'attributed_at', orderAsc: false, limit: 500 },
         }),
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'purchase_files', select: 'id,title,finance_status,lender,settlement_date,risk_level,client_deal_id', orderBy: 'updated_at', orderAsc: false, limit: 500 },
+        }),
       ]);
 
       const stages = stagesRes.data?.records || [];
       const payments = paymentsRes.data?.records || [];
       const invoices = invoicesRes.data?.records || [];
       const attributions = attributionsRes.data?.records || [];
+      const purchaseFiles = purchaseFilesRes.data?.records || [];
+      const pfByDealId: Record<string, any> = {};
+      for (const pf of purchaseFiles) {
+        if (pf.client_deal_id) pfByDealId[pf.client_deal_id] = pf;
+      }
 
       // Group by deal_id
       const stagesByDeal: Record<string, any[]> = {};
