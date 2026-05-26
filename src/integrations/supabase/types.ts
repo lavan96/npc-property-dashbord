@@ -10767,6 +10767,203 @@ export type Database = {
           },
         ]
       }
+      purchase_file_critical_dates: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          date_type: Database["public"]["Enums"]["purchase_critical_date_type"]
+          due_date: string | null
+          id: string
+          notes: string | null
+          purchase_file_id: string
+          status: Database["public"]["Enums"]["purchase_critical_date_status"]
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          date_type: Database["public"]["Enums"]["purchase_critical_date_type"]
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          purchase_file_id: string
+          status?: Database["public"]["Enums"]["purchase_critical_date_status"]
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          date_type?: Database["public"]["Enums"]["purchase_critical_date_type"]
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          purchase_file_id?: string
+          status?: Database["public"]["Enums"]["purchase_critical_date_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_critical_dates_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_file_status_history: {
+        Row: {
+          actor_id: string | null
+          actor_kind: string | null
+          created_at: string
+          event_type: string
+          from_value: string | null
+          id: string
+          payload: Json | null
+          purchase_file_id: string
+          to_value: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_kind?: string | null
+          created_at?: string
+          event_type: string
+          from_value?: string | null
+          id?: string
+          payload?: Json | null
+          purchase_file_id: string
+          to_value?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_kind?: string | null
+          created_at?: string
+          event_type?: string
+          from_value?: string | null
+          id?: string
+          payload?: Json | null
+          purchase_file_id?: string
+          to_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_status_history_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_files: {
+        Row: {
+          archived_at: string | null
+          assigned_finance_user_id: string | null
+          assigned_team_user_id: string | null
+          client_contribution: number | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deposit_amount: number | null
+          estimated_rent_weekly: number | null
+          finance_clause_date: string | null
+          finance_status: Database["public"]["Enums"]["purchase_finance_status"]
+          id: string
+          lender: string | null
+          max_approved_budget: number | null
+          notes: string | null
+          property_address: string | null
+          property_postcode: string | null
+          property_state: string | null
+          property_suburb: string | null
+          purchase_price: number | null
+          purchase_type: Database["public"]["Enums"]["purchase_file_type"]
+          risk_level: string | null
+          settlement_date: string | null
+          status: Database["public"]["Enums"]["purchase_file_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          assigned_finance_user_id?: string | null
+          assigned_team_user_id?: string | null
+          client_contribution?: number | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          estimated_rent_weekly?: number | null
+          finance_clause_date?: string | null
+          finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
+          id?: string
+          lender?: string | null
+          max_approved_budget?: number | null
+          notes?: string | null
+          property_address?: string | null
+          property_postcode?: string | null
+          property_state?: string | null
+          property_suburb?: string | null
+          purchase_price?: number | null
+          purchase_type?: Database["public"]["Enums"]["purchase_file_type"]
+          risk_level?: string | null
+          settlement_date?: string | null
+          status?: Database["public"]["Enums"]["purchase_file_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          assigned_finance_user_id?: string | null
+          assigned_team_user_id?: string | null
+          client_contribution?: number | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          estimated_rent_weekly?: number | null
+          finance_clause_date?: string | null
+          finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
+          id?: string
+          lender?: string | null
+          max_approved_budget?: number | null
+          notes?: string | null
+          property_address?: string | null
+          property_postcode?: string | null
+          property_state?: string | null
+          property_suburb?: string | null
+          purchase_price?: number | null
+          purchase_type?: Database["public"]["Enums"]["purchase_file_type"]
+          risk_level?: string | null
+          settlement_date?: string | null
+          status?: Database["public"]["Enums"]["purchase_file_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_files_assigned_finance_user_id_fkey"
+            columns: ["assigned_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_files_assigned_team_user_id_fkey"
+            columns: ["assigned_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_files_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_delivery_log: {
         Row: {
           created_at: string
@@ -12895,6 +13092,53 @@ export type Database = {
         | "portfolio_review"
         | "borrowing_capacity"
         | "investment_property"
+      purchase_critical_date_status:
+        | "on_track"
+        | "due_soon"
+        | "overdue"
+        | "completed"
+      purchase_critical_date_type:
+        | "offer_submitted"
+        | "contract_received"
+        | "cooling_off_expiry"
+        | "finance_clause_expiry"
+        | "building_pest_deadline"
+        | "deposit_due"
+        | "valuation_due"
+        | "loan_approval_target"
+        | "settlement"
+      purchase_file_status:
+        | "draft"
+        | "active"
+        | "on_hold"
+        | "at_risk"
+        | "settled"
+        | "cancelled"
+      purchase_file_type:
+        | "existing_property"
+        | "off_the_plan"
+        | "house_and_land"
+        | "land_only"
+        | "build_only"
+        | "dual_occupancy"
+        | "smsf"
+        | "commercial"
+        | "refinance_equity"
+      purchase_finance_status:
+        | "not_started"
+        | "docs_requested"
+        | "docs_received"
+        | "in_review"
+        | "pre_approved"
+        | "purchase_specific_review"
+        | "application_lodged"
+        | "conditional_approval"
+        | "valuation_pending"
+        | "valuation_returned"
+        | "unconditional_approval"
+        | "ready_for_settlement"
+        | "settled"
+        | "at_risk"
       record_source_actor_type:
         | "internal_user"
         | "finance_user"
@@ -13321,6 +13565,58 @@ export const Constants = {
         "portfolio_review",
         "borrowing_capacity",
         "investment_property",
+      ],
+      purchase_critical_date_status: [
+        "on_track",
+        "due_soon",
+        "overdue",
+        "completed",
+      ],
+      purchase_critical_date_type: [
+        "offer_submitted",
+        "contract_received",
+        "cooling_off_expiry",
+        "finance_clause_expiry",
+        "building_pest_deadline",
+        "deposit_due",
+        "valuation_due",
+        "loan_approval_target",
+        "settlement",
+      ],
+      purchase_file_status: [
+        "draft",
+        "active",
+        "on_hold",
+        "at_risk",
+        "settled",
+        "cancelled",
+      ],
+      purchase_file_type: [
+        "existing_property",
+        "off_the_plan",
+        "house_and_land",
+        "land_only",
+        "build_only",
+        "dual_occupancy",
+        "smsf",
+        "commercial",
+        "refinance_equity",
+      ],
+      purchase_finance_status: [
+        "not_started",
+        "docs_requested",
+        "docs_received",
+        "in_review",
+        "pre_approved",
+        "purchase_specific_review",
+        "application_lodged",
+        "conditional_approval",
+        "valuation_pending",
+        "valuation_returned",
+        "unconditional_approval",
+        "ready_for_settlement",
+        "settled",
+        "at_risk",
       ],
       record_source_actor_type: [
         "internal_user",
