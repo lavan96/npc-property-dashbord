@@ -124,12 +124,12 @@ function RiskDialog({ open, onOpenChange, fileId, initial, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; fileId: string; initial: any | null; onSaved: () => void;
 }) {
   const { invokeFinanceFunction } = useFinancePortalAuth();
-  const [form, setForm] = useState<any>(initial || { severity: 'medium', owner: 'finance', category: 'finance', status: 'open' });
+  const [form, setForm] = useState<any>(() => initial || { severity: 'medium', owner: 'finance', category: 'finance', status: 'open' });
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (open) setForm(initial || { severity: 'medium', owner: 'finance', category: 'finance', status: 'open' });
+  }, [open, initial]);
   const setField = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-
-  // Reset when dialog opens
-  if (open && form === null) setForm({ severity: 'medium', owner: 'finance', category: 'finance', status: 'open' });
 
   const submit = async () => {
     if (!form.title || !form.category) return toast.error('Title and category required');
