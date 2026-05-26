@@ -1,0 +1,501 @@
+import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
+  Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { smartCapitalize } from '@/lib/nameUtils';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+
+const FINANCE_STATUS_LABEL: Record<string, string> = {
+  not_started: 'Not Started',
+  docs_requested: 'Docs Requested',
+  docs_received: 'Docs Received',
+  in_review: 'In Review',
+  pre_approved: 'Pre-Approved',
+  purchase_specific_review: 'Property-Specific Review',
+  application_lodged: 'Application Lodged',
+  conditional_approval: 'Conditional Approval',
+  valuation_pending: 'Valuation Pending',
+  valuation_returned: 'Valuation Returned',
+  unconditional_approval: 'Unconditional Approval',
+  ready_for_settlement: 'Ready for Settlement',
+  settled: 'Settled',
+  at_risk: 'At Risk',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft', active: 'Active', on_hold: 'On Hold',
+  at_risk: 'At Risk', settled: 'Settled', cancelled: 'Cancelled',
+};
+
+const CRITICAL_DATE_LABEL: Record<string, string> = {
+  offer_submitted: 'Offer submitted',
+  contract_received: 'Contract received',
+  cooling_off_expiry: 'Cooling-off expiry',
+  finance_clause_expiry: 'Finance clause expiry',
+  building_pest_deadline: 'Building & pest deadline',
+  deposit_due: 'Deposit due',
+  valuation_due: 'Valuation due',
+  loan_approval_target: 'Loan approval target',
+  settlement: 'Settlement',
+};
+
+function urgencyClass(date: string | null | undefined, completed: boolean) {
+  if (completed) return 'border-emerald-500/30 bg-emerald-500/5';
+  if (!date) return 'border-border bg-card';
+  const days = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return 'border-destructive/40 bg-destructive/5';
+  if (days <= 5) return 'border-amber-500/40 bg-amber-500/5';
+  return 'border-emerald-500/30 bg-emerald-500/5';
+}
+
+function urgencyText(date: string | null | undefined, completed: boolean) {
+  if (completed) return { label: 'Completed', tone: 'text-emerald-500' };
+  if (!date) return { label: 'No date set', tone: 'text-muted-foreground' };
+  const days = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return { label: `${Math.abs(days)}d overdue`, tone: 'text-destructive' };
+  if (days === 0) return { label: 'Due today', tone: 'text-amber-500' };
+  if (days <= 5) return { label: `Due in ${days}d`, tone: 'text-amber-500' };
+  return { label: `In ${days}d`, tone: 'text-emerald-500' };
+}
+
+export default function FinancePortalPurchaseFileDetail() {
+  const { fileId } = useParams<{ fileId: string }>();
+  const navigate = useNavigate();
+  const { invokeFinanceFunction } = useFinancePortalAuth();
+  const queryClient = useQueryClient();
+  const [savingStatus, setSavingStatus] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['finance-portal-purchase-file', fileId],
+    queryFn: async () => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+        operation: 'get_file', file_id: fileId,
+      });
+      if (error) throw new Error(error.message);
+      return data?.file;
+    },
+    enabled: !!fileId,
+  });
+
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-file', fileId] });
+
+  const clientName = useMemo(() => {
+    const c = data?.clients;
+    if (!c) return '';
+    return smartCapitalize(`${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim());
+  }, [data]);
+
+  const updateField = async (field: string, value: any) => {
+    setSavingStatus(true);
+    try {
+      const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+        operation: 'update_file', file_id: fileId, payload: { [field]: value },
+      });
+      if (error) throw new Error(error.message);
+      toast.success('Updated');
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message || 'Update failed');
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto max-w-6xl py-8 px-4 space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="container mx-auto max-w-6xl py-12 px-4 text-center">
+        <p className="text-lg font-medium">Purchase file not found</p>
+        <Button variant="ghost" className="mt-4" onClick={() => navigate('/finance/purchase-files')}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to files
+        </Button>
+      </div>
+    );
+  }
+
+  const dates = (data.purchase_file_critical_dates || []) as any[];
+  const history = (data.purchase_file_status_history || []) as any[];
+
+  return (
+    <div className="container mx-auto max-w-6xl py-6 px-4">
+      <Button variant="ghost" size="sm" onClick={() => navigate('/finance/purchase-files')} className="mb-4 -ml-2">
+        <ArrowLeft className="h-4 w-4 mr-1" /> All purchase files
+      </Button>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <Briefcase className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight">{data.title}</h1>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {clientName}
+            {data.property_address ? ` · ${data.property_address}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Select value={data.status} onValueChange={(v) => updateField('status', v)} disabled={savingStatus}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_LABEL).map(([v, l]) => (
+                <SelectItem key={v} value={v}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={data.finance_status}
+            onValueChange={(v) => updateField('finance_status', v)}
+            disabled={savingStatus}
+          >
+            <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(FINANCE_STATUS_LABEL).map(([v, l]) => (
+                <SelectItem key={v} value={v}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
+          <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
+          <TabsTrigger value="documents" disabled><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
+          <TabsTrigger value="decisions" disabled><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
+          <TabsTrigger value="conditions" disabled><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
+          <TabsTrigger value="valuation" disabled><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
+          <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <OverviewTab file={data} onSave={updateField} />
+        </TabsContent>
+
+        <TabsContent value="dates">
+          <CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} />
+        </TabsContent>
+
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Status & activity history</CardTitle></CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No activity yet.</p>
+              ) : (
+                <ol className="relative border-l border-border pl-6 space-y-4">
+                  {[...history].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(h => (
+                    <li key={h.id} className="relative">
+                      <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                      <p className="text-sm">
+                        <span className="font-medium">{h.event_type.replace(/_/g, ' ')}</span>
+                        {h.from_value && h.to_value && (
+                          <span className="text-muted-foreground"> · {h.from_value} → {h.to_value}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(h.created_at).toLocaleString('en-AU')}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ───────── Overview ───────── */
+function OverviewTab({ file, onSave }: { file: any; onSave: (k: string, v: any) => void }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader><CardTitle className="text-base">Property</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <EditableText label="Address" value={file.property_address} onSave={(v) => onSave('property_address', v)} />
+          <div className="grid grid-cols-3 gap-3">
+            <EditableText label="Suburb" value={file.property_suburb} onSave={(v) => onSave('property_suburb', v)} />
+            <EditableText label="State" value={file.property_state} onSave={(v) => onSave('property_state', v)} />
+            <EditableText label="Postcode" value={file.property_postcode} onSave={(v) => onSave('property_postcode', v)} />
+          </div>
+          <EditableNumber label="Purchase Price (AUD)" value={file.purchase_price} onSave={(v) => onSave('purchase_price', v)} />
+          <EditableNumber label="Estimated rent (weekly)" value={file.estimated_rent_weekly} onSave={(v) => onSave('estimated_rent_weekly', v)} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Finance</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <EditableText label="Lender" value={file.lender} onSave={(v) => onSave('lender', v)} />
+          <EditableNumber label="Max Approved Budget" value={file.max_approved_budget} onSave={(v) => onSave('max_approved_budget', v)} />
+          <EditableNumber label="Deposit" value={file.deposit_amount} onSave={(v) => onSave('deposit_amount', v)} />
+          <EditableNumber label="Client Contribution" value={file.client_contribution} onSave={(v) => onSave('client_contribution', v)} />
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Risk Level</Label>
+            <Select value={file.risk_level || 'low'} onValueChange={(v) => onSave('risk_level', v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="md:col-span-2">
+        <CardHeader><CardTitle className="text-base">Notes</CardTitle></CardHeader>
+        <CardContent>
+          <EditableTextarea value={file.notes} onSave={(v) => onSave('notes', v)} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function EditableText({ label, value, onSave }: { label: string; value: any; onSave: (v: string | null) => void }) {
+  const [local, setLocal] = useState<string>(value ?? '');
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={() => { if ((value ?? '') !== local) onSave(local.trim() || null); }}
+      />
+    </div>
+  );
+}
+
+function EditableNumber({ label, value, onSave }: { label: string; value: any; onSave: (v: number | null) => void }) {
+  const [local, setLocal] = useState<string>(value != null ? String(value) : '');
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={() => {
+          const next = local === '' ? null : Number(local);
+          if ((value ?? null) !== next) onSave(next);
+        }}
+      />
+    </div>
+  );
+}
+
+function EditableTextarea({ value, onSave }: { value: any; onSave: (v: string | null) => void }) {
+  const [local, setLocal] = useState<string>(value ?? '');
+  return (
+    <Textarea
+      rows={4}
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => { if ((value ?? '') !== local) onSave(local.trim() || null); }}
+      placeholder="Shared notes for this purchase file…"
+    />
+  );
+}
+
+/* ───────── Critical Dates ───────── */
+function CriticalDatesTab({
+  fileId, dates, onChange,
+}: { fileId: string; dates: any[]; onChange: () => void }) {
+  const { invokeFinanceFunction } = useFinancePortalAuth();
+  const [addOpen, setAddOpen] = useState(false);
+  const sorted = useMemo(
+    () => [...dates].sort((a, b) => {
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    }),
+    [dates]
+  );
+
+  const handleDelete = async (id: string) => {
+    const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'delete_critical_date', file_id: fileId, date_id: id,
+    });
+    if (error) return toast.error(error.message);
+    toast.success('Removed');
+    onChange();
+  };
+
+  const toggleComplete = async (d: any) => {
+    const next = d.status === 'completed';
+    const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'upsert_critical_date',
+      file_id: fileId,
+      payload: {
+        id: d.id, date_type: d.date_type, due_date: d.due_date, notes: d.notes,
+        status: next ? 'on_track' : 'completed',
+        completed_at: next ? null : new Date().toISOString(),
+      },
+    });
+    if (error) return toast.error(error.message);
+    onChange();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Critical dates</CardTitle>
+        <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" /> Add date
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No dates yet. Add the first deadline to start the countdown.
+          </p>
+        ) : (
+          <div className="grid gap-2">
+            {sorted.map(d => {
+              const u = urgencyText(d.due_date, d.status === 'completed');
+              return (
+                <motion.div
+                  key={d.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg border p-3',
+                    urgencyClass(d.due_date, d.status === 'completed')
+                  )}
+                >
+                  <button
+                    onClick={() => toggleComplete(d)}
+                    className="shrink-0"
+                    title={d.status === 'completed' ? 'Mark as not done' : 'Mark complete'}
+                  >
+                    {d.status === 'completed'
+                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      : <Clock className="h-5 w-5 text-muted-foreground" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('font-medium text-sm', d.status === 'completed' && 'line-through text-muted-foreground')}>
+                      {CRITICAL_DATE_LABEL[d.date_type] || d.date_type}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {d.due_date ? new Date(d.due_date).toLocaleDateString('en-AU') : 'No date'}
+                      {d.notes ? ` · ${d.notes}` : ''}
+                    </p>
+                  </div>
+                  <span className={cn('text-xs font-medium whitespace-nowrap', u.tone)}>{u.label}</span>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(d.id)} className="h-8 w-8">
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+      <AddCriticalDateDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        fileId={fileId}
+        onAdded={onChange}
+      />
+    </Card>
+  );
+}
+
+function AddCriticalDateDialog({
+  open, onOpenChange, fileId, onAdded,
+}: { open: boolean; onOpenChange: (v: boolean) => void; fileId: string; onAdded: () => void }) {
+  const { invokeFinanceFunction } = useFinancePortalAuth();
+  const [type, setType] = useState('finance_clause_expiry');
+  const [date, setDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+        operation: 'upsert_critical_date',
+        file_id: fileId,
+        payload: { date_type: type, due_date: date || null, notes: notes.trim() || null, status: 'on_track' },
+      });
+      if (error) throw new Error(error.message);
+      toast.success('Date added');
+      onAdded();
+      onOpenChange(false);
+      setDate(''); setNotes('');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add critical date</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(CRITICAL_DATE_LABEL).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Due date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Add
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

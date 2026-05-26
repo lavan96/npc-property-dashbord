@@ -118,6 +118,8 @@ import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
 import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
 import FinancePortalMessages from "./pages/finance-portal/FinancePortalMessages";
 import FinancePortalEarnings from "./pages/finance-portal/FinancePortalEarnings";
+import FinancePortalPurchaseFiles from "./pages/finance-portal/FinancePortalPurchaseFiles";
+import FinancePortalPurchaseFileDetail from "./pages/finance-portal/FinancePortalPurchaseFileDetail";
 
 const queryClient = new QueryClient();
 
@@ -232,6 +234,8 @@ const App = () => (
                                 </FinancePortalProtectedRoute>
                               }>
                                 <Route index element={<FinancePortalDashboard />} />
+                                <Route path="purchase-files" element={<FinancePortalPurchaseFiles />} />
+                                <Route path="purchase-files/:fileId" element={<FinancePortalPurchaseFileDetail />} />
                                 <Route path="clients" element={<FinancePortalClients />} />
                                 <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                                 <Route path="messages" element={<FinancePortalMessages />} />

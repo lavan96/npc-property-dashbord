@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
   { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false },
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
   { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
