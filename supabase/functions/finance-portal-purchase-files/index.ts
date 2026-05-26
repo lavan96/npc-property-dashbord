@@ -209,6 +209,15 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (error) return jsonResponse({ error: error.message }, 500);
 
+      // is_watched flag for this partner
+      const { data: watchRow } = await supabase
+        .from('finance_portal_pf_watchers')
+        .select('id')
+        .eq('purchase_file_id', fileId)
+        .eq('finance_user_id', portalUser.id)
+        .maybeSingle();
+      if (file) (file as any).is_watched = !!watchRow;
+
       let linked_deal: any = null;
       if (file?.client_deal_id) {
         const { data: deal } = await supabase
