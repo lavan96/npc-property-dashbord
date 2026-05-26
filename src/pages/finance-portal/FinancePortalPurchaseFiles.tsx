@@ -14,13 +14,24 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Briefcase, Plus, Search, ChevronRight, AlertTriangle, Clock, CheckCircle2, Loader2,
+  Briefcase, Plus, Search, ChevronRight, AlertTriangle, Clock, CheckCircle2, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNowStrict } from 'date-fns';
+
+function agingTone(iso: string | null | undefined) {
+  if (!iso) return { label: 'no activity', cls: 'bg-muted text-muted-foreground' };
+  const hrs = (Date.now() - new Date(iso).getTime()) / 3600_000;
+  const label = formatDistanceToNowStrict(new Date(iso));
+  if (hrs >= 168) return { label, cls: 'bg-destructive/15 text-destructive border-destructive/30' };
+  if (hrs >= 72)  return { label, cls: 'bg-amber-500/15 text-amber-500 border-amber-500/30' };
+  return { label, cls: 'bg-muted text-muted-foreground' };
+}
 
 const FINANCE_STATUS_LABEL: Record<string, string> = {
   not_started: 'Not Started',
