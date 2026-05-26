@@ -234,6 +234,8 @@ const App = () => (
                                 </FinancePortalProtectedRoute>
                               }>
                                 <Route index element={<FinancePortalDashboard />} />
+                                <Route path="purchase-files" element={<FinancePortalPurchaseFiles />} />
+                                <Route path="purchase-files/:fileId" element={<FinancePortalPurchaseFileDetail />} />
                                 <Route path="clients" element={<FinancePortalClients />} />
                                 <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                                 <Route path="messages" element={<FinancePortalMessages />} />
