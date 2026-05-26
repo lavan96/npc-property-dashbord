@@ -147,9 +147,9 @@ Deno.serve(async (req) => {
       for (const pf of (pfs || [])) {
         const { data: events } = await supabase
           .from('purchase_file_audit_events')
-          .select('id, prev_hash, row_hash, payload, recorded_at')
+          .select('id, prev_hash, row_hash, created_at')
           .eq('purchase_file_id', pf.id)
-          .order('recorded_at', { ascending: true });
+          .order('created_at', { ascending: true });
         if (!events || events.length === 0) {
           results.push({ purchase_file_id: pf.id, title: pf.title, status: 'no_events', count: 0 });
           continue;
