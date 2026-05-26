@@ -12381,19 +12381,31 @@ export type Database = {
           borrowing_snapshot: Json
           borrowing_snapshot_updated_at: string | null
           borrowing_snapshot_updated_by_finance_user_id: string | null
+          build_price: number | null
           client_contribution: number | null
           client_deal_id: string | null
           client_id: string
+          commercial_loan_type: string | null
+          construction_completion_estimate: string | null
+          construction_stage: string | null
+          construction_start_date: string | null
           created_at: string
           created_by: string | null
+          deal_type_fields: Json
           deposit_amount: number | null
           estimated_rent_weekly: number | null
           finance_clause_date: string | null
           finance_status: Database["public"]["Enums"]["purchase_finance_status"]
+          gst_treatment: string | null
           id: string
+          land_price: number | null
+          land_settlement_date: string | null
           last_partner_action_at: string | null
+          lease_in_place: boolean | null
+          lease_term_months: number | null
           lender: string | null
           max_approved_budget: number | null
+          net_rental_yield: number | null
           notes: string | null
           property_address: string | null
           property_postcode: string | null
@@ -12414,19 +12426,31 @@ export type Database = {
           borrowing_snapshot?: Json
           borrowing_snapshot_updated_at?: string | null
           borrowing_snapshot_updated_by_finance_user_id?: string | null
+          build_price?: number | null
           client_contribution?: number | null
           client_deal_id?: string | null
           client_id: string
+          commercial_loan_type?: string | null
+          construction_completion_estimate?: string | null
+          construction_stage?: string | null
+          construction_start_date?: string | null
           created_at?: string
           created_by?: string | null
+          deal_type_fields?: Json
           deposit_amount?: number | null
           estimated_rent_weekly?: number | null
           finance_clause_date?: string | null
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
+          gst_treatment?: string | null
           id?: string
+          land_price?: number | null
+          land_settlement_date?: string | null
           last_partner_action_at?: string | null
+          lease_in_place?: boolean | null
+          lease_term_months?: number | null
           lender?: string | null
           max_approved_budget?: number | null
+          net_rental_yield?: number | null
           notes?: string | null
           property_address?: string | null
           property_postcode?: string | null
@@ -12447,19 +12471,31 @@ export type Database = {
           borrowing_snapshot?: Json
           borrowing_snapshot_updated_at?: string | null
           borrowing_snapshot_updated_by_finance_user_id?: string | null
+          build_price?: number | null
           client_contribution?: number | null
           client_deal_id?: string | null
           client_id?: string
+          commercial_loan_type?: string | null
+          construction_completion_estimate?: string | null
+          construction_stage?: string | null
+          construction_start_date?: string | null
           created_at?: string
           created_by?: string | null
+          deal_type_fields?: Json
           deposit_amount?: number | null
           estimated_rent_weekly?: number | null
           finance_clause_date?: string | null
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
+          gst_treatment?: string | null
           id?: string
+          land_price?: number | null
+          land_settlement_date?: string | null
           last_partner_action_at?: string | null
+          lease_in_place?: boolean | null
+          lease_term_months?: number | null
           lender?: string | null
           max_approved_budget?: number | null
+          net_rental_yield?: number | null
           notes?: string | null
           property_address?: string | null
           property_postcode?: string | null

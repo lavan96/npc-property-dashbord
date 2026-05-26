@@ -30,6 +30,7 @@ import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLi
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
+import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
 
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
@@ -310,6 +311,7 @@ function OverviewTab({ file, onSave }: { file: any; onSave: (k: string, v: any) 
           </div>
         </CardContent>
       </Card>
+      <DealTypeFieldsCard file={file} onSave={onSave} />
       <Card className="md:col-span-2">
         <CardHeader><CardTitle className="text-base">Notes</CardTitle></CardHeader>
         <CardContent>
