@@ -489,6 +489,13 @@ export default function FinancePortalAdmin() {
                                 Manage Client Assignments
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={!canManageAssignments || !u.portal_user}
+                                onClick={() => setGlobalPermsForUser(u)}
+                              >
+                                <Shield className="h-4 w-4 mr-2" />
+                                Global Permissions…
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 disabled={!canManageAssignments}
                                 onClick={() => { setActivityForUser(u); setActivityOpen(true); }}
                               >
