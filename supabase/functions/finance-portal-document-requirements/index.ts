@@ -405,25 +405,9 @@ Deno.serve(async (req) => {
         console.warn('[document-requirements] notify failed', e);
       }
 
-      // Also drop an in-app notification onto the client portal user(s) for this client
-      try {
-        const { data: clientUsers } = await supabase
-          .from('client_portal_users')
-          .select('user_id')
-          .eq('client_id', file.client_id)
-          .eq('is_active', true);
-        const rows = (clientUsers || []).map((u: any) => ({
-          user_id: u.user_id,
-          type: 'document_requirement_requested',
-          title: `Documents requested by your finance broker`,
-          message: `${(updated || []).length} item(s): ${labels}${more}`,
-          link: `/portal/documents`,
-          metadata: { purchase_file_id: fileId, requirement_ids: requirementIds, client_id: file.client_id },
-        }));
-        if (rows.length > 0) await supabase.from('notifications').insert(rows);
-      } catch (e) {
-        console.warn('[document-requirements] client notify failed', e);
-      }
+      // Client-side surfacing (portal dashboard widget) reads `document_requirement_instances`
+      // directly via realtime — no separate notification row needed here.
+
 
       return jsonResponse({ requirement_ids: requirementIds, notified: (updated || []).length });
     }
