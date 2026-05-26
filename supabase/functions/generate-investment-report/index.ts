@@ -673,6 +673,28 @@ function sanitizeCompass40Content(raw: string): string {
   // Collapse 3+ blank lines that result from dropped rows.
   out = out.replace(/\n{3,}/g, '\n\n').trimEnd();
 
+  // Drop self-flagged "Illustrative" / "Scenario" disclaimers that follow
+  // SEIFA or other data tables (these admit the numbers are fabricated).
+  out = out.replace(/\([^)]*\b(Illustrative|Consistent\s+Scenario|Indicative\s+Scenario|Hypothetical)\b[^)]*\)/gi, '');
+
+  // Cross-section dedup: drop a markdown table if an identical row signature
+  // appeared earlier in the same content blob (e.g. "Family demand strength
+  // vs trade-offs" table rendered twice).
+  const seenTableSig = new Set<string>();
+  out = out.split(/\n\n+/).filter((para) => {
+    if (!/^\s*\|/.test(para)) return true;
+    const sig = para
+      .split('\n')
+      .filter((l) => l.trim().startsWith('|') && !/^\s*\|[\s\-:|]+\|\s*$/.test(l))
+      .map((l) => l.replace(/\s+/g, ' ').trim().toLowerCase())
+      .slice(0, 4)
+      .join('||');
+    if (!sig) return true;
+    if (seenTableSig.has(sig)) return false;
+    seenTableSig.add(sig);
+    return true;
+  }).join('\n\n');
+
   return out;
 }
 
