@@ -18,10 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search, Users, Loader2, X, ArrowUpDown, UserCheck, Clock, SortAsc,
   ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
+  Briefcase, AlertTriangle, CalendarClock, Gavel, TrendingUp, Wallet,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
