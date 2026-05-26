@@ -160,6 +160,16 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
               </Link>
 
               <div className="ml-auto flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex h-9 gap-2 text-muted-foreground"
+                  onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                  title="Search (⌘K)"
+                >
+                  <span className="text-xs">Search…</span>
+                  <kbd className="hidden lg:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">⌘K</kbd>
+                </Button>
                 <FinancePortalNotificationBell />
 
                 <DropdownMenu>
