@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'You are not assigned to this client' }, 403);
     }
 
-    const permissions = (assignment.permissions || {}) as Record<string, { view: boolean; edit: boolean; delete: boolean }>;
+    const permissions = mergePermissions(portalUser.global_permissions, assignment.permissions);
 
     const audit = async (action: string, tableKey: string | null, entityId: string | null, metadata: any = {}) => {
       try {
