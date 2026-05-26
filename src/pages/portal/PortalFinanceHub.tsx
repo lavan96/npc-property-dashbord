@@ -90,6 +90,7 @@ function daysUntil(d: string | null | undefined): number | null {
 
 export default function PortalFinanceHub() {
   const [files, setFiles] = useState<FileRow[]>([]);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -109,6 +110,7 @@ export default function PortalFinanceHub() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
       setFiles((json.purchase_files || []) as FileRow[]);
+      setPortfolio((json.portfolio || null) as Portfolio | null);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load finance hub');
     } finally {
@@ -118,7 +120,7 @@ export default function PortalFinanceHub() {
 
   useEffect(() => { load(); }, [load]);
 
-  const totalOpenTasks = files.reduce((acc, f) => acc + f.open_task_count, 0);
+  const totalOpenTasks = portfolio?.total_open_tasks ?? files.reduce((acc, f) => acc + f.open_task_count, 0);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6">
@@ -149,10 +151,79 @@ export default function PortalFinanceHub() {
         </Card>
       ) : (
         <div className="space-y-4">
+          {portfolio && portfolio.total_files > 1 && <PortfolioSummary portfolio={portfolio} />}
           {files.map(f => <FileCard key={f.id} file={f} />)}
         </div>
       )}
     </div>
+  );
+}
+
+function PortfolioSummary({ portfolio }: { portfolio: Portfolio }) {
+  const breakdownEntries = Object.entries(portfolio.status_breakdown).sort((a, b) => b[1].count - a[1].count);
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Briefcase className="h-4 w-4" />Portfolio overview
+          <Badge variant="outline" className="ml-1">{portfolio.total_files} files</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Active" value={String(portfolio.active_files)} icon={TrendingUp} />
+          <Stat label="Settled" value={String(portfolio.settled_files)} icon={CheckCircle2} />
+          <Stat
+            label="Needs attention"
+            value={String(portfolio.at_risk_files)}
+            tone={portfolio.at_risk_files > 0 ? 'caution' : 'neutral'}
+            icon={AlertCircle}
+          />
+          <Stat label="Avg LVR" value={portfolio.avg_lvr != null ? `${portfolio.avg_lvr}%` : '—'} icon={PieChart} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border p-3 md:col-span-1">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total purchase value</p>
+            <p className="text-lg font-semibold mt-0.5">{fmtMoney(portfolio.total_purchase_value)}</p>
+            <p className="text-xs text-muted-foreground mt-2">Proposed loans</p>
+            <p className="text-sm font-medium">{fmtMoney(portfolio.total_proposed_loans)}</p>
+          </div>
+          <div className="rounded-md border border-border p-3 md:col-span-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Status mix</p>
+            <div className="flex flex-wrap gap-2">
+              {breakdownEntries.map(([key, b]) => (
+                <Badge key={key} variant="outline" className={cn('border', TONE_CLASS[b.tone])}>
+                  {b.label} · {b.count}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+        {portfolio.next_milestones.length > 0 && (
+          <div className="rounded-md border border-border p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
+              <Clock className="h-3 w-3" />Soonest milestones
+            </p>
+            <ul className="space-y-1.5">
+              {portfolio.next_milestones.map((m, i) => (
+                <li key={`${m.purchase_file_id}-${m.kind}-${i}`} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate">
+                    <span className="font-medium">{m.title}</span>
+                    <span className="text-muted-foreground"> · {m.kind.replace(/_/g, ' ')}</span>
+                  </span>
+                  <span className={cn(
+                    'whitespace-nowrap',
+                    m.days <= 3 ? 'text-destructive' : m.days <= 7 ? 'text-amber-500' : 'text-muted-foreground',
+                  )}>
+                    {new Date(m.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} · {m.days}d
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
