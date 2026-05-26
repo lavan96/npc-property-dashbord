@@ -606,7 +606,17 @@ export default function FinancePortalClients() {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  const sortLabel = sortKey === 'name' ? 'Name' : sortKey === 'date' ? 'Date Assigned' : 'Status';
+  const SORT_LABELS: Record<SortKey, string> = {
+    name: 'Name',
+    date: 'Date Assigned',
+    status: 'Status',
+    urgency: 'Urgency',
+    settlement: 'Settlement Date',
+    finance_clause: 'Finance Clause',
+    risk: 'Risk Level',
+    recent: 'Recently Updated',
+  };
+  const sortLabel = SORT_LABELS[sortKey];
 
   return (
     <>
