@@ -135,17 +135,26 @@ interface AreaScoringInput {
 }
 
 interface AreaScore {
-  totalScore: number;
+  totalScore: number | null;
   grade: string;
   recommendation: string;
   scoreType: 'area';
   scope: string;
   breakdown: {
-    marketMomentum: { score: number; weight: number; details: string };
-    economicStrength: { score: number; weight: number; details: string };
-    livability: { score: number; weight: number; details: string };
-    rentalMarket: { score: number; weight: number; details: string };
-    futureOutlook: { score: number; weight: number; details: string };
+    marketMomentum: DimensionScore;
+    economicStrength: DimensionScore;
+    livability: DimensionScore;
+    rentalMarket: DimensionScore;
+    futureOutlook: DimensionScore;
+  };
+  coverage: {
+    dimensionsScored: number;
+    totalDimensions: number;
+    coverageRatio: number;
+    weightCovered: number;
+    dataInsufficient: boolean;
+    partialLabel: string;
+    cotalityReady: true;
   };
   strengths: string[];
   weaknesses: string[];
