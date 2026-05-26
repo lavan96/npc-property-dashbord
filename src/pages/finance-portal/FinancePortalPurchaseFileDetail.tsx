@@ -20,6 +20,7 @@ import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
 } from 'lucide-react';
+import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
@@ -192,7 +193,7 @@ export default function FinancePortalPurchaseFileDetail() {
         <TabsList>
           <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
-          <TabsTrigger value="documents" disabled><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
+          <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
           <TabsTrigger value="decisions" disabled><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
           <TabsTrigger value="conditions" disabled><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
           <TabsTrigger value="valuation" disabled><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
@@ -205,6 +206,10 @@ export default function FinancePortalPurchaseFileDetail() {
 
         <TabsContent value="dates">
           <CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
         </TabsContent>
 
         <TabsContent value="activity">

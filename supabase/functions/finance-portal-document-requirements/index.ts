@@ -1,0 +1,419 @@
+/**
+ * Finance Portal — Document Requirements Matrix (Phase 2)
+ * Operations:
+ *   list_templates              -> { templates }  (filtered by purchase_type, optional)
+ *   list_requirements           -> { requirements }  (for a purchase_file_id)
+ *   instantiate_from_template   -> { inserted }    (seeds a file with the default checklist)
+ *   add_requirement             -> { requirement } (custom row)
+ *   update_requirement          -> { requirement }
+ *   delete_requirement          -> { ok }
+ *   request_from_client         -> { notified, requirement_ids }
+ *   link_document               -> { requirement }
+ *   set_status                  -> { requirement }
+ *   verify_requirement          -> { requirement }
+ *
+ * Auth & permission gating mirror finance-portal-purchase-files:
+ *   session-token → finance_portal_users → assignment → mergePermissions
+ * Permission key: `documents` (view/edit/delete). Default-allow when matrix omits it.
+ */
+import { createClient } from "npm:@supabase/supabase-js@2.55.0";
+import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const REQ_COLUMNS = [
+  'category','label','description','owner','status','is_required','sort_order',
+  'visible_to_client','visible_to_finance','visible_to_npc','visible_to_legal',
+  'expiry_date','notes','document_id',
+];
+
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function extractToken(headers: Headers, body?: any): string | null {
+  return headers.get('x-finance-session-token')
+    || body?.finance_session_token
+    || headers.get('x-session-token')
+    || body?.session_token
+    || null;
+}
+
+function mergePermissions(global: any, perClient: any) {
+  const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+  const keys = new Set<string>([
+    ...Object.keys(global && typeof global === 'object' ? global : {}),
+    ...Object.keys(perClient && typeof perClient === 'object' ? perClient : {}),
+  ]);
+  for (const k of keys) {
+    const g = (global && global[k]) || {};
+    const p = (perClient && perClient[k]) || {};
+    out[k] = {
+      view: !!(g.view || p.view),
+      edit: !!(g.edit || p.edit),
+      delete: !!(g.delete || p.delete),
+    };
+  }
+  return out;
+}
+
+function pickAllowed(payload: any, allowed: string[]) {
+  const out: Record<string, any> = {};
+  if (!payload || typeof payload !== 'object') return out;
+  for (const k of allowed) if (k in payload) out[k] = payload[k];
+  return out;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const sessionToken = extractToken(req.headers, body);
+    if (!sessionToken) return jsonResponse({ error: 'Session token required' }, 401);
+
+    const { data: portalUser } = await supabase
+      .from('finance_portal_users')
+      .select('id, email, is_active, revoked_at, session_expires_at, global_permissions')
+      .eq('session_token', sessionToken)
+      .maybeSingle();
+
+    if (!portalUser || !portalUser.is_active || portalUser.revoked_at) {
+      return jsonResponse({ error: 'Invalid session' }, 401);
+    }
+    if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) {
+      return jsonResponse({ error: 'Session expired' }, 401);
+    }
+
+    const { operation } = body;
+    if (!operation) return jsonResponse({ error: 'operation required' }, 400);
+
+    async function getEffectivePermissions(clientId: string) {
+      const { data: assignment } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('permissions')
+        .eq('finance_user_id', portalUser.id)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      if (!assignment) return null;
+      const merged = mergePermissions(portalUser.global_permissions, assignment.permissions);
+      const globalHas = portalUser.global_permissions && (portalUser.global_permissions as any).documents;
+      const clientHas = assignment.permissions && (assignment.permissions as any).documents;
+      if (!globalHas && !clientHas) {
+        merged.documents = { view: true, edit: true, delete: false };
+      }
+      return merged;
+    }
+
+    async function loadFile(fileId: string) {
+      const { data } = await supabase
+        .from('purchase_files')
+        .select('id, client_id, title, purchase_type')
+        .eq('id', fileId)
+        .maybeSingle();
+      return data;
+    }
+
+    /* ── list_templates ── */
+    if (operation === 'list_templates') {
+      const purchaseType = body.purchase_type;
+      let q = supabase.from('document_requirement_templates').select('*').eq('is_active', true).order('sort_order');
+      if (purchaseType) q = q.eq('purchase_type', purchaseType);
+      const { data, error } = await q;
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ templates: data });
+    }
+
+    /* ── list_requirements (per purchase file) ── */
+    if (operation === 'list_requirements') {
+      const fileId = body.purchase_file_id;
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.documents?.view) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .select('*, finance_portal_documents(id, original_filename, storage_path, file_size, mime_type, created_at)')
+        .eq('purchase_file_id', fileId)
+        .order('category')
+        .order('sort_order');
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirements: data });
+    }
+
+    /* ── instantiate_from_template (seed checklist) ── */
+    if (operation === 'instantiate_from_template') {
+      const fileId = body.purchase_file_id;
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('template_id')
+        .eq('purchase_file_id', fileId)
+        .not('template_id', 'is', null);
+      const existingTemplateIds = new Set((existing || []).map((r: any) => r.template_id));
+
+      const { data: templates } = await supabase
+        .from('document_requirement_templates')
+        .select('*')
+        .eq('purchase_type', file.purchase_type)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      const rows = (templates || [])
+        .filter((t: any) => !existingTemplateIds.has(t.id))
+        .map((t: any) => ({
+          purchase_file_id: fileId,
+          client_id: file.client_id,
+          template_id: t.id,
+          category: t.category,
+          label: t.label,
+          description: t.description,
+          owner: t.default_owner,
+          status: 'required',
+          is_required: t.is_required,
+          sort_order: t.sort_order,
+          created_by_finance_user_id: portalUser.id,
+        }));
+
+      if (rows.length === 0) return jsonResponse({ inserted: 0 });
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .insert(rows)
+        .select();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ inserted: data?.length || 0, requirements: data });
+    }
+
+    /* ── add_requirement (custom) ── */
+    if (operation === 'add_requirement') {
+      const fileId = body.purchase_file_id;
+      const payload = body.payload || {};
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const insert = pickAllowed(payload, REQ_COLUMNS);
+      if (!insert.label) return jsonResponse({ error: 'label required' }, 400);
+      if (!insert.category) insert.category = 'other';
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .insert({
+          ...insert,
+          purchase_file_id: fileId,
+          client_id: file.client_id,
+          created_by_finance_user_id: portalUser.id,
+        })
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: data });
+    }
+
+    /* ── update_requirement ── */
+    if (operation === 'update_requirement') {
+      const reqId = body.requirement_id;
+      const payload = body.payload || {};
+      if (!reqId) return jsonResponse({ error: 'requirement_id required' }, 400);
+
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('id, purchase_file_id, client_id')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!existing) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(existing.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const update = pickAllowed(payload, REQ_COLUMNS);
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .update(update)
+        .eq('id', reqId)
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: data });
+    }
+
+    /* ── delete_requirement ── */
+    if (operation === 'delete_requirement') {
+      const reqId = body.requirement_id;
+      if (!reqId) return jsonResponse({ error: 'requirement_id required' }, 400);
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!existing) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(existing.client_id);
+      if (!perms?.documents?.delete && !perms?.documents?.edit) {
+        return jsonResponse({ error: 'Forbidden' }, 403);
+      }
+      const { error } = await supabase
+        .from('document_requirement_instances')
+        .delete()
+        .eq('id', reqId);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ ok: true });
+    }
+
+    /* ── set_status (lightweight status changes incl. waive) ── */
+    if (operation === 'set_status') {
+      const reqId = body.requirement_id;
+      const status = body.status;
+      if (!reqId || !status) return jsonResponse({ error: 'requirement_id and status required' }, 400);
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!existing) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(existing.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .update({ status })
+        .eq('id', reqId)
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: data });
+    }
+
+    /* ── verify_requirement ── */
+    if (operation === 'verify_requirement') {
+      const reqId = body.requirement_id;
+      const unverify = !!body.unverify;
+      if (!reqId) return jsonResponse({ error: 'requirement_id required' }, 400);
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id, status')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!existing) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(existing.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const update: Record<string, any> = unverify
+        ? { verified_at: null, verified_by_finance_user_id: null, status: 'uploaded' }
+        : { verified_at: new Date().toISOString(), verified_by_finance_user_id: portalUser.id, status: 'verified' };
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .update(update)
+        .eq('id', reqId)
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: data });
+    }
+
+    /* ── link_document (associates an uploaded finance_portal_documents row) ── */
+    if (operation === 'link_document') {
+      const reqId = body.requirement_id;
+      const documentId = body.document_id;
+      if (!reqId || !documentId) return jsonResponse({ error: 'requirement_id and document_id required' }, 400);
+      const { data: existing } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!existing) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(existing.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .update({
+          document_id: documentId,
+          uploaded_at: new Date().toISOString(),
+          status: 'uploaded',
+        })
+        .eq('id', reqId)
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: data });
+    }
+
+    /* ── request_from_client (multi-select trigger) ── */
+    if (operation === 'request_from_client') {
+      const fileId = body.purchase_file_id;
+      const requirementIds: string[] = Array.isArray(body.requirement_ids) ? body.requirement_ids : [];
+      const message: string | null = body.message || null;
+      if (!fileId || requirementIds.length === 0) {
+        return jsonResponse({ error: 'purchase_file_id and requirement_ids required' }, 400);
+      }
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const now = new Date().toISOString();
+      const { data: updated, error: updErr } = await supabase
+        .from('document_requirement_instances')
+        .update({
+          status: 'requested',
+          requested_at: now,
+          requested_by_finance_user_id: portalUser.id,
+          request_message: message,
+          visible_to_client: true,
+        })
+        .in('id', requirementIds)
+        .eq('purchase_file_id', fileId)
+        .select();
+      if (updErr) return jsonResponse({ error: updErr.message }, 500);
+
+      const labels = (updated || []).map((r: any) => r.label).slice(0, 5).join(', ');
+      const more = (updated || []).length > 5 ? ` +${updated!.length - 5} more` : '';
+
+      // Notify NPC team-side assignees (mirror finance partners working alongside)
+      try {
+        await notifyFinancePortalAssignees({
+          client_id: file.client_id,
+          notification_type: 'document_requirement_requested',
+          title: `Documents requested on ${file.title}`,
+          body: `${(updated || []).length} item(s) requested from client: ${labels}${more}`,
+          link_path: `/finance/purchase-files/${fileId}?tab=documents`,
+          metadata: { purchase_file_id: fileId, requirement_ids: requirementIds },
+          exclude_portal_user_id: portalUser.id,
+        });
+      } catch (e) {
+        console.warn('[document-requirements] notify failed', e);
+      }
+
+      // Client-side surfacing (portal dashboard widget) reads `document_requirement_instances`
+      // directly via realtime — no separate notification row needed here.
+
+
+      return jsonResponse({ requirement_ids: requirementIds, notified: (updated || []).length });
+    }
+
+    return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
+  } catch (err: any) {
+    return jsonResponse({ error: err?.message || 'Unexpected error' }, 500);
+  }
+});
