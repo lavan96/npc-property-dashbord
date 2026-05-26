@@ -274,9 +274,14 @@ function NewPurchaseFileDialog({
   const { data: clients } = useQuery({
     queryKey: ['finance-portal-clients-min'],
     queryFn: async () => {
-      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', { operation: 'list_clients' });
+      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', { operation: 'list_assigned_clients' });
       if (error) throw new Error(error.message);
-      return data?.clients ?? [];
+      return (data?.records ?? []).map((r: any) => ({
+        id: r.client_id,
+        primary_first_name: r.client?.primary_contact_name?.split(' ')[0] || '',
+        primary_surname: r.client?.primary_contact_name?.split(' ').slice(1).join(' ') || '',
+        primary_email: r.client?.primary_contact_email,
+      }));
     },
     enabled: open,
   });
