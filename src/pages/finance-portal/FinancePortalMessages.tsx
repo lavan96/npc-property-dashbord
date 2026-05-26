@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBrand } from '@/branding/useBrand';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface ThreadRow {
   id: string;
