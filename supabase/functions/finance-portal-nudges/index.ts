@@ -134,17 +134,12 @@ Deno.serve(async (req) => {
             if (u) {
               if (u.finance_contact_id) {
                 const { data: fc } = await supabase
-                  .from('finance_contacts')
-                  .select('first_name, last_name, name')
+                  .from('finance_agent_contacts')
+                  .select('name')
                   .eq('id', u.finance_contact_id)
                   .maybeSingle();
-                if (fc) {
-                  senderName =
-                    [fc.first_name, fc.last_name].filter(Boolean).join(' ') ||
-                    fc.name ||
-                    u.email ||
-                    senderName;
-                }
+                if (fc?.name) senderName = fc.name;
+                else if (u.email) senderName = u.email;
               } else if (u.email) {
                 senderName = u.email;
               }
