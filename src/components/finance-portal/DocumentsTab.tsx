@@ -120,8 +120,80 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
     const verified = list.filter(r => r.status === 'verified').length;
     const requested = list.filter(r => r.status === 'requested').length;
     const outstanding = list.filter(r => r.is_required && !['verified','uploaded','waived'].includes(r.status)).length;
-    return { total, verified, requested, outstanding };
+    const qualityIssues = list.filter(r => r.quality_status === 'error' || r.quality_status === 'warning').length;
+    const expiringSoon = list.filter(r => {
+      if (!r.soft_expiry_date) return false;
+      const days = Math.floor((new Date(r.soft_expiry_date).getTime() - Date.now()) / 86400000);
+      return days >= 0 && days <= 30;
+    }).length;
+    return { total, verified, requested, outstanding, qualityIssues, expiringSoon };
   }, [requirements]);
+
+  const analyzeAll = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+        operation: 'analyze_quality_bulk', purchase_file_id: fileId,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(`Analyzed ${data?.analyzed || 0} document(s)`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message || 'Analyze failed');
+    } finally { setBusy(false); }
+  };
+
+  const analyzeOne = async (reqId: string) => {
+    const { error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+      operation: 'analyze_quality', requirement_id: reqId,
+    });
+    if (error) return toast.error(error.message);
+    refresh();
+  };
+
+  const openRerequest = (req: any) => {
+    // Pre-select template based on quality flags
+    const flags = (req.quality_flags || []) as any[];
+    let preferredReason = 'chase';
+    if (flags.some(f => f.code === 'wrong_type')) preferredReason = 'wrong_type';
+    else if (flags.some(f => f.code === 'stale' || f.code === 'aging')) preferredReason = 'stale';
+    else if (flags.some(f => f.code === 'low_resolution' || f.code === 'prefer_pdf')) preferredReason = 'illegible';
+
+    const tpl = (messageTemplates || []).find((t: any) => t.reason === preferredReason);
+    let body = tpl?.body || '';
+    body = body
+      .replace('{document_type}', (req.label || '').toLowerCase())
+      .replace('{document_date}', req.detected_doc_date || 'an unknown date')
+      .replace('{max_age_days}', '30')
+      .replace('{detected_type}', (req.detected_doc_type || 'unknown').replace(/_/g, ' '))
+      .replace('{expected_type}', (req.category || '').replace(/_/g, ' '))
+      .replace('{missing_pages}', 'the missing ones');
+
+    setSelected(new Set([req.id]));
+    setRerequestFor(req);
+    setSelectedTemplateId(tpl?.id || '');
+    setRequestMessage(body);
+    setRequestOpen(true);
+  };
+
+  const applyTemplate = (id: string) => {
+    setSelectedTemplateId(id);
+    if (id === '__none__') { setRequestMessage(''); return; }
+    const tpl = (messageTemplates || []).find((t: any) => t.id === id);
+    if (!tpl) return;
+    let body = tpl.body || '';
+    if (rerequestFor) {
+      body = body
+        .replace('{document_type}', (rerequestFor.label || '').toLowerCase())
+        .replace('{document_date}', rerequestFor.detected_doc_date || 'an unknown date')
+        .replace('{max_age_days}', '30')
+        .replace('{detected_type}', (rerequestFor.detected_doc_type || 'unknown').replace(/_/g, ' '))
+        .replace('{expected_type}', (rerequestFor.category || '').replace(/_/g, ' '))
+        .replace('{missing_pages}', 'the missing ones');
+    }
+    setRequestMessage(body);
+  };
+
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
