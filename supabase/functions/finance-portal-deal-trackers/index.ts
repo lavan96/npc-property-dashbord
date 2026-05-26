@@ -14,6 +14,10 @@ const corsHeaders = {
 const DECISION_COLUMNS = [
   'outcome','rationale','snapshot_purchase_price','snapshot_estimated_rent_weekly',
   'snapshot_client_contribution','snapshot_max_approved_budget','snapshot_lender','decided_at',
+  // Chunk 5 — expanded green-light fields
+  'decision_expiry_date','max_comfortable_price','estimated_borrowing_cap','proposed_loan_amount',
+  'deposit_required','shortfall_required','lvr','lmi_applicable','lmi_amount',
+  'preferred_lender_pathway','broker_notes','supporting_document_id',
 ];
 const CONDITION_COLUMNS = [
   'title','description','owner','status','due_date','document_id','sort_order','notes','satisfied_at',
@@ -154,6 +158,21 @@ Deno.serve(async (req) => {
         })
         .select().single();
       if (error) return jsonResponse({ error: error.message }, 500);
+
+      // Chunk 5 AC — caution/not-suitable auto-creates a finance risk flag.
+      if (data?.outcome === 'proceed_with_caution' || data?.outcome === 'not_suitable') {
+        await supabase.from('purchase_file_risks').insert({
+          purchase_file_id: fileId,
+          client_id: file.client_id,
+          category: 'policy',
+          severity: data.outcome === 'not_suitable' ? 'critical' : 'high',
+          title: data.outcome === 'not_suitable' ? 'Green-light: Not suitable' : 'Green-light: Proceed with caution',
+          description: data.broker_notes || data.rationale || 'Auto-raised from finance decision',
+          owner: 'finance_partner',
+          status: 'open',
+          created_by_finance_user_id: portalUser.id,
+        });
+      }
       return jsonResponse({ decision: data });
     }
 
@@ -163,6 +182,14 @@ Deno.serve(async (req) => {
       const { row, perms } = await permsForRowById('purchase_file_finance_decisions', id);
       if (!row) return jsonResponse({ error: 'Not found' }, 404);
       if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      // Chunk 5 AC — historical decisions cannot be deleted by finance partners; only the latest.
+      const { data: latest } = await supabase
+        .from('purchase_file_finance_decisions')
+        .select('id').eq('purchase_file_id', (row as any).purchase_file_id)
+        .order('decided_at', { ascending: false }).limit(1).maybeSingle();
+      if (latest?.id !== id) {
+        return jsonResponse({ error: 'Only the most recent decision can be removed; historical decisions are immutable.' }, 403);
+      }
       const { error } = await supabase.from('purchase_file_finance_decisions').delete().eq('id', id);
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ ok: true });

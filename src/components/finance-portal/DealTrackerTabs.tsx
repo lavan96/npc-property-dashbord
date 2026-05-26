@@ -28,11 +28,12 @@ const DECISION_META: Record<string, { label: string; tone: string; icon: any }> 
   green_light:               { label: 'Green light',                tone: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30', icon: ThumbsUp },
   proceed_with_caution:      { label: 'Proceed with caution',       tone: 'bg-amber-500/15 text-amber-500 border-amber-500/30',     icon: AlertTriangle },
   not_suitable:              { label: 'Not suitable',               tone: 'bg-destructive/15 text-destructive border-destructive/30', icon: ThumbsDown },
-  need_more_info:            { label: 'Need more info',             tone: 'bg-sky-500/15 text-sky-500 border-sky-500/30',           icon: HelpCircle },
+  need_more_info:            { label: 'More information required',  tone: 'bg-sky-500/15 text-sky-500 border-sky-500/30',           icon: HelpCircle },
   subject_to_valuation:      { label: 'Subject to valuation',       tone: 'bg-muted text-muted-foreground border-border',           icon: Wallet },
   subject_to_lender_review:  { label: 'Subject to lender review',   tone: 'bg-muted text-muted-foreground border-border',           icon: ShieldCheck },
-  subject_to_equity:         { label: 'Subject to equity',          tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
+  subject_to_equity:         { label: 'Subject to equity release',  tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
   subject_to_deposit:        { label: 'Subject to deposit',         tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
+  subject_to_lmi_approval:   { label: 'Subject to LMI approval',    tone: 'bg-muted text-muted-foreground border-border',           icon: ShieldCheck },
 };
 
 export function FinanceDecisionsTab({ fileId }: { fileId: string }) {
@@ -70,14 +71,28 @@ export function FinanceDecisionsTab({ fileId }: { fileId: string }) {
               <div className="flex-1">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Current finance position</p>
                 <p className="text-xl font-bold">{DECISION_META[latest.outcome]?.label || latest.outcome}</p>
-                {latest.rationale && <p className="text-sm mt-2 text-muted-foreground">{latest.rationale}</p>}
-                <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-                  {latest.snapshot_purchase_price != null && <span>Price ${Number(latest.snapshot_purchase_price).toLocaleString('en-AU')}</span>}
-                  {latest.snapshot_estimated_rent_weekly != null && <span>· Rent ${Number(latest.snapshot_estimated_rent_weekly).toLocaleString('en-AU')}/wk</span>}
-                  {latest.snapshot_max_approved_budget != null && <span>· Max budget ${Number(latest.snapshot_max_approved_budget).toLocaleString('en-AU')}</span>}
-                  {latest.snapshot_lender && <span>· {latest.snapshot_lender}</span>}
+                {(latest.broker_notes || latest.rationale) && (
+                  <p className="text-sm mt-2 text-muted-foreground">{latest.broker_notes || latest.rationale}</p>
+                )}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-muted-foreground">
+                  {latest.max_comfortable_price != null && <span>Max comfortable ${Number(latest.max_comfortable_price).toLocaleString('en-AU')}</span>}
+                  {latest.proposed_loan_amount != null && <span>· Loan ${Number(latest.proposed_loan_amount).toLocaleString('en-AU')}</span>}
+                  {latest.lvr != null && <span>· LVR {Number(latest.lvr).toFixed(1)}%</span>}
+                  {latest.lmi_applicable && <span>· LMI {latest.lmi_amount ? `$${Number(latest.lmi_amount).toLocaleString('en-AU')}` : 'applicable'}</span>}
+                  {latest.preferred_lender_pathway && <span>· {latest.preferred_lender_pathway}</span>}
+                  {latest.snapshot_purchase_price != null && !latest.max_comfortable_price && <span>Price ${Number(latest.snapshot_purchase_price).toLocaleString('en-AU')}</span>}
                   <span>· {new Date(latest.decided_at).toLocaleString('en-AU')}</span>
                 </div>
+                {latest.decision_expiry_date && (() => {
+                  const days = Math.ceil((new Date(latest.decision_expiry_date).getTime() - Date.now()) / 86400000);
+                  const tone = days < 0 ? 'text-destructive' : days <= 3 ? 'text-destructive' : days <= 7 ? 'text-amber-500' : 'text-muted-foreground';
+                  return (
+                    <p className={cn('text-xs mt-1.5 font-medium', tone)}>
+                      Decision expiry: {new Date(latest.decision_expiry_date).toLocaleDateString('en-AU')}
+                      {days < 0 ? ` · overdue by ${-days}d` : ` · in ${days}d`}
+                    </p>
+                  );
+                })()}
               </div>
               <Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> New decision</Button>
             </div>
@@ -132,34 +147,53 @@ export function FinanceDecisionsTab({ fileId }: { fileId: string }) {
 function DecisionDialog({ open, onOpenChange, fileId, onAdded }: { open: boolean; onOpenChange: (v: boolean) => void; fileId: string; onAdded: () => void }) {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [outcome, setOutcome] = useState('green_light');
-  const [rationale, setRationale] = useState('');
+  const [form, setForm] = useState<Record<string, any>>({});
   const [busy, setBusy] = useState(false);
+
+  const setF = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const num = (v: any) => v === '' || v == null ? null : Number(v);
+
+  const reset = () => { setForm({}); setOutcome('green_light'); };
 
   const submit = async () => {
     setBusy(true);
     try {
+      const payload: Record<string, any> = {
+        outcome,
+        broker_notes: form.broker_notes?.trim() || null,
+        rationale: form.broker_notes?.trim() || null, // mirror to legacy field for back-compat
+        decision_expiry_date: form.decision_expiry_date || null,
+        max_comfortable_price: num(form.max_comfortable_price),
+        estimated_borrowing_cap: num(form.estimated_borrowing_cap),
+        proposed_loan_amount: num(form.proposed_loan_amount),
+        deposit_required: num(form.deposit_required),
+        shortfall_required: num(form.shortfall_required),
+        lvr: num(form.lvr),
+        lmi_applicable: !!form.lmi_applicable,
+        lmi_amount: form.lmi_applicable ? num(form.lmi_amount) : null,
+        preferred_lender_pathway: form.preferred_lender_pathway?.trim() || null,
+      };
       const { error } = await invokeFinanceFunction(fn, {
-        operation: 'add_decision', purchase_file_id: fileId,
-        payload: { outcome, rationale: rationale.trim() || null },
+        operation: 'add_decision', purchase_file_id: fileId, payload,
       });
       if (error) throw new Error(error.message);
       toast.success('Decision recorded');
-      setRationale(''); setOutcome('green_light');
+      reset();
       onOpenChange(false);
       onAdded();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record finance decision</DialogTitle>
-          <DialogDescription>Captures property snapshot automatically.</DialogDescription>
+          <DialogDescription>Broker's call on whether this purchase can proceed. Caution / Not suitable will auto-raise a finance risk.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Outcome</Label>
+            <Label>Decision</Label>
             <Select value={outcome} onValueChange={setOutcome}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -169,17 +203,57 @@ function DecisionDialog({ open, onOpenChange, fileId, onAdded }: { open: boolean
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <NumField label="Max comfortable purchase price ($)" value={form.max_comfortable_price} onChange={(v) => setF('max_comfortable_price', v)} />
+            <NumField label="Estimated borrowing capacity ($)" value={form.estimated_borrowing_cap} onChange={(v) => setF('estimated_borrowing_cap', v)} />
+            <NumField label="Proposed loan amount ($)" value={form.proposed_loan_amount} onChange={(v) => setF('proposed_loan_amount', v)} />
+            <NumField label="Estimated client contribution ($)" value={form.deposit_required} onChange={(v) => setF('deposit_required', v)} />
+            <NumField label="Shortfall required ($)" value={form.shortfall_required} onChange={(v) => setF('shortfall_required', v)} />
+            <NumField label="LVR (%)" value={form.lvr} onChange={(v) => setF('lvr', v)} step="0.1" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label>Preferred lender pathway</Label>
+              <Input value={form.preferred_lender_pathway || ''} onChange={(e) => setF('preferred_lender_pathway', e.target.value)} placeholder="e.g. Macquarie 80% LVR" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Decision expiry date</Label>
+              <Input type="date" value={form.decision_expiry_date || ''} onChange={(e) => setF('decision_expiry_date', e.target.value)} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!form.lmi_applicable} onChange={(e) => setF('lmi_applicable', e.target.checked)} />
+              <span className="text-sm font-medium">LMI applicable</span>
+            </label>
+            {form.lmi_applicable && (
+              <NumField label="Estimated LMI ($)" value={form.lmi_amount} onChange={(v) => setF('lmi_amount', v)} />
+            )}
+          </div>
+
           <div className="space-y-1.5">
-            <Label>Rationale / notes</Label>
-            <Textarea rows={4} value={rationale} onChange={(e) => setRationale(e.target.value)} placeholder="Reasoning, lender feedback, next steps…" />
+            <Label>Broker notes</Label>
+            <Textarea rows={4} value={form.broker_notes || ''} onChange={(e) => setF('broker_notes', e.target.value)} placeholder="Reasoning, lender feedback, next steps, conditions, risks…" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record'}</Button>
+          <Button variant="ghost" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
+          <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record decision'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NumField({ label, value, onChange, step }: { label: string; value: any; onChange: (v: string) => void; step?: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <Input type="number" step={step || '1'} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
   );
 }
 
