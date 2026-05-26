@@ -325,7 +325,7 @@ export default function FinancePortalClientProfile() {
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <div className="w-full md:px-10">
+              <div className="w-full px-9 md:px-10">
                 <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5 scroll-smooth">
                 {allTabs.map((tab) => {
                   const Icon = tab.icon;
