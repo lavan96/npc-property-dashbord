@@ -4186,8 +4186,8 @@ ${sourceSpecificInstructions}
     // 5% p.a.) caused the model to regurgitate them verbatim into narrative
     // prose. For Compass-40 we strip every financial override line at the
     // source so the LLM never sees them.
+    // HARDENED: Strip financial overrides for ANY compass-tier report.
     const __compass40Mode =
-      (propertyDetails?.generationEngine === 'compass-40') &&
       ['compass', 'compass-40'].includes(propertyDetails?.reportTier || 'compass');
     const __FINANCIAL_OVERRIDE_KEYS = new Set<string>([
       'purchasePrice','landPrice','buildPrice','weeklyRent','depositValue',
