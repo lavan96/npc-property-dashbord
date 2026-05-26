@@ -484,6 +484,8 @@ const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
   /\|\s*Recommendation\s*\|/i,
   /\|\s*HOLD\b/i,
   /\|\s*Capital\s+Growth\b/i,
+  /\|\s*(Growth|Location|Yield|Demand|Risk)\s+Score\s*\|/i,
+  /\|\s*Contribution\s+to\s+Total\s*\|/i,
 ];
 
 // Whole sections (H2/H3) that must be dropped under Compass-40.
