@@ -151,14 +151,25 @@ export function useAllDeals() {
         invoicesByDeal[i.deal_id].push(i);
       }
 
-      return deals.map((d: any) => ({
-        ...d,
-        client_name: clientMap[d.client_id] || 'Unknown',
-        stages: stagesByDeal[d.id] || [],
-        buildPayments: paymentsByDeal[d.id] || [],
-        invoices: invoicesByDeal[d.id] || [],
-        leadSource: attrByClient[d.client_id] || null,
-      }));
+      return deals.map((d: any) => {
+        const pf = pfByDealId[d.id] || null;
+        return {
+          ...d,
+          client_name: clientMap[d.client_id] || 'Unknown',
+          stages: stagesByDeal[d.id] || [],
+          buildPayments: paymentsByDeal[d.id] || [],
+          invoices: invoicesByDeal[d.id] || [],
+          leadSource: attrByClient[d.client_id] || null,
+          financeFile: pf ? {
+            id: pf.id,
+            title: pf.title,
+            finance_status: pf.finance_status,
+            lender: pf.lender,
+            settlement_date: pf.settlement_date,
+            risk_level: pf.risk_level,
+          } : null,
+        };
+      });
     },
     staleTime: 30000,
   });
