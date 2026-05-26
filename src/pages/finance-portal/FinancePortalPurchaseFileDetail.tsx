@@ -210,7 +210,18 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview"><OverviewTab file={data} onSave={updateField} /></TabsContent>
+        <TabsContent value="overview">
+          <div className="space-y-4">
+            <InternalDealLinkCard
+              fileId={fileId!}
+              clientId={data.client_id}
+              file={data}
+              linkedDeal={linkedDeal}
+              onChange={refresh}
+            />
+            <OverviewTab file={data} onSave={updateField} />
+          </div>
+        </TabsContent>
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
         <TabsContent value="documents"><DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} /></TabsContent>
         <TabsContent value="decisions"><FinanceDecisionsTab fileId={fileId!} /></TabsContent>
