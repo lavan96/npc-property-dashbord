@@ -11702,6 +11702,112 @@ export type Database = {
           },
         ]
       }
+      purchase_file_client_tasks: {
+        Row: {
+          client_id: string
+          client_response_at: string | null
+          client_response_text: string | null
+          completed_at: string | null
+          created_at: string
+          created_by_finance_user_id: string | null
+          description: string | null
+          dismissed_at: string | null
+          due_date: string | null
+          id: string
+          purchase_file_id: string
+          related_condition_id: string | null
+          related_decision_id: string | null
+          related_document_instance_id: string | null
+          status: Database["public"]["Enums"]["pf_client_task_status"]
+          task_type: Database["public"]["Enums"]["pf_client_task_type"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          client_response_at?: string | null
+          client_response_text?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          description?: string | null
+          dismissed_at?: string | null
+          due_date?: string | null
+          id?: string
+          purchase_file_id: string
+          related_condition_id?: string | null
+          related_decision_id?: string | null
+          related_document_instance_id?: string | null
+          status?: Database["public"]["Enums"]["pf_client_task_status"]
+          task_type: Database["public"]["Enums"]["pf_client_task_type"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          client_response_at?: string | null
+          client_response_text?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          description?: string | null
+          dismissed_at?: string | null
+          due_date?: string | null
+          id?: string
+          purchase_file_id?: string
+          related_condition_id?: string | null
+          related_decision_id?: string | null
+          related_document_instance_id?: string | null
+          status?: Database["public"]["Enums"]["pf_client_task_status"]
+          task_type?: Database["public"]["Enums"]["pf_client_task_type"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_client_tasks_created_by_finance_user_id_fkey"
+            columns: ["created_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_client_tasks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_client_tasks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+          {
+            foreignKeyName: "purchase_file_client_tasks_related_condition_id_fkey"
+            columns: ["related_condition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_file_conditions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_client_tasks_related_decision_id_fkey"
+            columns: ["related_decision_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_file_finance_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_client_tasks_related_document_instance_id_fkey"
+            columns: ["related_document_instance_id"]
+            isOneToOne: false
+            referencedRelation: "document_requirement_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_file_condition_templates: {
         Row: {
           created_at: string
@@ -14756,6 +14862,20 @@ export type Database = {
         | "declined"
         | "withdrawn"
       payout_status: "draft" | "pending" | "paid" | "cancelled"
+      pf_client_task_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "dismissed"
+        | "expired"
+      pf_client_task_type:
+        | "document_upload"
+        | "lender_condition_action"
+        | "signature_request"
+        | "information_request"
+        | "decision_required"
+        | "payment_required"
+        | "other"
       portal_report_request_status:
         | "pending"
         | "in_progress"
@@ -15296,6 +15416,22 @@ export const Constants = {
         "withdrawn",
       ],
       payout_status: ["draft", "pending", "paid", "cancelled"],
+      pf_client_task_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "dismissed",
+        "expired",
+      ],
+      pf_client_task_type: [
+        "document_upload",
+        "lender_condition_action",
+        "signature_request",
+        "information_request",
+        "decision_required",
+        "payment_required",
+        "other",
+      ],
       portal_report_request_status: [
         "pending",
         "in_progress",
