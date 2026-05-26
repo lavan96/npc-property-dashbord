@@ -849,6 +849,22 @@ export default function FinancePortalClients() {
                 const status = (record.client?.status || 'active').toLowerCase();
                 const statusColor = STATUS_COLORS[status] || 'bg-zinc-400';
                 const avatarBg = getAvatarColor(name);
+                const pf = record.active_purchase_file;
+                const pfCount = record.purchase_file_count || 0;
+                const nextDeadline = record.next_deadline;
+                const daysToDeadline = nextDeadline?.due_date
+                  ? Math.round((new Date(nextDeadline.due_date).getTime() - Date.now()) / 86400000)
+                  : null;
+                const riskTone = pf?.risk_level === 'high'
+                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : pf?.risk_level === 'medium'
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    : '';
+                const deadlineTone = daysToDeadline != null && daysToDeadline <= 2
+                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : daysToDeadline != null && daysToDeadline <= 7
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-muted text-muted-foreground';
 
                 return (
                   <motion.div
