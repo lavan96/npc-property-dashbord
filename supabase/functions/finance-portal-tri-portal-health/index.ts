@@ -115,16 +115,10 @@ Deno.serve(async (req) => {
     async function loadMissingConsents() {
       const { data: users } = await supabase
         .from('client_portal_users')
-        .select('id, client_id, email, status, created_at')
+        .select('id, client_id, email, status, created_at, has_accepted_terms, has_completed_onboarding')
         .eq('status', 'active');
-      const ids = (users || []).map((u: any) => u.id);
-      if (!ids.length) return { without_consent: [] };
-      const { data: consents } = await supabase
-        .from('client_portal_consents')
-        .select('user_id')
-        .in('user_id', ids);
-      const consented = new Set((consents || []).map((c: any) => c.user_id));
-      return { without_consent: (users || []).filter((u: any) => !consented.has(u.id)) };
+      const without = (users || []).filter((u: any) => !u.has_accepted_terms || !u.has_completed_onboarding);
+      return { without_consent: without };
     }
 
     async function loadHandoffPending() {
