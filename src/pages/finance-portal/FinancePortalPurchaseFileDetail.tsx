@@ -195,9 +195,9 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
-          <TabsTrigger value="decisions" disabled><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
-          <TabsTrigger value="conditions" disabled><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
-          <TabsTrigger value="valuation" disabled><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
+          <TabsTrigger value="decisions"><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
+          <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
+          <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
         </TabsList>
 
