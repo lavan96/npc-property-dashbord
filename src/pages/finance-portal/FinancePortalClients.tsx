@@ -988,19 +988,6 @@ export default function FinancePortalClients() {
                           <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between gap-3 sm:contents pl-14 sm:pl-0">
-                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                          <Badge variant="outline" className="text-[10px] capitalize px-1.5 py-0 shrink-0">
-                            {status}
-                          </Badge>
-                          <PermissionBar granted={grantedTables} total={totalTables} />
-                        </div>
-
-                        <div className="hidden sm:flex items-center gap-2 shrink-0 relative z-10">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                        </div>
-                      </div>
                     </div>
                   </motion.div>
                 );
