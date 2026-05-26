@@ -112,11 +112,10 @@ Deno.serve(async (req) => {
         // Resolve client info for substitution
         const { data: client } = await supabase
           .from('clients')
-          .select('id, name, primary_contact_name')
+          .select('id, primary_first_name')
           .eq('id', seq.client_id)
           .maybeSingle();
-        const first =
-          (client?.primary_contact_name || client?.name || 'there').split(' ')[0] || 'there';
+        const first = (client?.primary_first_name || 'there').trim().split(' ')[0] || 'there';
         const vars = { first_name: first };
 
         const messageBody = substitute(step.body || '', vars);
