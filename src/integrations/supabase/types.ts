@@ -7139,6 +7139,178 @@ export type Database = {
           },
         ]
       }
+      finance_portal_nudge_sends: {
+        Row: {
+          channel: string
+          error: string | null
+          id: string
+          message_id: string | null
+          sent_at: string
+          sequence_id: string
+          step_index: number
+        }
+        Insert: {
+          channel?: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          sent_at?: string
+          sequence_id: string
+          step_index: number
+        }
+        Update: {
+          channel?: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          sent_at?: string
+          sequence_id?: string
+          step_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_nudge_sends_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_nudge_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_portal_nudge_sequences: {
+        Row: {
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          id: string
+          last_step_sent_at: string | null
+          metadata: Json
+          next_run_at: string | null
+          pause_reason: string | null
+          purchase_file_id: string
+          started_at: string
+          started_by_finance_user_id: string | null
+          status: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_step_sent_at?: string | null
+          metadata?: Json
+          next_run_at?: string | null
+          pause_reason?: string | null
+          purchase_file_id: string
+          started_at?: string
+          started_by_finance_user_id?: string | null
+          status?: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_step_sent_at?: string | null
+          metadata?: Json
+          next_run_at?: string | null
+          pause_reason?: string | null
+          purchase_file_id?: string
+          started_at?: string
+          started_by_finance_user_id?: string | null
+          status?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_nudge_sequences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_nudge_sequences_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_nudge_sequences_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+          {
+            foreignKeyName: "finance_portal_nudge_sequences_started_by_finance_user_id_fkey"
+            columns: ["started_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_nudge_sequences_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_nudge_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_portal_nudge_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          finance_user_id: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          finance_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          finance_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_nudge_templates_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_portal_pf_watchers: {
         Row: {
           created_at: string
