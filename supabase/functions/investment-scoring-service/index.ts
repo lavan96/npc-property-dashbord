@@ -187,12 +187,119 @@ function transformAreaInput(rawInput: any): AreaScoringInput {
   };
 }
 
+/**
+ * Confidence-weighted aggregator.
+ *
+ * Each dimension declares hasData (does it have any real inputs?). Dimensions
+ * with no data are dropped from the headline score and their weight is
+ * proportionally redistributed across the remaining dimensions. If fewer than
+ * MIN_DIMENSIONS_FOR_HEADLINE_SCORE dimensions have data, the headline score
+ * is suppressed (totalScore = null) and consumers should fall back to the
+ * qualitative SWOT only.
+ *
+ * Cotality-ready: when the cotality-service starts returning live envelopes
+ * for growth / vacancy / DOM / median price / unemployment etc., hasData
+ * simply flips true on the relevant dimensions and the math works unchanged.
+ */
+function aggregateDimensions<K extends string>(
+  dims: Record<K, { score: number; details: string; hasData: boolean; dataPoints: string[] }>,
+  weights: Record<K, number>,
+): {
+  totalScore: number | null;
+  breakdown: Record<K, DimensionScore>;
+  coverage: InvestmentScore['coverage'];
+} {
+  const keys = Object.keys(dims) as K[];
+  const scored = keys.filter((k) => dims[k].hasData);
+  const weightCovered = scored.reduce((s, k) => s + weights[k], 0);
+
+  const dataInsufficient = scored.length < MIN_DIMENSIONS_FOR_HEADLINE_SCORE || weightCovered <= 0;
+
+  let totalScore: number | null = null;
+  if (!dataInsufficient) {
+    const weighted = scored.reduce((s, k) => s + dims[k].score * (weights[k] / weightCovered), 0);
+    totalScore = Math.round(Math.max(0, Math.min(100, weighted)));
+  }
+
+  const breakdown = {} as Record<K, DimensionScore>;
+  for (const k of keys) {
+    const d = dims[k];
+    breakdown[k] = {
+      score: d.score,
+      // effective weight after rebalance (0 if excluded), expressed as %
+      weight: d.hasData && !dataInsufficient ? Math.round((weights[k] / weightCovered) * 100) : 0,
+      details: d.details,
+      hasData: d.hasData,
+      dataPoints: d.dataPoints,
+      excluded: !d.hasData,
+    };
+  }
+
+  const partialLabel = dataInsufficient
+    ? `Insufficient data — qualitative review only (${scored.length} of ${keys.length} dimensions)`
+    : scored.length === keys.length
+      ? `Full coverage (${keys.length} of ${keys.length} dimensions)`
+      : `Partial score: ${scored.length} of ${keys.length} dimensions`;
+
+  return {
+    totalScore,
+    breakdown,
+    coverage: {
+      dimensionsScored: scored.length,
+      totalDimensions: keys.length,
+      coverageRatio: scored.length / keys.length,
+      weightCovered,
+      dataInsufficient,
+      partialLabel,
+      cotalityReady: true,
+    },
+  };
+}
+
 function calculateAreaScore(input: AreaScoringInput): AreaScore {
   const marketMomentum = calcMarketMomentum(input);
   const economicStrength = calcEconomicStrength(input);
   const livability = calcLivability(input);
   const rentalMarket = calcRentalMarket(input);
   const futureOutlook = calcFutureOutlook(input);
+
+  // Detect real-data presence per dimension (no defaults masquerading as signal)
+  const dp = (..._: any[]) => _.filter((v) => v !== undefined && v !== null && v !== '' && v !== 0 || v === 0 && false).length > 0;
+  const has = (v: any) => v !== undefined && v !== null && v !== '';
+  const hasNum = (v: any) => typeof v === 'number' && !Number.isNaN(v);
+
+  const mmPoints: string[] = [];
+  if (hasNum(input.priceGrowth1Year)) mmPoints.push('priceGrowth1Year');
+  if (hasNum(input.priceGrowth3Year)) mmPoints.push('priceGrowth3Year');
+  if (hasNum(input.daysOnMarket)) mmPoints.push('daysOnMarket');
+
+  const esPoints: string[] = [];
+  if (hasNum(input.unemploymentRate)) esPoints.push('unemploymentRate');
+  if (hasNum(input.medianIncome)) esPoints.push('medianIncome');
+  if (hasNum(input.populationGrowth)) esPoints.push('populationGrowth');
+
+  const livPoints: string[] = [];
+  if (hasNum(input.walkScore)) livPoints.push('walkScore');
+  if (hasNum(input.schoolsNearby)) livPoints.push('schoolsNearby');
+  if (hasNum(input.commuteTimeCBD)) livPoints.push('commuteTimeCBD');
+
+  const rmPoints: string[] = [];
+  if (hasNum(input.vacancyRate)) rmPoints.push('vacancyRate');
+  if (hasNum(input.rentalYield)) rmPoints.push('rentalYield');
+
+  const foPoints: string[] = [];
+  if (hasNum(input.populationGrowth)) foPoints.push('populationGrowth');
+  if (hasNum(input.infrastructureSpend)) foPoints.push('infrastructureSpend');
+  if (hasNum(input.supplyPipeline)) foPoints.push('supplyPipeline');
+  if (hasNum(input.priceGrowth1Year)) foPoints.push('priceGrowth1Year');
+
+  const dims = {
+    marketMomentum: { ...marketMomentum, hasData: mmPoints.length > 0, dataPoints: mmPoints },
+    economicStrength: { ...economicStrength, hasData: esPoints.length > 0, dataPoints: esPoints },
+    livability: { ...livability, hasData: livPoints.length > 0, dataPoints: livPoints },
+    rentalMarket: { ...rentalMarket, hasData: rmPoints.length > 0, dataPoints: rmPoints },
+    futureOutlook: { ...futureOutlook, hasData: foPoints.length > 0, dataPoints: foPoints },
+  };
 
   const weights = {
     marketMomentum: 0.30,
@@ -202,15 +309,12 @@ function calculateAreaScore(input: AreaScoringInput): AreaScore {
     futureOutlook: 0.15,
   };
 
-  const totalScore = Math.round(
-    marketMomentum.score * weights.marketMomentum +
-    economicStrength.score * weights.economicStrength +
-    livability.score * weights.livability +
-    rentalMarket.score * weights.rentalMarket +
-    futureOutlook.score * weights.futureOutlook
-  );
+  const { totalScore, breakdown, coverage } = aggregateDimensions(dims, weights);
 
-  const { grade, recommendation } = determineAreaGrade(totalScore, input.scope);
+  const { grade, recommendation } = coverage.dataInsufficient
+    ? { grade: 'N/A', recommendation: `Insufficient quantitative data for ${input.scope} grade — see qualitative review below` }
+    : determineAreaGrade(totalScore as number, input.scope);
+
   const swot = analyzeAreaSWOT(input, { marketMomentum, economicStrength, livability, rentalMarket, futureOutlook });
 
   return {
@@ -219,16 +323,12 @@ function calculateAreaScore(input: AreaScoringInput): AreaScore {
     recommendation,
     scoreType: 'area',
     scope: input.scope,
-    breakdown: {
-      marketMomentum: { ...marketMomentum, weight: weights.marketMomentum * 100 },
-      economicStrength: { ...economicStrength, weight: weights.economicStrength * 100 },
-      livability: { ...livability, weight: weights.livability * 100 },
-      rentalMarket: { ...rentalMarket, weight: weights.rentalMarket * 100 },
-      futureOutlook: { ...futureOutlook, weight: weights.futureOutlook * 100 },
-    },
+    breakdown,
+    coverage,
     ...swot,
   };
 }
+
 
 function calcMarketMomentum(input: AreaScoringInput): { score: number; details: string } {
   let score = 50;
