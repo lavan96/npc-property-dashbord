@@ -128,10 +128,27 @@ Deno.serve(async (req) => {
           if (seq.started_by_finance_user_id) {
             const { data: u } = await supabase
               .from('finance_portal_users')
-              .select('first_name, last_name, email')
+              .select('email, finance_contact_id')
               .eq('id', seq.started_by_finance_user_id)
               .maybeSingle();
-            if (u) senderName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || senderName;
+            if (u) {
+              if (u.finance_contact_id) {
+                const { data: fc } = await supabase
+                  .from('finance_contacts')
+                  .select('first_name, last_name, name')
+                  .eq('id', u.finance_contact_id)
+                  .maybeSingle();
+                if (fc) {
+                  senderName =
+                    [fc.first_name, fc.last_name].filter(Boolean).join(' ') ||
+                    fc.name ||
+                    u.email ||
+                    senderName;
+                }
+              } else if (u.email) {
+                senderName = u.email;
+              }
+            }
           }
 
           const { data: msg, error: msgErr } = await supabase
