@@ -240,6 +240,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
           <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
           <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
+          <TabsTrigger value="runway"><Ship className="h-4 w-4 mr-2" />Settlement Runway</TabsTrigger>
           <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
         </TabsList>
@@ -260,12 +261,18 @@ export default function FinancePortalPurchaseFileDetail() {
 
         </TabsContent>
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
-        <TabsContent value="documents"><DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} /></TabsContent>
+        <TabsContent value="documents">
+          <div className="space-y-4">
+            <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
+            <LenderPacketHistoryCard fileId={fileId!} />
+          </div>
+        </TabsContent>
         <TabsContent value="decisions"><FinanceDecisionsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="tasks"><ClientTasksTab fileId={fileId!} /></TabsContent>
         <TabsContent value="conditions"><ConditionsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="valuation"><ValuationsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="risks"><RiskRegisterTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="runway"><SettlementRunwayTab fileId={fileId!} /></TabsContent>
         <TabsContent value="borrowing">
           <BorrowingSnapshotCard
             fileId={fileId!}
