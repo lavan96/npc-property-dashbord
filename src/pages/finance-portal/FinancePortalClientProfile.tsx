@@ -400,8 +400,7 @@ export default function FinancePortalClientProfile() {
                   return tabButton;
                 })}
                 </div>
-                <ScrollBar orientation="horizontal" className="invisible" />
-              </ScrollArea>
+              </div>
             </div>
           </TooltipProvider>
 
