@@ -96,7 +96,9 @@ Deno.serve(async (req) => {
     const { operation } = body;
     if (!operation) return jsonResponse({ error: 'operation required' }, 400);
 
-    // Helper: resolve permissions for a given client_id; returns null if not assigned
+    // Helper: resolve permissions for a given client_id; returns null if not assigned.
+    // Default-allow purchase_files (view+edit) when the matrix doesn't mention it yet,
+    // so existing finance partner assignments work immediately.
     async function getEffectivePermissions(clientId: string) {
       const { data: assignment } = await supabase
         .from('finance_portal_client_assignments')
@@ -105,7 +107,13 @@ Deno.serve(async (req) => {
         .eq('client_id', clientId)
         .maybeSingle();
       if (!assignment) return null;
-      return mergePermissions(portalUser.global_permissions, assignment.permissions);
+      const merged = mergePermissions(portalUser.global_permissions, assignment.permissions);
+      const globalHas = portalUser.global_permissions && (portalUser.global_permissions as any).purchase_files;
+      const clientHas = assignment.permissions && (assignment.permissions as any).purchase_files;
+      if (!globalHas && !clientHas) {
+        merged.purchase_files = { view: true, edit: true, delete: false };
+      }
+      return merged;
     }
 
     // Helper: resolve client_id for a purchase_file_id
