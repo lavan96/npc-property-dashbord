@@ -260,6 +260,7 @@ export default function FinancePortalPurchaseFileDetail() {
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
         <TabsContent value="documents"><DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} /></TabsContent>
         <TabsContent value="decisions"><FinanceDecisionsTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="tasks"><ClientTasksTab fileId={fileId!} /></TabsContent>
         <TabsContent value="conditions"><ConditionsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="valuation"><ValuationsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="risks"><RiskRegisterTab fileId={fileId!} /></TabsContent>
