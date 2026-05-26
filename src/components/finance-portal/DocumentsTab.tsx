@@ -395,9 +395,23 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                             <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded', meta.tone)}>
                               <Icon className="h-3 w-3" /> {meta.label}
                             </span>
+                            {req.quality_status && req.quality_status !== 'unchecked' && (
+                              <span className={cn(
+                                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
+                                req.quality_status === 'error' && 'bg-destructive/15 text-destructive',
+                                req.quality_status === 'warning' && 'bg-amber-500/15 text-amber-500',
+                                req.quality_status === 'ok' && 'bg-emerald-500/15 text-emerald-500',
+                              )}>
+                                {req.quality_status === 'ok' ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                                {req.quality_status === 'ok' ? 'Quality OK' : `Quality ${req.quality_status}`}
+                              </span>
+                            )}
                             <span>· {OWNER_LABEL[req.owner] || req.owner}</span>
                             {req.requested_at && (
                               <span>· Requested {new Date(req.requested_at).toLocaleDateString('en-AU')}</span>
+                            )}
+                            {req.soft_expiry_date && (
+                              <span>· Soft expiry {new Date(req.soft_expiry_date).toLocaleDateString('en-AU')}</span>
                             )}
                             {req.expiry_date && (
                               <span>· Expires {new Date(req.expiry_date).toLocaleDateString('en-AU')}</span>
@@ -408,8 +422,37 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                               <span className="inline-flex items-center gap-0.5"><EyeOff className="h-3 w-3" /> Internal</span>
                             )}
                           </div>
+                          {(req.quality_flags || []).length > 0 && (
+                            <ul className="mt-1.5 space-y-0.5">
+                              {(req.quality_flags || []).slice(0, 3).map((f: any, idx: number) => (
+                                <li key={idx} className={cn(
+                                  'text-xs flex items-start gap-1',
+                                  f.severity === 'error' ? 'text-destructive' : 'text-amber-500',
+                                )}>
+                                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                  <span>{f.message}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          {req.document_id && (
+                            <Button
+                              size="icon" variant="ghost" className="h-8 w-8"
+                              title="Re-analyze quality" onClick={() => analyzeOne(req.id)}
+                            >
+                              <ScanLine className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {req.document_id && (req.quality_status === 'error' || req.quality_status === 'warning') && (
+                            <Button
+                              size="icon" variant="ghost" className="h-8 w-8"
+                              title="Re-request from client" onClick={() => openRerequest(req)}
+                            >
+                              <RefreshCw className="h-4 w-4 text-amber-500" />
+                            </Button>
+                          )}
                           <Select value={req.status} onValueChange={(v) => setStatus(req.id, v)}>
                             <SelectTrigger className="h-8 w-[125px] text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -451,6 +494,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                           "{req.request_message}"
                         </p>
                       )}
+
                     </div>
                   </div>
                 );
