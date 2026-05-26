@@ -463,7 +463,7 @@ const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
   /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
   /^[\s>*\-]*\**\s*Investment\s+Grade\b/i,
   /^[\s>*\-]*\**\s*Total\s+Investment\s+Score\b/i,
-  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b.*\d+\s*\/\s*100/i,
+  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b/i,
 ];
 
 // Table rows / KPI cells we should drop wholesale. Also used to detect entire
