@@ -28,11 +28,12 @@ const DECISION_META: Record<string, { label: string; tone: string; icon: any }> 
   green_light:               { label: 'Green light',                tone: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30', icon: ThumbsUp },
   proceed_with_caution:      { label: 'Proceed with caution',       tone: 'bg-amber-500/15 text-amber-500 border-amber-500/30',     icon: AlertTriangle },
   not_suitable:              { label: 'Not suitable',               tone: 'bg-destructive/15 text-destructive border-destructive/30', icon: ThumbsDown },
-  need_more_info:            { label: 'Need more info',             tone: 'bg-sky-500/15 text-sky-500 border-sky-500/30',           icon: HelpCircle },
+  need_more_info:            { label: 'More information required',  tone: 'bg-sky-500/15 text-sky-500 border-sky-500/30',           icon: HelpCircle },
   subject_to_valuation:      { label: 'Subject to valuation',       tone: 'bg-muted text-muted-foreground border-border',           icon: Wallet },
   subject_to_lender_review:  { label: 'Subject to lender review',   tone: 'bg-muted text-muted-foreground border-border',           icon: ShieldCheck },
-  subject_to_equity:         { label: 'Subject to equity',          tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
+  subject_to_equity:         { label: 'Subject to equity release',  tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
   subject_to_deposit:        { label: 'Subject to deposit',         tone: 'bg-muted text-muted-foreground border-border',           icon: Coins },
+  subject_to_lmi_approval:   { label: 'Subject to LMI approval',    tone: 'bg-muted text-muted-foreground border-border',           icon: ShieldCheck },
 };
 
 export function FinanceDecisionsTab({ fileId }: { fileId: string }) {
