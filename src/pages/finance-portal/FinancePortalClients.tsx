@@ -930,9 +930,63 @@ export default function FinancePortalClients() {
                           {record.client?.primary_contact_phone && (
                             <div className="text-xs text-muted-foreground xs:hidden">{record.client.primary_contact_phone}</div>
                           )}
+
+                          {pf && (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/20 bg-primary/5 text-primary">
+                                <Briefcase className="h-2.5 w-2.5" />
+                                {pf.title || 'Purchase file'}
+                                {pfCount > 1 && <span className="opacity-70">+{pfCount - 1}</span>}
+                              </Badge>
+                              {pf.finance_status && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                                  {pf.finance_status.replaceAll('_', ' ')}
+                                </Badge>
+                              )}
+                              {pf.lender && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                                  {pf.lender}
+                                </Badge>
+                              )}
+                              {pf.max_approved_budget != null && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground gap-1">
+                                  <Wallet className="h-2.5 w-2.5" />
+                                  ${Number(pf.max_approved_budget).toLocaleString('en-AU')}
+                                </Badge>
+                              )}
+                              {pf.risk_level && (
+                                <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 capitalize gap-1', riskTone)}>
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                  {pf.risk_level}
+                                </Badge>
+                              )}
+                              {nextDeadline && (
+                                <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', deadlineTone)}>
+                                  <CalendarClock className="h-2.5 w-2.5" />
+                                  {nextDeadline.date_type.replaceAll('_', ' ')}
+                                  {daysToDeadline != null && (
+                                    <span>· {daysToDeadline < 0 ? `${-daysToDeadline}d overdue` : `${daysToDeadline}d`}</span>
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 sm:hidden" />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 sm:contents pl-14 sm:pl-0">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <Badge variant="outline" className="text-[10px] capitalize px-1.5 py-0 shrink-0">
+                            {status}
+                          </Badge>
+                          <PermissionBar granted={grantedTables} total={totalTables} />
+                        </div>
+
+                        <div className="hidden sm:flex items-center gap-2 shrink-0 relative z-10">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 sm:contents pl-14 sm:pl-0">
