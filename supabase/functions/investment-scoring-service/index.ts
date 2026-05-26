@@ -576,52 +576,85 @@ function calculateInvestmentScore(input: InvestmentScoringInput): InvestmentScor
   const demandScore = calculateDemandScore(input);
   const riskScore = calculateRiskScore(input);
 
-  // Weighted scoring
-  const weights = {
-    growth: 0.40, // 40% - Capital appreciation potential
-    location: 0.25, // 25% - Location quality and amenities
-    yield: 0.15,  // 15% - Cash flow generation
-    demand: 0.15, // 15% - Supply/demand dynamics
-    risk: 0.05    // 5% - Risk factors
+  const hasNum = (v: any) => typeof v === 'number' && !Number.isNaN(v);
+
+  // Per-dimension data presence (no defaults masquerading as signal).
+  // Cotality-ready: when cotality-service envelopes land, these flip true.
+  const yieldPoints: string[] = [];
+  if (hasNum(input.propertyPrice) && input.propertyPrice > 0) yieldPoints.push('propertyPrice');
+  if (hasNum(input.weeklyRent) && input.weeklyRent > 0) yieldPoints.push('weeklyRent');
+  if (hasNum(input.cashFlow)) yieldPoints.push('cashFlow');
+  // Yield needs BOTH price and rent to be meaningful
+  const yieldHasData = yieldPoints.includes('propertyPrice') && yieldPoints.includes('weeklyRent');
+
+  const growthPoints: string[] = [];
+  if (hasNum(input.priceGrowth1Year)) growthPoints.push('priceGrowth1Year');
+  if (hasNum(input.priceGrowth3Year)) growthPoints.push('priceGrowth3Year');
+  if (hasNum(input.populationGrowth)) growthPoints.push('populationGrowth');
+
+  const locationPoints: string[] = [];
+  if (hasNum(input.walkScore)) locationPoints.push('walkScore');
+  if (hasNum(input.commuteTimeCBD)) locationPoints.push('commuteTimeCBD');
+  if (hasNum(input.schoolsNearby) && (input.schoolsNearby as number) > 0) locationPoints.push('schoolsNearby');
+
+  const demandPoints: string[] = [];
+  if (hasNum(input.vacancyRate)) demandPoints.push('vacancyRate');
+  if (hasNum(input.daysOnMarket)) demandPoints.push('daysOnMarket');
+  if (hasNum(input.medianSuburbPrice) && (input.medianSuburbPrice as number) > 0) demandPoints.push('medianSuburbPrice');
+  if (hasNum(input.unemploymentRate)) demandPoints.push('unemploymentRate');
+
+  const riskPoints: string[] = [];
+  if (hasNum(input.lvr)) riskPoints.push('lvr');
+  if (hasNum(input.cashFlow)) riskPoints.push('cashFlow');
+  if (hasNum(input.vacancyRate)) riskPoints.push('vacancyRate');
+  if (hasNum(input.daysOnMarket)) riskPoints.push('daysOnMarket');
+  if (hasNum(input.priceGrowth1Year)) riskPoints.push('priceGrowth1Year');
+
+  const dims = {
+    yieldScore: { ...yieldScore, hasData: yieldHasData, dataPoints: yieldPoints },
+    growthScore: { ...growthScore, hasData: growthPoints.length > 0, dataPoints: growthPoints },
+    locationScore: { ...locationScore, hasData: locationPoints.length > 0, dataPoints: locationPoints },
+    demandScore: { ...demandScore, hasData: demandPoints.length > 0, dataPoints: demandPoints },
+    riskScore: { ...riskScore, hasData: riskPoints.length > 0, dataPoints: riskPoints },
   };
 
-  const totalScore = Math.round(
-    (yieldScore.score * weights.yield) +
-    (growthScore.score * weights.growth) +
-    (locationScore.score * weights.location) +
-    (demandScore.score * weights.demand) +
-    (riskScore.score * weights.risk)
-  );
+  const weights = {
+    yieldScore: 0.15,
+    growthScore: 0.40,   // capital appreciation potential
+    locationScore: 0.25,
+    demandScore: 0.15,
+    riskScore: 0.05,
+  };
 
-  // Determine grade and recommendation
-  const { grade, recommendation } = determineGradeAndRecommendation(totalScore, input);
+  const { totalScore, breakdown, coverage } = aggregateDimensions(dims, weights);
 
-  // Analyze SWOT
+  const { grade, recommendation } = coverage.dataInsufficient
+    ? { grade: 'N/A', recommendation: 'Insufficient quantitative data for a headline grade — qualitative SWOT below' }
+    : determineGradeAndRecommendation(totalScore as number, input);
+
+  // Analyze SWOT (always — qualitative output works even with sparse data)
   const { strengths, weaknesses, opportunities, risks } = analyzeSWOT(input, {
     yieldScore,
     growthScore,
     locationScore,
     demandScore,
-    riskScore
+    riskScore,
   });
 
   return {
     totalScore,
     grade,
     recommendation,
-    breakdown: {
-      yieldScore: { ...yieldScore, weight: weights.yield * 100 },
-      growthScore: { ...growthScore, weight: weights.growth * 100 },
-      locationScore: { ...locationScore, weight: weights.location * 100 },
-      demandScore: { ...demandScore, weight: weights.demand * 100 },
-      riskScore: { ...riskScore, weight: weights.risk * 100 }
-    },
+    breakdown,
+    coverage,
     strengths,
     weaknesses,
     opportunities,
-    risks
+    risks,
   };
 }
+
+
 
 function calculateYieldScore(input: InvestmentScoringInput) {
   const annualRent = (input.weeklyRent || 0) * 52;
