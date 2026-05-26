@@ -117,6 +117,7 @@ async function prepareFinanceNotePayload(supabase: any, clientId: string, payloa
     payload: {
       ...payload,
       ...provenance,
+      visibility: 'shared',
       content_hash: contentHash,
       dedupe_key: dedupeKey,
       sync_status: resolution.status,
