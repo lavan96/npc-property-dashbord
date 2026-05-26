@@ -862,9 +862,9 @@ export default function FinancePortalClients() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm text-foreground break-words">{name}</span>
-                            {record.client?.secondary_contact_name && (
+                            {secondaryName && (
                               <span className="text-xs text-muted-foreground break-words">
-                                & {record.client.secondary_contact_name}
+                                & {secondaryName}
                               </span>
                             )}
                           </div>
