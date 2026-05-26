@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
         expires_at: expiresAt.toISOString(),
         impersonator_finance_user_id: handoff.finance_user_id,
         impersonator_finance_contact_id: handoff.finance_contact_id,
+        impersonator_staff_user_id: handoff.staff_user_id ?? null,
         is_readonly: handoff.is_readonly,
       })
       .select('id')
@@ -130,20 +131,35 @@ Deno.serve(async (req) => {
       })
       .eq('id', handoff.id);
 
-    // 6. Audit on both sides
-    await supabase.from('finance_portal_activity_log').insert({
-      finance_user_id: handoff.finance_user_id,
-      client_id: handoff.client_id,
-      actor_user_id: null,
-      actor_type: 'finance_partner',
-      action: 'handoff_token_redeemed',
-      entity_type: 'client_portal_session',
-      entity_id: newSession.id,
-      metadata: {
-        readonly: handoff.is_readonly,
-        target_portal_user_id: portalUser.id,
-      },
-    });
+    // 6. Audit
+    if (isStaffHandoff) {
+      await supabase.from('client_activity_log').insert({
+        client_id: handoff.client_id,
+        actor_user_id: handoff.staff_user_id,
+        actor_type: 'staff',
+        action: 'staff_portal_handoff_redeemed',
+        entity_type: 'client_portal_session',
+        entity_id: newSession.id,
+        metadata: {
+          readonly: handoff.is_readonly,
+          target_portal_user_id: portalUser.id,
+        },
+      }).catch(() => { /* ignore if table missing */ });
+    } else {
+      await supabase.from('finance_portal_activity_log').insert({
+        finance_user_id: handoff.finance_user_id,
+        client_id: handoff.client_id,
+        actor_user_id: null,
+        actor_type: 'finance_partner',
+        action: 'handoff_token_redeemed',
+        entity_type: 'client_portal_session',
+        entity_id: newSession.id,
+        metadata: {
+          readonly: handoff.is_readonly,
+          target_portal_user_id: portalUser.id,
+        },
+      });
+    }
 
     const c = (portalUser as any).clients;
     const displayName = c
