@@ -9,7 +9,7 @@
  * Includes hash-chain verification for tamper detection.
  */
 import { useEffect, useState } from 'react';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +67,7 @@ const AUTH_ICON: Record<string, any> = {
 };
 
 export function AuditTrailTab({ fileId }: { fileId: string }) {
+  const { invokeFinanceFunction } = useFinancePortalAuth();
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [counts, setCounts] = useState<{ audit: number; status: number; auth: number }>({ audit: 0, status: 0, auth: 0 });
@@ -77,7 +78,7 @@ export function AuditTrailTab({ fileId }: { fileId: string }) {
   const load = async () => {
     setLoading(true);
     try {
-      const { data, error } = await invokeSecureFunction('finance-portal-audit-timeline', {
+      const { data, error } = await invokeFinanceFunction('finance-portal-audit-timeline', {
         operation: 'timeline',
         purchase_file_id: fileId,
         limit: 300,
@@ -96,7 +97,7 @@ export function AuditTrailTab({ fileId }: { fileId: string }) {
     setVerifying(true);
     setVerifyResult(null);
     try {
-      const { data, error } = await invokeSecureFunction('finance-portal-audit-timeline', {
+      const { data, error } = await invokeFinanceFunction('finance-portal-audit-timeline', {
         operation: 'verify',
         purchase_file_id: fileId,
       });
