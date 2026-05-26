@@ -21,6 +21,7 @@ import {
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
 } from 'lucide-react';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
+import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
