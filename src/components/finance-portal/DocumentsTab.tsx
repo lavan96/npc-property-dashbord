@@ -72,7 +72,10 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [requestOpen, setRequestOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [packetOpen, setPacketOpen] = useState(false);
+  const [rerequestFor, setRerequestFor] = useState<any | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const { data: requirements, isLoading } = useQuery({
@@ -85,6 +88,18 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       return (data?.requirements || []) as any[];
     },
   });
+
+  const { data: messageTemplates } = useQuery({
+    queryKey: ['finance-portal-doc-msg-templates'],
+    queryFn: async () => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+        operation: 'list_message_templates',
+      });
+      if (error) throw new Error(error.message);
+      return (data?.templates || []) as any[];
+    },
+  });
+
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['finance-portal-doc-requirements', fileId] });
 
