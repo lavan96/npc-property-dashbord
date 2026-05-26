@@ -711,7 +711,8 @@ export default function FinancePortalClients() {
                   <span className="hidden sm:inline">{sortLabel}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Basic</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setSortKey('name')} className={cn(sortKey === 'name' && 'text-primary font-medium')}>
                   <SortAsc className="h-4 w-4 mr-2" /> Name
                 </DropdownMenuItem>
@@ -720,6 +721,23 @@ export default function FinancePortalClients() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortKey('status')} className={cn(sortKey === 'status' && 'text-primary font-medium')}>
                   <UserCheck className="h-4 w-4 mr-2" /> Status
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Deal flow</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setSortKey('urgency')} className={cn(sortKey === 'urgency' && 'text-primary font-medium')}>
+                  <AlertTriangle className="h-4 w-4 mr-2" /> Urgency
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('finance_clause')} className={cn(sortKey === 'finance_clause' && 'text-primary font-medium')}>
+                  <Gavel className="h-4 w-4 mr-2" /> Finance Clause
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('settlement')} className={cn(sortKey === 'settlement' && 'text-primary font-medium')}>
+                  <CalendarClock className="h-4 w-4 mr-2" /> Settlement Date
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('risk')} className={cn(sortKey === 'risk' && 'text-primary font-medium')}>
+                  <TrendingUp className="h-4 w-4 mr-2" /> Risk Level
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortKey('recent')} className={cn(sortKey === 'recent' && 'text-primary font-medium')}>
+                  <Clock className="h-4 w-4 mr-2" /> Recently Updated
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
