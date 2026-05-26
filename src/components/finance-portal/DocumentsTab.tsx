@@ -505,23 +505,41 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       })}
 
       {/* Request dialog */}
-      <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+      <Dialog open={requestOpen} onOpenChange={(v) => { if (!v) { setRerequestFor(null); setSelectedTemplateId(''); } setRequestOpen(v); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request documents from client</DialogTitle>
+            <DialogTitle>{rerequestFor ? 'Re-request document' : 'Request documents from client'}</DialogTitle>
             <DialogDescription>
-              {selected.size} item(s) will be marked Requested and surfaced on the client portal dashboard.
+              {rerequestFor
+                ? `${rerequestFor.label} — explain why you need a fresh upload.`
+                : `${selected.size} item(s) will be marked Requested and surfaced on the client portal dashboard.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="msg">Message to client (optional)</Label>
-            <Textarea
-              id="msg"
-              value={requestMessage}
-              onChange={(e) => setRequestMessage(e.target.value)}
-              placeholder="e.g. Please upload by Friday — needed for finance approval."
-              rows={4}
-            />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <Select value={selectedTemplateId || '__none__'} onValueChange={applyTemplate}>
+                <SelectTrigger><SelectValue placeholder="Pick a template" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No template</SelectItem>
+                  {(messageTemplates || []).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} <span className="text-muted-foreground text-xs">({t.reason})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="msg">Message to client</Label>
+              <Textarea
+                id="msg"
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                placeholder="e.g. Please upload by Friday — needed for finance approval."
+                rows={6}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRequestOpen(false)}>Cancel</Button>
@@ -539,9 +557,12 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
         fileId={fileId}
         onAdded={refresh}
       />
+
+      <LenderPacketDialog open={packetOpen} onOpenChange={setPacketOpen} fileId={fileId} />
     </div>
   );
 }
+
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
   return (
