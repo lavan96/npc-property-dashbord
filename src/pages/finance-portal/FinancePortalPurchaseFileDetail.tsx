@@ -27,6 +27,7 @@ import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
 import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnapshotCard';
 import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
 import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
+import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,7 @@ export default function FinancePortalPurchaseFileDetail() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const queryClient = useQueryClient();
   const [savingStatus, setSavingStatus] = useState(false);
+  const [tab, setTab] = useState('overview');
 
   const { data: getRes, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-file', fileId],
@@ -129,6 +131,15 @@ export default function FinancePortalPurchaseFileDetail() {
     } finally {
       setSavingStatus(false);
     }
+  };
+
+  const toggleWatch = async () => {
+    const { data: res, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'toggle_watch', file_id: fileId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(res?.is_watched ? 'Watching this file' : 'Removed from watchlist');
+    refresh();
   };
 
   if (isLoading) {
