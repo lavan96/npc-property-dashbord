@@ -30,6 +30,7 @@ import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLi
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
+import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
 
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
