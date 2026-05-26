@@ -593,8 +593,9 @@ export function EnhancedInvestmentReportModal({
       );
     }
     
-    const { totalScore, grade, recommendation, breakdown, strengths, weaknesses, opportunities, risks } = enhancedData.investmentScore;
-    
+    const { totalScore, grade, recommendation, breakdown, coverage, strengths, weaknesses, opportunities, risks } = enhancedData.investmentScore;
+    const insufficient = coverage?.dataInsufficient || totalScore == null;
+
     return (
       <div className="space-y-6">
         <Card className="border-2">
@@ -605,24 +606,38 @@ export function EnhancedInvestmentReportModal({
                 <Badge variant="outline" className="text-2xl font-bold px-4 py-2">
                   {grade}
                 </Badge>
-                <span className="text-3xl font-bold">{totalScore}/100</span>
+                {insufficient ? (
+                  <span className="text-sm font-semibold text-muted-foreground">Insufficient data</span>
+                ) : (
+                  <span className="text-3xl font-bold">{totalScore}/100</span>
+                )}
               </div>
             </CardTitle>
             <CardDescription className="text-lg font-medium pt-2">
               {recommendation}
             </CardDescription>
+            {coverage && (
+              <CardDescription className="text-xs text-muted-foreground pt-1">
+                {coverage.partialLabel}
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {Object.entries(breakdown).map(([key, value]: [string, any]) => (
-                <div key={key} className="space-y-1">
+                <div key={key} className={`space-y-1 ${value.excluded ? 'opacity-50' : ''}`}>
                   <div className="flex justify-between text-sm">
                     <span className="font-medium capitalize">{key.replace('Score', '')}</span>
-                    <span>{value.score}/100 (Weight: {value.weight}%)</span>
+                    <span>
+                      {value.excluded
+                        ? <em className="text-muted-foreground">Excluded — no data</em>
+                        : `${value.score}/100 (Weight: ${value.weight}%)`}
+                    </span>
                   </div>
-                  <Progress value={value.score} className="h-2" />
+                  <Progress value={value.excluded ? 0 : value.score} className="h-2" />
                   <p className="text-xs text-muted-foreground">{value.details}</p>
                 </div>
+
               ))}
             </div>
           </CardContent>
