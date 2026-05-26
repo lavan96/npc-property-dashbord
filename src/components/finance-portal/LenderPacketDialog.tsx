@@ -269,6 +269,24 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
               )}
             </div>
 
+            {manifest.gaps?.missing_required?.length ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium text-destructive flex items-center gap-1.5 mb-1">
+                  <FileWarning className="h-4 w-4" /> {manifest.gaps.missing_required.length} required documents still missing
+                </p>
+                <ul className="text-xs text-destructive/80 list-disc list-inside space-y-0.5">
+                  {manifest.gaps.missing_required.slice(0, 5).map(g => (
+                    <li key={g.id}>{g.label} <span className="opacity-60">({g.category?.replace(/_/g,' ')})</span></li>
+                  ))}
+                  {manifest.gaps.missing_required.length > 5 && <li>…and {manifest.gaps.missing_required.length - 5} more</li>}
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-success/30 bg-success/5 p-2.5 text-xs text-success flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4" /> All required documents present.
+              </div>
+            )}
+
             <ScrollArea className="flex-1 -mx-6 px-6">
               <div className="space-y-2 py-2">
                 {manifest.files.length === 0 && (
