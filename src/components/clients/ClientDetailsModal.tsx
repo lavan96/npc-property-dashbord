@@ -856,6 +856,11 @@ The Team`
               />
             </TabsContent>
 
+            <TabsContent value="finance-messages" className="mt-4 w-full min-w-0">
+              <StaffFinancePortalMessagesPanel clientId={client.id} />
+            </TabsContent>
+
+
 
             <TabsContent value="appointments" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientAppointmentsTab
