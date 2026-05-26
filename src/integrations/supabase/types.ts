@@ -6338,6 +6338,42 @@ export type Database = {
           },
         ]
       }
+      finance_partner_branding: {
+        Row: {
+          accent_hsl: string | null
+          company_display_name: string | null
+          created_at: string
+          finance_contact_id: string
+          id: string
+          logo_storage_path: string | null
+          tagline: string | null
+          updated_at: string
+          updated_by_finance_user_id: string | null
+        }
+        Insert: {
+          accent_hsl?: string | null
+          company_display_name?: string | null
+          created_at?: string
+          finance_contact_id: string
+          id?: string
+          logo_storage_path?: string | null
+          tagline?: string | null
+          updated_at?: string
+          updated_by_finance_user_id?: string | null
+        }
+        Update: {
+          accent_hsl?: string | null
+          company_display_name?: string | null
+          created_at?: string
+          finance_contact_id?: string
+          id?: string
+          logo_storage_path?: string | null
+          tagline?: string | null
+          updated_at?: string
+          updated_by_finance_user_id?: string | null
+        }
+        Relationships: []
+      }
       finance_partner_commissions: {
         Row: {
           basis_amount: number
@@ -6527,6 +6563,45 @@ export type Database = {
           notes?: string | null
           settlement_target_amount?: number | null
           settlement_target_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finance_partner_notification_prefs: {
+        Row: {
+          channels: string[]
+          created_at: string
+          event_type: string
+          finance_contact_id: string
+          id: string
+          is_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string
+          event_type: string
+          finance_contact_id: string
+          id?: string
+          is_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string
+          event_type?: string
+          finance_contact_id?: string
+          id?: string
+          is_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -11733,6 +11808,65 @@ export type Database = {
           source?: string
         }
         Relationships: []
+      }
+      purchase_file_entity_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          author_type: string
+          body: string
+          created_at: string
+          deleted_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          mentions: string[] | null
+          parent_id: string | null
+          purchase_file_id: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          author_type: string
+          body: string
+          created_at?: string
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          mentions?: string[] | null
+          parent_id?: string | null
+          purchase_file_id: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          author_type?: string
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          mentions?: string[] | null
+          parent_id?: string | null
+          purchase_file_id?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_entity_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_file_entity_comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_file_finance_decisions: {
         Row: {

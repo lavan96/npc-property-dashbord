@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, TrendingUp,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, TrendingUp, Settings as SettingsIcon,
 } from 'lucide-react';
 
 import {
@@ -194,6 +194,10 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
                         <span className="text-xs text-muted-foreground">{user?.email}</span>
                       </div>
                     </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/finance/settings')}>
+                      <SettingsIcon className="h-4 w-4 mr-2" /> Settings
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut className="h-4 w-4 mr-2" />
