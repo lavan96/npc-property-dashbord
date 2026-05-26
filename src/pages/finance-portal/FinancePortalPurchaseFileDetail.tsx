@@ -168,7 +168,18 @@ export default function FinancePortalPurchaseFileDetail() {
 
   return (
     <div className="container mx-auto max-w-6xl py-6 px-4">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/finance/purchase-files')} className="mb-4 -ml-2">
+      <PurchaseFileStickyBar
+        title={data.title}
+        status={data.status}
+        isWatched={data.is_watched}
+        onToggleWatch={toggleWatch}
+        onJumpDates={() => setTab('dates')}
+        onJumpDocs={() => setTab('documents')}
+        onJumpDecisions={() => setTab('decisions')}
+        onOpenMessages={() => navigate(`/finance/messages?client=${data.client_id}`)}
+      />
+
+      <Button variant="ghost" size="sm" onClick={() => navigate('/finance/purchase-files')} className="mt-4 mb-4 -ml-2">
         <ArrowLeft className="h-4 w-4 mr-1" /> All purchase files
       </Button>
 
@@ -208,7 +219,7 @@ export default function FinancePortalPurchaseFileDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
