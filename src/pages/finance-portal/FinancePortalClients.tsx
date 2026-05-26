@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBrand } from '@/branding/useBrand';
 import { parseVownetPdf } from '@/utils/vownetPdfParser';
@@ -802,7 +803,8 @@ export default function FinancePortalClients() {
           <div className="space-y-2">
             <AnimatePresence initial={false}>
               {filtered.map((record: any, index: number) => {
-                const name = record.client?.primary_contact_name || '—';
+                const name = smartCapitalize(record.client?.primary_contact_name) || '—';
+                const secondaryName = smartCapitalize(record.client?.secondary_contact_name);
                 const permissions = record.permissions || {};
                 const grantedTables = Object.entries(permissions).filter(([_, permission]: any) => permission?.view).length;
                 const totalTables = 12;
@@ -860,9 +862,9 @@ export default function FinancePortalClients() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm text-foreground break-words">{name}</span>
-                            {record.client?.secondary_contact_name && (
+                            {secondaryName && (
                               <span className="text-xs text-muted-foreground break-words">
-                                & {record.client.secondary_contact_name}
+                                & {secondaryName}
                               </span>
                             )}
                           </div>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+// scroll-area removed: tab row now scrolls natively so arrow buttons work
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Loader2, ArrowLeft, Mail, Phone, Lock, Copy, Check,
@@ -21,6 +21,7 @@ import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPan
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -237,7 +238,8 @@ export default function FinancePortalClientProfile() {
   }
 
   const client = data.client;
-  const name = client.primary_contact_name || '—';
+  const name = smartCapitalize(client.primary_contact_name) || '—';
+  const secondaryName = smartCapitalize(client.secondary_contact_name);
   const avatarBg = getAvatarColor(name);
   const status = (client.status || 'active').toLowerCase();
 
@@ -268,8 +270,8 @@ export default function FinancePortalClientProfile() {
             <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{name}</h1>
-                {client.secondary_contact_name && (
-                  <span className="text-sm text-muted-foreground">& {client.secondary_contact_name}</span>
+                {secondaryName && (
+                  <span className="text-sm text-muted-foreground">& {secondaryName}</span>
                 )}
                 <Badge variant="outline" className="capitalize w-fit mx-auto sm:mx-0">{status}</Badge>
               </div>
@@ -341,8 +343,8 @@ export default function FinancePortalClientProfile() {
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <ScrollArea className="w-full md:px-10">
-                <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5">
+              <div className="w-full md:px-10">
+                <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5 scroll-smooth">
                 {allTabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.key;
@@ -398,8 +400,7 @@ export default function FinancePortalClientProfile() {
                   return tabButton;
                 })}
                 </div>
-                <ScrollBar orientation="horizontal" className="invisible" />
-              </ScrollArea>
+              </div>
             </div>
           </TooltipProvider>
 

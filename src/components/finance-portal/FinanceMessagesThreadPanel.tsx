@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Lock, Unlock } from 'lucide-react';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface ThreadMeta {
   id: string;
@@ -36,8 +37,8 @@ function getAvatarColor(name?: string): string {
 }
 
 export function FinanceMessagesThreadPanel({ thread, invoke, onMessageSent, className }: FinanceMessagesThreadPanelProps) {
-  const name = thread.clients?.primary_contact_name || 'Client';
-  const secondary = thread.clients?.secondary_contact_name;
+  const name = smartCapitalize(thread.clients?.primary_contact_name) || 'Client';
+  const secondary = smartCapitalize(thread.clients?.secondary_contact_name);
   const avatarBg = getAvatarColor(name);
   const unread = thread.unread_count_partner || 0;
 
