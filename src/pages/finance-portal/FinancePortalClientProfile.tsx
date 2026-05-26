@@ -155,6 +155,10 @@ export default function FinancePortalClientProfile() {
     });
 
     // Special tabs
+    // Phase 4: Purchase Files tab — default-allow, mirrors the matrix default in the edge fn
+    const pfVisible = permissions.purchase_files ? !!permissions.purchase_files.view : true;
+    tabs.push({ key: 'purchase_files', label: 'Purchase Files', icon: Briefcase, locked: !pfVisible });
+
     const docsVisible = permissions.documents ? !!permissions.documents.view : true;
     tabs.push({ key: 'documents', label: 'Documents', icon: FolderOpen, locked: !docsVisible, count: counts.documents });
 
