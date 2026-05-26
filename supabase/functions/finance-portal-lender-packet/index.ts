@@ -1,8 +1,14 @@
 /**
- * Finance Portal — Lender Packet builder (Phase 7.2 C3)
- * Returns a manifest of signed download URLs + metadata for a purchase file's
- * uploaded documents in lender-preferred order. The client assembles the ZIP
- * and cover sheet with JSZip + jsPDF.
+ * Finance Portal — Lender Packet (Chunk 6 polish)
+ *
+ * Operations:
+ *   - build_manifest  (default for backwards compat) → signed-URL manifest + meta + gap report
+ *   - gap_check       → returns missing/required-but-unfulfilled docs and quality flags
+ *   - list_packets    → packet history for a file
+ *   - record_generated→ persist a packet history row after the client builds the ZIP
+ *   - record_downloaded → bump download_count + last_downloaded_at
+ *
+ * All paths require an active finance-portal session + assignment to the file's client.
  */
 import { createClient } from "npm:@supabase/supabase-js@2.55.0";
 
@@ -15,7 +21,6 @@ const corsHeaders = {
 const BUCKET = 'finance-portal-documents';
 const SIGNED_URL_TTL = 60 * 30; // 30 min
 
-// Lender-preferred ordering for packets
 const PACKET_ORDER = [
   'identity',
   'income_payg', 'income_self_employed',
@@ -62,12 +67,13 @@ Deno.serve(async (req) => {
     if (!portalUser || !portalUser.is_active || portalUser.revoked_at) return json({ error: 'Invalid session' }, 401);
     if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) return json({ error: 'Session expired' }, 401);
 
+    const op = body.operation || 'build_manifest';
     const fileId = body.purchase_file_id;
     if (!fileId) return json({ error: 'purchase_file_id required' }, 400);
 
     const { data: file } = await supabase
       .from('purchase_files')
-      .select('id, client_id, title, lender_key, lender_name, loan_amount, property_address, settlement_date, status')
+      .select('id, client_id, title, lender, purchase_price, property_address, settlement_date, status, finance_status')
       .eq('id', fileId)
       .maybeSingle();
     if (!file) return json({ error: 'Not found' }, 404);
@@ -80,26 +86,111 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!assignment) return json({ error: 'Not assigned' }, 403);
 
+    // ─── list_packets ───
+    if (op === 'list_packets') {
+      const { data: packets } = await supabase
+        .from('purchase_file_lender_packets')
+        .select('*')
+        .eq('purchase_file_id', fileId)
+        .order('created_at', { ascending: false });
+      return json({ packets: packets || [] });
+    }
+
+    // ─── record_downloaded ───
+    if (op === 'record_downloaded') {
+      const packetId = body.packet_id;
+      if (!packetId) return json({ error: 'packet_id required' }, 400);
+      const { data: existing } = await supabase
+        .from('purchase_file_lender_packets')
+        .select('download_count')
+        .eq('id', packetId)
+        .maybeSingle();
+      await supabase.from('purchase_file_lender_packets').update({
+        download_count: (existing?.download_count || 0) + 1,
+        last_downloaded_at: new Date().toISOString(),
+      }).eq('id', packetId);
+      return json({ success: true });
+    }
+
+    // ─── record_generated ───
+    if (op === 'record_generated') {
+      const ins = {
+        purchase_file_id: fileId,
+        client_id: file.client_id,
+        lender_name: body.lender_name || file.lender || null,
+        lender_key: body.lender_key || null,
+        filename: body.filename || `lender-packet-${fileId}.zip`,
+        file_count: body.file_count || 0,
+        total_size_bytes: body.total_size_bytes || null,
+        missing_required_count: body.missing_required_count || 0,
+        missing_required: body.missing_required || [],
+        quality_flags: body.quality_flags || [],
+        manifest: body.manifest || {},
+        cover_sheet_included: body.cover_sheet_included !== false,
+        generated_by_finance_user_id: portalUser.id,
+        generated_by_email: portalUser.email,
+        notes: body.notes || null,
+      };
+      const { data: row, error } = await supabase
+        .from('purchase_file_lender_packets').insert(ins).select().single();
+      if (error) return json({ error: error.message }, 400);
+
+      // Audit
+      await supabase.from('purchase_file_status_history').insert({
+        purchase_file_id: fileId,
+        event_type: 'lender_packet_generated',
+        to_value: ins.lender_name || 'lender',
+        actor_id: portalUser.id,
+        actor_kind: 'finance_partner',
+        payload: { packet_id: row.id, file_count: ins.file_count, missing_required_count: ins.missing_required_count },
+      });
+      return json({ packet: row });
+    }
+
+    // ─── Common: load requirements + docs (for build_manifest & gap_check) ───
     const { data: reqs } = await supabase
       .from('document_requirement_instances')
-      .select('id, label, category, status, quality_status, quality_flags, detected_doc_date, soft_expiry_date, document_id, finance_portal_documents(id, original_filename, storage_path, mime_type, file_size)')
-      .eq('purchase_file_id', fileId)
-      .not('document_id', 'is', null);
+      .select('id, label, category, status, is_required, quality_status, quality_flags, detected_doc_date, soft_expiry_date, document_id, finance_portal_documents(id, original_filename, storage_path, mime_type, file_size)')
+      .eq('purchase_file_id', fileId);
 
+    const missing = (reqs || []).filter((r: any) => r.is_required && !r.document_id);
+    const qualityIssues = (reqs || []).filter((r: any) =>
+      r.document_id && r.quality_status && ['warning', 'rejected'].includes(r.quality_status)
+    );
+
+    // ─── gap_check ───
+    if (op === 'gap_check') {
+      return json({
+        missing_required: missing.map((r: any) => ({ id: r.id, label: r.label, category: r.category })),
+        quality_issues: qualityIssues.map((r: any) => ({
+          id: r.id, label: r.label, category: r.category,
+          quality_status: r.quality_status, quality_flags: r.quality_flags,
+        })),
+        total_documents: (reqs || []).filter((r: any) => r.document_id).length,
+      });
+    }
+
+    // ─── build_manifest (default) ───
     const { data: client } = await supabase
       .from('clients')
       .select('first_name, surname, email, phone_number')
       .eq('id', file.client_id)
       .maybeSingle();
 
-    // Conditions ledger
     const { data: conditions } = await supabase
       .from('purchase_file_conditions')
-      .select('id, label, status, due_date, notes')
+      .select('id, title, description, status, due_date, notes')
       .eq('purchase_file_id', fileId)
       .order('status').order('due_date');
 
-    // Borrowing snapshot if present
+    const { data: decision } = await supabase
+      .from('purchase_file_finance_decisions')
+      .select('outcome, decision_expiry_date, proposed_loan_amount, lvr, lmi_applicable, lmi_amount, preferred_lender_pathway')
+      .eq('purchase_file_id', fileId)
+      .order('decided_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { data: snapshot } = await supabase
       .from('purchase_file_borrowing_snapshots')
       .select('*')
@@ -108,22 +199,23 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    // Build manifest with signed URLs in lender order
     const orderIdx = (cat: string) => {
       const i = PACKET_ORDER.indexOf(cat);
       return i === -1 ? 999 : i;
     };
-    const sorted = (reqs || []).slice().sort((a: any, b: any) => orderIdx(a.category) - orderIdx(b.category));
+    const withDocs = (reqs || []).filter((r: any) => r.document_id && r.finance_portal_documents);
+    const sorted = withDocs.slice().sort((a: any, b: any) =>
+      orderIdx(a.category) - orderIdx(b.category)
+    );
 
     const files: any[] = [];
     let seq = 1;
     for (const r of sorted as any[]) {
       const doc = r.finance_portal_documents;
-      if (!doc) continue;
-      const { data: signed, error: sErr } = await supabase.storage
+      const { data: signed } = await supabase.storage
         .from(BUCKET)
         .createSignedUrl(doc.storage_path, SIGNED_URL_TTL);
-      if (sErr || !signed) continue;
+      if (!signed) continue;
       const num = String(seq).padStart(2, '0');
       const safeLabel = (r.label || doc.original_filename).replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 80);
       const ext = (doc.original_filename.split('.').pop() || 'bin').toLowerCase();
@@ -145,19 +237,20 @@ Deno.serve(async (req) => {
 
     const meta = {
       file: {
-        id: file.id,
-        title: file.title,
-        lender_name: file.lender_name || file.lender_key || 'N/A',
-        loan_amount: file.loan_amount,
+        id: file.id, title: file.title,
+        lender_name: file.lender || 'N/A',
+        purchase_price: file.purchase_price,
         property_address: file.property_address,
         settlement_date: file.settlement_date,
         status: file.status,
+        finance_status: file.finance_status,
       },
       client: client ? {
         name: `${client.first_name || ''} ${client.surname || ''}`.trim(),
         email: client.email,
         phone: client.phone_number,
       } : null,
+      decision: decision || null,
       conditions: conditions || [],
       borrowing_snapshot: snapshot || null,
       generated_at: new Date().toISOString(),
@@ -165,7 +258,16 @@ Deno.serve(async (req) => {
       file_count: files.length,
     };
 
-    return json({ meta, files });
+    return json({
+      meta,
+      files,
+      gaps: {
+        missing_required: missing.map((r: any) => ({ id: r.id, label: r.label, category: r.category })),
+        quality_issues: qualityIssues.map((r: any) => ({
+          id: r.id, label: r.label, quality_status: r.quality_status, quality_flags: r.quality_flags,
+        })),
+      },
+    });
   } catch (e: any) {
     return json({ error: e?.message || 'Unexpected error' }, 500);
   }
