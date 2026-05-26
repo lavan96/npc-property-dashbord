@@ -31,9 +31,11 @@ interface ManifestFile {
   requirement_status?: string;
 }
 
+interface Gap { id: string; label: string; category?: string; quality_status?: string; quality_flags?: any }
 interface Manifest {
   meta: any;
   files: ManifestFile[];
+  gaps?: { missing_required: Gap[]; quality_issues: Gap[] };
 }
 
 const QUALITY_TONE: Record<string, { tone: string; label: string }> = {
