@@ -5566,6 +5566,191 @@ export type Database = {
           },
         ]
       }
+      document_requirement_instances: {
+        Row: {
+          category: Database["public"]["Enums"]["document_requirement_category"]
+          client_id: string
+          created_at: string
+          created_by_finance_user_id: string | null
+          created_by_team_user_id: string | null
+          description: string | null
+          document_id: string | null
+          expiry_date: string | null
+          id: string
+          is_required: boolean
+          label: string
+          notes: string | null
+          owner: Database["public"]["Enums"]["document_requirement_owner"]
+          purchase_file_id: string
+          request_message: string | null
+          requested_at: string | null
+          requested_by_finance_user_id: string | null
+          sort_order: number
+          status: Database["public"]["Enums"]["document_requirement_status"]
+          template_id: string | null
+          updated_at: string
+          uploaded_at: string | null
+          verified_at: string | null
+          verified_by_finance_user_id: string | null
+          visible_to_client: boolean
+          visible_to_finance: boolean
+          visible_to_legal: boolean
+          visible_to_npc: boolean
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["document_requirement_category"]
+          client_id: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_required?: boolean
+          label: string
+          notes?: string | null
+          owner?: Database["public"]["Enums"]["document_requirement_owner"]
+          purchase_file_id: string
+          request_message?: string | null
+          requested_at?: string | null
+          requested_by_finance_user_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["document_requirement_status"]
+          template_id?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          verified_at?: string | null
+          verified_by_finance_user_id?: string | null
+          visible_to_client?: boolean
+          visible_to_finance?: boolean
+          visible_to_legal?: boolean
+          visible_to_npc?: boolean
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_requirement_category"]
+          client_id?: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_required?: boolean
+          label?: string
+          notes?: string | null
+          owner?: Database["public"]["Enums"]["document_requirement_owner"]
+          purchase_file_id?: string
+          request_message?: string | null
+          requested_at?: string | null
+          requested_by_finance_user_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["document_requirement_status"]
+          template_id?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          verified_at?: string | null
+          verified_by_finance_user_id?: string | null
+          visible_to_client?: boolean
+          visible_to_finance?: boolean
+          visible_to_legal?: boolean
+          visible_to_npc?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_requirement_instance_requested_by_finance_user_id_fkey"
+            columns: ["requested_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_created_by_finance_user_id_fkey"
+            columns: ["created_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_created_by_team_user_id_fkey"
+            columns: ["created_by_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_requirement_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_verified_by_finance_user_id_fkey"
+            columns: ["verified_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_requirement_templates: {
+        Row: {
+          category: Database["public"]["Enums"]["document_requirement_category"]
+          created_at: string
+          default_owner: Database["public"]["Enums"]["document_requirement_owner"]
+          description: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          purchase_type: Database["public"]["Enums"]["purchase_file_type"]
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["document_requirement_category"]
+          created_at?: string
+          default_owner?: Database["public"]["Enums"]["document_requirement_owner"]
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          purchase_type: Database["public"]["Enums"]["purchase_file_type"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_requirement_category"]
+          created_at?: string
+          default_owner?: Database["public"]["Enums"]["document_requirement_owner"]
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          purchase_type?: Database["public"]["Enums"]["purchase_file_type"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_signature_events: {
         Row: {
           compliance_record_id: string | null
@@ -13061,6 +13246,33 @@ export type Database = {
         | "pre_budget"
         | "post_budget_second_hand"
         | "post_budget_brand_new"
+      document_requirement_category:
+        | "identity"
+        | "income_payg"
+        | "income_self_employed"
+        | "bank_statements"
+        | "existing_loans"
+        | "assets"
+        | "liabilities"
+        | "purchase_docs"
+        | "deposit_proof"
+        | "valuation"
+        | "loan_approval"
+        | "settlement"
+        | "other"
+      document_requirement_owner:
+        | "client"
+        | "finance_partner"
+        | "npc_team"
+        | "legal"
+        | "other"
+      document_requirement_status:
+        | "required"
+        | "requested"
+        | "uploaded"
+        | "verified"
+        | "waived"
+        | "expired"
       generated_doc_status:
         | "draft"
         | "generated"
@@ -13530,6 +13742,36 @@ export const Constants = {
         "pre_budget",
         "post_budget_second_hand",
         "post_budget_brand_new",
+      ],
+      document_requirement_category: [
+        "identity",
+        "income_payg",
+        "income_self_employed",
+        "bank_statements",
+        "existing_loans",
+        "assets",
+        "liabilities",
+        "purchase_docs",
+        "deposit_proof",
+        "valuation",
+        "loan_approval",
+        "settlement",
+        "other",
+      ],
+      document_requirement_owner: [
+        "client",
+        "finance_partner",
+        "npc_team",
+        "legal",
+        "other",
+      ],
+      document_requirement_status: [
+        "required",
+        "requested",
+        "uploaded",
+        "verified",
+        "waived",
+        "expired",
       ],
       generated_doc_status: [
         "draft",
