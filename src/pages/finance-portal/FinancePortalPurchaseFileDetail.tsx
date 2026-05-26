@@ -311,11 +311,6 @@ function OverviewTab({ file, onSave }: { file: any; onSave: (k: string, v: any) 
           </div>
         </CardContent>
       </Card>
-      <Card className="md:col-span-2">
-        <CardHeader><CardTitle className="text-base">Notes</CardTitle></CardHeader>
-        <CardContent>
-          <EditableTextarea value={file.notes} onSave={(v) => onSave('notes', v)} />
-        </CardContent>
       <DealTypeFieldsCard file={file} onSave={onSave} />
       <Card className="md:col-span-2">
         <CardHeader><CardTitle className="text-base">Notes</CardTitle></CardHeader>
