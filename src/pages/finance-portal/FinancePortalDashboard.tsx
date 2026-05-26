@@ -14,6 +14,8 @@ import {
   TrendingUp, Wallet,
 } from 'lucide-react';
 import { TodayPanel } from '@/components/finance-portal/TodayPanel';
+import { DocumentExpiryWatchlist } from '@/components/finance-portal/DocumentExpiryWatchlist';
+
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
