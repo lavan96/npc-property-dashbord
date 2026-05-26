@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
           purchase_price, deposit_amount, max_approved_budget, lender,
           estimated_rent_weekly, client_contribution, settlement_date,
           finance_clause_date, assigned_finance_user_id, assigned_team_user_id,
-          risk_level, notes, created_at, updated_at, archived_at,
+          risk_level, notes, created_at, updated_at, archived_at, last_partner_action_at,
           clients!inner(id, primary_first_name, primary_surname, primary_email),
           purchase_file_critical_dates(id, date_type, due_date, status)
         `)
@@ -166,8 +166,21 @@ Deno.serve(async (req) => {
         console.error('[finance-portal-purchase-files] list_files error:', error);
         return jsonResponse({ error: error.message }, 500);
       }
-      return jsonResponse({ files });
+
+      const { data: watches } = await supabase
+        .from('finance_portal_pf_watchers')
+        .select('purchase_file_id')
+        .eq('finance_user_id', portalUser.id);
+      const watchedSet = new Set((watches || []).map((w: any) => w.purchase_file_id));
+
+      const enriched = (files || []).map((f: any) => ({
+        ...f,
+        is_watched: watchedSet.has(f.id),
+        is_mine: f.assigned_finance_user_id === portalUser.id,
+      }));
+      return jsonResponse({ files: enriched, me: portalUser.id });
     }
+
 
 
     // ─── Get one file (with linked deal summary) ───
