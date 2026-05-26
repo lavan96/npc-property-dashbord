@@ -205,7 +205,7 @@ export default function FinancePortalMessages() {
                           </span>
                           {t.clients?.secondary_contact_name && (
                             <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                              & {t.clients.secondary_contact_name}
+                              & {smartCapitalize(t.clients.secondary_contact_name)}
                             </span>
                           )}
                           {hasUnread && (
