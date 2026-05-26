@@ -136,7 +136,10 @@ Deno.serve(async (req) => {
       const allowedClientIds = (assignments || [])
         .filter(a => {
           const perms = mergePermissions(portalUser.global_permissions, a.permissions);
-          return perms.purchase_files?.view;
+          const globalHas = portalUser.global_permissions && (portalUser.global_permissions as any).purchase_files;
+          const clientHas = a.permissions && (a.permissions as any).purchase_files;
+          if (!globalHas && !clientHas) return true; // default-allow
+          return !!perms.purchase_files?.view;
         })
         .map(a => a.client_id);
 
