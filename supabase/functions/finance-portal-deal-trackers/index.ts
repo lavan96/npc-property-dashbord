@@ -22,6 +22,15 @@ const VALUATION_COLUMNS = [
   'valuer','agent_contact','access_required','ordered_date','inspected_date','returned_date',
   'contract_price','valuation_amount','shortfall','result','status','risk_level','next_action','notes','document_id',
 ];
+const RISK_COLUMNS = [
+  'category','severity','title','description','owner','due_date','status','resolution_note',
+];
+const BORROWING_SNAPSHOT_FIELDS = [
+  'gross_annual_income','shaded_annual_income','living_expenses_monthly',
+  'existing_commitments_monthly','assessment_rate','loan_term_years',
+  'borrowing_capacity','net_purchase_capacity','dti_ratio','monthly_surplus',
+  'serviceability_band','notes',
+];
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
