@@ -19,7 +19,7 @@ import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
   BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
-  Pencil, Trash2, CircleDot,
+  Pencil, Trash2, CircleDot, ShieldCheck,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -259,6 +259,9 @@ export default function FinancePortalAdmin() {
           </Button>
           <Button variant="outline" asChild className="gap-2">
             <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
+          </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/health"><ShieldCheck className="h-4 w-4" />Health Sweep</Link>
           </Button>
           <Button variant="outline" asChild className="gap-2">
             <Link to="/admin/finance-portal/commissions"><DollarSign className="h-4 w-4" />Commissions</Link>

@@ -1,0 +1,222 @@
+/**
+ * Finance Portal — Tri-Portal Health Sweep (Chunk 15)
+ *
+ * Superadmin/admin read-only diagnostics across all three portals
+ * (Internal, Finance, Client) to surface drift, orphans, missing
+ * critical data, and handoff-readiness gaps before go-live.
+ *
+ * Operations:
+ *   overview          → roll-up counts of every check below
+ *   drift_clients     → clients linked to a finance partner but with no PF, or vice-versa
+ *   orphan_pfs        → purchase_files with no assigned partner OR no critical dates
+ *   stale_pfs         → active PFs with no partner_action in >14d
+ *   client_portal_gap → clients with PF but no active client_portal_user
+ *   missing_consents  → portal users without onboarding consent records
+ *   handoff_pending   → handoff invites that have not been redeemed in >7d
+ *   audit_chain       → verifies tamper-evident audit chain integrity per PF (sample)
+ */
+import { createClient } from "npm:@supabase/supabase-js@2.55.0";
+import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
+
+Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const auth = await verifyAuth(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const op = body.operation || 'overview';
+
+    const SINCE_14D = new Date(Date.now() - 14 * 86400000).toISOString();
+    const SINCE_7D  = new Date(Date.now() - 7  * 86400000).toISOString();
+
+    // ── helpers ──
+    async function loadDriftClients() {
+      const { data: assigns } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id, finance_user_id');
+      const assignedClientIds = new Set((assigns || []).map((a: any) => a.client_id));
+
+      const { data: pfClientRows } = await supabase
+        .from('purchase_files')
+        .select('client_id')
+        .is('archived_at', null);
+      const pfClientIds = new Set((pfClientRows || []).map((r: any) => r.client_id));
+
+      const assignedNoPf: string[] = [];
+      for (const id of assignedClientIds) if (!pfClientIds.has(id)) assignedNoPf.push(id);
+
+      const pfNoAssign: string[] = [];
+      for (const id of pfClientIds) if (!assignedClientIds.has(id)) pfNoAssign.push(id);
+
+      return { assigned_without_pf: assignedNoPf, pf_without_assignment: pfNoAssign };
+    }
+
+    async function loadOrphanPfs() {
+      const { data: pfs } = await supabase
+        .from('purchase_files')
+        .select('id, title, client_id, assigned_finance_user_id, settlement_date, finance_clause_date, finance_status')
+        .is('archived_at', null);
+      const ids = (pfs || []).map((p: any) => p.id);
+      const dateMap = new Map<string, number>();
+      if (ids.length) {
+        const { data: cd } = await supabase
+          .from('purchase_file_critical_dates')
+          .select('purchase_file_id')
+          .in('purchase_file_id', ids);
+        for (const d of (cd || [])) dateMap.set(d.purchase_file_id, (dateMap.get(d.purchase_file_id) || 0) + 1);
+      }
+      const noPartner: any[] = [];
+      const noDates: any[] = [];
+      for (const p of (pfs || [])) {
+        if (!p.assigned_finance_user_id) noPartner.push(p);
+        if (!p.settlement_date && !p.finance_clause_date && (dateMap.get(p.id) || 0) === 0) noDates.push(p);
+      }
+      return { no_partner: noPartner, no_dates: noDates };
+    }
+
+    async function loadStalePfs() {
+      const { data } = await supabase
+        .from('purchase_files')
+        .select('id, title, client_id, finance_status, last_partner_action_at, assigned_finance_user_id')
+        .is('archived_at', null)
+        .not('finance_status', 'in', '(settled)')
+        .or(`last_partner_action_at.lt.${SINCE_14D},last_partner_action_at.is.null`);
+      return { stale: data || [] };
+    }
+
+    async function loadClientPortalGap() {
+      const { data: pfClients } = await supabase
+        .from('purchase_files')
+        .select('client_id')
+        .is('archived_at', null);
+      const pfClientIds = Array.from(new Set((pfClients || []).map((r: any) => r.client_id)));
+      if (!pfClientIds.length) return { clients_missing_portal: [] };
+      const { data: users } = await supabase
+        .from('client_portal_users')
+        .select('client_id, status')
+        .in('client_id', pfClientIds);
+      const haveActive = new Set((users || []).filter((u: any) => u.status === 'active').map((u: any) => u.client_id));
+      const missing = pfClientIds.filter(id => !haveActive.has(id));
+      return { clients_missing_portal: missing };
+    }
+
+    async function loadMissingConsents() {
+      const { data: users } = await supabase
+        .from('client_portal_users')
+        .select('id, client_id, email, status, created_at, has_accepted_terms, has_completed_onboarding')
+        .eq('status', 'active');
+      const without = (users || []).filter((u: any) => !u.has_accepted_terms || !u.has_completed_onboarding);
+      return { without_consent: without };
+    }
+
+    async function loadHandoffPending() {
+      // Client-portal invites that have not been redeemed within 7 days.
+      const { data } = await supabase
+        .from('client_portal_users')
+        .select('id, client_id, email, status, created_at')
+        .eq('status', 'invited')
+        .lt('created_at', SINCE_7D);
+      return { pending: data || [] };
+    }
+
+    async function loadAuditChain(limit = 25) {
+      const { data: pfs } = await supabase
+        .from('purchase_files')
+        .select('id, title')
+        .is('archived_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+      const results: any[] = [];
+      for (const pf of (pfs || [])) {
+        const { data: events } = await supabase
+          .from('purchase_file_audit_events')
+          .select('id, prev_hash, row_hash, created_at')
+          .eq('purchase_file_id', pf.id)
+          .order('created_at', { ascending: true });
+        if (!events || events.length === 0) {
+          results.push({ purchase_file_id: pf.id, title: pf.title, status: 'no_events', count: 0 });
+          continue;
+        }
+        // simple linkage check (full hash recompute lives in finance-portal-audit-timeline verify op)
+        let broken = false;
+        let prev: string | null = null;
+        for (const e of events) {
+          if ((e.prev_hash || null) !== prev) { broken = true; break; }
+          prev = e.row_hash;
+        }
+        results.push({
+          purchase_file_id: pf.id,
+          title: pf.title,
+          status: broken ? 'broken_chain' : 'ok',
+          count: events.length,
+        });
+      }
+      return { sampled: results.length, results };
+    }
+
+    if (op === 'drift_clients')      return ok(corsHeaders, await loadDriftClients());
+    if (op === 'orphan_pfs')         return ok(corsHeaders, await loadOrphanPfs());
+    if (op === 'stale_pfs')          return ok(corsHeaders, await loadStalePfs());
+    if (op === 'client_portal_gap')  return ok(corsHeaders, await loadClientPortalGap());
+    if (op === 'missing_consents')   return ok(corsHeaders, await loadMissingConsents());
+    if (op === 'handoff_pending')    return ok(corsHeaders, await loadHandoffPending());
+    if (op === 'audit_chain')        return ok(corsHeaders, await loadAuditChain(body.limit || 25));
+
+    // overview: parallel rollup
+    const [drift, orphan, stale, gap, consents, handoff, chain] = await Promise.all([
+      loadDriftClients(),
+      loadOrphanPfs(),
+      loadStalePfs(),
+      loadClientPortalGap(),
+      loadMissingConsents(),
+      loadHandoffPending(),
+      loadAuditChain(10),
+    ]);
+
+    const overview = {
+      generated_at: new Date().toISOString(),
+      checks: [
+        { key: 'drift_assigned_without_pf', label: 'Clients assigned but no purchase file', count: drift.assigned_without_pf.length, severity: gradeCount(drift.assigned_without_pf.length, 5, 20) },
+        { key: 'drift_pf_without_assignment', label: 'Purchase files with no partner assigned to client', count: drift.pf_without_assignment.length, severity: gradeCount(drift.pf_without_assignment.length, 1, 5) },
+        { key: 'orphan_no_partner', label: 'PFs missing an assigned finance partner', count: orphan.no_partner.length, severity: gradeCount(orphan.no_partner.length, 1, 5) },
+        { key: 'orphan_no_dates', label: 'PFs with no critical dates set', count: orphan.no_dates.length, severity: gradeCount(orphan.no_dates.length, 3, 10) },
+        { key: 'stale_pfs', label: 'Active PFs with no partner action in 14 days', count: stale.stale.length, severity: gradeCount(stale.stale.length, 3, 10) },
+        { key: 'client_portal_gap', label: 'Clients with PFs but no active portal user', count: gap.clients_missing_portal.length, severity: gradeCount(gap.clients_missing_portal.length, 5, 15) },
+        { key: 'missing_consents', label: 'Active portal users missing onboarding consent', count: consents.without_consent.length, severity: gradeCount(consents.without_consent.length, 3, 10) },
+        { key: 'handoff_pending', label: 'Unredeemed handoff invites older than 7 days', count: handoff.pending.length, severity: gradeCount(handoff.pending.length, 1, 5) },
+        { key: 'audit_chain_broken', label: 'Sampled PFs with broken audit chain', count: chain.results.filter((r: any) => r.status === 'broken_chain').length, severity: 'critical' as const },
+      ],
+      audit_chain_sample: chain,
+    };
+
+    return ok(corsHeaders, overview);
+  } catch (err) {
+    console.error('[finance-portal-tri-portal-health]', err);
+    return new Response(JSON.stringify({ error: (err as Error).message }),
+      { status: 500, headers: { ...createCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } });
+  }
+});
+
+function ok(corsHeaders: Record<string, string>, payload: any) {
+  return new Response(JSON.stringify(payload),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+
+function gradeCount(n: number, warnAt: number, critAt: number): 'ok' | 'notice' | 'warn' | 'critical' {
+  if (n === 0) return 'ok';
+  if (n >= critAt) return 'critical';
+  if (n >= warnAt) return 'warn';
+  return 'notice';
+}
