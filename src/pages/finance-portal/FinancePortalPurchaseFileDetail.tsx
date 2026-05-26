@@ -29,6 +29,8 @@ import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
 import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
+import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
+
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
