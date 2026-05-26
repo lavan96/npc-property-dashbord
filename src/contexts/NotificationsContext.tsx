@@ -387,6 +387,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       case 'game_plan_milestone_completed':
         navigate('/game-plan');
         break;
+      case 'portal_message_received':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}&tab=portal-messages`);
+        } else {
+          navigate('/clients');
+        }
+        break;
+      case 'finance_portal_message_received':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}&tab=finance-messages`);
+        } else {
+          navigate('/clients');
+        }
+        break;
       default:
         break;
     }
