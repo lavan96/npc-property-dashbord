@@ -52,7 +52,7 @@ export default function FinancePortalHealth() {
       const { data, error } = await invokeSecureFunction('finance-portal-tri-portal-health', {
         operation: 'overview',
       });
-      if (error) throw new Error(error);
+      if (error) throw new Error(error.message);
       setOverview(data as Overview);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to run health sweep');
