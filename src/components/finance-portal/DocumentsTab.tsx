@@ -308,13 +308,21 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-5 text-sm">
+            <div className="flex flex-wrap gap-5 text-sm">
               <Stat label="Total" value={stats.total} />
               <Stat label="Outstanding" value={stats.outstanding} tone="text-amber-500" />
               <Stat label="Requested" value={stats.requested} tone="text-sky-500" />
               <Stat label="Verified" value={stats.verified} tone="text-emerald-500" />
+              <Stat label="Quality flags" value={stats.qualityIssues} tone={stats.qualityIssues > 0 ? 'text-destructive' : undefined} />
+              <Stat label="Expiring ≤30d" value={stats.expiringSoon} tone={stats.expiringSoon > 0 ? 'text-amber-500' : undefined} />
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={analyzeAll} disabled={busy} className="gap-1.5" title="Run quality checks on all linked documents">
+                <ScanLine className="h-4 w-4" /> Analyze quality
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
+                <Package className="h-4 w-4" /> Lender packet
+              </Button>
               <Button size="sm" variant="outline" onClick={handleInstantiate} disabled={busy} className="gap-1.5">
                 <Sparkles className="h-4 w-4" /> Add missing defaults
               </Button>
@@ -324,7 +332,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
               <Button
                 size="sm"
                 disabled={selected.size === 0}
-                onClick={() => setRequestOpen(true)}
+                onClick={() => { setRerequestFor(null); setSelectedTemplateId(''); setRequestOpen(true); }}
                 className="gap-1.5"
               >
                 <Send className="h-4 w-4" /> Request {selected.size > 0 ? `${selected.size} ` : ''}from client
@@ -333,6 +341,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
           </div>
         </CardContent>
       </Card>
+
 
       {grouped.map(({ category, items }) => {
         const allSelected = items.every(i => selected.has(i.id));
