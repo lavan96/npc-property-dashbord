@@ -199,8 +199,63 @@ Deno.serve(async (req) => {
       };
     });
 
+    // ── Cross-PF portfolio rollup ──
+    const today = new Date();
+    const toDays = (d: string | null) => {
+      if (!d) return null;
+      const t = new Date(d).getTime();
+      return Number.isNaN(t) ? null : Math.ceil((t - today.getTime()) / 86400000);
+    };
+
+    const totals = {
+      total_files: enriched.length,
+      active_files: enriched.filter(f => !['settled'].includes(f.status.key)).length,
+      settled_files: enriched.filter(f => f.status.key === 'settled').length,
+      at_risk_files: enriched.filter(f => f.status.tone === 'critical' || f.status.tone === 'caution').length,
+      total_purchase_value: enriched.reduce((s, f) => s + (Number(f.purchase_price) || 0), 0),
+      total_proposed_loans: enriched.reduce((s, f) => s + (Number(f.latest_decision?.proposed_loan_amount) || 0), 0),
+      total_open_tasks: enriched.reduce((s, f) => s + (f.open_task_count || 0), 0),
+    };
+
+    const status_breakdown: Record<string, { label: string; tone: string; count: number }> = {};
+    for (const f of enriched) {
+      const k = f.status.key;
+      if (!status_breakdown[k]) status_breakdown[k] = { label: f.status.label, tone: f.status.tone, count: 0 };
+      status_breakdown[k].count += 1;
+    }
+
+    // Soonest upcoming dates across portfolio
+    const upcoming: Array<{ purchase_file_id: string; title: string; kind: string; due_date: string; days: number }> = [];
+    for (const f of enriched) {
+      if (f.finance_clause_date) {
+        const d = toDays(f.finance_clause_date);
+        if (d != null && d >= 0) upcoming.push({ purchase_file_id: f.id, title: f.title, kind: 'finance_clause', due_date: f.finance_clause_date, days: d });
+      }
+      if (f.settlement_date) {
+        const d = toDays(f.settlement_date);
+        if (d != null && d >= 0) upcoming.push({ purchase_file_id: f.id, title: f.title, kind: 'settlement', due_date: f.settlement_date, days: d });
+      }
+      if (f.next_critical_date) {
+        const d = toDays(f.next_critical_date.due_date);
+        if (d != null && d >= 0) upcoming.push({
+          purchase_file_id: f.id, title: f.title,
+          kind: f.next_critical_date.kind, due_date: f.next_critical_date.due_date, days: d,
+        });
+      }
+    }
+    upcoming.sort((a, b) => a.days - b.days);
+    const next_milestones = upcoming.slice(0, 5);
+
+    const avg_lvr = (() => {
+      const lvrs = enriched.map(f => f.latest_decision?.lvr).filter((x: any) => x != null) as number[];
+      if (!lvrs.length) return null;
+      return Math.round((lvrs.reduce((s, n) => s + Number(n), 0) / lvrs.length) * 10) / 10;
+    })();
+
+    const portfolio = { ...totals, avg_lvr, status_breakdown, next_milestones };
+
     return new Response(
-      JSON.stringify({ purchase_files: enriched }),
+      JSON.stringify({ purchase_files: enriched, portfolio }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
@@ -209,3 +264,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
+
