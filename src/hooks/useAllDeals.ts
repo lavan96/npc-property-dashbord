@@ -35,6 +35,15 @@ export interface DealWithClient {
   buildPayments?: any[];
   invoices?: any[];
   leadSource?: string | null;
+  purchase_file_id?: string | null;
+  financeFile?: {
+    id: string;
+    finance_status: string | null;
+    lender: string | null;
+    settlement_date: string | null;
+    risk_level: string | null;
+    title: string | null;
+  } | null;
 }
 
 /**
