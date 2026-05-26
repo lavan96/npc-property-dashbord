@@ -13,7 +13,8 @@ import { smartCapitalize } from '@/lib/nameUtils';
 export function FinanceCommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { invokeFinanceFunction, isAuthenticated } = useFinancePortalAuth();
+  const { invokeFinanceFunction, user } = useFinancePortalAuth();
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
