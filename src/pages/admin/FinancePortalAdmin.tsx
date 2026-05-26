@@ -31,6 +31,7 @@ import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLog
 import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
 import { EditFinanceContactDialog } from '@/components/admin/finance-portal/EditFinanceContactDialog';
 import { InviteFinanceContactDialog } from '@/components/admin/finance-portal/InviteFinanceContactDialog';
+import { GlobalPartnerPermissionsDialog } from '@/components/admin/finance-portal/GlobalPartnerPermissionsDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
 interface FinanceUserRow {
