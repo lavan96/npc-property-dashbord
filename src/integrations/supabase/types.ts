@@ -6855,6 +6855,7 @@ export type Database = {
           email: string
           failed_login_attempts: number
           finance_contact_id: string
+          global_permissions: Json | null
           has_accepted_terms: boolean
           has_completed_onboarding: boolean
           id: string
@@ -6882,6 +6883,7 @@ export type Database = {
           email: string
           failed_login_attempts?: number
           finance_contact_id: string
+          global_permissions?: Json | null
           has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string
@@ -6909,6 +6911,7 @@ export type Database = {
           email?: string
           failed_login_attempts?: number
           finance_contact_id?: string
+          global_permissions?: Json | null
           has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string

@@ -162,9 +162,31 @@ Deno.serve(async (req) => {
     // 1. Validate session
     const { data: portalUser, error: puErr } = await supabase
       .from('finance_portal_users')
-      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at')
+      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at, global_permissions')
       .eq('session_token', sessionToken)
       .maybeSingle();
+
+    // OR-merge helper: global baseline OR per-client matrix. Either side may be null.
+    const mergePermissions = (
+      global: any,
+      perClient: any,
+    ): Record<string, { view: boolean; edit: boolean; delete: boolean }> => {
+      const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+      const keys = new Set<string>([
+        ...Object.keys(global && typeof global === 'object' ? global : {}),
+        ...Object.keys(perClient && typeof perClient === 'object' ? perClient : {}),
+      ]);
+      for (const k of keys) {
+        const g = (global && global[k]) || {};
+        const p = (perClient && perClient[k]) || {};
+        out[k] = {
+          view: !!(g.view || p.view),
+          edit: !!(g.edit || p.edit),
+          delete: !!(g.delete || p.delete),
+        };
+      }
+      return out;
+    };
 
     if (puErr || !portalUser || !portalUser.is_active || portalUser.revoked_at) {
       return jsonResponse({ error: 'Invalid session' }, 401);
@@ -345,7 +367,7 @@ Deno.serve(async (req) => {
       const records = (assignments || []).map((a: any) => ({
         assignment_id: a.id,
         client_id: a.client_id,
-        permissions: a.permissions,
+        permissions: mergePermissions(portalUser.global_permissions, a.permissions),
         assigned_at: a.assigned_at,
         client: cMap.get(a.client_id) || null,
       }));
@@ -368,7 +390,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'You are not assigned to this client' }, 403);
     }
 
-    const permissions = (assignment.permissions || {}) as Record<string, { view: boolean; edit: boolean; delete: boolean }>;
+    const permissions = mergePermissions(portalUser.global_permissions, assignment.permissions);
 
     const audit = async (action: string, tableKey: string | null, entityId: string | null, metadata: any = {}) => {
       try {

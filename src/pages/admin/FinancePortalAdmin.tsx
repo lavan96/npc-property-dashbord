@@ -31,6 +31,7 @@ import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLog
 import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
 import { EditFinanceContactDialog } from '@/components/admin/finance-portal/EditFinanceContactDialog';
 import { InviteFinanceContactDialog } from '@/components/admin/finance-portal/InviteFinanceContactDialog';
+import { GlobalPartnerPermissionsDialog } from '@/components/admin/finance-portal/GlobalPartnerPermissionsDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
 interface FinanceUserRow {
@@ -80,6 +81,7 @@ export default function FinancePortalAdmin() {
   const [editUser, setEditUser] = useState<FinanceUserRow | null>(null);
   const [deleteUser, setDeleteUser] = useState<FinanceUserRow | null>(null);
   const [inviteDialog, setInviteDialog] = useState<{ open: boolean; user: FinanceUserRow | null; isResend: boolean }>({ open: false, user: null, isResend: false });
+  const [globalPermsForUser, setGlobalPermsForUser] = useState<FinanceUserRow | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -487,6 +489,13 @@ export default function FinancePortalAdmin() {
                                 Manage Client Assignments
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={!canManageAssignments || !u.portal_user}
+                                onClick={() => setGlobalPermsForUser(u)}
+                              >
+                                <Shield className="h-4 w-4 mr-2" />
+                                Global Permissions…
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 disabled={!canManageAssignments}
                                 onClick={() => { setActivityForUser(u); setActivityOpen(true); }}
                               >
@@ -569,6 +578,21 @@ export default function FinancePortalAdmin() {
         open={defaultsOpen}
         onOpenChange={setDefaultsOpen}
         onSaved={(m) => setDefaultPermissions(m)}
+      />
+
+      <GlobalPartnerPermissionsDialog
+        open={!!globalPermsForUser}
+        onOpenChange={(o) => { if (!o) setGlobalPermsForUser(null); }}
+        partner={
+          globalPermsForUser?.portal_user
+            ? {
+                portal_user_id: globalPermsForUser.portal_user.id,
+                contact_name: globalPermsForUser.name,
+                contact_email: globalPermsForUser.email,
+              }
+            : null
+        }
+        onSaved={() => loadAll()}
       />
 
       <ActivityLogDialog

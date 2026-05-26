@@ -44,6 +44,25 @@ function normalizePermissions(input: any): Record<string, { view: boolean; edit:
   return out;
 }
 
+// OR-merge a partner-level global baseline with a per-client matrix.
+// Either side may be null; result is the union of granted permissions.
+function mergePermissions(
+  global: any,
+  perClient: any,
+): Record<string, { view: boolean; edit: boolean; delete: boolean }> {
+  const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+  for (const t of PERMISSION_TABLES) {
+    const g = (global && typeof global === 'object' && global[t]) || {};
+    const p = (perClient && typeof perClient === 'object' && perClient[t]) || {};
+    out[t] = {
+      view: !!(g.view || p.view),
+      edit: !!(g.edit || p.edit),
+      delete: !!(g.delete || p.delete),
+    };
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -81,7 +100,7 @@ Deno.serve(async (req) => {
 
       const { data: portalUsers, error: pErr } = await supabase
         .from('finance_portal_users')
-        .select('id, finance_contact_id, email, is_active, invite_sent_at, invite_accepted_at, invite_token_expires_at, last_login_at, revoked_at, has_accepted_terms, has_completed_onboarding, terms_accepted_at, created_at');
+        .select('id, finance_contact_id, email, is_active, invite_sent_at, invite_accepted_at, invite_token_expires_at, last_login_at, revoked_at, has_accepted_terms, has_completed_onboarding, terms_accepted_at, created_at, global_permissions');
 
       if (pErr) throw pErr;
 
@@ -161,6 +180,15 @@ Deno.serve(async (req) => {
 
       if (aErr) throw aErr;
 
+      // Fetch the partner's global permission baseline so the admin UI can show
+      // the effective (merged) permission set per assignment.
+      const { data: partnerRow } = await supabase
+        .from('finance_portal_users')
+        .select('global_permissions')
+        .eq('id', finance_user_id)
+        .maybeSingle();
+      const globalPerms = partnerRow?.global_permissions || null;
+
       const clientIds = (assignments || []).map((a: any) => a.client_id);
       let clientsMap = new Map<string, any>();
       if (clientIds.length) {
@@ -180,11 +208,69 @@ Deno.serve(async (req) => {
 
       const records = (assignments || []).map((a: any) => ({
         ...a,
+        effective_permissions: mergePermissions(globalPerms, a.permissions),
         client: clientsMap.get(a.client_id) || null,
       }));
 
       return new Response(
-        JSON.stringify({ success: true, records }),
+        JSON.stringify({ success: true, records, global_permissions: globalPerms }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── get_partner_global_permissions ──
+    if (operation === 'get_partner_global_permissions') {
+      const { finance_user_id } = body;
+      if (!finance_user_id) {
+        return new Response(
+          JSON.stringify({ error: 'finance_user_id is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: row, error } = await supabase
+        .from('finance_portal_users')
+        .select('id, global_permissions, updated_at')
+        .eq('id', finance_user_id)
+        .maybeSingle();
+      if (error) throw error;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          global_permissions: row?.global_permissions || null,
+          has_global: !!row?.global_permissions,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── update_partner_global_permissions ──
+    if (operation === 'update_partner_global_permissions') {
+      const { finance_user_id, permissions, clear } = body;
+      if (!finance_user_id) {
+        return new Response(
+          JSON.stringify({ error: 'finance_user_id is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const nextValue = clear ? null : normalizePermissions(permissions);
+      const { error: uErr } = await supabase
+        .from('finance_portal_users')
+        .update({ global_permissions: nextValue, updated_at: new Date().toISOString() })
+        .eq('id', finance_user_id);
+      if (uErr) throw uErr;
+
+      await supabase.from('finance_portal_activity_log').insert({
+        finance_user_id,
+        actor_user_id: adminUserId,
+        actor_type: 'admin',
+        action: clear ? 'global_permissions_cleared' : 'global_permissions_updated',
+        entity_type: 'finance_portal_user',
+        entity_id: finance_user_id,
+        metadata: { global_permissions: nextValue },
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, global_permissions: nextValue }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
