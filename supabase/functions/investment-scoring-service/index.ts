@@ -263,10 +263,9 @@ function calculateAreaScore(input: AreaScoringInput): AreaScore {
   const rentalMarket = calcRentalMarket(input);
   const futureOutlook = calcFutureOutlook(input);
 
-  // Detect real-data presence per dimension (no defaults masquerading as signal)
-  const dp = (..._: any[]) => _.filter((v) => v !== undefined && v !== null && v !== '' && v !== 0 || v === 0 && false).length > 0;
-  const has = (v: any) => v !== undefined && v !== null && v !== '';
+  // Per-dimension data presence (real inputs only — no defaults counted).
   const hasNum = (v: any) => typeof v === 'number' && !Number.isNaN(v);
+
 
   const mmPoints: string[] = [];
   if (hasNum(input.priceGrowth1Year)) mmPoints.push('priceGrowth1Year');
