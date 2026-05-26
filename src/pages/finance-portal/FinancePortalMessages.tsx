@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBrand } from '@/branding/useBrand';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface ThreadRow {
   id: string;
@@ -154,7 +155,7 @@ export default function FinancePortalMessages() {
           <div className="space-y-2">
             <AnimatePresence initial={false}>
             {threads.map((t, idx) => {
-              const name = t.clients?.primary_contact_name || 'Client';
+              const name = smartCapitalize(t.clients?.primary_contact_name) || 'Client';
               const hasUnread = t.unread_count_partner > 0;
               const avatarBg = getAvatarColor(name);
 
@@ -204,7 +205,7 @@ export default function FinancePortalMessages() {
                           </span>
                           {t.clients?.secondary_contact_name && (
                             <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                              & {t.clients.secondary_contact_name}
+                              & {smartCapitalize(t.clients.secondary_contact_name)}
                             </span>
                           )}
                           {hasUnread && (

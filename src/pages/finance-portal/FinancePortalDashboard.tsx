@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useBrand } from '@/branding/useBrand';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 /* ── Skeleton loaders ── */
 function KpiSkeleton() {
@@ -331,14 +332,14 @@ export default function FinancePortalDashboard() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-semibold shrink-0">
-                            {(r.client?.primary_contact_name || '?')[0]?.toUpperCase()}
+                            {(smartCapitalize(r.client?.primary_contact_name) || '?')[0]?.toUpperCase()}
                           </div>
                           <div>
                             <div className="font-medium text-sm">
-                              {r.client?.primary_contact_name || '—'}
+                              {smartCapitalize(r.client?.primary_contact_name) || '—'}
                               {r.client?.secondary_contact_name && (
                                 <span className="text-muted-foreground font-normal text-xs ml-2">
-                                  & {r.client.secondary_contact_name}
+                                  & {smartCapitalize(r.client.secondary_contact_name)}
                                 </span>
                               )}
                             </div>

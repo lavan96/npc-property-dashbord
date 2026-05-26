@@ -173,42 +173,24 @@ export default function FinancePortalClientProfile() {
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Update active tab when default changes
   useEffect(() => {
     if (!activeTab && defaultTab) setActiveTab(defaultTab);
   }, [defaultTab]);
 
-  const updateScrollState = useCallback(() => {
-    const node = tabsScrollRef.current;
-    if (!node) return;
-    setCanScrollLeft(node.scrollLeft > 4);
-    setCanScrollRight(node.scrollLeft + node.clientWidth < node.scrollWidth - 4);
-  }, []);
+  const activeIndex = unlockedTabs.findIndex(t => t.key === activeTab);
+  const canGoPrev = activeIndex > 0;
+  const canGoNext = activeIndex >= 0 && activeIndex < unlockedTabs.length - 1;
 
-  const scrollTabs = useCallback((direction: 'left' | 'right') => {
-    const node = tabsScrollRef.current;
-    if (!node) return;
-    node.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
-  }, []);
+  const goToTab = useCallback((direction: 'prev' | 'next') => {
+    if (activeIndex < 0) return;
+    const nextIdx = direction === 'prev' ? activeIndex - 1 : activeIndex + 1;
+    const target = unlockedTabs[nextIdx];
+    if (target) setActiveTab(target.key);
+  }, [activeIndex, unlockedTabs]);
 
-  useEffect(() => {
-    updateScrollState();
-    const node = tabsScrollRef.current;
-    if (!node) return;
-
-    const handleScroll = () => updateScrollState();
-    node.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
-
-    return () => {
-      node.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
-    };
-  }, [allTabs.length, updateScrollState]);
-
+  // Keep the active tab scrolled into view
   useEffect(() => {
     const node = tabsScrollRef.current;
     if (!node || !activeTab) return;
@@ -325,10 +307,10 @@ export default function FinancePortalClientProfile() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
-                onClick={() => scrollTabs('left')}
-                disabled={!canScrollLeft}
-                aria-label="Scroll tabs left"
+                className="absolute left-0 top-1/2 z-10 inline-flex -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+                onClick={() => goToTab('prev')}
+                disabled={!canGoPrev}
+                aria-label="Previous tab"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -336,14 +318,14 @@ export default function FinancePortalClientProfile() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
-                onClick={() => scrollTabs('right')}
-                disabled={!canScrollRight}
-                aria-label="Scroll tabs right"
+                className="absolute right-0 top-1/2 z-10 inline-flex -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+                onClick={() => goToTab('next')}
+                disabled={!canGoNext}
+                aria-label="Next tab"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <div className="w-full md:px-10">
+              <div className="w-full px-9 md:px-10">
                 <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5 scroll-smooth">
                 {allTabs.map((tab) => {
                   const Icon = tab.icon;

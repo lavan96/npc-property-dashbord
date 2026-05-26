@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface NotificationItem {
   id: string;
@@ -149,7 +150,7 @@ export function FinancePortalNotificationBell() {
             <div className="divide-y">
               {items.map(item => {
                 const clientName = item.clients
-                  ? `${item.clients.first_name} ${item.clients.surname}`.trim()
+                  ? `${smartCapitalize(item.clients.first_name)} ${smartCapitalize(item.clients.surname)}`.trim()
                   : null;
                 return (
                   <button

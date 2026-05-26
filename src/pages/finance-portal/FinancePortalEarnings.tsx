@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 const fmt = (n: number) =>
   `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -642,7 +643,7 @@ export default function FinancePortalEarnings() {
                             {format(new Date(c.created_at), 'd MMM yyyy')}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium text-sm">{c.client_name_snapshot || '\u2014'}</div>
+                            <div className="font-medium text-sm">{smartCapitalize(c.client_name_snapshot) || '\u2014'}</div>
                             <div className="text-xs text-muted-foreground">{c.deal_type_snapshot || ''}</div>
                           </TableCell>
                           <TableCell className="text-xs">{c.trigger_event || '\u2014'}</TableCell>
@@ -687,7 +688,7 @@ export default function FinancePortalEarnings() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <p className="text-base font-semibold leading-tight text-foreground break-words">
-                              {c.client_name_snapshot || '—'}
+                              {smartCapitalize(c.client_name_snapshot) || '—'}
                             </p>
                             <p className="text-xs text-muted-foreground break-words sm:text-sm">
                               {c.deal_type_snapshot || 'Deal type unavailable'}
@@ -919,7 +920,7 @@ export default function FinancePortalEarnings() {
                   net={selectedCommission.net_amount}
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Client</div><div className="text-base font-semibold text-foreground">{selectedCommission.client_name_snapshot || '—'}</div><div className="text-sm text-muted-foreground">{selectedCommission.deal_type_snapshot || 'Deal type unavailable'}</div></CardContent></Card>
+                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Client</div><div className="text-base font-semibold text-foreground">{smartCapitalize(selectedCommission.client_name_snapshot) || '—'}</div><div className="text-sm text-muted-foreground">{selectedCommission.deal_type_snapshot || 'Deal type unavailable'}</div></CardContent></Card>
                   <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</div><div className="flex items-center gap-2"><span className={cn('h-2 w-2 rounded-full', STATUS_DOT[selectedCommission.status] || 'bg-zinc-400')} /><Badge variant={STATUS_VARIANT[selectedCommission.status] || 'outline'} className="capitalize">{selectedCommission.status}</Badge></div><div className="text-sm text-muted-foreground">Created {format(new Date(selectedCommission.created_at), 'd MMM yyyy')}</div></CardContent></Card>
                 </div>
                 <Card><CardContent className="space-y-3 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Breakdown</div><div className="grid gap-3 sm:grid-cols-2"><div><div className="text-xs text-muted-foreground">Trigger</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.trigger_event || '—'}</div></div><div><div className="text-xs text-muted-foreground">Commission basis</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.commission_basis || '—'}</div></div><div><div className="text-xs text-muted-foreground">Basis amount</div><div className="mt-1 text-sm text-foreground">{fmt(selectedCommission.basis_amount)}</div></div><div><div className="text-xs text-muted-foreground">Rate</div><div className="mt-1 text-sm text-foreground">{Number(selectedCommission.rate_pct || 0).toFixed(2)}%</div></div><div><div className="text-xs text-muted-foreground">Invoice ref</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.invoice_ref || '—'}</div></div><div><div className="text-xs text-muted-foreground">Paid at</div><div className="mt-1 text-sm text-foreground">{selectedCommission.paid_at ? format(new Date(selectedCommission.paid_at), 'd MMM yyyy') : '—'}</div></div></div>{selectedCommission.notes && <div><div className="text-xs text-muted-foreground">Notes</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.notes}</div></div>}</CardContent></Card>
@@ -948,7 +949,7 @@ export default function FinancePortalEarnings() {
                       <div className="space-y-3">
                         {statementLines.map((line) => (
                           <div key={line.id} className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-medium text-foreground break-words">{line.client_name_snapshot || '—'}</div><div className="text-xs text-muted-foreground break-words">{line.deal_type_snapshot || 'Deal type unavailable'}</div></div><div className="text-right"><div className="text-sm font-semibold text-primary">{fmt(line.net_snapshot || 0)}</div><div className="text-[11px] text-muted-foreground">{line.rate_pct_snapshot != null ? `${Number(line.rate_pct_snapshot).toFixed(2)}%` : '—'}</div></div></div>
+                            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-medium text-foreground break-words">{smartCapitalize(line.client_name_snapshot) || '—'}</div><div className="text-xs text-muted-foreground break-words">{line.deal_type_snapshot || 'Deal type unavailable'}</div></div><div className="text-right"><div className="text-sm font-semibold text-primary">{fmt(line.net_snapshot || 0)}</div><div className="text-[11px] text-muted-foreground">{line.rate_pct_snapshot != null ? `${Number(line.rate_pct_snapshot).toFixed(2)}%` : '—'}</div></div></div>
                             <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Trigger</div><div className="mt-1 break-words text-foreground">{line.trigger_event_snapshot || '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Accrual date</div><div className="mt-1 text-foreground">{line.accrual_date ? format(new Date(line.accrual_date), 'd MMM yyyy') : '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Basis</div><div className="mt-1 text-foreground">{line.basis_snapshot ? fmt(line.basis_snapshot) : '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Gross / GST</div><div className="mt-1 text-foreground">{fmt(line.gross_snapshot || 0)} / {fmt(line.gst_snapshot || 0)}</div></div></div>
                           </div>
                         ))}
