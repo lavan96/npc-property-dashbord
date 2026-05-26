@@ -95,37 +95,56 @@ export default function FinancePortalPurchaseFiles() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [inbox, setInbox] = useState<'mine' | 'team' | 'watching'>('mine');
   const [newOpen, setNewOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: payload, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-files'],
     queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', { operation: 'list_files' });
       if (error) throw new Error(error.message);
-      return data?.files ?? [];
+      return data ?? { files: [] };
     },
   });
+  const data = payload?.files ?? [];
+
+  const toggleWatch = async (fileId: string) => {
+    const { data: res, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'toggle_watch', file_id: fileId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(res?.is_watched ? 'Watching this file' : 'Removed from watchlist');
+    queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-files'] });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (data || []).filter((f: any) => {
+      if (inbox === 'mine' && !f.is_mine) return false;
+      if (inbox === 'watching' && !f.is_watched) return false;
+      if (inbox === 'team' && f.is_mine) return false;
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (!q) return true;
       const haystack = [
-        f.title,
-        f.property_address,
-        f.lender,
+        f.title, f.property_address, f.lender,
         smartCapitalize(`${f.clients?.primary_first_name || ''} ${f.clients?.primary_surname || ''}`),
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [data, search, statusFilter]);
+  }, [data, search, statusFilter, inbox]);
+
+  const counts = useMemo(() => ({
+    mine: (data || []).filter((f: any) => f.is_mine).length,
+    team: (data || []).filter((f: any) => !f.is_mine).length,
+    watching: (data || []).filter((f: any) => f.is_watched).length,
+  }), [data]);
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = { active: [], at_risk: [], on_hold: [], draft: [], settled: [], cancelled: [] };
     for (const f of filtered) (map[f.status] ||= []).push(f);
     return map;
   }, [filtered]);
+
 
   return (
     <div className="container mx-auto max-w-7xl py-8 px-4">
