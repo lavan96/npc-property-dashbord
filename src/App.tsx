@@ -246,6 +246,7 @@ const App = () => (
                                 <Route path="earnings" element={<FinancePortalEarnings />} />
                                 <Route path="lender-intelligence" element={<FinancePortalLenderIntelligence />} />
                                 <Route path="forecasting" element={<FinancePortalForecasting />} />
+                                <Route path="settings" element={<FinancePortalSettings />} />
 
                               </Route>
                             </Routes>
