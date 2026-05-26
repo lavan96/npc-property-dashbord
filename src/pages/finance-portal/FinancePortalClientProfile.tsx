@@ -21,6 +21,7 @@ import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPan
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
