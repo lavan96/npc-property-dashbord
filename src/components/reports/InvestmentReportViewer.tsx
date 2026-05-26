@@ -443,19 +443,36 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col items-end">
                         <span className="text-xs text-muted-foreground">Overall Score</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                          <span className={`text-2xl font-bold ${
-                            (report.investment_score.totalScore || 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
-                            (report.investment_score.totalScore || 0) >= 55 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-red-600 dark:text-red-400'
-                          }`}>
-                            {report.investment_score.totalScore || 0}
-                          </span>
-                          <span className="text-sm text-muted-foreground">/100</span>
-                        </div>
+                        {report.investment_score.coverage?.dataInsufficient || report.investment_score.totalScore == null ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-sm font-semibold text-muted-foreground">Insufficient data</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {report.investment_score.coverage?.partialLabel || 'Qualitative review only'}
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                              <span className={`text-2xl font-bold ${
+                                (report.investment_score.totalScore || 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
+                                (report.investment_score.totalScore || 0) >= 55 ? 'text-yellow-600 dark:text-yellow-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {report.investment_score.totalScore}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/100</span>
+                            </div>
+                            {report.investment_score.coverage && report.investment_score.coverage.coverageRatio < 1 && (
+                              <span className="text-[10px] text-muted-foreground mt-0.5">
+                                {report.investment_score.coverage.partialLabel}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
+
                   </div>
                 )}
               </CardHeader>
