@@ -163,6 +163,14 @@ export default function FinancePortalPurchaseFiles() {
         </Button>
       </div>
 
+      <Tabs value={inbox} onValueChange={(v) => setInbox(v as any)} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="mine">Mine <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.mine}</span></TabsTrigger>
+          <TabsTrigger value="team">Team <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.team}</span></TabsTrigger>
+          <TabsTrigger value="watching">Watching <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{counts.watching}</span></TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -185,6 +193,7 @@ export default function FinancePortalPurchaseFiles() {
           </SelectContent>
         </Select>
       </div>
+
 
       {isLoading ? (
         <div className="grid gap-3">
@@ -243,7 +252,16 @@ export default function FinancePortalPurchaseFiles() {
                                     <AlertTriangle className="h-3 w-3" /> High risk
                                   </Badge>
                                 )}
+                                {(() => { const a = agingTone(file.last_partner_action_at); return (
+                                  <Badge variant="outline" className={cn('text-[10px]', a.cls)} title="Time since last partner action">
+                                    {a.label}
+                                  </Badge>
+                                ); })()}
+                                {file.is_watched && (
+                                  <Badge variant="outline" className="text-[10px] gap-1"><Eye className="h-3 w-3" /> Watching</Badge>
+                                )}
                               </div>
+
                               <p className="text-sm text-muted-foreground truncate mt-0.5">
                                 {clientName} · {PURCHASE_TYPE_LABEL[file.purchase_type] || file.purchase_type}
                                 {file.property_address ? ` · ${file.property_address}` : ''}
