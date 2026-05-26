@@ -14,6 +14,10 @@ const corsHeaders = {
 const DECISION_COLUMNS = [
   'outcome','rationale','snapshot_purchase_price','snapshot_estimated_rent_weekly',
   'snapshot_client_contribution','snapshot_max_approved_budget','snapshot_lender','decided_at',
+  // Chunk 5 — expanded green-light fields
+  'decision_expiry_date','max_comfortable_price','estimated_borrowing_cap','proposed_loan_amount',
+  'deposit_required','shortfall_required','lvr','lmi_applicable','lmi_amount',
+  'preferred_lender_pathway','broker_notes','supporting_document_id',
 ];
 const CONDITION_COLUMNS = [
   'title','description','owner','status','due_date','document_id','sort_order','notes','satisfied_at',
