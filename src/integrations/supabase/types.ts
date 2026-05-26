@@ -3472,6 +3472,7 @@ export type Database = {
           id: string
           impersonator_finance_contact_id: string | null
           impersonator_finance_user_id: string | null
+          impersonator_staff_user_id: string | null
           is_readonly: boolean
           session_token: string
           user_id: string
@@ -3482,6 +3483,7 @@ export type Database = {
           id?: string
           impersonator_finance_contact_id?: string | null
           impersonator_finance_user_id?: string | null
+          impersonator_staff_user_id?: string | null
           is_readonly?: boolean
           session_token: string
           user_id: string
@@ -3492,6 +3494,7 @@ export type Database = {
           id?: string
           impersonator_finance_contact_id?: string | null
           impersonator_finance_user_id?: string | null
+          impersonator_staff_user_id?: string | null
           is_readonly?: boolean
           session_token?: string
           user_id?: string
@@ -6578,10 +6581,11 @@ export type Database = {
           created_at: string
           expires_at: string
           finance_contact_id: string | null
-          finance_user_id: string
+          finance_user_id: string | null
           id: string
           ip_address: string | null
           is_readonly: boolean
+          staff_user_id: string | null
           target_portal_user_id: string | null
           token: string
           user_agent: string | null
@@ -6593,10 +6597,11 @@ export type Database = {
           created_at?: string
           expires_at?: string
           finance_contact_id?: string | null
-          finance_user_id: string
+          finance_user_id?: string | null
           id?: string
           ip_address?: string | null
           is_readonly?: boolean
+          staff_user_id?: string | null
           target_portal_user_id?: string | null
           token: string
           user_agent?: string | null
@@ -6608,10 +6613,11 @@ export type Database = {
           created_at?: string
           expires_at?: string
           finance_contact_id?: string | null
-          finance_user_id?: string
+          finance_user_id?: string | null
           id?: string
           ip_address?: string | null
           is_readonly?: boolean
+          staff_user_id?: string | null
           target_portal_user_id?: string | null
           token?: string
           user_agent?: string | null
