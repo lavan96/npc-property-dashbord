@@ -202,60 +202,26 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="decisions"><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
           <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
           <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
+          <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
+          <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
-          <OverviewTab file={data} onSave={updateField} />
+        <TabsContent value="overview"><OverviewTab file={data} onSave={updateField} /></TabsContent>
+        <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
+        <TabsContent value="documents"><DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} /></TabsContent>
+        <TabsContent value="decisions"><FinanceDecisionsTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="conditions"><ConditionsTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="valuation"><ValuationsTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="risks"><RiskRegisterTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="borrowing">
+          <BorrowingSnapshotCard
+            fileId={fileId!}
+            snapshot={data.borrowing_snapshot || {}}
+            updatedAt={data.borrowing_snapshot_updated_at}
+          />
         </TabsContent>
-
-        <TabsContent value="dates">
-          <CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} />
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
-        </TabsContent>
-
-        <TabsContent value="decisions">
-          <FinanceDecisionsTab fileId={fileId!} />
-        </TabsContent>
-
-        <TabsContent value="conditions">
-          <ConditionsTab fileId={fileId!} />
-        </TabsContent>
-
-        <TabsContent value="valuation">
-          <ValuationsTab fileId={fileId!} />
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Status & activity history</CardTitle></CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No activity yet.</p>
-              ) : (
-                <ol className="relative border-l border-border pl-6 space-y-4">
-                  {[...history].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(h => (
-                    <li key={h.id} className="relative">
-                      <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-primary" />
-                      <p className="text-sm">
-                        <span className="font-medium">{h.event_type.replace(/_/g, ' ')}</span>
-                        {h.from_value && h.to_value && (
-                          <span className="text-muted-foreground"> · {h.from_value} → {h.to_value}</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(h.created_at).toLocaleString('en-AU')}
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
   );
