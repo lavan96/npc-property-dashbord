@@ -122,6 +122,7 @@ import FinancePortalMessages from "./pages/finance-portal/FinancePortalMessages"
 import FinancePortalEarnings from "./pages/finance-portal/FinancePortalEarnings";
 import FinancePortalLenderIntelligence from "./pages/finance-portal/FinancePortalLenderIntelligence";
 import FinancePortalForecasting from "./pages/finance-portal/FinancePortalForecasting";
+import FinancePortalReports from "./pages/finance-portal/FinancePortalReports";
 import FinancePortalSettings from "./pages/finance-portal/FinancePortalSettings";
 
 import FinancePortalPurchaseFiles from "./pages/finance-portal/FinancePortalPurchaseFiles";
@@ -250,6 +251,7 @@ const App = () => (
                                 <Route path="earnings" element={<FinancePortalEarnings />} />
                                 <Route path="lender-intelligence" element={<FinancePortalLenderIntelligence />} />
                                 <Route path="forecasting" element={<FinancePortalForecasting />} />
+                                <Route path="reports" element={<FinancePortalReports />} />
                                 <Route path="settings" element={<FinancePortalSettings />} />
 
                               </Route>
