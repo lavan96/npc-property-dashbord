@@ -81,6 +81,7 @@ export default function FinancePortalAdmin() {
   const [editUser, setEditUser] = useState<FinanceUserRow | null>(null);
   const [deleteUser, setDeleteUser] = useState<FinanceUserRow | null>(null);
   const [inviteDialog, setInviteDialog] = useState<{ open: boolean; user: FinanceUserRow | null; isResend: boolean }>({ open: false, user: null, isResend: false });
+  const [globalPermsForUser, setGlobalPermsForUser] = useState<FinanceUserRow | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
