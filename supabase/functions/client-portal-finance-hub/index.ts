@@ -147,13 +147,13 @@ Deno.serve(async (req) => {
       const today = new Date().toISOString().slice(0, 10);
       const { data: crit } = await supabase
         .from('purchase_file_critical_dates')
-        .select('purchase_file_id, date_kind, due_date')
+        .select('purchase_file_id, date_type, due_date')
         .in('purchase_file_id', fileIds)
         .gte('due_date', today)
         .order('due_date', { ascending: true });
       for (const c of (crit || [])) {
         if (!nextCritByFile.has(c.purchase_file_id)) {
-          nextCritByFile.set(c.purchase_file_id, { kind: c.date_kind, due_date: c.due_date });
+          nextCritByFile.set(c.purchase_file_id, { kind: c.date_type, due_date: c.due_date });
         }
       }
     }
