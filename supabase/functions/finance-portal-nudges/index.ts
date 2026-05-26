@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
     if (!token) return json({ error: 'Session token required' }, 401);
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
-      .select('id, is_active, revoked_at, session_expires_at, first_name, last_name, email')
+      .select('id, is_active, revoked_at, session_expires_at, email')
       .eq('session_token', token)
       .maybeSingle();
     if (!portalUser || !portalUser.is_active || portalUser.revoked_at) {
