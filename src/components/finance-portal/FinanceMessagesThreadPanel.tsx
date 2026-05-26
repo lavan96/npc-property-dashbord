@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Lock, Unlock } from 'lucide-react';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface ThreadMeta {
   id: string;
