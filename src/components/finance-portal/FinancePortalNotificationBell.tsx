@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { smartCapitalize } from '@/lib/nameUtils';
 
 interface NotificationItem {
   id: string;
