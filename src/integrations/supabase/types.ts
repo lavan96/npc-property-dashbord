@@ -12225,6 +12225,90 @@ export type Database = {
           },
         ]
       }
+      purchase_file_lender_packets: {
+        Row: {
+          client_id: string
+          cover_sheet_included: boolean
+          created_at: string
+          download_count: number
+          file_count: number
+          filename: string
+          generated_by_email: string | null
+          generated_by_finance_user_id: string | null
+          id: string
+          last_downloaded_at: string | null
+          lender_key: string | null
+          lender_name: string | null
+          manifest: Json
+          missing_required: Json
+          missing_required_count: number
+          notes: string | null
+          purchase_file_id: string
+          quality_flags: Json
+          total_size_bytes: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          cover_sheet_included?: boolean
+          created_at?: string
+          download_count?: number
+          file_count?: number
+          filename: string
+          generated_by_email?: string | null
+          generated_by_finance_user_id?: string | null
+          id?: string
+          last_downloaded_at?: string | null
+          lender_key?: string | null
+          lender_name?: string | null
+          manifest?: Json
+          missing_required?: Json
+          missing_required_count?: number
+          notes?: string | null
+          purchase_file_id: string
+          quality_flags?: Json
+          total_size_bytes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          cover_sheet_included?: boolean
+          created_at?: string
+          download_count?: number
+          file_count?: number
+          filename?: string
+          generated_by_email?: string | null
+          generated_by_finance_user_id?: string | null
+          id?: string
+          last_downloaded_at?: string | null
+          lender_key?: string | null
+          lender_name?: string | null
+          manifest?: Json
+          missing_required?: Json
+          missing_required_count?: number
+          notes?: string | null
+          purchase_file_id?: string
+          quality_flags?: Json
+          total_size_bytes?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_lender_packets_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_lender_packets_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
       purchase_file_risks: {
         Row: {
           category: string
@@ -12300,6 +12384,96 @@ export type Database = {
           },
           {
             foreignKeyName: "purchase_file_risks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      purchase_file_settlement_tasks: {
+        Row: {
+          blocked_reason: string | null
+          client_id: string
+          completed_at: string | null
+          completed_by_finance_user_id: string | null
+          completed_by_team_user_id: string | null
+          created_at: string
+          created_by_finance_user_id: string | null
+          created_by_team_user_id: string | null
+          description: string | null
+          due_date: string | null
+          due_offset_days: number | null
+          id: string
+          is_auto_seeded: boolean
+          is_required: boolean
+          label: string
+          notes: string | null
+          owner: string
+          purchase_file_id: string
+          sort_order: number
+          status: Database["public"]["Enums"]["pf_settlement_task_status"]
+          task_key: Database["public"]["Enums"]["pf_settlement_task_key"]
+          updated_at: string
+        }
+        Insert: {
+          blocked_reason?: string | null
+          client_id: string
+          completed_at?: string | null
+          completed_by_finance_user_id?: string | null
+          completed_by_team_user_id?: string | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          due_offset_days?: number | null
+          id?: string
+          is_auto_seeded?: boolean
+          is_required?: boolean
+          label: string
+          notes?: string | null
+          owner?: string
+          purchase_file_id: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["pf_settlement_task_status"]
+          task_key: Database["public"]["Enums"]["pf_settlement_task_key"]
+          updated_at?: string
+        }
+        Update: {
+          blocked_reason?: string | null
+          client_id?: string
+          completed_at?: string | null
+          completed_by_finance_user_id?: string | null
+          completed_by_team_user_id?: string | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          due_offset_days?: number | null
+          id?: string
+          is_auto_seeded?: boolean
+          is_required?: boolean
+          label?: string
+          notes?: string | null
+          owner?: string
+          purchase_file_id?: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["pf_settlement_task_status"]
+          task_key?: Database["public"]["Enums"]["pf_settlement_task_key"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_settlement_tasks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_settlement_tasks_purchase_file_id_fkey"
             columns: ["purchase_file_id"]
             isOneToOne: false
             referencedRelation: "v_purchase_file_deal_drift"
@@ -14573,6 +14747,7 @@ export type Database = {
       resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       retry_failed_bulk_items: { Args: { p_job_id: string }; Returns: number }
       seed_sample_schools: { Args: never; Returns: undefined }
+      seed_settlement_runway: { Args: { _file_id: string }; Returns: undefined }
       validate_property_specs: {
         Args: { specs: Json }
         Returns: {
@@ -14876,6 +15051,22 @@ export type Database = {
         | "decision_required"
         | "payment_required"
         | "other"
+      pf_settlement_task_key:
+        | "identity_verified"
+        | "solicitor_engaged"
+        | "loan_docs_issued"
+        | "loan_docs_signed"
+        | "insurance_arranged"
+        | "settlement_funds_ready"
+        | "lender_funder_booked"
+        | "final_inspection"
+        | "settlement_attended"
+      pf_settlement_task_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "blocked"
+        | "not_applicable"
       portal_report_request_status:
         | "pending"
         | "in_progress"
@@ -15431,6 +15622,24 @@ export const Constants = {
         "decision_required",
         "payment_required",
         "other",
+      ],
+      pf_settlement_task_key: [
+        "identity_verified",
+        "solicitor_engaged",
+        "loan_docs_issued",
+        "loan_docs_signed",
+        "insurance_arranged",
+        "settlement_funds_ready",
+        "lender_funder_booked",
+        "final_inspection",
+        "settlement_attended",
+      ],
+      pf_settlement_task_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "blocked",
+        "not_applicable",
       ],
       portal_report_request_status: [
         "pending",
