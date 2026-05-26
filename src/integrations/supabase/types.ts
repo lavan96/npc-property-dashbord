@@ -6492,6 +6492,45 @@ export type Database = {
           },
         ]
       }
+      finance_partner_goals: {
+        Row: {
+          commission_target_net: number | null
+          created_at: string
+          created_by_finance_user_id: string | null
+          finance_contact_id: string
+          id: string
+          month_start: string
+          notes: string | null
+          settlement_target_amount: number | null
+          settlement_target_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          commission_target_net?: number | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          finance_contact_id: string
+          id?: string
+          month_start: string
+          notes?: string | null
+          settlement_target_amount?: number | null
+          settlement_target_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          commission_target_net?: number | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          finance_contact_id?: string
+          id?: string
+          month_start?: string
+          notes?: string | null
+          settlement_target_amount?: number | null
+          settlement_target_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       finance_partner_statement_lines: {
         Row: {
           accrual_date: string | null
