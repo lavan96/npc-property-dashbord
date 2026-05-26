@@ -270,8 +270,8 @@ export default function FinancePortalClientProfile() {
             <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{name}</h1>
-                {client.secondary_contact_name && (
-                  <span className="text-sm text-muted-foreground">& {client.secondary_contact_name}</span>
+                {secondaryName && (
+                  <span className="text-sm text-muted-foreground">& {secondaryName}</span>
                 )}
                 <Badge variant="outline" className="capitalize w-fit mx-auto sm:mx-0">{status}</Badge>
               </div>
