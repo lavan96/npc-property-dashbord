@@ -463,7 +463,7 @@ const COMPASS40_FORBIDDEN_LINE_PATTERNS: RegExp[] = [
   /^[\s>*\-]*\**\s*Negative(ly)?\s+Geared\b/i,
   /^[\s>*\-]*\**\s*Investment\s+Grade\b/i,
   /^[\s>*\-]*\**\s*Total\s+Investment\s+Score\b/i,
-  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b.*\d+\s*\/\s*100/i,
+  /^[\s>*\-]*\**\s*(Growth|Location|Yield|Demand|Risk)\s+Score\b/i,
 ];
 
 // Table rows / KPI cells we should drop wholesale. Also used to detect entire
@@ -484,6 +484,8 @@ const COMPASS40_FORBIDDEN_CELL_PATTERNS: RegExp[] = [
   /\|\s*Recommendation\s*\|/i,
   /\|\s*HOLD\b/i,
   /\|\s*Capital\s+Growth\b/i,
+  /\|\s*(Growth|Location|Yield|Demand|Risk)\s+Score\s*\|/i,
+  /\|\s*Contribution\s+to\s+Total\s*\|/i,
 ];
 
 // Whole sections (H2/H3) that must be dropped under Compass-40.
@@ -578,16 +580,26 @@ function sanitizeCompass40Content(raw: string): string {
       );
       if (tainted || inForbiddenSection) continue;
 
-      // SEIFA validation: if all deciles identical, drop table (templated/fake).
+      // SEIFA validation: drop table if (a) all deciles identical (templated),
+      // (b) any row's text label contradicts its decile direction, or
+      // (c) the table is self-flagged as "Illustrative" / "Scenario".
       const isSeifa = blk.lines.some((ln) => /\b(SEIFA|IRSAD|IRSD|IEO|IER)\b/i.test(ln));
       if (isSeifa) {
         const deciles = blk.lines
           .map((ln) => ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|/))
           .filter(Boolean)
-          .map((m) => m![1]);
-        if (deciles.length >= 3 && new Set(deciles).size === 1) {
-          continue; // all identical → fabricated
-        }
+          .map((m) => parseInt(m![1], 10));
+        if (deciles.length >= 3 && new Set(deciles).size === 1) continue;
+        const contradicts = blk.lines.some((ln) => {
+          const m = ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|.*\|\s*([^|]+?)\s*\|?\s*$/);
+          if (!m) return false;
+          const dec = parseInt(m[1], 10);
+          const label = m[2].toLowerCase();
+          if (dec >= 7 && /\bdisadvantag/.test(label) && !/low|moderate\s+to\s+low/.test(label)) return true;
+          if (dec <= 3 && /\badvantag/.test(label) && !/dis/.test(label)) return true;
+          return false;
+        });
+        if (contradicts) continue;
       }
       kept.push(...blk.lines);
       continue;
@@ -645,7 +657,9 @@ function sanitizeCompass40Content(raw: string): string {
 
   // Strip leaked binding labels left in prose (e.g. "Interest Rate: 6.5%",
   // "Capital Growth: 5% per annum") — these come from the override-injection.
-  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:p\.?\s*a\.?)?\)?/gi, '');
+  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:per\s+annum|p\.?\s*a\.?)?\s*\)?/gi, '');
+  // Drop stray placeholder strings the model never resolved (e.g. "Medical Centre Name").
+  out = out.replace(/\b(Medical Centre|School|Suburb|Hospital|Park|Station|Shopping Centre)\s+Name\b/gi, '');
 
   // Drop orphaned "What This Means" labels with no body before next heading.
   out = out.replace(
@@ -658,6 +672,28 @@ function sanitizeCompass40Content(raw: string): string {
 
   // Collapse 3+ blank lines that result from dropped rows.
   out = out.replace(/\n{3,}/g, '\n\n').trimEnd();
+
+  // Drop self-flagged "Illustrative" / "Scenario" disclaimers that follow
+  // SEIFA or other data tables (these admit the numbers are fabricated).
+  out = out.replace(/\([^)]*\b(Illustrative|Consistent\s+Scenario|Indicative\s+Scenario|Hypothetical)\b[^)]*\)/gi, '');
+
+  // Cross-section dedup: drop a markdown table if an identical row signature
+  // appeared earlier in the same content blob (e.g. "Family demand strength
+  // vs trade-offs" table rendered twice).
+  const seenTableSig = new Set<string>();
+  out = out.split(/\n\n+/).filter((para) => {
+    if (!/^\s*\|/.test(para)) return true;
+    const sig = para
+      .split('\n')
+      .filter((l) => l.trim().startsWith('|') && !/^\s*\|[\s\-:|]+\|\s*$/.test(l))
+      .map((l) => l.replace(/\s+/g, ' ').trim().toLowerCase())
+      .slice(0, 4)
+      .join('||');
+    if (!sig) return true;
+    if (seenTableSig.has(sig)) return false;
+    seenTableSig.add(sig);
+    return true;
+  }).join('\n\n');
 
   return out;
 }
@@ -4186,8 +4222,8 @@ ${sourceSpecificInstructions}
     // 5% p.a.) caused the model to regurgitate them verbatim into narrative
     // prose. For Compass-40 we strip every financial override line at the
     // source so the LLM never sees them.
+    // HARDENED: Strip financial overrides for ANY compass-tier report.
     const __compass40Mode =
-      (propertyDetails?.generationEngine === 'compass-40') &&
       ['compass', 'compass-40'].includes(propertyDetails?.reportTier || 'compass');
     const __FINANCIAL_OVERRIDE_KEYS = new Set<string>([
       'purchasePrice','landPrice','buildPrice','weeklyRent','depositValue',
@@ -4410,15 +4446,15 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       console.log('🔍 Fetching AI structure template directly from database...');
 
       const rawTier = propertyDetails?.reportTier || 'compass';
-      // Engine selector:
-      //   'legacy'     → original DB-template path, untouched.
-      //   'compass-40' → SAME legacy DB-template path, plus a Compass-40 overlay
-      //                  appended to the prompt that strips financial sections
-      //                  and compresses the remainder per the client brief.
       const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
-      compass40OverlayActive = generationEngine === 'compass-40'
-        && ['compass', 'compass-40'].includes(rawTier);
-      console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive})`);
+      // HARDENED (2026-05): Activate Compass-40 protections (sanitizer,
+      // financial-override stripping, canonical section registry) for ANY
+      // compass-tier report — regardless of generationEngine. Compass is, by
+      // definition, the non-financial location/property-fit report. Without
+      // this, legacy-engine compass runs leak Purchase Price, Interest Rate,
+      // Yield/Risk Scores and HOLD recommendations into the prose.
+      compass40OverlayActive = ['compass', 'compass-40'].includes(rawTier);
+      console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive}, tier: ${rawTier})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
         'briefing': 'executive',
