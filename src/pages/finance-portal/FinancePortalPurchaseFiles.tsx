@@ -23,6 +23,7 @@ import { smartCapitalize } from '@/lib/nameUtils';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { SavedViewsBar } from '@/components/finance-portal/SavedViewsBar';
 
 function agingTone(iso: string | null | undefined) {
   if (!iso) return { label: 'no activity', cls: 'bg-muted text-muted-foreground' };
@@ -192,6 +193,15 @@ export default function FinancePortalPurchaseFiles() {
             <SelectItem value="settled">Settled</SelectItem>
           </SelectContent>
         </Select>
+        <SavedViewsBar
+          scope="purchase_files"
+          currentFilters={{ inbox, statusFilter, search }}
+          onApply={(filters) => {
+            if (filters.inbox) setInbox(filters.inbox);
+            if (filters.statusFilter) setStatusFilter(filters.statusFilter);
+            if (typeof filters.search === 'string') setSearch(filters.search);
+          }}
+        />
       </div>
 
 

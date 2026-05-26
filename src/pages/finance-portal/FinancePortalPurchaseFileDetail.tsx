@@ -27,6 +27,7 @@ import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
 import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnapshotCard';
 import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
 import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
+import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,7 @@ export default function FinancePortalPurchaseFileDetail() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const queryClient = useQueryClient();
   const [savingStatus, setSavingStatus] = useState(false);
+  const [tab, setTab] = useState('overview');
 
   const { data: getRes, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-file', fileId],
@@ -131,6 +133,15 @@ export default function FinancePortalPurchaseFileDetail() {
     }
   };
 
+  const toggleWatch = async () => {
+    const { data: res, error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+      operation: 'toggle_watch', file_id: fileId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(res?.is_watched ? 'Watching this file' : 'Removed from watchlist');
+    refresh();
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto max-w-6xl py-8 px-4 space-y-4">
@@ -157,7 +168,18 @@ export default function FinancePortalPurchaseFileDetail() {
 
   return (
     <div className="container mx-auto max-w-6xl py-6 px-4">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/finance/purchase-files')} className="mb-4 -ml-2">
+      <PurchaseFileStickyBar
+        title={data.title}
+        status={data.status}
+        isWatched={data.is_watched}
+        onToggleWatch={toggleWatch}
+        onJumpDates={() => setTab('dates')}
+        onJumpDocs={() => setTab('documents')}
+        onJumpDecisions={() => setTab('decisions')}
+        onOpenMessages={() => navigate(`/finance/messages?client=${data.client_id}`)}
+      />
+
+      <Button variant="ghost" size="sm" onClick={() => navigate('/finance/purchase-files')} className="mt-4 mb-4 -ml-2">
         <ArrowLeft className="h-4 w-4 mr-1" /> All purchase files
       </Button>
 
@@ -197,7 +219,7 @@ export default function FinancePortalPurchaseFileDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>

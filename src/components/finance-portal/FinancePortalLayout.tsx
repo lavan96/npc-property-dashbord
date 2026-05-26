@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FinancePortalOnboardingGate } from './FinancePortalOnboardingGate';
 import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
+import { FinanceCommandPalette } from './FinanceCommandPalette';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -81,6 +82,7 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <FinancePortalOnboardingGate />
+      <FinanceCommandPalette />
 
       {/* ── Desktop Layout ── */}
       <div className="flex-1 flex">
@@ -158,6 +160,16 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
               </Link>
 
               <div className="ml-auto flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex h-9 gap-2 text-muted-foreground"
+                  onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                  title="Search (⌘K)"
+                >
+                  <span className="text-xs">Search…</span>
+                  <kbd className="hidden lg:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">⌘K</kbd>
+                </Button>
                 <FinancePortalNotificationBell />
 
                 <DropdownMenu>
