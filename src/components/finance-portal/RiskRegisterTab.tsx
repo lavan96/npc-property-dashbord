@@ -1,7 +1,7 @@
 /**
  * Phase 5 — Risk register tab for a purchase file.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
