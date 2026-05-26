@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Home as HomeIcon, Briefcase,
   FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
-  MessageSquare, BarChart3, CalendarDays, Landmark
+  MessageSquare, BarChart3, CalendarDays, Landmark, ListChecks
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
