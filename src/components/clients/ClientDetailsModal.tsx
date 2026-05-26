@@ -91,6 +91,7 @@ import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
 import { ClientConversationsTab } from './ClientConversationsTab';
+import { ClientPortalMessagesPanel } from './ClientPortalMessagesPanel';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 import { FinancePartnersCard } from './FinancePartnersCard';
