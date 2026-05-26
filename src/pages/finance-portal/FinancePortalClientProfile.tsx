@@ -238,7 +238,8 @@ export default function FinancePortalClientProfile() {
   }
 
   const client = data.client;
-  const name = client.primary_contact_name || '—';
+  const name = smartCapitalize(client.primary_contact_name) || '—';
+  const secondaryName = smartCapitalize(client.secondary_contact_name);
   const avatarBg = getAvatarColor(name);
   const status = (client.status || 'active').toLowerCase();
 
