@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // ── helpers ──
     async function loadDriftClients() {
       const { data: assigns } = await supabase
-        .from('finance_partner_client_assignments')
+        .from('finance_portal_client_assignments')
         .select('client_id, finance_user_id');
       const assignedClientIds = new Set((assigns || []).map((a: any) => a.client_id));
 
