@@ -5643,6 +5643,8 @@ export type Database = {
           created_by_finance_user_id: string | null
           created_by_team_user_id: string | null
           description: string | null
+          detected_doc_date: string | null
+          detected_doc_type: string | null
           document_id: string | null
           expiry_date: string | null
           id: string
@@ -5651,9 +5653,13 @@ export type Database = {
           notes: string | null
           owner: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id: string
+          quality_checked_at: string | null
+          quality_flags: Json
+          quality_status: string
           request_message: string | null
           requested_at: string | null
           requested_by_finance_user_id: string | null
+          soft_expiry_date: string | null
           sort_order: number
           status: Database["public"]["Enums"]["document_requirement_status"]
           template_id: string | null
@@ -5673,6 +5679,8 @@ export type Database = {
           created_by_finance_user_id?: string | null
           created_by_team_user_id?: string | null
           description?: string | null
+          detected_doc_date?: string | null
+          detected_doc_type?: string | null
           document_id?: string | null
           expiry_date?: string | null
           id?: string
@@ -5681,9 +5689,13 @@ export type Database = {
           notes?: string | null
           owner?: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id: string
+          quality_checked_at?: string | null
+          quality_flags?: Json
+          quality_status?: string
           request_message?: string | null
           requested_at?: string | null
           requested_by_finance_user_id?: string | null
+          soft_expiry_date?: string | null
           sort_order?: number
           status?: Database["public"]["Enums"]["document_requirement_status"]
           template_id?: string | null
@@ -5703,6 +5715,8 @@ export type Database = {
           created_by_finance_user_id?: string | null
           created_by_team_user_id?: string | null
           description?: string | null
+          detected_doc_date?: string | null
+          detected_doc_type?: string | null
           document_id?: string | null
           expiry_date?: string | null
           id?: string
@@ -5711,9 +5725,13 @@ export type Database = {
           notes?: string | null
           owner?: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id?: string
+          quality_checked_at?: string | null
+          quality_flags?: Json
+          quality_status?: string
           request_message?: string | null
           requested_at?: string | null
           requested_by_finance_user_id?: string | null
+          soft_expiry_date?: string | null
           sort_order?: number
           status?: Database["public"]["Enums"]["document_requirement_status"]
           template_id?: string | null
@@ -6730,6 +6748,47 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      finance_portal_doc_message_templates: {
+        Row: {
+          body: string
+          created_at: string
+          finance_user_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_doc_message_templates_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       finance_portal_documents: {
         Row: {

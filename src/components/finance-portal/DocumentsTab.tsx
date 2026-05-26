@@ -16,10 +16,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   Send, Plus, Trash2, CheckCircle2, ShieldCheck, AlertCircle, Clock, FileCheck,
-  Sparkles, Loader2, FileText, Eye, EyeOff,
+  Sparkles, Loader2, FileText, Eye, EyeOff, Package, ScanLine, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { LenderPacketDialog } from './LenderPacketDialog';
+
 
 const CATEGORY_LABEL: Record<string, string> = {
   identity: 'Identity',
@@ -70,7 +72,10 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [requestOpen, setRequestOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [packetOpen, setPacketOpen] = useState(false);
+  const [rerequestFor, setRerequestFor] = useState<any | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const { data: requirements, isLoading } = useQuery({
@@ -83,6 +88,18 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       return (data?.requirements || []) as any[];
     },
   });
+
+  const { data: messageTemplates } = useQuery({
+    queryKey: ['finance-portal-doc-msg-templates'],
+    queryFn: async () => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+        operation: 'list_message_templates',
+      });
+      if (error) throw new Error(error.message);
+      return (data?.templates || []) as any[];
+    },
+  });
+
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['finance-portal-doc-requirements', fileId] });
 
@@ -103,8 +120,80 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
     const verified = list.filter(r => r.status === 'verified').length;
     const requested = list.filter(r => r.status === 'requested').length;
     const outstanding = list.filter(r => r.is_required && !['verified','uploaded','waived'].includes(r.status)).length;
-    return { total, verified, requested, outstanding };
+    const qualityIssues = list.filter(r => r.quality_status === 'error' || r.quality_status === 'warning').length;
+    const expiringSoon = list.filter(r => {
+      if (!r.soft_expiry_date) return false;
+      const days = Math.floor((new Date(r.soft_expiry_date).getTime() - Date.now()) / 86400000);
+      return days >= 0 && days <= 30;
+    }).length;
+    return { total, verified, requested, outstanding, qualityIssues, expiringSoon };
   }, [requirements]);
+
+  const analyzeAll = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+        operation: 'analyze_quality_bulk', purchase_file_id: fileId,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(`Analyzed ${data?.analyzed || 0} document(s)`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message || 'Analyze failed');
+    } finally { setBusy(false); }
+  };
+
+  const analyzeOne = async (reqId: string) => {
+    const { error } = await invokeFinanceFunction('finance-portal-document-requirements', {
+      operation: 'analyze_quality', requirement_id: reqId,
+    });
+    if (error) return toast.error(error.message);
+    refresh();
+  };
+
+  const openRerequest = (req: any) => {
+    // Pre-select template based on quality flags
+    const flags = (req.quality_flags || []) as any[];
+    let preferredReason = 'chase';
+    if (flags.some(f => f.code === 'wrong_type')) preferredReason = 'wrong_type';
+    else if (flags.some(f => f.code === 'stale' || f.code === 'aging')) preferredReason = 'stale';
+    else if (flags.some(f => f.code === 'low_resolution' || f.code === 'prefer_pdf')) preferredReason = 'illegible';
+
+    const tpl = (messageTemplates || []).find((t: any) => t.reason === preferredReason);
+    let body = tpl?.body || '';
+    body = body
+      .replace('{document_type}', (req.label || '').toLowerCase())
+      .replace('{document_date}', req.detected_doc_date || 'an unknown date')
+      .replace('{max_age_days}', '30')
+      .replace('{detected_type}', (req.detected_doc_type || 'unknown').replace(/_/g, ' '))
+      .replace('{expected_type}', (req.category || '').replace(/_/g, ' '))
+      .replace('{missing_pages}', 'the missing ones');
+
+    setSelected(new Set([req.id]));
+    setRerequestFor(req);
+    setSelectedTemplateId(tpl?.id || '');
+    setRequestMessage(body);
+    setRequestOpen(true);
+  };
+
+  const applyTemplate = (id: string) => {
+    setSelectedTemplateId(id);
+    if (id === '__none__') { setRequestMessage(''); return; }
+    const tpl = (messageTemplates || []).find((t: any) => t.id === id);
+    if (!tpl) return;
+    let body = tpl.body || '';
+    if (rerequestFor) {
+      body = body
+        .replace('{document_type}', (rerequestFor.label || '').toLowerCase())
+        .replace('{document_date}', rerequestFor.detected_doc_date || 'an unknown date')
+        .replace('{max_age_days}', '30')
+        .replace('{detected_type}', (rerequestFor.detected_doc_type || 'unknown').replace(/_/g, ' '))
+        .replace('{expected_type}', (rerequestFor.category || '').replace(/_/g, ' '))
+        .replace('{missing_pages}', 'the missing ones');
+    }
+    setRequestMessage(body);
+  };
+
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -219,13 +308,21 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-5 text-sm">
+            <div className="flex flex-wrap gap-5 text-sm">
               <Stat label="Total" value={stats.total} />
               <Stat label="Outstanding" value={stats.outstanding} tone="text-amber-500" />
               <Stat label="Requested" value={stats.requested} tone="text-sky-500" />
               <Stat label="Verified" value={stats.verified} tone="text-emerald-500" />
+              <Stat label="Quality flags" value={stats.qualityIssues} tone={stats.qualityIssues > 0 ? 'text-destructive' : undefined} />
+              <Stat label="Expiring ≤30d" value={stats.expiringSoon} tone={stats.expiringSoon > 0 ? 'text-amber-500' : undefined} />
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={analyzeAll} disabled={busy} className="gap-1.5" title="Run quality checks on all linked documents">
+                <ScanLine className="h-4 w-4" /> Analyze quality
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
+                <Package className="h-4 w-4" /> Lender packet
+              </Button>
               <Button size="sm" variant="outline" onClick={handleInstantiate} disabled={busy} className="gap-1.5">
                 <Sparkles className="h-4 w-4" /> Add missing defaults
               </Button>
@@ -235,7 +332,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
               <Button
                 size="sm"
                 disabled={selected.size === 0}
-                onClick={() => setRequestOpen(true)}
+                onClick={() => { setRerequestFor(null); setSelectedTemplateId(''); setRequestOpen(true); }}
                 className="gap-1.5"
               >
                 <Send className="h-4 w-4" /> Request {selected.size > 0 ? `${selected.size} ` : ''}from client
@@ -244,6 +341,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
           </div>
         </CardContent>
       </Card>
+
 
       {grouped.map(({ category, items }) => {
         const allSelected = items.every(i => selected.has(i.id));
@@ -297,9 +395,23 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                             <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded', meta.tone)}>
                               <Icon className="h-3 w-3" /> {meta.label}
                             </span>
+                            {req.quality_status && req.quality_status !== 'unchecked' && (
+                              <span className={cn(
+                                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
+                                req.quality_status === 'error' && 'bg-destructive/15 text-destructive',
+                                req.quality_status === 'warning' && 'bg-amber-500/15 text-amber-500',
+                                req.quality_status === 'ok' && 'bg-emerald-500/15 text-emerald-500',
+                              )}>
+                                {req.quality_status === 'ok' ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                                {req.quality_status === 'ok' ? 'Quality OK' : `Quality ${req.quality_status}`}
+                              </span>
+                            )}
                             <span>· {OWNER_LABEL[req.owner] || req.owner}</span>
                             {req.requested_at && (
                               <span>· Requested {new Date(req.requested_at).toLocaleDateString('en-AU')}</span>
+                            )}
+                            {req.soft_expiry_date && (
+                              <span>· Soft expiry {new Date(req.soft_expiry_date).toLocaleDateString('en-AU')}</span>
                             )}
                             {req.expiry_date && (
                               <span>· Expires {new Date(req.expiry_date).toLocaleDateString('en-AU')}</span>
@@ -310,8 +422,37 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                               <span className="inline-flex items-center gap-0.5"><EyeOff className="h-3 w-3" /> Internal</span>
                             )}
                           </div>
+                          {(req.quality_flags || []).length > 0 && (
+                            <ul className="mt-1.5 space-y-0.5">
+                              {(req.quality_flags || []).slice(0, 3).map((f: any, idx: number) => (
+                                <li key={idx} className={cn(
+                                  'text-xs flex items-start gap-1',
+                                  f.severity === 'error' ? 'text-destructive' : 'text-amber-500',
+                                )}>
+                                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                  <span>{f.message}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          {req.document_id && (
+                            <Button
+                              size="icon" variant="ghost" className="h-8 w-8"
+                              title="Re-analyze quality" onClick={() => analyzeOne(req.id)}
+                            >
+                              <ScanLine className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {req.document_id && (req.quality_status === 'error' || req.quality_status === 'warning') && (
+                            <Button
+                              size="icon" variant="ghost" className="h-8 w-8"
+                              title="Re-request from client" onClick={() => openRerequest(req)}
+                            >
+                              <RefreshCw className="h-4 w-4 text-amber-500" />
+                            </Button>
+                          )}
                           <Select value={req.status} onValueChange={(v) => setStatus(req.id, v)}>
                             <SelectTrigger className="h-8 w-[125px] text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -353,6 +494,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                           "{req.request_message}"
                         </p>
                       )}
+
                     </div>
                   </div>
                 );
@@ -363,23 +505,41 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       })}
 
       {/* Request dialog */}
-      <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+      <Dialog open={requestOpen} onOpenChange={(v) => { if (!v) { setRerequestFor(null); setSelectedTemplateId(''); } setRequestOpen(v); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request documents from client</DialogTitle>
+            <DialogTitle>{rerequestFor ? 'Re-request document' : 'Request documents from client'}</DialogTitle>
             <DialogDescription>
-              {selected.size} item(s) will be marked Requested and surfaced on the client portal dashboard.
+              {rerequestFor
+                ? `${rerequestFor.label} — explain why you need a fresh upload.`
+                : `${selected.size} item(s) will be marked Requested and surfaced on the client portal dashboard.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="msg">Message to client (optional)</Label>
-            <Textarea
-              id="msg"
-              value={requestMessage}
-              onChange={(e) => setRequestMessage(e.target.value)}
-              placeholder="e.g. Please upload by Friday — needed for finance approval."
-              rows={4}
-            />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <Select value={selectedTemplateId || '__none__'} onValueChange={applyTemplate}>
+                <SelectTrigger><SelectValue placeholder="Pick a template" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No template</SelectItem>
+                  {(messageTemplates || []).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} <span className="text-muted-foreground text-xs">({t.reason})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="msg">Message to client</Label>
+              <Textarea
+                id="msg"
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                placeholder="e.g. Please upload by Friday — needed for finance approval."
+                rows={6}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRequestOpen(false)}>Cancel</Button>
@@ -397,9 +557,12 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
         fileId={fileId}
         onAdded={refresh}
       />
+
+      <LenderPacketDialog open={packetOpen} onOpenChange={setPacketOpen} fileId={fileId} />
     </div>
   );
 }
+
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
   return (
