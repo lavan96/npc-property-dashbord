@@ -217,6 +217,7 @@ const App = () => (
                           <Route path="notifications" element={<PortalNotifications />} />
                           <Route path="deal-progress" element={<PortalDealProgress />} />
                           <Route path="action-items" element={<PortalActionItems />} />
+                          <Route path="finance" element={<PortalFinanceHub />} />
                           <Route path="lenders" element={<PortalLenders />} />
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
