@@ -52,6 +52,7 @@ import {
   ClipboardCheck,
   Inbox,
   FileSignature,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -126,7 +127,28 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
   const [showAgreementDialog, setShowAgreementDialog] = useState(false);
   const [showPortalInviteDialog, setShowPortalInviteDialog] = useState(false);
+  const [viewAsClientBusy, setViewAsClientBusy] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
+
+  const handleViewAsClient = useCallback(async () => {
+    if (viewAsClientBusy) return;
+    setViewAsClientBusy(true);
+    try {
+      const { data, error } = await invokeSecureFunction('staff-client-portal-handoff-create', {
+        client_id: client.id,
+        readonly: false,
+      });
+      if (error || !data?.token) {
+        throw new Error(error?.message || data?.error || 'Could not create portal access link');
+      }
+      const url = `/client/handoff?token=${encodeURIComponent(data.token)}&portalUserId=${encodeURIComponent(data.target_portal_user_id)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not open client portal');
+    } finally {
+      setViewAsClientBusy(false);
+    }
+  }, [client.id, viewAsClientBusy]);
 
   const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'conversations', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 
@@ -357,6 +379,19 @@ The Team`
         >
           <UserCog className="h-4 w-4 mr-1.5" />
           <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Portal" : "Portal Access"}</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleViewAsClient}
+          disabled={viewAsClientBusy}
+          title="Open the client portal in a new tab as this client"
+        >
+          {viewAsClientBusy
+            ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            : <ExternalLink className="h-4 w-4 mr-1.5" />}
+          <span className={isMobile ? "text-xs" : ""}>{isMobile ? "View" : "View as Client"}</span>
         </Button>
       </div>
       <Separator className="my-1" />

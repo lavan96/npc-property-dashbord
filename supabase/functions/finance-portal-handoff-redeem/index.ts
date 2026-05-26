@@ -72,16 +72,32 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Target client portal account is no longer active' }, 401);
     }
 
-    // 3. Re-validate partner assignment (defence in depth)
-    const { data: stillAssigned } = await supabase
-      .from('finance_portal_client_assignments')
-      .select('id')
-      .eq('finance_user_id', handoff.finance_user_id)
-      .eq('client_id', handoff.client_id)
-      .maybeSingle();
+    // 3. Re-validate actor authorization (defence in depth)
+    const isStaffHandoff = !!handoff.staff_user_id && !handoff.finance_user_id;
 
-    if (!stillAssigned) {
-      return jsonResponse({ error: 'Partner is no longer assigned to this client' }, 403);
+    if (!isStaffHandoff) {
+      // Finance partner path — confirm assignment still exists
+      const { data: stillAssigned } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('id')
+        .eq('finance_user_id', handoff.finance_user_id)
+        .eq('client_id', handoff.client_id)
+        .maybeSingle();
+
+      if (!stillAssigned) {
+        return jsonResponse({ error: 'Partner is no longer assigned to this client' }, 403);
+      }
+    } else {
+      // Staff path — confirm the staff user is still active
+      const { data: staffUser } = await supabase
+        .from('custom_users')
+        .select('id, is_active')
+        .eq('id', handoff.staff_user_id)
+        .maybeSingle();
+
+      if (!staffUser || staffUser.is_active === false) {
+        return jsonResponse({ error: 'Staff account is no longer active' }, 403);
+      }
     }
 
     // 4. Mint a client portal session
@@ -98,6 +114,7 @@ Deno.serve(async (req) => {
         expires_at: expiresAt.toISOString(),
         impersonator_finance_user_id: handoff.finance_user_id,
         impersonator_finance_contact_id: handoff.finance_contact_id,
+        impersonator_staff_user_id: handoff.staff_user_id ?? null,
         is_readonly: handoff.is_readonly,
       })
       .select('id')
@@ -114,20 +131,35 @@ Deno.serve(async (req) => {
       })
       .eq('id', handoff.id);
 
-    // 6. Audit on both sides
-    await supabase.from('finance_portal_activity_log').insert({
-      finance_user_id: handoff.finance_user_id,
-      client_id: handoff.client_id,
-      actor_user_id: null,
-      actor_type: 'finance_partner',
-      action: 'handoff_token_redeemed',
-      entity_type: 'client_portal_session',
-      entity_id: newSession.id,
-      metadata: {
-        readonly: handoff.is_readonly,
-        target_portal_user_id: portalUser.id,
-      },
-    });
+    // 6. Audit
+    if (isStaffHandoff) {
+      await supabase.from('client_activity_log').insert({
+        client_id: handoff.client_id,
+        actor_user_id: handoff.staff_user_id,
+        actor_type: 'staff',
+        action: 'staff_portal_handoff_redeemed',
+        entity_type: 'client_portal_session',
+        entity_id: newSession.id,
+        metadata: {
+          readonly: handoff.is_readonly,
+          target_portal_user_id: portalUser.id,
+        },
+      }).catch(() => { /* ignore if table missing */ });
+    } else {
+      await supabase.from('finance_portal_activity_log').insert({
+        finance_user_id: handoff.finance_user_id,
+        client_id: handoff.client_id,
+        actor_user_id: null,
+        actor_type: 'finance_partner',
+        action: 'handoff_token_redeemed',
+        entity_type: 'client_portal_session',
+        entity_id: newSession.id,
+        metadata: {
+          readonly: handoff.is_readonly,
+          target_portal_user_id: portalUser.id,
+        },
+      });
+    }
 
     const c = (portalUser as any).clients;
     const displayName = c
@@ -149,6 +181,8 @@ Deno.serve(async (req) => {
       impersonation: {
         is_readonly: handoff.is_readonly,
         finance_user_id: handoff.finance_user_id,
+        staff_user_id: handoff.staff_user_id ?? null,
+        actor_type: isStaffHandoff ? 'staff' : 'finance_partner',
       },
     });
   } catch (err: any) {
