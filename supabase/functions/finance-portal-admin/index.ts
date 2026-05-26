@@ -1001,17 +1001,85 @@ Deno.serve(async (req) => {
 
       const enriched = (logs || []).map((l: any) => ({
         timestamp: l.created_at,
+        source: 'auth',
         partner_name: l.finance_user_id ? (partnerMap.get(l.finance_user_id) as any)?.name : null,
         partner_email: l.finance_user_id ? (partnerMap.get(l.finance_user_id) as any)?.email : null,
         client_name: l.client_id ? (clientMap.get(l.client_id) as any)?.name : null,
         client_email: l.client_id ? (clientMap.get(l.client_id) as any)?.email : null,
         actor_type: l.actor_type,
         action: l.action,
+        category: 'security',
+        severity: 'info',
         entity_type: l.entity_type,
         entity_id: l.entity_id,
         ip_address: l.ip_address,
         metadata: l.metadata,
       }));
+
+      // ── Chunk 8: include purchase_file_audit_events (sensitive access + tamper-chain) ──
+      let auditQ = supabase
+        .from('purchase_file_audit_events')
+        .select('id, created_at, purchase_file_id, client_id, actor_type, actor_finance_user_id, severity, category, action, target_type, target_id, fields_accessed, description, metadata, ip_address, row_hash, prev_hash')
+        .gte('created_at', sinceISO)
+        .lte('created_at', untilISO)
+        .order('created_at', { ascending: false })
+        .limit(10000);
+      if (finance_user_id) auditQ = auditQ.eq('actor_finance_user_id', finance_user_id);
+      const { data: auditRows } = await auditQ;
+
+      // Resolve any client_ids not already in the map
+      const auditClientIds = Array.from(new Set((auditRows || []).map((r: any) => r.client_id).filter((id: string | null) => id && !clientMap.has(id))));
+      if (auditClientIds.length) {
+        const { data: cts } = await supabase.from('clients').select('id, primary_first_name, primary_surname, primary_email').in('id', auditClientIds);
+        for (const c of cts || []) {
+          clientMap.set(c.id, {
+            name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null,
+            email: c.primary_email,
+          });
+        }
+      }
+      // Resolve any new partners
+      const auditPartnerIds = Array.from(new Set((auditRows || []).map((r: any) => r.actor_finance_user_id).filter((id: string | null) => id && !partnerMap.has(id))));
+      if (auditPartnerIds.length) {
+        const { data: ps } = await supabase.from('finance_portal_users').select('id, email, finance_contact_id').in('id', auditPartnerIds);
+        const newContactIds = (ps || []).map((p: any) => p.finance_contact_id).filter(Boolean);
+        if (newContactIds.length) {
+          const { data: cts2 } = await supabase.from('finance_agent_contacts').select('id, name').in('id', newContactIds);
+          for (const c of cts2 || []) contactMap.set(c.id, c.name);
+        }
+        for (const p of ps || []) {
+          partnerMap.set(p.id, { email: p.email, name: contactMap.get(p.finance_contact_id) || p.email });
+        }
+      }
+
+      for (const r of auditRows || []) {
+        enriched.push({
+          timestamp: r.created_at,
+          source: 'audit',
+          partner_name: r.actor_finance_user_id ? (partnerMap.get(r.actor_finance_user_id) as any)?.name : null,
+          partner_email: r.actor_finance_user_id ? (partnerMap.get(r.actor_finance_user_id) as any)?.email : null,
+          client_name: r.client_id ? (clientMap.get(r.client_id) as any)?.name : null,
+          client_email: r.client_id ? (clientMap.get(r.client_id) as any)?.email : null,
+          actor_type: r.actor_type,
+          action: r.action,
+          category: r.category,
+          severity: r.severity,
+          entity_type: r.target_type,
+          entity_id: r.target_id,
+          ip_address: r.ip_address,
+          metadata: {
+            ...(r.metadata || {}),
+            purchase_file_id: r.purchase_file_id,
+            fields_accessed: r.fields_accessed,
+            description: r.description,
+            row_hash: r.row_hash,
+            prev_hash: r.prev_hash,
+          },
+        } as any);
+      }
+
+      // Re-sort merged timeline
+      enriched.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       // Per-action summary
       const summary: Record<string, number> = {};
