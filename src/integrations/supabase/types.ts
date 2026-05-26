@@ -6758,6 +6758,7 @@ export type Database = {
           action: string
           actor_type: string
           actor_user_id: string | null
+          client_deal_id: string | null
           client_id: string | null
           created_at: string
           entity_id: string | null
@@ -6766,12 +6767,17 @@ export type Database = {
           id: string
           ip_address: string | null
           metadata: Json | null
+          purchase_file_id: string | null
           user_agent: string | null
+          visible_to_client: boolean
+          visible_to_command_centre: boolean
+          visible_to_finance_partner: boolean
         }
         Insert: {
           action: string
           actor_type?: string
           actor_user_id?: string | null
+          client_deal_id?: string | null
           client_id?: string | null
           created_at?: string
           entity_id?: string | null
@@ -6780,12 +6786,17 @@ export type Database = {
           id?: string
           ip_address?: string | null
           metadata?: Json | null
+          purchase_file_id?: string | null
           user_agent?: string | null
+          visible_to_client?: boolean
+          visible_to_command_centre?: boolean
+          visible_to_finance_partner?: boolean
         }
         Update: {
           action?: string
           actor_type?: string
           actor_user_id?: string | null
+          client_deal_id?: string | null
           client_id?: string | null
           created_at?: string
           entity_id?: string | null
@@ -6794,9 +6805,42 @@ export type Database = {
           id?: string
           ip_address?: string | null
           metadata?: Json | null
+          purchase_file_id?: string | null
           user_agent?: string | null
+          visible_to_client?: boolean
+          visible_to_command_centre?: boolean
+          visible_to_finance_partner?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_activity_log_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_activity_log_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
+          {
+            foreignKeyName: "finance_portal_activity_log_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_activity_log_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
       }
       finance_portal_client_assignments: {
         Row: {
@@ -6808,6 +6852,7 @@ export type Database = {
           finance_user_id: string
           id: string
           permissions: Json
+          purchase_file_id: string | null
           updated_at: string
         }
         Insert: {
@@ -6819,6 +6864,7 @@ export type Database = {
           finance_user_id: string
           id?: string
           permissions?: Json
+          purchase_file_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -6830,6 +6876,7 @@ export type Database = {
           finance_user_id?: string
           id?: string
           permissions?: Json
+          purchase_file_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -6839,6 +6886,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_portal_users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_client_assignments_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_client_assignments_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -6907,6 +6968,7 @@ export type Database = {
       finance_portal_documents: {
         Row: {
           category: string
+          client_deal_id: string | null
           client_id: string
           conflict_group: string | null
           conflict_reason: string | null
@@ -6920,6 +6982,7 @@ export type Database = {
           last_synced_at: string | null
           mime_type: string
           original_filename: string
+          purchase_file_id: string | null
           source_actor_name: string | null
           source_actor_type:
             | Database["public"]["Enums"]["record_source_actor_type"]
@@ -6942,6 +7005,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          client_deal_id?: string | null
           client_id: string
           conflict_group?: string | null
           conflict_reason?: string | null
@@ -6955,6 +7019,7 @@ export type Database = {
           last_synced_at?: string | null
           mime_type?: string
           original_filename: string
+          purchase_file_id?: string | null
           source_actor_name?: string | null
           source_actor_type?:
             | Database["public"]["Enums"]["record_source_actor_type"]
@@ -6977,6 +7042,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          client_deal_id?: string | null
           client_id?: string
           conflict_group?: string | null
           conflict_reason?: string | null
@@ -6990,6 +7056,7 @@ export type Database = {
           last_synced_at?: string | null
           mime_type?: string
           original_filename?: string
+          purchase_file_id?: string | null
           source_actor_name?: string | null
           source_actor_type?:
             | Database["public"]["Enums"]["record_source_actor_type"]
@@ -7012,11 +7079,39 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "finance_portal_documents_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_documents_client_deal_id_fkey"
+            columns: ["client_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["client_deal_id"]
+          },
+          {
             foreignKeyName: "finance_portal_documents_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_documents_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_documents_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
           {
             foreignKeyName: "finance_portal_documents_uploaded_by_finance_user_id_fkey"
@@ -10296,9 +10391,11 @@ export type Database = {
           deal_id: string | null
           decline_reason: string | null
           external_reference: string | null
+          finance_user_id: string | null
           ghl_pipeline_stage_id: string | null
           id: string
           interest_rate: number | null
+          is_preferred_pathway: boolean
           lender_id: string
           lender_name: string
           loan_amount: number | null
@@ -10309,6 +10406,7 @@ export type Database = {
           lvr: number | null
           notes: string | null
           product_name: string | null
+          purchase_file_id: string | null
           repayment_type:
             | Database["public"]["Enums"]["lender_repayment_type"]
             | null
@@ -10328,9 +10426,11 @@ export type Database = {
           deal_id?: string | null
           decline_reason?: string | null
           external_reference?: string | null
+          finance_user_id?: string | null
           ghl_pipeline_stage_id?: string | null
           id?: string
           interest_rate?: number | null
+          is_preferred_pathway?: boolean
           lender_id: string
           lender_name: string
           loan_amount?: number | null
@@ -10341,6 +10441,7 @@ export type Database = {
           lvr?: number | null
           notes?: string | null
           product_name?: string | null
+          purchase_file_id?: string | null
           repayment_type?:
             | Database["public"]["Enums"]["lender_repayment_type"]
             | null
@@ -10360,9 +10461,11 @@ export type Database = {
           deal_id?: string | null
           decline_reason?: string | null
           external_reference?: string | null
+          finance_user_id?: string | null
           ghl_pipeline_stage_id?: string | null
           id?: string
           interest_rate?: number | null
+          is_preferred_pathway?: boolean
           lender_id?: string
           lender_name?: string
           loan_amount?: number | null
@@ -10373,6 +10476,7 @@ export type Database = {
           lvr?: number | null
           notes?: string | null
           product_name?: string | null
+          purchase_file_id?: string | null
           repayment_type?:
             | Database["public"]["Enums"]["lender_repayment_type"]
             | null
@@ -10402,6 +10506,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_purchase_file_deal_drift"
             referencedColumns: ["client_deal_id"]
+          },
+          {
+            foreignKeyName: "lender_submissions_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_submissions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_submissions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -12096,6 +12221,7 @@ export type Database = {
           document_id: string | null
           id: string
           inspected_date: string | null
+          lender_submission_id: string | null
           next_action: string | null
           notes: string | null
           ordered_date: string | null
@@ -12120,6 +12246,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           inspected_date?: string | null
+          lender_submission_id?: string | null
           next_action?: string | null
           notes?: string | null
           ordered_date?: string | null
@@ -12144,6 +12271,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           inspected_date?: string | null
+          lender_submission_id?: string | null
           next_action?: string | null
           notes?: string | null
           ordered_date?: string | null
@@ -12177,6 +12305,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "finance_portal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_valuations_lender_submission_id_fkey"
+            columns: ["lender_submission_id"]
+            isOneToOne: false
+            referencedRelation: "lender_submissions"
             referencedColumns: ["id"]
           },
           {
