@@ -28,8 +28,126 @@ const corsHeaders = {
 const REQ_COLUMNS = [
   'category','label','description','owner','status','is_required','sort_order',
   'visible_to_client','visible_to_finance','visible_to_npc','visible_to_legal',
-  'expiry_date','notes','document_id',
+  'expiry_date','notes','document_id','soft_expiry_date',
 ];
+
+/* ── Category → quality rules (lender-neutral defaults) ── */
+const CATEGORY_RULES: Record<string, { maxAgeDays: number; expectedTypes: string[]; preferPdf?: boolean }> = {
+  income_payg:           { maxAgeDays: 60,  expectedTypes: ['payslip'] },
+  income_self_employed:  { maxAgeDays: 365, expectedTypes: ['tax_return','bas','financials'] },
+  bank_statements:       { maxAgeDays: 30,  expectedTypes: ['bank_statement'], preferPdf: true },
+  existing_loans:        { maxAgeDays: 60,  expectedTypes: ['loan_statement'], preferPdf: true },
+  identity:              { maxAgeDays: 1825, expectedTypes: ['drivers_licence','passport','medicare'] },
+  deposit_proof:         { maxAgeDays: 30,  expectedTypes: ['bank_statement','gift_letter'] },
+  valuation:             { maxAgeDays: 90,  expectedTypes: ['valuation_report'], preferPdf: true },
+  loan_approval:         { maxAgeDays: 90,  expectedTypes: ['approval_letter'], preferPdf: true },
+  purchase_docs:         { maxAgeDays: 365, expectedTypes: ['contract','section_32'], preferPdf: true },
+  assets:                { maxAgeDays: 90,  expectedTypes: ['statement','valuation'] },
+  liabilities:           { maxAgeDays: 60,  expectedTypes: ['loan_statement','credit_card_statement'] },
+  settlement:            { maxAgeDays: 30,  expectedTypes: ['settlement_statement'], preferPdf: true },
+  other:                 { maxAgeDays: 365, expectedTypes: [] },
+};
+
+function detectDocTypeFromFilename(filename: string): string | null {
+  const n = filename.toLowerCase();
+  if (/payslip|pay\s*slip|pay[-_ ]?stub/.test(n)) return 'payslip';
+  if (/tax[-_ ]?return|notice.?of.?assessment|noa/.test(n)) return 'tax_return';
+  if (/bas\b/.test(n)) return 'bas';
+  if (/bank.?statement|statement.*bank|trans[-_ ]?list/.test(n)) return 'bank_statement';
+  if (/loan.?statement|home.?loan/.test(n)) return 'loan_statement';
+  if (/credit.?card/.test(n)) return 'credit_card_statement';
+  if (/licen[cs]e|driver/.test(n)) return 'drivers_licence';
+  if (/passport/.test(n)) return 'passport';
+  if (/medicare/.test(n)) return 'medicare';
+  if (/contract|section.?32|sale/.test(n)) return 'contract';
+  if (/valuation/.test(n)) return 'valuation_report';
+  if (/approval|loa\b/.test(n)) return 'approval_letter';
+  if (/settlement/.test(n)) return 'settlement_statement';
+  if (/gift/.test(n)) return 'gift_letter';
+  return null;
+}
+
+function detectDateFromFilename(filename: string): string | null {
+  // Matches YYYY-MM-DD, YYYYMMDD, DD-MM-YYYY, DD_MM_YYYY
+  const m1 = filename.match(/(20\d{2})[-_./ ]?(\d{2})[-_./ ]?(\d{2})/);
+  if (m1) {
+    const [_, y, mo, d] = m1;
+    const dt = new Date(`${y}-${mo}-${d}`);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  }
+  const m2 = filename.match(/(\d{2})[-_./ ](\d{2})[-_./ ](20\d{2})/);
+  if (m2) {
+    const [_, d, mo, y] = m2;
+    const dt = new Date(`${y}-${mo}-${d}`);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+function assessQuality(args: {
+  category: string;
+  filename: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedAt: string;
+  detectedDate: string | null;
+}): { status: 'ok'|'warning'|'error'; flags: any[]; softExpiry: string | null; detectedType: string | null } {
+  const rule = CATEGORY_RULES[args.category] || CATEGORY_RULES.other;
+  const flags: any[] = [];
+
+  const detectedType = detectDocTypeFromFilename(args.filename);
+  if (rule.expectedTypes.length > 0 && detectedType && !rule.expectedTypes.includes(detectedType)) {
+    flags.push({
+      code: 'wrong_type',
+      severity: 'error',
+      message: `Filename suggests ${detectedType.replace(/_/g, ' ')} but ${args.category.replace(/_/g, ' ')} expected.`,
+    });
+  }
+
+  // Image quality / format hints
+  if (rule.preferPdf && args.mimeType && !args.mimeType.includes('pdf')) {
+    flags.push({
+      code: 'prefer_pdf',
+      severity: 'warning',
+      message: 'PDF preferred — image uploads can be rejected by lender packagers.',
+    });
+  }
+  if (args.mimeType?.startsWith('image/') && args.fileSize < 120 * 1024) {
+    flags.push({
+      code: 'low_resolution',
+      severity: 'warning',
+      message: 'Image is small (<120KB). Likely too low-resolution for the lender.',
+    });
+  }
+
+  // Staleness
+  const referenceDate = args.detectedDate || args.uploadedAt;
+  const ageMs = Date.now() - new Date(referenceDate).getTime();
+  const ageDays = Math.floor(ageMs / 86400000);
+  if (ageDays > rule.maxAgeDays) {
+    flags.push({
+      code: 'stale',
+      severity: 'error',
+      message: `Dated ${ageDays} days ago — exceeds the ${rule.maxAgeDays}-day window for ${args.category.replace(/_/g, ' ')}.`,
+    });
+  } else if (ageDays > Math.round(rule.maxAgeDays * 0.75)) {
+    flags.push({
+      code: 'aging',
+      severity: 'warning',
+      message: `Dated ${ageDays} days ago — approaching the ${rule.maxAgeDays}-day window.`,
+    });
+  }
+
+  // Soft expiry
+  const base = args.detectedDate ? new Date(args.detectedDate) : new Date(args.uploadedAt);
+  const expiry = new Date(base.getTime() + rule.maxAgeDays * 86400000);
+  const softExpiry = expiry.toISOString().slice(0, 10);
+
+  const errorCount = flags.filter(f => f.severity === 'error').length;
+  const status: 'ok'|'warning'|'error' = errorCount > 0 ? 'error' : (flags.length > 0 ? 'warning' : 'ok');
+  return { status, flags, softExpiry, detectedType };
+}
+
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
