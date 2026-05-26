@@ -162,9 +162,31 @@ Deno.serve(async (req) => {
     // 1. Validate session
     const { data: portalUser, error: puErr } = await supabase
       .from('finance_portal_users')
-      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at')
+      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at, global_permissions')
       .eq('session_token', sessionToken)
       .maybeSingle();
+
+    // OR-merge helper: global baseline OR per-client matrix. Either side may be null.
+    const mergePermissions = (
+      global: any,
+      perClient: any,
+    ): Record<string, { view: boolean; edit: boolean; delete: boolean }> => {
+      const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+      const keys = new Set<string>([
+        ...Object.keys(global && typeof global === 'object' ? global : {}),
+        ...Object.keys(perClient && typeof perClient === 'object' ? perClient : {}),
+      ]);
+      for (const k of keys) {
+        const g = (global && global[k]) || {};
+        const p = (perClient && perClient[k]) || {};
+        out[k] = {
+          view: !!(g.view || p.view),
+          edit: !!(g.edit || p.edit),
+          delete: !!(g.delete || p.delete),
+        };
+      }
+      return out;
+    };
 
     if (puErr || !portalUser || !portalUser.is_active || portalUser.revoked_at) {
       return jsonResponse({ error: 'Invalid session' }, 401);
