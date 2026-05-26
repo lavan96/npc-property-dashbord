@@ -7,6 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
 import { buildProvenance, logClientActivity, mergeSourceDetails } from "../_shared/client-data-provenance.ts";
 import { buildDocumentDedupeKey, createSyncEvent, resolveSyncConflict } from "../_shared/client-sync.ts";
+import { recordAuditEvent, extractRequestFingerprint } from "../_shared/finance-portal-audit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
