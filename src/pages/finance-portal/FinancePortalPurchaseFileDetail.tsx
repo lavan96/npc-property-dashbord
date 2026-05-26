@@ -26,6 +26,7 @@ import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/
 import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
 import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnapshotCard';
 import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
+import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
