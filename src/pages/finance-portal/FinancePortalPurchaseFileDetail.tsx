@@ -242,6 +242,7 @@ export default function FinancePortalPurchaseFileDetail() {
               onChange={refresh}
             />
             <OverviewTab file={data} onSave={updateField} />
+            <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
         </TabsContent>
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
