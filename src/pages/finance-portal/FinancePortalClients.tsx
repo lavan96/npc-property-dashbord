@@ -493,6 +493,11 @@ export default function FinancePortalClients() {
     }
 
     list.sort((a: any, b: any) => {
+      const aPf = a.active_purchase_file;
+      const bPf = b.active_purchase_file;
+      const aNext = a.next_deadline?.due_date || '';
+      const bNext = b.next_deadline?.due_date || '';
+      const riskRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
       if (sortKey === 'name') {
         return (a.client?.primary_contact_name || '').localeCompare(b.client?.primary_contact_name || '');
       }
@@ -501,6 +506,35 @@ export default function FinancePortalClients() {
       }
       if (sortKey === 'status') {
         return (a.client?.status || '').localeCompare(b.client?.status || '');
+      }
+      if (sortKey === 'urgency') {
+        // PFs with a next deadline first, soonest first; then those without
+        if (!aNext && !bNext) return 0;
+        if (!aNext) return 1;
+        if (!bNext) return -1;
+        return aNext.localeCompare(bNext);
+      }
+      if (sortKey === 'settlement') {
+        const aS = aPf?.settlement_date || '';
+        const bS = bPf?.settlement_date || '';
+        if (!aS && !bS) return 0;
+        if (!aS) return 1;
+        if (!bS) return -1;
+        return aS.localeCompare(bS);
+      }
+      if (sortKey === 'finance_clause') {
+        const aF = aPf?.finance_clause_date || '';
+        const bF = bPf?.finance_clause_date || '';
+        if (!aF && !bF) return 0;
+        if (!aF) return 1;
+        if (!bF) return -1;
+        return aF.localeCompare(bF);
+      }
+      if (sortKey === 'risk') {
+        return (riskRank[bPf?.risk_level] || 0) - (riskRank[aPf?.risk_level] || 0);
+      }
+      if (sortKey === 'recent') {
+        return (bPf?.updated_at || b.assigned_at || '').localeCompare(aPf?.updated_at || a.assigned_at || '');
       }
       return 0;
     });
