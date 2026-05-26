@@ -320,6 +320,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
   } catch (err: any) {
+    console.error('[finance-portal-purchase-files] Unhandled error:', err?.stack || err);
     return jsonResponse({ error: err?.message || 'Unexpected error' }, 500);
   }
 });
+
