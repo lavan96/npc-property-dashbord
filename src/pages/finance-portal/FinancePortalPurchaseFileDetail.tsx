@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks, Ship,
+  ShieldAlert, Calculator, ListChecks, Ship, FileSearch,
 } from 'lucide-react';
+import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
 import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
@@ -243,6 +244,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="runway"><Ship className="h-4 w-4 mr-2" />Settlement Runway</TabsTrigger>
           <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
+          <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -281,6 +283,7 @@ export default function FinancePortalPurchaseFileDetail() {
           />
         </TabsContent>
         <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
+        <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
   );
