@@ -380,6 +380,19 @@ The Team`
           <UserCog className="h-4 w-4 mr-1.5" />
           <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Portal" : "Portal Access"}</span>
         </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleViewAsClient}
+          disabled={viewAsClientBusy}
+          title="Open the client portal in a new tab as this client"
+        >
+          {viewAsClientBusy
+            ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            : <ExternalLink className="h-4 w-4 mr-1.5" />}
+          <span className={isMobile ? "text-xs" : ""}>{isMobile ? "View" : "View as Client"}</span>
+        </Button>
       </div>
       <Separator className="my-1" />
 
