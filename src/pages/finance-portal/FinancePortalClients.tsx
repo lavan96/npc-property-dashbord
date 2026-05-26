@@ -32,7 +32,7 @@ import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
 import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 
-type SortKey = 'name' | 'date' | 'status';
+type SortKey = 'name' | 'date' | 'status' | 'urgency' | 'settlement' | 'finance_clause' | 'risk' | 'recent';
 type IntakeMode = 'manual' | 'pdf';
 
 interface NewClientFormData {
