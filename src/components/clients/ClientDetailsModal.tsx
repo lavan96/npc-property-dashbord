@@ -91,6 +91,8 @@ import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
 import { ClientConversationsTab } from './ClientConversationsTab';
+import { ClientPortalMessagesPanel } from './ClientPortalMessagesPanel';
+import { StaffFinancePortalMessagesPanel } from './StaffFinancePortalMessagesPanel';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 import { FinancePartnersCard } from './FinancePartnersCard';
@@ -388,6 +390,14 @@ The Team`
             <TabsTrigger value="appointments" className="text-xs sm:text-sm">
               <Calendar className="h-3 w-3 mr-0.5" />
               Appointments
+            </TabsTrigger>
+            <TabsTrigger value="portal-messages" className="text-xs sm:text-sm">
+              <MessageSquare className="h-3 w-3 mr-0.5" />
+              Portal Messages
+            </TabsTrigger>
+            <TabsTrigger value="finance-messages" className="text-xs sm:text-sm">
+              <MessageSquare className="h-3 w-3 mr-0.5" />
+              Finance Messages
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
             <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
@@ -838,6 +848,19 @@ The Team`
                 ghlContactId={fullClient?.ghl_contact_id}
               />
             </TabsContent>
+
+            <TabsContent value="portal-messages" className="mt-4 w-full min-w-0">
+              <ClientPortalMessagesPanel
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+              />
+            </TabsContent>
+
+            <TabsContent value="finance-messages" className="mt-4 w-full min-w-0">
+              <StaffFinancePortalMessagesPanel clientId={client.id} />
+            </TabsContent>
+
+
 
             <TabsContent value="appointments" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientAppointmentsTab

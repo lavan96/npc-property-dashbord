@@ -1,0 +1,150 @@
+/**
+ * Staff-side endpoint for the CLIENT PORTAL messaging thread.
+ * Mirrors the partner-side `finance-portal-messages` pattern but for the flat
+ * `client_portal_messages` table used by the client portal.
+ *
+ * Operations:
+ *  - list_clients_with_messages   → inbox aggregator: clients with unread or recent activity
+ *  - list_messages                → all messages for a given client (sorted asc)
+ *  - mark_thread_read             → mark all client-sent messages for this client as read
+ *  - send_reply                   → insert a staff reply (sender_type='advisor')
+ */
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { verifyAuth } from '../_shared/auth.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const jsonResponse = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const auth = await verifyAuth(supabase, req.headers, body);
+    if (auth.error || !auth.userId) {
+      return jsonResponse({ error: auth.error || 'Authentication required' }, 401);
+    }
+
+    const operation = body?.operation as string;
+    if (!operation) return jsonResponse({ error: 'operation required' }, 400);
+
+    // ── inbox aggregator ──
+    if (operation === 'list_clients_with_messages') {
+      const { data: rows, error } = await supabase
+        .from('client_portal_messages')
+        .select('client_id, sender_type, message, is_read, created_at, sender_name')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+
+      const byClient = new Map<string, any>();
+      for (const r of rows || []) {
+        if (!byClient.has(r.client_id)) {
+          byClient.set(r.client_id, {
+            client_id: r.client_id,
+            last_message_at: r.created_at,
+            last_message_preview: (r.message || '').slice(0, 160),
+            last_sender_type: r.sender_type,
+            last_sender_name: r.sender_name,
+            unread_count: 0,
+          });
+        }
+        if (r.sender_type === 'client' && r.is_read === false) {
+          byClient.get(r.client_id).unread_count += 1;
+        }
+      }
+
+      const clientIds = Array.from(byClient.keys());
+      if (clientIds.length === 0) return jsonResponse({ success: true, threads: [] });
+
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name, primary_email, assigned_team_user_id')
+        .in('id', clientIds);
+
+      const threads = (clients || []).map((c) => ({
+        ...byClient.get(c.id),
+        client_name: [c.first_name, c.last_name].filter(Boolean).join(' ') || c.primary_email || 'Client',
+        client_email: c.primary_email,
+        assigned_team_user_id: c.assigned_team_user_id,
+      })).sort((a, b) => {
+        // unread first, then most recent
+        if ((b.unread_count > 0 ? 1 : 0) !== (a.unread_count > 0 ? 1 : 0)) {
+          return (b.unread_count > 0 ? 1 : 0) - (a.unread_count > 0 ? 1 : 0);
+        }
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      });
+
+      return jsonResponse({ success: true, threads });
+    }
+
+    // ── list messages for a client ──
+    if (operation === 'list_messages') {
+      const { client_id } = body;
+      if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
+      const { data, error } = await supabase
+        .from('client_portal_messages')
+        .select('id, client_id, sender_type, sender_name, message, is_read, read_at, created_at')
+        .eq('client_id', client_id)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return jsonResponse({ success: true, messages: data || [] });
+    }
+
+    // ── mark all client-sent messages as read ──
+    if (operation === 'mark_thread_read') {
+      const { client_id } = body;
+      if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
+      const { error } = await supabase
+        .from('client_portal_messages')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('client_id', client_id)
+        .eq('sender_type', 'client')
+        .eq('is_read', false);
+      if (error) throw error;
+      return jsonResponse({ success: true });
+    }
+
+    // ── send staff reply ──
+    if (operation === 'send_reply') {
+      const { client_id, message } = body;
+      const trimmed = (message || '').toString().trim();
+      if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
+      if (!trimmed) return jsonResponse({ error: 'message required' }, 400);
+      if (trimmed.length > 5000) return jsonResponse({ error: 'Message too long (max 5000)' }, 400);
+
+      const { data, error } = await supabase
+        .from('client_portal_messages')
+        .insert({
+          client_id,
+          sender_type: 'advisor',
+          sender_name: auth.username || 'Advisor',
+          message: trimmed,
+          is_read: false,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return jsonResponse({ success: true, message: data });
+    }
+
+    return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
+  } catch (err: any) {
+    console.error('[staff-client-portal-messages] error', err);
+    return jsonResponse({ error: err.message || 'Internal error' }, 500);
+  }
+});
