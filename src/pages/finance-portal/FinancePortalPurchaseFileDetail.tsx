@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator,
+  ShieldAlert, Calculator, ListChecks,
 } from 'lucide-react';
+import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
 import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
 import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
@@ -233,6 +234,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
           <TabsTrigger value="decisions"><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
+          <TabsTrigger value="tasks"><ListChecks className="h-4 w-4 mr-2" />Action Items</TabsTrigger>
           <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
           <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
           <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
@@ -258,6 +260,7 @@ export default function FinancePortalPurchaseFileDetail() {
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
         <TabsContent value="documents"><DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} /></TabsContent>
         <TabsContent value="decisions"><FinanceDecisionsTab fileId={fileId!} /></TabsContent>
+        <TabsContent value="tasks"><ClientTasksTab fileId={fileId!} /></TabsContent>
         <TabsContent value="conditions"><ConditionsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="valuation"><ValuationsTab fileId={fileId!} /></TabsContent>
         <TabsContent value="risks"><RiskRegisterTab fileId={fileId!} /></TabsContent>

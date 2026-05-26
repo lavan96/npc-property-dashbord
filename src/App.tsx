@@ -100,6 +100,7 @@ import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalDealProgress from "./pages/portal/PortalDealProgress";
+import PortalActionItems from "./pages/portal/PortalActionItems";
 import PortalLenders from "./pages/portal/PortalLenders";
 import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
@@ -214,6 +215,7 @@ const App = () => (
                           <Route path="documents" element={<PortalDocuments />} />
                           <Route path="notifications" element={<PortalNotifications />} />
                           <Route path="deal-progress" element={<PortalDealProgress />} />
+                          <Route path="action-items" element={<PortalActionItems />} />
                           <Route path="lenders" element={<PortalLenders />} />
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
