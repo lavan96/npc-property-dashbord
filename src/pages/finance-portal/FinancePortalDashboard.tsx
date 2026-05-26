@@ -237,7 +237,7 @@ export default function FinancePortalDashboard() {
                 emptyText="Nothing waiting on your input."
                 accent="warning"
                 renderRow={(file: any) => (
-                  <FileRow key={file.id} file={file} badge={file.finance_status?.replaceAll('_', ' ')} badgeTone="warning" />
+                  <FileRow key={file.id} file={file} badge={file.finance_status?.replace(/_/g, ' ')} badgeTone="warning" />
                 )}
                 footerLink={{ to: '/finance/purchase-files', label: 'View all files' }}
               />
@@ -300,7 +300,7 @@ export default function FinancePortalDashboard() {
                 items={f.broker_response_required || []}
                 emptyText="You're all caught up."
                 renderRow={(file: any) => (
-                  <FileRow key={file.id} file={file} badge={file.finance_status?.replaceAll('_', ' ')} />
+                  <FileRow key={file.id} file={file} badge={file.finance_status?.replace(/_/g, ' ')} />
                 )}
               />
             </>

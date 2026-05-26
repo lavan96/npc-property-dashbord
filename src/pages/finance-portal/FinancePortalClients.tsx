@@ -940,7 +940,7 @@ export default function FinancePortalClients() {
                               </Badge>
                               {pf.finance_status && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
-                                  {pf.finance_status.replaceAll('_', ' ')}
+                                  {pf.finance_status.replace(/_/g, ' ')}
                                 </Badge>
                               )}
                               {pf.lender && (
@@ -963,7 +963,7 @@ export default function FinancePortalClients() {
                               {nextDeadline && (
                                 <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', deadlineTone)}>
                                   <CalendarClock className="h-2.5 w-2.5" />
-                                  {nextDeadline.date_type.replaceAll('_', ' ')}
+                                  {nextDeadline.date_type.replace(/_/g, ' ')}
                                   {daysToDeadline != null && (
                                     <span>· {daysToDeadline < 0 ? `${-daysToDeadline}d overdue` : `${daysToDeadline}d`}</span>
                                   )}

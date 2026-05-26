@@ -92,9 +92,9 @@ export function ClientPurchaseFilesPanel({ clientId }: { clientId: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-sm text-foreground truncate">{f.title || 'Purchase file'}</span>
-                      <Badge variant="outline" className="text-[10px] capitalize">{(f.status || 'active').replaceAll('_', ' ')}</Badge>
+                      <Badge variant="outline" className="text-[10px] capitalize">{(f.status || 'active').replace(/_/g, ' ')}</Badge>
                       {f.finance_status && (
-                        <Badge variant="outline" className="text-[10px] capitalize">{f.finance_status.replaceAll('_', ' ')}</Badge>
+                        <Badge variant="outline" className="text-[10px] capitalize">{f.finance_status.replace(/_/g, ' ')}</Badge>
                       )}
                     </div>
                     {f.property_address && (
@@ -122,7 +122,7 @@ export function ClientPurchaseFilesPanel({ clientId }: { clientId: string }) {
                       {next && (
                         <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', deadlineTone)}>
                           <CalendarClock className="h-2.5 w-2.5" />
-                          {String(next.date_type).replaceAll('_', ' ')} ·{' '}
+                          {String(next.date_type).replace(/_/g, ' ')} ·{' '}
                           {format(new Date(next.due_date), 'd MMM')}
                           {days != null && (
                             <span>· {days < 0 ? `${-days}d overdue` : `${days}d`}</span>
