@@ -31,9 +31,11 @@ interface ManifestFile {
   requirement_status?: string;
 }
 
+interface Gap { id: string; label: string; category?: string; quality_status?: string; quality_flags?: any }
 interface Manifest {
   meta: any;
   files: ManifestFile[];
+  gaps?: { missing_required: Gap[]; quality_issues: Gap[] };
 }
 
 const QUALITY_TONE: Record<string, { tone: string; label: string }> = {
@@ -190,10 +192,28 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
       const url = URL.createObjectURL(out);
       const a = document.createElement('a');
       const safeTitle = (manifest.meta.file?.title || 'Lender Packet').replace(/[^a-zA-Z0-9._ -]/g, '_');
+      const filename = `${safeTitle} - Lender Packet.zip`;
       a.href = url;
-      a.download = `${safeTitle} - Lender Packet.zip`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Persist packet history
+      try {
+        await invokeFinanceFunction('finance-portal-lender-packet', {
+          operation: 'record_generated',
+          purchase_file_id: fileId,
+          lender_name: manifest.meta.file?.lender_name,
+          filename,
+          file_count: included.length + 1,
+          total_size_bytes: out.size,
+          missing_required_count: manifest.gaps?.missing_required?.length || 0,
+          missing_required: manifest.gaps?.missing_required || [],
+          quality_flags: manifest.gaps?.quality_issues || [],
+          manifest: { files: included.map(f => ({ seq: f.sequence, name: f.packet_filename, cat: f.category })) },
+        });
+      } catch (e) { console.warn('packet history failed', e); }
+
       toast.success(`Packet built: ${included.length + 1} files`);
       onOpenChange(false);
     } catch (e: any) {
@@ -248,6 +268,24 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
                 </Badge>
               )}
             </div>
+
+            {manifest.gaps?.missing_required?.length ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium text-destructive flex items-center gap-1.5 mb-1">
+                  <FileWarning className="h-4 w-4" /> {manifest.gaps.missing_required.length} required documents still missing
+                </p>
+                <ul className="text-xs text-destructive/80 list-disc list-inside space-y-0.5">
+                  {manifest.gaps.missing_required.slice(0, 5).map(g => (
+                    <li key={g.id}>{g.label} <span className="opacity-60">({g.category?.replace(/_/g,' ')})</span></li>
+                  ))}
+                  {manifest.gaps.missing_required.length > 5 && <li>…and {manifest.gaps.missing_required.length - 5} more</li>}
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-success/30 bg-success/5 p-2.5 text-xs text-success flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4" /> All required documents present.
+              </div>
+            )}
 
             <ScrollArea className="flex-1 -mx-6 px-6">
               <div className="space-y-2 py-2">

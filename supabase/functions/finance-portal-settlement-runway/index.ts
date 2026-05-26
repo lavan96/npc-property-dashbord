@@ -1,0 +1,172 @@
+/**
+ * Finance Portal — Settlement Runway (Chunk 7)
+ *
+ * Operations:
+ *   - list_tasks       → all settlement tasks for a purchase file (with progress %)
+ *   - upsert_task      → create or update a task (status, notes, due_date, owner, blocked_reason)
+ *   - delete_task      → remove a custom (non-auto-seeded) task
+ *   - seed_default     → manually seed the 9-step checklist (idempotent — usually auto-fires on
+ *                        unconditional_approval, but available for back-fill on legacy files)
+ *   - add_custom_task  → append a custom checklist item (non-enum task_key)... currently we
+ *                        keep the schema strict to the enum, so customs are added via the
+ *                        `other`-style approach is not supported in v1.
+ */
+import { createClient } from "npm:@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function json(d: any, status = 200) {
+  return new Response(JSON.stringify(d), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+const ALLOWED_UPDATE = [
+  'status', 'notes', 'due_date', 'owner', 'blocked_reason', 'label', 'description',
+  'is_required',
+];
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const body = await req.json().catch(() => ({}));
+    const token = req.headers.get('x-finance-session-token') || body.finance_session_token;
+    if (!token) return json({ error: 'Session token required' }, 401);
+
+    const { data: portalUser } = await supabase
+      .from('finance_portal_users')
+      .select('id, email, is_active, revoked_at, session_expires_at')
+      .eq('session_token', token)
+      .maybeSingle();
+    if (!portalUser || !portalUser.is_active || portalUser.revoked_at) return json({ error: 'Invalid session' }, 401);
+    if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) return json({ error: 'Session expired' }, 401);
+
+    const op = body.operation;
+    const fileId = body.purchase_file_id;
+    if (!op) return json({ error: 'operation required' }, 400);
+    if (!fileId) return json({ error: 'purchase_file_id required' }, 400);
+
+    // Verify assignment to client
+    const { data: file } = await supabase
+      .from('purchase_files')
+      .select('id, client_id, settlement_date, finance_status')
+      .eq('id', fileId)
+      .maybeSingle();
+    if (!file) return json({ error: 'Not found' }, 404);
+
+    const { data: assignment } = await supabase
+      .from('finance_portal_client_assignments')
+      .select('id')
+      .eq('finance_user_id', portalUser.id)
+      .eq('client_id', file.client_id)
+      .maybeSingle();
+    if (!assignment) return json({ error: 'Not assigned' }, 403);
+
+    if (op === 'list_tasks') {
+      const { data: tasks } = await supabase
+        .from('purchase_file_settlement_tasks')
+        .select('*')
+        .eq('purchase_file_id', fileId)
+        .order('sort_order');
+      const list = tasks || [];
+      const required = list.filter((t: any) => t.is_required && t.status !== 'not_applicable');
+      const completed = required.filter((t: any) => t.status === 'completed').length;
+      return json({
+        tasks: list,
+        progress: {
+          total: required.length,
+          completed,
+          percent: required.length ? Math.round((completed / required.length) * 100) : 0,
+        },
+        settlement_date: file.settlement_date,
+      });
+    }
+
+    if (op === 'seed_default') {
+      const { error } = await supabase.rpc('seed_settlement_runway', { _file_id: fileId });
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    if (op === 'upsert_task') {
+      const taskId = body.task_id;
+      const patch: Record<string, any> = {};
+      for (const k of ALLOWED_UPDATE) if (k in body) patch[k] = body[k];
+
+      // Auto-stamp completion
+      if (patch.status === 'completed') {
+        patch.completed_at = new Date().toISOString();
+        patch.completed_by_finance_user_id = portalUser.id;
+      } else if (patch.status && patch.status !== 'completed') {
+        patch.completed_at = null;
+        patch.completed_by_finance_user_id = null;
+      }
+
+      if (taskId) {
+        const { data, error } = await supabase
+          .from('purchase_file_settlement_tasks')
+          .update(patch).eq('id', taskId).eq('purchase_file_id', fileId)
+          .select().single();
+        if (error) return json({ error: error.message }, 400);
+
+        await supabase.from('purchase_file_status_history').insert({
+          purchase_file_id: fileId,
+          event_type: 'settlement_task_updated',
+          to_value: data.task_key + ':' + data.status,
+          actor_id: portalUser.id,
+          actor_kind: 'finance_partner',
+          payload: { task_id: data.id, patch },
+        });
+        return json({ task: data });
+      }
+
+      // Create new (custom) task — caller must supply task_key from enum + label
+      if (!body.task_key || !body.label) return json({ error: 'task_key and label required for new tasks' }, 400);
+      const ins = {
+        purchase_file_id: fileId,
+        client_id: file.client_id,
+        task_key: body.task_key,
+        label: body.label,
+        description: body.description || null,
+        owner: body.owner || 'finance',
+        due_date: body.due_date || null,
+        sort_order: body.sort_order ?? 99,
+        is_required: body.is_required !== false,
+        is_auto_seeded: false,
+        created_by_finance_user_id: portalUser.id,
+        ...patch,
+      };
+      const { data, error } = await supabase
+        .from('purchase_file_settlement_tasks').insert(ins).select().single();
+      if (error) return json({ error: error.message }, 400);
+      return json({ task: data });
+    }
+
+    if (op === 'delete_task') {
+      const taskId = body.task_id;
+      if (!taskId) return json({ error: 'task_id required' }, 400);
+      // Allow deleting non-auto-seeded only
+      const { data: existing } = await supabase
+        .from('purchase_file_settlement_tasks')
+        .select('is_auto_seeded').eq('id', taskId).maybeSingle();
+      if (existing?.is_auto_seeded) return json({ error: 'Cannot delete auto-seeded task — mark as not_applicable instead' }, 400);
+      const { error } = await supabase
+        .from('purchase_file_settlement_tasks')
+        .delete().eq('id', taskId).eq('purchase_file_id', fileId);
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    return json({ error: `Unknown operation: ${op}` }, 400);
+  } catch (e: any) {
+    return json({ error: e?.message || 'Unexpected error' }, 500);
+  }
+});
