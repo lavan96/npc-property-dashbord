@@ -5129,6 +5129,57 @@ export type Database = {
         }
         Relationships: []
       }
+      data_provenance: {
+        Row: {
+          branch: number
+          cache_ttl_days: number
+          confidence: number
+          created_at: string
+          fetched_at: string
+          field_key: string
+          id: string
+          licence_tag: string
+          property_address: string | null
+          report_id: string | null
+          request_id: string | null
+          source: string
+          value_numeric: number | null
+          value_text: string | null
+        }
+        Insert: {
+          branch: number
+          cache_ttl_days?: number
+          confidence: number
+          created_at?: string
+          fetched_at?: string
+          field_key: string
+          id?: string
+          licence_tag?: string
+          property_address?: string | null
+          report_id?: string | null
+          request_id?: string | null
+          source: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          branch?: number
+          cache_ttl_days?: number
+          confidence?: number
+          created_at?: string
+          fetched_at?: string
+          field_key?: string
+          id?: string
+          licence_tag?: string
+          property_address?: string | null
+          report_id?: string | null
+          request_id?: string | null
+          source?: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Relationships: []
+      }
       deal_stages: {
         Row: {
           client_action: string | null
