@@ -409,6 +409,7 @@ export default function FinancePortalClientProfile() {
               {activeTab === 'documents' && <DocumentVaultPanel clientId={clientId!} />}
               {activeTab === 'borrowing_capacity' && <BorrowingCapacityPanel clientId={clientId!} />}
               {activeTab === 'messages' && <FinancePortalMessagesPanel clientId={clientId!} />}
+              {activeTab === 'purchase_files' && <ClientPurchaseFilesPanel clientId={clientId!} />}
             </motion.div>
           </AnimatePresence>
         </>
