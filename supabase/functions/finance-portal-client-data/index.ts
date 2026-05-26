@@ -616,6 +616,7 @@ Deno.serve(async (req) => {
           sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null, updated_via: 'finance-portal-client-data' },
         });
         Object.assign(updates, provenance, {
+          visibility: 'shared',
           content_hash: await sha256Text(`${String(updates.note_type || 'general')}:${String(updates.content || '')}`),
           dedupe_key: buildNoteDedupeKey({ clientId: client_id, noteType: String(updates.note_type || 'general'), content: String(updates.content || '') }),
           sync_status: 'synced',
