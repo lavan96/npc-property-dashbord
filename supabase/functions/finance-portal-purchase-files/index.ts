@@ -148,17 +148,27 @@ Deno.serve(async (req) => {
       const { data: files, error } = await supabase
         .from('purchase_files')
         .select(`
-          *,
+          id, client_id, title, purchase_type, status, finance_status,
+          property_address, property_suburb, property_state, property_postcode,
+          purchase_price, deposit_amount, max_approved_budget, lender,
+          estimated_rent_weekly, client_contribution, settlement_date,
+          finance_clause_date, assigned_finance_user_id, assigned_team_user_id,
+          risk_level, notes, created_at, updated_at, archived_at,
           clients!inner(id, primary_first_name, primary_surname, primary_email),
           purchase_file_critical_dates(id, date_type, due_date, status)
         `)
         .in('client_id', allowedClientIds)
         .is('archived_at', null)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .limit(200);
 
-      if (error) return jsonResponse({ error: error.message }, 500);
+      if (error) {
+        console.error('[finance-portal-purchase-files] list_files error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
       return jsonResponse({ files });
     }
+
 
     // ─── Get one file ───
     if (operation === 'get_file') {
