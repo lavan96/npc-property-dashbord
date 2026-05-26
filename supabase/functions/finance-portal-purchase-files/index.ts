@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       const { data: assignment } = await supabase
         .from('finance_portal_client_assignments')
         .select('permissions')
-        .eq('finance_portal_user_id', portalUser.id)
+        .eq('finance_user_id', portalUser.id)
         .eq('client_id', clientId)
         .maybeSingle();
       if (!assignment) return null;
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       const { data: assignments } = await supabase
         .from('finance_portal_client_assignments')
         .select('client_id, permissions')
-        .eq('finance_portal_user_id', portalUser.id);
+        .eq('finance_user_id', portalUser.id);
 
       const allowedClientIds = (assignments || [])
         .filter(a => {
