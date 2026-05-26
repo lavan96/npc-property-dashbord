@@ -44,6 +44,25 @@ function normalizePermissions(input: any): Record<string, { view: boolean; edit:
   return out;
 }
 
+// OR-merge a partner-level global baseline with a per-client matrix.
+// Either side may be null; result is the union of granted permissions.
+function mergePermissions(
+  global: any,
+  perClient: any,
+): Record<string, { view: boolean; edit: boolean; delete: boolean }> {
+  const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+  for (const t of PERMISSION_TABLES) {
+    const g = (global && typeof global === 'object' && global[t]) || {};
+    const p = (perClient && typeof perClient === 'object' && perClient[t]) || {};
+    out[t] = {
+      view: !!(g.view || p.view),
+      edit: !!(g.edit || p.edit),
+      delete: !!(g.delete || p.delete),
+    };
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
