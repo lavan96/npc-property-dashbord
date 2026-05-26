@@ -865,26 +865,6 @@ export default function FinancePortalClients() {
                         </div>
 
                         <div className="hidden sm:flex items-center gap-2 shrink-0 relative z-10">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              event.preventDefault();
-                              openClientPortal(record.client_id, true);
-                            }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            disabled={isBusy}
-                            title="Open this client’s portal in a new tab (read-only)"
-                            className="gap-1.5 rounded-lg text-xs"
-                          >
-                            {isBusy ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            )}
-                            View as client
-                          </Button>
                           <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
                         </div>
                       </div>
