@@ -52,6 +52,20 @@ type FileRow = {
   next_critical_date: { kind: string; due_date: string } | null;
 };
 
+type Portfolio = {
+  total_files: number;
+  active_files: number;
+  settled_files: number;
+  at_risk_files: number;
+  total_purchase_value: number;
+  total_proposed_loans: number;
+  total_open_tasks: number;
+  avg_lvr: number | null;
+  status_breakdown: Record<string, { label: string; tone: Tone; count: number }>;
+  next_milestones: Array<{ purchase_file_id: string; title: string; kind: string; due_date: string; days: number }>;
+};
+
+
 function getSessionToken(): string | null {
   try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
   catch { try { return localStorage.getItem(PORTAL_SESSION_KEY); } catch { return null; } }
