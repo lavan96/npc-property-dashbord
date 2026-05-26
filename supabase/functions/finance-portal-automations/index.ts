@@ -146,5 +146,25 @@ Deno.serve(async (req) => {
       results.valuation_overdue++;
   }
 
-  return json({ success: true, emitted: results, scanned_files: files?.length || 0 });
+  // 4. Nudge runner — fire any due drip-sequence steps
+  let nudgeResult: any = null;
+  try {
+    const r = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/finance-portal-nudges`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-automation-secret': expected || '',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({ operation: 'runner_tick' }),
+      },
+    );
+    nudgeResult = await r.json().catch(() => null);
+  } catch (e) {
+    console.error('[automations] nudge runner failed', e);
+  }
+
+  return json({ success: true, emitted: results, scanned_files: files?.length || 0, nudges: nudgeResult });
 });

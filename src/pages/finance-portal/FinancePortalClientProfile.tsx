@@ -21,6 +21,7 @@ import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPan
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
 import { ClientPurchaseFilesPanel } from '@/components/finance-portal/ClientPurchaseFilesPanel';
+import { ClientMirrorCard } from '@/components/finance-portal/ClientMirrorCard';
 import { cn } from '@/lib/utils';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { toast } from 'sonner';
@@ -290,6 +291,9 @@ export default function FinancePortalClientProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Phase 7.3 — Client portal mirror */}
+      <ClientMirrorCard clientId={clientId!} />
 
       {/* Scrollable Tab Bar */}
       {unlockedTabs.length === 0 ? (

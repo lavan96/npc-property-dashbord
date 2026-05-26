@@ -28,6 +28,7 @@ import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnap
 import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
 import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
+import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
@@ -242,6 +243,7 @@ export default function FinancePortalPurchaseFileDetail() {
               onChange={refresh}
             />
             <OverviewTab file={data} onSave={updateField} />
+            <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
         </TabsContent>
         <TabsContent value="dates"><CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} /></TabsContent>
