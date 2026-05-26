@@ -390,6 +390,10 @@ The Team`
               <Calendar className="h-3 w-3 mr-0.5" />
               Appointments
             </TabsTrigger>
+            <TabsTrigger value="portal-messages" className="text-xs sm:text-sm">
+              <MessageSquare className="h-3 w-3 mr-0.5" />
+              Portal Messages
+            </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
             <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
             <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">Client Forms</TabsTrigger>
