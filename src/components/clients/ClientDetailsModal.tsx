@@ -92,6 +92,7 @@ import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
 import { ClientConversationsTab } from './ClientConversationsTab';
 import { ClientPortalMessagesPanel } from './ClientPortalMessagesPanel';
+import { StaffFinancePortalMessagesPanel } from './StaffFinancePortalMessagesPanel';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 import { FinancePartnersCard } from './FinancePartnersCard';
