@@ -117,6 +117,7 @@ async function prepareFinanceNotePayload(supabase: any, clientId: string, payloa
     payload: {
       ...payload,
       ...provenance,
+      visibility: 'shared',
       content_hash: contentHash,
       dedupe_key: dedupeKey,
       sync_status: resolution.status,
@@ -506,11 +507,13 @@ Deno.serve(async (req) => {
       if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
       if (!permissions[table_key]?.view) return jsonResponse({ error: 'No view permission for ' + table_key }, 403);
 
-      const { data, error } = await supabase
+      let listQuery = supabase
         .from(dbTable)
         .select('*')
-        .eq('client_id', client_id)
-        .order('created_at', { ascending: false });
+        .eq('client_id', client_id);
+      // Finance portal must never see internal-only notes
+      if (dbTable === 'client_notes') listQuery = listQuery.eq('visibility', 'shared');
+      const { data, error } = await listQuery.order('created_at', { ascending: false });
       if (error) throw error;
       await audit('list_records', table_key, null, { count: data?.length || 0 });
       return jsonResponse({ success: true, records: data || [], permission: permissions[table_key] });
@@ -613,6 +616,7 @@ Deno.serve(async (req) => {
           sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null, updated_via: 'finance-portal-client-data' },
         });
         Object.assign(updates, provenance, {
+          visibility: 'shared',
           content_hash: await sha256Text(`${String(updates.note_type || 'general')}:${String(updates.content || '')}`),
           dedupe_key: buildNoteDedupeKey({ clientId: client_id, noteType: String(updates.note_type || 'general'), content: String(updates.content || '') }),
           sync_status: 'synced',

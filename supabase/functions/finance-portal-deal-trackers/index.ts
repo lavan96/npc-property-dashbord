@@ -22,6 +22,15 @@ const VALUATION_COLUMNS = [
   'valuer','agent_contact','access_required','ordered_date','inspected_date','returned_date',
   'contract_price','valuation_amount','shortfall','result','status','risk_level','next_action','notes','document_id',
 ];
+const RISK_COLUMNS = [
+  'category','severity','title','description','owner','due_date','status','resolution_note',
+];
+const BORROWING_SNAPSHOT_FIELDS = [
+  'gross_annual_income','shaded_annual_income','living_expenses_monthly',
+  'existing_commitments_monthly','assessment_rate','loan_term_years',
+  'borrowing_capacity','net_purchase_capacity','dti_ratio','monthly_surplus',
+  'serviceability_band','notes',
+];
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -291,6 +300,112 @@ Deno.serve(async (req) => {
       const { error } = await supabase.from('purchase_file_valuations').delete().eq('id', id);
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ ok: true });
+    }
+
+    /* ───────── Risks ───────── */
+    if (operation === 'list_risks') {
+      const fileId = body.purchase_file_id;
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.purchase_files?.view) return jsonResponse({ error: 'Forbidden' }, 403);
+      const { data, error } = await supabase
+        .from('purchase_file_risks')
+        .select('*')
+        .eq('purchase_file_id', fileId)
+        .order('severity', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ risks: data });
+    }
+
+    if (operation === 'add_risk') {
+      const fileId = body.purchase_file_id;
+      const payload = body.payload || {};
+      if (!fileId || !payload.title || !payload.category) {
+        return jsonResponse({ error: 'purchase_file_id, title, category required' }, 400);
+      }
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const insert = pickAllowed(payload, RISK_COLUMNS);
+      const { data, error } = await supabase.from('purchase_file_risks').insert({
+        ...insert,
+        purchase_file_id: fileId,
+        client_id: file.client_id,
+        created_by_finance_user_id: portalUser.id,
+      }).select().single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ risk: data });
+    }
+
+    if (operation === 'update_risk') {
+      const id = body.risk_id;
+      const payload = body.payload || {};
+      if (!id) return jsonResponse({ error: 'risk_id required' }, 400);
+      const { row, perms } = await permsForRowById('purchase_file_risks', id);
+      if (!row) return jsonResponse({ error: 'Not found' }, 404);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const update: Record<string, any> = pickAllowed(payload, RISK_COLUMNS);
+      if (update.status === 'resolved' && !update.resolved_at) {
+        update.resolved_at = new Date().toISOString();
+        update.resolved_by_finance_user_id = portalUser.id;
+      }
+      const { data, error } = await supabase.from('purchase_file_risks').update(update).eq('id', id).select().single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ risk: data });
+    }
+
+    if (operation === 'delete_risk') {
+      const id = body.risk_id;
+      if (!id) return jsonResponse({ error: 'risk_id required' }, 400);
+      const { row, perms } = await permsForRowById('purchase_file_risks', id);
+      if (!row) return jsonResponse({ error: 'Not found' }, 404);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const { error } = await supabase.from('purchase_file_risks').delete().eq('id', id);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ ok: true });
+    }
+
+    /* ───────── Borrowing snapshot (per purchase file) ───────── */
+    if (operation === 'update_borrowing_snapshot') {
+      const fileId = body.purchase_file_id;
+      const payload = body.payload || {};
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const snap: Record<string, any> = {};
+      for (const k of BORROWING_SNAPSHOT_FIELDS) if (k in payload) snap[k] = payload[k];
+      const { data, error } = await supabase.from('purchase_files').update({
+        borrowing_snapshot: snap,
+        borrowing_snapshot_updated_at: new Date().toISOString(),
+        borrowing_snapshot_updated_by_finance_user_id: portalUser.id,
+      }).eq('id', fileId).select('id, borrowing_snapshot, borrowing_snapshot_updated_at').single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ snapshot: data });
+    }
+
+    /* ───────── Activity feed (unified timeline) ───────── */
+    if (operation === 'list_activity') {
+      const fileId = body.purchase_file_id;
+      const limit = Math.min(Number(body.limit) || 100, 250);
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.purchase_files?.view) return jsonResponse({ error: 'Forbidden' }, 403);
+      const { data, error } = await supabase
+        .from('purchase_file_activity_feed')
+        .select('*')
+        .eq('purchase_file_id', fileId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ activity: data });
     }
 
     return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);

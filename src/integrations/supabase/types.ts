@@ -3145,6 +3145,7 @@ export type Database = {
           updated_at: string
           version_group_id: string | null
           version_number: number
+          visibility: Database["public"]["Enums"]["client_note_visibility"]
         }
         Insert: {
           client_id: string
@@ -3173,6 +3174,7 @@ export type Database = {
           updated_at?: string
           version_group_id?: string | null
           version_number?: number
+          visibility?: Database["public"]["Enums"]["client_note_visibility"]
         }
         Update: {
           client_id?: string
@@ -3201,6 +3203,7 @@ export type Database = {
           updated_at?: string
           version_group_id?: string | null
           version_number?: number
+          visibility?: Database["public"]["Enums"]["client_note_visibility"]
         }
         Relationships: [
           {
@@ -6261,11 +6264,13 @@ export type Database = {
           id: string
           invoice_date: string | null
           invoice_ref: string | null
+          milestone: string | null
           net_amount: number
           notes: string | null
           paid_at: string | null
           partner_company_snapshot: string | null
           partner_name_snapshot: string | null
+          purchase_file_id: string | null
           rate_pct: number
           statement_id: string | null
           status: string
@@ -6288,11 +6293,13 @@ export type Database = {
           id?: string
           invoice_date?: string | null
           invoice_ref?: string | null
+          milestone?: string | null
           net_amount?: number
           notes?: string | null
           paid_at?: string | null
           partner_company_snapshot?: string | null
           partner_name_snapshot?: string | null
+          purchase_file_id?: string | null
           rate_pct?: number
           statement_id?: string | null
           status?: string
@@ -6315,11 +6322,13 @@ export type Database = {
           id?: string
           invoice_date?: string | null
           invoice_ref?: string | null
+          milestone?: string | null
           net_amount?: number
           notes?: string | null
           paid_at?: string | null
           partner_company_snapshot?: string | null
           partner_name_snapshot?: string | null
+          purchase_file_id?: string | null
           rate_pct?: number
           statement_id?: string | null
           status?: string
@@ -6360,6 +6369,13 @@ export type Database = {
             columns: ["finance_contact_id"]
             isOneToOne: false
             referencedRelation: "finance_agent_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
             referencedColumns: ["id"]
           },
           {
@@ -11171,6 +11187,81 @@ export type Database = {
           },
         ]
       }
+      purchase_file_risks: {
+        Row: {
+          category: string
+          client_id: string
+          created_at: string
+          created_by_finance_user_id: string | null
+          created_by_team_user_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          owner: string
+          purchase_file_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by_finance_user_id: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          client_id: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string
+          purchase_file_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by_finance_user_id?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          client_id?: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string
+          purchase_file_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by_finance_user_id?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_risks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_risks_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_file_status_history: {
         Row: {
           actor_id: string | null
@@ -11324,6 +11415,9 @@ export type Database = {
           archived_at: string | null
           assigned_finance_user_id: string | null
           assigned_team_user_id: string | null
+          borrowing_snapshot: Json
+          borrowing_snapshot_updated_at: string | null
+          borrowing_snapshot_updated_by_finance_user_id: string | null
           client_contribution: number | null
           client_id: string
           created_at: string
@@ -11352,6 +11446,9 @@ export type Database = {
           archived_at?: string | null
           assigned_finance_user_id?: string | null
           assigned_team_user_id?: string | null
+          borrowing_snapshot?: Json
+          borrowing_snapshot_updated_at?: string | null
+          borrowing_snapshot_updated_by_finance_user_id?: string | null
           client_contribution?: number | null
           client_id: string
           created_at?: string
@@ -11380,6 +11477,9 @@ export type Database = {
           archived_at?: string | null
           assigned_finance_user_id?: string | null
           assigned_team_user_id?: string | null
+          borrowing_snapshot?: Json
+          borrowing_snapshot_updated_at?: string | null
+          borrowing_snapshot_updated_by_finance_user_id?: string | null
           client_contribution?: number | null
           client_id?: string
           created_at?: string
@@ -12931,6 +13031,21 @@ export type Database = {
           },
         ]
       }
+      purchase_file_activity_feed: {
+        Row: {
+          actor_id: string | null
+          actor_kind: string | null
+          created_at: string | null
+          event_type: string | null
+          from_value: string | null
+          id: string | null
+          payload: Json | null
+          purchase_file_id: string | null
+          source: string | null
+          to_value: string | null
+        }
+        Relationships: []
+      }
       vw_broker_scorecard: {
         Row: {
           approvals: number | null
@@ -13444,6 +13559,7 @@ export type Database = {
         | "manual"
         | "csv_import"
         | "backfill"
+      client_note_visibility: "shared" | "internal_npc"
       commercial_asset_class:
         | "office"
         | "retail"
@@ -13959,6 +14075,7 @@ export const Constants = {
         "csv_import",
         "backfill",
       ],
+      client_note_visibility: ["shared", "internal_npc"],
       commercial_asset_class: [
         "office",
         "retail",
