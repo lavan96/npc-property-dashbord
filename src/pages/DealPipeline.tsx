@@ -19,6 +19,7 @@ import { PipelineValueSummaryBar } from '@/components/deals/PipelineValueSummary
 import { SettlementCountdownCards } from '@/components/deals/SettlementCountdownCards';
 import { CommissionForecastWidget } from '@/components/deals/CommissionForecastWidget';
 import { AtRiskDealsPanel } from '@/components/deals/AtRiskDealsPanel';
+import { LinkedFinanceFilesPanel } from '@/components/deals/LinkedFinanceFilesPanel';
 import { toast } from 'sonner';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import type { DealWithClient } from '@/hooks/useAllDeals';
