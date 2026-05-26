@@ -291,6 +291,9 @@ export default function FinancePortalClientProfile() {
         </CardContent>
       </Card>
 
+      {/* Phase 7.3 — Client portal mirror */}
+      <ClientMirrorCard clientId={clientId!} />
+
       {/* Scrollable Tab Bar */}
       {unlockedTabs.length === 0 ? (
         <Card>
