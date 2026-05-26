@@ -118,6 +118,8 @@ import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
 import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
 import FinancePortalMessages from "./pages/finance-portal/FinancePortalMessages";
 import FinancePortalEarnings from "./pages/finance-portal/FinancePortalEarnings";
+import FinancePortalLenderIntelligence from "./pages/finance-portal/FinancePortalLenderIntelligence";
+
 import FinancePortalPurchaseFiles from "./pages/finance-portal/FinancePortalPurchaseFiles";
 import FinancePortalPurchaseFileDetail from "./pages/finance-portal/FinancePortalPurchaseFileDetail";
 
@@ -240,6 +242,8 @@ const App = () => (
                                 <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                                 <Route path="messages" element={<FinancePortalMessages />} />
                                 <Route path="earnings" element={<FinancePortalEarnings />} />
+                                <Route path="lender-intelligence" element={<FinancePortalLenderIntelligence />} />
+
                               </Route>
                             </Routes>
                           </FinancePortalAuthProvider>

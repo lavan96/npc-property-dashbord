@@ -9945,6 +9945,68 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_playbooks: {
+        Row: {
+          bdm_email: string | null
+          bdm_name: string | null
+          bdm_phone: string | null
+          created_at: string
+          document_rules: string | null
+          id: string
+          is_active: boolean
+          lender_key: string
+          lender_label: string
+          quirks: string | null
+          rate_band_pa: number | null
+          rate_notes: string | null
+          typical_turnaround_days_override: number | null
+          updated_at: string
+          updated_by_finance_user_id: string | null
+        }
+        Insert: {
+          bdm_email?: string | null
+          bdm_name?: string | null
+          bdm_phone?: string | null
+          created_at?: string
+          document_rules?: string | null
+          id?: string
+          is_active?: boolean
+          lender_key: string
+          lender_label: string
+          quirks?: string | null
+          rate_band_pa?: number | null
+          rate_notes?: string | null
+          typical_turnaround_days_override?: number | null
+          updated_at?: string
+          updated_by_finance_user_id?: string | null
+        }
+        Update: {
+          bdm_email?: string | null
+          bdm_name?: string | null
+          bdm_phone?: string | null
+          created_at?: string
+          document_rules?: string | null
+          id?: string
+          is_active?: boolean
+          lender_key?: string
+          lender_label?: string
+          quirks?: string | null
+          rate_band_pa?: number | null
+          rate_notes?: string | null
+          typical_turnaround_days_override?: number | null
+          updated_at?: string
+          updated_by_finance_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_playbooks_updated_by_finance_user_id_fkey"
+            columns: ["updated_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_rate_alerts: {
         Row: {
           created_at: string

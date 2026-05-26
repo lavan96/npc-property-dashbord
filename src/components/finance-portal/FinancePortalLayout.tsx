@@ -3,8 +3,9 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen,
 } from 'lucide-react';
+
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -23,8 +24,10 @@ const NAV_ITEMS = [
   { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false },
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
   { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
+  { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
 ];
+
 
 function getInitials(name?: string | null, email?: string | null): string {
   const source = name || email || 'F';
