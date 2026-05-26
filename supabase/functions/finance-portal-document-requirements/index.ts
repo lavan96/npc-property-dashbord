@@ -530,6 +530,159 @@ Deno.serve(async (req) => {
       return jsonResponse({ requirement_ids: requirementIds, notified: (updated || []).length });
     }
 
+    /* ── analyze_quality (C1) ── */
+    if (operation === 'analyze_quality') {
+      const reqId = body.requirement_id;
+      if (!reqId) return jsonResponse({ error: 'requirement_id required' }, 400);
+      const { data: req } = await supabase
+        .from('document_requirement_instances')
+        .select('id, category, client_id, document_id, finance_portal_documents(id, original_filename, mime_type, file_size, created_at)')
+        .eq('id', reqId)
+        .maybeSingle();
+      if (!req) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(req.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      const doc: any = req.finance_portal_documents;
+      if (!doc) return jsonResponse({ error: 'No linked document to analyze' }, 400);
+
+      const detectedDate = detectDateFromFilename(doc.original_filename);
+      const result = assessQuality({
+        category: req.category,
+        filename: doc.original_filename || '',
+        mimeType: doc.mime_type || '',
+        fileSize: doc.file_size || 0,
+        uploadedAt: doc.created_at || new Date().toISOString(),
+        detectedDate,
+      });
+
+      const { data: updated, error } = await supabase
+        .from('document_requirement_instances')
+        .update({
+          quality_status: result.status,
+          quality_flags: result.flags,
+          quality_checked_at: new Date().toISOString(),
+          detected_doc_type: result.detectedType,
+          detected_doc_date: detectedDate,
+          soft_expiry_date: result.softExpiry,
+        })
+        .eq('id', reqId)
+        .select()
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ requirement: updated });
+    }
+
+    /* ── analyze_quality_bulk ── */
+    if (operation === 'analyze_quality_bulk') {
+      const fileId = body.purchase_file_id;
+      if (!fileId) return jsonResponse({ error: 'purchase_file_id required' }, 400);
+      const file = await loadFile(fileId);
+      if (!file) return jsonResponse({ error: 'Not found' }, 404);
+      const perms = await getEffectivePermissions(file.client_id);
+      if (!perms?.documents?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+
+      const { data: reqs } = await supabase
+        .from('document_requirement_instances')
+        .select('id, category, document_id, finance_portal_documents(id, original_filename, mime_type, file_size, created_at)')
+        .eq('purchase_file_id', fileId)
+        .not('document_id', 'is', null);
+
+      let analyzed = 0;
+      for (const r of (reqs || []) as any[]) {
+        const doc = r.finance_portal_documents;
+        if (!doc) continue;
+        const detectedDate = detectDateFromFilename(doc.original_filename || '');
+        const result = assessQuality({
+          category: r.category,
+          filename: doc.original_filename || '',
+          mimeType: doc.mime_type || '',
+          fileSize: doc.file_size || 0,
+          uploadedAt: doc.created_at || new Date().toISOString(),
+          detectedDate,
+        });
+        await supabase.from('document_requirement_instances').update({
+          quality_status: result.status,
+          quality_flags: result.flags,
+          quality_checked_at: new Date().toISOString(),
+          detected_doc_type: result.detectedType,
+          detected_doc_date: detectedDate,
+          soft_expiry_date: result.softExpiry,
+        }).eq('id', r.id);
+        analyzed++;
+      }
+      return jsonResponse({ analyzed });
+    }
+
+    /* ── list_message_templates (C2) ── */
+    if (operation === 'list_message_templates') {
+      const { data, error } = await supabase
+        .from('finance_portal_doc_message_templates')
+        .select('*')
+        .or(`finance_user_id.is.null,finance_user_id.eq.${portalUser.id}`)
+        .eq('is_active', true)
+        .order('reason')
+        .order('name');
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ templates: data || [] });
+    }
+
+    if (operation === 'upsert_message_template') {
+      const payload = body.payload || {};
+      if (!payload.name || !payload.reason || !payload.body) {
+        return jsonResponse({ error: 'name, reason, body required' }, 400);
+      }
+      const row: any = {
+        finance_user_id: portalUser.id,
+        name: payload.name,
+        reason: payload.reason,
+        body: payload.body,
+        is_active: payload.is_active !== false,
+      };
+      let q;
+      if (payload.id) {
+        q = supabase.from('finance_portal_doc_message_templates')
+          .update(row).eq('id', payload.id).eq('finance_user_id', portalUser.id).select().single();
+      } else {
+        q = supabase.from('finance_portal_doc_message_templates').insert(row).select().single();
+      }
+      const { data, error } = await q;
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ template: data });
+    }
+
+    if (operation === 'delete_message_template') {
+      const id = body.template_id;
+      if (!id) return jsonResponse({ error: 'template_id required' }, 400);
+      const { error } = await supabase
+        .from('finance_portal_doc_message_templates')
+        .delete().eq('id', id).eq('finance_user_id', portalUser.id);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ ok: true });
+    }
+
+    /* ── list_expiring (C4 - dashboard widget) ── */
+    if (operation === 'list_expiring') {
+      const days = Math.min(180, Math.max(1, Number(body.within_days) || 30));
+      const cutoff = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+      const { data: assignments } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id')
+        .eq('finance_user_id', portalUser.id);
+      const clientIds = (assignments || []).map((a: any) => a.client_id);
+      if (clientIds.length === 0) return jsonResponse({ items: [] });
+
+      const { data, error } = await supabase
+        .from('document_requirement_instances')
+        .select('id, label, category, status, soft_expiry_date, detected_doc_date, purchase_file_id, client_id, quality_status, purchase_files(title)')
+        .in('client_id', clientIds)
+        .not('soft_expiry_date', 'is', null)
+        .lte('soft_expiry_date', cutoff)
+        .neq('status', 'waived')
+        .order('soft_expiry_date');
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ items: data || [] });
+    }
+
     return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
   } catch (err: any) {
     return jsonResponse({ error: err?.message || 'Unexpected error' }, 500);
