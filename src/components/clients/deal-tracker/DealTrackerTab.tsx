@@ -146,9 +146,17 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
                         S{deal.current_stage_number}
                       </Badge>
                     </div>
-                    <Badge className={cn('text-[10px] border shrink-0', riskConfig.color)}>
-                      {riskConfig.emoji} {riskConfig.label}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {deal.purchase_file_id && (
+                        <Badge variant="outline" className="text-[10px] border-success/40 text-success">
+                          🔗 Finance file
+                        </Badge>
+                      )}
+                      <Badge className={cn('text-[10px] border shrink-0', riskConfig.color)}>
+                        {riskConfig.emoji} {riskConfig.label}
+                      </Badge>
+                    </div>
+
                   </div>
 
                   <p className="text-xs sm:text-sm text-muted-foreground mb-2 truncate">{deal.current_stage}</p>

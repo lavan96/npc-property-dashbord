@@ -58,6 +58,10 @@ export interface Deal {
   created_at: string;
   updated_at: string;
 
+  // Phase 6 — Finance Portal link
+  purchase_file_id?: string | null;
+
+
   // Nested data from get-client-data
   stages?: DealStage[];
   buildPayments?: BuildProgressPayment[];
