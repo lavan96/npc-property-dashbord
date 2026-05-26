@@ -208,6 +208,10 @@ export default function FinancePortalPurchaseFileDetail() {
           <CriticalDatesTab fileId={fileId!} dates={dates} onChange={refresh} />
         </TabsContent>
 
+        <TabsContent value="documents">
+          <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
+        </TabsContent>
+
         <TabsContent value="activity">
           <Card>
             <CardHeader><CardTitle className="text-base">Status & activity history</CardTitle></CardHeader>
