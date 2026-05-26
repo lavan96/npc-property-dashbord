@@ -506,11 +506,13 @@ Deno.serve(async (req) => {
       if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
       if (!permissions[table_key]?.view) return jsonResponse({ error: 'No view permission for ' + table_key }, 403);
 
-      const { data, error } = await supabase
+      let listQuery = supabase
         .from(dbTable)
         .select('*')
-        .eq('client_id', client_id)
-        .order('created_at', { ascending: false });
+        .eq('client_id', client_id);
+      // Finance portal must never see internal-only notes
+      if (dbTable === 'client_notes') listQuery = listQuery.eq('visibility', 'shared');
+      const { data, error } = await listQuery.order('created_at', { ascending: false });
       if (error) throw error;
       await audit('list_records', table_key, null, { count: data?.length || 0 });
       return jsonResponse({ success: true, records: data || [], permission: permissions[table_key] });
