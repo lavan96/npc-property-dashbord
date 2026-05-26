@@ -803,7 +803,8 @@ export default function FinancePortalClients() {
           <div className="space-y-2">
             <AnimatePresence initial={false}>
               {filtered.map((record: any, index: number) => {
-                const name = record.client?.primary_contact_name || '—';
+                const name = smartCapitalize(record.client?.primary_contact_name) || '—';
+                const secondaryName = smartCapitalize(record.client?.secondary_contact_name);
                 const permissions = record.permissions || {};
                 const grantedTables = Object.entries(permissions).filter(([_, permission]: any) => permission?.view).length;
                 const totalTables = 12;
