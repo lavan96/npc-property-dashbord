@@ -21,6 +21,7 @@ import {
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
 } from 'lucide-react';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
+import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
 import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { cn } from '@/lib/utils';
@@ -194,9 +195,9 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
-          <TabsTrigger value="decisions" disabled><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
-          <TabsTrigger value="conditions" disabled><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
-          <TabsTrigger value="valuation" disabled><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
+          <TabsTrigger value="decisions"><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
+          <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
+          <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
         </TabsList>
 
@@ -210,6 +211,18 @@ export default function FinancePortalPurchaseFileDetail() {
 
         <TabsContent value="documents">
           <DocumentsTab fileId={fileId!} purchaseType={data.purchase_type} />
+        </TabsContent>
+
+        <TabsContent value="decisions">
+          <FinanceDecisionsTab fileId={fileId!} />
+        </TabsContent>
+
+        <TabsContent value="conditions">
+          <ConditionsTab fileId={fileId!} />
+        </TabsContent>
+
+        <TabsContent value="valuation">
+          <ValuationsTab fileId={fileId!} />
         </TabsContent>
 
         <TabsContent value="activity">

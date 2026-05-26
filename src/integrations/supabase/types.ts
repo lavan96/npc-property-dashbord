@@ -10952,6 +10952,105 @@ export type Database = {
           },
         ]
       }
+      purchase_file_conditions: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by_finance_user_id: string | null
+          created_by_team_user_id: string | null
+          description: string | null
+          document_id: string | null
+          due_date: string | null
+          id: string
+          is_auto_generated: boolean
+          notes: string | null
+          owner: Database["public"]["Enums"]["condition_owner"]
+          purchase_file_id: string
+          satisfied_at: string | null
+          satisfied_by_finance_user_id: string | null
+          sort_order: number
+          status: Database["public"]["Enums"]["condition_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_auto_generated?: boolean
+          notes?: string | null
+          owner?: Database["public"]["Enums"]["condition_owner"]
+          purchase_file_id: string
+          satisfied_at?: string | null
+          satisfied_by_finance_user_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["condition_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          description?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_auto_generated?: boolean
+          notes?: string | null
+          owner?: Database["public"]["Enums"]["condition_owner"]
+          purchase_file_id?: string
+          satisfied_at?: string | null
+          satisfied_by_finance_user_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["condition_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_conditions_created_by_finance_user_id_fkey"
+            columns: ["created_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_conditions_created_by_team_user_id_fkey"
+            columns: ["created_by_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_conditions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_conditions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_conditions_satisfied_by_finance_user_id_fkey"
+            columns: ["satisfied_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_file_critical_dates: {
         Row: {
           completed_at: string | null
@@ -10996,6 +11095,82 @@ export type Database = {
           },
         ]
       }
+      purchase_file_finance_decisions: {
+        Row: {
+          client_id: string
+          created_at: string
+          decided_at: string
+          decided_by_finance_user_id: string | null
+          decided_by_team_user_id: string | null
+          id: string
+          outcome: Database["public"]["Enums"]["finance_decision_outcome"]
+          purchase_file_id: string
+          rationale: string | null
+          snapshot_client_contribution: number | null
+          snapshot_estimated_rent_weekly: number | null
+          snapshot_lender: string | null
+          snapshot_max_approved_budget: number | null
+          snapshot_purchase_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          decided_at?: string
+          decided_by_finance_user_id?: string | null
+          decided_by_team_user_id?: string | null
+          id?: string
+          outcome: Database["public"]["Enums"]["finance_decision_outcome"]
+          purchase_file_id: string
+          rationale?: string | null
+          snapshot_client_contribution?: number | null
+          snapshot_estimated_rent_weekly?: number | null
+          snapshot_lender?: string | null
+          snapshot_max_approved_budget?: number | null
+          snapshot_purchase_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          decided_at?: string
+          decided_by_finance_user_id?: string | null
+          decided_by_team_user_id?: string | null
+          id?: string
+          outcome?: Database["public"]["Enums"]["finance_decision_outcome"]
+          purchase_file_id?: string
+          rationale?: string | null
+          snapshot_client_contribution?: number | null
+          snapshot_estimated_rent_weekly?: number | null
+          snapshot_lender?: string | null
+          snapshot_max_approved_budget?: number | null
+          snapshot_purchase_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_finance_decisions_decided_by_finance_user_id_fkey"
+            columns: ["decided_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_finance_decisions_decided_by_team_user_id_fkey"
+            columns: ["decided_by_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_finance_decisions_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_file_status_history: {
         Row: {
           actor_id: string | null
@@ -11033,6 +11208,110 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "purchase_file_status_history_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_file_valuations: {
+        Row: {
+          access_required: string | null
+          agent_contact: string | null
+          client_id: string
+          contract_price: number | null
+          created_at: string
+          created_by_finance_user_id: string | null
+          created_by_team_user_id: string | null
+          document_id: string | null
+          id: string
+          inspected_date: string | null
+          next_action: string | null
+          notes: string | null
+          ordered_date: string | null
+          purchase_file_id: string
+          result: Database["public"]["Enums"]["valuation_result"]
+          returned_date: string | null
+          risk_level: string | null
+          shortfall: number | null
+          status: Database["public"]["Enums"]["valuation_status"]
+          updated_at: string
+          valuation_amount: number | null
+          valuer: string | null
+        }
+        Insert: {
+          access_required?: string | null
+          agent_contact?: string | null
+          client_id: string
+          contract_price?: number | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          document_id?: string | null
+          id?: string
+          inspected_date?: string | null
+          next_action?: string | null
+          notes?: string | null
+          ordered_date?: string | null
+          purchase_file_id: string
+          result?: Database["public"]["Enums"]["valuation_result"]
+          returned_date?: string | null
+          risk_level?: string | null
+          shortfall?: number | null
+          status?: Database["public"]["Enums"]["valuation_status"]
+          updated_at?: string
+          valuation_amount?: number | null
+          valuer?: string | null
+        }
+        Update: {
+          access_required?: string | null
+          agent_contact?: string | null
+          client_id?: string
+          contract_price?: number | null
+          created_at?: string
+          created_by_finance_user_id?: string | null
+          created_by_team_user_id?: string | null
+          document_id?: string | null
+          id?: string
+          inspected_date?: string | null
+          next_action?: string | null
+          notes?: string | null
+          ordered_date?: string | null
+          purchase_file_id?: string
+          result?: Database["public"]["Enums"]["valuation_result"]
+          returned_date?: string | null
+          risk_level?: string | null
+          shortfall?: number | null
+          status?: Database["public"]["Enums"]["valuation_status"]
+          updated_at?: string
+          valuation_amount?: number | null
+          valuer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_valuations_created_by_finance_user_id_fkey"
+            columns: ["created_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_valuations_created_by_team_user_id_fkey"
+            columns: ["created_by_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_valuations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_valuations_purchase_file_id_fkey"
             columns: ["purchase_file_id"]
             isOneToOne: false
             referencedRelation: "purchase_files"
@@ -13221,6 +13500,18 @@ export type Database = {
         | "expired"
         | "superseded"
         | "voided"
+      condition_owner:
+        | "client"
+        | "npc_team"
+        | "finance_partner"
+        | "legal"
+        | "other"
+      condition_status:
+        | "pending"
+        | "in_progress"
+        | "uploaded"
+        | "satisfied"
+        | "waived"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
       deal_type: "existing_property" | "house_and_land" | "refinance"
@@ -13273,6 +13564,15 @@ export type Database = {
         | "verified"
         | "waived"
         | "expired"
+      finance_decision_outcome:
+        | "green_light"
+        | "proceed_with_caution"
+        | "not_suitable"
+        | "need_more_info"
+        | "subject_to_valuation"
+        | "subject_to_lender_review"
+        | "subject_to_equity"
+        | "subject_to_deposit"
       generated_doc_status:
         | "draft"
         | "generated"
@@ -13394,6 +13694,14 @@ export type Database = {
         | "client_branding"
         | "qa_export"
         | "cashflow_export"
+      valuation_result: "on_contract" | "above_contract" | "short" | "pending"
+      valuation_status:
+        | "ordered"
+        | "access_pending"
+        | "inspected"
+        | "returned"
+        | "disputed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -13715,6 +14023,20 @@ export const Constants = {
         "superseded",
         "voided",
       ],
+      condition_owner: [
+        "client",
+        "npc_team",
+        "finance_partner",
+        "legal",
+        "other",
+      ],
+      condition_status: [
+        "pending",
+        "in_progress",
+        "uploaded",
+        "satisfied",
+        "waived",
+      ],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
       deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
       deal_type: ["existing_property", "house_and_land", "refinance"],
@@ -13772,6 +14094,16 @@ export const Constants = {
         "verified",
         "waived",
         "expired",
+      ],
+      finance_decision_outcome: [
+        "green_light",
+        "proceed_with_caution",
+        "not_suitable",
+        "need_more_info",
+        "subject_to_valuation",
+        "subject_to_lender_review",
+        "subject_to_equity",
+        "subject_to_deposit",
       ],
       generated_doc_status: [
         "draft",
@@ -13908,6 +14240,15 @@ export const Constants = {
         "client_branding",
         "qa_export",
         "cashflow_export",
+      ],
+      valuation_result: ["on_contract", "above_contract", "short", "pending"],
+      valuation_status: [
+        "ordered",
+        "access_pending",
+        "inspected",
+        "returned",
+        "disputed",
+        "cancelled",
       ],
     },
   },
