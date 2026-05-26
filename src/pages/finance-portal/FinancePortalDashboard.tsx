@@ -375,6 +375,7 @@ export default function FinancePortalDashboard() {
             { to: '/finance/clients', icon: Users, label: 'My Clients', description: 'All assigned clients' },
             { to: '/finance/messages', icon: MessageSquare, label: 'Messages', description: `Chat with ${brandName}` },
             { to: '/finance/earnings', icon: Wallet, label: 'Earnings', description: 'Commissions & statements' },
+            { to: '/finance/forecasting', icon: TrendingUp, label: 'Forecasting', description: 'Pipeline, clawback, goals' },
           ].map((qa, i) => (
             <motion.div
               key={qa.to}
