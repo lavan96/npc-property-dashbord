@@ -643,7 +643,7 @@ export default function FinancePortalEarnings() {
                             {format(new Date(c.created_at), 'd MMM yyyy')}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium text-sm">{c.client_name_snapshot || '\u2014'}</div>
+                            <div className="font-medium text-sm">{smartCapitalize(c.client_name_snapshot) || '\u2014'}</div>
                             <div className="text-xs text-muted-foreground">{c.deal_type_snapshot || ''}</div>
                           </TableCell>
                           <TableCell className="text-xs">{c.trigger_event || '\u2014'}</TableCell>
