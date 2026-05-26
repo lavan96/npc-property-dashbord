@@ -307,10 +307,10 @@ export default function FinancePortalClientProfile() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
-                onClick={() => scrollTabs('left')}
-                disabled={!canScrollLeft}
-                aria-label="Scroll tabs left"
+                className="absolute left-0 top-1/2 z-10 inline-flex -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+                onClick={() => goToTab('prev')}
+                disabled={!canGoPrev}
+                aria-label="Previous tab"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -318,10 +318,10 @@ export default function FinancePortalClientProfile() {
                 type="button"
                 variant="outline"
                 size="icon"
-                className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
-                onClick={() => scrollTabs('right')}
-                disabled={!canScrollRight}
-                aria-label="Scroll tabs right"
+                className="absolute right-0 top-1/2 z-10 inline-flex -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+                onClick={() => goToTab('next')}
+                disabled={!canGoNext}
+                aria-label="Next tab"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
