@@ -71,14 +71,28 @@ export function FinanceDecisionsTab({ fileId }: { fileId: string }) {
               <div className="flex-1">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Current finance position</p>
                 <p className="text-xl font-bold">{DECISION_META[latest.outcome]?.label || latest.outcome}</p>
-                {latest.rationale && <p className="text-sm mt-2 text-muted-foreground">{latest.rationale}</p>}
-                <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-                  {latest.snapshot_purchase_price != null && <span>Price ${Number(latest.snapshot_purchase_price).toLocaleString('en-AU')}</span>}
-                  {latest.snapshot_estimated_rent_weekly != null && <span>· Rent ${Number(latest.snapshot_estimated_rent_weekly).toLocaleString('en-AU')}/wk</span>}
-                  {latest.snapshot_max_approved_budget != null && <span>· Max budget ${Number(latest.snapshot_max_approved_budget).toLocaleString('en-AU')}</span>}
-                  {latest.snapshot_lender && <span>· {latest.snapshot_lender}</span>}
+                {(latest.broker_notes || latest.rationale) && (
+                  <p className="text-sm mt-2 text-muted-foreground">{latest.broker_notes || latest.rationale}</p>
+                )}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-muted-foreground">
+                  {latest.max_comfortable_price != null && <span>Max comfortable ${Number(latest.max_comfortable_price).toLocaleString('en-AU')}</span>}
+                  {latest.proposed_loan_amount != null && <span>· Loan ${Number(latest.proposed_loan_amount).toLocaleString('en-AU')}</span>}
+                  {latest.lvr != null && <span>· LVR {Number(latest.lvr).toFixed(1)}%</span>}
+                  {latest.lmi_applicable && <span>· LMI {latest.lmi_amount ? `$${Number(latest.lmi_amount).toLocaleString('en-AU')}` : 'applicable'}</span>}
+                  {latest.preferred_lender_pathway && <span>· {latest.preferred_lender_pathway}</span>}
+                  {latest.snapshot_purchase_price != null && !latest.max_comfortable_price && <span>Price ${Number(latest.snapshot_purchase_price).toLocaleString('en-AU')}</span>}
                   <span>· {new Date(latest.decided_at).toLocaleString('en-AU')}</span>
                 </div>
+                {latest.decision_expiry_date && (() => {
+                  const days = Math.ceil((new Date(latest.decision_expiry_date).getTime() - Date.now()) / 86400000);
+                  const tone = days < 0 ? 'text-destructive' : days <= 3 ? 'text-destructive' : days <= 7 ? 'text-amber-500' : 'text-muted-foreground';
+                  return (
+                    <p className={cn('text-xs mt-1.5 font-medium', tone)}>
+                      Decision expiry: {new Date(latest.decision_expiry_date).toLocaleDateString('en-AU')}
+                      {days < 0 ? ` · overdue by ${-days}d` : ` · in ${days}d`}
+                    </p>
+                  );
+                })()}
               </div>
               <Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> New decision</Button>
             </div>
