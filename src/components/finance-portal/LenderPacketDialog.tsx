@@ -192,10 +192,28 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
       const url = URL.createObjectURL(out);
       const a = document.createElement('a');
       const safeTitle = (manifest.meta.file?.title || 'Lender Packet').replace(/[^a-zA-Z0-9._ -]/g, '_');
+      const filename = `${safeTitle} - Lender Packet.zip`;
       a.href = url;
-      a.download = `${safeTitle} - Lender Packet.zip`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Persist packet history
+      try {
+        await invokeFinanceFunction('finance-portal-lender-packet', {
+          operation: 'record_generated',
+          purchase_file_id: fileId,
+          lender_name: manifest.meta.file?.lender_name,
+          filename,
+          file_count: included.length + 1,
+          total_size_bytes: out.size,
+          missing_required_count: manifest.gaps?.missing_required?.length || 0,
+          missing_required: manifest.gaps?.missing_required || [],
+          quality_flags: manifest.gaps?.quality_issues || [],
+          manifest: { files: included.map(f => ({ seq: f.sequence, name: f.packet_filename, cat: f.category })) },
+        });
+      } catch (e) { console.warn('packet history failed', e); }
+
       toast.success(`Packet built: ${included.length + 1} files`);
       onOpenChange(false);
     } catch (e: any) {
