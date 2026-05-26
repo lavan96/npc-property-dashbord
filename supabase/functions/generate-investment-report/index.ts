@@ -580,16 +580,26 @@ function sanitizeCompass40Content(raw: string): string {
       );
       if (tainted || inForbiddenSection) continue;
 
-      // SEIFA validation: if all deciles identical, drop table (templated/fake).
+      // SEIFA validation: drop table if (a) all deciles identical (templated),
+      // (b) any row's text label contradicts its decile direction, or
+      // (c) the table is self-flagged as "Illustrative" / "Scenario".
       const isSeifa = blk.lines.some((ln) => /\b(SEIFA|IRSAD|IRSD|IEO|IER)\b/i.test(ln));
       if (isSeifa) {
         const deciles = blk.lines
           .map((ln) => ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|/))
           .filter(Boolean)
-          .map((m) => m![1]);
-        if (deciles.length >= 3 && new Set(deciles).size === 1) {
-          continue; // all identical → fabricated
-        }
+          .map((m) => parseInt(m![1], 10));
+        if (deciles.length >= 3 && new Set(deciles).size === 1) continue;
+        const contradicts = blk.lines.some((ln) => {
+          const m = ln.match(/\|\s*(\d{1,2})\s*\/\s*10\s*\|.*\|\s*([^|]+?)\s*\|?\s*$/);
+          if (!m) return false;
+          const dec = parseInt(m[1], 10);
+          const label = m[2].toLowerCase();
+          if (dec >= 7 && /\bdisadvantag/.test(label) && !/low|moderate\s+to\s+low/.test(label)) return true;
+          if (dec <= 3 && /\badvantag/.test(label) && !/dis/.test(label)) return true;
+          return false;
+        });
+        if (contradicts) continue;
       }
       kept.push(...blk.lines);
       continue;
