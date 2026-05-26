@@ -242,6 +242,8 @@ const App = () => (
                                 <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                                 <Route path="messages" element={<FinancePortalMessages />} />
                                 <Route path="earnings" element={<FinancePortalEarnings />} />
+                                <Route path="lender-intelligence" element={<FinancePortalLenderIntelligence />} />
+
                               </Route>
                             </Routes>
                           </FinancePortalAuthProvider>
