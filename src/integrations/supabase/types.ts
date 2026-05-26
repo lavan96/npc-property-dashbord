@@ -11702,6 +11702,102 @@ export type Database = {
           },
         ]
       }
+      purchase_file_audit_events: {
+        Row: {
+          action: string
+          actor_client_id: string | null
+          actor_finance_user_id: string | null
+          actor_team_user_id: string | null
+          actor_type: string
+          category: string
+          client_deal_id: string | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          fields_accessed: string[] | null
+          id: string
+          ip_address: string | null
+          is_redacted: boolean
+          metadata: Json
+          prev_hash: string | null
+          purchase_file_id: string | null
+          redacted_at: string | null
+          retention_class: string
+          row_hash: string | null
+          severity: string
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_client_id?: string | null
+          actor_finance_user_id?: string | null
+          actor_team_user_id?: string | null
+          actor_type: string
+          category: string
+          client_deal_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          fields_accessed?: string[] | null
+          id?: string
+          ip_address?: string | null
+          is_redacted?: boolean
+          metadata?: Json
+          prev_hash?: string | null
+          purchase_file_id?: string | null
+          redacted_at?: string | null
+          retention_class?: string
+          row_hash?: string | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_client_id?: string | null
+          actor_finance_user_id?: string | null
+          actor_team_user_id?: string | null
+          actor_type?: string
+          category?: string
+          client_deal_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          fields_accessed?: string[] | null
+          id?: string
+          ip_address?: string | null
+          is_redacted?: boolean
+          metadata?: Json
+          prev_hash?: string | null
+          purchase_file_id?: string | null
+          redacted_at?: string | null
+          retention_class?: string
+          row_hash?: string | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_audit_events_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_audit_events_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
       purchase_file_client_tasks: {
         Row: {
           client_id: string
@@ -14481,6 +14577,21 @@ export type Database = {
       cleanup_expired_stamp_duty_cache: { Args: never; Returns: undefined }
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
+      compute_audit_row_hash: {
+        Args: {
+          _action: string
+          _actor_id: string
+          _actor_type: string
+          _category: string
+          _created_at: string
+          _metadata: Json
+          _prev_hash: string
+          _purchase_file_id: string
+          _target_id: string
+          _target_type: string
+        }
+        Returns: string
+      }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
       finalize_ghl_cutover: { Args: { p_job_id: string }; Returns: Json }
       finalize_migration_upload: {
