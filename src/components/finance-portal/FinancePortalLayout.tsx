@@ -195,6 +195,10 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/finance/settings')}>
+                      <SettingsIcon className="h-4 w-4 mr-2" /> Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign out
