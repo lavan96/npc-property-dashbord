@@ -27,22 +27,44 @@ interface InvestmentScoringInput {
   propertyType?: string;
 }
 
+interface DimensionScore {
+  score: number;
+  weight: number;
+  details: string;
+  hasData: boolean;
+  dataPoints: string[]; // names of real inputs present (drives confidence)
+  excluded?: boolean;   // true if dimension was dropped from the headline score
+}
+
 interface InvestmentScore {
-  totalScore: number;
+  totalScore: number | null;
   grade: string;
   recommendation: string;
   breakdown: {
-    yieldScore: { score: number; weight: number; details: string };
-    growthScore: { score: number; weight: number; details: string };
-    locationScore: { score: number; weight: number; details: string };
-    demandScore: { score: number; weight: number; details: string };
-    riskScore: { score: number; weight: number; details: string };
+    yieldScore: DimensionScore;
+    growthScore: DimensionScore;
+    locationScore: DimensionScore;
+    demandScore: DimensionScore;
+    riskScore: DimensionScore;
+  };
+  coverage: {
+    dimensionsScored: number;
+    totalDimensions: number;
+    coverageRatio: number;       // 0..1
+    weightCovered: number;       // sum of nominal weights of scored dims (0..1)
+    dataInsufficient: boolean;   // true when < 3 dimensions had data
+    partialLabel: string;        // e.g. "Score based on 3 of 5 dimensions"
+    cotalityReady: true;         // structural marker: drop-in for cotality-service envelopes
   };
   strengths: string[];
   weaknesses: string[];
   opportunities: string[];
   risks: string[];
 }
+
+// Minimum number of dimensions required to publish a quantitative headline score.
+// Below this, the renderer should fall back to qualitative SWOT only.
+const MIN_DIMENSIONS_FOR_HEADLINE_SCORE = 3;
 
 // Transform nested input structure to flat structure expected by scoring logic
 function transformInputData(rawInput: any): InvestmentScoringInput {
