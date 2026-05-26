@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
       const records = (assignments || []).map((a: any) => ({
         assignment_id: a.id,
         client_id: a.client_id,
-        permissions: a.permissions,
+        permissions: mergePermissions(portalUser.global_permissions, a.permissions),
         assigned_at: a.assigned_at,
         client: cMap.get(a.client_id) || null,
       }));
