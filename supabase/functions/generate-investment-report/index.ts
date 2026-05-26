@@ -647,7 +647,9 @@ function sanitizeCompass40Content(raw: string): string {
 
   // Strip leaked binding labels left in prose (e.g. "Interest Rate: 6.5%",
   // "Capital Growth: 5% per annum") — these come from the override-injection.
-  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:p\.?\s*a\.?)?\)?/gi, '');
+  out = out.replace(/\b(Interest Rate|Capital Growth(?:\s+Rate)?|LVR|Loan[-\s]?to[-\s]?Value(?:\s+Ratio)?|Purchase Price|Weekly Rent|Loan Amount|Stamp Duty|Deposit|CPI Growth Rate)\s*:\s*\$?[\d.,]+\s*%?\s*(?:per\s+annum|p\.?\s*a\.?)?\s*\)?/gi, '');
+  // Drop stray placeholder strings the model never resolved (e.g. "Medical Centre Name").
+  out = out.replace(/\b(Medical Centre|School|Suburb|Hospital|Park|Station|Shopping Centre)\s+Name\b/gi, '');
 
   // Drop orphaned "What This Means" labels with no body before next heading.
   out = out.replace(
