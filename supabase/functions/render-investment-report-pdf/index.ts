@@ -490,8 +490,11 @@ async function injectTableCharts(html: string): Promise<string> {
   const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
   if (tables.length === 0) return html;
 
-  const replacements = await Promise.all(tables.map(async (match) => {
-    const tbl = match[0];
+  const replacements = new Array<string>(tables.length);
+  const queue = tables.map((match, index) => ({ tbl: match[0], index }));
+  const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
+    while (queue.length) {
+      const { tbl, index } = queue.shift()!;
     const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
     const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
     const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
@@ -504,9 +507,10 @@ async function injectTableCharts(html: string): Promise<string> {
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
     const chart = await tableToChartHtml(headers, dataRows);
-    if (!chart) return tbl;
-    return `<div class="chart-wrap">${chart}${tbl}</div>`;
-  }));
+      replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
+    }
+  });
+  await Promise.all(workers);
 
   let i = 0;
   return html.replace(/<table[\s\S]*?<\/table>/gi, () => replacements[i++]);
