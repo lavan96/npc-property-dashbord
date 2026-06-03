@@ -1377,8 +1377,8 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginLeft: 0,
         marginRight: 0,
         // Wait for remote QuickChart images to finish loading before snapshot.
-        delay: 2500,
-        puppeteerWaitForMethod: "WaitForNavigation",
+        delay: 1200,
+        puppeteerWaitForMethod: "WaitForNetworkIdle0",
       },
 
     };
@@ -1434,6 +1434,10 @@ if (import.meta.main) Deno.serve(async (req) => {
 
   try {
     if (!API2PDF_KEY) throw new Error("API2PDF_API_KEY is not configured");
+
+    // Reset module-scoped chart cache each invocation to prevent
+    // unbounded growth across warm restarts (root cause of recent OOMs).
+    chartImageCache.clear();
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const body = await req.json();
