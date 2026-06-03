@@ -149,10 +149,10 @@ verify_jwt = true
 
 [functions.generate-investment-report]
 verify_jwt = false
-request_timeout = 900
+request_timeout = 1500
 
 [functions.resume-bulk-generation]
-request_timeout = 600
+request_timeout = 1500
 
 [functions.abs-data-service]
 verify_jwt = false
