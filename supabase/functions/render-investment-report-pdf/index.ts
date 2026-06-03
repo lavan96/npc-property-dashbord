@@ -1097,7 +1097,11 @@ if (import.meta.main) Deno.serve(async (req) => {
       if (cd?.company_name) brandName = cd.company_name;
     } catch { /* optional */ }
 
-    const html = buildHtml(report, brandName);
+    const html = await buildHtml(report, brandName, {
+      includeCharts: includeCharts !== false,
+      includeSparklines: includeSparklines !== false,
+      includeHeroImages: includeHeroImages === true,
+    });
     const safeAddr = String(report.property_address || "report")
       .replace(/[^a-zA-Z0-9]+/g, "-")
       .slice(0, 60);
