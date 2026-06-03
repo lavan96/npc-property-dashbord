@@ -13162,6 +13162,70 @@ export type Database = {
           },
         ]
       }
+      purchase_file_outcomes: {
+        Row: {
+          created_at: string
+          finance_contact_id: string | null
+          id: string
+          lender: string | null
+          loan_amount: number | null
+          outcome: string
+          purchase_file_id: string
+          reason_category: string | null
+          reason_detail: string | null
+          recorded_at: string
+          recorded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          finance_contact_id?: string | null
+          id?: string
+          lender?: string | null
+          loan_amount?: number | null
+          outcome: string
+          purchase_file_id: string
+          reason_category?: string | null
+          reason_detail?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          finance_contact_id?: string | null
+          id?: string
+          lender?: string | null
+          loan_amount?: number | null
+          outcome?: string
+          purchase_file_id?: string
+          reason_category?: string | null
+          reason_detail?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_outcomes_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_agent_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_outcomes_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_outcomes_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
       purchase_file_risks: {
         Row: {
           category: string
@@ -13531,6 +13595,7 @@ export type Database = {
           finance_status: Database["public"]["Enums"]["purchase_finance_status"]
           gst_treatment: string | null
           id: string
+          kanban_position: number | null
           land_price: number | null
           land_settlement_date: string | null
           last_partner_action_at: string | null
@@ -13576,6 +13641,7 @@ export type Database = {
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
           gst_treatment?: string | null
           id?: string
+          kanban_position?: number | null
           land_price?: number | null
           land_settlement_date?: string | null
           last_partner_action_at?: string | null
@@ -13621,6 +13687,7 @@ export type Database = {
           finance_status?: Database["public"]["Enums"]["purchase_finance_status"]
           gst_treatment?: string | null
           id?: string
+          kanban_position?: number | null
           land_price?: number | null
           land_settlement_date?: string | null
           last_partner_action_at?: string | null

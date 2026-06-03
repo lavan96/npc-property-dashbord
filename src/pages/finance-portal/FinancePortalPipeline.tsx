@@ -1,0 +1,169 @@
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+import { ArrowRight, ExternalLink, Layers, RefreshCw } from 'lucide-react';
+
+const fmtMoney = (n: number) =>
+  n >= 1_000_000
+    ? `$${(n / 1_000_000).toFixed(2)}M`
+    : n >= 1000
+      ? `$${(n / 1000).toFixed(0)}k`
+      : `$${Math.round(n).toLocaleString('en-AU')}`;
+
+interface Card {
+  id: string;
+  client_id: string;
+  title: string;
+  client_name: string | null;
+  lender: string | null;
+  loan_amount: number;
+  finance_status: string;
+  risk_level: string | null;
+  settlement_date: string | null;
+  property_address: string | null;
+  property_suburb: string | null;
+  kanban_position: number | null;
+  last_partner_action_at: string | null;
+}
+interface Lane { status: string; label: string; cards: Card[]; total_loan: number; }
+
+export default function FinancePortalPipeline() {
+  const { invokeFinanceFunction } = useFinancePortalAuth();
+  const [lanes, setLanes] = useState<Lane[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
+    setLanes(data?.lanes || []);
+    setLoading(false);
+  }, [invokeFinanceFunction]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleDrop = async (targetStatus: string, targetIndex: number) => {
+    if (!dragId) return;
+    const sourceLane = lanes.find(l => l.cards.some(c => c.id === dragId));
+    if (!sourceLane) return;
+    const card = sourceLane.cards.find(c => c.id === dragId)!;
+    const targetLane = lanes.find(l => l.status === targetStatus);
+    if (!targetLane) return;
+
+    // Compute new position between neighbours
+    const filtered = targetLane.cards.filter(c => c.id !== dragId);
+    const before = filtered[targetIndex - 1]?.kanban_position;
+    const after = filtered[targetIndex]?.kanban_position;
+    let pos: number;
+    if (before != null && after != null) pos = (Number(before) + Number(after)) / 2;
+    else if (before != null) pos = Number(before) + 1000;
+    else if (after != null) pos = Number(after) - 1000;
+    else pos = Date.now();
+
+    // Optimistic update
+    setLanes(prev => {
+      const next = prev.map(l => ({ ...l, cards: l.cards.filter(c => c.id !== dragId) }));
+      const moved = { ...card, finance_status: targetStatus, kanban_position: pos };
+      const lane = next.find(l => l.status === targetStatus)!;
+      const insertAt = Math.min(targetIndex, lane.cards.length);
+      lane.cards.splice(insertAt, 0, moved);
+      return next;
+    });
+    setDragId(null);
+
+    const { error } = await invokeFinanceFunction('finance-portal-pipeline', {
+      operation: 'kanban_move',
+      purchase_file_id: dragId,
+      target_status: targetStatus,
+      target_position: pos,
+    });
+    if (error) {
+      toast.error('Move failed — refreshing board');
+      void load();
+    } else {
+      toast.success(`Moved to ${targetStatus.replace(/_/g, ' ')}`);
+    }
+  };
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Pipeline Kanban</h1>
+          <p className="text-sm text-muted-foreground">Drag &amp; drop purchase files to update their finance status.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-96 w-72 shrink-0" />)}
+        </div>
+      ) : (
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 pb-6">
+            {lanes.map((lane) => (
+              <div
+                key={lane.status}
+                className="w-72 shrink-0 rounded-xl border border-border bg-card/40 flex flex-col"
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => { e.preventDefault(); handleDrop(lane.status, lane.cards.length); }}
+              >
+                <div className="p-3 border-b border-border flex items-center justify-between sticky top-0 bg-card/80 backdrop-blur z-10 rounded-t-xl">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide font-semibold text-foreground">{lane.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{lane.cards.length} files · {fmtMoney(lane.total_loan)}</p>
+                  </div>
+                </div>
+                <div className="p-2 flex-1 space-y-2 min-h-[200px]">
+                  {lane.cards.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      draggable
+                      onDragStart={() => setDragId(card.id)}
+                      onDragEnd={() => setDragId(null)}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDrop(lane.status, idx); }}
+                      className={`rounded-lg border border-border bg-background p-3 hover:border-primary/60 cursor-grab active:cursor-grabbing transition-all ${dragId === card.id ? 'opacity-40' : ''}`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm font-medium leading-tight line-clamp-2">{card.title}</p>
+                        <Link to={`/finance/purchase-files/${card.id}`} className="shrink-0 text-muted-foreground hover:text-primary">
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </div>
+                      {card.client_name && <p className="text-xs text-muted-foreground line-clamp-1">{card.client_name}</p>}
+                      <div className="flex items-center justify-between mt-2">
+                        {card.lender && <Badge variant="outline" className="text-[10px]">{card.lender}</Badge>}
+                        {card.loan_amount > 0 && <span className="text-xs font-medium text-success">{fmtMoney(card.loan_amount)}</span>}
+                      </div>
+                      {card.settlement_date && (
+                        <p className="text-[10px] text-muted-foreground mt-1">Settle {new Date(card.settlement_date).toLocaleDateString('en-AU')}</p>
+                      )}
+                      {card.risk_level === 'high' && (
+                        <Badge variant="destructive" className="text-[10px] mt-2">High risk</Badge>
+                      )}
+                    </div>
+                  ))}
+                  {lane.cards.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic text-center py-6">Drop here</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      )}
+    </div>
+  );
+}

@@ -15,7 +15,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from 'recharts';
 import {
-  TrendingUp, AlertTriangle, Target, Calendar, ArrowRight, Save, DollarSign, Loader2,
+  TrendingUp, AlertTriangle, Target, Calendar, ArrowRight, Save, DollarSign, Loader2, CalendarDays,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -37,6 +37,8 @@ export default function FinancePortalForecasting() {
   const [forecast, setForecast] = useState<any>(null);
   const [clawback, setClawback] = useState<any>(null);
   const [goalProgress, setGoalProgress] = useState<any>(null);
+  const [calendar, setCalendar] = useState<any>(null);
+  const [calendarMonths, setCalendarMonths] = useState(6);
   const [loading, setLoading] = useState(true);
 
   const [editingTarget, setEditingTarget] = useState(false);
@@ -48,17 +50,19 @@ export default function FinancePortalForecasting() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: f }, { data: c }, { data: g }] = await Promise.all([
+    const [{ data: f }, { data: c }, { data: g }, { data: cal }] = await Promise.all([
       invokeFinanceFunction('finance-portal-forecasting', { operation: 'forecast', horizon_days: horizon }),
       invokeFinanceFunction('finance-portal-forecasting', { operation: 'clawback_radar' }),
       invokeFinanceFunction('finance-portal-forecasting', {
         operation: 'goal_progress',
         month_start: currentMonthStart(),
       }),
+      invokeFinanceFunction('finance-portal-pipeline', { operation: 'revenue_calendar', months: calendarMonths }),
     ]);
     setForecast(f || null);
     setClawback(c || null);
     setGoalProgress(g || null);
+    setCalendar(cal || null);
     if (g?.goal) {
       setTargetCount(g.goal.settlement_target_count?.toString() || '');
       setTargetAmount(g.goal.settlement_target_amount?.toString() || '');
@@ -66,7 +70,7 @@ export default function FinancePortalForecasting() {
       setGoalNotes(g.goal.notes || '');
     }
     setLoading(false);
-  }, [horizon, invokeFinanceFunction]);
+  }, [horizon, invokeFinanceFunction, calendarMonths]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -138,6 +142,7 @@ export default function FinancePortalForecasting() {
       <Tabs defaultValue="forecast" className="space-y-4">
         <TabsList>
           <TabsTrigger value="forecast">Forecast</TabsTrigger>
+          <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1" />Revenue Calendar</TabsTrigger>
           <TabsTrigger value="clawback">
             Clawback radar
             {clawback?.totals?.count > 0 && (
@@ -148,6 +153,73 @@ export default function FinancePortalForecasting() {
           </TabsTrigger>
           <TabsTrigger value="goal">Goal tracker</TabsTrigger>
         </TabsList>
+
+        {/* REVENUE CALENDAR ─────────────────────────────────── */}
+        <TabsContent value="calendar" className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="font-semibold text-sm">Confidence-weighted revenue calendar</h2>
+              <p className="text-xs text-muted-foreground">Each projected settlement is multiplied by a confidence factor based on its current finance status.</p>
+            </div>
+            <div className="flex gap-1 bg-muted/40 p-1 rounded-lg">
+              {[3, 6, 12].map((m) => (
+                <Button key={m} size="sm" variant={calendarMonths === m ? 'default' : 'ghost'} onClick={() => setCalendarMonths(m)}>
+                  {m}mo
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Events</p><p className="text-2xl font-bold mt-1">{calendar?.totals?.count || 0}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Gross (best case)</p><p className="text-2xl font-bold mt-1">{fmtMoney(calendar?.totals?.gross || 0)}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Net (best case)</p><p className="text-2xl font-bold mt-1">{fmtMoney(calendar?.totals?.net || 0)}</p></CardContent></Card>
+            <Card className="border-primary/40 bg-primary/5"><CardContent className="p-4"><p className="text-xs uppercase text-primary">Weighted net</p><p className="text-2xl font-bold mt-1 text-primary">{fmtMoney(calendar?.totals?.weighted_net || 0)}</p></CardContent></Card>
+          </div>
+
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Monthly breakdown</CardTitle></CardHeader>
+            <CardContent>
+              {loading ? <Skeleton className="h-48 w-full" /> : (calendar?.series || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground italic text-center py-8">No settlement events scheduled in this window.</p>
+              ) : (
+                <ScrollArea className="h-[480px]">
+                  <div className="space-y-4">
+                    {(calendar?.series || []).map((m: any) => (
+                      <div key={m.month_start} className="border border-border rounded-lg">
+                        <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
+                          <div>
+                            <p className="font-semibold">{monthLabel(m.month_start)}</p>
+                            <p className="text-xs text-muted-foreground">{m.count} settlement{m.count === 1 ? '' : 's'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-primary">{fmtMoney(m.weighted_net)} <span className="text-xs text-muted-foreground font-normal">weighted</span></p>
+                            <p className="text-xs text-muted-foreground">{fmtMoney(m.net)} best case</p>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {m.events.map((e: any) => (
+                            <div key={e.purchase_file_id} className="p-3 hover:bg-muted/20 flex items-center justify-between gap-3 text-sm">
+                              <div className="min-w-0 flex-1">
+                                <Link to={`/finance/purchase-files/${e.purchase_file_id}`} className="font-medium hover:text-primary truncate block">{e.title}</Link>
+                                <p className="text-xs text-muted-foreground">{e.client_name || '—'} · {e.lender || '—'} · {new Date(e.settlement_date).toLocaleDateString('en-AU')}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-medium tabular-nums">{fmtMoney(e.weighted_net)}</p>
+                                <p className="text-[10px] text-muted-foreground">{Math.round(e.confidence * 100)}% · {e.finance_status.replace(/_/g, ' ')}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         {/* FORECAST ─────────────────────────────────────────── */}
         <TabsContent value="forecast" className="space-y-4">
