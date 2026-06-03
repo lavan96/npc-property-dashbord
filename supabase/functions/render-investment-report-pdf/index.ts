@@ -283,7 +283,7 @@ function isPctHeader(h: string): boolean {
   return /%|yield|rate|growth|return|roi|lvr|ratio/i.test(h);
 }
 
-function tableToChartHtml(headers: string[], rows: string[][]): string | null {
+async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
   if (rows.length < 2 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
 
@@ -342,7 +342,9 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
         },
       },
     };
-    return `<figure class="auto-chart"><img src="${chartUrl(config, 780, 380)}" alt="Data visualisation"/></figure>`;
+    const uri = await chartDataUri(config, 780, 380, `donut:${numericCols[0].header}`);
+    if (!uri) return null;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
   }
 
   // ── Line: time series ──
@@ -390,7 +392,9 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
         },
       },
     };
-    return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 360)}" alt="Trend visualisation"/></figure>`;
+    const uri = await chartDataUri(config, 820, 360, `line:${numericCols.map((c) => c.header).join(",")}`);
+    if (!uri) return null;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Trend visualisation"/></figure>`;
   }
 
   // ── Bar (default) ──
@@ -438,12 +442,18 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
       },
     },
   };
-  return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 380)}" alt="Data visualisation"/></figure>`;
+  const uri = await chartDataUri(config, 820, 380, `bar:${numericCols.map((c) => c.header).join(",")}`);
+  if (!uri) return null;
+  return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
 }
 
 /** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
-function injectTableCharts(html: string): string {
-  return html.replace(/<table[\s\S]*?<\/table>/gi, (tbl) => {
+async function injectTableCharts(html: string): Promise<string> {
+  const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
+  if (tables.length === 0) return html;
+
+  const replacements = await Promise.all(tables.map(async (match) => {
+    const tbl = match[0];
     const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
     const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
     const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
@@ -455,10 +465,13 @@ function injectTableCharts(html: string): string {
         .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
-    const chart = tableToChartHtml(headers, dataRows);
+    const chart = await tableToChartHtml(headers, dataRows);
     if (!chart) return tbl;
     return `<div class="chart-wrap">${chart}${tbl}</div>`;
-  });
+  }));
+
+  let i = 0;
+  return html.replace(/<table[\s\S]*?<\/table>/gi, () => replacements[i++]);
 }
 
 // ─────────────────────────────────────────────────────────────
