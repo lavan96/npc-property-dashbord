@@ -74,7 +74,7 @@ async function hashPrompt(s: string): Promise<string> {
 }
 
 function buildPrompt(chapterTitle: string): string {
-  return `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
+  return `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide landscape orientation, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
 }
 
 async function generateOne(chapterTitle: string): Promise<{ bytes: Uint8Array }> {
