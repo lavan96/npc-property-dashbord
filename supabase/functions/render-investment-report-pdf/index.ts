@@ -830,9 +830,10 @@ async function loadReadyHeroImages(reportId: string): Promise<Record<string, str
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data } = await supabase
       .from("report_visual_assets")
-      .select("section_key, public_url")
+      .select("section_key, public_url, include_in_report")
       .eq("report_id", reportId)
-      .eq("status", "ready");
+      .eq("status", "ready")
+      .eq("include_in_report", true);
     const out: Record<string, string> = {};
     for (const r of (data || []) as Array<{ section_key: string; public_url: string }>) {
       if (r.public_url) out[r.section_key] = r.public_url;
@@ -855,8 +856,10 @@ function injectHeroImages(
   return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
     const slug = idToSlug.get(id);
     const url = slug ? heroesBySlug[slug] : undefined;
-    const finalUrl = url || fallbackHeroSvg(String(inner).replace(/<[^>]+>/g, "").trim());
-    return `<div class="chapter-hero"><img src="${finalUrl}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+    // Only render the chapter hero when an asset is both ready AND selected
+    // for inclusion. Deselected chapters render the heading on its own.
+    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    return `<div class="chapter-hero"><img src="${url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
   });
 }
 

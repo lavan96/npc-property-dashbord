@@ -15242,6 +15242,7 @@ export type Database = {
           created_at: string
           error: string | null
           id: string
+          include_in_report: boolean
           prompt_hash: string
           public_url: string | null
           report_id: string
@@ -15256,6 +15257,7 @@ export type Database = {
           created_at?: string
           error?: string | null
           id?: string
+          include_in_report?: boolean
           prompt_hash: string
           public_url?: string | null
           report_id: string
@@ -15270,6 +15272,7 @@ export type Database = {
           created_at?: string
           error?: string | null
           id?: string
+          include_in_report?: boolean
           prompt_hash?: string
           public_url?: string | null
           report_id?: string

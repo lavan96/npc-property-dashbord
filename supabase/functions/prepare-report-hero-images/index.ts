@@ -189,13 +189,50 @@ Deno.serve(async (req) => {
       return jsonOk({ enqueued: rows.length, ...counts }, corsHeaders);
     }
 
-    if (action === "status") {
+    if (action === "status" || action === "list") {
       const counts = await fetchCounts(supabase, reportId);
       const { data: assets } = await supabase
         .from("report_visual_assets")
-        .select("section_key, section_title, status, public_url, error")
-        .eq("report_id", reportId);
+        .select("id, section_key, section_title, status, public_url, storage_path, include_in_report, error, attempts, updated_at")
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: true });
+      (counts as any).selected = (assets || []).filter((a: any) => a.include_in_report && a.status === "ready").length;
       return jsonOk({ ...counts, assets: assets || [] }, corsHeaders);
+    }
+
+    if (action === "set_selection") {
+      const list: Array<{ sectionKey: string; include: boolean }> = Array.isArray(body?.selections)
+        ? body.selections
+        : (body?.sectionKey != null ? [{ sectionKey: String(body.sectionKey), include: body.include !== false }] : []);
+      let updated = 0;
+      for (const sel of list) {
+        if (!sel?.sectionKey) continue;
+        const { error: upErr } = await supabase
+          .from("report_visual_assets")
+          .update({ include_in_report: sel.include !== false })
+          .eq("report_id", reportId)
+          .eq("section_key", sel.sectionKey);
+        if (!upErr) updated++;
+      }
+      const counts = await fetchCounts(supabase, reportId);
+      return jsonOk({ updated, ...counts }, corsHeaders);
+    }
+
+    if (action === "regenerate_one") {
+      // Force a single section back to pending so the next `process` re-renders it.
+      const sectionKey = String(body?.sectionKey || "");
+      if (!sectionKey) {
+        return new Response(JSON.stringify({ error: "sectionKey required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await supabase
+        .from("report_visual_assets")
+        .update({ status: "pending", error: null })
+        .eq("report_id", reportId)
+        .eq("section_key", sectionKey);
+      const counts = await fetchCounts(supabase, reportId);
+      return jsonOk({ requeued: 1, ...counts }, corsHeaders);
     }
 
     if (action === "process") {

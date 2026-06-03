@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Loader2, Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator, Send } from 'lucide-react';
+import { ArrowLeft, Loader2, Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator, Send, Images } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -21,6 +21,7 @@ import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateW
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
+import { HeroImagesDialog } from '@/components/reports/HeroImagesDialog';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
@@ -61,6 +62,7 @@ export default function InvestmentReportView() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [sendToClientOpen, setSendToClientOpen] = useState(false);
+  const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [includeCharts, setIncludeCharts] = useState(true);
@@ -392,6 +394,16 @@ export default function InvestmentReportView() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Hero images</span>
                   <Switch checked={includeHeroImages} onCheckedChange={setIncludeHeroImages} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setHeroDialogOpen(true)}
+                    title="Generate, preview and choose hero images"
+                  >
+                    <Images className="h-3.5 w-3.5 mr-1" />
+                    Manage
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Sparklines</span>
@@ -493,6 +505,13 @@ export default function InvestmentReportView() {
           }
           return null;
         }}
+      />
+
+      {/* Hero Images Manager */}
+      <HeroImagesDialog
+        reportId={report.id}
+        open={heroDialogOpen}
+        onOpenChange={setHeroDialogOpen}
       />
     </div>
   );
