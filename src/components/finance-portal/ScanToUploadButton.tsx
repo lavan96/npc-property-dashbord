@@ -1,9 +1,8 @@
 /**
  * Batch 9 — Scan to Upload.
- * Opens the device camera (capture="environment") to capture one or more
- * pages, then uploads each as an attachment against a document requirement
- * instance via the existing finance-portal-document-requirements edge fn.
- * Falls back gracefully on desktop (file picker, multi-select).
+ * Mobile-first capture: opens device camera (capture="environment") for one
+ * or more pages then runs the standard finance-portal-documents flow:
+ *   request_upload → PUT(signedUrl) → confirm_upload [→ link_document].
  */
 import { useRef, useState } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
@@ -13,23 +12,18 @@ import { toast } from 'sonner';
 
 interface Props {
   purchaseFileId: string;
+  clientId: string;
   instanceId?: string | null;
+  category?: string;
   label?: string;
   onUploaded?: () => void;
 }
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
 export function ScanToUploadButton({
   purchaseFileId,
+  clientId,
   instanceId = null,
+  category = 'other',
   label = 'Scan / upload',
   onUploaded,
 }: Props) {
@@ -44,6 +38,45 @@ export function ScanToUploadButton({
     if (inputRef.current) inputRef.current.value = '';
   };
 
+  const uploadOne = async (file: File) => {
+    const { data: reqData, error: reqErr } = await invokeFinanceFunction(
+      'finance-portal-documents',
+      {
+        operation: 'request_upload',
+        client_id: clientId,
+        filename: file.name,
+        mime_type: file.type || 'image/jpeg',
+        file_size: file.size,
+        category,
+        visible_to_client: false,
+      },
+    );
+    if (reqErr || !reqData?.upload?.signedUrl) throw new Error(reqErr?.message || 'request_upload failed');
+
+    const putRes = await fetch(reqData.upload.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    if (!putRes.ok) throw new Error(`Storage PUT failed (${putRes.status})`);
+
+    const docId = reqData.document?.id;
+    await invokeFinanceFunction('finance-portal-documents', {
+      operation: 'confirm_upload',
+      client_id: clientId,
+      document_id: docId,
+    });
+
+    if (instanceId && docId) {
+      await invokeFinanceFunction('finance-portal-document-requirements', {
+        operation: 'link_document',
+        purchase_file_id: purchaseFileId,
+        instance_id: instanceId,
+        document_id: docId,
+      });
+    }
+  };
+
   const upload = async () => {
     if (!files.length) {
       inputRef.current?.click();
@@ -51,22 +84,7 @@ export function ScanToUploadButton({
     }
     setBusy(true);
     try {
-      for (const f of files) {
-        const dataUrl = await fileToBase64(f);
-        const { error } = await invokeFinanceFunction(
-          'finance-portal-document-requirements',
-          {
-            operation: 'upload_for_instance',
-            purchase_file_id: purchaseFileId,
-            instance_id: instanceId,
-            filename: f.name,
-            mime_type: f.type || 'image/jpeg',
-            size_bytes: f.size,
-            data_base64: dataUrl,
-          },
-        );
-        if (error) throw error;
-      }
+      for (const f of files) await uploadOne(f);
       toast.success(`Uploaded ${files.length} page${files.length > 1 ? 's' : ''}`);
       setFiles([]);
       onUploaded?.();
@@ -89,12 +107,7 @@ export function ScanToUploadButton({
         className="hidden"
       />
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => inputRef.current?.click()}
-          className="flex-1"
-        >
+        <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} className="flex-1">
           <Camera className="h-4 w-4 mr-1.5" /> {label}
         </Button>
         {files.length > 0 && (
@@ -107,10 +120,7 @@ export function ScanToUploadButton({
       {files.length > 0 && (
         <ul className="space-y-1">
           {files.map((f, i) => (
-            <li
-              key={i}
-              className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
-            >
+            <li key={i} className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs">
               <span className="flex items-center gap-1 truncate">
                 <FileImage className="h-3 w-3 text-muted-foreground" />
                 <span className="truncate">{f.name}</span>
