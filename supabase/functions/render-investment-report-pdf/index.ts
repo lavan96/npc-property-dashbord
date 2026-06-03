@@ -913,11 +913,13 @@ export async function buildHtml(
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
-  // Hero illustrations per chapter (parallel, opt-in)
+  // Hero illustrations per chapter — consumes ONLY pre-generated assets
+  // produced by the `prepare-report-hero-images` worker. Missing slugs
+  // fall back to the navy/gold SVG banner so the PDF still renders.
   let bodyWithHeroes = bodyAnnotated;
   if (includeHeroImages && toc.length > 0) {
-    const heroes = await generateHeroImages(toc);
-    bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes);
+    const heroes = report.id ? await loadReadyHeroImages(String(report.id)) : {};
+    bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes, toc);
   }
 
   const sourcesHtml = report.sources_content
