@@ -448,7 +448,15 @@ export default function Listings() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AirtableTableSelector
+            value={selectedTable}
+            onChange={(next) => {
+              setSelectedTable(next);
+              propertyDataService.clearCache();
+            }}
+          />
+
           {selectedListings.size > 0 && !isMobile && (
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
