@@ -349,6 +349,9 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
               <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
                 <Package className="h-4 w-4" /> Lender packet
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setRemindersOpen(true)} className="gap-1.5">
+                <BellRing className="h-4 w-4" /> Auto-reminders
+              </Button>
               <Button size="sm" variant="outline" onClick={handleInstantiate} disabled={busy} className="gap-1.5">
                 <Sparkles className="h-4 w-4" /> Add missing defaults
               </Button>
