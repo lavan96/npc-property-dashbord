@@ -1064,7 +1064,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     const { error: authError } = await verifyAuth(supabase, req.headers, body);
     if (authError) return createUnauthorizedResponse(authError, corsHeaders);
 
-    const { reportId } = body;
+    const { reportId, includeCharts, includeHeroImages, includeSparklines } = body;
     if (!reportId || typeof reportId !== "string") {
       return new Response(JSON.stringify({ error: "reportId required" }), {
         status: 400,
