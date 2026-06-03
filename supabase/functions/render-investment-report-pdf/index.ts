@@ -1213,26 +1213,50 @@ export async function buildHtml(
     .pill-neutral { background: ${THEME.neutralBg}; color: ${THEME.neutralInk}; }
 
     /* ── Cover ── */
+    /* ── Cover (standard NPC cover image, full-bleed) ── */
     .cover {
       page: cover;
       page-break-after: always;
       width: 210mm; height: 297mm;
-      background:
-        radial-gradient(ellipse at top right, rgba(212,168,67,0.20) 0%, transparent 55%),
-        radial-gradient(ellipse at bottom left, rgba(212,168,67,0.10) 0%, transparent 60%),
-        linear-gradient(180deg, #0a0a0a 0%, #141414 100%);
-      color: ${THEME.text};
-      padding: 28mm 22mm;
+      margin: 0; padding: 0;
       position: relative;
+      background: #0a0a0a;
+      overflow: hidden;
     }
-    .cover .brand { font-family: 'Inter'; font-weight: 700; letter-spacing: .35em; font-size: 9pt; color: ${THEME.gold}; text-transform: uppercase; }
-    .cover .rule { width: 80pt; height: 2pt; background: ${THEME.gold}; margin: 10mm 0 14mm; }
-    .cover .eyebrow { font-size: 9pt; letter-spacing: .25em; text-transform: uppercase; color: ${THEME.muted}; margin-bottom: 6mm; }
-    .cover h1 { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 44pt; line-height: 1.05; max-width: 155mm; color: ${THEME.text}; letter-spacing: -0.015em; }
-    .cover .address { margin-top: 9mm; font-size: 15pt; color: ${THEME.gold}; font-family: 'Cormorant Garamond', serif; font-style: italic; }
-    .cover .meta { position: absolute; left: 22mm; bottom: 22mm; right: 22mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9pt; color: ${THEME.muted}; border-top: 1px solid ${THEME.border}; padding-top: 6mm; }
-    .cover .meta .label { display: block; text-transform: uppercase; letter-spacing: .15em; font-size: 7.5pt; color: ${THEME.muted}; margin-bottom: 2pt; }
-    .cover .meta .value { color: ${THEME.text}; font-size: 10.5pt; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+    .cover img.cover-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Disclaimer / Contact closing page ── */
+    .disclaimer-page {
+      page: disclaimer-page;
+      page-break-before: always;
+      width: 210mm; height: 297mm;
+      margin: 0; padding: 22mm 20mm 20mm;
+      background: #141414;
+      color: #BF9B50;
+      position: relative;
+      font-family: 'Inter', sans-serif;
+    }
+    .disclaimer-page .company-main { font-size: 28pt; font-weight: 800; letter-spacing: .02em; color: #BF9B50; line-height: 1.05; }
+    .disclaimer-page .company-sub { font-size: 16pt; font-weight: 400; color: #BF9B50; margin-top: 4pt; }
+    .disclaimer-page .contact-heading { margin-top: 18mm; font-size: 14pt; font-weight: 700; color: #BF9B50; letter-spacing: .04em; }
+    .disclaimer-page table.contact { margin-top: 10pt; border-collapse: collapse; }
+    .disclaimer-page table.contact td { font-size: 9pt; color: #BF9B50; padding: 4pt 0; vertical-align: top; }
+    .disclaimer-page table.contact td.label { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding-right: 18pt; white-space: nowrap; }
+    .disclaimer-page table.contact td.value { font-weight: 400; color: #BF9B50; }
+    .disclaimer-page .disclaimer-body {
+      position: absolute;
+      left: 20mm; right: 20mm; bottom: 20mm;
+      font-size: 8.5pt;
+      line-height: 1.55;
+      color: #999999;
+      font-weight: 400;
+    }
+    .disclaimer-page .disclaimer-body p { margin: 0 0 6pt; }
 
     /* ── Table of Contents ── */
     .toc { page: toc; page-break-after: always; padding-top: 6mm; }
