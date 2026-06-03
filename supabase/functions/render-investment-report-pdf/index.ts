@@ -885,8 +885,16 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
 export async function buildHtml(
   report: any,
   brandName: string,
-  opts: { includeCharts?: boolean; includeHeroImages?: boolean; includeSparklines?: boolean } = {},
+  opts: {
+    includeCharts?: boolean;
+    includeHeroImages?: boolean;
+    includeSparklines?: boolean;
+    contact?: Record<string, any>;
+    disclaimer?: { is_enabled?: boolean; text?: string; font_size?: string };
+  } = {},
 ): Promise<string> {
+  const contact = opts.contact || {};
+  const disclaimer = opts.disclaimer || {};
   const includeCharts = opts.includeCharts !== false;
   const includeSparklines = opts.includeSparklines !== false;
   const includeHeroImages = opts.includeHeroImages === true; // opt-in, costs tokens
