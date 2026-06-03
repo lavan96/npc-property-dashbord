@@ -1718,19 +1718,28 @@ if (import.meta.main) Deno.serve(async (req) => {
     }
 
     let brandName = "Investment Report";
+    let contact: Record<string, any> = {};
+    let disclaimer: { is_enabled?: boolean; text?: string; font_size?: string } = {};
     try {
       const { data: settings } = await supabase
         .from("global_report_settings")
-        .select("contact_details")
+        .select("contact_details, professional_disclaimer")
         .maybeSingle();
       const cd = (settings as any)?.contact_details;
-      if (cd?.company_name) brandName = cd.company_name;
+      if (cd) {
+        contact = cd;
+        if (cd.company_name) brandName = cd.company_name;
+      }
+      const pd = (settings as any)?.professional_disclaimer;
+      if (pd) disclaimer = pd;
     } catch { /* optional */ }
 
     const html = await buildHtml(report, brandName, {
       includeCharts: includeCharts !== false,
       includeSparklines: includeSparklines !== false,
       includeHeroImages: includeHeroImages === true,
+      contact,
+      disclaimer,
     });
     const safeAddr = String(report.property_address || "report")
       .replace(/[^a-zA-Z0-9]+/g, "-")
