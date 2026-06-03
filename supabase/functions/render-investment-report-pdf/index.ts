@@ -1377,8 +1377,8 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginLeft: 0,
         marginRight: 0,
         // Wait for remote QuickChart images to finish loading before snapshot.
-        delay: 2500,
-        puppeteerWaitForMethod: "WaitForNavigation",
+        delay: 1200,
+        puppeteerWaitForMethod: "WaitForNetworkIdle0",
       },
 
     };
