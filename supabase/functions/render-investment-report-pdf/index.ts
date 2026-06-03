@@ -23,6 +23,11 @@ const THEME = {
   gold: "#D4A843",
   goldSoft: "#B8902F",
   success: "#6FBF73",
+  paper: "#F7F2E8",
+  paperAlt: "#EEE5D6",
+  ink: "#17130D",
+  inkMuted: "#5F5546",
+  rule: "#D8CBB6",
 };
 
 function fmtMoney(v: unknown): string {
@@ -46,7 +51,21 @@ function esc(s: unknown): string {
     .replace(/>/g, "&gt;");
 }
 
-function buildHtml(report: any, brandName: string): string {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cleanReportMarkdown(markdown: string, address: string): string {
+  const addressPattern = escapeRegExp(address).replace(/\s+/g, "\\s+");
+  return markdown
+    .replace(/^\s*NAIDU PROPERTY CONSULTING\s*\n\s*SERVICES\s*\n\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/i, "")
+    .replace(/^\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/i, "")
+    .replace(new RegExp(`^\\s*#?\\s*Investment Report:\\s*${addressPattern}\\s*\\n+`, "i"), "")
+    .replace(/^\s*#\s+/gm, "## ")
+    .trim();
+}
+
+export function buildHtml(report: any, brandName: string): string {
   const address = report.property_address || "Property";
   const generated = new Date(report.created_at || Date.now()).toLocaleDateString(
     "en-AU",
@@ -59,7 +78,7 @@ function buildHtml(report: any, brandName: string): string {
   const loc = report.location_intelligence || {};
 
   // Render markdown body. Strip front-matter style code fences if any.
-  const md = String(report.report_content || "");
+  const md = cleanReportMarkdown(String(report.report_content || ""), address);
   const bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
@@ -88,77 +107,85 @@ function buildHtml(report: any, brandName: string): string {
     .join("");
 
   const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Inter:wght@400;500;600;700&display=swap');
     @page {
       size: A4;
-      margin: 18mm 16mm 20mm 16mm;
-      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.muted}; }
-      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.muted}; }
-      @top-right { content: "${esc(address)}"; font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.muted}; }
+      margin: 17mm 17mm 19mm 17mm;
+      background: ${THEME.paper};
+      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @top-right { content: "${esc(address)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
     }
     @page cover {
       margin: 0;
+      background: ${THEME.bg};
       @top-right { content: none; }
       @bottom-left { content: none; }
       @bottom-right { content: none; }
     }
     @page divider {
       margin: 0;
+      background: ${THEME.bg};
       @top-right { content: none; }
       @bottom-left { content: none; }
       @bottom-right { content: none; }
     }
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap');
 
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0;
-      background: ${THEME.bg};
-      color: ${THEME.text};
+      background: ${THEME.paper};
+      color: ${THEME.ink};
       font-family: 'Inter', 'Helvetica', sans-serif;
-      font-size: 10pt;
-      line-height: 1.55;
+      font-size: 9.5pt;
+      line-height: 1.52;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    h1, h2, h3, h4 { font-family: 'Fraunces', 'Georgia', serif; font-weight: 600; color: ${THEME.text}; margin: 0 0 .5em; }
-    h1 { font-size: 26pt; line-height: 1.15; letter-spacing: -0.01em; }
-    h2 { font-size: 16pt; color: ${THEME.gold}; border-bottom: 1px solid ${THEME.border}; padding-bottom: 6pt; margin-top: 18pt; }
-    h3 { font-size: 12pt; color: ${THEME.text}; margin-top: 14pt; }
-    h4 { font-size: 10.5pt; color: ${THEME.gold}; margin-top: 10pt; }
-    p { margin: 0 0 .7em; }
-    a { color: ${THEME.gold}; text-decoration: none; }
-    strong { color: ${THEME.text}; }
-    em { color: ${THEME.muted}; }
-    ul, ol { margin: 0 0 .8em 1.2em; padding: 0; }
-    li { margin-bottom: 4pt; }
+    h1, h2, h3, h4 { font-family: 'Fraunces', 'Georgia', serif; font-weight: 650; color: ${THEME.ink}; margin: 0 0 .48em; page-break-after: avoid; }
+    h1 { font-size: 25pt; line-height: 1.12; }
+    h2 { font-size: 16pt; color: ${THEME.ink}; border-bottom: 1px solid ${THEME.rule}; padding-bottom: 5pt; margin-top: 16pt; }
+    h2::before { content: ""; display: inline-block; width: 11pt; height: 11pt; margin-right: 6pt; background: ${THEME.gold}; vertical-align: -1pt; }
+    h3 { font-size: 12pt; color: ${THEME.ink}; margin-top: 12pt; }
+    h4 { font-size: 10.5pt; color: ${THEME.goldSoft}; margin-top: 9pt; }
+    p { margin: 0 0 .62em; orphans: 3; widows: 3; }
+    a { color: ${THEME.goldSoft}; text-decoration: none; }
+    strong { color: ${THEME.ink}; font-weight: 700; }
+    em { color: ${THEME.inkMuted}; }
+    ul, ol { margin: 0 0 .72em 1.15em; padding: 0; }
+    li { margin-bottom: 3pt; }
     blockquote {
-      margin: 12pt 0; padding: 10pt 14pt;
-      background: ${THEME.surfaceAlt};
+      margin: 10pt 0; padding: 8pt 11pt;
+      background: ${THEME.paperAlt};
       border-left: 3px solid ${THEME.gold};
-      color: ${THEME.muted};
+      color: ${THEME.inkMuted};
       font-style: italic;
-    }
-    code {
-      background: ${THEME.surfaceAlt};
-      padding: 1pt 4pt;
-      border-radius: 3pt;
-      font-size: 9pt;
-      color: ${THEME.gold};
-    }
-    table {
-      width: 100%; border-collapse: collapse; margin: 10pt 0 14pt;
-      font-size: 9pt;
-      background: ${THEME.surface};
       page-break-inside: avoid;
     }
+    code {
+      background: ${THEME.paperAlt};
+      padding: 1pt 3pt;
+      border-radius: 2pt;
+      font-size: 8.5pt;
+      color: ${THEME.goldSoft};
+    }
+    table {
+      width: 100%; border-collapse: collapse; margin: 8pt 0 12pt;
+      font-size: 8.15pt;
+      background: #FFFDF8;
+      page-break-inside: auto;
+      border-top: 2px solid ${THEME.gold};
+    }
+    tr { page-break-inside: avoid; page-break-after: auto; }
     th, td {
-      border: 1px solid ${THEME.border};
-      padding: 6pt 8pt;
+      border: 1px solid ${THEME.rule};
+      padding: 5pt 6pt;
       text-align: left;
       vertical-align: top;
     }
-    th { background: ${THEME.surfaceAlt}; color: ${THEME.gold}; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: 8pt; }
-    hr { border: 0; border-top: 1px solid ${THEME.border}; margin: 18pt 0; }
+    th { background: ${THEME.ink}; color: ${THEME.gold}; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 7pt; }
+    td { color: ${THEME.ink}; overflow-wrap: anywhere; }
+    hr { border: 0; border-top: 1px solid ${THEME.rule}; margin: 15pt 0; }
 
     /* ── Cover ── */
     .cover {
@@ -191,6 +218,7 @@ function buildHtml(report: any, brandName: string): string {
     .cover h1 {
       font-size: 38pt; line-height: 1.1;
       max-width: 150mm;
+      color: ${THEME.text};
     }
     .cover .address {
       margin-top: 8mm;
@@ -215,18 +243,18 @@ function buildHtml(report: any, brandName: string): string {
       margin: 8pt 0 14pt;
     }
     .kpi {
-      background: ${THEME.surface};
-      border: 1px solid ${THEME.border};
+      background: #FFFDF8;
+      border: 1px solid ${THEME.rule};
       border-left: 2.5pt solid ${THEME.gold};
       padding: 9pt 11pt;
       page-break-inside: avoid;
     }
-    .kpi-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .12em; color: ${THEME.muted}; margin-bottom: 3pt; }
-    .kpi-value { font-family: 'Fraunces', serif; font-size: 14pt; color: ${THEME.text}; }
+    .kpi-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .1em; color: ${THEME.inkMuted}; margin-bottom: 3pt; }
+    .kpi-value { font-family: 'Fraunces', serif; font-size: 14pt; color: ${THEME.ink}; }
 
     .score-card {
-      background: ${THEME.surface};
-      border: 1px solid ${THEME.border};
+      background: #FFFDF8;
+      border: 1px solid ${THEME.rule};
       padding: 14pt 16pt;
       margin: 8pt 0 14pt;
       display: flex; align-items: center; gap: 16pt;
@@ -234,13 +262,13 @@ function buildHtml(report: any, brandName: string): string {
     }
     .score-card .ring {
       width: 70pt; height: 70pt; border-radius: 50%;
-      background: conic-gradient(${THEME.gold} 0%, ${THEME.gold} var(--p, 0%), ${THEME.surfaceAlt} var(--p, 0%));
+      background: conic-gradient(${THEME.gold} 0%, ${THEME.gold} var(--p, 0%), ${THEME.paperAlt} var(--p, 0%));
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Fraunces', serif; font-size: 22pt; color: ${THEME.text};
+      font-family: 'Fraunces', serif; font-size: 22pt; color: ${THEME.ink};
       position: relative;
     }
     .score-card .ring::after {
-      content: ""; position: absolute; inset: 6pt; border-radius: 50%; background: ${THEME.surface};
+      content: ""; position: absolute; inset: 6pt; border-radius: 50%; background: #FFFDF8;
     }
     .score-card .ring span { position: relative; z-index: 1; }
     .score-card .meta { flex: 1; }
@@ -260,19 +288,19 @@ function buildHtml(report: any, brandName: string): string {
     .divider .ttl { font-family: 'Fraunces', serif; font-size: 28pt; color: ${THEME.text}; margin-top: 8mm; }
     .divider .ln { width: 60mm; height: 1.5pt; background: ${THEME.gold}; margin-top: 12mm; }
 
-    .body-page { page-break-before: always; }
-    .body-page:first-of-type { page-break-before: avoid; }
+    .body-page { page-break-before: auto; }
+    .body-page + .body-page { margin-top: 12pt; }
 
     .disclaimer {
       margin-top: 24pt;
       padding: 12pt 14pt;
-      border: 1px solid ${THEME.border};
-      background: ${THEME.surfaceAlt};
+      border: 1px solid ${THEME.rule};
+      background: ${THEME.paperAlt};
       font-size: 8pt;
-      color: ${THEME.muted};
+      color: ${THEME.inkMuted};
       page-break-inside: avoid;
     }
-    .disclaimer h4 { margin-top: 0; color: ${THEME.muted}; }
+    .disclaimer h4 { margin-top: 0; color: ${THEME.inkMuted}; }
   `;
 
   const scoreCard = scoreOverall != null
@@ -281,7 +309,7 @@ function buildHtml(report: any, brandName: string): string {
          <div class="meta">
            <div class="band">${esc(scoreBand || "Investment Score")}</div>
            <h3 style="margin:4pt 0 2pt">Overall Investment Score</h3>
-           <p style="margin:0;color:${THEME.muted};font-size:9pt">A weighted blend of yield, growth, demographic strength, infrastructure, and risk factors specific to this property and suburb.</p>
+            <p style="margin:0;color:${THEME.inkMuted};font-size:9pt">A weighted blend of yield, growth, demographic strength, infrastructure, and risk factors specific to this property and suburb.</p>
          </div>
        </div>`
     : "";
@@ -328,13 +356,6 @@ function buildHtml(report: any, brandName: string): string {
   ${scoreCard}
 </section>
 
-<!-- ── Divider ── -->
-<section class="divider">
-  <div class="num">01</div>
-  <div class="ttl">The Analysis</div>
-  <div class="ln"></div>
-</section>
-
 <!-- ── Body (markdown) ── -->
 <section class="body-page">
   ${bodyHtml}
@@ -342,12 +363,7 @@ function buildHtml(report: any, brandName: string): string {
 
 ${
     sourcesHtml
-      ? `<section class="divider">
-           <div class="num">02</div>
-           <div class="ttl">Sources &amp; References</div>
-           <div class="ln"></div>
-         </section>
-         <section class="body-page">${sourcesHtml}</section>`
+      ? `<section class="body-page">${sourcesHtml}</section>`
       : ""
   }
 
@@ -428,7 +444,7 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
   );
 }
 
-Deno.serve(async (req) => {
+if (import.meta.main) Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
