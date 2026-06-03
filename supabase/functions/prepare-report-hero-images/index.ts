@@ -1,0 +1,286 @@
+// Pre-generates editorial hero banner images for premium PDF reports and
+// stores them in Supabase Storage. Designed to be called repeatedly with
+// small batches so we never bump into the Lovable AI / edge-function timeout.
+//
+// Actions (POST body):
+//   { action: "enqueue",  reportId, regenerate? }   -> creates pending rows
+//   { action: "process",  reportId, max? }          -> generates up to N pending
+//   { action: "status",   reportId }                -> returns progress + assets
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
+const BUCKET = "investment-reports";
+const STORAGE_PREFIX = "hero-images";
+const IMAGE_TIMEOUT_MS = 90_000;
+const DEFAULT_BATCH = 3; // images per `process` call
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Same cleaner as the renderer so we extract identical chapter titles.
+function cleanReportMarkdown(markdown: string, address: string): string {
+  const addressPattern = escapeRegExp(address).replace(/\s+/g, "\\s+");
+  let out = markdown;
+  out = out.replace(/^\s*#{0,3}\s*NAIDU PROPERTY CONSULTING(\s+SERVICES)?\s*\n+/gim, "");
+  out = out.replace(/^\s*#{0,3}\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/gim, "");
+  out = out.replace(
+    new RegExp(`^\\s*#{0,3}\\s*Investment Report:\\s*${addressPattern}\\s*\\n+`, "gim"),
+    "",
+  );
+  out = out.replace(/\[\s*citation\s*\]/gi, "");
+  out = out.replace(/\[\s*sources?\s*\]/gi, "");
+  out = out.replace(/\[\s*ref(?:erence)?\s*\]/gi, "");
+  out = out.replace(/^\s*#\s+/gm, "## ");
+  out = out.replace(/\n{3,}/g, "\n\n");
+  return out.trim();
+}
+
+function extractChapterTitles(markdown: string, address: string): string[] {
+  const cleaned = cleanReportMarkdown(String(markdown || ""), address);
+  const titles: string[] = [];
+  const seen = new Set<string>();
+  const re = /^##\s+(.+?)\s*$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cleaned))) {
+    const title = m[1].replace(/[*_`#]/g, "").trim();
+    if (!title) continue;
+    const key = slugify(title);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    titles.push(title);
+  }
+  return titles;
+}
+
+async function hashPrompt(s: string): Promise<string> {
+  const buf = new TextEncoder().encode(s);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 24);
+}
+
+function buildPrompt(chapterTitle: string): string {
+  return `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
+}
+
+async function generateOne(chapterTitle: string): Promise<{ bytes: Uint8Array }> {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai/gpt-image-2",
+        prompt: buildPrompt(chapterTitle),
+        quality: "low",
+        size: "1536x1024",
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`gateway ${res.status}: ${t.slice(0, 200)}`);
+    }
+    const json = await res.json();
+    const b64 = json?.data?.[0]?.b64_json;
+    if (!b64) throw new Error("no b64_json in response");
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+Deno.serve(async (req) => {
+  const corsHeaders = createCorsHeaders(req.headers.get("origin"));
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const body = await req.json().catch(() => ({}));
+
+    const { error: authError } = await verifyAuth(supabase, req.headers, body);
+    if (authError) return createUnauthorizedResponse(authError, corsHeaders);
+
+    const action = String(body?.action || "").toLowerCase();
+    const reportId = String(body?.reportId || "");
+    if (!reportId) {
+      return new Response(JSON.stringify({ error: "reportId required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "enqueue") {
+      const regenerate = body?.regenerate === true;
+      const { data: report, error } = await supabase
+        .from("investment_reports")
+        .select("id, property_address, report_content")
+        .eq("id", reportId)
+        .maybeSingle();
+      if (error || !report) {
+        return new Response(JSON.stringify({ error: error?.message || "report not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const titles = extractChapterTitles(report.report_content || "", report.property_address || "");
+      const rows: any[] = [];
+      for (const title of titles) {
+        const sectionKey = slugify(title);
+        const promptHash = await hashPrompt(buildPrompt(title));
+        rows.push({
+          report_id: reportId,
+          section_key: sectionKey,
+          section_title: title,
+          prompt_hash: promptHash,
+          status: "pending",
+          attempts: 0,
+          error: null,
+        });
+      }
+
+      if (regenerate) {
+        // Wipe so process() regenerates everything fresh.
+        await supabase.from("report_visual_assets").delete().eq("report_id", reportId);
+      }
+
+      // Upsert: only fills in missing or already-pending/failed; we don't reset ready rows.
+      if (rows.length > 0) {
+        // First fetch existing keys to avoid resetting ready rows.
+        const { data: existing } = await supabase
+          .from("report_visual_assets")
+          .select("section_key, status, prompt_hash")
+          .eq("report_id", reportId);
+        const existingMap = new Map((existing || []).map((r: any) => [r.section_key, r]));
+        const toInsert = rows.filter((r) => {
+          const ex = existingMap.get(r.section_key);
+          if (!ex) return true;
+          // Re-queue if prompt changed or last attempt failed.
+          if (ex.status === "failed") return false; // keep, will be retried by process()
+          if (ex.prompt_hash !== r.prompt_hash) return true;
+          return false;
+        });
+        // Bulk insert new ones (ignore unique conflicts).
+        for (const row of toInsert) {
+          await supabase
+            .from("report_visual_assets")
+            .upsert(row, { onConflict: "report_id,section_key" });
+        }
+      }
+
+      const counts = await fetchCounts(supabase, reportId);
+      return jsonOk({ enqueued: rows.length, ...counts }, corsHeaders);
+    }
+
+    if (action === "status") {
+      const counts = await fetchCounts(supabase, reportId);
+      const { data: assets } = await supabase
+        .from("report_visual_assets")
+        .select("section_key, section_title, status, public_url, error")
+        .eq("report_id", reportId);
+      return jsonOk({ ...counts, assets: assets || [] }, corsHeaders);
+    }
+
+    if (action === "process") {
+      const max = Math.min(Math.max(Number(body?.max) || DEFAULT_BATCH, 1), 5);
+      // Claim a batch (pending or failed with attempts<3)
+      const { data: claim } = await supabase
+        .from("report_visual_assets")
+        .select("id, section_key, section_title, attempts")
+        .eq("report_id", reportId)
+        .or("status.eq.pending,and(status.eq.failed,attempts.lt.3)")
+        .order("created_at", { ascending: true })
+        .limit(max);
+      const queue = claim || [];
+      if (queue.length === 0) {
+        const counts = await fetchCounts(supabase, reportId);
+        return jsonOk({ processed: 0, ...counts }, corsHeaders);
+      }
+
+      // Mark processing
+      await supabase
+        .from("report_visual_assets")
+        .update({ status: "processing" })
+        .in("id", queue.map((r: any) => r.id));
+
+      let processed = 0;
+      for (const row of queue) {
+        try {
+          const { bytes } = await generateOne(row.section_title);
+          const path = `${STORAGE_PREFIX}/${reportId}/${row.section_key}.png`;
+          const { error: upErr } = await supabase
+            .storage
+            .from(BUCKET)
+            .upload(path, bytes, {
+              contentType: "image/png",
+              upsert: true,
+              cacheControl: "31536000",
+            });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+          await supabase
+            .from("report_visual_assets")
+            .update({
+              status: "ready",
+              storage_path: path,
+              public_url: pub.publicUrl,
+              error: null,
+              attempts: (row.attempts || 0) + 1,
+            })
+            .eq("id", row.id);
+          processed++;
+        } catch (err: any) {
+          console.warn("[hero-worker] failed", row.section_key, err?.message || err);
+          await supabase
+            .from("report_visual_assets")
+            .update({
+              status: "failed",
+              error: String(err?.message || err).slice(0, 500),
+              attempts: (row.attempts || 0) + 1,
+            })
+            .eq("id", row.id);
+        }
+      }
+
+      const counts = await fetchCounts(supabase, reportId);
+      return jsonOk({ processed, ...counts }, corsHeaders);
+    }
+
+    return new Response(JSON.stringify({ error: "unknown action" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("[prepare-report-hero-images]", err);
+    return new Response(JSON.stringify({ error: err?.message || "Unknown error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function fetchCounts(supabase: any, reportId: string) {
+  const { data } = await supabase
+    .from("report_visual_assets")
+    .select("status")
+    .eq("report_id", reportId);
+  const rows = data || [];
+  const counts = { total: rows.length, ready: 0, pending: 0, processing: 0, failed: 0 } as Record<string, number>;
+  for (const r of rows) counts[r.status] = (counts[r.status] || 0) + 1;
+  return counts;
+}
+
+function jsonOk(obj: any, corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify(obj), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
