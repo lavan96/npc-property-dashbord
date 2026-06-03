@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye, TrendingUp } from 'lucide-react';
+import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye, TrendingUp, Phone, Mail, Ruler, Tag, FileText, Sparkles, Hash } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,204 +83,190 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            {buildFullAddress(listing)}
-          </DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {/* Hero header */}
+        <DialogHeader className="relative px-6 pt-6 pb-5 border-b border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none [background-image:radial-gradient(circle_at_1px_1px,hsl(var(--primary))_1px,transparent_0)] [background-size:14px_14px]" />
+          <div className="relative flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              Property Intake
+              {listing.category && <span className="opacity-60">· {listing.category}</span>}
+            </div>
+            <DialogTitle className="flex items-start gap-3 text-2xl font-semibold leading-tight pr-8">
+              <MapPin className="h-6 w-6 text-primary shrink-0 mt-1" />
+              <span className="break-words">{buildFullAddress(listing)}</span>
+            </DialogTitle>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {listing.propertyType && (
+                <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5">
+                  <Building className="h-3 w-3 mr-1" />{listing.propertyType}
+                </Badge>
+              )}
+              {listing.state && <Badge variant="outline">{getFullStateName(listing.state)}</Badge>}
+              {listing.zipCode && <Badge variant="outline">{listing.zipCode}</Badge>}
+              {listing.sourceHost && (
+                <Badge variant="secondary" className="font-normal">
+                  <ExternalLink className="h-3 w-3 mr-1" />{listing.sourceHost}
+                </Badge>
+              )}
+            </div>
+            {listing.price && (
+              <div className="flex items-baseline gap-2 pt-2">
+                <span className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  {formatCurrency(listing.price)}
+                </span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Guide Price</span>
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Main Property Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Property Details</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{listing.suburb || 'Unknown Suburb'}</span>
-                    {listing.state && (
-                      <Badge variant="outline">{getFullStateName(listing.state)}</Badge>
-                    )}
-                    {listing.zipCode && (
-                      <Badge variant="outline">{listing.zipCode}</Badge>
-                    )}
-                  </div>
-                  
-                  {listing.propertyType && (
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      <Badge variant="outline">{listing.propertyType}</Badge>
-                    </div>
-                  )}
-
-                  {listing.price && (
-                    <div className="text-2xl font-bold text-primary">
-                      {formatCurrency(listing.price)}
-                    </div>
-                  )}
-
-                  {listing.landSize && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-sm text-muted-foreground">Land Size:</span>
-                      <Badge variant="outline">{listing.landSize}</Badge>
-                    </div>
-                  )}
+        <div className="p-6 space-y-6">
+          {/* Stat tiles */}
+          {(listing.beds > 0 || listing.baths > 0 || listing.carSpaces > 0 || listing.landSize) && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: Bed, label: 'Bedrooms', value: listing.beds },
+                { icon: Bath, label: 'Bathrooms', value: listing.baths },
+                { icon: Car, label: 'Car Spaces', value: listing.carSpaces },
+                { icon: Ruler, label: 'Land Size', value: listing.landSize },
+              ].filter(s => s.value).map((s, i) => (
+                <div key={i} className="rounded-xl border border-border/60 bg-card/50 p-4 hover:border-primary/40 hover:bg-card transition-colors">
+                  <s.icon className="h-4 w-4 text-primary mb-2" />
+                  <div className="text-2xl font-semibold">{s.value}</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">{s.label}</div>
                 </div>
-              </div>
+              ))}
+            </div>
+          )}
 
-              {/* Property Features */}
-              <div className="flex items-center gap-6">
-                {listing.beds > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Bed className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{listing.beds}</span>
-                    <span className="text-sm text-muted-foreground">beds</span>
+          {/* Two-column: Agent & Quality */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Agent & Agency */}
+            <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <User className="h-3.5 w-3.5" /> Agent & Agency
+              </h3>
+              <div className="space-y-2.5">
+                {listing.agencyName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{listing.agencyName}</span>
                   </div>
                 )}
-                {listing.baths > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Bath className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{listing.baths}</span>
-                    <span className="text-sm text-muted-foreground">baths</span>
+                {listing.agentName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>{listing.agentName}</span>
                   </div>
                 )}
-                {listing.carSpaces > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{listing.carSpaces}</span>
-                    <span className="text-sm text-muted-foreground">cars</span>
-                  </div>
+                {listing.agentPhone && (
+                  <button
+                    onClick={() => copyToClipboard(listing.agentPhone!, "Phone number")}
+                    className="group flex items-center gap-2 text-sm w-full text-left rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
+                  >
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono">{listing.agentPhone}</span>
+                    <Copy className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity" />
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Agent & Agency Info */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Agent & Agency</h3>
-                <div className="space-y-2">
-                  {listing.agencyName && (
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      <span>{listing.agencyName}</span>
-                    </div>
-                  )}
-                  
-                  {listing.agentName && (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{listing.agentName}</span>
-                    </div>
-                  )}
-                  
-                  {listing.agentPhone && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Phone:</span>
-                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(listing.agentPhone!, "Phone number")}>
-                        {listing.agentPhone}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Data Quality */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Data Quality</h3>
-                <div className="space-y-2">
-                  {listing.confidence !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Confidence:</span>
-                      <ConfidenceBadge confidence={listing.confidence} />
-                    </div>
-                  )}
-                  
-                  {listing.sourceHost && (
-                    <div className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Source:</span>
-                      <Badge variant="secondary">{listing.sourceHost}</Badge>
-                    </div>
-                  )}
-                </div>
+            {/* Data Quality */}
+            <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5" /> Data Quality
+              </h3>
+              <div className="space-y-2.5">
+                {listing.confidence !== undefined && listing.confidence !== null && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Confidence:</span>
+                    <ConfidenceBadge confidence={listing.confidence} />
+                  </div>
+                )}
+                {listing.source && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Source:</span>
+                    <Badge variant="secondary">{listing.source}</Badge>
+                  </div>
+                )}
+                {listing.hash && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Hash:</span>
+                    <span className="font-mono truncate">{listing.hash.slice(0, 16)}…</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <Separator />
-
           {/* Inspection Details */}
           {(listing.inspectionStart || listing.inspectionNotes) && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Inspection</h3>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-primary mb-3 flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5" /> Inspection
+              </h3>
               <div className="space-y-2">
                 {listing.inspectionStart && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatDate(listing.inspectionStart)}</span>
+                    <span className="font-medium">{formatDate(listing.inspectionStart)}</span>
                     {listing.inspectionEnd && (
                       <span className="text-muted-foreground">
-                        - {new Intl.DateTimeFormat('en-AU', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }).format(listing.inspectionEnd instanceof Date ? listing.inspectionEnd : new Date(listing.inspectionEnd))}
+                        — {new Intl.DateTimeFormat('en-AU', { hour: '2-digit', minute: '2-digit' }).format(listing.inspectionEnd instanceof Date ? listing.inspectionEnd : new Date(listing.inspectionEnd))}
                       </span>
                     )}
                   </div>
                 )}
                 {listing.inspectionNotes && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Notes:</span>
-                    <p className="text-sm mt-1">{listing.inspectionNotes}</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground italic">{listing.inspectionNotes}</p>
                 )}
               </div>
             </div>
           )}
 
-          {/* Property Description */}
-          {listing.description && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Property Description</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {listing.description}
-              </p>
-            </div>
-          )}
-
-          {/* Property Summary */}
-          {listing.summary && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Property Summary</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {listing.summary}
-              </p>
+          {/* Description & Summary */}
+          {(listing.description || listing.summary) && (
+            <div className="grid grid-cols-1 gap-4">
+              {listing.description && (
+                <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" /> Property Description
+                  </h3>
+                  <p className="text-sm leading-relaxed">{listing.description}</p>
+                </div>
+              )}
+              {listing.summary && listing.summary !== listing.description && (
+                <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5" /> AI Summary
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{listing.summary}</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* Key Entities */}
           {listing.keyEntities && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Key Entities</h3>
-              <p className="text-sm text-muted-foreground">
-                {listing.keyEntities}
-              </p>
+            <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Key Entities</h3>
+              <p className="text-sm text-muted-foreground">{listing.keyEntities}</p>
             </div>
           )}
 
           {/* Features */}
           {listing.features && listing.features.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Features</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Features</h3>
               <div className="flex flex-wrap gap-2">
                 {listing.features.map((feature, index) => (
-                  <Badge key={index} variant="secondary">
-                    {feature}
-                  </Badge>
+                  <Badge key={index} variant="secondary">{feature}</Badge>
                 ))}
               </div>
             </div>
@@ -289,23 +275,21 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           {/* Images */}
           {listing.images && listing.images.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Images</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Images</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {listing.images.slice(0, 6).map((image, index) => (
-                  <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <img 
-                      src={image} 
+                  <div key={index} className="group aspect-video bg-muted rounded-lg overflow-hidden border border-border/60 hover:border-primary/50 transition-colors">
+                    <img
+                      src={image}
                       alt={`Property image ${index + 1}`}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
                       onClick={() => window.open(image, '_blank')}
                     />
                   </div>
                 ))}
               </div>
               {listing.images.length > 6 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  +{listing.images.length - 6} more images available on source
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">+{listing.images.length - 6} more images available on source</p>
               )}
             </div>
           )}
@@ -313,12 +297,12 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           {/* Floorplans */}
           {listing.floorplans && listing.floorplans.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Floorplans</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Floorplans</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {listing.floorplans.map((floorplan, index) => (
-                  <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <img 
-                      src={floorplan} 
+                  <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden border border-border/60">
+                    <img
+                      src={floorplan}
                       alt={`Floorplan ${index + 1}`}
                       className="w-full h-full object-contain hover:scale-105 transition-transform cursor-pointer"
                       onClick={() => window.open(floorplan, '_blank')}
@@ -329,33 +313,35 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             </div>
           )}
 
-          {/* Property Intake Master — extended fields (renders only when present) */}
+          {/* Property Intake Master — extended fields */}
           {listing.rawFields && <PropertyIntakeDetails fields={listing.rawFields} />}
 
-          <Separator />
+
 
 
           {/* Email Source Details */}
           {(listing.emailSubject || listing.from || listing.messageId) && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Email Source</h3>
+            <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5" /> Email Source
+              </h3>
               <div className="space-y-2 text-sm">
                 {listing.emailSubject && (
                   <div>
-                    <span className="text-muted-foreground">Subject:</span>
-                    <div className="font-medium">{listing.emailSubject}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Subject</span>
+                    <div className="font-medium mt-0.5">{listing.emailSubject}</div>
                   </div>
                 )}
                 {listing.from && (
                   <div>
-                    <span className="text-muted-foreground">From:</span>
-                    <div>{listing.from}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">From</span>
+                    <div className="mt-0.5">{listing.from}</div>
                   </div>
                 )}
                 {listing.messageId && (
                   <div>
-                    <span className="text-muted-foreground">Message ID:</span>
-                    <div className="font-mono text-xs">{listing.messageId}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Message ID</span>
+                    <div className="font-mono text-xs mt-0.5 break-all">{listing.messageId}</div>
                   </div>
                 )}
               </div>
@@ -363,103 +349,85 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           )}
 
           {/* Metadata */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Metadata</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Metadata</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {listing.receivedAt && (
                 <div>
-                  <span className="text-muted-foreground">Received:</span>
-                  <div>{formatDate(listing.receivedAt)}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Received</span>
+                  <div className="mt-0.5">{formatDate(listing.receivedAt)}</div>
                 </div>
               )}
-              
               {listing.createdTime && (
                 <div>
-                  <span className="text-muted-foreground">Created:</span>
-                  <div>{formatDate(listing.createdTime)}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Created</span>
+                  <div className="mt-0.5">{formatDate(listing.createdTime)}</div>
                 </div>
               )}
-              
-              {listing.hash && (
-                <div>
-                  <span className="text-muted-foreground">Hash:</span>
-                  <div className="font-mono text-xs">{listing.hash}</div>
-                </div>
-              )}
-              
               {listing.category && (
                 <div>
-                  <span className="text-muted-foreground">Category:</span>
-                  <div>{listing.category}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Category</span>
+                  <div className="mt-0.5">{listing.category}</div>
+                </div>
+              )}
+              {listing.hash && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Hash</span>
+                  <div className="font-mono text-xs mt-0.5 break-all">{listing.hash}</div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-4">
-            <Button 
-              variant="default" 
-              onClick={() => setInvestmentModalOpen(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Investment Report
-            </Button>
-
-            {listing.webLinks && (
-              <Button variant="outline" onClick={openWebLink}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Listing
-              </Button>
-            )}
-            
-            {listing.url && (
-              <Button variant="outline" onClick={openSourceUrl}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Source
-              </Button>
-            )}
-            
-            {listing.address && (
-              <Button variant="outline" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Address
-              </Button>
-            )}
-            
-            {listing.url && (
-              <Button variant="outline" onClick={() => copyToClipboard(listing.url!, "URL")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy URL
-              </Button>
-            )}
-            
-            {listing.webLinks && (
-              <Button variant="outline" onClick={() => copyToClipboard(listing.webLinks!, "Listing URL")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Listing URL
-              </Button>
-            )}
-          </div>
-          
-          <InvestmentReportModal
-            isOpen={investmentModalOpen}
-            onClose={() => setInvestmentModalOpen(false)}
-            propertyAddress={buildFullAddress(listing)}
-            propertyDetails={{
-              id: listing.id,
-              price: listing.price,
-              propertyType: listing.propertyType,
-              beds: listing.beds,
-              baths: listing.baths,
-              carSpaces: listing.carSpaces,
-              suburb: listing.suburb,
-              state: listing.state,
-              zipCode: listing.zipCode
-            }}
-          />
         </div>
+
+        {/* Sticky action bar */}
+        <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 px-6 py-4 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <Button
+            variant="default"
+            onClick={() => setInvestmentModalOpen(true)}
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20"
+          >
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Investment Report
+          </Button>
+          {listing.webLinks && (
+            <Button variant="outline" onClick={openWebLink}>
+              <ExternalLink className="h-4 w-4 mr-2" /> View Listing
+            </Button>
+          )}
+          {listing.url && (
+            <Button variant="outline" onClick={openSourceUrl}>
+              <ExternalLink className="h-4 w-4 mr-2" /> View Source
+            </Button>
+          )}
+          {listing.address && (
+            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Address
+            </Button>
+          )}
+          {listing.url && (
+            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(listing.url!, "URL")}>
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy URL
+            </Button>
+          )}
+        </div>
+
+        <InvestmentReportModal
+          isOpen={investmentModalOpen}
+          onClose={() => setInvestmentModalOpen(false)}
+          propertyAddress={buildFullAddress(listing)}
+          propertyDetails={{
+            id: listing.id,
+            price: listing.price,
+            propertyType: listing.propertyType,
+            beds: listing.beds,
+            baths: listing.baths,
+            carSpaces: listing.carSpaces,
+            suburb: listing.suburb,
+            state: listing.state,
+            zipCode: listing.zipCode
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

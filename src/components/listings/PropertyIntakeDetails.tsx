@@ -44,16 +44,31 @@ const ConfBar = ({ label, value }: { label: string; value: any }) => {
   if (pct === null) return null;
   const tone =
     pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-primary' : pct >= 40 ? 'bg-warning' : 'bg-destructive';
+  const ring =
+    pct >= 80 ? 'ring-success/20' : pct >= 60 ? 'ring-primary/20' : pct >= 40 ? 'ring-warning/20' : 'ring-destructive/20';
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{pct}%</span>
+    <div className={`rounded-lg border border-border/60 bg-card/40 p-3 ring-1 ${ring}`}>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className="text-sm font-semibold tabular-nums">{pct}%</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
+        <div className={`h-full ${tone} transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
+  );
+};
+
+const SectionCard = ({ icon: Icon, title, tone = 'default', children }: { icon?: any; title: string; tone?: 'default' | 'destructive' | 'warning'; children: React.ReactNode }) => {
+  const border = tone === 'destructive' ? 'border-destructive/30 bg-destructive/5' : tone === 'warning' ? 'border-warning/30 bg-warning/5' : 'border-border/60 bg-card/30';
+  const titleTone = tone === 'destructive' ? 'text-destructive' : tone === 'warning' ? 'text-warning' : 'text-muted-foreground';
+  return (
+    <section className={`rounded-xl border ${border} p-5`}>
+      <h3 className={`text-sm font-semibold uppercase tracking-wider ${titleTone} mb-3 flex items-center gap-2`}>
+        {Icon && <Icon className="h-3.5 w-3.5" />} {title}
+      </h3>
+      {children}
+    </section>
   );
 };
 
@@ -75,14 +90,9 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
     [f['Street Number'], f['Street Name'], f['Street Type']].filter(Boolean).join(' ');
 
   return (
-    <div className="space-y-6">
-      <Separator />
-
+    <div className="space-y-4">
       {/* Classification */}
-      <section>
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Tag className="h-4 w-4" /> Classification
-        </h3>
+      <SectionCard icon={Tag} title="Classification">
         <div className="flex flex-wrap gap-2">
           {f['Sector'] && <Badge variant="outline">Sector: {f['Sector']}</Badge>}
           {f['Intent'] && <Badge variant="outline">Intent: {f['Intent']}</Badge>}
@@ -103,14 +113,13 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
           {f['GST Applicable'] && f['GST Applicable'] !== 'Unknown' && (
             <Badge variant="outline">GST: {f['GST Applicable']}</Badge>
           )}
-          {f['Open Home Available'] && <Badge className="bg-success/20 text-success border-success/30">Open Home</Badge>}
+          {f['Open Home Available'] && <Badge variant="success">Open Home</Badge>}
         </div>
-      </section>
+      </SectionCard>
 
       {/* Address breakdown */}
       {(fullAddress || f['Normalized Address'] || f['Country']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3">Address Breakdown</h3>
+        <SectionCard icon={Globe} title="Address Breakdown">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Row label="Full Address" value={fullAddress} />
             <Row label="Normalized" value={f['Normalized Address']} />
@@ -119,15 +128,12 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
             <Row label="Street Type" value={f['Street Type']} />
             <Row label="Country" value={f['Country']} />
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Agent & Agency extended */}
       {(f['Agent Email'] || f['Agent Mobile'] || f['Agency Email'] || f['Agency Office Phone'] || f['Agent Role'] || f['Agent / Agency Notes']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <Building2 className="h-4 w-4" /> Agent & Agency (Extended)
-          </h3>
+        <SectionCard icon={Building2} title="Agent & Agency (Extended)">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Row label="Agent Role" value={f['Agent Role']} />
             <Row label="Agent Email" value={f['Agent Email']} icon={Mail} />
@@ -139,27 +145,23 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
             <Row label="Sender Domain" value={f['Sender Domain']} icon={Globe} />
           </div>
           {f['Agent / Agency Notes'] && (
-            <p className="mt-2 text-sm text-muted-foreground italic">{f['Agent / Agency Notes']}</p>
+            <p className="mt-3 text-sm text-muted-foreground italic border-l-2 border-primary/30 pl-3">{f['Agent / Agency Notes']}</p>
           )}
-        </section>
+        </SectionCard>
       )}
 
       {/* Inspection raw */}
       {(f['Next Inspection Date'] || f['Inspection Raw Text']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3">Inspection (Extended)</h3>
+        <SectionCard title="Inspection (Extended)">
           <div className="space-y-1">
             <Row label="Next Inspection" value={f['Next Inspection Date'] ? new Date(f['Next Inspection Date']).toLocaleString('en-AU') : null} />
             <Row label="Raw Text" value={f['Inspection Raw Text']} />
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Processing status */}
-      <section>
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Activity className="h-4 w-4" /> Processing
-        </h3>
+      <SectionCard icon={Activity} title="Processing">
         <div className="flex flex-wrap gap-2 mb-3">
           {f['Processing Stage'] && <Badge variant="outline">Stage: {f['Processing Stage']}</Badge>}
           {f['Processing Status'] && <Badge variant="outline">Status: {f['Processing Status']}</Badge>}
@@ -175,18 +177,15 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
         </div>
         {f['Last Modified Time'] && (
           <p className="text-xs text-muted-foreground">
-            Last modified: {new Date(f['Last Modified Time']).toLocaleString('en-AU')}
+            Last modified · {new Date(f['Last Modified Time']).toLocaleString('en-AU')}
           </p>
         )}
-      </section>
+      </SectionCard>
 
       {/* Confidence scores */}
       {(f['Overall Data Quality Score'] || f['Extraction Confidence'] || f['Address Confidence'] || f['Price Confidence'] || f['Specs Confidence'] || f['Agent Details Confidence']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4" /> Confidence Scores
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <SectionCard icon={Sparkles} title="Confidence Scores">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <ConfBar label="Overall Data Quality" value={f['Overall Data Quality Score']} />
             <ConfBar label="Extraction" value={f['Extraction Confidence']} />
             <ConfBar label="Address" value={f['Address Confidence']} />
@@ -194,99 +193,88 @@ export function PropertyIntakeDetails({ fields }: PropertyIntakeDetailsProps) {
             <ConfBar label="Specs" value={f['Specs Confidence']} />
             <ConfBar label="Agent Details" value={f['Agent Details Confidence']} />
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Human review */}
       {(f['Needs Human Review'] || f['Human Review Status'] || f['Human Review Notes'] || f['Follow-up Notes']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4" /> Human Review
-          </h3>
-          <div className="space-y-2">
+        <SectionCard icon={ClipboardCheck} title="Human Review" tone={f['Needs Human Review'] ? 'warning' : 'default'}>
+          <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              {f['Needs Human Review'] && (
-                <Badge variant="destructive">Needs Human Review</Badge>
-              )}
+              {f['Needs Human Review'] && <Badge variant="destructive">Needs Human Review</Badge>}
               {f['Human Review Status'] && <Badge variant="outline">{f['Human Review Status']}</Badge>}
             </div>
             {f['Human Review Notes'] && (
               <div>
-                <span className="text-xs text-muted-foreground">Reviewer notes:</span>
-                <p className="text-sm">{f['Human Review Notes']}</p>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Reviewer notes</span>
+                <p className="text-sm mt-1">{f['Human Review Notes']}</p>
               </div>
             )}
             {f['Follow-up Notes'] && (
               <div>
-                <span className="text-xs text-muted-foreground">Follow-up:</span>
-                <p className="text-sm">{f['Follow-up Notes']}</p>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Follow-up</span>
+                <p className="text-sm mt-1">{f['Follow-up Notes']}</p>
               </div>
             )}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Errors */}
       {(f['Error Type'] || f['Error Message'] || f['Last Error Module']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" /> Extraction Issues
-          </h3>
-          <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+        <SectionCard icon={AlertTriangle} title="Extraction Issues" tone="destructive">
+          <div className="space-y-1">
             <Row label="Type" value={f['Error Type']} />
             <Row label="Module" value={f['Last Error Module']} />
             <Row label="Message" value={f['Error Message']} />
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Source content */}
       {(f['Raw Source Snippet'] || f['Original Row Text'] || f['Property Description'] || f['Source Web Link']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Source Content
-          </h3>
+        <SectionCard icon={FileText} title="Source Content">
           {f['Property Description'] && (
             <div className="mb-3">
-              <span className="text-xs text-muted-foreground">Property Description</span>
-              <p className="text-sm mt-1">{f['Property Description']}</p>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Property Description</span>
+              <p className="text-sm mt-1 leading-relaxed">{f['Property Description']}</p>
             </div>
           )}
           {f['Raw Source Snippet'] && (
             <div className="mb-3">
-              <span className="text-xs text-muted-foreground">Raw Source Snippet</span>
-              <pre className="text-xs mt-1 p-2 rounded bg-muted whitespace-pre-wrap break-words max-h-48 overflow-auto">{f['Raw Source Snippet']}</pre>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Raw Source Snippet</span>
+              <pre className="text-xs mt-1 p-3 rounded-lg bg-muted/60 border border-border/60 whitespace-pre-wrap break-words max-h-48 overflow-auto">{f['Raw Source Snippet']}</pre>
             </div>
           )}
           {f['Original Row Text'] && (
-            <Row label="Original Row" value={f['Original Row Text']} mono />
+            <div className="mb-3">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Original Row</span>
+              <pre className="text-xs mt-1 p-3 rounded-lg bg-muted/60 border border-border/60 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">{f['Original Row Text']}</pre>
+            </div>
           )}
           {f['Source Web Link'] && (
             <a
               href={f['Source Web Link']}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-primary hover:underline break-all"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-all"
             >
-              {f['Source Web Link']}
+              <Globe className="h-3.5 w-3.5" /> {f['Source Web Link']}
             </a>
           )}
-        </section>
+        </SectionCard>
       )}
 
       {/* Identifiers */}
       {(f['Property Unique Key'] || f['Property Record Name'] || f['Address Match Key'] || f['Project Match Key']) && (
-        <section>
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <Hash className="h-4 w-4" /> Identifiers
-          </h3>
+        <SectionCard icon={Hash} title="Identifiers">
           <div className="space-y-1">
             <Row label="Record Name" value={f['Property Record Name']} />
             <Row label="Unique Key" value={f['Property Unique Key']} mono />
             <Row label="Address Match" value={f['Address Match Key']} mono />
             <Row label="Project Match" value={f['Project Match Key']} mono />
           </div>
-        </section>
+        </SectionCard>
       )}
     </div>
   );
