@@ -262,6 +262,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
           <TabsTrigger value="onboarding"><Users className="h-4 w-4 mr-2" />Onboarding</TabsTrigger>
           <TabsTrigger value="compliance"><PackageCheck className="h-4 w-4 mr-2" />Compliance</TabsTrigger>
+          <TabsTrigger value="calculators"><Calculator className="h-4 w-4 mr-2" />Calculators</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
 
