@@ -143,6 +143,27 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
     } finally { setBusy(false); }
   };
 
+  const aiAutoTag = async () => {
+    setBusy(true);
+    try {
+      const toTag = (requirements || []).filter((r: any) => r.status === 'uploaded' || r.status === 'verified');
+      let tagged = 0;
+      for (const r of toTag) {
+        const { error } = await invokeFinanceFunction('finance-portal-ai-copilot', {
+          action: 'classify_document',
+          purchase_file_id: fileId,
+          document_instance_id: r.id,
+          filename: r.label || r.category || 'document',
+          ocr_text: null,
+        });
+        if (!error) tagged++;
+      }
+      toast.success(`AI tagged ${tagged} of ${toTag.length} items`);
+    } catch (e: any) {
+      toast.error(e.message || 'Auto-tag failed');
+    } finally { setBusy(false); }
+  };
+
   const analyzeOne = async (reqId: string) => {
     const { error } = await invokeFinanceFunction('finance-portal-document-requirements', {
       operation: 'analyze_quality', requirement_id: reqId,
