@@ -955,6 +955,43 @@ export async function buildHtml(
     </div>`)
     .join("");
 
+  // ── Executive Summary (replaces Snapshot + Finance Visuals section) ──
+  const suburbLabel = loc?.suburb && loc?.state
+    ? `${loc.suburb}, ${loc.state}`
+    : address;
+  const priceTxt = km.purchasePrice != null ? fmtMoney(km.purchasePrice) : null;
+  const yieldTxt = km.grossRentalYield != null ? fmtPct(km.grossRentalYield) : null;
+  const rentTxt = km.weeklyRent != null ? fmtMoney(km.weeklyRent) : null;
+  const cashflowTxt = km.weeklyNet != null ? fmtMoney(km.weeklyNet) : null;
+  const lvrTxt = km.lvr != null ? fmtPct(km.lvr, 1) : null;
+  const scoreTxt = scoreOverall != null ? `${Math.round(Number(scoreOverall))}/100${scoreBand ? ` (${scoreBand})` : ""}` : null;
+
+  const para1Parts: string[] = [];
+  const locFrag = suburbLabel && suburbLabel !== address ? `, located in <strong>${esc(suburbLabel)}</strong>` : "";
+  para1Parts.push(`This report presents an independent investment analysis of <strong>${esc(address)}</strong>${locFrag}.`);
+  if (priceTxt) {
+    const lvrFrag = lvrTxt ? ` at an LVR of <strong>${lvrTxt}</strong>` : "";
+    const rentFrag = rentTxt ? `, with an assessed market rent of <strong>${rentTxt}/week</strong>` : "";
+    const yieldFrag = yieldTxt ? ` (gross yield <strong>${yieldTxt}</strong>)` : "";
+    para1Parts.push(`Modelled on a purchase price of <strong>${priceTxt}</strong>${lvrFrag}${rentFrag}${yieldFrag}.`);
+  }
+  para1Parts.push(`Findings draw on local market conditions, demographics, infrastructure, lending policy, and forward-looking cash-flow projections to give a holistic view of suitability for a long-term investment strategy.`);
+
+  const para2Parts: string[] = [];
+  if (scoreTxt) {
+    para2Parts.push(`The property carries an overall investment score of <strong>${scoreTxt}</strong>, reflecting the weighted balance of location quality, financial performance, growth drivers, and risk indicators discussed in the chapters that follow.`);
+  } else {
+    para2Parts.push(`The chapters that follow examine the weighted balance of location quality, financial performance, growth drivers, and risk indicators that underpin our assessment.`);
+  }
+  if (cashflowTxt) para2Parts.push(`Indicative weekly cash flow tracks at <strong>${cashflowTxt}</strong> after holding costs, providing a baseline for the comparative scenarios and sensitivity tables that follow.`);
+  para2Parts.push(`Use this summary as orientation: detailed evidence, calculations, charts, and source attributions for every claim are set out across the remaining sections of the report.`);
+
+  const executiveSummaryHtml = `
+    <h2 id="ch-executive-summary">Executive Summary</h2>
+    <p>${para1Parts.filter(Boolean).join(" ")}</p>
+    <p>${para2Parts.filter(Boolean).join(" ")}</p>
+  `;
+
   // Parse address tail for cover meta (Suburb, STATE Postcode).
   const addrTail = address.split(",").map((s: string) => s.trim()).filter(Boolean);
   const coverLocation = loc?.suburb && loc?.state
@@ -1026,7 +1063,8 @@ export async function buildHtml(
       -webkit-text-fill-color: ${THEME.gold};
       color: ${THEME.gold};
       letter-spacing: .04em;
-      margin-right: 14pt;
+      margin-right: 28pt;
+      padding-right: 6pt;
     }
     h3 {
       font-size: 17pt; font-weight: 600; margin-top: 18pt;
@@ -1446,15 +1484,12 @@ export async function buildHtml(
 
 ${tocHtml}
 
-<!-- ── Snapshot ── -->
+<!-- ── Executive Summary (replaces Snapshot + Finance Visuals) ── -->
 <section class="body-page">
-  <h2 id="ch-snapshot">Snapshot</h2>
-  ${kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : ""}
-  ${scoreCard}
+  ${executiveSummaryHtml}
 </section>
 
 <!-- ── Body (markdown) ── -->
-${financialChartsHtml}
 
 <section class="body-page">
   ${bodyWithHeroes}
