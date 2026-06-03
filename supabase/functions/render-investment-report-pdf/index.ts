@@ -1497,27 +1497,9 @@ export async function buildHtml(
 </head>
 <body>
 
-<!-- ── Cover ── -->
+<!-- ── Cover (standard NPC cover image) ── -->
 <section class="cover">
-  <div class="brand">${esc(brandName)}</div>
-  <div class="rule"></div>
-  <div class="eyebrow">Property Investment Analysis</div>
-  <h1>An evidence-based view of this investment opportunity.</h1>
-  <div class="address">${esc(address)}</div>
-  <div class="meta">
-    <div>
-      <span class="label">Prepared</span>
-      <span class="value">${esc(generated)}</span>
-    </div>
-    <div>
-      <span class="label">Location</span>
-      <span class="value">${esc(coverLocation)}</span>
-    </div>
-    <div style="text-align:right">
-      <span class="label">Report Type</span>
-      <span class="value">Investment Analysis</span>
-    </div>
-  </div>
+  <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
 </section>
 
 ${tocHtml}
@@ -1539,12 +1521,40 @@ ${
       : ""
   }
 
-<section class="body-page">
-  <div class="disclaimer">
-    <h4>Important Notice</h4>
-    <p>This report is provided for general informational purposes only and does not constitute financial, taxation, legal, or investment advice. All figures, projections, and market commentary are derived from publicly available data and reasonable assumptions at the time of writing, and may change. Recipients should seek independent professional advice before making any investment decisions.</p>
-  </div>
-</section>
+<!-- ── Contact + Disclaimer closing page (matches all other NPC reports) ── -->
+${(() => {
+  const companyRaw = String(contact.company_name || brandName || "Property Consulting").toUpperCase();
+  const parts = companyRaw.split(" ");
+  const mainCompany = parts.length >= 2 ? parts.slice(0, -1).join(" ") : parts[0];
+  const subCompany = parts.length >= 2 ? parts[parts.length - 1] : "";
+  const rows: Array<[string, any]> = [
+    ["Website", contact.website],
+    ["Email", contact.email],
+    ["Phone", contact.phone],
+    ["Address", contact.address],
+    ["ABN", contact.abn],
+  ];
+  const rowsHtml = rows
+    .filter(([, v]) => v)
+    .map(([l, v]) => `<tr><td class="label">${esc(l)}:</td><td class="value">${esc(v)}</td></tr>`)
+    .join("");
+  const discText = disclaimer.is_enabled !== false && disclaimer.text
+    ? String(disclaimer.text)
+    : "This report is provided for general informational purposes only and does not constitute financial, taxation, legal, or investment advice. All figures, projections, and market commentary are derived from publicly available data and reasonable assumptions at the time of writing, and may change. Recipients should seek independent professional advice before making any investment decisions.";
+  const discParas = discText
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${esc(p)}</p>`) 
+    .join("");
+  return `<section class="disclaimer-page">
+    <div class="company-main">${esc(mainCompany)}</div>
+    ${subCompany ? `<div class="company-sub">${esc(subCompany)}</div>` : ""}
+    <div class="contact-heading">CONTACT US</div>
+    <table class="contact">${rowsHtml}</table>
+    <div class="disclaimer-body">${discParas}</div>
+  </section>`;
+})()}
 
 <script>
   // Estimate page number for each TOC entry by measuring chapter offset.
