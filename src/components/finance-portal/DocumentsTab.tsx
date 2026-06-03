@@ -320,6 +320,9 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
               <Button size="sm" variant="outline" onClick={analyzeAll} disabled={busy} className="gap-1.5" title="Run quality checks on all linked documents">
                 <ScanLine className="h-4 w-4" /> Analyze quality
               </Button>
+              <Button size="sm" variant="outline" onClick={aiAutoTag} disabled={busy} className="gap-1.5" title="AI auto-classify uploaded items">
+                <Sparkles className="h-4 w-4" /> AI auto-tag
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
                 <Package className="h-4 w-4" /> Lender packet
               </Button>
