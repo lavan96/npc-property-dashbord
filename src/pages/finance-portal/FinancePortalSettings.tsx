@@ -9,9 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Bell, Palette, Loader2, Save, Upload, Clock, CalendarClock } from 'lucide-react';
+import { Settings, Bell, Palette, Loader2, Save, Upload, Clock, CalendarClock, Smartphone } from 'lucide-react';
 import { AvailabilityCard } from '@/components/finance-portal/AvailabilityCard';
 import { BookingsCard } from '@/components/finance-portal/BookingsCard';
+import { UiPreferencesCard } from '@/components/finance-portal/UiPreferencesCard';
 import { toast } from 'sonner';
 
 const EVENT_TYPES: { key: string; label: string; description: string }[] = [
@@ -187,12 +188,18 @@ export default function FinancePortalSettings() {
           <TabsTrigger value="notifications"><Bell className="h-3.5 w-3.5 mr-1" /> Notifications</TabsTrigger>
           <TabsTrigger value="branding"><Palette className="h-3.5 w-3.5 mr-1" /> Branding</TabsTrigger>
           <TabsTrigger value="bookings"><CalendarClock className="h-3.5 w-3.5 mr-1" /> Bookings</TabsTrigger>
+          <TabsTrigger value="display"><Smartphone className="h-3.5 w-3.5 mr-1" /> Display</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-4">
           <AvailabilityCard />
           <BookingsCard />
         </TabsContent>
+
+        <TabsContent value="display" className="space-y-4">
+          <UiPreferencesCard />
+        </TabsContent>
+
 
         <TabsContent value="notifications" className="space-y-4">
           <Card>
