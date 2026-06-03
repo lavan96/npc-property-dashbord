@@ -955,6 +955,37 @@ export async function buildHtml(
     </div>`)
     .join("");
 
+  // ── Executive Summary (replaces Snapshot + Finance Visuals section) ──
+  const suburbLabel = loc?.suburb && loc?.state
+    ? `${loc.suburb}, ${loc.state}`
+    : (addrTailForSummary(address) || address);
+  const priceTxt = km.purchasePrice != null ? fmtMoney(km.purchasePrice) : null;
+  const yieldTxt = km.grossRentalYield != null ? fmtPct(km.grossRentalYield) : null;
+  const rentTxt = km.weeklyRent != null ? fmtMoney(km.weeklyRent) : null;
+  const cashflowTxt = km.weeklyNet != null ? fmtMoney(km.weeklyNet) : null;
+  const lvrTxt = km.lvr != null ? fmtPct(km.lvr, 1) : null;
+  const scoreTxt = scoreOverall != null ? `${Math.round(Number(scoreOverall))}/100${scoreBand ? ` (${scoreBand})` : ""}` : null;
+
+  const para1Parts: string[] = [];
+  para1Parts.push(`This report presents an independent investment analysis of <strong>${esc(address)}</strong>${suburbLabel && suburbLabel !== address ? `, located in <strong>${esc(suburbLabel)}</strong>` : ""}.`);
+  if (priceTxt) para1Parts.push(`Modelled on a purchase price of <strong>${priceTxt}</strong>${lvrTxt ? ` at an LVR of <strong>${lvrTxt}</strong>` : ""}${rentTxt ? `, with an assessed market rent of <strong>${rentTxt}/week</strong>` : ""}${yieldTxt ? ` (gross yield <strong>${yieldTxt}</strong>)` : ""}.` : "");
+  para1Parts.push(`Findings draw on local market conditions, demographics, infrastructure, lending policy, and forward-looking cash-flow projections to give a holistic view of suitability for a long-term investment strategy.`);
+
+  const para2Parts: string[] = [];
+  if (scoreTxt) {
+    para2Parts.push(`The property carries an overall investment score of <strong>${scoreTxt}</strong>, reflecting the weighted balance of location quality, financial performance, growth drivers, and risk indicators discussed in the chapters that follow.`);
+  } else {
+    para2Parts.push(`The chapters that follow examine the weighted balance of location quality, financial performance, growth drivers, and risk indicators that underpin our assessment.`);
+  }
+  if (cashflowTxt) para2Parts.push(`Indicative weekly cash flow tracks at <strong>${cashflowTxt}</strong> after holding costs, providing a baseline for the comparative scenarios and sensitivity tables that follow.`);
+  para2Parts.push(`Use this summary as orientation: detailed evidence, calculations, charts, and source attributions for every claim are set out across the remaining sections of the report.`);
+
+  const executiveSummaryHtml = `
+    <h2 id="ch-executive-summary">Executive Summary</h2>
+    <p>${para1Parts.filter(Boolean).join(" ")}</p>
+    <p>${para2Parts.filter(Boolean).join(" ")}</p>
+  `;
+
   // Parse address tail for cover meta (Suburb, STATE Postcode).
   const addrTail = address.split(",").map((s: string) => s.trim()).filter(Boolean);
   const coverLocation = loc?.suburb && loc?.state
