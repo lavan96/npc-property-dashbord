@@ -1474,20 +1474,35 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
   let lastStatus = 0;
   let lastBody = "";
   let lastError = "";
+  const startedAt = Date.now();
   for (const endpoint of [
     "https://v2.api2pdf.com/chrome/html",
     "https://v2.api2pdf.com/chrome/pdf/html",
     "https://v2018.api2pdf.com/chrome/html",
     "https://v2018.api2pdf.com/chrome/pdf/html",
   ]) {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: API2PDF_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+    const remaining = 115_000 - (Date.now() - startedAt);
+    if (remaining <= 5_000) break;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Math.min(45_000, remaining));
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: API2PDF_KEY,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.warn("[render-investment-report-pdf] Api2PDF request failed", { endpoint, error: lastError });
+      break;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const text = await res.text();
     let json: any = null;
