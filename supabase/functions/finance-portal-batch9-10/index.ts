@@ -413,6 +413,9 @@ Deno.serve(async (req) => {
       return json({ results: { notes, messages, docs } });
     }
 
+    return json({ error: `Unknown operation: ${operation}` }, 400);
+
+
   } catch (e) {
     console.error('[finance-portal-batch9-10]', e);
     return json({ error: (e as Error).message || 'Internal error' }, 500);
