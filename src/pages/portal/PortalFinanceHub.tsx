@@ -123,6 +123,15 @@ export default function PortalFinanceHub() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    const token = getSessionToken(); if (!token) return;
+    fetch(`${SUPABASE_URL}/functions/v1/client-portal-batch6`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'x-portal-session-token': token },
+      body: JSON.stringify({ operation: 'assigned_partner' }),
+    }).then(r => r.json()).then(j => setPartnerId(j?.partner?.id ?? null)).catch(() => {});
+  }, []);
+
   const totalOpenTasks = portfolio?.total_open_tasks ?? files.reduce((acc, f) => acc + f.open_task_count, 0);
 
   return (
