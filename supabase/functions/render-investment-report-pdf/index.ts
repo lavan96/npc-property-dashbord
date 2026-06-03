@@ -929,11 +929,23 @@ export async function buildHtml(
     }
     .disclaimer h4 { margin-top: 0; color: ${THEME.inkMuted}; }
 
-    /* ── Auto-injected charts ── */
-    .chart-wrap { margin: 14pt 0 18pt; page-break-inside: avoid; }
-    .auto-chart { margin: 0 0 6pt; text-align: center; page-break-inside: avoid; }
+    /* ── Premium auto-injected charts ── */
+    .chart-wrap {
+      margin: 18pt 0 22pt;
+      padding: 14pt 14pt 10pt;
+      background: linear-gradient(180deg, #FFFDF8 0%, #FAF4E4 100%);
+      border: 0.5pt solid ${THEME.rule};
+      border-radius: 4pt;
+      box-shadow: 0 1pt 0 rgba(40,28,10,0.04), 0 6pt 16pt -8pt rgba(40,28,10,0.18);
+      page-break-inside: avoid;
+    }
+    .auto-chart { margin: 0 0 8pt; text-align: center; page-break-inside: avoid; }
     .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-    .chart-wrap > table { margin-top: 4pt; font-size: 8pt; }
+    .chart-wrap > table {
+      margin-top: 10pt; font-size: 8.2pt;
+      border-top: 0.5pt solid ${THEME.rule};
+    }
+    .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
 
     /* ── KPI sparklines ── */
     .kpi-spark { margin-top: 8pt; height: 28pt; opacity: 0.95; }
