@@ -106,13 +106,19 @@ class AirtableService {
         throw new Error(`Airtable API error: ${data.error}`);
       }
 
-      // The airtable-proxy function already returns transformed data
-      // No need for additional transformation
+      // The airtable-proxy function already returns transformed data.
+      // Attach the raw Airtable `fields` object as `rawFields` so UI can render table-specific
+      // extended details (e.g. Property Intake Master rich fields).
+      const records: PropertyListing[] = (data.records || []).map((r: any) => ({
+        ...r,
+        rawFields: r?.fields ?? undefined,
+      }));
       return {
-        records: data.records || [],
+        records,
         offset: data.offset,
         total: data.total || 0,
       };
+
     } catch (error) {
       console.error('Failed to fetch Airtable records:', error);
       throw error;
