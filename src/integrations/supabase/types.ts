@@ -7643,6 +7643,36 @@ export type Database = {
           },
         ]
       }
+      finance_partner_ui_prefs: {
+        Row: {
+          created_at: string
+          default_landing: string
+          density: string
+          finance_user_id: string
+          mobile_optimized: boolean
+          prefs: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_landing?: string
+          density?: string
+          finance_user_id: string
+          mobile_optimized?: boolean
+          prefs?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_landing?: string
+          density?: string
+          finance_user_id?: string
+          mobile_optimized?: boolean
+          prefs?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       finance_portal_activity_log: {
         Row: {
           action: string
