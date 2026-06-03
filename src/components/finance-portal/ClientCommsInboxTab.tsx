@@ -130,6 +130,23 @@ export function ClientCommsInboxTab({
     setTimeout(refetch, 800);
   };
 
+  const [drafting, setDrafting] = useState(false);
+  const aiDraft = async () => {
+    const lastInbound = [...messages].reverse().find(m => m.direction === 'inbound');
+    if (!lastInbound) { toast.info('No inbound message to reply to'); return; }
+    setDrafting(true);
+    const { data, error } = await invokeFinanceFunction('finance-portal-ai-copilot', {
+      action: 'draft_reply',
+      purchase_file_id: purchaseFileId ?? null,
+      client_id: clientId,
+      last_message: lastInbound.body,
+    });
+    setDrafting(false);
+    if (error) return toast.error(error.message || 'Draft failed');
+    setComposeBody(data?.draft ?? '');
+    toast.success('Draft inserted — review before sending');
+  };
+
   const translate = async (m: UnifiedMessage, lang: string) => {
     setTranslatingId(m.id);
     const { data, error } = await invokeFinanceFunction(FN, {
@@ -303,10 +320,16 @@ export function ClientCommsInboxTab({
               {composeChannel === 'whatsapp' && 'WhatsApp sent through GoHighLevel.'}
               {composeChannel === 'portal' && 'Posts to the client portal inbox.'}
             </span>
-            <Button onClick={send} disabled={sending || !composeBody.trim()} size="sm">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
-              Send
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={aiDraft} disabled={drafting} size="sm" variant="outline">
+                {drafting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+                AI Draft
+              </Button>
+              <Button onClick={send} disabled={sending || !composeBody.trim()} size="sm">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
+                Send
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
