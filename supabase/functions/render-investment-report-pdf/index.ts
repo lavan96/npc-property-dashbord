@@ -11,7 +11,6 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
-const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -179,6 +178,7 @@ const CHART_PALETTE = [
 ];
 const FONT_STACK = "Inter, Helvetica, Arial, sans-serif";
 const SERIF_STACK = "Playfair Display, Georgia, serif";
+const MAX_AUTO_TABLE_CHARTS = 10;
 
 /** Convert #RRGGBB to rgba(r,g,b,a). */
 function withAlpha(hex: string, a: number): string {
@@ -189,6 +189,130 @@ function withAlpha(hex: string, a: number): string {
 }
 
 const chartImageCache = new Map<string, string | null>();
+
+function svgEsc(s: unknown): string {
+  return esc(s).replace(/"/g, "&quot;");
+}
+
+function compactDataUri(svg: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function datasetValues(dataset: any): number[] {
+  return Array.isArray(dataset?.data)
+    ? dataset.data.map((v: unknown) => num(v)).filter((v: number | null): v is number => v !== null)
+    : [];
+}
+
+function formatAxisValue(value: number, mode: "money" | "percent" | "plain"): string {
+  if (mode === "percent") return `${value.toFixed(Math.abs(value) < 10 ? 1 : 0)}%`;
+  if (mode === "money") {
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}m`;
+    if (abs >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
+    return `$${value.toFixed(0)}`;
+  }
+  return Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(0)}k` : value.toFixed(0);
+}
+
+function inferAxisMode(config: any): "money" | "percent" | "plain" {
+  const blob = JSON.stringify(config || {}).toLowerCase();
+  if (blob.includes("$") || /price|cost|value|rent|income|cash|loan|equity|deposit/.test(blob)) return "money";
+  if (blob.includes("%") || /yield|rate|growth|return|roi|lvr|ratio/.test(blob)) return "percent";
+  return "plain";
+}
+
+function renderSvgChart(config: Record<string, unknown>, width: number, height: number): string {
+  const cfg: any = config || {};
+  const type = String(cfg.type || "bar").toLowerCase();
+  const labels = (cfg.data?.labels || []).map((l: unknown) => String(l ?? ""));
+  const datasets = Array.isArray(cfg.data?.datasets) ? cfg.data.datasets : [];
+  const axisMode = inferAxisMode(cfg);
+  const bg = "#FFFDF8";
+  const ink = "#2A2317";
+  const muted = "#6B604F";
+  const grid = "#D8CBB6";
+  const plot = { x: 58, y: 28, w: Math.max(120, width - 86), h: Math.max(80, height - 86) };
+  const title = String(cfg.options?.plugins?.title?.text || datasets[0]?.label || "");
+
+  const defs = `<defs><filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#281C0A" flood-opacity="0.16"/></filter></defs>`;
+  const frame = `<rect x="0" y="0" width="${width}" height="${height}" rx="10" fill="${bg}"/><rect x="10" y="10" width="${width - 20}" height="${height - 20}" rx="8" fill="none" stroke="#E4D8C4"/>`;
+
+  if (type === "sparkline") {
+    const values = datasetValues(datasets[0]);
+    if (values.length < 2) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`;
+    const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+    const pts = values.map((v, i) => {
+      const x = 8 + (i / (values.length - 1)) * (width - 16);
+      const y = height - 8 - ((v - min) / span) * (height - 16);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const color = String(datasets[0]?.borderColor || THEME.gold);
+    const area = `${pts[0]} ${pts.slice(1).join(" ")} ${width - 8},${height - 7} 8,${height - 7}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polygon points="${area}" fill="${withAlpha(color, 0.14)}"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  if (type === "doughnut" || type === "pie") {
+    const values = datasetValues(datasets[0]);
+    const total = values.reduce((a, b) => a + Math.max(0, b), 0) || 1;
+    const cx = width * 0.38, cy = height * 0.52, r = Math.min(width, height) * 0.28;
+    const sw = type === "doughnut" ? r * 0.38 : r;
+    let offset = 25;
+    const circles = values.map((v, i) => {
+      const pct = Math.max(0, v) / total;
+      const dash = `${(pct * 100).toFixed(4)} ${(100 - pct * 100).toFixed(4)}`;
+      const color = CHART_PALETTE[i % CHART_PALETTE.length];
+      const c = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${dash}" stroke-dashoffset="${offset}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/>`;
+      offset -= pct * 100;
+      return c;
+    }).join("");
+    const legend = labels.map((label, i) => `<g transform="translate(${width * 0.68},${54 + i * 24})"><rect width="12" height="12" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/><text x="20" y="10" font-family="Inter,Arial" font-size="12" fill="${muted}">${svgEsc(label)} · ${formatAxisValue(values[i] || 0, axisMode)}</text></g>`).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g filter="url(#softShadow)">${circles}</g>${type === "doughnut" ? `<circle cx="${cx}" cy="${cy}" r="${r - sw / 2 - 2}" fill="${bg}"/>` : ""}${legend}</svg>`;
+  }
+
+  const series = datasets.map((d: any, i: number) => ({
+    label: String(d?.label || ""),
+    values: datasetValues(d),
+    color: String(d?.borderColor || (Array.isArray(d?.backgroundColor) ? d.backgroundColor[0] : d?.backgroundColor) || CHART_PALETTE[i % CHART_PALETTE.length]),
+  })).filter((d: any) => d.values.length);
+  const all = series.flatMap((s: any) => s.values);
+  if (!all.length || !labels.length) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}</svg>`;
+  const rawMin = Math.min(0, ...all), rawMax = Math.max(...all, 1);
+  const span = rawMax - rawMin || 1;
+  const yOf = (v: number) => plot.y + plot.h - ((v - rawMin) / span) * plot.h;
+  const gridLines = Array.from({ length: 4 }, (_, i) => {
+    const t = i / 3;
+    const y = plot.y + t * plot.h;
+    const val = rawMax - t * span;
+    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y}" y2="${y}" stroke="${grid}" stroke-opacity="0.72" stroke-width="1"/><text x="${plot.x - 10}" y="${y + 4}" text-anchor="end" font-family="Inter,Arial" font-size="10" fill="${muted}">${formatAxisValue(val, axisMode)}</text>`;
+  }).join("");
+
+  let marks = "";
+  if (type === "line") {
+    marks = series.map((s: any) => {
+      const pts = s.values.map((v: number, i: number) => `${(plot.x + (i / Math.max(1, labels.length - 1)) * plot.w).toFixed(1)},${yOf(v).toFixed(1)}`);
+      return `<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g>${pts.map((p: string) => `<circle cx="${p.split(",")[0]}" cy="${p.split(",")[1]}" r="3.3" fill="${s.color}" stroke="${bg}" stroke-width="1.4"/>`).join("")}</g>`;
+    }).join("");
+  } else {
+    const groups = labels.length;
+    const groupW = plot.w / groups;
+    const barW = Math.max(8, Math.min(42, (groupW * 0.72) / Math.max(1, series.length)));
+    marks = labels.map((_, i) => series.map((s: any, si: number) => {
+      const v = s.values[i] ?? 0;
+      const y = yOf(Math.max(v, 0));
+      const zero = yOf(0);
+      const x = plot.x + i * groupW + (groupW - barW * series.length) / 2 + si * barW;
+      const h = Math.max(1, Math.abs(zero - y));
+      return `<rect x="${x.toFixed(1)}" y="${Math.min(y, zero).toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${s.color}" opacity="0.92" filter="url(#softShadow)"/>`;
+    }).join("")).join("");
+  }
+  const xLabels = labels.map((label, i) => {
+    const x = plot.x + (i + 0.5) * (plot.w / labels.length);
+    return `<text x="${x}" y="${plot.y + plot.h + 22}" text-anchor="middle" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(label.length > 14 ? label.slice(0, 12) + "…" : label)}</text>`;
+  }).join("");
+  const legend = series.length > 1 ? `<g transform="translate(${plot.x},${height - 20})">${series.map((s: any, i: number) => `<g transform="translate(${i * 132},0)"><rect width="11" height="11" rx="2" fill="${s.color}"/><text x="17" y="10" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(s.label)}</text></g>`).join("")}</g>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g>${gridLines}</g><line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${yOf(0)}" y2="${yOf(0)}" stroke="#B5A580"/>${marks}${xLabels}${legend}</svg>`;
+}
 
 /**
  * Serialize a Chart.js config to a JS (not JSON) string so that function-string
@@ -224,66 +348,22 @@ function configToJs(val: unknown): string {
   return String(val);
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
 /**
- * Render charts via QuickChart's short-URL service. Returning a remote URL
- * (instead of an inline base64 data URI) keeps edge-function memory usage tiny
- * — Api2PDF's headless Chrome fetches each image directly when rendering the
- * PDF. Previous data-URI approach blew the 256MB worker limit on reports with
- * ~13+ charts.
+ * Render charts as compact inline SVG. This avoids QuickChart/Api2PDF network
+ * fan-out inside one Edge Function request, which was the root cause of 504s.
  */
 async function chartDataUri(config: Record<string, unknown>, width = 720, height = 340, purpose = "chart"): Promise<string | null> {
   const chartJs = configToJs(config);
-  const payload = {
-    chart: chartJs,
-    width,
-    height,
-    format: "png",
-    backgroundColor: "transparent",
-    version: "4",
-    devicePixelRatio: 1.5,
-  };
   const cacheKey = chartJs + `|${width}x${height}`;
   if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch("https://quickchart.io/chart/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const preview = (await res.text()).slice(0, 240);
-      console.warn("[charts] QuickChart short-url failed", { purpose, status: res.status, preview });
-      chartImageCache.set(cacheKey, null);
-      return null;
-    }
-    const json = await res.json() as { success?: boolean; url?: string };
-    if (!json?.success || !json.url) {
-      console.warn("[charts] QuickChart short-url payload invalid", { purpose, json });
-      chartImageCache.set(cacheKey, null);
-      return null;
-    }
-    chartImageCache.set(cacheKey, json.url);
-    return json.url;
+    const uri = compactDataUri(renderSvgChart(config, width, height));
+    chartImageCache.set(cacheKey, uri);
+    return uri;
   } catch (err) {
-    console.warn("[charts] QuickChart render error", { purpose, error: err instanceof Error ? err.message : String(err) });
+    console.warn("[charts] inline SVG render error", { purpose, error: err instanceof Error ? err.message : String(err) });
     chartImageCache.set(cacheKey, null);
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -526,6 +606,7 @@ async function injectTableCharts(html: string): Promise<string> {
   if (tables.length === 0) return html;
 
   const replacements = new Array<string>(tables.length);
+  let chartAttempts = 0;
   const queue = tables.map((match, index) => ({ tbl: match[0], index }));
   const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
     while (queue.length) {
@@ -541,7 +622,9 @@ async function injectTableCharts(html: string): Promise<string> {
         .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
-    const chart = await tableToChartHtml(headers, dataRows);
+      const canAddChart = chartAttempts < MAX_AUTO_TABLE_CHARTS;
+      if (canAddChart) chartAttempts += 1;
+      const chart = canAddChart ? await tableToChartHtml(headers, dataRows) : null;
       replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
     }
   });
@@ -709,34 +792,31 @@ function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSerie
 // AI hero illustration per chapter (optional, opt-in)
 // ─────────────────────────────────────────────────────────────
 async function generateHeroImage(chapterTitle: string): Promise<string | null> {
-  if (!LOVABLE_API_KEY) return null;
-  const prompt =
-    `Editorial magazine illustration for an Australian premium property investment report. ` +
-    `Section theme: "${chapterTitle}". ` +
-    `Style: dark midnight black background fading to warm gold accents, abstract architectural geometry, ` +
-    `subtle topographic contour lines, financial elegance, art-deco influence, NO text, NO letters, NO words, ` +
-    `cinematic premium feel, ultra-wide 16:9 banner, painterly luxurious atmosphere.`;
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
-      }),
-    });
-    if (!res.ok) {
-      console.warn("[hero] failed", chapterTitle, res.status, (await res.text()).slice(0, 200));
-      return null;
-    }
-    const j = await res.json();
-    const b64 = j?.data?.[0]?.b64_json;
-    return b64 ? `data:image/png;base64,${b64}` : null;
-  } catch (e) {
-    console.warn("[hero] error", chapterTitle, e);
-    return null;
-  }
+  const seed = chapterTitle.split("").reduce((acc, ch) => (acc + ch.charCodeAt(0) * 17) % 997, 31);
+  const ridge = Array.from({ length: 9 }, (_, i) => {
+    const y = 44 + i * 18 + (seed % (i + 7));
+    return `<path d="M-20 ${y} C 140 ${y - 36}, 260 ${y + 38}, 420 ${y - 10} S 700 ${y + 28}, 920 ${y - 18}" fill="none" stroke="#D4A843" stroke-opacity="${0.07 + i * 0.018}" stroke-width="1.2"/>`;
+  }).join("");
+  const bars = Array.from({ length: 14 }, (_, i) => {
+    const x = 62 + i * 56;
+    const h = 22 + ((seed * (i + 3)) % 86);
+    return `<rect x="${x}" y="${206 - h}" width="18" height="${h}" rx="2" fill="#D4A843" opacity="${0.14 + (i % 4) * 0.05}"/>`;
+  }).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="315" viewBox="0 0 1200 315">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#090909"/><stop offset="0.55" stop-color="#16130B"/><stop offset="1" stop-color="#2A2110"/></linearGradient>
+      <radialGradient id="glow" cx="76%" cy="18%" r="62%"><stop offset="0" stop-color="#D4A843" stop-opacity="0.34"/><stop offset="1" stop-color="#D4A843" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="1200" height="315" fill="url(#bg)"/>
+    <rect width="1200" height="315" fill="url(#glow)"/>
+    <g opacity="0.95">${ridge}</g>
+    <g transform="translate(0,38)">${bars}</g>
+    <path d="M0 235 L260 166 L455 207 L680 118 L930 180 L1200 92 L1200 315 L0 315 Z" fill="#D4A843" opacity="0.09"/>
+    <path d="M0 252 L300 180 L498 220 L720 140 L962 195 L1200 112" fill="none" stroke="#D4A843" stroke-opacity="0.48" stroke-width="2"/>
+    <circle cx="960" cy="84" r="74" fill="none" stroke="#D4A843" stroke-opacity="0.18" stroke-width="1"/>
+    <circle cx="960" cy="84" r="42" fill="none" stroke="#D4A843" stroke-opacity="0.25" stroke-width="1"/>
+  </svg>`;
+  return compactDataUri(svg);
 }
 
 async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
@@ -861,7 +941,6 @@ export async function buildHtml(
       : address;
 
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
     @page {
       size: A4;
       margin: 20mm 17mm 20mm 17mm;
@@ -1376,9 +1455,11 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginBottom: 0,
         marginLeft: 0,
         marginRight: 0,
-        // Wait for remote QuickChart images to finish loading before snapshot.
-        delay: 1200,
-        puppeteerWaitForMethod: "WaitForNetworkIdle0",
+        // All visuals are inline SVG now, so avoid network-idle waits that can
+        // hang on static HTML and trigger Supabase 504s.
+        delay: 0,
+        puppeteerWaitForMethod: "WaitForNavigation",
+        puppeteerWaitForValue: "load",
       },
 
     };
@@ -1386,20 +1467,35 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
   let lastStatus = 0;
   let lastBody = "";
   let lastError = "";
+  const startedAt = Date.now();
   for (const endpoint of [
     "https://v2.api2pdf.com/chrome/html",
     "https://v2.api2pdf.com/chrome/pdf/html",
     "https://v2018.api2pdf.com/chrome/html",
     "https://v2018.api2pdf.com/chrome/pdf/html",
   ]) {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: API2PDF_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+    const remaining = 115_000 - (Date.now() - startedAt);
+    if (remaining <= 5_000) break;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Math.min(45_000, remaining));
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: API2PDF_KEY,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.warn("[render-investment-report-pdf] Api2PDF request failed", { endpoint, error: lastError });
+      break;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const text = await res.text();
     let json: any = null;
