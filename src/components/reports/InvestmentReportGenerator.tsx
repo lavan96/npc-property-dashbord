@@ -89,6 +89,9 @@ export function InvestmentReportGenerator() {
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
 
+  // Generation engine selection (legacy vs compass-40 trimmed)
+  const [generationEngine, setGenerationEngine] = useState<'legacy' | 'compass-40'>('legacy');
+
   // Whether current query type is property-specific (needs property details, overrides, etc.)
   const isPropertySpecific = queryType === 'address';
 
