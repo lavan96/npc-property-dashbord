@@ -165,8 +165,8 @@ function stripBareCitations(html: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Premium chart engine — ECharts via QuickChart's /echarts/render
-// (gradients, drop shadows, smooth curves, editorial typography)
+// Premium chart engine — Chart.js v4 via QuickChart's /chart endpoint
+// (editorial palette, soft shadows, rounded bars, premium typography)
 // ─────────────────────────────────────────────────────────────
 const CHART_PALETTE = [
   "#C9962B", // signature gold
@@ -177,42 +177,31 @@ const CHART_PALETTE = [
   "#5B4A82", // aubergine
   "#8A6F4A", // walnut
 ];
-const CHART_GRADIENT_STOPS = [
-  ["#E5C063", "#A87C1B"], // gold
-  ["#6FA0BD", "#2E5A75"], // slate
-  ["#9CCB99", "#4F8350"], // sage
-  ["#C7634F", "#7E2716"], // sienna
-  ["#D6A24E", "#7E5212"], // amber
-  ["#8675A8", "#3E315E"], // aubergine
-  ["#B79A78", "#604C32"], // walnut
-];
 const FONT_STACK = "Inter, Helvetica, Arial, sans-serif";
 const SERIF_STACK = "Playfair Display, Georgia, serif";
 
-function vGradient(from: string, to: string) {
-  return {
-    type: "linear",
-    x: 0, y: 0, x2: 0, y2: 1,
-    colorStops: [{ offset: 0, color: from }, { offset: 1, color: to }],
-  };
+/** Convert #RRGGBB to rgba(r,g,b,a). */
+function withAlpha(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  const n = parseInt(h, 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
-function echartsUrl(config: Record<string, unknown>, width = 780, height = 360): string {
-  // QuickChart's /echarts/render returns a rasterised ECharts PNG.
-  const payload = { width, height, devicePixelRatio: 2, format: "png", backgroundColor: "transparent", option: config };
-  const c = encodeURIComponent(JSON.stringify(payload));
-  return `https://quickchart.io/echarts/render?config=${c}`;
+/** Build a QuickChart `/chart` URL from a Chart.js config. Uses POST-style short URL helper when long. */
+function chartUrl(config: Record<string, unknown>, width = 780, height = 360): string {
+  const c = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?w=${width}&h=${height}&devicePixelRatio=2&bkg=transparent&v=4&c=${c}`;
 }
 
 function quickSparklineUrl(values: number[], color: string = THEME.gold): string {
-  // Sparkline: keep Chart.js — fast, tiny, no axes needed.
-  const c = encodeURIComponent(JSON.stringify({
+  const cfg = {
     type: "sparkline",
     data: {
       datasets: [{
         data: values,
         borderColor: color,
-        backgroundColor: color + "2E",
+        backgroundColor: withAlpha(color, 0.18),
         fill: true,
         borderWidth: 2.2,
         pointRadius: 0,
@@ -220,7 +209,8 @@ function quickSparklineUrl(values: number[], color: string = THEME.gold): string
       }],
     },
     options: { plugins: { legend: { display: false } } },
-  }));
+  };
+  const c = encodeURIComponent(JSON.stringify(cfg));
   return `https://quickchart.io/chart?w=260&h=60&bkg=transparent&devicePixelRatio=2&c=${c}`;
 }
 
@@ -264,135 +254,141 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
   const singleSeries = numericCols.length === 1;
   const isTimeSeries = labels.every((l) => /^(19|20)\d{2}$|^yr\s*\d+$|^year\s*\d+$/i.test(l.trim()));
 
-  // Common premium styling
-  const axisLabel = { color: "#5F5546", fontFamily: FONT_STACK, fontSize: 10 };
-  const splitLine = { lineStyle: { color: "#E5DCC6", type: [4, 4] as any } };
-  const valueFmt = (v: number) =>
-    looksPct ? `${v.toFixed(1)}%` :
-    looksMoney ? (Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`) :
-    String(v);
+  const tickCallback = looksPct
+    ? "function(v){return v.toFixed(1)+'%';}"
+    : looksMoney
+      ? "function(v){return Math.abs(v)>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v.toFixed(0);}"
+      : null;
 
-  let option: Record<string, unknown>;
+  const commonFont = { family: FONT_STACK, size: 11 };
+  const titleFont = { family: SERIF_STACK, size: 14, weight: "600" };
+  const gridColor = "rgba(181, 165, 128, 0.25)";
+  const tickColor = "#5F5546";
+
+  let config: Record<string, unknown>;
 
   // ── Donut: single % series with ≤7 rows ──
   if (singleSeries && rows.length <= 7 && looksPct) {
-    option = {
-      backgroundColor: "transparent",
-      textStyle: { fontFamily: FONT_STACK, color: "#17130D" },
-      title: {
-        text: numericCols[0].header,
-        left: "center", top: 8,
-        textStyle: { fontFamily: SERIF_STACK, fontSize: 13, fontWeight: 600, color: "#2A2317" },
+    config = {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: numericCols[0].values,
+          backgroundColor: labels.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]),
+          borderColor: "#FFFDF8",
+          borderWidth: 2,
+        }],
       },
-      legend: {
-        orient: "vertical", right: 16, top: "middle",
-        itemWidth: 10, itemHeight: 10, itemGap: 9,
-        textStyle: { color: "#17130D", fontFamily: FONT_STACK, fontSize: 10 },
+      options: {
+        cutout: "58%",
+        plugins: {
+          title: { display: true, text: numericCols[0].header, color: "#2A2317", font: titleFont, padding: { top: 8, bottom: 14 } },
+          legend: { position: "right", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 10 } },
+          datalabels: {
+            color: "#FFFDF8", font: { ...commonFont, weight: "600" },
+            formatter: "(v)=>v.toFixed(1)+'%'",
+          },
+        },
       },
-      series: [{
-        type: "pie",
-        radius: ["48%", "72%"],
-        center: ["35%", "55%"],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderColor: "#FFFDF8", borderWidth: 2, borderRadius: 4,
-          shadowBlur: 12, shadowColor: "rgba(40, 28, 10, 0.18)",
-        },
-        label: {
-          color: "#2A2317", fontFamily: FONT_STACK, fontWeight: 600, fontSize: 10,
-          formatter: (p: any) => `${p.name}\n${valueFmt(p.value)}`,
-        },
-        labelLine: { length: 10, length2: 8, lineStyle: { color: "#B5A580" } },
-        data: labels.map((name, i) => ({
-          name, value: numericCols[0].values[i],
-          itemStyle: { color: vGradient(CHART_GRADIENT_STOPS[i % 7][0], CHART_GRADIENT_STOPS[i % 7][1]) },
-        })),
-      }],
     };
-    return `<figure class="auto-chart"><img src="${echartsUrl(option, 780, 380)}" alt="Data visualisation"/></figure>`;
+    return `<figure class="auto-chart"><img src="${chartUrl(config, 780, 380)}" alt="Data visualisation"/></figure>`;
   }
 
   // ── Line: time series ──
   if (isTimeSeries) {
-    option = {
-      backgroundColor: "transparent",
-      textStyle: { fontFamily: FONT_STACK, color: "#17130D" },
-      grid: { left: 56, right: 24, top: 48, bottom: 44 },
-      legend: numericCols.length > 1 ? {
-        bottom: 8, icon: "roundRect", itemWidth: 12, itemHeight: 8,
-        textStyle: { color: "#17130D", fontFamily: FONT_STACK, fontSize: 10 },
-      } : { show: false },
-      xAxis: {
-        type: "category", data: labels, boundaryGap: false,
-        axisLine: { lineStyle: { color: "#B5A580" } },
-        axisTick: { show: false },
-        axisLabel,
+    config = {
+      type: "line",
+      data: {
+        labels,
+        datasets: numericCols.map((col, i) => {
+          const c = CHART_PALETTE[i % CHART_PALETTE.length];
+          return {
+            label: col.header,
+            data: col.values,
+            borderColor: c,
+            backgroundColor: i === 0 ? withAlpha(c, 0.18) : withAlpha(c, 0.05),
+            borderWidth: 2.4,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: c,
+            pointBorderColor: "#FFFDF8",
+            pointBorderWidth: 1.5,
+            fill: i === 0,
+          };
+        }),
       },
-      yAxis: {
-        type: "value",
-        axisLine: { show: false }, axisTick: { show: false },
-        axisLabel: { ...axisLabel, formatter: valueFmt },
-        splitLine,
+      options: {
+        plugins: {
+          legend: numericCols.length > 1
+            ? { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } }
+            : { display: false },
+        },
+        scales: {
+          x: {
+            ticks: { color: tickColor, font: commonFont },
+            grid: { color: "transparent" },
+            border: { color: "#B5A580" },
+          },
+          y: {
+            ticks: tickCallback
+              ? { color: tickColor, font: commonFont, callback: tickCallback }
+              : { color: tickColor, font: commonFont },
+            grid: { color: gridColor, drawBorder: false },
+            border: { display: false },
+          },
+        },
       },
-      series: numericCols.map((col, i) => {
-        const [c1, c2] = CHART_GRADIENT_STOPS[i % 7];
-        return {
-          name: col.header, type: "line", data: col.values,
-          smooth: true, symbol: "circle", symbolSize: 7,
-          lineStyle: { width: 2.6, color: c2, shadowBlur: 6, shadowColor: c2 + "55", shadowOffsetY: 2 },
-          itemStyle: { color: c2, borderColor: "#FFFDF8", borderWidth: 1.5 },
-          areaStyle: i === 0 ? {
-            color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-              colorStops: [{ offset: 0, color: c1 + "AA" }, { offset: 1, color: c1 + "00" }] },
-          } : undefined,
-          emphasis: { focus: "series" },
-        };
-      }),
     };
-    return `<figure class="auto-chart"><img src="${echartsUrl(option, 820, 360)}" alt="Trend visualisation"/></figure>`;
+    return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 360)}" alt="Trend visualisation"/></figure>`;
   }
 
   // ── Bar (default) ──
-  option = {
-    backgroundColor: "transparent",
-    textStyle: { fontFamily: FONT_STACK, color: "#17130D" },
-    grid: { left: 60, right: 24, top: 44, bottom: numericCols.length > 1 ? 56 : 40 },
-    legend: numericCols.length > 1 ? {
-      bottom: 8, icon: "roundRect", itemWidth: 12, itemHeight: 8, itemGap: 18,
-      textStyle: { color: "#17130D", fontFamily: FONT_STACK, fontSize: 10 },
-    } : { show: false },
-    xAxis: {
-      type: "category", data: labels,
-      axisLine: { lineStyle: { color: "#B5A580" } },
-      axisTick: { show: false },
-      axisLabel: { ...axisLabel, interval: 0, rotate: labels.some((l) => l.length > 10) ? 25 : 0 },
+  config = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: numericCols.map((col, i) => {
+        const c = CHART_PALETTE[i % CHART_PALETTE.length];
+        return {
+          label: col.header,
+          data: col.values,
+          backgroundColor: withAlpha(c, 0.92),
+          borderColor: c,
+          borderWidth: 0,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 42,
+        };
+      }),
     },
-    yAxis: {
-      type: "value",
-      axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { ...axisLabel, formatter: valueFmt },
-      splitLine,
-    },
-    series: numericCols.map((col, i) => {
-      const [c1, c2] = CHART_GRADIENT_STOPS[i % 7];
-      return {
-        name: col.header, type: "bar", data: col.values,
-        barMaxWidth: 38,
-        itemStyle: {
-          color: vGradient(c1, c2),
-          borderRadius: [6, 6, 0, 0],
-          shadowBlur: 10, shadowColor: "rgba(40, 28, 10, 0.15)", shadowOffsetY: 3,
+    options: {
+      plugins: {
+        legend: numericCols.length > 1
+          ? { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } }
+          : { display: false },
+        datalabels: singleSeries
+          ? { anchor: "end", align: "top", color: "#2A2317", font: { ...commonFont, weight: "600" },
+              formatter: tickCallback || "(v)=>v" }
+          : { display: false },
+      },
+      scales: {
+        x: {
+          ticks: { color: tickColor, font: commonFont, maxRotation: 30, minRotation: labels.some((l) => l.length > 10) ? 25 : 0 },
+          grid: { color: "transparent" },
+          border: { color: "#B5A580" },
         },
-        label: singleSeries ? {
-          show: true, position: "top",
-          color: "#2A2317", fontFamily: FONT_STACK, fontWeight: 600, fontSize: 10,
-          formatter: (p: any) => valueFmt(p.value),
-        } : { show: false },
-        emphasis: { focus: "series" },
-      };
-    }),
+        y: {
+          ticks: tickCallback
+            ? { color: tickColor, font: commonFont, callback: tickCallback }
+            : { color: tickColor, font: commonFont },
+          grid: { color: gridColor, drawBorder: false },
+          border: { display: false },
+        },
+      },
+    },
   };
-  return `<figure class="auto-chart"><img src="${echartsUrl(option, 820, 380)}" alt="Data visualisation"/></figure>`;
+  return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 380)}" alt="Data visualisation"/></figure>`;
 }
 
 /** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
