@@ -866,7 +866,7 @@ ${tocHtml}
 
 <!-- ── Body (markdown) ── -->
 <section class="body-page">
-  ${bodyAnnotated}
+  ${bodyWithHeroes}
 </section>
 
 ${
