@@ -39,12 +39,27 @@ export function PremiumPdfButton({ reportId, propertyAddress }: PremiumPdfButton
         metadata: { format: "pdf", source: "premium_api2pdf_chrome" },
       });
 
-      // Open hosted PDF in a new tab — Api2PDF serves it with proper Content-Disposition.
-      window.open(data.fileUrl, "_blank", "noopener,noreferrer");
+      // Fetch as blob and trigger a direct download to avoid pop-up blockers.
+      try {
+        const res = await fetch(data.fileUrl);
+        if (!res.ok) throw new Error(`Download failed (${res.status})`);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = data.fileName || `investment-report-${reportId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (dlErr) {
+        console.warn("[PremiumPdfButton] blob download failed, falling back to window.open", dlErr);
+        window.open(data.fileUrl, "_blank", "noopener,noreferrer");
+      }
 
       toast({
         title: "Premium PDF ready",
-        description: "Opened in a new tab.",
+        description: "Your download should begin shortly.",
       });
     } catch (err: any) {
       console.error("[PremiumPdfButton]", err);
