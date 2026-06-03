@@ -345,7 +345,7 @@ function ReportGenerationProgressInner() {
       listOptions: {
         select:
           'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier, generation_engine, total_sections',
-        filters: { status: ['pending', 'processing'] },
+        filters: { status: ['pending', 'processing', 'failed'] },
         orderBy: 'updated_at',
         orderAsc: false,
         limit: 10,
