@@ -6,6 +6,7 @@
  * parsed via a lightweight natural-language date parser (see parseNaturalDate).
  */
 import { extractFinanceToken, makeServiceClient, resolveFinancePartner } from '../_shared/finance-portal-session.ts';
+import { parseNaturalDate } from '../_shared/parse-natural-date.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

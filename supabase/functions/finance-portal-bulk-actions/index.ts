@@ -6,7 +6,7 @@
  * caller before performing the action. Returns a per-file outcome summary.
  */
 import { extractFinanceToken, makeServiceClient, resolveFinancePartner } from '../_shared/finance-portal-session.ts';
-import { parseNaturalDate } from '../finance-portal-snoozes/index.ts';
+import { parseNaturalDate } from '../_shared/parse-natural-date.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
