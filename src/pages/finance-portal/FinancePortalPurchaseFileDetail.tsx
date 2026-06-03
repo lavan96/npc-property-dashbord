@@ -41,6 +41,8 @@ import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileS
 import { RecordOutcomeDialog } from '@/components/finance-portal/RecordOutcomeDialog';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
+import { NpcHandoffCard } from '@/components/finance-portal/NpcHandoffCard';
+import { EntityCommentsThread } from '@/components/finance-portal/EntityCommentsThread';
 import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
 import { LenderPacketHistoryCard } from '@/components/finance-portal/LenderPacketHistoryCard';
 import { SettlementRunwayTab } from '@/components/finance-portal/SettlementRunwayTab';
@@ -282,6 +284,10 @@ export default function FinancePortalPurchaseFileDetail() {
               <AiLoanAppPrefillCard purchaseFileId={fileId!} />
             </div>
             <LenderPlaybookCard lender={data.lender} isSuperadmin />
+            <div className="grid gap-4 md:grid-cols-2">
+              <NpcHandoffCard purchaseFileId={fileId!} />
+              <EntityCommentsThread purchaseFileId={fileId!} entityType="purchase_file" title="File comments" />
+            </div>
             <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
 
