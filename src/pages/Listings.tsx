@@ -79,18 +79,22 @@ export default function Listings() {
   const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
   
+  const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
+
   // Use React Query for caching and efficient data fetching
   const { data: listings = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['listings'],
+    queryKey: ['listings', selectedTable ?? '__default__'],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
-        includeDebugInfo: true
+        includeDebugInfo: true,
+        tableName: selectedTable ?? undefined,
       });
       return result.listings;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
   
   // Load filters from localStorage — always reset keywordSearch to blank on mount
   const [filters, setFilters] = useState(() => {
