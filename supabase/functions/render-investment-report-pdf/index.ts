@@ -135,13 +135,17 @@ function wrapInsightSections(html: string): string {
     },
   );
 
-  // Form 2: <p><strong>Label:</strong> rest…</p> [+ following <p> siblings until next heading/table/list]
+  // Form 2: <p><strong>Label[:]</strong>[:] rest…</p> + ALL following block siblings
+  // (paragraphs, lists, blockquotes, tables) until the next heading, hr,
+  // another insight-box, section boundary, or another bold-prefix insight label.
   out = out.replace(
-    /<p>\s*<(?:strong|b)>([^<]+?)[:：]\s*<\/(?:strong|b)>\s*([\s\S]*?)<\/p>((?:\s*<p>[\s\S]*?<\/p>)*?)(?=\s*(?:<h[1-4][\s>]|<table|<ul|<ol|<hr|<div\s+class="insight-box"|<section|$))/gi,
-    (match, rawLabel, firstRest, restPs) => {
+    /<p>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*([\s\S]*?)<\/p>((?:\s*(?:<p>(?!\s*<(?:strong|b)>[^<]+[:：]?\s*<\/(?:strong|b)>)[\s\S]*?<\/p>|<ul>[\s\S]*?<\/ul>|<ol>[\s\S]*?<\/ol>|<blockquote>[\s\S]*?<\/blockquote>))*)(?=\s*(?:<h[1-4][\s>]|<hr|<div\s+class="insight-box"|<section|$))/gi,
+    (match, rawLabel, firstRest, restBlocks) => {
       const label = String(rawLabel).trim();
       if (!INSIGHT_LABEL_RE.test(label)) return match;
-      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div><p>${firstRest}</p>${restPs || ""}</div>`;
+      const body = String(firstRest).trim();
+      const bodyHtml = body ? `<p>${body}</p>` : "";
+      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div>${bodyHtml}${restBlocks || ""}</div>`;
     },
   );
 
@@ -1114,18 +1118,21 @@ export async function buildHtml(
     }
     .insight-box .insight-label {
       font-family: 'Inter', sans-serif;
-      font-size: 7.5pt; font-weight: 700;
+      font-size: 10.5pt; font-weight: 700;
       color: ${THEME.goldSoft};
-      text-transform: uppercase; letter-spacing: .18em;
-      margin: 0 0 6pt;
-      display: flex; align-items: center; gap: 8pt;
+      text-transform: uppercase; letter-spacing: .16em;
+      margin: 0 0 8pt;
+      display: flex; align-items: center; gap: 10pt;
     }
     .insight-box .insight-label::before {
       content: ""; display: inline-block;
-      width: 14pt; height: 1pt; background: ${THEME.gold};
+      width: 18pt; height: 1.2pt; background: ${THEME.gold};
     }
-    .insight-box p:last-child { margin-bottom: 0; }
-    .insight-box p { font-size: 9.5pt; }
+    .insight-box p:last-child,
+    .insight-box ul:last-child,
+    .insight-box ol:last-child { margin-bottom: 0; }
+    .insight-box p,
+    .insight-box li { font-size: 9.8pt; line-height: 1.55; }
 
     ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
     li {
