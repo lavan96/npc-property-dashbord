@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
 
       // Direct in-app notification (bypass per-event quiet hours; this is itself a digest)
       await supabase.from('finance_portal_notifications').insert({
-        finance_user_id: p.id,
+        portal_user_id: p.id,
         notification_type: mode === 'morning' ? 'morning_briefing' : 'eod_wrap',
         title,
         body: bodyMd,
