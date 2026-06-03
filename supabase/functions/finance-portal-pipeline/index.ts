@@ -393,52 +393,41 @@ Deno.serve(async (req) => {
       since.setUTCDate(since.getUTCDate() - windowDays);
       const sinceIso = since.toISOString();
 
-      // Pull all submissions in window (partner-scoped via PF assignment)
+      // Pull all submissions in window; partner uses finance_user_id, portal-wide for medians.
       const { data: subs } = await supabase
         .from('lender_submissions')
-        .select('id, lender_name, lender_key, status, submitted_at, decision_at, declined_at, settled_at, conditional_approval_at, unconditional_approval_at, purchase_file_id, loan_amount, purchase_files!inner(assigned_finance_user_id)')
+        .select('id, lender_name, status, submitted_at, approved_at, settled_at, assessed_at, decline_reason, purchase_file_id, finance_user_id, loan_amount')
         .gte('submitted_at', sinceIso)
         .limit(5000);
 
-      const mine = (subs || []).filter((s: any) => s.purchase_files?.assigned_finance_user_id === portalUserId);
-      // Portal-wide stats use the whole set.
+      const APPROVAL_STATES = new Set(['conditional_approval', 'unconditional_approval', 'loan_docs_issued', 'settled']);
+
+      const mine = (subs || []).filter((s: any) => s.finance_user_id === portalUserId);
 
       const stats = (rows: any[]) => {
         const byLender: Record<string, {
           lender: string;
           submissions: number;
-          conditional: number;
-          unconditional: number;
-          settled: number;
+          approvals: number;
           declined: number;
+          settled: number;
           turnaround_days_sum: number;
           turnaround_count: number;
           loan_volume: number;
         }> = {};
         for (const r of rows) {
-          const key = r.lender_name || r.lender_key || 'Unknown';
+          const key = r.lender_name || 'Unknown';
           if (!byLender[key]) {
-            byLender[key] = {
-              lender: key,
-              submissions: 0,
-              conditional: 0,
-              unconditional: 0,
-              settled: 0,
-              declined: 0,
-              turnaround_days_sum: 0,
-              turnaround_count: 0,
-              loan_volume: 0,
-            };
+            byLender[key] = { lender: key, submissions: 0, approvals: 0, declined: 0, settled: 0, turnaround_days_sum: 0, turnaround_count: 0, loan_volume: 0 };
           }
           const b = byLender[key];
           b.submissions += 1;
-          if (r.conditional_approval_at) b.conditional += 1;
-          if (r.unconditional_approval_at) b.unconditional += 1;
-          if (r.settled_at || r.status === 'settled') b.settled += 1;
-          if (r.declined_at || r.status === 'declined') b.declined += 1;
+          if (APPROVAL_STATES.has(r.status)) b.approvals += 1;
+          if (r.status === 'settled') b.settled += 1;
+          if (r.status === 'declined') b.declined += 1;
           b.loan_volume += Number(r.loan_amount || 0);
-          if (r.submitted_at && (r.conditional_approval_at || r.unconditional_approval_at || r.decision_at)) {
-            const end = r.unconditional_approval_at || r.conditional_approval_at || r.decision_at;
+          const end = r.approved_at || r.settled_at || r.assessed_at;
+          if (r.submitted_at && end) {
             const ms = new Date(end).getTime() - new Date(r.submitted_at).getTime();
             const days = ms / (1000 * 60 * 60 * 24);
             if (days >= 0 && days < 365) {
@@ -449,23 +438,16 @@ Deno.serve(async (req) => {
         }
         return Object.values(byLender).map((b) => ({
           ...b,
-          avg_turnaround_days: b.turnaround_count
-            ? Math.round((b.turnaround_days_sum / b.turnaround_count) * 10) / 10
-            : null,
-          approval_rate: b.submissions
-            ? Math.round(((b.conditional + b.unconditional) / b.submissions) * 1000) / 10
-            : 0,
-          decline_rate: b.submissions
-            ? Math.round((b.declined / b.submissions) * 1000) / 10
-            : 0,
+          avg_turnaround_days: b.turnaround_count ? Math.round((b.turnaround_days_sum / b.turnaround_count) * 10) / 10 : null,
+          approval_rate: b.submissions ? Math.round((b.approvals / b.submissions) * 1000) / 10 : 0,
+          decline_rate: b.submissions ? Math.round((b.declined / b.submissions) * 1000) / 10 : 0,
         }));
       };
 
       const mineStats = stats(mine).sort((a, b) => b.submissions - a.submissions);
       const portalStats = stats(subs || []);
-
-      // Portal median per lender
       const portalMap = new Map(portalStats.map((s) => [s.lender, s]));
+
       const enriched = mineStats.map((m) => {
         const p = portalMap.get(m.lender);
         return {
@@ -481,6 +463,7 @@ Deno.serve(async (req) => {
 
       return json({ window_days: windowDays, leaderboard: enriched });
     }
+
 
     // ─────────────────────────────────────────────────────────────────────
     // 31. Stuck Files spotlight
