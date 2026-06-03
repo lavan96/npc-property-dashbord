@@ -321,6 +321,36 @@ function isPctHeader(h: string): boolean {
   return /%|yield|rate|growth|return|roi|lvr|ratio/i.test(h);
 }
 
+function num(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") return parseLooseNumber(v);
+  return null;
+}
+
+function projectionRows(fin: any): any[] {
+  const p = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen;
+  if (Array.isArray(p)) return p;
+  if (p && typeof p === "object") {
+    for (const key of ["moderate", "base", "baseline", "conservative", "optimistic"]) {
+      if (Array.isArray(p[key])) return p[key];
+    }
+    const firstArray = Object.values(p).find((v) => Array.isArray(v));
+    if (Array.isArray(firstArray)) return firstArray;
+  }
+  return [];
+}
+
+function pickSeries(rows: any[], keys: string[]): number[] | null {
+  const vals = rows.map((row) => {
+    for (const key of keys) {
+      const picked = num(row?.[key]);
+      if (picked !== null) return picked;
+    }
+    return null;
+  });
+  return vals.length >= 3 && vals.every((v) => v !== null) ? vals as number[] : null;
+}
+
 async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
   if (rows.length < 2 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
