@@ -11,6 +11,7 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
+const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -163,6 +164,260 @@ function stripBareCitations(html: string): string {
   return html.replace(/\[\s*\d{1,3}\s*\](?=[\s.,;:!?)]|<)/g, "");
 }
 
+// ─────────────────────────────────────────────────────────────
+// QuickChart helpers — emits hosted PNG chart URLs (no auth req)
+// ─────────────────────────────────────────────────────────────
+const CHART_PALETTE = ["#D4A843", "#6FBF73", "#A23A28", "#3F6E8A", "#B07A1F", "#8A5BA3", "#4A4030"];
+
+function quickChartUrl(config: Record<string, unknown>, width = 760, height = 320): string {
+  const c = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?w=${width}&h=${height}&bkg=transparent&devicePixelRatio=2&c=${c}`;
+}
+
+function quickSparklineUrl(values: number[], color: string = THEME.gold): string {
+  return quickChartUrl({
+    type: "sparkline",
+    data: {
+      datasets: [{
+        data: values,
+        borderColor: color,
+        backgroundColor: color + "33",
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+      }],
+    },
+    options: { plugins: { legend: { display: false } } },
+  }, 260, 60);
+}
+
+function parseLooseNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[,$%\s]/g, "")
+    .replace(/[a-zA-Z]+/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === ".") return null;
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function tableToChartHtml(headers: string[], rows: string[][]): string | null {
+  if (rows.length < 2 || rows.length > 14) return null;
+  if (headers.length < 2 || headers.length > 6) return null;
+
+  const labels = rows.map((r) => (r[0] || "").slice(0, 28));
+  const numericCols: Array<{ header: string; values: number[] }> = [];
+  for (let c = 1; c < headers.length; c++) {
+    const vals = rows.map((r) => parseLooseNumber(r[c] || ""));
+    if (vals.every((v) => v !== null) && vals.length === rows.length) {
+      numericCols.push({ header: headers[c], values: vals as number[] });
+    }
+  }
+  if (numericCols.length === 0) return null;
+
+  const cellBlob = rows.map((r) => r.join(" ")).join(" ");
+  const isPercent = /%/.test(cellBlob);
+  const singleSeries = numericCols.length === 1;
+
+  // Donut: single % series with ≤7 rows
+  const cfg = singleSeries && rows.length <= 7 && isPercent
+    ? {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: numericCols[0].values,
+          backgroundColor: CHART_PALETTE,
+          borderColor: "#FFFDF8",
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        cutout: "55%",
+        plugins: {
+          legend: { position: "right", labels: { color: "#17130D", font: { size: 11, family: "Inter" } } },
+        },
+      },
+    }
+    : {
+      type: "bar",
+      data: {
+        labels,
+        datasets: numericCols.map((col, i) => ({
+          label: col.header,
+          data: col.values,
+          backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
+          borderRadius: 4,
+          borderSkipped: false,
+        })),
+      },
+      options: {
+        plugins: {
+          legend: { display: numericCols.length > 1, position: "bottom", labels: { color: "#17130D", font: { family: "Inter", size: 10 } } },
+        },
+        scales: {
+          x: { ticks: { color: "#5F5546", font: { family: "Inter", size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: "#5F5546", font: { family: "Inter", size: 10 } }, grid: { color: "#E5DCC6" }, beginAtZero: true },
+        },
+      },
+    };
+
+  const url = quickChartUrl(cfg, 780, 340);
+  return `<figure class="auto-chart"><img src="${url}" alt="Data visualisation"/></figure>`;
+}
+
+/** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
+function injectTableCharts(html: string): string {
+  return html.replace(/<table[\s\S]*?<\/table>/gi, (tbl) => {
+    const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
+    const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
+    const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+      .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+
+    const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
+    const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
+      .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+        .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
+    const dataRows = theadMatch ? allRows : allRows.slice(1);
+
+    const chart = tableToChartHtml(headers, dataRows);
+    if (!chart) return tbl;
+    return `<div class="chart-wrap">${chart}${tbl}</div>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Infographic block detectors — compare cards + process timelines
+// ─────────────────────────────────────────────────────────────
+function wrapCompareCards(html: string): string {
+  const pairs: Array<[RegExp, RegExp]> = [
+    [/strengths?/i, /(?:watch(?:[- ]?outs?)?|risks?|cautions?|concerns?|things?\s+to\s+watch)/i],
+    [/pros?/i, /cons?/i],
+    [/advantages?/i, /disadvantages?/i],
+    [/opportunit(?:y|ies)/i, /threats?/i],
+    [/upsides?/i, /downsides?/i],
+  ];
+  let out = html;
+  for (const [a, b] of pairs) {
+    const re = new RegExp(
+      `<h([34])[^>]*>\\s*(${a.source})\\s*<\\/h\\1>\\s*(<ul[\\s\\S]*?<\\/ul>)\\s*<h\\1[^>]*>\\s*(${b.source})\\s*<\\/h\\1>\\s*(<ul[\\s\\S]*?<\\/ul>)`,
+      "gi",
+    );
+    out = out.replace(re, (_m, _lvl, lTitle, lList, rTitle, rList) =>
+      `<div class="compare-card">
+        <div class="compare-col compare-pos">
+          <div class="compare-head">${esc(String(lTitle).trim())}</div>${lList}
+        </div>
+        <div class="compare-col compare-neg">
+          <div class="compare-head">${esc(String(rTitle).trim())}</div>${rList}
+        </div>
+      </div>`);
+  }
+  return out;
+}
+
+function wrapProcessTimeline(html: string): string {
+  // Match 2+ consecutive "Step N: …" headings with following paragraph(s)
+  const re = /(?:<h[34][^>]*>\s*Step\s+\d+\s*[:.\-]?\s*[^<]*<\/h[34]>\s*(?:<p>[\s\S]*?<\/p>\s*)+){2,}/gi;
+  return html.replace(re, (block) => {
+    const items = Array.from(block.matchAll(/<h[34][^>]*>\s*(Step\s+\d+)\s*[:.\-]?\s*([^<]*)<\/h[34]>\s*((?:<p>[\s\S]*?<\/p>\s*)+)/gi))
+      .map((m) =>
+        `<li>
+          <div class="step-no">${esc(m[1])}</div>
+          <div class="step-content">
+            <div class="step-title">${esc(m[2].trim())}</div>
+            <div class="step-body">${m[3]}</div>
+          </div>
+        </li>`
+      );
+    if (items.length < 2) return block;
+    return `<ol class="timeline">${items.join("")}</ol>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Projection series → sparklines beside KPI tiles
+// ─────────────────────────────────────────────────────────────
+function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSeries?: number[]; yieldSeries?: number[]; rentSeries?: number[] } {
+  const proj = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen || [];
+  if (!Array.isArray(proj) || proj.length < 3) return {};
+  const pick = (keys: string[]) => {
+    const vals = proj.map((p: any) => {
+      for (const k of keys) {
+        const v = p?.[k];
+        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    });
+    return vals.every((v: any) => v !== null) ? (vals as number[]) : undefined;
+  };
+  return {
+    valueSeries: pick(["propertyValue", "value", "price", "estimatedValue"]),
+    cashflowSeries: pick(["annualNet", "netCashflow", "cashflow", "annualNetCashflow", "weeklyNet"]),
+    yieldSeries: pick(["grossYield", "yield", "rentalYield"]),
+    rentSeries: pick(["weeklyRent", "rentPerWeek"]),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI hero illustration per chapter (optional, opt-in)
+// ─────────────────────────────────────────────────────────────
+async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+  if (!LOVABLE_API_KEY) return null;
+  const prompt =
+    `Editorial magazine illustration for an Australian premium property investment report. ` +
+    `Section theme: "${chapterTitle}". ` +
+    `Style: dark midnight black background fading to warm gold accents, abstract architectural geometry, ` +
+    `subtle topographic contour lines, financial elegance, art-deco influence, NO text, NO letters, NO words, ` +
+    `cinematic premium feel, ultra-wide 16:9 banner, painterly luxurious atmosphere.`;
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[hero] failed", chapterTitle, res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const j = await res.json();
+    const b64 = j?.data?.[0]?.b64_json;
+    return b64 ? `data:image/png;base64,${b64}` : null;
+  } catch (e) {
+    console.warn("[hero] error", chapterTitle, e);
+    return null;
+  }
+}
+
+async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  // Throttle: 4 concurrent
+  const queue = [...toc];
+  const workers = Array.from({ length: 4 }, async () => {
+    while (queue.length) {
+      const item = queue.shift()!;
+      const url = await generateHeroImage(item.title);
+      if (url) out[item.id] = url;
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+function injectHeroImages(html: string, heroes: Record<string, string>): string {
+  return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
+    const url = heroes[id];
+    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    return `<div class="chapter-hero"><img src="${url}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+  });
+}
+
 /**
  * Tag each top-level h2 with an id + record TOC entries so we can render a TOC
  * page and use CSS `target-counter()` for page numbers.
@@ -182,7 +437,15 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
   return { html: annotated, toc };
 }
 
-export function buildHtml(report: any, brandName: string): string {
+export async function buildHtml(
+  report: any,
+  brandName: string,
+  opts: { includeCharts?: boolean; includeHeroImages?: boolean; includeSparklines?: boolean } = {},
+): Promise<string> {
+  const includeCharts = opts.includeCharts !== false;
+  const includeSparklines = opts.includeSparklines !== false;
+  const includeHeroImages = opts.includeHeroImages === true; // opt-in, costs tokens
+
   const address = report.property_address || "Property";
   const generated = new Date(report.created_at || Date.now()).toLocaleDateString(
     "en-AU",
@@ -198,22 +461,33 @@ export function buildHtml(report: any, brandName: string): string {
   const md = cleanReportMarkdown(String(report.report_content || ""), address);
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
+  bodyHtml = wrapCompareCards(bodyHtml);
+  bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
+  if (includeCharts) bodyHtml = injectTableCharts(bodyHtml);
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
+
+  // Hero illustrations per chapter (parallel, opt-in)
+  let bodyWithHeroes = bodyAnnotated;
+  if (includeHeroImages && toc.length > 0) {
+    const heroes = await generateHeroImages(toc);
+    bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes);
+  }
 
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
 
-  // KPI tiles
-  const kpis: Array<{ label: string; value: string }> = [];
-  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice) });
-  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield) });
+  // KPI tiles (with optional sparklines from projection series)
+  const series = includeSparklines ? findProjectionSeries(fin) : {};
+  const kpis: Array<{ label: string; value: string; spark?: string }> = [];
+  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice), spark: series.valueSeries && series.valueSeries.length >= 3 ? quickSparklineUrl(series.valueSeries) : undefined });
+  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield), spark: series.yieldSeries && series.yieldSeries.length >= 3 ? quickSparklineUrl(series.yieldSeries, THEME.success) : undefined });
   if (km.netRentalYield != null) kpis.push({ label: "Net Yield", value: fmtPct(km.netRentalYield) });
-  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet) });
+  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet), spark: series.cashflowSeries && series.cashflowSeries.length >= 3 ? quickSparklineUrl(series.cashflowSeries, THEME.success) : undefined });
   if (km.lvr != null) kpis.push({ label: "LVR", value: fmtPct(km.lvr, 1) });
-  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent) });
+  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent), spark: series.rentSeries && series.rentSeries.length >= 3 ? quickSparklineUrl(series.rentSeries) : undefined });
 
   const scoreOverall =
     score?.overall_score ?? score?.overallScore ?? score?.score ?? null;
@@ -223,9 +497,11 @@ export function buildHtml(report: any, brandName: string): string {
       : null);
 
   const kpiTiles = kpis
-    .map(
-      (k) => `<div class="kpi"><div class="kpi-label">${esc(k.label)}</div><div class="kpi-value">${esc(k.value)}</div></div>`,
-    )
+    .map((k) => `<div class="kpi">
+      <div class="kpi-label">${esc(k.label)}</div>
+      <div class="kpi-value">${esc(k.value)}</div>
+      ${k.spark ? `<div class="kpi-spark"><img src="${k.spark}" alt=""/></div>` : ""}
+    </div>`)
     .join("");
 
   // Parse address tail for cover meta (Suburb, STATE Postcode).
@@ -524,6 +800,108 @@ export function buildHtml(report: any, brandName: string): string {
       page-break-inside: avoid;
     }
     .disclaimer h4 { margin-top: 0; color: ${THEME.inkMuted}; }
+
+    /* ── Auto-injected charts ── */
+    .chart-wrap { margin: 14pt 0 18pt; page-break-inside: avoid; }
+    .auto-chart { margin: 0 0 6pt; text-align: center; page-break-inside: avoid; }
+    .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .chart-wrap > table { margin-top: 4pt; font-size: 8pt; }
+
+    /* ── KPI sparklines ── */
+    .kpi-spark { margin-top: 8pt; height: 28pt; opacity: 0.95; }
+    .kpi-spark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* ── Compare cards (Strengths/Watch, Pros/Cons) ── */
+    .compare-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12pt;
+      margin: 16pt 0;
+      page-break-inside: avoid;
+    }
+    .compare-col {
+      padding: 13pt 15pt 11pt;
+      border-radius: 3pt;
+      border: 0.5pt solid ${THEME.rule};
+      background: #FFFDF8;
+    }
+    .compare-pos { background: linear-gradient(180deg, #ECF4E1 0%, #F4F8EC 100%); border-left: 3pt solid ${THEME.good}; }
+    .compare-neg { background: linear-gradient(180deg, #F5E0D9 0%, #F9EBE5 100%); border-left: 3pt solid ${THEME.risk}; }
+    .compare-head {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      font-size: 7.5pt;
+      margin-bottom: 8pt;
+      padding-bottom: 5pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+    }
+    .compare-pos .compare-head { color: ${THEME.good}; }
+    .compare-neg .compare-head { color: ${THEME.risk}; }
+    .compare-col ul { margin: 0; padding: 0; }
+    .compare-col li { padding-left: 16pt; border-bottom: 0.25pt dotted ${THEME.rule}; font-size: 9pt; }
+    .compare-pos li::before { background: ${THEME.good}; }
+    .compare-neg li::before { background: ${THEME.risk}; }
+
+    /* ── Process timeline ── */
+    ol.timeline {
+      counter-reset: none;
+      list-style: none;
+      padding: 0;
+      margin: 16pt 0;
+    }
+    ol.timeline li {
+      display: grid;
+      grid-template-columns: 64pt 1fr;
+      gap: 14pt;
+      padding: 12pt 0;
+      border-bottom: 0.5pt solid ${THEME.rule};
+      page-break-inside: avoid;
+      counter-increment: none;
+    }
+    ol.timeline li::before { content: none; }
+    ol.timeline .step-no {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-style: italic;
+      color: ${THEME.goldSoft};
+      font-size: 15pt;
+      line-height: 1.1;
+      padding-top: 2pt;
+      border-right: 1.5pt solid ${THEME.gold};
+      padding-right: 10pt;
+    }
+    ol.timeline .step-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 12.5pt;
+      margin-bottom: 4pt;
+      color: ${THEME.ink};
+    }
+    ol.timeline .step-body { font-size: 9.5pt; }
+    ol.timeline .step-body p { margin-bottom: 4pt; }
+
+    /* ── Chapter hero illustrations ── */
+    .chapter-hero {
+      margin: 18pt -17mm 16pt;
+      page-break-inside: avoid;
+      page-break-after: avoid;
+      position: relative;
+    }
+    .chapter-hero img {
+      width: 210mm;
+      height: 55mm;
+      object-fit: cover;
+      display: block;
+    }
+    .chapter-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(247,242,232,0.0) 60%, rgba(247,242,232,0.55) 100%);
+      pointer-events: none;
+    }
   `;
 
   const scoreCard = scoreOverall != null
@@ -590,7 +968,7 @@ ${tocHtml}
 
 <!-- ── Body (markdown) ── -->
 <section class="body-page">
-  ${bodyAnnotated}
+  ${bodyWithHeroes}
 </section>
 
 ${
@@ -686,7 +1064,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     const { error: authError } = await verifyAuth(supabase, req.headers, body);
     if (authError) return createUnauthorizedResponse(authError, corsHeaders);
 
-    const { reportId } = body;
+    const { reportId, includeCharts, includeHeroImages, includeSparklines } = body;
     if (!reportId || typeof reportId !== "string") {
       return new Response(JSON.stringify({ error: "reportId required" }), {
         status: 400,
@@ -719,7 +1097,11 @@ if (import.meta.main) Deno.serve(async (req) => {
       if (cd?.company_name) brandName = cd.company_name;
     } catch { /* optional */ }
 
-    const html = buildHtml(report, brandName);
+    const html = await buildHtml(report, brandName, {
+      includeCharts: includeCharts !== false,
+      includeSparklines: includeSparklines !== false,
+      includeHeroImages: includeHeroImages === true,
+    });
     const safeAddr = String(report.property_address || "report")
       .replace(/[^a-zA-Z0-9]+/g, "-")
       .slice(0, 60);
