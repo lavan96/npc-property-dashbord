@@ -4222,9 +4222,9 @@ ${sourceSpecificInstructions}
     // 5% p.a.) caused the model to regurgitate them verbatim into narrative
     // prose. For Compass-40 we strip every financial override line at the
     // source so the LLM never sees them.
-    // HARDENED: Strip financial overrides for ANY compass-tier report.
-    const __compass40Mode =
-      ['compass', 'compass-40'].includes(propertyDetails?.reportTier || 'compass');
+    // Only strip financial overrides when the user explicitly picks the
+    // Compass-40 engine. Legacy engine keeps all overrides available.
+    const __compass40Mode = propertyDetails?.generationEngine === 'compass-40';
     const __FINANCIAL_OVERRIDE_KEYS = new Set<string>([
       'purchasePrice','landPrice','buildPrice','weeklyRent','depositValue',
       'loanToValueRatio','interestRate','loanType','loanTermYears','loanAmount',
@@ -4447,13 +4447,13 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
       const rawTier = propertyDetails?.reportTier || 'compass';
       const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
-      // HARDENED (2026-05): Activate Compass-40 protections (sanitizer,
-      // financial-override stripping, canonical section registry) for ANY
-      // compass-tier report — regardless of generationEngine. Compass is, by
-      // definition, the non-financial location/property-fit report. Without
-      // this, legacy-engine compass runs leak Purchase Price, Interest Rate,
-      // Yield/Risk Scores and HOLD recommendations into the prose.
-      compass40OverlayActive = ['compass', 'compass-40'].includes(rawTier);
+      // Respect explicit frontend engine selection.
+      //  - 'compass-40' → always activate the trimmed canonical overlay.
+      //  - 'legacy'     → always use the full legacy DB template, even on
+      //                   compass-tier reports. (The previous hardening that
+      //                   force-enabled the overlay for any compass tier broke
+      //                   the user-visible Generation Engine selector.)
+      compass40OverlayActive = generationEngine === 'compass-40';
       console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive}, tier: ${rawTier})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
