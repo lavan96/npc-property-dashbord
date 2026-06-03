@@ -63,7 +63,7 @@ export default function FinancePortalMobile() {
                 className="flex items-center justify-between text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{nextSettlement.file_name}</p>
+                  <p className="font-medium truncate">{nextSettlement.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {nextSettlement.settlement_days === 0
                       ? 'Today'
@@ -111,10 +111,10 @@ export default function FinancePortalMobile() {
                         className="flex items-start gap-2 px-3 py-2.5 hover:bg-accent/10 active:bg-accent/20"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{f.file_name}</p>
+                          <p className="text-sm font-medium truncate">{f.title}</p>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             <Badge variant="outline" className="text-[10px] py-0">
-                              {STATUS_LABEL(f.purchase_finance_status || f.status)}
+                              {STATUS_LABEL(f.finance_status || f.status)}
                             </Badge>
                             {f.risk_level === 'high' && (
                               <Badge variant="destructive" className="text-[10px] py-0">

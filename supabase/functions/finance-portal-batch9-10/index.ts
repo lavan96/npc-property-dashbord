@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       const { data: files } = await supabase
         .from('purchase_files')
         .select(
-          'id, file_name, status, purchase_finance_status, settlement_date, finance_clause_date, client_id, risk_level, updated_at',
+          'id, title, status, finance_status, settlement_date, finance_clause_date, client_id, risk_level, updated_at',
         )
         .in('client_id', clientIds.length ? clientIds : ['00000000-0000-0000-0000-000000000000'])
         .order('updated_at', { ascending: false })
@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
       if (!fid) return json({ error: 'purchase_file_id required' }, 400);
       const { data: pf } = await supabase
         .from('purchase_files')
-        .select('id, client_id, client_deal_id, file_name')
+        .select('id, client_id, client_deal_id, title')
         .eq('id', fid)
         .maybeSingle();
       if (!pf) return json({ error: 'PF not found' }, 404);
