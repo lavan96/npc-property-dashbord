@@ -369,8 +369,10 @@ ${
 }
 
 async function callApi2Pdf(html: string, fileName: string): Promise<string> {
-  // Api2PDF V2 — WeasyPrint endpoint.
-  const res = await fetch("https://v2.api2pdf.com/weasyprint/convert", {
+  // Api2PDF V2 — Headless Chrome HTML→PDF endpoint.
+  // (Api2PDF does not expose a WeasyPrint endpoint; Chrome renders our CSS
+  // — including web fonts, gradients and conic-gradient — with high fidelity.)
+  const res = await fetch("https://v2.api2pdf.com/chrome/pdf/html", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -381,7 +383,14 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
       fileName,
       inline: false,
       options: {
-        presentational_hints: true,
+        printBackground: true,
+        preferCSSPageSize: true,
+        displayHeaderFooter: false,
+        scale: 1,
+        marginTop: 0,
+        marginBottom: 0,
+        marginLeft: 0,
+        marginRight: 0,
       },
     }),
   });
