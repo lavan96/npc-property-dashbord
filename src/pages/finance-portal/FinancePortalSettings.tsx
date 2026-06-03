@@ -186,7 +186,13 @@ export default function FinancePortalSettings() {
         <TabsList>
           <TabsTrigger value="notifications"><Bell className="h-3.5 w-3.5 mr-1" /> Notifications</TabsTrigger>
           <TabsTrigger value="branding"><Palette className="h-3.5 w-3.5 mr-1" /> Branding</TabsTrigger>
+          <TabsTrigger value="bookings"><CalendarClock className="h-3.5 w-3.5 mr-1" /> Bookings</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="bookings" className="space-y-4">
+          <AvailabilityCard />
+          <BookingsCard />
+        </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
           <Card>
