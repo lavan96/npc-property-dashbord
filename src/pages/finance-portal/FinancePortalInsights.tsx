@@ -43,7 +43,7 @@ export default function FinancePortalInsights() {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 className="h-6 w-6 text-primary" /> Pipeline Insights</h1>
