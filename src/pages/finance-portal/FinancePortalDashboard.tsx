@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { TodayPanel } from '@/components/finance-portal/TodayPanel';
 import { DocumentExpiryWatchlist } from '@/components/finance-portal/DocumentExpiryWatchlist';
+import { EngagementHeader } from '@/components/finance-portal/EngagementHeader';
+import { GoalsProgressCard } from '@/components/finance-portal/GoalsProgressCard';
 
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
