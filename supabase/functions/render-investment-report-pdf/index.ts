@@ -79,7 +79,7 @@ export function buildHtml(report: any, brandName: string): string {
 
   // Render markdown body. Strip front-matter style code fences if any.
   const md = cleanReportMarkdown(String(report.report_content || ""), address);
-  const bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
+  const bodyHtml = wrapInsightSections(marked.parse(md, { gfm: true, breaks: false }) as string);
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
