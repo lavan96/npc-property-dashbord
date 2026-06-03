@@ -14,7 +14,7 @@ const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
 const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
 const RENDER_SAFETY_BUFFER_MS = 45_000;
 const MAX_RENDER_WAIT_MS = EDGE_FUNCTION_TIMEOUT_MS - RENDER_SAFETY_BUFFER_MS;
-const HERO_IMAGE_TIMEOUT_MS = 120_000;
+// (Hero-image generation is now offloaded to `prepare-report-hero-images`.)
 const API2PDF_REQUEST_TIMEOUT_MS = 600_000;
 
 // Dark-gold theme tokens mirrored from the app.
