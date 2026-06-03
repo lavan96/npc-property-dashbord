@@ -680,14 +680,13 @@ function wrapProcessTimeline(html: string): string {
 // Projection series → sparklines beside KPI tiles
 // ─────────────────────────────────────────────────────────────
 function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSeries?: number[]; yieldSeries?: number[]; rentSeries?: number[] } {
-  const proj = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen || [];
+  const proj = projectionRows(fin);
   if (!Array.isArray(proj) || proj.length < 3) return {};
   const pick = (keys: string[]) => {
     const vals = proj.map((p: any) => {
       for (const k of keys) {
-        const v = p?.[k];
-        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-        if (Number.isFinite(n)) return n;
+        const n = num(p?.[k]);
+        if (n !== null) return n;
       }
       return null;
     });
