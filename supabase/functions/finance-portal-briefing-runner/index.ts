@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
       const { data: pfs } = await supabase
         .from('purchase_files')
-        .select('id, title, client_id, finance_status, finance_clause_date, settlement_date, risk_level, updated_at, client_name')
+        .select('id, title, client_id, finance_status, finance_clause_date, settlement_date, risk_level, updated_at')
         .in('client_id', clientIds);
 
       const stats = {
