@@ -506,6 +506,13 @@ export default function InvestmentReportView() {
           return null;
         }}
       />
+
+      {/* Hero Images Manager */}
+      <HeroImagesDialog
+        reportId={report.id}
+        open={heroDialogOpen}
+        onOpenChange={setHeroDialogOpen}
+      />
     </div>
   );
 }
