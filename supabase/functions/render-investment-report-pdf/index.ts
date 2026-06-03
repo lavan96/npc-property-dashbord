@@ -190,6 +190,130 @@ function withAlpha(hex: string, a: number): string {
 
 const chartImageCache = new Map<string, string | null>();
 
+function svgEsc(s: unknown): string {
+  return esc(s).replace(/"/g, "&quot;");
+}
+
+function compactDataUri(svg: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function datasetValues(dataset: any): number[] {
+  return Array.isArray(dataset?.data)
+    ? dataset.data.map((v: unknown) => num(v)).filter((v: number | null): v is number => v !== null)
+    : [];
+}
+
+function formatAxisValue(value: number, mode: "money" | "percent" | "plain"): string {
+  if (mode === "percent") return `${value.toFixed(Math.abs(value) < 10 ? 1 : 0)}%`;
+  if (mode === "money") {
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}m`;
+    if (abs >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
+    return `$${value.toFixed(0)}`;
+  }
+  return Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(0)}k` : value.toFixed(0);
+}
+
+function inferAxisMode(config: any): "money" | "percent" | "plain" {
+  const blob = JSON.stringify(config || {}).toLowerCase();
+  if (blob.includes("$") || /price|cost|value|rent|income|cash|loan|equity|deposit/.test(blob)) return "money";
+  if (blob.includes("%") || /yield|rate|growth|return|roi|lvr|ratio/.test(blob)) return "percent";
+  return "plain";
+}
+
+function renderSvgChart(config: Record<string, unknown>, width: number, height: number): string {
+  const cfg: any = config || {};
+  const type = String(cfg.type || "bar").toLowerCase();
+  const labels = (cfg.data?.labels || []).map((l: unknown) => String(l ?? ""));
+  const datasets = Array.isArray(cfg.data?.datasets) ? cfg.data.datasets : [];
+  const axisMode = inferAxisMode(cfg);
+  const bg = "#FFFDF8";
+  const ink = "#2A2317";
+  const muted = "#6B604F";
+  const grid = "#D8CBB6";
+  const plot = { x: 58, y: 28, w: Math.max(120, width - 86), h: Math.max(80, height - 86) };
+  const title = String(cfg.options?.plugins?.title?.text || datasets[0]?.label || "");
+
+  const defs = `<defs><filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#281C0A" flood-opacity="0.16"/></filter></defs>`;
+  const frame = `<rect x="0" y="0" width="${width}" height="${height}" rx="10" fill="${bg}"/><rect x="10" y="10" width="${width - 20}" height="${height - 20}" rx="8" fill="none" stroke="#E4D8C4"/>`;
+
+  if (type === "sparkline") {
+    const values = datasetValues(datasets[0]);
+    if (values.length < 2) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`;
+    const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+    const pts = values.map((v, i) => {
+      const x = 8 + (i / (values.length - 1)) * (width - 16);
+      const y = height - 8 - ((v - min) / span) * (height - 16);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const color = String(datasets[0]?.borderColor || THEME.gold);
+    const area = `${pts[0]} ${pts.slice(1).join(" ")} ${width - 8},${height - 7} 8,${height - 7}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polygon points="${area}" fill="${withAlpha(color, 0.14)}"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  if (type === "doughnut" || type === "pie") {
+    const values = datasetValues(datasets[0]);
+    const total = values.reduce((a, b) => a + Math.max(0, b), 0) || 1;
+    const cx = width * 0.38, cy = height * 0.52, r = Math.min(width, height) * 0.28;
+    const sw = type === "doughnut" ? r * 0.38 : r;
+    let offset = 25;
+    const circles = values.map((v, i) => {
+      const pct = Math.max(0, v) / total;
+      const dash = `${(pct * 100).toFixed(4)} ${(100 - pct * 100).toFixed(4)}`;
+      const color = CHART_PALETTE[i % CHART_PALETTE.length];
+      const c = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${dash}" stroke-dashoffset="${offset}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/>`;
+      offset -= pct * 100;
+      return c;
+    }).join("");
+    const legend = labels.map((label, i) => `<g transform="translate(${width * 0.68},${54 + i * 24})"><rect width="12" height="12" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/><text x="20" y="10" font-family="Inter,Arial" font-size="12" fill="${muted}">${svgEsc(label)} · ${formatAxisValue(values[i] || 0, axisMode)}</text></g>`).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g filter="url(#softShadow)">${circles}</g>${type === "doughnut" ? `<circle cx="${cx}" cy="${cy}" r="${r - sw / 2 - 2}" fill="${bg}"/>` : ""}${legend}</svg>`;
+  }
+
+  const series = datasets.map((d: any, i: number) => ({
+    label: String(d?.label || ""),
+    values: datasetValues(d),
+    color: String(d?.borderColor || (Array.isArray(d?.backgroundColor) ? d.backgroundColor[0] : d?.backgroundColor) || CHART_PALETTE[i % CHART_PALETTE.length]),
+  })).filter((d: any) => d.values.length);
+  const all = series.flatMap((s: any) => s.values);
+  if (!all.length || !labels.length) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}</svg>`;
+  const rawMin = Math.min(0, ...all), rawMax = Math.max(...all, 1);
+  const span = rawMax - rawMin || 1;
+  const yOf = (v: number) => plot.y + plot.h - ((v - rawMin) / span) * plot.h;
+  const gridLines = Array.from({ length: 4 }, (_, i) => {
+    const t = i / 3;
+    const y = plot.y + t * plot.h;
+    const val = rawMax - t * span;
+    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y}" y2="${y}" stroke="${grid}" stroke-opacity="0.72" stroke-width="1"/><text x="${plot.x - 10}" y="${y + 4}" text-anchor="end" font-family="Inter,Arial" font-size="10" fill="${muted}">${formatAxisValue(val, axisMode)}</text>`;
+  }).join("");
+
+  let marks = "";
+  if (type === "line") {
+    marks = series.map((s: any) => {
+      const pts = s.values.map((v: number, i: number) => `${(plot.x + (i / Math.max(1, labels.length - 1)) * plot.w).toFixed(1)},${yOf(v).toFixed(1)}`);
+      return `<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g>${pts.map((p: string) => `<circle cx="${p.split(",")[0]}" cy="${p.split(",")[1]}" r="3.3" fill="${s.color}" stroke="${bg}" stroke-width="1.4"/>`).join("")}</g>`;
+    }).join("");
+  } else {
+    const groups = labels.length;
+    const groupW = plot.w / groups;
+    const barW = Math.max(8, Math.min(42, (groupW * 0.72) / Math.max(1, series.length)));
+    marks = labels.map((_, i) => series.map((s: any, si: number) => {
+      const v = s.values[i] ?? 0;
+      const y = yOf(Math.max(v, 0));
+      const zero = yOf(0);
+      const x = plot.x + i * groupW + (groupW - barW * series.length) / 2 + si * barW;
+      const h = Math.max(1, Math.abs(zero - y));
+      return `<rect x="${x.toFixed(1)}" y="${Math.min(y, zero).toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${s.color}" opacity="0.92" filter="url(#softShadow)"/>`;
+    }).join("")).join("");
+  }
+  const xLabels = labels.map((label, i) => {
+    const x = plot.x + (i + 0.5) * (plot.w / labels.length);
+    return `<text x="${x}" y="${plot.y + plot.h + 22}" text-anchor="middle" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(label.length > 14 ? label.slice(0, 12) + "…" : label)}</text>`;
+  }).join("");
+  const legend = series.length > 1 ? `<g transform="translate(${plot.x},${height - 20})">${series.map((s: any, i: number) => `<g transform="translate(${i * 132},0)"><rect width="11" height="11" rx="2" fill="${s.color}"/><text x="17" y="10" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(s.label)}</text></g>`).join("")}</g>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g>${gridLines}</g><line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${yOf(0)}" y2="${yOf(0)}" stroke="#B5A580"/>${marks}${xLabels}${legend}</svg>`;
+}
+
 /**
  * Serialize a Chart.js config to a JS (not JSON) string so that function-string
  * values — tick callbacks, datalabels formatters, etc. — appear unquoted in the
@@ -235,55 +359,21 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 /**
- * Render charts via QuickChart's short-URL service. Returning a remote URL
- * (instead of an inline base64 data URI) keeps edge-function memory usage tiny
- * — Api2PDF's headless Chrome fetches each image directly when rendering the
- * PDF. Previous data-URI approach blew the 256MB worker limit on reports with
- * ~13+ charts.
+ * Render charts as compact inline SVG. This avoids QuickChart/Api2PDF network
+ * fan-out inside one Edge Function request, which was the root cause of 504s.
  */
 async function chartDataUri(config: Record<string, unknown>, width = 720, height = 340, purpose = "chart"): Promise<string | null> {
   const chartJs = configToJs(config);
-  const payload = {
-    chart: chartJs,
-    width,
-    height,
-    format: "png",
-    backgroundColor: "transparent",
-    version: "4",
-    devicePixelRatio: 1.5,
-  };
   const cacheKey = chartJs + `|${width}x${height}`;
   if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch("https://quickchart.io/chart/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const preview = (await res.text()).slice(0, 240);
-      console.warn("[charts] QuickChart short-url failed", { purpose, status: res.status, preview });
-      chartImageCache.set(cacheKey, null);
-      return null;
-    }
-    const json = await res.json() as { success?: boolean; url?: string };
-    if (!json?.success || !json.url) {
-      console.warn("[charts] QuickChart short-url payload invalid", { purpose, json });
-      chartImageCache.set(cacheKey, null);
-      return null;
-    }
-    chartImageCache.set(cacheKey, json.url);
-    return json.url;
+    const uri = compactDataUri(renderSvgChart(config, width, height));
+    chartImageCache.set(cacheKey, uri);
+    return uri;
   } catch (err) {
-    console.warn("[charts] QuickChart render error", { purpose, error: err instanceof Error ? err.message : String(err) });
+    console.warn("[charts] inline SVG render error", { purpose, error: err instanceof Error ? err.message : String(err) });
     chartImageCache.set(cacheKey, null);
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
