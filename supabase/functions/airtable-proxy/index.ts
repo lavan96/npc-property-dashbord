@@ -124,24 +124,58 @@ Deno.serve(async (req) => {
 
 
     // Make request to Airtable
-    const airtableResponse = await fetch(airtableUrl.toString(), {
+    let airtableResponse = await fetch(airtableUrl.toString(), {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
 
+    // Retry without sort if the chosen sort field doesn't exist on this table
+    if (!airtableResponse.ok && sortField) {
+      const errorText = await airtableResponse.text();
+      const looksLikeUnknownSortField =
+        airtableResponse.status === 422 ||
+        /UNKNOWN_FIELD_NAME|INVALID_SORT_FIELD|not a valid field|unknown field/i.test(errorText);
+
+      if (looksLikeUnknownSortField) {
+        console.warn(`Sort field "${sortField}" rejected by table "${tableName}". Retrying without sort.`);
+        const retryUrl = new URL(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`);
+        retryUrl.searchParams.set('pageSize', pageSize);
+        if (offset) retryUrl.searchParams.set('offset', offset);
+        airtableResponse = await fetch(retryUrl.toString(), {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } else {
+        // Non-sort error — surface it as before
+        console.error('Airtable API error:', airtableResponse.status, errorText);
+        return new Response(
+          JSON.stringify({
+            error: `Airtable API error: ${airtableResponse.status}`,
+            details: errorText
+          }),
+          {
+            status: airtableResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    }
+
     if (!airtableResponse.ok) {
       const errorText = await airtableResponse.text();
       console.error('Airtable API error:', airtableResponse.status, errorText);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `Airtable API error: ${airtableResponse.status}`,
           details: errorText
         }),
-        { 
-          status: airtableResponse.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: airtableResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
