@@ -91,7 +91,7 @@ export function AirtableTableSelector({ value, onChange }: AirtableTableSelector
           {tables.map((t) => (
             <SelectItem key={t.id} value={t.name}>
               {t.name}
-              {defaultTableName === t.name ? ' (default)' : ''}
+              {resolvedDefaultName === t.name ? ' (default)' : ''}
             </SelectItem>
           ))}
         </SelectContent>
