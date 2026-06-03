@@ -4,7 +4,9 @@ export interface PropertyDataOptions {
   maxRecords?: number;
   includeDebugInfo?: boolean;
   bypassCache?: boolean;
+  tableName?: string;
 }
+
 
 export interface PropertyDataResult {
   listings: PropertyListing[];
