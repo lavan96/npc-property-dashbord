@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { LenderPacketDialog } from './LenderPacketDialog';
+import { AutoRemindersDialog } from './AutoRemindersDialog';
 
 
 const CATEGORY_LABEL: Record<string, string> = {
