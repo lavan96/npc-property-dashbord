@@ -70,8 +70,7 @@ export function ScanToUploadButton({
     if (instanceId && docId) {
       await invokeFinanceFunction('finance-portal-document-requirements', {
         operation: 'link_document',
-        purchase_file_id: purchaseFileId,
-        instance_id: instanceId,
+        requirement_id: instanceId,
         document_id: docId,
       });
     }
