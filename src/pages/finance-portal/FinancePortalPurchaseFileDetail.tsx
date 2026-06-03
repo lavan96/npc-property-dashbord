@@ -251,6 +251,7 @@ export default function FinancePortalPurchaseFileDetail() {
 
         <TabsContent value="overview">
           <div className="space-y-4">
+            <AiFileSummaryCard purchaseFileId={fileId!} />
             <InternalDealLinkCard
               fileId={fileId!}
               clientId={data.client_id}
@@ -259,6 +260,10 @@ export default function FinancePortalPurchaseFileDetail() {
               onChange={refresh}
             />
             <OverviewTab file={data} onSave={updateField} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <AiLenderRecommenderCard purchaseFileId={fileId!} />
+              <AiLoanAppPrefillCard purchaseFileId={fileId!} />
+            </div>
             <LenderPlaybookCard lender={data.lender} isSuperadmin />
             <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
