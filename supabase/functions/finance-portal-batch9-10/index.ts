@@ -1,0 +1,310 @@
+/**
+ * Finance Portal — Batch 9 (Mobile-First Wins) + Batch 10 (Collaboration & Team)
+ *
+ * Batch 9 operations:
+ *  - ui_prefs_get / ui_prefs_set        (density, default landing, mobile flag)
+ *  - mobile_today                       (compact triaged list for /finance/mobile)
+ *  - voice_memos_list                   (list ai_voice_memos for a PF / partner)
+ *
+ * Batch 10 operations:
+ *  - comments_list                      (purchase_file_entity_comments, optional entity_type+entity_id)
+ *  - comment_post                       (insert; supports parent_id, visibility, mentions)
+ *  - comment_delete                     (soft-delete by author)
+ *  - message_mark_read                  (flips is_read_by_partner / is_read for finance & client portal messages)
+ *  - npc_handoff_info                   (linked internal deal owner + last activity for a PF)
+ *  - npc_ping                           (writes shared shared_with_npc=true message to NPC owner)
+ *
+ * Auth: x-finance-session-token (same pattern as batch 6/7/8).
+ */
+import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const json = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), {
+    status: s,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const body = await req.json().catch(() => ({}));
+    const operation = body.operation as string | undefined;
+    if (!operation) return json({ error: 'operation required' }, 400);
+
+    const token =
+      req.headers.get('x-finance-session-token') || body.finance_session_token || null;
+    if (!token) return json({ error: 'Finance session token required' }, 401);
+
+    const { data: portalUser } = await supabase
+      .from('finance_portal_users')
+      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at')
+      .eq('session_token', token)
+      .maybeSingle();
+    if (!portalUser || !portalUser.is_active || portalUser.revoked_at)
+      return json({ error: 'Invalid session' }, 401);
+    if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date())
+      return json({ error: 'Session expired' }, 401);
+
+    const partnerName = portalUser.email?.split('@')[0] ?? 'Finance Partner';
+
+    /* ───────────── Batch 9 ───────────── */
+
+    if (operation === 'ui_prefs_get') {
+      const { data } = await supabase
+        .from('finance_partner_ui_prefs')
+        .select('*')
+        .eq('finance_user_id', portalUser.id)
+        .maybeSingle();
+      return json({
+        prefs: data ?? {
+          finance_user_id: portalUser.id,
+          density: 'comfortable',
+          default_landing: 'dashboard',
+          mobile_optimized: false,
+          prefs: {},
+        },
+      });
+    }
+
+    if (operation === 'ui_prefs_set') {
+      const patch: any = { finance_user_id: portalUser.id };
+      for (const k of ['density', 'default_landing', 'mobile_optimized', 'prefs']) {
+        if (k in body) patch[k] = body[k];
+      }
+      const { data, error } = await supabase
+        .from('finance_partner_ui_prefs')
+        .upsert(patch, { onConflict: 'finance_user_id' })
+        .select()
+        .single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ prefs: data });
+    }
+
+    if (operation === 'mobile_today') {
+      // Files assigned to partner with the most pressing items first.
+      const { data: assignments } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id')
+        .eq('finance_user_id', portalUser.id);
+      const clientIds = (assignments ?? []).map((a: any) => a.client_id);
+
+      const { data: files } = await supabase
+        .from('purchase_files')
+        .select(
+          'id, file_name, status, purchase_finance_status, settlement_date, finance_clause_date, client_id, risk_level, updated_at',
+        )
+        .in('client_id', clientIds.length ? clientIds : ['00000000-0000-0000-0000-000000000000'])
+        .order('updated_at', { ascending: false })
+        .limit(50);
+
+      const today = new Date();
+      const horizon = (d: string | null) =>
+        d ? Math.ceil((new Date(d).getTime() - today.getTime()) / 86400000) : null;
+
+      const enriched = (files ?? []).map((f: any) => {
+        const settlementDays = horizon(f.settlement_date);
+        const financeDays = horizon(f.finance_clause_date);
+        let priority = 0;
+        if (financeDays !== null && financeDays <= 3 && financeDays >= 0) priority += 100;
+        if (settlementDays !== null && settlementDays <= 7 && settlementDays >= 0) priority += 50;
+        if (f.risk_level === 'high') priority += 75;
+        if (f.risk_level === 'medium') priority += 25;
+        return { ...f, settlement_days: settlementDays, finance_days: financeDays, priority };
+      });
+      enriched.sort((a, b) => b.priority - a.priority);
+
+      // Unread message counts for partner
+      const { count: unreadShared } = await supabase
+        .from('finance_portal_messages')
+        .select('id', { count: 'exact', head: true })
+        .in('client_id', clientIds.length ? clientIds : ['00000000-0000-0000-0000-000000000000'])
+        .eq('is_read_by_partner', false)
+        .neq('sender_type', 'finance');
+
+      return json({
+        files: enriched,
+        counts: {
+          unread_shared_messages: unreadShared ?? 0,
+          total_files: enriched.length,
+        },
+      });
+    }
+
+    if (operation === 'voice_memos_list') {
+      let q = supabase
+        .from('ai_voice_memos')
+        .select('*')
+        .eq('finance_user_id', portalUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (body.purchase_file_id) q = q.eq('purchase_file_id', body.purchase_file_id);
+      const { data, error } = await q;
+      if (error) return json({ error: error.message }, 500);
+      return json({ memos: data ?? [] });
+    }
+
+    /* ───────────── Batch 10 ───────────── */
+
+    if (operation === 'comments_list') {
+      const pfId = body.purchase_file_id;
+      if (!pfId) return json({ error: 'purchase_file_id required' }, 400);
+      let q = supabase
+        .from('purchase_file_entity_comments')
+        .select('*')
+        .eq('purchase_file_id', pfId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
+        .limit(500);
+      if (body.entity_type) q = q.eq('entity_type', body.entity_type);
+      if (body.entity_id) q = q.eq('entity_id', body.entity_id);
+      const { data, error } = await q;
+      if (error) return json({ error: error.message }, 500);
+      return json({ comments: data ?? [] });
+    }
+
+    if (operation === 'comment_post') {
+      const row: any = {
+        purchase_file_id: body.purchase_file_id,
+        entity_type: body.entity_type ?? 'purchase_file',
+        entity_id: body.entity_id ?? null,
+        parent_id: body.parent_id ?? null,
+        body: String(body.body || '').slice(0, 4000),
+        visibility: body.visibility === 'internal_npc' ? 'internal_npc' : 'shared',
+        author_type: 'finance_partner',
+        author_id: portalUser.id,
+        author_name: partnerName,
+        mentions: Array.isArray(body.mentions) ? body.mentions : [],
+      };
+      if (!row.purchase_file_id || !row.body)
+        return json({ error: 'purchase_file_id and body required' }, 400);
+      const { data, error } = await supabase
+        .from('purchase_file_entity_comments')
+        .insert(row)
+        .select()
+        .single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ comment: data });
+    }
+
+    if (operation === 'comment_delete') {
+      const id = body.id;
+      if (!id) return json({ error: 'id required' }, 400);
+      const { error } = await supabase
+        .from('purchase_file_entity_comments')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('author_id', portalUser.id);
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true });
+    }
+
+    if (operation === 'message_mark_read') {
+      const channel = body.channel; // 'finance_portal' | 'client_portal'
+      const ids: string[] = Array.isArray(body.message_ids) ? body.message_ids : [];
+      if (!ids.length) return json({ ok: true });
+      if (channel === 'client_portal') {
+        await supabase
+          .from('client_portal_messages')
+          .update({ is_read: true, read_at: new Date().toISOString() })
+          .in('id', ids);
+      } else {
+        await supabase
+          .from('finance_portal_messages')
+          .update({
+            is_read_by_partner: true,
+            read_by_partner_at: new Date().toISOString(),
+          })
+          .in('id', ids);
+      }
+      return json({ ok: true, marked: ids.length });
+    }
+
+    if (operation === 'npc_handoff_info') {
+      const fid = body.purchase_file_id;
+      if (!fid) return json({ error: 'purchase_file_id required' }, 400);
+      const { data: pf } = await supabase
+        .from('purchase_files')
+        .select('id, client_id, client_deal_id, file_name')
+        .eq('id', fid)
+        .maybeSingle();
+      if (!pf) return json({ error: 'PF not found' }, 404);
+
+      let deal: any = null;
+      let owner: any = null;
+      if (pf.client_deal_id) {
+        const { data: d } = await supabase
+          .from('client_deals')
+          .select('id, deal_name, stage, status, owner_user_id, updated_at, last_activity_at')
+          .eq('id', pf.client_deal_id)
+          .maybeSingle();
+        deal = d;
+        if (d?.owner_user_id) {
+          const { data: o } = await supabase
+            .from('custom_users')
+            .select('id, email, full_name')
+            .eq('id', d.owner_user_id)
+            .maybeSingle();
+          owner = o;
+        }
+      }
+
+      const { data: lastActivity } = await supabase
+        .from('activity_log')
+        .select('id, action_type, description, created_at, user_id')
+        .eq('purchase_file_id', fid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return json({
+        purchase_file: pf,
+        deal,
+        npc_owner: owner,
+        last_npc_activity: lastActivity,
+      });
+    }
+
+    if (operation === 'npc_ping') {
+      const fid = body.purchase_file_id;
+      const messageText = String(body.message || '').slice(0, 2000);
+      if (!fid || !messageText)
+        return json({ error: 'purchase_file_id and message required' }, 400);
+      const { data: pf } = await supabase
+        .from('purchase_files')
+        .select('id, client_id')
+        .eq('id', fid)
+        .maybeSingle();
+      if (!pf?.client_id) return json({ error: 'PF/client not found' }, 404);
+
+      const { data, error } = await supabase
+        .from('finance_portal_messages')
+        .insert({
+          client_id: pf.client_id,
+          sender_type: 'finance_partner',
+          finance_user_id: portalUser.id,
+          sender_name: partnerName,
+          body: `[NPC ping — PF ${fid.slice(0, 8)}] ${messageText}`,
+        })
+        .select()
+        .single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ message: data });
+    }
+
+    return json({ error: `Unknown operation: ${operation}` }, 400);
+  } catch (e) {
+    console.error('[finance-portal-batch9-10]', e);
+    return json({ error: (e as Error).message || 'Internal error' }, 500);
+  }
+});
