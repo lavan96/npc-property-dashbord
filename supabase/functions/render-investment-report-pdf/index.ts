@@ -1099,7 +1099,7 @@ export async function buildHtml(
     p { margin: 0 0 .72em; orphans: 3; widows: 3; }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
     strong { color: ${THEME.ink}; font-weight: 700; }
-    em { color: ${THEME.inkMuted}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
+    em, i { color: ${THEME.ink}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
     h2 + p {
       font-family: 'Inter', 'Helvetica', sans-serif;
