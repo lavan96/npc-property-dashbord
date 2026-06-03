@@ -329,7 +329,11 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             </div>
           )}
 
+          {/* Property Intake Master — extended fields (renders only when present) */}
+          {listing.rawFields && <PropertyIntakeDetails fields={listing.rawFields} />}
+
           <Separator />
+
 
           {/* Email Source Details */}
           {(listing.emailSubject || listing.from || listing.messageId) && (
