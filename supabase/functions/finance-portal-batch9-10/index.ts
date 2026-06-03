@@ -336,13 +336,13 @@ Deno.serve(async (req) => {
       // Scope to PFs this partner can see.
       const { data: pfRows } = await supabase
         .from('purchase_files')
-        .select('id, title, finance_user_id')
-        .eq('finance_user_id', portalUser.id)
+        .select('id, title, assigned_finance_user_id')
+        .eq('assigned_finance_user_id', portalUser.id)
         .limit(500);
       const pfIds = (pfRows || []).map(r => r.id);
       const pfMap = new Map((pfRows || []).map(r => [r.id, r.title]));
 
-      const [notesRes, commentsRes, outRes, portalMsgRes, docsRes] = await Promise.all([
+      const [notesRes, pfNotesRes, outRes, portalMsgRes, docsRes] = await Promise.all([
         pfIds.length
           ? supabase
               .from('purchase_file_entity_comments')
@@ -355,9 +355,9 @@ Deno.serve(async (req) => {
         pfIds.length
           ? supabase
               .from('purchase_files')
-              .select('id, title, broker_notes')
+              .select('id, title, notes')
               .in('id', pfIds)
-              .ilike('broker_notes', like)
+              .ilike('notes', like)
               .limit(8)
           : Promise.resolve({ data: [] }),
         supabase
@@ -389,9 +389,9 @@ Deno.serve(async (req) => {
           id: n.id, body: n.body, purchase_file_id: n.purchase_file_id,
           pf_title: pfMap.get(n.purchase_file_id) || null, kind: 'comment',
         })),
-        ...((commentsRes.data as any[]) || []).map(p => ({
-          id: `bn-${p.id}`, body: p.broker_notes, purchase_file_id: p.id,
-          pf_title: p.title, kind: 'broker_note',
+        ...((pfNotesRes.data as any[]) || []).map(p => ({
+          id: `pf-${p.id}`, body: p.notes, purchase_file_id: p.id,
+          pf_title: p.title, kind: 'pf_note',
         })),
       ].slice(0, 10);
 
