@@ -1737,18 +1737,20 @@ if (import.meta.main) Deno.serve(async (req) => {
     let contact: Record<string, any> = {};
     let disclaimer: { is_enabled?: boolean; text?: string; font_size?: string } = {};
     try {
-      const { data: settings } = await supabase
+      const { data: settingsRows } = await supabase
         .from("global_report_settings")
-        .select("contact_details, professional_disclaimer")
-        .maybeSingle();
-      const cd = (settings as any)?.contact_details;
-      if (cd) {
-        contact = cd;
-        if (cd.company_name) brandName = cd.company_name;
+        .select("setting_key, setting_value")
+        .in("setting_key", ["contact_details", "professional_disclaimer"]);
+      for (const row of (settingsRows as any[]) || []) {
+        if (row.setting_key === "contact_details" && row.setting_value) {
+          contact = row.setting_value;
+          if (contact.company_name) brandName = contact.company_name;
+        } else if (row.setting_key === "professional_disclaimer" && row.setting_value) {
+          disclaimer = row.setting_value;
+        }
       }
-      const pd = (settings as any)?.professional_disclaimer;
-      if (pd) disclaimer = pd;
     } catch { /* optional */ }
+
 
     const html = await buildHtml(report, brandName, {
       includeCharts: includeCharts !== false,
