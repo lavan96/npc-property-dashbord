@@ -799,39 +799,96 @@ function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSerie
 // ─────────────────────────────────────────────────────────────
 // AI hero illustration per chapter (optional, opt-in)
 // ─────────────────────────────────────────────────────────────
-async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
+const heroImageCache = new Map<string, string | null>();
+
+function fallbackHeroSvg(chapterTitle: string): string {
   const seed = chapterTitle.split("").reduce((acc, ch) => (acc + ch.charCodeAt(0) * 17) % 997, 31);
   const ridge = Array.from({ length: 9 }, (_, i) => {
     const y = 44 + i * 18 + (seed % (i + 7));
-    return `<path d="M-20 ${y} C 140 ${y - 36}, 260 ${y + 38}, 420 ${y - 10} S 700 ${y + 28}, 920 ${y - 18}" fill="none" stroke="#D4A843" stroke-opacity="${0.07 + i * 0.018}" stroke-width="1.2"/>`;
-  }).join("");
-  const bars = Array.from({ length: 14 }, (_, i) => {
-    const x = 62 + i * 56;
-    const h = 22 + ((seed * (i + 3)) % 86);
-    return `<rect x="${x}" y="${206 - h}" width="18" height="${h}" rx="2" fill="#D4A843" opacity="${0.14 + (i % 4) * 0.05}"/>`;
+    return `<path d="M-20 ${y} C 140 ${y - 36}, 260 ${y + 38}, 420 ${y - 10} S 700 ${y + 28}, 920 ${y - 18}" fill="none" stroke="#2E6CB0" stroke-opacity="${0.08 + i * 0.02}" stroke-width="1.2"/>`;
   }).join("");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="315" viewBox="0 0 1200 315">
     <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#090909"/><stop offset="0.55" stop-color="#16130B"/><stop offset="1" stop-color="#2A2110"/></linearGradient>
-      <radialGradient id="glow" cx="76%" cy="18%" r="62%"><stop offset="0" stop-color="#D4A843" stop-opacity="0.34"/><stop offset="1" stop-color="#D4A843" stop-opacity="0"/></radialGradient>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061A33"/><stop offset="0.6" stop-color="#0A2540"/><stop offset="1" stop-color="#1E4A7C"/></linearGradient>
+      <radialGradient id="glow" cx="78%" cy="22%" r="62%"><stop offset="0" stop-color="#D4A843" stop-opacity="0.30"/><stop offset="1" stop-color="#D4A843" stop-opacity="0"/></radialGradient>
     </defs>
     <rect width="1200" height="315" fill="url(#bg)"/>
     <rect width="1200" height="315" fill="url(#glow)"/>
     <g opacity="0.95">${ridge}</g>
-    <g transform="translate(0,38)">${bars}</g>
-    <path d="M0 235 L260 166 L455 207 L680 118 L930 180 L1200 92 L1200 315 L0 315 Z" fill="#D4A843" opacity="0.09"/>
-    <path d="M0 252 L300 180 L498 220 L720 140 L962 195 L1200 112" fill="none" stroke="#D4A843" stroke-opacity="0.48" stroke-width="2"/>
-    <circle cx="960" cy="84" r="74" fill="none" stroke="#D4A843" stroke-opacity="0.18" stroke-width="1"/>
-    <circle cx="960" cy="84" r="42" fill="none" stroke="#D4A843" stroke-opacity="0.25" stroke-width="1"/>
   </svg>`;
   return compactDataUri(svg);
 }
 
+/** Generate an editorial hero image for a chapter via Lovable AI Gateway (GPT-image). */
+async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+  const cacheKey = chapterTitle.trim().toLowerCase();
+  if (heroImageCache.has(cacheKey)) return heroImageCache.get(cacheKey)!;
+
+  if (!LOVABLE_API_KEY) {
+    const fb = fallbackHeroSvg(chapterTitle);
+    heroImageCache.set(cacheKey, fb);
+    return fb;
+  }
+
+  const prompt = `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 40_000);
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-image-2",
+        prompt,
+        quality: "low",
+        size: "1536x1024",
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const t = await res.text();
+      console.warn("[hero-image] gateway error", res.status, t.slice(0, 200));
+      const fb = fallbackHeroSvg(chapterTitle);
+      heroImageCache.set(cacheKey, fb);
+      return fb;
+    }
+
+    const json = await res.json();
+    const b64 = json?.data?.[0]?.b64_json;
+    const url = json?.data?.[0]?.url;
+    let dataUri: string | null = null;
+    if (b64) {
+      dataUri = `data:image/png;base64,${b64}`;
+    } else if (typeof url === "string") {
+      dataUri = url;
+    }
+    if (!dataUri) {
+      const fb = fallbackHeroSvg(chapterTitle);
+      heroImageCache.set(cacheKey, fb);
+      return fb;
+    }
+    heroImageCache.set(cacheKey, dataUri);
+    return dataUri;
+  } catch (err) {
+    console.warn("[hero-image] generation failed", chapterTitle, err instanceof Error ? err.message : err);
+    const fb = fallbackHeroSvg(chapterTitle);
+    heroImageCache.set(cacheKey, fb);
+    return fb;
+  }
+}
+
 async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  // Throttle: 4 concurrent
+  // Throttle: 2 concurrent to respect rate limits + memory
   const queue = [...toc];
-  const workers = Array.from({ length: 4 }, async () => {
+  const workers = Array.from({ length: 2 }, async () => {
     while (queue.length) {
       const item = queue.shift()!;
       const url = await generateHeroImage(item.title);
