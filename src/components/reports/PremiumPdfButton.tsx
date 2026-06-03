@@ -11,7 +11,7 @@ interface PremiumPdfButtonProps {
 }
 
 /**
- * Premium PDF — HTML+CSS rendered via WeasyPrint (Api2PDF) for true editorial layout.
+ * Premium PDF — HTML+CSS rendered via Api2PDF Headless Chrome for true editorial layout.
  * Runs side-by-side with the legacy jsPDF generator (PixelPerfectPDFGenerator).
  */
 export function PremiumPdfButton({ reportId, propertyAddress }: PremiumPdfButtonProps) {
@@ -36,7 +36,7 @@ export function PremiumPdfButton({ reportId, propertyAddress }: PremiumPdfButton
         entityType: "investment_report",
         entityId: reportId,
         entityName: propertyAddress,
-        metadata: { format: "pdf", source: "premium_weasyprint" },
+        metadata: { format: "pdf", source: "premium_api2pdf_chrome" },
       });
 
       // Open hosted PDF in a new tab — Api2PDF serves it with proper Content-Disposition.
