@@ -5998,6 +5998,8 @@ export type Database = {
       }
       document_requirement_instances: {
         Row: {
+          applicant_id: string | null
+          auto_reminder_enabled: boolean
           category: Database["public"]["Enums"]["document_requirement_category"]
           client_id: string
           created_at: string
@@ -6007,16 +6009,20 @@ export type Database = {
           detected_doc_date: string | null
           detected_doc_type: string | null
           document_id: string | null
+          due_date: string | null
+          escalation_level: string
           expiry_date: string | null
           id: string
           is_required: boolean
           label: string
+          last_reminder_sent_at: string | null
           notes: string | null
           owner: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id: string
           quality_checked_at: string | null
           quality_flags: Json
           quality_status: string
+          reminder_count: number
           request_message: string | null
           requested_at: string | null
           requested_by_finance_user_id: string | null
@@ -6034,6 +6040,8 @@ export type Database = {
           visible_to_npc: boolean
         }
         Insert: {
+          applicant_id?: string | null
+          auto_reminder_enabled?: boolean
           category: Database["public"]["Enums"]["document_requirement_category"]
           client_id: string
           created_at?: string
@@ -6043,16 +6051,20 @@ export type Database = {
           detected_doc_date?: string | null
           detected_doc_type?: string | null
           document_id?: string | null
+          due_date?: string | null
+          escalation_level?: string
           expiry_date?: string | null
           id?: string
           is_required?: boolean
           label: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           owner?: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id: string
           quality_checked_at?: string | null
           quality_flags?: Json
           quality_status?: string
+          reminder_count?: number
           request_message?: string | null
           requested_at?: string | null
           requested_by_finance_user_id?: string | null
@@ -6070,6 +6082,8 @@ export type Database = {
           visible_to_npc?: boolean
         }
         Update: {
+          applicant_id?: string | null
+          auto_reminder_enabled?: boolean
           category?: Database["public"]["Enums"]["document_requirement_category"]
           client_id?: string
           created_at?: string
@@ -6079,16 +6093,20 @@ export type Database = {
           detected_doc_date?: string | null
           detected_doc_type?: string | null
           document_id?: string | null
+          due_date?: string | null
+          escalation_level?: string
           expiry_date?: string | null
           id?: string
           is_required?: boolean
           label?: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           owner?: Database["public"]["Enums"]["document_requirement_owner"]
           purchase_file_id?: string
           quality_checked_at?: string | null
           quality_flags?: Json
           quality_status?: string
+          reminder_count?: number
           request_message?: string | null
           requested_at?: string | null
           requested_by_finance_user_id?: string | null
@@ -6111,6 +6129,13 @@ export type Database = {
             columns: ["requested_by_finance_user_id"]
             isOneToOne: false
             referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requirement_instances_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_file_applicants"
             referencedColumns: ["id"]
           },
           {
@@ -6903,6 +6928,126 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_partner_message_templates"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_partner_availability: {
+        Row: {
+          created_at: string
+          end_time: string
+          finance_user_id: string
+          id: string
+          is_active: boolean
+          slot_duration_min: number
+          start_time: string
+          timezone: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          finance_user_id: string
+          id?: string
+          is_active?: boolean
+          slot_duration_min?: number
+          start_time: string
+          timezone?: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          finance_user_id?: string
+          id?: string
+          is_active?: boolean
+          slot_duration_min?: number
+          start_time?: string
+          timezone?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      finance_partner_bookings: {
+        Row: {
+          booked_by: string
+          cancelled_reason: string | null
+          client_id: string | null
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          end_at: string
+          finance_user_id: string
+          id: string
+          meeting_type: string
+          meeting_url: string | null
+          metadata: Json
+          notes: string | null
+          purchase_file_id: string | null
+          start_at: string
+          status: string
+          timezone: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          booked_by?: string
+          cancelled_reason?: string | null
+          client_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          end_at: string
+          finance_user_id: string
+          id?: string
+          meeting_type?: string
+          meeting_url?: string | null
+          metadata?: Json
+          notes?: string | null
+          purchase_file_id?: string | null
+          start_at: string
+          status?: string
+          timezone?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booked_by?: string
+          cancelled_reason?: string | null
+          client_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          end_at?: string
+          finance_user_id?: string
+          id?: string
+          meeting_type?: string
+          meeting_url?: string | null
+          metadata?: Json
+          notes?: string | null
+          purchase_file_id?: string | null
+          start_at?: string
+          status?: string
+          timezone?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_bookings_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_bookings_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
           },
         ]
       }
@@ -12459,6 +12604,66 @@ export type Database = {
           },
         ]
       }
+      purchase_file_applicants: {
+        Row: {
+          created_at: string
+          date_of_birth: string | null
+          display_name: string
+          email: string | null
+          id: string
+          is_primary: boolean
+          metadata: Json
+          phone: string | null
+          position: number
+          purchase_file_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth?: string | null
+          display_name: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          metadata?: Json
+          phone?: string | null
+          position?: number
+          purchase_file_id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string | null
+          display_name?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          metadata?: Json
+          phone?: string | null
+          position?: number
+          purchase_file_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_applicants_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_applicants_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
       purchase_file_audit_events: {
         Row: {
           action: string
@@ -13155,6 +13360,78 @@ export type Database = {
           },
           {
             foreignKeyName: "purchase_file_lender_packets_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      purchase_file_onboarding_checklist: {
+        Row: {
+          category: string
+          client_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          label: string
+          metadata: Json
+          owner: string
+          position: number
+          purchase_file_id: string
+          status: string
+          step_key: string
+          updated_at: string
+          visible_to_client: boolean
+        }
+        Insert: {
+          category?: string
+          client_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          label: string
+          metadata?: Json
+          owner?: string
+          position?: number
+          purchase_file_id: string
+          status?: string
+          step_key: string
+          updated_at?: string
+          visible_to_client?: boolean
+        }
+        Update: {
+          category?: string
+          client_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          label?: string
+          metadata?: Json
+          owner?: string
+          position?: number
+          purchase_file_id?: string
+          status?: string
+          step_key?: string
+          updated_at?: string
+          visible_to_client?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_onboarding_checklist_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_onboarding_checklist_purchase_file_id_fkey"
             columns: ["purchase_file_id"]
             isOneToOne: false
             referencedRelation: "v_purchase_file_deal_drift"
