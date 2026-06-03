@@ -830,9 +830,10 @@ async function loadReadyHeroImages(reportId: string): Promise<Record<string, str
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data } = await supabase
       .from("report_visual_assets")
-      .select("section_key, public_url")
+      .select("section_key, public_url, include_in_report")
       .eq("report_id", reportId)
-      .eq("status", "ready");
+      .eq("status", "ready")
+      .eq("include_in_report", true);
     const out: Record<string, string> = {};
     for (const r of (data || []) as Array<{ section_key: string; public_url: string }>) {
       if (r.public_url) out[r.section_key] = r.public_url;
