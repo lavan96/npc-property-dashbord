@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
@@ -18,22 +18,24 @@ import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
 import { FinanceCommandPalette } from './FinanceCommandPalette';
 import { QuickAddFab } from './QuickAddFab';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import { FinanceOnboardingTour } from './FinanceOnboardingTour';
+import { bootFinanceAppearance } from '@/lib/finance-portal/theme';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false },
-  { to: '/finance/pipeline', label: 'Pipeline Kanban', icon: Layers, end: false },
-  { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
-  { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
-  { to: '/finance/client-inbox', label: 'Client Inbox', icon: Inbox, end: false },
-  { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false },
-  { to: '/finance/forecasting', label: 'Forecasting', icon: TrendingUp, end: false },
-  { to: '/finance/insights', label: 'Pipeline Insights', icon: Trophy, end: false },
+  { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true, tour: 'dashboard' },
+  { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false, tour: 'purchase-files' },
+  { to: '/finance/pipeline', label: 'Pipeline Kanban', icon: Layers, end: false, tour: 'pipeline' },
+  { to: '/finance/clients', label: 'My Clients', icon: Users, end: false, tour: 'clients' },
+  { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false, tour: 'messages' },
+  { to: '/finance/client-inbox', label: 'Client Inbox', icon: Inbox, end: false, tour: 'client-inbox' },
+  { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false, tour: 'lender-intelligence' },
+  { to: '/finance/forecasting', label: 'Forecasting', icon: TrendingUp, end: false, tour: 'forecasting' },
+  { to: '/finance/insights', label: 'Pipeline Insights', icon: Trophy, end: false, tour: 'insights' },
   { to: '/finance/reports', label: 'Reports & KPIs', icon: BarChart3, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
-  { to: '/finance/mobile', label: 'Mobile cockpit', icon: Smartphone, end: false },
+  { to: '/finance/mobile', label: 'Mobile cockpit', icon: Smartphone, end: false, tour: 'mobile' },
 ];
 
 
@@ -59,6 +61,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             to={item.to}
             end={item.end}
             onClick={onNavigate}
+            data-tour={item.tour}
             className={({ isActive }) =>
               cn(
                 'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
@@ -83,6 +86,9 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Batch 13 #66 — boot theme/density from cached prefs on mount.
+  useEffect(() => { bootFinanceAppearance(); }, []);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/finance/login', { replace: true });
@@ -96,6 +102,8 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
       <FinanceCommandPalette />
       <KeyboardShortcutsDialog />
       <QuickAddFab />
+      <FinanceOnboardingTour />
+
 
 
       {/* ── Desktop Layout ── */}
