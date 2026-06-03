@@ -63,6 +63,9 @@ export default function InvestmentReportView() {
   const [sendToClientOpen, setSendToClientOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
+  const [includeCharts, setIncludeCharts] = useState(true);
+  const [includeHeroImages, setIncludeHeroImages] = useState(false);
+  const [includeSparklines, setIncludeSparklines] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
   const pdfGeneratorRef = useRef<PixelPerfectPDFGeneratorHandle>(null);
 
@@ -382,6 +385,18 @@ export default function InvestmentReportView() {
                   <span className="text-sm text-muted-foreground">Include sources</span>
                   <Switch checked={includeSources} onCheckedChange={setIncludeSources} />
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Charts</span>
+                  <Switch checked={includeCharts} onCheckedChange={setIncludeCharts} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Hero images</span>
+                  <Switch checked={includeHeroImages} onCheckedChange={setIncludeHeroImages} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Sparklines</span>
+                  <Switch checked={includeSparklines} onCheckedChange={setIncludeSparklines} />
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -392,7 +407,14 @@ export default function InvestmentReportView() {
                 <ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} />
               </ErrorBoundary>
 
-              <PremiumPdfButton reportId={report.id} propertyAddress={report.property_address} />
+              <PremiumPdfButton
+                reportId={report.id}
+                propertyAddress={report.property_address}
+                includeCharts={includeCharts}
+                includeHeroImages={includeHeroImages}
+                includeSparklines={includeSparklines}
+              />
+
 
               <RegenerateWithPerplexityButton
                 reportId={report.id}

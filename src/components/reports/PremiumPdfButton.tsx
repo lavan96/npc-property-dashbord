@@ -8,13 +8,17 @@ import { logActivityDirect } from "@/hooks/useActivityLogger";
 interface PremiumPdfButtonProps {
   reportId: string;
   propertyAddress: string;
+  includeCharts?: boolean;
+  includeHeroImages?: boolean;
+  includeSparklines?: boolean;
 }
+
 
 /**
  * Premium PDF — HTML+CSS rendered via Api2PDF Headless Chrome for true editorial layout.
  * Runs side-by-side with the legacy jsPDF generator (PixelPerfectPDFGenerator).
  */
-export function PremiumPdfButton({ reportId, propertyAddress }: PremiumPdfButtonProps) {
+export function PremiumPdfButton({ reportId, propertyAddress, includeCharts = true, includeHeroImages = false, includeSparklines = true }: PremiumPdfButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -24,9 +28,10 @@ export function PremiumPdfButton({ reportId, propertyAddress }: PremiumPdfButton
     try {
       const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string }>(
         "render-investment-report-pdf",
-        { reportId },
-        { timeoutMs: 120_000 },
+        { reportId, includeCharts, includeHeroImages, includeSparklines },
+        { timeoutMs: 180_000 },
       );
+
       if (error || !data?.fileUrl) {
         throw new Error(error?.message || "PDF generation failed");
       }
