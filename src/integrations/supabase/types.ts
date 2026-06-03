@@ -15236,6 +15236,51 @@ export type Database = {
           },
         ]
       }
+      report_visual_assets: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          prompt_hash: string
+          public_url: string | null
+          report_id: string
+          section_key: string
+          section_title: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          prompt_hash: string
+          public_url?: string | null
+          report_id: string
+          section_key: string
+          section_title: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          prompt_hash?: string
+          public_url?: string | null
+          report_id?: string
+          section_key?: string
+          section_title?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       risk_assessment_cache: {
         Row: {
           bushfire_risk: Json | null

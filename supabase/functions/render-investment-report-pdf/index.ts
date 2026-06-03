@@ -14,7 +14,7 @@ const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
 const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
 const RENDER_SAFETY_BUFFER_MS = 45_000;
 const MAX_RENDER_WAIT_MS = EDGE_FUNCTION_TIMEOUT_MS - RENDER_SAFETY_BUFFER_MS;
-const HERO_IMAGE_TIMEOUT_MS = 120_000;
+// (Hero-image generation is now offloaded to `prepare-report-hero-images`.)
 const API2PDF_REQUEST_TIMEOUT_MS = 600_000;
 
 // Dark-gold theme tokens mirrored from the app.
@@ -802,11 +802,11 @@ function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSerie
 }
 
 // ─────────────────────────────────────────────────────────────
-// AI hero illustration per chapter (optional, opt-in)
+// Hero illustration injection (pre-generated assets only — no AI calls here)
+// Hero images are produced asynchronously by `prepare-report-hero-images`
+// and stored in the `investment-reports` bucket. This renderer is now
+// lightweight and never calls the AI gateway.
 // ─────────────────────────────────────────────────────────────
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
-const heroImageCache = new Map<string, string | null>();
-
 function fallbackHeroSvg(chapterTitle: string): string {
   const seed = chapterTitle.split("").reduce((acc, ch) => (acc + ch.charCodeAt(0) * 17) % 997, 31);
   const ridge = Array.from({ length: 9 }, (_, i) => {
@@ -825,90 +825,38 @@ function fallbackHeroSvg(chapterTitle: string): string {
   return compactDataUri(svg);
 }
 
-/** Generate an editorial hero image for a chapter via Lovable AI Gateway (GPT-image). */
-async function generateHeroImage(chapterTitle: string): Promise<string | null> {
-  const cacheKey = chapterTitle.trim().toLowerCase();
-  if (heroImageCache.has(cacheKey)) return heroImageCache.get(cacheKey)!;
-
-  if (!LOVABLE_API_KEY) {
-    const fb = fallbackHeroSvg(chapterTitle);
-    heroImageCache.set(cacheKey, fb);
-    return fb;
-  }
-
-  const prompt = `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
-
+async function loadReadyHeroImages(reportId: string): Promise<Record<string, string>> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), HERO_IMAGE_TIMEOUT_MS);
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-image-2",
-        prompt,
-        quality: "low",
-        size: "1536x1024",
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      const t = await res.text();
-      console.warn("[hero-image] gateway error", res.status, t.slice(0, 200));
-      const fb = fallbackHeroSvg(chapterTitle);
-      heroImageCache.set(cacheKey, fb);
-      return fb;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const { data } = await supabase
+      .from("report_visual_assets")
+      .select("section_key, public_url")
+      .eq("report_id", reportId)
+      .eq("status", "ready");
+    const out: Record<string, string> = {};
+    for (const r of (data || []) as Array<{ section_key: string; public_url: string }>) {
+      if (r.public_url) out[r.section_key] = r.public_url;
     }
-
-    const json = await res.json();
-    const b64 = json?.data?.[0]?.b64_json;
-    const url = json?.data?.[0]?.url;
-    let dataUri: string | null = null;
-    if (b64) {
-      dataUri = `data:image/png;base64,${b64}`;
-    } else if (typeof url === "string") {
-      dataUri = url;
-    }
-    if (!dataUri) {
-      const fb = fallbackHeroSvg(chapterTitle);
-      heroImageCache.set(cacheKey, fb);
-      return fb;
-    }
-    heroImageCache.set(cacheKey, dataUri);
-    return dataUri;
+    return out;
   } catch (err) {
-    console.warn("[hero-image] generation failed", chapterTitle, err instanceof Error ? err.message : err);
-    const fb = fallbackHeroSvg(chapterTitle);
-    heroImageCache.set(cacheKey, fb);
-    return fb;
+    console.warn("[render-investment-report-pdf] hero asset load failed", err);
+    return {};
   }
 }
 
-async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
-  const out: Record<string, string> = {};
-  // Throttle: 2 concurrent to respect rate limits + memory
-  const queue = [...toc];
-  const workers = Array.from({ length: 2 }, async () => {
-    while (queue.length) {
-      const item = queue.shift()!;
-      const url = await generateHeroImage(item.title);
-      if (url) out[item.id] = url;
-    }
-  });
-  await Promise.all(workers);
-  return out;
-}
+function injectHeroImages(
+  html: string,
+  heroesBySlug: Record<string, string>,
+  toc: Array<{ id: string; title: string }>,
+): string {
+  const idToSlug = new Map<string, string>();
+  for (const t of toc) idToSlug.set(t.id, slugify(t.title));
 
-function injectHeroImages(html: string, heroes: Record<string, string>): string {
   return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
-    const url = heroes[id];
-    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
-    return `<div class="chapter-hero"><img src="${url}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+    const slug = idToSlug.get(id);
+    const url = slug ? heroesBySlug[slug] : undefined;
+    const finalUrl = url || fallbackHeroSvg(String(inner).replace(/<[^>]+>/g, "").trim());
+    return `<div class="chapter-hero"><img src="${finalUrl}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
   });
 }
 
@@ -965,11 +913,13 @@ export async function buildHtml(
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
-  // Hero illustrations per chapter (parallel, opt-in)
+  // Hero illustrations per chapter — consumes ONLY pre-generated assets
+  // produced by the `prepare-report-hero-images` worker. Missing slugs
+  // fall back to the navy/gold SVG banner so the PDF still renders.
   let bodyWithHeroes = bodyAnnotated;
   if (includeHeroImages && toc.length > 0) {
-    const heroes = await generateHeroImages(toc);
-    bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes);
+    const heroes = report.id ? await loadReadyHeroImages(String(report.id)) : {};
+    bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes, toc);
   }
 
   const sourcesHtml = report.sources_content
