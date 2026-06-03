@@ -178,6 +178,7 @@ const CHART_PALETTE = [
 ];
 const FONT_STACK = "Inter, Helvetica, Arial, sans-serif";
 const SERIF_STACK = "Playfair Display, Georgia, serif";
+const MAX_AUTO_TABLE_CHARTS = 10;
 
 /** Convert #RRGGBB to rgba(r,g,b,a). */
 function withAlpha(hex: string, a: number): string {
@@ -605,6 +606,7 @@ async function injectTableCharts(html: string): Promise<string> {
   if (tables.length === 0) return html;
 
   const replacements = new Array<string>(tables.length);
+  let chartsAdded = 0;
   const queue = tables.map((match, index) => ({ tbl: match[0], index }));
   const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
     while (queue.length) {
@@ -620,7 +622,9 @@ async function injectTableCharts(html: string): Promise<string> {
         .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
-    const chart = await tableToChartHtml(headers, dataRows);
+      const canAddChart = chartsAdded < MAX_AUTO_TABLE_CHARTS;
+      const chart = canAddChart ? await tableToChartHtml(headers, dataRows) : null;
+      if (chart) chartsAdded += 1;
       replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
     }
   });
