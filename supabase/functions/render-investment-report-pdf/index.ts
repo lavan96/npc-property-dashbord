@@ -967,8 +967,14 @@ export async function buildHtml(
   const scoreTxt = scoreOverall != null ? `${Math.round(Number(scoreOverall))}/100${scoreBand ? ` (${scoreBand})` : ""}` : null;
 
   const para1Parts: string[] = [];
-  para1Parts.push(`This report presents an independent investment analysis of <strong>${esc(address)}</strong>${suburbLabel && suburbLabel !== address ? `, located in <strong>${esc(suburbLabel)}</strong>` : ""}.`);
-  if (priceTxt) para1Parts.push(`Modelled on a purchase price of <strong>${priceTxt}</strong>${lvrTxt ? ` at an LVR of <strong>${lvrTxt}</strong>` : ""}${rentTxt ? `, with an assessed market rent of <strong>${rentTxt}/week</strong>` : ""}${yieldTxt ? ` (gross yield <strong>${yieldTxt}</strong>)` : ""}.` : "");
+  const locFrag = suburbLabel && suburbLabel !== address ? `, located in <strong>${esc(suburbLabel)}</strong>` : "";
+  para1Parts.push(`This report presents an independent investment analysis of <strong>${esc(address)}</strong>${locFrag}.`);
+  if (priceTxt) {
+    const lvrFrag = lvrTxt ? ` at an LVR of <strong>${lvrTxt}</strong>` : "";
+    const rentFrag = rentTxt ? `, with an assessed market rent of <strong>${rentTxt}/week</strong>` : "";
+    const yieldFrag = yieldTxt ? ` (gross yield <strong>${yieldTxt}</strong>)` : "";
+    para1Parts.push(`Modelled on a purchase price of <strong>${priceTxt}</strong>${lvrFrag}${rentFrag}${yieldFrag}.`);
+  }
   para1Parts.push(`Findings draw on local market conditions, demographics, infrastructure, lending policy, and forward-looking cash-flow projections to give a holistic view of suitability for a long-term investment strategy.`);
 
   const para2Parts: string[] = [];
