@@ -28,6 +28,11 @@ const THEME = {
   ink: "#17130D",
   inkMuted: "#5F5546",
   rule: "#D8CBB6",
+  // Navy accents for editorial headings
+  navy: "#0A2540",
+  navyDeep: "#061A33",
+  navyMid: "#1E4A7C",
+  navyAccent: "#2E6CB0",
   // Rating pill palette
   good: "#3F8A4F",
   goodBg: "#E2EFD9",
@@ -38,6 +43,9 @@ const THEME = {
   neutralBg: "#E6E0D2",
   neutralInk: "#4A4030",
 };
+
+// Reusable navy gradient (applied via background-clip:text on headings)
+const NAVY_GRADIENT = `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navyMid} 50%, ${THEME.navyAccent} 100%)`;
 
 function fmtMoney(v: unknown): string {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
@@ -791,39 +799,96 @@ function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSerie
 // ─────────────────────────────────────────────────────────────
 // AI hero illustration per chapter (optional, opt-in)
 // ─────────────────────────────────────────────────────────────
-async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
+const heroImageCache = new Map<string, string | null>();
+
+function fallbackHeroSvg(chapterTitle: string): string {
   const seed = chapterTitle.split("").reduce((acc, ch) => (acc + ch.charCodeAt(0) * 17) % 997, 31);
   const ridge = Array.from({ length: 9 }, (_, i) => {
     const y = 44 + i * 18 + (seed % (i + 7));
-    return `<path d="M-20 ${y} C 140 ${y - 36}, 260 ${y + 38}, 420 ${y - 10} S 700 ${y + 28}, 920 ${y - 18}" fill="none" stroke="#D4A843" stroke-opacity="${0.07 + i * 0.018}" stroke-width="1.2"/>`;
-  }).join("");
-  const bars = Array.from({ length: 14 }, (_, i) => {
-    const x = 62 + i * 56;
-    const h = 22 + ((seed * (i + 3)) % 86);
-    return `<rect x="${x}" y="${206 - h}" width="18" height="${h}" rx="2" fill="#D4A843" opacity="${0.14 + (i % 4) * 0.05}"/>`;
+    return `<path d="M-20 ${y} C 140 ${y - 36}, 260 ${y + 38}, 420 ${y - 10} S 700 ${y + 28}, 920 ${y - 18}" fill="none" stroke="#2E6CB0" stroke-opacity="${0.08 + i * 0.02}" stroke-width="1.2"/>`;
   }).join("");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="315" viewBox="0 0 1200 315">
     <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#090909"/><stop offset="0.55" stop-color="#16130B"/><stop offset="1" stop-color="#2A2110"/></linearGradient>
-      <radialGradient id="glow" cx="76%" cy="18%" r="62%"><stop offset="0" stop-color="#D4A843" stop-opacity="0.34"/><stop offset="1" stop-color="#D4A843" stop-opacity="0"/></radialGradient>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061A33"/><stop offset="0.6" stop-color="#0A2540"/><stop offset="1" stop-color="#1E4A7C"/></linearGradient>
+      <radialGradient id="glow" cx="78%" cy="22%" r="62%"><stop offset="0" stop-color="#D4A843" stop-opacity="0.30"/><stop offset="1" stop-color="#D4A843" stop-opacity="0"/></radialGradient>
     </defs>
     <rect width="1200" height="315" fill="url(#bg)"/>
     <rect width="1200" height="315" fill="url(#glow)"/>
     <g opacity="0.95">${ridge}</g>
-    <g transform="translate(0,38)">${bars}</g>
-    <path d="M0 235 L260 166 L455 207 L680 118 L930 180 L1200 92 L1200 315 L0 315 Z" fill="#D4A843" opacity="0.09"/>
-    <path d="M0 252 L300 180 L498 220 L720 140 L962 195 L1200 112" fill="none" stroke="#D4A843" stroke-opacity="0.48" stroke-width="2"/>
-    <circle cx="960" cy="84" r="74" fill="none" stroke="#D4A843" stroke-opacity="0.18" stroke-width="1"/>
-    <circle cx="960" cy="84" r="42" fill="none" stroke="#D4A843" stroke-opacity="0.25" stroke-width="1"/>
   </svg>`;
   return compactDataUri(svg);
 }
 
+/** Generate an editorial hero image for a chapter via Lovable AI Gateway (GPT-image). */
+async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+  const cacheKey = chapterTitle.trim().toLowerCase();
+  if (heroImageCache.has(cacheKey)) return heroImageCache.get(cacheKey)!;
+
+  if (!LOVABLE_API_KEY) {
+    const fb = fallbackHeroSvg(chapterTitle);
+    heroImageCache.set(cacheKey, fb);
+    return fb;
+  }
+
+  const prompt = `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 40_000);
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-image-2",
+        prompt,
+        quality: "low",
+        size: "1536x1024",
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const t = await res.text();
+      console.warn("[hero-image] gateway error", res.status, t.slice(0, 200));
+      const fb = fallbackHeroSvg(chapterTitle);
+      heroImageCache.set(cacheKey, fb);
+      return fb;
+    }
+
+    const json = await res.json();
+    const b64 = json?.data?.[0]?.b64_json;
+    const url = json?.data?.[0]?.url;
+    let dataUri: string | null = null;
+    if (b64) {
+      dataUri = `data:image/png;base64,${b64}`;
+    } else if (typeof url === "string") {
+      dataUri = url;
+    }
+    if (!dataUri) {
+      const fb = fallbackHeroSvg(chapterTitle);
+      heroImageCache.set(cacheKey, fb);
+      return fb;
+    }
+    heroImageCache.set(cacheKey, dataUri);
+    return dataUri;
+  } catch (err) {
+    console.warn("[hero-image] generation failed", chapterTitle, err instanceof Error ? err.message : err);
+    const fb = fallbackHeroSvg(chapterTitle);
+    heroImageCache.set(cacheKey, fb);
+    return fb;
+  }
+}
+
 async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  // Throttle: 4 concurrent
+  // Throttle: 2 concurrent to respect rate limits + memory
   const queue = [...toc];
-  const workers = Array.from({ length: 4 }, async () => {
+  const workers = Array.from({ length: 2 }, async () => {
     while (queue.length) {
       const item = queue.shift()!;
       const url = await generateHeroImage(item.title);
@@ -974,7 +1039,16 @@ export async function buildHtml(
 
     body { counter-reset: section; }
 
-    h1, h2, h3, h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.ink}; margin: 0 0 .45em; page-break-after: avoid; }
+    h1, h2, h3 {
+      font-family: 'Playfair Display', 'Georgia', serif;
+      margin: 0 0 .45em; page-break-after: avoid;
+      background: ${NAVY_GRADIENT};
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
     h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
     h2 {
       counter-increment: section;
@@ -983,15 +1057,17 @@ export async function buildHtml(
       margin-top: 22pt;
       padding-bottom: 8pt;
       border-bottom: 0.5pt solid ${THEME.rule};
-      display: flex; align-items: baseline; gap: 10pt;
+      display: block;
       page-break-before: auto;
     }
     h2::before {
-      content: counter(section, decimal-leading-zero);
+      content: counter(section, decimal-leading-zero) "  ";
       font-family: 'Playfair Display', serif;
       font-weight: 500; font-style: italic;
-      font-size: 14pt; color: ${THEME.goldSoft};
-      letter-spacing: .04em; flex-shrink: 0;
+      font-size: 14pt;
+      -webkit-text-fill-color: ${THEME.gold};
+      color: ${THEME.gold};
+      letter-spacing: .04em;
     }
     h3 {
       font-size: 14pt; font-weight: 600; margin-top: 16pt;
@@ -1380,6 +1456,9 @@ export async function buildHtml(
 <head>
 <meta charset="utf-8" />
 <title>${esc(address)} — Investment Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap">
 <style>${styles}</style>
 </head>
 <body>
@@ -1455,10 +1534,9 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginBottom: 0,
         marginLeft: 0,
         marginRight: 0,
-        // All visuals are inline SVG now, so avoid network-idle waits that can
-        // hang on static HTML and trigger Supabase 504s.
-        delay: 0,
-        puppeteerWaitForMethod: "WaitForNavigation",
+        // Fonts (Google) + optional GPT-image hero images need a moment to settle.
+        delay: 2500,
+        puppeteerWaitForMethod: "WaitForNetworkIdle0",
         puppeteerWaitForValue: "load",
       },
 
