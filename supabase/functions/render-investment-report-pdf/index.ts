@@ -651,7 +651,7 @@ export async function buildHtml(
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
-  if (includeCharts) bodyHtml = injectTableCharts(bodyHtml);
+  if (includeCharts) bodyHtml = await injectTableCharts(bodyHtml);
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
@@ -669,12 +669,12 @@ export async function buildHtml(
   // KPI tiles (with optional sparklines from projection series)
   const series = includeSparklines ? findProjectionSeries(fin) : {};
   const kpis: Array<{ label: string; value: string; spark?: string }> = [];
-  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice), spark: series.valueSeries && series.valueSeries.length >= 3 ? quickSparklineUrl(series.valueSeries) : undefined });
-  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield), spark: series.yieldSeries && series.yieldSeries.length >= 3 ? quickSparklineUrl(series.yieldSeries, THEME.success) : undefined });
+  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice), spark: series.valueSeries && series.valueSeries.length >= 3 ? await quickSparklineUrl(series.valueSeries) || undefined : undefined });
+  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield), spark: series.yieldSeries && series.yieldSeries.length >= 3 ? await quickSparklineUrl(series.yieldSeries, THEME.success) || undefined : undefined });
   if (km.netRentalYield != null) kpis.push({ label: "Net Yield", value: fmtPct(km.netRentalYield) });
-  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet), spark: series.cashflowSeries && series.cashflowSeries.length >= 3 ? quickSparklineUrl(series.cashflowSeries, THEME.success) : undefined });
+  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet), spark: series.cashflowSeries && series.cashflowSeries.length >= 3 ? await quickSparklineUrl(series.cashflowSeries, THEME.success) || undefined : undefined });
   if (km.lvr != null) kpis.push({ label: "LVR", value: fmtPct(km.lvr, 1) });
-  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent), spark: series.rentSeries && series.rentSeries.length >= 3 ? quickSparklineUrl(series.rentSeries) : undefined });
+  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent), spark: series.rentSeries && series.rentSeries.length >= 3 ? await quickSparklineUrl(series.rentSeries) || undefined : undefined });
 
   const scoreOverall =
     score?.overall_score ?? score?.overallScore ?? score?.score ?? null;
