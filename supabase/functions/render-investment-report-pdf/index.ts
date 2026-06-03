@@ -1099,7 +1099,7 @@ export async function buildHtml(
     p { margin: 0 0 .72em; orphans: 3; widows: 3; }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
     strong { color: ${THEME.ink}; font-weight: 700; }
-    em { color: ${THEME.inkMuted}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
+    em, i { color: ${THEME.ink}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
     h2 + p {
       font-family: 'Inter', 'Helvetica', sans-serif;
@@ -1184,6 +1184,7 @@ export async function buildHtml(
       width: 100%; border-collapse: collapse; margin: 10pt 0 14pt;
       font-size: 8.5pt; background: #FFFDF8;
       page-break-inside: auto;
+      table-layout: auto;
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
     tr:nth-child(even) td { background: ${THEME.paperAlt}; }
@@ -1191,6 +1192,8 @@ export async function buildHtml(
       border-bottom: 0.5pt solid ${THEME.rule};
       padding: 5.5pt 7pt;
       text-align: left; vertical-align: top;
+      word-break: normal; overflow-wrap: break-word;
+      hyphens: auto;
     }
     th {
       background: ${THEME.ink}; color: ${THEME.gold};
@@ -1199,8 +1202,14 @@ export async function buildHtml(
       text-transform: uppercase; letter-spacing: .08em;
       font-size: 7pt; border-bottom: none;
     }
-    td { color: ${THEME.ink}; overflow-wrap: anywhere; }
-    td:first-child { font-weight: 600; }
+    td { color: ${THEME.ink}; }
+    td:first-child, th:first-child {
+      font-weight: 600;
+      width: 1%;
+      white-space: nowrap;
+    }
+    /* Allow long first-column labels (>22 chars) to wrap naturally instead of being broken mid-word */
+    td:first-child { white-space: normal; min-width: 80pt; max-width: 180pt; }
     hr { border: 0; border-top: 0.5pt solid ${THEME.rule}; margin: 18pt 0; }
 
     /* Rating pills */
