@@ -40,6 +40,13 @@ export function QuickAddFab() {
                 <AlarmClock className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Smart Snooze</span>
               </button>
+              <button
+                onClick={() => { setVoiceOpen(true); setOpen(false); }}
+                className="flex items-center gap-2 bg-card border border-border rounded-full pl-3 pr-4 py-2 shadow-lg hover:bg-accent transition-colors"
+              >
+                <Mic className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Voice Memo</span>
+              </button>
               {ACTIONS.map(a => {
                 const Icon = a.icon;
                 return (
@@ -71,6 +78,7 @@ export function QuickAddFab() {
       </div>
 
       <SmartSnoozeDialog open={snoozeOpen} onOpenChange={setSnoozeOpen} />
+      <VoiceMemoDialog open={voiceOpen} onOpenChange={setVoiceOpen} />
     </>
   );
 }
