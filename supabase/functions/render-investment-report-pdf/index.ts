@@ -164,6 +164,260 @@ function stripBareCitations(html: string): string {
   return html.replace(/\[\s*\d{1,3}\s*\](?=[\s.,;:!?)]|<)/g, "");
 }
 
+// ─────────────────────────────────────────────────────────────
+// QuickChart helpers — emits hosted PNG chart URLs (no auth req)
+// ─────────────────────────────────────────────────────────────
+const CHART_PALETTE = ["#D4A843", "#6FBF73", "#A23A28", "#3F6E8A", "#B07A1F", "#8A5BA3", "#4A4030"];
+
+function quickChartUrl(config: Record<string, unknown>, width = 760, height = 320): string {
+  const c = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?w=${width}&h=${height}&bkg=transparent&devicePixelRatio=2&c=${c}`;
+}
+
+function quickSparklineUrl(values: number[], color: string = THEME.gold): string {
+  return quickChartUrl({
+    type: "sparkline",
+    data: {
+      datasets: [{
+        data: values,
+        borderColor: color,
+        backgroundColor: color + "33",
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+      }],
+    },
+    options: { plugins: { legend: { display: false } } },
+  }, 260, 60);
+}
+
+function parseLooseNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[,$%\s]/g, "")
+    .replace(/[a-zA-Z]+/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === ".") return null;
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function tableToChartHtml(headers: string[], rows: string[][]): string | null {
+  if (rows.length < 2 || rows.length > 14) return null;
+  if (headers.length < 2 || headers.length > 6) return null;
+
+  const labels = rows.map((r) => (r[0] || "").slice(0, 28));
+  const numericCols: Array<{ header: string; values: number[] }> = [];
+  for (let c = 1; c < headers.length; c++) {
+    const vals = rows.map((r) => parseLooseNumber(r[c] || ""));
+    if (vals.every((v) => v !== null) && vals.length === rows.length) {
+      numericCols.push({ header: headers[c], values: vals as number[] });
+    }
+  }
+  if (numericCols.length === 0) return null;
+
+  const cellBlob = rows.map((r) => r.join(" ")).join(" ");
+  const isPercent = /%/.test(cellBlob);
+  const singleSeries = numericCols.length === 1;
+
+  // Donut: single % series with ≤7 rows
+  const cfg = singleSeries && rows.length <= 7 && isPercent
+    ? {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: numericCols[0].values,
+          backgroundColor: CHART_PALETTE,
+          borderColor: "#FFFDF8",
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        cutout: "55%",
+        plugins: {
+          legend: { position: "right", labels: { color: "#17130D", font: { size: 11, family: "Inter" } } },
+        },
+      },
+    }
+    : {
+      type: "bar",
+      data: {
+        labels,
+        datasets: numericCols.map((col, i) => ({
+          label: col.header,
+          data: col.values,
+          backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
+          borderRadius: 4,
+          borderSkipped: false,
+        })),
+      },
+      options: {
+        plugins: {
+          legend: { display: numericCols.length > 1, position: "bottom", labels: { color: "#17130D", font: { family: "Inter", size: 10 } } },
+        },
+        scales: {
+          x: { ticks: { color: "#5F5546", font: { family: "Inter", size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: "#5F5546", font: { family: "Inter", size: 10 } }, grid: { color: "#E5DCC6" }, beginAtZero: true },
+        },
+      },
+    };
+
+  const url = quickChartUrl(cfg, 780, 340);
+  return `<figure class="auto-chart"><img src="${url}" alt="Data visualisation"/></figure>`;
+}
+
+/** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
+function injectTableCharts(html: string): string {
+  return html.replace(/<table[\s\S]*?<\/table>/gi, (tbl) => {
+    const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
+    const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
+    const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+      .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+
+    const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
+    const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
+      .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+        .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
+    const dataRows = theadMatch ? allRows : allRows.slice(1);
+
+    const chart = tableToChartHtml(headers, dataRows);
+    if (!chart) return tbl;
+    return `<div class="chart-wrap">${chart}${tbl}</div>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Infographic block detectors — compare cards + process timelines
+// ─────────────────────────────────────────────────────────────
+function wrapCompareCards(html: string): string {
+  const pairs: Array<[RegExp, RegExp]> = [
+    [/strengths?/i, /(?:watch(?:[- ]?outs?)?|risks?|cautions?|concerns?|things?\s+to\s+watch)/i],
+    [/pros?/i, /cons?/i],
+    [/advantages?/i, /disadvantages?/i],
+    [/opportunit(?:y|ies)/i, /threats?/i],
+    [/upsides?/i, /downsides?/i],
+  ];
+  let out = html;
+  for (const [a, b] of pairs) {
+    const re = new RegExp(
+      `<h([34])[^>]*>\\s*(${a.source})\\s*<\\/h\\1>\\s*(<ul[\\s\\S]*?<\\/ul>)\\s*<h\\1[^>]*>\\s*(${b.source})\\s*<\\/h\\1>\\s*(<ul[\\s\\S]*?<\\/ul>)`,
+      "gi",
+    );
+    out = out.replace(re, (_m, _lvl, lTitle, lList, rTitle, rList) =>
+      `<div class="compare-card">
+        <div class="compare-col compare-pos">
+          <div class="compare-head">${esc(String(lTitle).trim())}</div>${lList}
+        </div>
+        <div class="compare-col compare-neg">
+          <div class="compare-head">${esc(String(rTitle).trim())}</div>${rList}
+        </div>
+      </div>`);
+  }
+  return out;
+}
+
+function wrapProcessTimeline(html: string): string {
+  // Match 2+ consecutive "Step N: …" headings with following paragraph(s)
+  const re = /(?:<h[34][^>]*>\s*Step\s+\d+\s*[:.\-]?\s*[^<]*<\/h[34]>\s*(?:<p>[\s\S]*?<\/p>\s*)+){2,}/gi;
+  return html.replace(re, (block) => {
+    const items = Array.from(block.matchAll(/<h[34][^>]*>\s*(Step\s+\d+)\s*[:.\-]?\s*([^<]*)<\/h[34]>\s*((?:<p>[\s\S]*?<\/p>\s*)+)/gi))
+      .map((m) =>
+        `<li>
+          <div class="step-no">${esc(m[1])}</div>
+          <div class="step-content">
+            <div class="step-title">${esc(m[2].trim())}</div>
+            <div class="step-body">${m[3]}</div>
+          </div>
+        </li>`
+      );
+    if (items.length < 2) return block;
+    return `<ol class="timeline">${items.join("")}</ol>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Projection series → sparklines beside KPI tiles
+// ─────────────────────────────────────────────────────────────
+function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSeries?: number[]; yieldSeries?: number[]; rentSeries?: number[] } {
+  const proj = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen || [];
+  if (!Array.isArray(proj) || proj.length < 3) return {};
+  const pick = (keys: string[]) => {
+    const vals = proj.map((p: any) => {
+      for (const k of keys) {
+        const v = p?.[k];
+        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    });
+    return vals.every((v: any) => v !== null) ? (vals as number[]) : undefined;
+  };
+  return {
+    valueSeries: pick(["propertyValue", "value", "price", "estimatedValue"]),
+    cashflowSeries: pick(["annualNet", "netCashflow", "cashflow", "annualNetCashflow", "weeklyNet"]),
+    yieldSeries: pick(["grossYield", "yield", "rentalYield"]),
+    rentSeries: pick(["weeklyRent", "rentPerWeek"]),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI hero illustration per chapter (optional, opt-in)
+// ─────────────────────────────────────────────────────────────
+async function generateHeroImage(chapterTitle: string): Promise<string | null> {
+  if (!LOVABLE_API_KEY) return null;
+  const prompt =
+    `Editorial magazine illustration for an Australian premium property investment report. ` +
+    `Section theme: "${chapterTitle}". ` +
+    `Style: dark midnight black background fading to warm gold accents, abstract architectural geometry, ` +
+    `subtle topographic contour lines, financial elegance, art-deco influence, NO text, NO letters, NO words, ` +
+    `cinematic premium feel, ultra-wide 16:9 banner, painterly luxurious atmosphere.`;
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[hero] failed", chapterTitle, res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const j = await res.json();
+    const b64 = j?.data?.[0]?.b64_json;
+    return b64 ? `data:image/png;base64,${b64}` : null;
+  } catch (e) {
+    console.warn("[hero] error", chapterTitle, e);
+    return null;
+  }
+}
+
+async function generateHeroImages(toc: Array<{ id: string; title: string }>): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  // Throttle: 4 concurrent
+  const queue = [...toc];
+  const workers = Array.from({ length: 4 }, async () => {
+    while (queue.length) {
+      const item = queue.shift()!;
+      const url = await generateHeroImage(item.title);
+      if (url) out[item.id] = url;
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+function injectHeroImages(html: string, heroes: Record<string, string>): string {
+  return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
+    const url = heroes[id];
+    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    return `<div class="chapter-hero"><img src="${url}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+  });
+}
+
 /**
  * Tag each top-level h2 with an id + record TOC entries so we can render a TOC
  * page and use CSS `target-counter()` for page numbers.
