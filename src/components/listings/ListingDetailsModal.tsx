@@ -321,25 +321,27 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
           {/* Email Source Details */}
           {(listing.emailSubject || listing.from || listing.messageId) && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Email Source</h3>
+            <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5" /> Email Source
+              </h3>
               <div className="space-y-2 text-sm">
                 {listing.emailSubject && (
                   <div>
-                    <span className="text-muted-foreground">Subject:</span>
-                    <div className="font-medium">{listing.emailSubject}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Subject</span>
+                    <div className="font-medium mt-0.5">{listing.emailSubject}</div>
                   </div>
                 )}
                 {listing.from && (
                   <div>
-                    <span className="text-muted-foreground">From:</span>
-                    <div>{listing.from}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">From</span>
+                    <div className="mt-0.5">{listing.from}</div>
                   </div>
                 )}
                 {listing.messageId && (
                   <div>
-                    <span className="text-muted-foreground">Message ID:</span>
-                    <div className="font-mono text-xs">{listing.messageId}</div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Message ID</span>
+                    <div className="font-mono text-xs mt-0.5 break-all">{listing.messageId}</div>
                   </div>
                 )}
               </div>
@@ -347,103 +349,85 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           )}
 
           {/* Metadata */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Metadata</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="rounded-xl border border-border/60 bg-card/30 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Metadata</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {listing.receivedAt && (
                 <div>
-                  <span className="text-muted-foreground">Received:</span>
-                  <div>{formatDate(listing.receivedAt)}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Received</span>
+                  <div className="mt-0.5">{formatDate(listing.receivedAt)}</div>
                 </div>
               )}
-              
               {listing.createdTime && (
                 <div>
-                  <span className="text-muted-foreground">Created:</span>
-                  <div>{formatDate(listing.createdTime)}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Created</span>
+                  <div className="mt-0.5">{formatDate(listing.createdTime)}</div>
                 </div>
               )}
-              
-              {listing.hash && (
-                <div>
-                  <span className="text-muted-foreground">Hash:</span>
-                  <div className="font-mono text-xs">{listing.hash}</div>
-                </div>
-              )}
-              
               {listing.category && (
                 <div>
-                  <span className="text-muted-foreground">Category:</span>
-                  <div>{listing.category}</div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Category</span>
+                  <div className="mt-0.5">{listing.category}</div>
+                </div>
+              )}
+              {listing.hash && (
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Hash</span>
+                  <div className="font-mono text-xs mt-0.5 break-all">{listing.hash}</div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-4">
-            <Button 
-              variant="default" 
-              onClick={() => setInvestmentModalOpen(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Investment Report
-            </Button>
-
-            {listing.webLinks && (
-              <Button variant="outline" onClick={openWebLink}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Listing
-              </Button>
-            )}
-            
-            {listing.url && (
-              <Button variant="outline" onClick={openSourceUrl}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Source
-              </Button>
-            )}
-            
-            {listing.address && (
-              <Button variant="outline" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Address
-              </Button>
-            )}
-            
-            {listing.url && (
-              <Button variant="outline" onClick={() => copyToClipboard(listing.url!, "URL")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy URL
-              </Button>
-            )}
-            
-            {listing.webLinks && (
-              <Button variant="outline" onClick={() => copyToClipboard(listing.webLinks!, "Listing URL")}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Listing URL
-              </Button>
-            )}
-          </div>
-          
-          <InvestmentReportModal
-            isOpen={investmentModalOpen}
-            onClose={() => setInvestmentModalOpen(false)}
-            propertyAddress={buildFullAddress(listing)}
-            propertyDetails={{
-              id: listing.id,
-              price: listing.price,
-              propertyType: listing.propertyType,
-              beds: listing.beds,
-              baths: listing.baths,
-              carSpaces: listing.carSpaces,
-              suburb: listing.suburb,
-              state: listing.state,
-              zipCode: listing.zipCode
-            }}
-          />
         </div>
+
+        {/* Sticky action bar */}
+        <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 px-6 py-4 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <Button
+            variant="default"
+            onClick={() => setInvestmentModalOpen(true)}
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20"
+          >
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Investment Report
+          </Button>
+          {listing.webLinks && (
+            <Button variant="outline" onClick={openWebLink}>
+              <ExternalLink className="h-4 w-4 mr-2" /> View Listing
+            </Button>
+          )}
+          {listing.url && (
+            <Button variant="outline" onClick={openSourceUrl}>
+              <ExternalLink className="h-4 w-4 mr-2" /> View Source
+            </Button>
+          )}
+          {listing.address && (
+            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Address
+            </Button>
+          )}
+          {listing.url && (
+            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(listing.url!, "URL")}>
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy URL
+            </Button>
+          )}
+        </div>
+
+        <InvestmentReportModal
+          isOpen={investmentModalOpen}
+          onClose={() => setInvestmentModalOpen(false)}
+          propertyAddress={buildFullAddress(listing)}
+          propertyDetails={{
+            id: listing.id,
+            price: listing.price,
+            propertyType: listing.propertyType,
+            beds: listing.beds,
+            baths: listing.baths,
+            carSpaces: listing.carSpaces,
+            suburb: listing.suburb,
+            state: listing.state,
+            zipCode: listing.zipCode
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
