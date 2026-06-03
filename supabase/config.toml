@@ -325,7 +325,7 @@ verify_jwt = true
 
 [functions.render-investment-report-pdf]
 verify_jwt = false
-request_timeout = 120
+request_timeout = 1500
 
 [functions.get-call-logs]
 verify_jwt = true
