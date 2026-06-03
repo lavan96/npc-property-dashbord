@@ -107,23 +107,16 @@ export function buildHtml(report: any, brandName: string): string {
     .join("");
 
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
     @page {
       size: A4;
-      margin: 17mm 17mm 19mm 17mm;
+      margin: 18mm 17mm 20mm 17mm;
       background: ${THEME.paper};
-      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .12em; text-transform: uppercase; }
       @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
-      @top-right { content: "${esc(address)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @top-right { content: "${esc(address)}"; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 8.5pt; color: ${THEME.inkMuted}; }
     }
     @page cover {
-      margin: 0;
-      background: ${THEME.bg};
-      @top-right { content: none; }
-      @bottom-left { content: none; }
-      @bottom-right { content: none; }
-    }
-    @page divider {
       margin: 0;
       background: ${THEME.bg};
       @top-right { content: none; }
@@ -137,57 +130,158 @@ export function buildHtml(report: any, brandName: string): string {
       background: ${THEME.paper};
       color: ${THEME.ink};
       font-family: 'Inter', 'Helvetica', sans-serif;
-      font-size: 9.5pt;
-      line-height: 1.52;
+      font-size: 9.8pt;
+      line-height: 1.58;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    h1, h2, h3, h4 { font-family: 'Fraunces', 'Georgia', serif; font-weight: 650; color: ${THEME.ink}; margin: 0 0 .48em; page-break-after: avoid; }
-    h1 { font-size: 25pt; line-height: 1.12; }
-    h2 { font-size: 16pt; color: ${THEME.ink}; border-bottom: 1px solid ${THEME.rule}; padding-bottom: 5pt; margin-top: 16pt; }
-    h2::before { content: ""; display: inline-block; width: 11pt; height: 11pt; margin-right: 6pt; background: ${THEME.gold}; vertical-align: -1pt; }
-    h3 { font-size: 12pt; color: ${THEME.ink}; margin-top: 12pt; }
-    h4 { font-size: 10.5pt; color: ${THEME.goldSoft}; margin-top: 9pt; }
-    p { margin: 0 0 .62em; orphans: 3; widows: 3; }
+
+    /* Auto-number sections */
+    body { counter-reset: section; }
+
+    h1, h2, h3, h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.ink}; margin: 0 0 .45em; page-break-after: avoid; }
+    h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
+    h2 {
+      counter-increment: section;
+      font-size: 22pt; font-weight: 700; letter-spacing: -0.005em;
+      margin-top: 22pt;
+      padding-bottom: 8pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+      position: relative;
+      display: flex; align-items: baseline; gap: 10pt;
+    }
+    h2::before {
+      content: counter(section, decimal-leading-zero);
+      font-family: 'Playfair Display', serif;
+      font-weight: 500;
+      font-style: italic;
+      font-size: 14pt;
+      color: ${THEME.goldSoft};
+      letter-spacing: .04em;
+      flex-shrink: 0;
+    }
+    h3 {
+      font-size: 14pt; font-weight: 600; margin-top: 16pt;
+      padding-left: 10pt;
+      border-left: 2.5pt solid ${THEME.gold};
+    }
+    h4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt; font-weight: 700;
+      color: ${THEME.goldSoft};
+      text-transform: uppercase; letter-spacing: .15em;
+      margin-top: 12pt;
+    }
+    p { margin: 0 0 .72em; orphans: 3; widows: 3; }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
     strong { color: ${THEME.ink}; font-weight: 700; }
-    em { color: ${THEME.inkMuted}; }
-    ul, ol { margin: 0 0 .72em 1.15em; padding: 0; }
-    li { margin-bottom: 3pt; }
+    em { color: ${THEME.inkMuted}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
+
+    /* Lead paragraph — first <p> after h2 */
+    h2 + p {
+      font-family: 'Cormorant Garamond', 'Georgia', serif;
+      font-size: 13pt;
+      line-height: 1.5;
+      color: ${THEME.ink};
+      margin-bottom: 12pt;
+    }
+    /* Drop cap on the first letter of the lead */
+    h2 + p::first-letter {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-size: 38pt;
+      line-height: 0.88;
+      float: left;
+      padding: 4pt 6pt 0 0;
+      color: ${THEME.goldSoft};
+    }
+
+    ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
+    li {
+      position: relative;
+      padding: 4pt 0 4pt 18pt;
+      margin-bottom: 2pt;
+      border-bottom: 0.25pt dotted ${THEME.rule};
+    }
+    ul li::before {
+      content: "";
+      position: absolute; left: 0; top: 11pt;
+      width: 5pt; height: 5pt;
+      background: ${THEME.gold};
+      transform: rotate(45deg);
+    }
+    ol { counter-reset: ol; }
+    ol li { counter-increment: ol; }
+    ol li::before {
+      content: counter(ol, decimal-leading-zero);
+      position: absolute; left: 0; top: 4pt;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 9pt;
+      color: ${THEME.goldSoft};
+    }
+
     blockquote {
-      margin: 10pt 0; padding: 8pt 11pt;
+      margin: 14pt 0;
+      padding: 14pt 18pt 14pt 38pt;
       background: ${THEME.paperAlt};
-      border-left: 3px solid ${THEME.gold};
-      color: ${THEME.inkMuted};
+      border-left: 3pt solid ${THEME.gold};
+      color: ${THEME.ink};
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13.5pt;
       font-style: italic;
+      line-height: 1.45;
+      position: relative;
       page-break-inside: avoid;
     }
+    blockquote::before {
+      content: "“";
+      font-family: 'Playfair Display', serif;
+      font-style: normal;
+      font-weight: 800;
+      font-size: 48pt;
+      line-height: 1;
+      color: ${THEME.gold};
+      position: absolute;
+      left: 10pt; top: 6pt;
+    }
+
     code {
       background: ${THEME.paperAlt};
-      padding: 1pt 3pt;
+      padding: 1pt 4pt;
       border-radius: 2pt;
       font-size: 8.5pt;
       color: ${THEME.goldSoft};
     }
+
     table {
-      width: 100%; border-collapse: collapse; margin: 8pt 0 12pt;
-      font-size: 8.15pt;
+      width: 100%; border-collapse: collapse; margin: 10pt 0 14pt;
+      font-size: 8.5pt;
       background: #FFFDF8;
       page-break-inside: auto;
-      border-top: 2px solid ${THEME.gold};
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
+    tr:nth-child(even) td { background: ${THEME.paperAlt}; }
     th, td {
-      border: 1px solid ${THEME.rule};
-      padding: 5pt 6pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+      padding: 7pt 8pt;
       text-align: left;
       vertical-align: top;
     }
-    th { background: ${THEME.ink}; color: ${THEME.gold}; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 7pt; }
+    th {
+      background: ${THEME.ink};
+      color: ${THEME.gold};
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 7pt;
+      border-bottom: none;
+    }
     td { color: ${THEME.ink}; overflow-wrap: anywhere; }
-    hr { border: 0; border-top: 1px solid ${THEME.rule}; margin: 15pt 0; }
+    td:first-child { font-weight: 600; }
+    hr { border: 0; border-top: 0.5pt solid ${THEME.rule}; margin: 18pt 0; }
 
-    /* ── Cover ── */
+    /* ── Cover (kept as previously approved) ── */
     .cover {
       page: cover;
       page-break-after: always;
@@ -200,101 +294,60 @@ export function buildHtml(report: any, brandName: string): string {
       padding: 28mm 22mm;
       position: relative;
     }
-    .cover .brand {
-      font-family: 'Inter'; font-weight: 700;
-      letter-spacing: .35em;
-      font-size: 9pt;
-      color: ${THEME.gold};
-      text-transform: uppercase;
-    }
-    .cover .rule {
-      width: 80pt; height: 2pt; background: ${THEME.gold};
-      margin: 10mm 0 14mm;
-    }
-    .cover .eyebrow {
-      font-size: 9pt; letter-spacing: .25em; text-transform: uppercase;
-      color: ${THEME.muted}; margin-bottom: 6mm;
-    }
-    .cover h1 {
-      font-size: 38pt; line-height: 1.1;
-      max-width: 150mm;
-      color: ${THEME.text};
-    }
-    .cover .address {
-      margin-top: 8mm;
-      font-size: 14pt; color: ${THEME.gold};
-      font-family: 'Fraunces', serif;
-    }
-    .cover .meta {
-      position: absolute; left: 22mm; bottom: 22mm; right: 22mm;
-      display: flex; justify-content: space-between; align-items: flex-end;
-      font-size: 9pt; color: ${THEME.muted};
-      border-top: 1px solid ${THEME.border};
-      padding-top: 6mm;
-    }
+    .cover .brand { font-family: 'Inter'; font-weight: 700; letter-spacing: .35em; font-size: 9pt; color: ${THEME.gold}; text-transform: uppercase; }
+    .cover .rule { width: 80pt; height: 2pt; background: ${THEME.gold}; margin: 10mm 0 14mm; }
+    .cover .eyebrow { font-size: 9pt; letter-spacing: .25em; text-transform: uppercase; color: ${THEME.muted}; margin-bottom: 6mm; }
+    .cover h1 { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 44pt; line-height: 1.05; max-width: 155mm; color: ${THEME.text}; letter-spacing: -0.015em; }
+    .cover .address { margin-top: 9mm; font-size: 15pt; color: ${THEME.gold}; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+    .cover .meta { position: absolute; left: 22mm; bottom: 22mm; right: 22mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9pt; color: ${THEME.muted}; border-top: 1px solid ${THEME.border}; padding-top: 6mm; }
     .cover .meta .label { display: block; text-transform: uppercase; letter-spacing: .15em; font-size: 7.5pt; color: ${THEME.muted}; margin-bottom: 2pt; }
-    .cover .meta .value { color: ${THEME.text}; font-size: 10.5pt; }
+    .cover .meta .value { color: ${THEME.text}; font-size: 10.5pt; font-family: 'Cormorant Garamond', serif; font-style: italic; }
 
     /* ── Snapshot KPI grid ── */
     .snapshot {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8pt;
-      margin: 8pt 0 14pt;
+      gap: 9pt;
+      margin: 10pt 0 16pt;
     }
     .kpi {
-      background: #FFFDF8;
-      border: 1px solid ${THEME.rule};
-      border-left: 2.5pt solid ${THEME.gold};
-      padding: 9pt 11pt;
+      background: linear-gradient(180deg, #FFFDF8 0%, #FBF6EA 100%);
+      border: 0.5pt solid ${THEME.rule};
+      border-top: 2pt solid ${THEME.gold};
+      padding: 12pt 13pt 13pt;
       page-break-inside: avoid;
+      position: relative;
     }
-    .kpi-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .1em; color: ${THEME.inkMuted}; margin-bottom: 3pt; }
-    .kpi-value { font-family: 'Fraunces', serif; font-size: 14pt; color: ${THEME.ink}; }
+    .kpi-label { font-family: 'Inter', sans-serif; font-size: 7pt; text-transform: uppercase; letter-spacing: .14em; color: ${THEME.inkMuted}; margin-bottom: 6pt; font-weight: 600; }
+    .kpi-value { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 19pt; color: ${THEME.ink}; line-height: 1; }
 
     .score-card {
-      background: #FFFDF8;
-      border: 1px solid ${THEME.rule};
-      padding: 14pt 16pt;
-      margin: 8pt 0 14pt;
-      display: flex; align-items: center; gap: 16pt;
+      background: linear-gradient(135deg, #FFFDF8 0%, #F4ECD8 100%);
+      border: 0.5pt solid ${THEME.rule};
+      padding: 18pt 20pt;
+      margin: 12pt 0 18pt;
+      display: flex; align-items: center; gap: 20pt;
       page-break-inside: avoid;
     }
     .score-card .ring {
-      width: 70pt; height: 70pt; border-radius: 50%;
+      width: 86pt; height: 86pt; border-radius: 50%;
       background: conic-gradient(${THEME.gold} 0%, ${THEME.gold} var(--p, 0%), ${THEME.paperAlt} var(--p, 0%));
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Fraunces', serif; font-size: 22pt; color: ${THEME.ink};
-      position: relative;
+      font-family: 'Playfair Display', serif; font-weight: 800; font-size: 26pt; color: ${THEME.ink};
+      position: relative; flex-shrink: 0;
     }
-    .score-card .ring::after {
-      content: ""; position: absolute; inset: 6pt; border-radius: 50%; background: #FFFDF8;
-    }
+    .score-card .ring::after { content: ""; position: absolute; inset: 7pt; border-radius: 50%; background: #FFFDF8; }
     .score-card .ring span { position: relative; z-index: 1; }
     .score-card .meta { flex: 1; }
-    .score-card .band { color: ${THEME.gold}; text-transform: uppercase; letter-spacing: .15em; font-size: 9pt; }
-
-    /* ── Section divider page ── */
-    .divider {
-      page: divider;
-      page-break-before: always;
-      page-break-after: always;
-      width: 210mm; height: 297mm;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1408 100%);
-      display: flex; flex-direction: column; justify-content: center;
-      padding: 0 30mm;
-    }
-    .divider .num { color: ${THEME.gold}; font-family: 'Fraunces', serif; font-size: 64pt; line-height: 1; }
-    .divider .ttl { font-family: 'Fraunces', serif; font-size: 28pt; color: ${THEME.text}; margin-top: 8mm; }
-    .divider .ln { width: 60mm; height: 1.5pt; background: ${THEME.gold}; margin-top: 12mm; }
+    .score-card .band { color: ${THEME.goldSoft}; text-transform: uppercase; letter-spacing: .18em; font-size: 8.5pt; font-weight: 700; font-family: 'Inter', sans-serif; }
+    .score-card h3 { border: none; padding: 0; font-size: 16pt; margin: 4pt 0 4pt; }
 
     .body-page { page-break-before: auto; }
-    .body-page + .body-page { margin-top: 12pt; }
 
     .disclaimer {
-      margin-top: 24pt;
-      padding: 12pt 14pt;
-      border: 1px solid ${THEME.rule};
+      margin-top: 28pt;
+      padding: 14pt 16pt;
+      border: 0.5pt solid ${THEME.rule};
       background: ${THEME.paperAlt};
       font-size: 8pt;
       color: ${THEME.inkMuted};
