@@ -305,7 +305,7 @@ function ReportGenerationProgressInner() {
       listMode: true,
       listOptions: {
         select:
-          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier',
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier, generation_engine, total_sections',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
@@ -365,8 +365,15 @@ function ReportGenerationProgressInner() {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       const dbSection = report.last_completed_section || 0;
-      // Tier-aware total: Compass-40 ≈ 21 sections, Financial-Analysis ≈ 11 sections.
-      const total = sectionCountForTier(report.report_tier);
+      // Engine-aware total: prefer the actual chunk count persisted by the
+      // edge function (`total_sections`), so legacy and Compass-40 reports
+      // show the correct chunk count instead of always defaulting to 17.
+      const engine: 'legacy' | 'compass-40' | null =
+        report.generation_engine === 'compass-40' ? 'compass-40'
+        : report.generation_engine === 'legacy' ? 'legacy'
+        : null;
+      const persistedTotal = Number(report.total_sections) || 0;
+      const total = persistedTotal > 0 ? persistedTotal : sectionCountForTier(report.report_tier);
       return {
         id: report.id,
         property_address: report.property_address,
@@ -379,6 +386,7 @@ function ReportGenerationProgressInner() {
         lastCompletedSection: dbSection,
         createdAt: new Date(report.created_at),
         bulkJobId: report.bulk_job_id ?? null,
+        generationEngine: engine,
       };
     });
 
