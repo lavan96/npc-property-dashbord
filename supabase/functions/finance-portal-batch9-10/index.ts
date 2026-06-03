@@ -326,7 +326,96 @@ Deno.serve(async (req) => {
       return json({ message: data });
     }
 
+    /* ──────── Batch 13 #69 — Global search across notes/messages/docs ──────── */
+    if (operation === 'global_search') {
+      const raw = String(body.query || '').trim();
+      if (raw.length < 2) return json({ results: { notes: [], messages: [], docs: [] } });
+      const q = raw.replace(/[%_]/g, ''); // strip ILIKE wildcards
+      const like = `%${q}%`;
+
+      // Scope to PFs this partner can see.
+      const { data: pfRows } = await supabase
+        .from('purchase_files')
+        .select('id, title, assigned_finance_user_id')
+        .eq('assigned_finance_user_id', portalUser.id)
+        .limit(500);
+      const pfIds = (pfRows || []).map(r => r.id);
+      const pfMap = new Map((pfRows || []).map(r => [r.id, r.title]));
+
+      const [notesRes, pfNotesRes, outRes, portalMsgRes, docsRes] = await Promise.all([
+        pfIds.length
+          ? supabase
+              .from('purchase_file_entity_comments')
+              .select('id, body, purchase_file_id, created_at')
+              .in('purchase_file_id', pfIds)
+              .ilike('body', like)
+              .order('created_at', { ascending: false })
+              .limit(8)
+          : Promise.resolve({ data: [] }),
+        pfIds.length
+          ? supabase
+              .from('purchase_files')
+              .select('id, title, notes')
+              .in('id', pfIds)
+              .ilike('notes', like)
+              .limit(8)
+          : Promise.resolve({ data: [] }),
+        supabase
+          .from('finance_outbound_messages')
+          .select('id, channel, body, client_id, sent_at')
+          .eq('finance_user_id', portalUser.id)
+          .ilike('body', like)
+          .order('sent_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('finance_portal_messages')
+          .select('id, body, client_id, created_at')
+          .eq('finance_user_id', portalUser.id)
+          .ilike('body', like)
+          .order('created_at', { ascending: false })
+          .limit(8),
+        pfIds.length
+          ? supabase
+              .from('document_requirement_instances')
+              .select('id, label, purchase_file_id, file_name')
+              .in('purchase_file_id', pfIds)
+              .or(`label.ilike.${like},file_name.ilike.${like}`)
+              .limit(10)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const notes = [
+        ...((notesRes.data as any[]) || []).map(n => ({
+          id: n.id, body: n.body, purchase_file_id: n.purchase_file_id,
+          pf_title: pfMap.get(n.purchase_file_id) || null, kind: 'comment',
+        })),
+        ...((pfNotesRes.data as any[]) || []).map(p => ({
+          id: `pf-${p.id}`, body: p.notes, purchase_file_id: p.id,
+          pf_title: p.title, kind: 'pf_note',
+        })),
+      ].slice(0, 10);
+
+      const messages = [
+        ...((outRes.data as any[]) || []).map(m => ({
+          id: m.id, channel: m.channel, snippet: m.body, client_id: m.client_id,
+        })),
+        ...((portalMsgRes.data as any[]) || []).map(m => ({
+          id: m.id, channel: 'portal', snippet: m.body, client_id: m.client_id,
+        })),
+      ].slice(0, 12);
+
+      const docs = ((docsRes.data as any[]) || []).map(d => ({
+        id: d.id, label: d.label || d.file_name || 'Document',
+        purchase_file_id: d.purchase_file_id,
+        pf_title: pfMap.get(d.purchase_file_id) || null,
+      }));
+
+      return json({ results: { notes, messages, docs } });
+    }
+
     return json({ error: `Unknown operation: ${operation}` }, 400);
+
+
   } catch (e) {
     console.error('[finance-portal-batch9-10]', e);
     return json({ error: (e as Error).message || 'Internal error' }, 500);
