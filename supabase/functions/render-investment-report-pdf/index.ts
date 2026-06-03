@@ -28,6 +28,15 @@ const THEME = {
   ink: "#17130D",
   inkMuted: "#5F5546",
   rule: "#D8CBB6",
+  // Rating pill palette
+  good: "#3F8A4F",
+  goodBg: "#E2EFD9",
+  warn: "#B07A1F",
+  warnBg: "#F5E6C6",
+  risk: "#A23A28",
+  riskBg: "#F1D6CF",
+  neutralBg: "#E6E0D2",
+  neutralInk: "#4A4030",
 };
 
 function fmtMoney(v: unknown): string {
@@ -51,40 +60,126 @@ function esc(s: unknown): string {
     .replace(/>/g, "&gt;");
 }
 
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Aggressively strip leftover branding boilerplate and duplicated report titles
+ * that the AI generator tends to bake into the markdown. Runs anywhere in the
+ * document, not just at the top.
+ */
 function cleanReportMarkdown(markdown: string, address: string): string {
   const addressPattern = escapeRegExp(address).replace(/\s+/g, "\\s+");
-  return markdown
-    .replace(/^\s*NAIDU PROPERTY CONSULTING\s*\n\s*SERVICES\s*\n\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/i, "")
-    .replace(/^\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/i, "")
-    .replace(new RegExp(`^\\s*#?\\s*Investment Report:\\s*${addressPattern}\\s*\\n+`, "i"), "")
-    .replace(/^\s*#\s+/gm, "## ")
-    .trim();
+  let out = markdown;
+
+  // Remove company-branding blocks wherever they appear.
+  out = out.replace(
+    /^\s*#{0,3}\s*NAIDU PROPERTY CONSULTING(\s+SERVICES)?\s*\n+/gim,
+    "",
+  );
+  out = out.replace(/^\s*#{0,3}\s*YOUR DEDICATED PROPERTY PARTNER\s*\n+/gim, "");
+  // Duplicate "Investment Report: <address>" titles inside the body.
+  out = out.replace(
+    new RegExp(`^\\s*#{0,3}\\s*Investment Report:\\s*${addressPattern}\\s*\\n+`, "gim"),
+    "",
+  );
+
+  // Strip raw citation placeholders the model leaves behind.
+  out = out.replace(/\[\s*citation\s*\]/gi, "");
+  out = out.replace(/\[\s*sources?\s*\]/gi, "");
+  out = out.replace(/\[\s*ref(?:erence)?\s*\]/gi, "");
+
+  // Normalise everything to h2 so chapter numbering is consistent.
+  out = out.replace(/^\s*#\s+/gm, "## ");
+
+  // Collapse 3+ blank lines down to 2.
+  out = out.replace(/\n{3,}/g, "\n\n");
+
+  return out.trim();
+}
+
+const INSIGHT_LABEL_RE =
+  /^(what\s+this\s+means|why\s+it\s+matters|why\s+it'?s\s+important|takeaway|takeaways|key\s+takeaway|the\s+takeaway|watch|what\s+to\s+watch|things?\s+to\s+watch|bottom\s+line|so\s+what|implication|implications|key\s+insight|insight|in\s+plain\s+english|npc\s+view|our\s+view|the\s+bottom\s+line)$/i;
+
+/**
+ * Wrap narrative subsections into a styled callout box. Supports both:
+ *   1. h3/h4 heading form  →  ### What This Means
+ *   2. Inline bold-prefix form  →  **What This Means:** body…
+ */
+function wrapInsightSections(html: string): string {
+  // Form 1: h3 / h4 heading captures content until next h1–h4
+  let out = html.replace(
+    /<h([34])[^>]*>([\s\S]*?)<\/h\1>([\s\S]*?)(?=<h[1-4][\s>]|<section|$)/gi,
+    (match, _lvl, rawTitle, content) => {
+      const title = String(rawTitle).replace(/<[^>]+>/g, "").trim().replace(/[:\-—]\s*$/, "");
+      if (!INSIGHT_LABEL_RE.test(title)) return match;
+      return `<div class="insight-box"><div class="insight-label">${esc(title)}</div>${content}</div>`;
+    },
+  );
+
+  // Form 2: <p><strong>Label:</strong> rest…</p> [+ following <p> siblings until next heading/table/list]
+  out = out.replace(
+    /<p>\s*<(?:strong|b)>([^<]+?)[:：]\s*<\/(?:strong|b)>\s*([\s\S]*?)<\/p>((?:\s*<p>[\s\S]*?<\/p>)*?)(?=\s*(?:<h[1-4][\s>]|<table|<ul|<ol|<hr|<div\s+class="insight-box"|<section|$))/gi,
+    (match, rawLabel, firstRest, restPs) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div><p>${firstRest}</p>${restPs || ""}</div>`;
+    },
+  );
+
+  return out;
 }
 
 /**
- * Wrap narrative subsections (e.g. "What This Means", "Why It Matters",
- * "Takeaway", "Watch", "Key Insight", "Bottom Line", "So What", "Implication(s)",
- * "Why It's Important", "What To Watch") and their following content into a
- * styled insight box, until the next heading.
+ * Colour-code rating-style cells (Strong / Moderate / High / Low / etc.) by
+ * wrapping their text in a tinted pill.
  */
-function wrapInsightSections(html: string): string {
-  const labelPattern =
-    /^(what\s+this\s+means|why\s+it\s+matters|why\s+it'?s\s+important|takeaway|takeaways|key\s+takeaway|the\s+takeaway|watch|what\s+to\s+watch|things?\s+to\s+watch|bottom\s+line|so\s+what|implication|implications|key\s+insight|insight|in\s+plain\s+english|npc\s+view|our\s+view)\s*[:\-—]?\s*$/i;
+const RATING_MAP: Array<{ test: RegExp; cls: string }> = [
+  { test: /^(strong|very\s+strong|excellent|high\s+confidence|low\s+risk|low|stable|positive|good|established|mature)$/i, cls: "pill-good" },
+  { test: /^(moderate(?:[\u2013\u2014-]\s*strong)?|medium|developing|early\s+to\s+developing|catching\s+up|emerging|fair|mixed|within\s+your\s+control)$/i, cls: "pill-warn" },
+  { test: /^(weak|low\s+demand|high(?:\s+risk)?|very\s+high|elevated|cautious|poor|undersupplied|oversupplied|medium[\u2013\u2014-]high|high[\u2013\u2014-]very\s+high)$/i, cls: "pill-risk" },
+];
 
-  // Match an h3 or h4 heading and capture its text + everything until the next h1-h4 or end.
-  return html.replace(
-    /<h([34])[^>]*>([\s\S]*?)<\/h\1>([\s\S]*?)(?=<h[1-4][\s>]|$)/gi,
-    (match, _level, rawTitle, content) => {
-      const title = String(rawTitle).replace(/<[^>]+>/g, "").trim();
-      if (!labelPattern.test(title)) return match;
-      const cleanTitle = title.replace(/[:\-—]\s*$/, "").trim();
-      return `<div class="insight-box"><div class="insight-label">${esc(cleanTitle)}</div>${content}</div>`;
-    },
-  );
+function colourCodeTableCells(html: string): string {
+  return html.replace(/<td([^>]*)>([\s\S]*?)<\/td>/gi, (match, attrs, inner) => {
+    const plain = String(inner).replace(/<[^>]+>/g, "").trim();
+    if (!plain || plain.length > 28) return match;
+    for (const rule of RATING_MAP) {
+      if (rule.test.test(plain)) {
+        return `<td${attrs}><span class="pill ${rule.cls}">${esc(plain)}</span></td>`;
+      }
+    }
+    return match;
+  });
+}
+
+/** Strip trailing "[1]" / "[12]" citation markers that leak into prose. */
+function stripBareCitations(html: string): string {
+  return html.replace(/\[\s*\d{1,3}\s*\](?=[\s.,;:!?)]|<)/g, "");
+}
+
+/**
+ * Tag each top-level h2 with an id + record TOC entries so we can render a TOC
+ * page and use CSS `target-counter()` for page numbers.
+ */
+function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array<{ id: string; title: string }> } {
+  const toc: Array<{ id: string; title: string }> = [];
+  const used = new Set<string>();
+  const annotated = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attrs, inner) => {
+    const text = String(inner).replace(/<[^>]+>/g, "").trim();
+    let id = `ch-${slugify(text) || `${toc.length + 1}`}`;
+    let n = 1;
+    while (used.has(id)) id = `ch-${slugify(text) || "section"}-${++n}`;
+    used.add(id);
+    toc.push({ id, title: text });
+    return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+  });
+  return { html: annotated, toc };
 }
 
 export function buildHtml(report: any, brandName: string): string {
@@ -99,9 +194,14 @@ export function buildHtml(report: any, brandName: string): string {
   const score = report.investment_score || {};
   const loc = report.location_intelligence || {};
 
-  // Render markdown body. Strip front-matter style code fences if any.
+  // Render + post-process markdown body.
   const md = cleanReportMarkdown(String(report.report_content || ""), address);
-  const bodyHtml = wrapInsightSections(marked.parse(md, { gfm: true, breaks: false }) as string);
+  let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
+  bodyHtml = stripBareCitations(bodyHtml);
+  bodyHtml = wrapInsightSections(bodyHtml);
+  bodyHtml = colourCodeTableCells(bodyHtml);
+  const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
+
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
@@ -128,22 +228,33 @@ export function buildHtml(report: any, brandName: string): string {
     )
     .join("");
 
+  // Parse address tail for cover meta (Suburb, STATE Postcode).
+  const addrTail = address.split(",").map((s: string) => s.trim()).filter(Boolean);
+  const coverLocation = loc?.suburb && loc?.state
+    ? `${loc.suburb}, ${loc.state}`
+    : addrTail.length >= 2
+      ? addrTail.slice(-2).join(", ")
+      : address;
+
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
     @page {
       size: A4;
-      margin: 18mm 17mm 20mm 17mm;
+      margin: 20mm 17mm 20mm 17mm;
       background: ${THEME.paper};
-      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .12em; text-transform: uppercase; }
-      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @top-left { content: string(chapter); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
       @top-right { content: "${esc(address)}"; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 8.5pt; color: ${THEME.inkMuted}; }
+      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
+      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
     }
     @page cover {
       margin: 0;
       background: ${THEME.bg};
-      @top-right { content: none; }
-      @bottom-left { content: none; }
-      @bottom-right { content: none; }
+      @top-left { content: none; } @top-right { content: none; }
+      @bottom-left { content: none; } @bottom-right { content: none; }
+    }
+    @page toc {
+      @top-left { content: "Contents"; }
     }
 
     * { box-sizing: border-box; }
@@ -158,29 +269,26 @@ export function buildHtml(report: any, brandName: string): string {
       print-color-adjust: exact;
     }
 
-    /* Auto-number sections */
     body { counter-reset: section; }
 
     h1, h2, h3, h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.ink}; margin: 0 0 .45em; page-break-after: avoid; }
     h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
     h2 {
       counter-increment: section;
+      string-set: chapter content();
       font-size: 22pt; font-weight: 700; letter-spacing: -0.005em;
       margin-top: 22pt;
       padding-bottom: 8pt;
       border-bottom: 0.5pt solid ${THEME.rule};
-      position: relative;
       display: flex; align-items: baseline; gap: 10pt;
+      page-break-before: auto;
     }
     h2::before {
       content: counter(section, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
-      font-weight: 500;
-      font-style: italic;
-      font-size: 14pt;
-      color: ${THEME.goldSoft};
-      letter-spacing: .04em;
-      flex-shrink: 0;
+      font-weight: 500; font-style: italic;
+      font-size: 14pt; color: ${THEME.goldSoft};
+      letter-spacing: .04em; flex-shrink: 0;
     }
     h3 {
       font-size: 14pt; font-weight: 600; margin-top: 16pt;
@@ -199,16 +307,12 @@ export function buildHtml(report: any, brandName: string): string {
     strong { color: ${THEME.ink}; font-weight: 700; }
     em { color: ${THEME.inkMuted}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
-    /* Lead paragraph — first <p> after h2: standard body styling, no drop cap */
     h2 + p {
       font-family: 'Inter', 'Helvetica', sans-serif;
-      font-size: 9.8pt;
-      line-height: 1.58;
-      color: ${THEME.ink};
-      margin-bottom: .72em;
+      font-size: 9.8pt; line-height: 1.58;
+      color: ${THEME.ink}; margin-bottom: .72em;
     }
 
-    /* Callout box for narrative sections like "What This Means", "Why It Matters", "Takeaway", "Watch", etc. */
     .insight-box {
       margin: 14pt 0;
       padding: 12pt 16pt 10pt;
@@ -231,17 +335,18 @@ export function buildHtml(report: any, brandName: string): string {
       width: 14pt; height: 1pt; background: ${THEME.gold};
     }
     .insight-box p:last-child { margin-bottom: 0; }
+    .insight-box p { font-size: 9.5pt; }
 
     ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
     li {
       position: relative;
-      padding: 4pt 0 4pt 18pt;
-      margin-bottom: 2pt;
+      padding: 3pt 0 3pt 18pt;
+      margin-bottom: 1pt;
       border-bottom: 0.25pt dotted ${THEME.rule};
     }
     ul li::before {
       content: "";
-      position: absolute; left: 0; top: 11pt;
+      position: absolute; left: 0; top: 10pt;
       width: 5pt; height: 5pt;
       background: ${THEME.gold};
       transform: rotate(45deg);
@@ -250,7 +355,7 @@ export function buildHtml(report: any, brandName: string): string {
     ol li { counter-increment: ol; }
     ol li::before {
       content: counter(ol, decimal-leading-zero);
-      position: absolute; left: 0; top: 4pt;
+      position: absolute; left: 0; top: 3pt;
       font-family: 'Playfair Display', serif;
       font-weight: 700; font-size: 9pt;
       color: ${THEME.goldSoft};
@@ -263,68 +368,68 @@ export function buildHtml(report: any, brandName: string): string {
       border-left: 3pt solid ${THEME.gold};
       color: ${THEME.ink};
       font-family: 'Cormorant Garamond', serif;
-      font-size: 13.5pt;
-      font-style: italic;
-      line-height: 1.45;
-      position: relative;
+      font-size: 13.5pt; font-style: italic;
+      line-height: 1.45; position: relative;
       page-break-inside: avoid;
     }
     blockquote::before {
-      content: "“";
+      content: "\\201C";
       font-family: 'Playfair Display', serif;
-      font-style: normal;
-      font-weight: 800;
-      font-size: 48pt;
-      line-height: 1;
+      font-style: normal; font-weight: 800;
+      font-size: 48pt; line-height: 1;
       color: ${THEME.gold};
-      position: absolute;
-      left: 10pt; top: 6pt;
+      position: absolute; left: 10pt; top: 6pt;
     }
 
-    code {
-      background: ${THEME.paperAlt};
-      padding: 1pt 4pt;
-      border-radius: 2pt;
-      font-size: 8.5pt;
-      color: ${THEME.goldSoft};
-    }
+    code { background: ${THEME.paperAlt}; padding: 1pt 4pt; border-radius: 2pt; font-size: 8.5pt; color: ${THEME.goldSoft}; }
 
     table {
       width: 100%; border-collapse: collapse; margin: 10pt 0 14pt;
-      font-size: 8.5pt;
-      background: #FFFDF8;
+      font-size: 8.5pt; background: #FFFDF8;
       page-break-inside: auto;
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
     tr:nth-child(even) td { background: ${THEME.paperAlt}; }
     th, td {
       border-bottom: 0.5pt solid ${THEME.rule};
-      padding: 7pt 8pt;
-      text-align: left;
-      vertical-align: top;
+      padding: 5.5pt 7pt;
+      text-align: left; vertical-align: top;
     }
     th {
-      background: ${THEME.ink};
-      color: ${THEME.gold};
+      background: ${THEME.ink}; color: ${THEME.gold};
       font-family: 'Inter', sans-serif;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: 7pt;
-      border-bottom: none;
+      text-transform: uppercase; letter-spacing: .08em;
+      font-size: 7pt; border-bottom: none;
     }
     td { color: ${THEME.ink}; overflow-wrap: anywhere; }
     td:first-child { font-weight: 600; }
     hr { border: 0; border-top: 0.5pt solid ${THEME.rule}; margin: 18pt 0; }
 
-    /* ── Cover (kept as previously approved) ── */
+    /* Rating pills */
+    .pill {
+      display: inline-block;
+      padding: 2pt 7pt;
+      border-radius: 999pt;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600; font-size: 7.5pt;
+      letter-spacing: .04em;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .pill-good { background: ${THEME.goodBg}; color: ${THEME.good}; }
+    .pill-warn { background: ${THEME.warnBg}; color: ${THEME.warn}; }
+    .pill-risk { background: ${THEME.riskBg}; color: ${THEME.risk}; }
+    .pill-neutral { background: ${THEME.neutralBg}; color: ${THEME.neutralInk}; }
+
+    /* ── Cover ── */
     .cover {
       page: cover;
       page-break-after: always;
       width: 210mm; height: 297mm;
       background:
-        radial-gradient(ellipse at top right, rgba(212,168,67,0.18) 0%, transparent 55%),
-        radial-gradient(ellipse at bottom left, rgba(212,168,67,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at top right, rgba(212,168,67,0.20) 0%, transparent 55%),
+        radial-gradient(ellipse at bottom left, rgba(212,168,67,0.10) 0%, transparent 60%),
         linear-gradient(180deg, #0a0a0a 0%, #141414 100%);
       color: ${THEME.text};
       padding: 28mm 22mm;
@@ -338,6 +443,35 @@ export function buildHtml(report: any, brandName: string): string {
     .cover .meta { position: absolute; left: 22mm; bottom: 22mm; right: 22mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9pt; color: ${THEME.muted}; border-top: 1px solid ${THEME.border}; padding-top: 6mm; }
     .cover .meta .label { display: block; text-transform: uppercase; letter-spacing: .15em; font-size: 7.5pt; color: ${THEME.muted}; margin-bottom: 2pt; }
     .cover .meta .value { color: ${THEME.text}; font-size: 10.5pt; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+
+    /* ── Table of Contents ── */
+    .toc { page: toc; page-break-after: always; padding-top: 6mm; }
+    .toc .toc-eyebrow { font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.goldSoft}; letter-spacing: .25em; text-transform: uppercase; margin-bottom: 4mm; }
+    .toc h1 { font-family: 'Playfair Display', serif; font-size: 38pt; font-weight: 800; margin: 0 0 12mm; letter-spacing: -0.01em; }
+    .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
+    .toc ol li {
+      counter-increment: tocnum;
+      display: flex; align-items: baseline; gap: 8pt;
+      padding: 7pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
+      font-family: 'Inter', sans-serif; font-size: 10.5pt;
+      color: ${THEME.ink};
+    }
+    .toc ol li::before {
+      content: counter(tocnum, decimal-leading-zero);
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 500;
+      color: ${THEME.goldSoft}; font-size: 11pt;
+      width: 28pt; flex-shrink: 0;
+    }
+    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 13pt; }
+    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 6pt 3pt; height: 0; align-self: flex-end; }
+    .toc ol li .page {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; color: ${THEME.ink}; font-size: 11pt;
+      width: 22pt; text-align: right;
+    }
+    .toc ol li a { color: ${THEME.ink}; text-decoration: none; display: contents; }
+    .toc ol li a .page::after { content: target-counter(attr(href), page); }
 
     /* ── Snapshot KPI grid ── */
     .snapshot {
@@ -403,8 +537,15 @@ export function buildHtml(report: any, brandName: string): string {
        </div>`
     : "";
 
-  const suburb = loc?.suburb || loc?.locality || "";
-  const state = loc?.state || "";
+  const tocHtml = toc.length > 0
+    ? `<section class="toc">
+         <div class="toc-eyebrow">${esc(brandName)} · Investment Report</div>
+         <h1>Contents</h1>
+         <ol>
+           ${toc.map((t) => `<li><a href="#${t.id}"><span class="title">${esc(t.title)}</span><span class="dots"></span><span class="page"></span></a></li>`).join("")}
+         </ol>
+       </section>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en-AU">
@@ -429,7 +570,7 @@ export function buildHtml(report: any, brandName: string): string {
     </div>
     <div>
       <span class="label">Location</span>
-      <span class="value">${esc([suburb, state].filter(Boolean).join(", ") || "—")}</span>
+      <span class="value">${esc(coverLocation)}</span>
     </div>
     <div style="text-align:right">
       <span class="label">Report Type</span>
@@ -438,16 +579,18 @@ export function buildHtml(report: any, brandName: string): string {
   </div>
 </section>
 
+${tocHtml}
+
 <!-- ── Snapshot ── -->
 <section class="body-page">
-  <h2>Snapshot</h2>
+  <h2 id="ch-snapshot">Snapshot</h2>
   ${kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : ""}
   ${scoreCard}
 </section>
 
 <!-- ── Body (markdown) ── -->
 <section class="body-page">
-  ${bodyHtml}
+  ${bodyAnnotated}
 </section>
 
 ${
@@ -468,8 +611,6 @@ ${
 }
 
 async function callApi2Pdf(html: string, fileName: string): Promise<string> {
-  // Api2PDF Headless Chrome HTML→PDF. Api2PDF has both documented v2 shapes
-  // in circulation; try the current docs path first, then the compatibility path.
   const payload = {
       html,
       fileName,
@@ -524,7 +665,6 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     const fileUrl = json?.FileUrl || json?.fileUrl || json?.pdf;
     if (res.ok && success && fileUrl) return fileUrl as string;
 
-    // 404 may mean this project/account is on the other Api2PDF route shape.
     if (res.status !== 404) break;
   }
 
@@ -569,7 +709,6 @@ if (import.meta.main) Deno.serve(async (req) => {
       });
     }
 
-    // Best-effort brand name from global report settings; fall back gracefully.
     let brandName = "Investment Report";
     try {
       const { data: settings } = await supabase
