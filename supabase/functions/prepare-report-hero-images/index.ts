@@ -44,6 +44,8 @@ function cleanReportMarkdown(markdown: string, address: string): string {
   return out.trim();
 }
 
+const MAX_HERO_IMAGES = 15;
+
 function extractChapterTitles(markdown: string, address: string): string[] {
   const cleaned = cleanReportMarkdown(String(markdown || ""), address);
   const titles: string[] = [];
@@ -53,10 +55,14 @@ function extractChapterTitles(markdown: string, address: string): string[] {
   while ((m = re.exec(cleaned))) {
     const title = m[1].replace(/[*_`#]/g, "").trim();
     if (!title) continue;
+    // Skip trivial / non-chapter headings
+    if (title.length < 4) continue;
+    if (/^(sources?|references?|appendix|disclaimer|notes?|glossary)\b/i.test(title)) continue;
     const key = slugify(title);
     if (!key || seen.has(key)) continue;
     seen.add(key);
     titles.push(title);
+    if (titles.length >= MAX_HERO_IMAGES) break;
   }
   return titles;
 }
@@ -68,7 +74,7 @@ async function hashPrompt(s: string): Promise<string> {
 }
 
 function buildPrompt(chapterTitle: string): string {
-  return `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide 16:5 panoramic landscape, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
+  return `Editorial magazine-style hero banner image for a premium Australian property investment report chapter titled "${chapterTitle}". Cinematic, sophisticated, navy-blue and deep midnight palette with subtle gold metallic accents. Architectural / abstract / atmospheric composition (no people, no text, no logos, no charts). Wide landscape orientation, soft depth-of-field, refined editorial finish suitable for a luxury financial publication. Print-ready, high contrast, no watermark.`;
 }
 
 async function generateOne(chapterTitle: string): Promise<{ bytes: Uint8Array }> {
