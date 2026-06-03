@@ -304,6 +304,12 @@ export default function FinancePortalPurchaseFileDetail() {
         </TabsContent>
         <TabsContent value="inbox"><ClientCommsInboxTab clientId={data.client_id} purchaseFileId={fileId!} /></TabsContent>
         <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
+        <TabsContent value="onboarding">
+          <div className="grid gap-4 md:grid-cols-2">
+            <ApplicantsCard fileId={fileId!} />
+            <OnboardingChecklistCard fileId={fileId!} />
+          </div>
+        </TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
