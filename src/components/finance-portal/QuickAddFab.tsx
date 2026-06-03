@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Plus, Briefcase, AlarmClock, FileText, Users, MessageSquare, X } from 'lucide-react';
+import { Plus, Briefcase, AlarmClock, FileText, Users, MessageSquare, X, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SmartSnoozeDialog } from './SmartSnoozeDialog';
+import { VoiceMemoDialog } from './VoiceMemoDialog';
 
 const ACTIONS = [
   { key: 'pf', label: 'New Purchase File', icon: Briefcase, path: '/finance/purchase-files?new=1' },
@@ -17,6 +18,8 @@ export function QuickAddFab() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
 
   return (
     <>
