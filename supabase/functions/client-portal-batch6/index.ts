@@ -39,6 +39,16 @@ Deno.serve(async (req) => {
     if (!portalUser || portalUser.status !== 'active') return json({ error: 'Invalid session' }, 401);
     const clientId = portalUser.client_id;
 
+    if (operation === 'assigned_partner') {
+      const { data: assigns } = await supabase.from('finance_portal_client_assignments')
+        .select('finance_user_id, created_at').eq('client_id', clientId).order('created_at', { ascending: false }).limit(1);
+      const fid = assigns?.[0]?.finance_user_id;
+      if (!fid) return json({ partner: null });
+      const { data: u } = await supabase.from('finance_portal_users')
+        .select('id, full_name, email').eq('id', fid).maybeSingle();
+      return json({ partner: u || null });
+    }
+
     if (operation === 'onboarding_list') {
       // active purchase files for this client
       const { data: pfs } = await supabase.from('purchase_files')
