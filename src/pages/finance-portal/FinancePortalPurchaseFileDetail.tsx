@@ -244,6 +244,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
           <TabsTrigger value="runway"><Ship className="h-4 w-4 mr-2" />Settlement Runway</TabsTrigger>
           <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
+          <TabsTrigger value="inbox"><Inbox className="h-4 w-4 mr-2" />Unified Inbox</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
