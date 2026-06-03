@@ -135,13 +135,17 @@ function wrapInsightSections(html: string): string {
     },
   );
 
-  // Form 2: <p><strong>Label:</strong> rest…</p> [+ following <p> siblings until next heading/table/list]
+  // Form 2: <p><strong>Label[:]</strong>[:] rest…</p> + ALL following block siblings
+  // (paragraphs, lists, blockquotes, tables) until the next heading, hr,
+  // another insight-box, section boundary, or another bold-prefix insight label.
   out = out.replace(
-    /<p>\s*<(?:strong|b)>([^<]+?)[:：]\s*<\/(?:strong|b)>\s*([\s\S]*?)<\/p>((?:\s*<p>[\s\S]*?<\/p>)*?)(?=\s*(?:<h[1-4][\s>]|<table|<ul|<ol|<hr|<div\s+class="insight-box"|<section|$))/gi,
-    (match, rawLabel, firstRest, restPs) => {
+    /<p>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*([\s\S]*?)<\/p>((?:\s*(?:<p>(?!\s*<(?:strong|b)>[^<]+[:：]?\s*<\/(?:strong|b)>)[\s\S]*?<\/p>|<ul>[\s\S]*?<\/ul>|<ol>[\s\S]*?<\/ol>|<blockquote>[\s\S]*?<\/blockquote>))*)(?=\s*(?:<h[1-4][\s>]|<hr|<div\s+class="insight-box"|<section|$))/gi,
+    (match, rawLabel, firstRest, restBlocks) => {
       const label = String(rawLabel).trim();
       if (!INSIGHT_LABEL_RE.test(label)) return match;
-      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div><p>${firstRest}</p>${restPs || ""}</div>`;
+      const body = String(firstRest).trim();
+      const bodyHtml = body ? `<p>${body}</p>` : "";
+      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div>${bodyHtml}${restBlocks || ""}</div>`;
     },
   );
 
