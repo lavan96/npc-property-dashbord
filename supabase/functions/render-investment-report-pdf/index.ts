@@ -1477,10 +1477,9 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginBottom: 0,
         marginLeft: 0,
         marginRight: 0,
-        // All visuals are inline SVG now, so avoid network-idle waits that can
-        // hang on static HTML and trigger Supabase 504s.
-        delay: 0,
-        puppeteerWaitForMethod: "WaitForNavigation",
+        // Fonts (Google) + optional GPT-image hero images need a moment to settle.
+        delay: 2500,
+        puppeteerWaitForMethod: "WaitForNetworkIdle0",
         puppeteerWaitForValue: "load",
       },
 
