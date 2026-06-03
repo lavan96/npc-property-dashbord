@@ -26,6 +26,7 @@ import { ApplicantsCard } from '@/components/finance-portal/ApplicantsCard';
 import { OnboardingChecklistCard } from '@/components/finance-portal/OnboardingChecklistCard';
 import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
+import { CalculatorsTab } from '@/components/finance-portal/CalculatorsTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
 import { AiFileSummaryCard } from '@/components/finance-portal/AiFileSummaryCard';
