@@ -17,6 +17,8 @@ import { TodayPanel } from '@/components/finance-portal/TodayPanel';
 import { DocumentExpiryWatchlist } from '@/components/finance-portal/DocumentExpiryWatchlist';
 import { EngagementHeader } from '@/components/finance-portal/EngagementHeader';
 import { GoalsProgressCard } from '@/components/finance-portal/GoalsProgressCard';
+import { AiRiskSnifferWidget } from '@/components/finance-portal/AiRiskSnifferWidget';
+import { AiCoachWidget } from '@/components/finance-portal/AiCoachWidget';
 
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -215,6 +217,14 @@ export default function FinancePortalDashboard() {
             <DocumentExpiryWatchlist withinDays={30} />
           </div>
         </div>
+
+        {/* AI Copilot row: risk sniffer + coach */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AiRiskSnifferWidget />
+          <AiCoachWidget />
+        </div>
+
+
 
 
 
