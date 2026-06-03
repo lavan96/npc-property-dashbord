@@ -129,13 +129,19 @@ Deno.serve(async (req) => {
       const description = (body.description || '').toString().slice(0, 2000);
       if (!title) return json({ error: 'title required' }, 400);
       for (const f of accessible) {
-        const { error } = await supabase.from('purchase_file_document_instances').insert({
+        const { error } = await supabase.from('document_requirement_instances').insert({
           purchase_file_id: f.id,
-          title,
+          client_id: f.client_id,
+          label: title,
           description: description || null,
+          request_message: description || null,
           status: 'requested',
+          owner: 'client',
+          category: 'other',
+          is_required: true,
           requested_by_finance_user_id: portalUser.id,
           requested_at: new Date().toISOString(),
+          created_by_finance_user_id: portalUser.id,
         });
         results.push({ id: f.id, ok: !error, error: error?.message });
       }
