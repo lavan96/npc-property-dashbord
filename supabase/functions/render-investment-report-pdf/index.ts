@@ -65,6 +65,28 @@ function cleanReportMarkdown(markdown: string, address: string): string {
     .trim();
 }
 
+/**
+ * Wrap narrative subsections (e.g. "What This Means", "Why It Matters",
+ * "Takeaway", "Watch", "Key Insight", "Bottom Line", "So What", "Implication(s)",
+ * "Why It's Important", "What To Watch") and their following content into a
+ * styled insight box, until the next heading.
+ */
+function wrapInsightSections(html: string): string {
+  const labelPattern =
+    /^(what\s+this\s+means|why\s+it\s+matters|why\s+it'?s\s+important|takeaway|takeaways|key\s+takeaway|the\s+takeaway|watch|what\s+to\s+watch|things?\s+to\s+watch|bottom\s+line|so\s+what|implication|implications|key\s+insight|insight|in\s+plain\s+english|npc\s+view|our\s+view)\s*[:\-—]?\s*$/i;
+
+  // Match an h3 or h4 heading and capture its text + everything until the next h1-h4 or end.
+  return html.replace(
+    /<h([34])[^>]*>([\s\S]*?)<\/h\1>([\s\S]*?)(?=<h[1-4][\s>]|$)/gi,
+    (match, _level, rawTitle, content) => {
+      const title = String(rawTitle).replace(/<[^>]+>/g, "").trim();
+      if (!labelPattern.test(title)) return match;
+      const cleanTitle = title.replace(/[:\-—]\s*$/, "").trim();
+      return `<div class="insight-box"><div class="insight-label">${esc(cleanTitle)}</div>${content}</div>`;
+    },
+  );
+}
+
 export function buildHtml(report: any, brandName: string): string {
   const address = report.property_address || "Property";
   const generated = new Date(report.created_at || Date.now()).toLocaleDateString(
