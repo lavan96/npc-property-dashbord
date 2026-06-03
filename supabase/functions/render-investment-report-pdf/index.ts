@@ -1026,7 +1026,8 @@ export async function buildHtml(
       -webkit-text-fill-color: ${THEME.gold};
       color: ${THEME.gold};
       letter-spacing: .04em;
-      margin-right: 14pt;
+      margin-right: 28pt;
+      padding-right: 6pt;
     }
     h3 {
       font-size: 17pt; font-weight: 600; margin-top: 18pt;
