@@ -188,13 +188,64 @@ function withAlpha(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/** Build a QuickChart `/chart` URL from a Chart.js config. Uses POST-style short URL helper when long. */
-function chartUrl(config: Record<string, unknown>, width = 780, height = 360): string {
-  const c = encodeURIComponent(JSON.stringify(config));
-  return `https://quickchart.io/chart?w=${width}&h=${height}&devicePixelRatio=2&bkg=transparent&v=4&c=${c}`;
+const chartImageCache = new Map<string, string | null>();
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
 }
 
-function quickSparklineUrl(values: number[], color: string = THEME.gold): string {
+/**
+ * Render charts server-side and embed them as data URIs. This avoids Api2PDF's
+ * remote-image timing/CORS variability and keeps the PDF render deterministic.
+ */
+async function chartDataUri(config: Record<string, unknown>, width = 780, height = 360, purpose = "chart"): Promise<string | null> {
+  const payload = {
+    chart: config,
+    width,
+    height,
+    format: "png",
+    backgroundColor: "transparent",
+    version: "4",
+  };
+  const cacheKey = JSON.stringify(payload);
+  if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch("https://quickchart.io/chart?devicePixelRatio=2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const contentType = res.headers.get("content-type") || "";
+    const buffer = await res.arrayBuffer();
+    if (!res.ok || !contentType.includes("image/")) {
+      const preview = new TextDecoder().decode(buffer.slice(0, 240));
+      console.warn("[charts] QuickChart render failed", { purpose, status: res.status, contentType, preview });
+      chartImageCache.set(cacheKey, null);
+      return null;
+    }
+    const uri = `data:${contentType.split(";")[0] || "image/png"};base64,${arrayBufferToBase64(buffer)}`;
+    chartImageCache.set(cacheKey, uri);
+    return uri;
+  } catch (err) {
+    console.warn("[charts] QuickChart render error", { purpose, error: err instanceof Error ? err.message : String(err) });
+    chartImageCache.set(cacheKey, null);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function quickSparklineUrl(values: number[], color: string = THEME.gold): Promise<string | null> {
   const cfg = {
     type: "sparkline",
     data: {
@@ -210,8 +261,7 @@ function quickSparklineUrl(values: number[], color: string = THEME.gold): string
     },
     options: { plugins: { legend: { display: false } } },
   };
-  const c = encodeURIComponent(JSON.stringify(cfg));
-  return `https://quickchart.io/chart?w=260&h=60&bkg=transparent&devicePixelRatio=2&c=${c}`;
+  return chartDataUri(cfg, 260, 60, "sparkline");
 }
 
 function parseLooseNumber(raw: string): number | null {
