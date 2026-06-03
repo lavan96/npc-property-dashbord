@@ -143,6 +143,27 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
     } finally { setBusy(false); }
   };
 
+  const aiAutoTag = async () => {
+    setBusy(true);
+    try {
+      const toTag = (requirements || []).filter((r: any) => r.status === 'uploaded' || r.status === 'verified');
+      let tagged = 0;
+      for (const r of toTag) {
+        const { error } = await invokeFinanceFunction('finance-portal-ai-copilot', {
+          action: 'classify_document',
+          purchase_file_id: fileId,
+          document_instance_id: r.id,
+          filename: r.label || r.category || 'document',
+          ocr_text: null,
+        });
+        if (!error) tagged++;
+      }
+      toast.success(`AI tagged ${tagged} of ${toTag.length} items`);
+    } catch (e: any) {
+      toast.error(e.message || 'Auto-tag failed');
+    } finally { setBusy(false); }
+  };
+
   const analyzeOne = async (reqId: string) => {
     const { error } = await invokeFinanceFunction('finance-portal-document-requirements', {
       operation: 'analyze_quality', requirement_id: reqId,
@@ -319,6 +340,9 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={analyzeAll} disabled={busy} className="gap-1.5" title="Run quality checks on all linked documents">
                 <ScanLine className="h-4 w-4" /> Analyze quality
+              </Button>
+              <Button size="sm" variant="outline" onClick={aiAutoTag} disabled={busy} className="gap-1.5" title="AI auto-classify uploaded items">
+                <Sparkles className="h-4 w-4" /> AI auto-tag
               </Button>
               <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
                 <Package className="h-4 w-4" /> Lender packet

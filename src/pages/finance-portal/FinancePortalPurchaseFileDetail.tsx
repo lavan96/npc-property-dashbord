@@ -25,6 +25,9 @@ import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInbo
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
+import { AiFileSummaryCard } from '@/components/finance-portal/AiFileSummaryCard';
+import { AiLenderRecommenderCard } from '@/components/finance-portal/AiLenderRecommenderCard';
+import { AiLoanAppPrefillCard } from '@/components/finance-portal/AiLoanAppPrefillCard';
 import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
 import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
 import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnapshotCard';
@@ -251,6 +254,7 @@ export default function FinancePortalPurchaseFileDetail() {
 
         <TabsContent value="overview">
           <div className="space-y-4">
+            <AiFileSummaryCard purchaseFileId={fileId!} />
             <InternalDealLinkCard
               fileId={fileId!}
               clientId={data.client_id}
@@ -259,6 +263,10 @@ export default function FinancePortalPurchaseFileDetail() {
               onChange={refresh}
             />
             <OverviewTab file={data} onSave={updateField} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <AiLenderRecommenderCard purchaseFileId={fileId!} />
+              <AiLoanAppPrefillCard purchaseFileId={fileId!} />
+            </div>
             <LenderPlaybookCard lender={data.lender} isSuperadmin />
             <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
