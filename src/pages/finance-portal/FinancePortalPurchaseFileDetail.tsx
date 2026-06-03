@@ -26,6 +26,7 @@ import { ApplicantsCard } from '@/components/finance-portal/ApplicantsCard';
 import { OnboardingChecklistCard } from '@/components/finance-portal/OnboardingChecklistCard';
 import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
+import { CalculatorsTab } from '@/components/finance-portal/CalculatorsTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
 import { AiFileSummaryCard } from '@/components/finance-portal/AiFileSummaryCard';
@@ -261,6 +262,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
           <TabsTrigger value="onboarding"><Users className="h-4 w-4 mr-2" />Onboarding</TabsTrigger>
           <TabsTrigger value="compliance"><PackageCheck className="h-4 w-4 mr-2" />Compliance</TabsTrigger>
+          <TabsTrigger value="calculators"><Calculator className="h-4 w-4 mr-2" />Calculators</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
 
@@ -313,6 +315,7 @@ export default function FinancePortalPurchaseFileDetail() {
           </div>
         </TabsContent>
         <TabsContent value="compliance"><ComplianceTab fileId={fileId!} clientId={data.client_id} /></TabsContent>
+        <TabsContent value="calculators"><CalculatorsTab fileId={fileId!} file={data} /></TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
