@@ -132,8 +132,10 @@ class PropertyDataService {
     this.cache = {
       data: null,
       timestamp: 0,
-      ttl: this.cache.ttl
+      ttl: this.cache.ttl,
+      tableKey: null,
     };
+
   }
 
   /**
