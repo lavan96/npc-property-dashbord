@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -24,6 +25,9 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { SavedViewsBar } from '@/components/finance-portal/SavedViewsBar';
+import { BulkActionsBar } from '@/components/finance-portal/BulkActionsBar';
+import { InlineEdit } from '@/components/finance-portal/InlineEdit';
+import { SmartSnoozeDialog } from '@/components/finance-portal/SmartSnoozeDialog';
 
 function agingTone(iso: string | null | undefined) {
   if (!iso) return { label: 'no activity', cls: 'bg-muted text-muted-foreground' };
@@ -96,12 +100,37 @@ function urgencyTone(date: string | null | undefined) {
 
 export default function FinancePortalPurchaseFiles() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [inbox, setInbox] = useState<'mine' | 'team' | 'watching'>('mine');
   const [newOpen, setNewOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [snoozeId, setSnoozeId] = useState<string | null>(null);
+
+  // Honour ?new=1 deep-link + initial inbox
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setNewOpen(true);
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    const inb = searchParams.get('inbox');
+    if (inb === 'mine' || inb === 'team' || inb === 'watching') setInbox(inb);
+  }, []);
+
+  // Global "s" key trigger for snooze (first visible file)
+  useEffect(() => {
+    const handler = () => {
+      if (selected.size > 0) setSnoozeId('__bulk__');
+    };
+    window.addEventListener('finance:open-snooze', handler);
+    return () => window.removeEventListener('finance:open-snooze', handler);
+  }, [selected]);
+
+
 
   const { data: payload, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-files'],
@@ -251,10 +280,28 @@ export default function FinancePortalPurchaseFiles() {
                         transition={{ duration: 0.18 }}
                       >
                         <Card
-                          className="cursor-pointer hover:border-primary/40 transition-all"
+                          className={cn(
+                            'cursor-pointer hover:border-primary/40 transition-all',
+                            selected.has(file.id) && 'border-primary ring-1 ring-primary/40',
+                          )}
                           onClick={() => navigate(`/finance/purchase-files/${file.id}`)}
                         >
                           <CardContent className="py-4 px-5 flex items-center gap-4">
+                            {file.is_mine && (
+                              <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                <Checkbox
+                                  checked={selected.has(file.id)}
+                                  onCheckedChange={(v) => {
+                                    setSelected(prev => {
+                                      const next = new Set(prev);
+                                      if (v) next.add(file.id); else next.delete(file.id);
+                                      return next;
+                                    });
+                                  }}
+                                  aria-label="Select file"
+                                />
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-semibold truncate">{file.title}</p>
@@ -285,10 +332,41 @@ export default function FinancePortalPurchaseFiles() {
                                   <CheckCircle2 className="h-3.5 w-3.5" />
                                   {FINANCE_STATUS_LABEL[file.finance_status] || file.finance_status}
                                 </span>
-                                {file.lender && <span>Lender: {file.lender}</span>}
-                                {file.purchase_price && (
-                                  <span>Price: ${Number(file.purchase_price).toLocaleString('en-AU')}</span>
-                                )}
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  Lender:{' '}
+                                  <InlineEdit
+                                    value={file.lender}
+                                    placeholder="set lender"
+                                    disabled={!file.is_mine}
+                                    onSave={async (next) => {
+                                      const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+                                        operation: 'update_file', file_id: file.id, payload: { lender: next || null },
+                                      });
+                                      if (error) { toast.error(error.message); return; }
+                                      toast.success('Lender updated');
+                                      queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-files'] });
+                                    }}
+                                  />
+                                </span>
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  Price:{' '}
+                                  <InlineEdit
+                                    value={file.purchase_price ?? ''}
+                                    type="number"
+                                    placeholder="set price"
+                                    disabled={!file.is_mine}
+                                    display={(v) => v ? `$${Number(v).toLocaleString('en-AU')}` : 'set price'}
+                                    onSave={async (next) => {
+                                      const num = next ? Number(next) : null;
+                                      const { error } = await invokeFinanceFunction('finance-portal-purchase-files', {
+                                        operation: 'update_file', file_id: file.id, payload: { purchase_price: num },
+                                      });
+                                      if (error) { toast.error(error.message); return; }
+                                      toast.success('Price updated');
+                                      queryClient.invalidateQueries({ queryKey: ['finance-portal-purchase-files'] });
+                                    }}
+                                  />
+                                </span>
                                 {deadline && (
                                   <span className={cn('inline-flex items-center gap-1', urgencyTone(deadline.due_date))}>
                                     <Clock className="h-3.5 w-3.5" />
@@ -309,6 +387,8 @@ export default function FinancePortalPurchaseFiles() {
           })}
         </div>
       )}
+
+      <BulkActionsBar selected={selected} onClear={() => setSelected(new Set())} />
 
       <NewPurchaseFileDialog
         open={newOpen}

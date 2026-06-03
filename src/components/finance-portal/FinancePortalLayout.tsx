@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FinancePortalOnboardingGate } from './FinancePortalOnboardingGate';
 import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
 import { FinanceCommandPalette } from './FinanceCommandPalette';
+import { QuickAddFab } from './QuickAddFab';
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -88,6 +90,9 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <FinancePortalOnboardingGate />
       <FinanceCommandPalette />
+      <KeyboardShortcutsDialog />
+      <QuickAddFab />
+
 
       {/* ── Desktop Layout ── */}
       <div className="flex-1 flex">
