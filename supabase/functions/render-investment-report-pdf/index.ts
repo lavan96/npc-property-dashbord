@@ -982,7 +982,16 @@ export async function buildHtml(
 
     body { counter-reset: section; }
 
-    h1, h2, h3, h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.ink}; margin: 0 0 .45em; page-break-after: avoid; }
+    h1, h2, h3 {
+      font-family: 'Playfair Display', 'Georgia', serif;
+      margin: 0 0 .45em; page-break-after: avoid;
+      background: ${NAVY_GRADIENT};
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
     h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
     h2 {
       counter-increment: section;
@@ -991,15 +1000,17 @@ export async function buildHtml(
       margin-top: 22pt;
       padding-bottom: 8pt;
       border-bottom: 0.5pt solid ${THEME.rule};
-      display: flex; align-items: baseline; gap: 10pt;
+      display: block;
       page-break-before: auto;
     }
     h2::before {
-      content: counter(section, decimal-leading-zero);
+      content: counter(section, decimal-leading-zero) "  ";
       font-family: 'Playfair Display', serif;
       font-weight: 500; font-style: italic;
-      font-size: 14pt; color: ${THEME.goldSoft};
-      letter-spacing: .04em; flex-shrink: 0;
+      font-size: 14pt;
+      -webkit-text-fill-color: ${THEME.gold};
+      color: ${THEME.gold};
+      letter-spacing: .04em;
     }
     h3 {
       font-size: 14pt; font-weight: 600; margin-top: 16pt;
