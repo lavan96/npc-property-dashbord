@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks, Ship, FileSearch,
+  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox,
 } from 'lucide-react';
+import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
