@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Trophy } from 'lucide-react';
+import { triggerFinanceCelebration } from '@/lib/finance-portal/celebrate';
 
 const REASON_CATEGORIES = [
   'Serviceability', 'LVR / deposit', 'Credit history', 'Employment stability',
@@ -49,6 +50,9 @@ export function RecordOutcomeDialog({ purchaseFileId, defaultLender, defaultLoan
       toast.error(data?.error || 'Failed to record outcome');
     } else {
       toast.success(`Outcome recorded as ${outcome}`);
+      if (outcome === 'won') {
+        triggerFinanceCelebration('unconditional_approval');
+      }
       setOpen(false);
       setReasonCategory('');
       setReasonDetail('');
