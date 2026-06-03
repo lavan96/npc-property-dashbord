@@ -28,6 +28,11 @@ const THEME = {
   ink: "#17130D",
   inkMuted: "#5F5546",
   rule: "#D8CBB6",
+  // Navy accents for editorial headings
+  navy: "#0A2540",
+  navyDeep: "#061A33",
+  navyMid: "#1E4A7C",
+  navyAccent: "#2E6CB0",
   // Rating pill palette
   good: "#3F8A4F",
   goodBg: "#E2EFD9",
@@ -38,6 +43,9 @@ const THEME = {
   neutralBg: "#E6E0D2",
   neutralInk: "#4A4030",
 };
+
+// Reusable navy gradient (applied via background-clip:text on headings)
+const NAVY_GRADIENT = `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navyMid} 50%, ${THEME.navyAccent} 100%)`;
 
 function fmtMoney(v: unknown): string {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
