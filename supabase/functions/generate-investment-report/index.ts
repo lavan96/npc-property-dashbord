@@ -4979,9 +4979,15 @@ YOUR DEDICATED PROPERTY PARTNER
             console.log(`💾 Progressive save after section ${completedSectionIndex}/${filteredSections.length}...`);
             
             // Build progressive update payload
+            // Persist `total_sections` so the front-end progress widget can
+            // show the actual chunk count for the engine that ran (legacy
+            // groups headings dynamically and the count varies between
+            // templates; Compass-40 is a fixed 17). Without this the widget
+            // falls back to the tier-based default and may misreport totals.
             const progressiveUpdatePayload: any = {
               report_content: combinedContent,
               last_completed_section: completedSectionIndex,
+              total_sections: filteredSections.length,
               updated_at: new Date().toISOString()
             };
             

@@ -66,7 +66,7 @@ export function useChunkedRegeneration() {
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier, generation_engine'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope, report_tier, generation_engine, total_sections'
         }
       });
 
@@ -76,7 +76,11 @@ export function useChunkedRegeneration() {
 
       const report = reportData?.report;
       const tier = normaliseReportTier(report?.report_tier);
-      const totalSections = sectionCountForTier(tier);
+      // Prefer the actual chunk count persisted by the edge function (so
+      // legacy engine reports show the real number of chunks, not the
+      // Compass-40 default of 17).
+      const persistedTotal = Number(report?.total_sections) || 0;
+      const totalSections = persistedTotal > 0 ? persistedTotal : sectionCountForTier(tier);
       const existingCompletedSection = Math.min(
         Math.max(Number(report?.last_completed_section) || 0, 0),
         totalSections,

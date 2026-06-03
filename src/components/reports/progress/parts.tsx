@@ -82,6 +82,7 @@ export interface ReportProgress {
   lastCompletedSection: number;
   createdAt: Date;
   bulkJobId?: string | null;
+  generationEngine?: 'legacy' | 'compass-40' | null;
 }
 
 export interface AutoContinueSettings {

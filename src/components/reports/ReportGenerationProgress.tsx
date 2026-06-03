@@ -205,21 +205,60 @@ function ReportGenerationProgressInner() {
           },
         });
 
-        const { error } = await invokeSecureFunction('generate-investment-report', {
-          reportId,
-          continueFrom: true,
-          singleSection: true,
-        });
+        // Drive sections in a continuous loop instead of one-shot. The edge
+        // function returns `{ success, isComplete }` after each single-section
+        // call; we keep firing until complete, with bounded per-section
+        // retries on transient errors. This is what makes auto-resume actually
+        // converge instead of waiting 120s between each section.
+        const MAX_SECTION_CALLS = 60; // hard upper bound
+        const MAX_TRANSIENT_RETRIES = 4;
+        let consecutiveTransientErrors = 0;
+        let done = false;
 
-        if (error) {
-          console.error('Error invoking generation:', error);
-          setReports((prev) =>
-            prev.map((r) =>
-              r.id === reportId
-                ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
-                : r
-            )
+        for (let call = 0; call < MAX_SECTION_CALLS && !done; call++) {
+          if (paused) break;
+          const { data, error } = await invokeSecureFunction(
+            'generate-investment-report',
+            { reportId, continueFrom: true, singleSection: true },
+            { timeoutMs: 180000 }
           );
+
+          if (error) {
+            const msg = String(error.message || '');
+            const isTransient =
+              msg.includes('5') && (msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('504'))
+              || msg.includes('Failed to fetch')
+              || msg.includes('NetworkError')
+              || msg.includes('timeout')
+              || msg.includes('aborted');
+            if (isTransient && consecutiveTransientErrors < MAX_TRANSIENT_RETRIES) {
+              consecutiveTransientErrors++;
+              const backoff = Math.min(15000, 1500 * 2 ** (consecutiveTransientErrors - 1));
+              console.warn(
+                `[ReportGenerationProgress] Transient section error (#${consecutiveTransientErrors}), retrying in ${backoff}ms`,
+                msg
+              );
+              await new Promise((r) => setTimeout(r, backoff));
+              continue;
+            }
+            console.error('Error invoking generation:', error);
+            setReports((prev) =>
+              prev.map((r) =>
+                r.id === reportId
+                  ? { ...r, status: 'pending', error_message: msg || 'Failed to resume generation' }
+                  : r
+              )
+            );
+            break;
+          }
+
+          consecutiveTransientErrors = 0;
+          if (data?.isComplete === true || data?.success === false) {
+            done = true;
+            break;
+          }
+          // small jitter to avoid hammering
+          await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
         }
       } catch (error) {
         console.error('Error continuing generation:', error);
@@ -227,7 +266,7 @@ function ReportGenerationProgressInner() {
         if (isAutoRetry) autoRetryInProgressRef.current.delete(reportId);
       }
     },
-    []
+    [paused]
   );
 
   const scheduleAutoRetry = useCallback(
@@ -305,8 +344,8 @@ function ReportGenerationProgressInner() {
       listMode: true,
       listOptions: {
         select:
-          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier',
-        filters: { status: ['pending', 'processing'] },
+          'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section, bulk_job_id, report_tier, generation_engine, total_sections',
+        filters: { status: ['pending', 'processing', 'failed'] },
         orderBy: 'updated_at',
         orderAsc: false,
         limit: 10,
@@ -365,8 +404,15 @@ function ReportGenerationProgressInner() {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       const dbSection = report.last_completed_section || 0;
-      // Tier-aware total: Compass-40 ≈ 21 sections, Financial-Analysis ≈ 11 sections.
-      const total = sectionCountForTier(report.report_tier);
+      // Engine-aware total: prefer the actual chunk count persisted by the
+      // edge function (`total_sections`), so legacy and Compass-40 reports
+      // show the correct chunk count instead of always defaulting to 17.
+      const engine: 'legacy' | 'compass-40' | null =
+        report.generation_engine === 'compass-40' ? 'compass-40'
+        : report.generation_engine === 'legacy' ? 'legacy'
+        : null;
+      const persistedTotal = Number(report.total_sections) || 0;
+      const total = persistedTotal > 0 ? persistedTotal : sectionCountForTier(report.report_tier);
       return {
         id: report.id,
         property_address: report.property_address,
@@ -379,6 +425,7 @@ function ReportGenerationProgressInner() {
         lastCompletedSection: dbSection,
         createdAt: new Date(report.created_at),
         bulkJobId: report.bulk_job_id ?? null,
+        generationEngine: engine,
       };
     });
 
@@ -413,8 +460,20 @@ function ReportGenerationProgressInner() {
     cleanupRetryState(currentIds);
 
     processedReports.forEach((report) => {
+      // Reset retry attempts whenever progress moves forward — we only want
+      // the maxRetries cap to bite when a report is genuinely stuck, not
+      // when a long generation is steadily completing sections.
+      const prevSections = lastSectionsRef.current.get(report.id) ?? -1;
+      if (prevSections >= 0 && report.sectionsCompleted > prevSections) {
+        const rs = retryStateRef.current[report.id];
+        if (rs && rs.attempts > 0) {
+          rs.attempts = 0;
+          saveRetryState();
+        }
+      }
+
       const timeSinceUpdate = now - report.lastUpdated.getTime();
-      const isTimedOut = timeSinceUpdate > 120000;
+      const isTimedOut = timeSinceUpdate > 75000; // 75s — react before a chunk fully times out
       const hasPartialContent = report.contentLength > 1000;
       const isIncomplete = report.sectionsCompleted < report.totalSections;
       const isStuck =
@@ -422,15 +481,21 @@ function ReportGenerationProgressInner() {
 
       const isInitiallyStuck =
         report.status === 'processing' &&
-        timeSinceUpdate > 300000 &&
+        timeSinceUpdate > 180000 &&
         report.contentLength < 100 &&
         report.sectionsCompleted === 0;
 
-      if ((isStuck || isInitiallyStuck) && autoContinueSettings.enabled && !paused) {
+      // Failed/pending status with partial progress → resume immediately
+      const hasFailedMidway =
+        (report.status === 'failed' || report.status === 'pending') &&
+        hasPartialContent &&
+        isIncomplete;
+
+      if ((isStuck || isInitiallyStuck || hasFailedMidway) && autoContinueSettings.enabled && !paused) {
         scheduleAutoRetry(report);
       }
     });
-  }, [autoContinueSettings.enabled, cleanupRetryState, paused, scheduleAutoRetry]);
+  }, [autoContinueSettings.enabled, cleanupRetryState, paused, saveRetryState, scheduleAutoRetry]);
 
   const finalizeJob = useCallback(
     async (prev: ReportProgress) => {

@@ -10424,6 +10424,7 @@ export type Database = {
           report_tier: string
           sources_content: string | null
           status: string
+          total_sections: number | null
           updated_at: string
           validation_flags: Json | null
         }
@@ -10457,6 +10458,7 @@ export type Database = {
           report_tier?: string
           sources_content?: string | null
           status?: string
+          total_sections?: number | null
           updated_at?: string
           validation_flags?: Json | null
         }
@@ -10490,6 +10492,7 @@ export type Database = {
           report_tier?: string
           sources_content?: string | null
           status?: string
+          total_sections?: number | null
           updated_at?: string
           validation_flags?: Json | null
         }
