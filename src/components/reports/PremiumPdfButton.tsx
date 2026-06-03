@@ -8,7 +8,11 @@ import { logActivityDirect } from "@/hooks/useActivityLogger";
 interface PremiumPdfButtonProps {
   reportId: string;
   propertyAddress: string;
+  includeCharts?: boolean;
+  includeHeroImages?: boolean;
+  includeSparklines?: boolean;
 }
+
 
 /**
  * Premium PDF — HTML+CSS rendered via Api2PDF Headless Chrome for true editorial layout.
