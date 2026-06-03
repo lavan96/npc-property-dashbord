@@ -588,6 +588,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       />
 
       <LenderPacketDialog open={packetOpen} onOpenChange={setPacketOpen} fileId={fileId} />
+      <AutoRemindersDialog open={remindersOpen} onOpenChange={setRemindersOpen} requirements={requirements || []} onSaved={refresh} />
     </div>
   );
 }
