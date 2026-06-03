@@ -1611,7 +1611,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope, report_tier')
+          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope, report_tier, generation_engine')
           .eq('id', reportId)
           .single();
         
@@ -1633,6 +1633,21 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             reportTier: existingReport.report_tier,
           };
           console.log(`📋 Restored report_tier from existing report: ${existingReport.report_tier}`);
+        }
+
+        // CRITICAL: Restore generation_engine from the DB record when the caller
+        // didn't send it (auto-resume / continuation paths don't pass
+        // propertyDetails). Without this the engine silently falls back to
+        // 'legacy' on every resume, flipping a compass-40 run mid-flight and
+        // vice-versa — i.e. the user's explicit engine selection is not
+        // respected.
+        if (existingReport?.generation_engine && !propertyDetails?.generationEngine) {
+          const storedEngine = existingReport.generation_engine === 'compass-40' ? 'compass-40' : 'legacy';
+          propertyDetails = {
+            ...(propertyDetails || {}),
+            generationEngine: storedEngine,
+          };
+          console.log(`⚙️ Restored generation_engine from existing report: ${storedEngine}`);
         }
 
         // Capture existing enhanced fields so we can avoid overwriting already-persisted values
