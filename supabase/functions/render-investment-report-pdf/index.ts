@@ -190,6 +190,40 @@ function withAlpha(hex: string, a: number): string {
 
 const chartImageCache = new Map<string, string | null>();
 
+/**
+ * Serialize a Chart.js config to a JS (not JSON) string so that function-string
+ * values — tick callbacks, datalabels formatters, etc. — appear unquoted in the
+ * payload and are evaluated by QuickChart's Node/JSDOM sandbox rather than being
+ * treated as inert string literals.
+ *
+ * Rules:
+ *  • String values that look like function/arrow-fn expressions → emitted unquoted
+ *  • All other string values → JSON-quoted (safe, handles special chars)
+ *  • Objects / arrays → recursed
+ *  • Primitives (number, boolean, null) → toString as-is
+ */
+function isFnStr(s: string): boolean {
+  const t = s.trim();
+  // function(...){...}  |  (v) => ...  |  v => ...
+  return /^function[\s(]/.test(t) || /^\(.*\)\s*=>/.test(t) || /^\w+\s*=>/.test(t);
+}
+function configToJs(val: unknown): string {
+  if (val === null || val === undefined) return "null";
+  if (typeof val === "boolean" || typeof val === "number") return String(val);
+  if (typeof val === "string") return isFnStr(val) ? val : JSON.stringify(val);
+  if (Array.isArray(val)) return "[" + val.map(configToJs).join(",") + "]";
+  if (typeof val === "object") {
+    const pairs = Object.entries(val as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => {
+        const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+        return `${key}:${configToJs(v)}`;
+      });
+    return "{" + pairs.join(",") + "}";
+  }
+  return String(val);
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -205,15 +239,19 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  * remote-image timing/CORS variability and keeps the PDF render deterministic.
  */
 async function chartDataUri(config: Record<string, unknown>, width = 780, height = 360, purpose = "chart"): Promise<string | null> {
+  // chart MUST be a JS string (not a JSON object) so QuickChart evaluates
+  // function expressions (tick callbacks, datalabels formatters).  Passing an
+  // object causes JSON.stringify to double-quote them into inert strings.
+  const chartJs = configToJs(config);
   const payload = {
-    chart: config,
+    chart: chartJs,
     width,
     height,
     format: "png",
     backgroundColor: "transparent",
     version: "4",
   };
-  const cacheKey = JSON.stringify(payload);
+  const cacheKey = chartJs + `|${width}x${height}`;
   if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
 
   const controller = new AbortController();
@@ -651,7 +689,10 @@ export async function buildHtml(
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
-  if (includeCharts) bodyHtml = await injectTableCharts(bodyHtml);
+  if (includeCharts) {
+    bodyHtml = await injectTableCharts(bodyHtml);
+    console.log("[charts] embedded table charts", { count: (bodyHtml.match(/class=\"chart-wrap\"/g) || []).length });
+  }
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
