@@ -11,6 +11,7 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
+const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
