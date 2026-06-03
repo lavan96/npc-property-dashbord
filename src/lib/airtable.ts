@@ -60,7 +60,15 @@ export interface AirtableGetRecordsOptions {
   offset?: string;
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
+  tableName?: string;
 }
+
+export interface AirtableTableInfo {
+  id: string;
+  name: string;
+  primaryFieldId?: string;
+}
+
 
 export interface AirtableResponse {
   records: PropertyListing[];
