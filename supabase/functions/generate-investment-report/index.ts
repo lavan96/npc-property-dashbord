@@ -4447,13 +4447,13 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
       const rawTier = propertyDetails?.reportTier || 'compass';
       const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
-      // HARDENED (2026-05): Activate Compass-40 protections (sanitizer,
-      // financial-override stripping, canonical section registry) for ANY
-      // compass-tier report — regardless of generationEngine. Compass is, by
-      // definition, the non-financial location/property-fit report. Without
-      // this, legacy-engine compass runs leak Purchase Price, Interest Rate,
-      // Yield/Risk Scores and HOLD recommendations into the prose.
-      compass40OverlayActive = ['compass', 'compass-40'].includes(rawTier);
+      // Respect explicit frontend engine selection.
+      //  - 'compass-40' → always activate the trimmed canonical overlay.
+      //  - 'legacy'     → always use the full legacy DB template, even on
+      //                   compass-tier reports. (The previous hardening that
+      //                   force-enabled the overlay for any compass tier broke
+      //                   the user-visible Generation Engine selector.)
+      compass40OverlayActive = generationEngine === 'compass-40';
       console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive}, tier: ${rawTier})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
