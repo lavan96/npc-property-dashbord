@@ -1478,15 +1478,12 @@ export async function buildHtml(
 
 ${tocHtml}
 
-<!-- ── Snapshot ── -->
+<!-- ── Executive Summary (replaces Snapshot + Finance Visuals) ── -->
 <section class="body-page">
-  <h2 id="ch-snapshot">Snapshot</h2>
-  ${kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : ""}
-  ${scoreCard}
+  ${executiveSummaryHtml}
 </section>
 
 <!-- ── Body (markdown) ── -->
-${financialChartsHtml}
 
 <section class="body-page">
   ${bodyWithHeroes}
