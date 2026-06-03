@@ -875,7 +875,7 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
   const toc: Array<{ id: string; title: string }> = [];
   const used = new Set<string>();
   const annotated = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attrs, inner) => {
-    const text = String(inner).replace(/<[^>]+>/g, "").trim();
+    const text = String(inner).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").trim();
     let id = `ch-${slugify(text) || `${toc.length + 1}`}`;
     let n = 1;
     while (used.has(id)) id = `ch-${slugify(text) || "section"}-${++n}`;
