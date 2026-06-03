@@ -205,21 +205,60 @@ function ReportGenerationProgressInner() {
           },
         });
 
-        const { error } = await invokeSecureFunction('generate-investment-report', {
-          reportId,
-          continueFrom: true,
-          singleSection: true,
-        });
+        // Drive sections in a continuous loop instead of one-shot. The edge
+        // function returns `{ success, isComplete }` after each single-section
+        // call; we keep firing until complete, with bounded per-section
+        // retries on transient errors. This is what makes auto-resume actually
+        // converge instead of waiting 120s between each section.
+        const MAX_SECTION_CALLS = 60; // hard upper bound
+        const MAX_TRANSIENT_RETRIES = 4;
+        let consecutiveTransientErrors = 0;
+        let done = false;
 
-        if (error) {
-          console.error('Error invoking generation:', error);
-          setReports((prev) =>
-            prev.map((r) =>
-              r.id === reportId
-                ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
-                : r
-            )
+        for (let call = 0; call < MAX_SECTION_CALLS && !done; call++) {
+          if (paused) break;
+          const { data, error } = await invokeSecureFunction(
+            'generate-investment-report',
+            { reportId, continueFrom: true, singleSection: true },
+            { timeoutMs: 180000 }
           );
+
+          if (error) {
+            const msg = String(error.message || '');
+            const isTransient =
+              msg.includes('5') && (msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('504'))
+              || msg.includes('Failed to fetch')
+              || msg.includes('NetworkError')
+              || msg.includes('timeout')
+              || msg.includes('aborted');
+            if (isTransient && consecutiveTransientErrors < MAX_TRANSIENT_RETRIES) {
+              consecutiveTransientErrors++;
+              const backoff = Math.min(15000, 1500 * 2 ** (consecutiveTransientErrors - 1));
+              console.warn(
+                `[ReportGenerationProgress] Transient section error (#${consecutiveTransientErrors}), retrying in ${backoff}ms`,
+                msg
+              );
+              await new Promise((r) => setTimeout(r, backoff));
+              continue;
+            }
+            console.error('Error invoking generation:', error);
+            setReports((prev) =>
+              prev.map((r) =>
+                r.id === reportId
+                  ? { ...r, status: 'pending', error_message: msg || 'Failed to resume generation' }
+                  : r
+              )
+            );
+            break;
+          }
+
+          consecutiveTransientErrors = 0;
+          if (data?.isComplete === true || data?.success === false) {
+            done = true;
+            break;
+          }
+          // small jitter to avoid hammering
+          await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
         }
       } catch (error) {
         console.error('Error continuing generation:', error);
@@ -227,7 +266,7 @@ function ReportGenerationProgressInner() {
         if (isAutoRetry) autoRetryInProgressRef.current.delete(reportId);
       }
     },
-    []
+    [paused]
   );
 
   const scheduleAutoRetry = useCallback(
