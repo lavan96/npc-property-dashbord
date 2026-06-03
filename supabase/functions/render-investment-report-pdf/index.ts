@@ -948,7 +948,6 @@ export async function buildHtml(
       : address;
 
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
     @page {
       size: A4;
       margin: 20mm 17mm 20mm 17mm;
@@ -1463,9 +1462,11 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginBottom: 0,
         marginLeft: 0,
         marginRight: 0,
-        // Wait for remote QuickChart images to finish loading before snapshot.
-        delay: 1200,
-        puppeteerWaitForMethod: "WaitForNetworkIdle0",
+        // All visuals are inline SVG now, so avoid network-idle waits that can
+        // hang on static HTML and trigger Supabase 504s.
+        delay: 0,
+        puppeteerWaitForMethod: "WaitForNavigation",
+        puppeteerWaitForValue: "load",
       },
 
     };
