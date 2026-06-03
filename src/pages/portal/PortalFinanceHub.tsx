@@ -164,6 +164,8 @@ export default function PortalFinanceHub() {
       ) : (
         <div className="space-y-4">
           {portfolio && portfolio.total_files > 1 && <PortfolioSummary portfolio={portfolio} />}
+          <ClientBookingCard financeUserId={partnerId} />
+          <ClientOnboardingCard />
           {files.map(f => <FileCard key={f.id} file={f} />)}
         </div>
       )}
