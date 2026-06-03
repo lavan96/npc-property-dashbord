@@ -1007,37 +1007,38 @@ export async function buildHtml(
       color: transparent;
     }
     h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
-    h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
+    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
     h2 {
       counter-increment: section;
       string-set: chapter content();
-      font-size: 22pt; font-weight: 700; letter-spacing: -0.005em;
-      margin-top: 22pt;
-      padding-bottom: 8pt;
+      font-size: 28pt; font-weight: 700; letter-spacing: -0.005em;
+      margin-top: 24pt;
+      padding-bottom: 10pt;
       border-bottom: 0.5pt solid ${THEME.rule};
       display: block;
       page-break-before: auto;
     }
     h2::before {
-      content: counter(section, decimal-leading-zero) "  ";
+      content: counter(section, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
       font-weight: 500; font-style: italic;
-      font-size: 14pt;
+      font-size: 18pt;
       -webkit-text-fill-color: ${THEME.gold};
       color: ${THEME.gold};
       letter-spacing: .04em;
+      margin-right: 14pt;
     }
     h3 {
-      font-size: 14pt; font-weight: 600; margin-top: 16pt;
+      font-size: 17pt; font-weight: 600; margin-top: 18pt;
       padding-left: 10pt;
       border-left: 2.5pt solid ${THEME.gold};
     }
     h4 {
       font-family: 'Inter', sans-serif;
-      font-size: 8.5pt; font-weight: 700;
+      font-size: 10pt; font-weight: 700;
       color: ${THEME.goldSoft};
       text-transform: uppercase; letter-spacing: .15em;
-      margin-top: 12pt;
+      margin-top: 14pt;
     }
     p { margin: 0 0 .72em; orphans: 3; widows: 3; }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
