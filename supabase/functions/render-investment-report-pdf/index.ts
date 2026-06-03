@@ -65,6 +65,28 @@ function cleanReportMarkdown(markdown: string, address: string): string {
     .trim();
 }
 
+/**
+ * Wrap narrative subsections (e.g. "What This Means", "Why It Matters",
+ * "Takeaway", "Watch", "Key Insight", "Bottom Line", "So What", "Implication(s)",
+ * "Why It's Important", "What To Watch") and their following content into a
+ * styled insight box, until the next heading.
+ */
+function wrapInsightSections(html: string): string {
+  const labelPattern =
+    /^(what\s+this\s+means|why\s+it\s+matters|why\s+it'?s\s+important|takeaway|takeaways|key\s+takeaway|the\s+takeaway|watch|what\s+to\s+watch|things?\s+to\s+watch|bottom\s+line|so\s+what|implication|implications|key\s+insight|insight|in\s+plain\s+english|npc\s+view|our\s+view)\s*[:\-—]?\s*$/i;
+
+  // Match an h3 or h4 heading and capture its text + everything until the next h1-h4 or end.
+  return html.replace(
+    /<h([34])[^>]*>([\s\S]*?)<\/h\1>([\s\S]*?)(?=<h[1-4][\s>]|$)/gi,
+    (match, _level, rawTitle, content) => {
+      const title = String(rawTitle).replace(/<[^>]+>/g, "").trim();
+      if (!labelPattern.test(title)) return match;
+      const cleanTitle = title.replace(/[:\-—]\s*$/, "").trim();
+      return `<div class="insight-box"><div class="insight-label">${esc(cleanTitle)}</div>${content}</div>`;
+    },
+  );
+}
+
 export function buildHtml(report: any, brandName: string): string {
   const address = report.property_address || "Property";
   const generated = new Date(report.created_at || Date.now()).toLocaleDateString(
@@ -79,7 +101,7 @@ export function buildHtml(report: any, brandName: string): string {
 
   // Render markdown body. Strip front-matter style code fences if any.
   const md = cleanReportMarkdown(String(report.report_content || ""), address);
-  const bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
+  const bodyHtml = wrapInsightSections(marked.parse(md, { gfm: true, breaks: false }) as string);
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
@@ -177,24 +199,38 @@ export function buildHtml(report: any, brandName: string): string {
     strong { color: ${THEME.ink}; font-weight: 700; }
     em { color: ${THEME.inkMuted}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
-    /* Lead paragraph — first <p> after h2 */
+    /* Lead paragraph — first <p> after h2: standard body styling, no drop cap */
     h2 + p {
-      font-family: 'Cormorant Garamond', 'Georgia', serif;
-      font-size: 13pt;
-      line-height: 1.5;
+      font-family: 'Inter', 'Helvetica', sans-serif;
+      font-size: 9.8pt;
+      line-height: 1.58;
       color: ${THEME.ink};
-      margin-bottom: 12pt;
+      margin-bottom: .72em;
     }
-    /* Drop cap on the first letter of the lead */
-    h2 + p::first-letter {
-      font-family: 'Playfair Display', serif;
-      font-weight: 800;
-      font-size: 38pt;
-      line-height: 0.88;
-      float: left;
-      padding: 4pt 6pt 0 0;
+
+    /* Callout box for narrative sections like "What This Means", "Why It Matters", "Takeaway", "Watch", etc. */
+    .insight-box {
+      margin: 14pt 0;
+      padding: 12pt 16pt 10pt;
+      background: ${THEME.paperAlt};
+      border-left: 3pt solid ${THEME.gold};
+      border-radius: 2pt;
+      box-shadow: inset 0 0 0 0.5pt ${THEME.rule};
+      page-break-inside: avoid;
+    }
+    .insight-box .insight-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 7.5pt; font-weight: 700;
       color: ${THEME.goldSoft};
+      text-transform: uppercase; letter-spacing: .18em;
+      margin: 0 0 6pt;
+      display: flex; align-items: center; gap: 8pt;
     }
+    .insight-box .insight-label::before {
+      content: ""; display: inline-block;
+      width: 14pt; height: 1pt; background: ${THEME.gold};
+    }
+    .insight-box p:last-child { margin-bottom: 0; }
 
     ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
     li {
