@@ -25,6 +25,9 @@ import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInbo
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
+import { AiFileSummaryCard } from '@/components/finance-portal/AiFileSummaryCard';
+import { AiLenderRecommenderCard } from '@/components/finance-portal/AiLenderRecommenderCard';
+import { AiLoanAppPrefillCard } from '@/components/finance-portal/AiLoanAppPrefillCard';
 import { FinanceDecisionsTab, ConditionsTab, ValuationsTab } from '@/components/finance-portal/DealTrackerTabs';
 import { RiskRegisterTab } from '@/components/finance-portal/RiskRegisterTab';
 import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnapshotCard';
