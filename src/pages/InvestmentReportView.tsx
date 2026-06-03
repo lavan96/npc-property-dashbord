@@ -21,6 +21,7 @@ import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateW
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
+import { HeroImagesDialog } from '@/components/reports/HeroImagesDialog';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
