@@ -11,6 +11,11 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
+const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
+const RENDER_SAFETY_BUFFER_MS = 45_000;
+const MAX_RENDER_WAIT_MS = EDGE_FUNCTION_TIMEOUT_MS - RENDER_SAFETY_BUFFER_MS;
+const HERO_IMAGE_TIMEOUT_MS = 120_000;
+const API2PDF_REQUEST_TIMEOUT_MS = 600_000;
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -835,7 +840,7 @@ async function generateHeroImage(chapterTitle: string): Promise<string | null> {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 40_000);
+    const timeout = setTimeout(() => controller.abort(), HERO_IMAGE_TIMEOUT_MS);
     const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
       method: "POST",
       headers: {
@@ -1552,10 +1557,10 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     "https://v2018.api2pdf.com/chrome/html",
     "https://v2018.api2pdf.com/chrome/pdf/html",
   ]) {
-    const remaining = 115_000 - (Date.now() - startedAt);
+    const remaining = MAX_RENDER_WAIT_MS - (Date.now() - startedAt);
     if (remaining <= 5_000) break;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.min(45_000, remaining));
+    const timeout = setTimeout(() => controller.abort(), Math.min(API2PDF_REQUEST_TIMEOUT_MS, remaining));
     let res: Response;
     try {
       res = await fetch(endpoint, {
