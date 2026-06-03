@@ -885,8 +885,16 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
 export async function buildHtml(
   report: any,
   brandName: string,
-  opts: { includeCharts?: boolean; includeHeroImages?: boolean; includeSparklines?: boolean } = {},
+  opts: {
+    includeCharts?: boolean;
+    includeHeroImages?: boolean;
+    includeSparklines?: boolean;
+    contact?: Record<string, any>;
+    disclaimer?: { is_enabled?: boolean; text?: string; font_size?: string };
+  } = {},
 ): Promise<string> {
+  const contact = opts.contact || {};
+  const disclaimer = opts.disclaimer || {};
   const includeCharts = opts.includeCharts !== false;
   const includeSparklines = opts.includeSparklines !== false;
   const includeHeroImages = opts.includeHeroImages === true; // opt-in, costs tokens
@@ -1013,6 +1021,12 @@ export async function buildHtml(
     @page cover {
       margin: 0;
       background: ${THEME.bg};
+      @top-left { content: none; } @top-right { content: none; }
+      @bottom-left { content: none; } @bottom-right { content: none; }
+    }
+    @page disclaimer-page {
+      margin: 0;
+      background: #141414;
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
     }
@@ -1199,26 +1213,50 @@ export async function buildHtml(
     .pill-neutral { background: ${THEME.neutralBg}; color: ${THEME.neutralInk}; }
 
     /* ── Cover ── */
+    /* ── Cover (standard NPC cover image, full-bleed) ── */
     .cover {
       page: cover;
       page-break-after: always;
       width: 210mm; height: 297mm;
-      background:
-        radial-gradient(ellipse at top right, rgba(212,168,67,0.20) 0%, transparent 55%),
-        radial-gradient(ellipse at bottom left, rgba(212,168,67,0.10) 0%, transparent 60%),
-        linear-gradient(180deg, #0a0a0a 0%, #141414 100%);
-      color: ${THEME.text};
-      padding: 28mm 22mm;
+      margin: 0; padding: 0;
       position: relative;
+      background: #0a0a0a;
+      overflow: hidden;
     }
-    .cover .brand { font-family: 'Inter'; font-weight: 700; letter-spacing: .35em; font-size: 9pt; color: ${THEME.gold}; text-transform: uppercase; }
-    .cover .rule { width: 80pt; height: 2pt; background: ${THEME.gold}; margin: 10mm 0 14mm; }
-    .cover .eyebrow { font-size: 9pt; letter-spacing: .25em; text-transform: uppercase; color: ${THEME.muted}; margin-bottom: 6mm; }
-    .cover h1 { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 44pt; line-height: 1.05; max-width: 155mm; color: ${THEME.text}; letter-spacing: -0.015em; }
-    .cover .address { margin-top: 9mm; font-size: 15pt; color: ${THEME.gold}; font-family: 'Cormorant Garamond', serif; font-style: italic; }
-    .cover .meta { position: absolute; left: 22mm; bottom: 22mm; right: 22mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9pt; color: ${THEME.muted}; border-top: 1px solid ${THEME.border}; padding-top: 6mm; }
-    .cover .meta .label { display: block; text-transform: uppercase; letter-spacing: .15em; font-size: 7.5pt; color: ${THEME.muted}; margin-bottom: 2pt; }
-    .cover .meta .value { color: ${THEME.text}; font-size: 10.5pt; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+    .cover img.cover-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Disclaimer / Contact closing page ── */
+    .disclaimer-page {
+      page: disclaimer-page;
+      page-break-before: always;
+      width: 210mm; height: 297mm;
+      margin: 0; padding: 22mm 20mm 20mm;
+      background: #141414;
+      color: #BF9B50;
+      position: relative;
+      font-family: 'Inter', sans-serif;
+    }
+    .disclaimer-page .company-main { font-size: 28pt; font-weight: 800; letter-spacing: .02em; color: #BF9B50; line-height: 1.05; }
+    .disclaimer-page .company-sub { font-size: 16pt; font-weight: 400; color: #BF9B50; margin-top: 4pt; }
+    .disclaimer-page .contact-heading { margin-top: 18mm; font-size: 14pt; font-weight: 700; color: #BF9B50; letter-spacing: .04em; }
+    .disclaimer-page table.contact { margin-top: 10pt; border-collapse: collapse; }
+    .disclaimer-page table.contact td { font-size: 9pt; color: #BF9B50; padding: 4pt 0; vertical-align: top; }
+    .disclaimer-page table.contact td.label { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding-right: 18pt; white-space: nowrap; }
+    .disclaimer-page table.contact td.value { font-weight: 400; color: #BF9B50; }
+    .disclaimer-page .disclaimer-body {
+      position: absolute;
+      left: 20mm; right: 20mm; bottom: 20mm;
+      font-size: 8.5pt;
+      line-height: 1.55;
+      color: #999999;
+      font-weight: 400;
+    }
+    .disclaimer-page .disclaimer-body p { margin: 0 0 6pt; }
 
     /* ── Table of Contents ── */
     .toc { page: toc; page-break-after: always; padding-top: 6mm; }
@@ -1459,27 +1497,9 @@ export async function buildHtml(
 </head>
 <body>
 
-<!-- ── Cover ── -->
+<!-- ── Cover (standard NPC cover image) ── -->
 <section class="cover">
-  <div class="brand">${esc(brandName)}</div>
-  <div class="rule"></div>
-  <div class="eyebrow">Property Investment Analysis</div>
-  <h1>An evidence-based view of this investment opportunity.</h1>
-  <div class="address">${esc(address)}</div>
-  <div class="meta">
-    <div>
-      <span class="label">Prepared</span>
-      <span class="value">${esc(generated)}</span>
-    </div>
-    <div>
-      <span class="label">Location</span>
-      <span class="value">${esc(coverLocation)}</span>
-    </div>
-    <div style="text-align:right">
-      <span class="label">Report Type</span>
-      <span class="value">Investment Analysis</span>
-    </div>
-  </div>
+  <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
 </section>
 
 ${tocHtml}
@@ -1501,12 +1521,40 @@ ${
       : ""
   }
 
-<section class="body-page">
-  <div class="disclaimer">
-    <h4>Important Notice</h4>
-    <p>This report is provided for general informational purposes only and does not constitute financial, taxation, legal, or investment advice. All figures, projections, and market commentary are derived from publicly available data and reasonable assumptions at the time of writing, and may change. Recipients should seek independent professional advice before making any investment decisions.</p>
-  </div>
-</section>
+<!-- ── Contact + Disclaimer closing page (matches all other NPC reports) ── -->
+${(() => {
+  const companyRaw = String(contact.company_name || brandName || "Property Consulting").toUpperCase();
+  const parts = companyRaw.split(" ");
+  const mainCompany = parts.length >= 2 ? parts.slice(0, -1).join(" ") : parts[0];
+  const subCompany = parts.length >= 2 ? parts[parts.length - 1] : "";
+  const rows: Array<[string, any]> = [
+    ["Website", contact.website],
+    ["Email", contact.email],
+    ["Phone", contact.phone],
+    ["Address", contact.address],
+    ["ABN", contact.abn],
+  ];
+  const rowsHtml = rows
+    .filter(([, v]) => v)
+    .map(([l, v]) => `<tr><td class="label">${esc(l)}:</td><td class="value">${esc(v)}</td></tr>`)
+    .join("");
+  const discText = disclaimer.is_enabled !== false && disclaimer.text
+    ? String(disclaimer.text)
+    : "This report is provided for general informational purposes only and does not constitute financial, taxation, legal, or investment advice. All figures, projections, and market commentary are derived from publicly available data and reasonable assumptions at the time of writing, and may change. Recipients should seek independent professional advice before making any investment decisions.";
+  const discParas = discText
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${esc(p)}</p>`) 
+    .join("");
+  return `<section class="disclaimer-page">
+    <div class="company-main">${esc(mainCompany)}</div>
+    ${subCompany ? `<div class="company-sub">${esc(subCompany)}</div>` : ""}
+    <div class="contact-heading">CONTACT US</div>
+    <table class="contact">${rowsHtml}</table>
+    <div class="disclaimer-body">${discParas}</div>
+  </section>`;
+})()}
 
 <script>
   // Estimate page number for each TOC entry by measuring chapter offset.
@@ -1670,19 +1718,28 @@ if (import.meta.main) Deno.serve(async (req) => {
     }
 
     let brandName = "Investment Report";
+    let contact: Record<string, any> = {};
+    let disclaimer: { is_enabled?: boolean; text?: string; font_size?: string } = {};
     try {
       const { data: settings } = await supabase
         .from("global_report_settings")
-        .select("contact_details")
+        .select("contact_details, professional_disclaimer")
         .maybeSingle();
       const cd = (settings as any)?.contact_details;
-      if (cd?.company_name) brandName = cd.company_name;
+      if (cd) {
+        contact = cd;
+        if (cd.company_name) brandName = cd.company_name;
+      }
+      const pd = (settings as any)?.professional_disclaimer;
+      if (pd) disclaimer = pd;
     } catch { /* optional */ }
 
     const html = await buildHtml(report, brandName, {
       includeCharts: includeCharts !== false,
       includeSparklines: includeSparklines !== false,
       includeHeroImages: includeHeroImages === true,
+      contact,
+      disclaimer,
     });
     const safeAddr = String(report.property_address || "report")
       .replace(/[^a-zA-Z0-9]+/g, "-")
