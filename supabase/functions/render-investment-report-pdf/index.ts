@@ -875,7 +875,7 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
   const toc: Array<{ id: string; title: string }> = [];
   const used = new Set<string>();
   const annotated = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attrs, inner) => {
-    const text = String(inner).replace(/<[^>]+>/g, "").trim();
+    const text = String(inner).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").trim();
     let id = `ch-${slugify(text) || `${toc.length + 1}`}`;
     let n = 1;
     while (used.has(id)) id = `ch-${slugify(text) || "section"}-${++n}`;
@@ -1281,25 +1281,32 @@ export async function buildHtml(
     .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
     .toc ol li {
       counter-increment: tocnum;
-      display: flex; align-items: baseline; gap: 14pt;
       padding: 9pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
       font-family: 'Inter', sans-serif; font-size: 11pt;
       color: ${THEME.ink};
     }
-    .toc ol li::before {
+    .toc ol li a {
+      color: ${THEME.ink}; text-decoration: none;
+      display: grid;
+      grid-template-columns: 46pt 1fr auto 34pt;
+      align-items: baseline;
+      column-gap: 10pt;
+    }
+    .toc ol li a::before {
       content: counter(tocnum, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
       font-style: italic; font-weight: 500;
       color: ${THEME.goldSoft}; font-size: 13pt;
-      width: 42pt; flex-shrink: 0;
+      text-align: left;
     }
-    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; padding-left: 4pt; }
-    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 8pt 3pt; height: 0; align-self: flex-end; }
+    .toc ol li .title { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; min-width: 0; overflow-wrap: break-word; }
+    .toc ol li .dots { border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; height: 0; transform: translateY(-3pt); }
     .toc ol li .page {
       font-family: 'Playfair Display', serif;
       font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
-      min-width: 28pt; text-align: right;
+      text-align: right;
     }
+
     .toc ol li a { color: ${THEME.ink}; text-decoration: none; display: contents; }
 
     /* ── Snapshot KPI grid ── */
@@ -1737,18 +1744,20 @@ if (import.meta.main) Deno.serve(async (req) => {
     let contact: Record<string, any> = {};
     let disclaimer: { is_enabled?: boolean; text?: string; font_size?: string } = {};
     try {
-      const { data: settings } = await supabase
+      const { data: settingsRows } = await supabase
         .from("global_report_settings")
-        .select("contact_details, professional_disclaimer")
-        .maybeSingle();
-      const cd = (settings as any)?.contact_details;
-      if (cd) {
-        contact = cd;
-        if (cd.company_name) brandName = cd.company_name;
+        .select("setting_key, setting_value")
+        .in("setting_key", ["contact_details", "professional_disclaimer"]);
+      for (const row of (settingsRows as any[]) || []) {
+        if (row.setting_key === "contact_details" && row.setting_value) {
+          contact = row.setting_value;
+          if (contact.company_name) brandName = contact.company_name;
+        } else if (row.setting_key === "professional_disclaimer" && row.setting_value) {
+          disclaimer = row.setting_value;
+        }
       }
-      const pd = (settings as any)?.professional_disclaimer;
-      if (pd) disclaimer = pd;
     } catch { /* optional */ }
+
 
     const html = await buildHtml(report, brandName, {
       includeCharts: includeCharts !== false,
