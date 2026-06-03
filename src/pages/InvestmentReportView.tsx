@@ -63,6 +63,9 @@ export default function InvestmentReportView() {
   const [sendToClientOpen, setSendToClientOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
+  const [includeCharts, setIncludeCharts] = useState(true);
+  const [includeHeroImages, setIncludeHeroImages] = useState(false);
+  const [includeSparklines, setIncludeSparklines] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
   const pdfGeneratorRef = useRef<PixelPerfectPDFGeneratorHandle>(null);
 
