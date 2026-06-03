@@ -546,6 +546,87 @@ async function injectTableCharts(html: string): Promise<string> {
   return html.replace(/<table[\s\S]*?<\/table>/gi, () => replacements[i++]);
 }
 
+async function buildFinancialChartsHtml(fin: any): Promise<string> {
+  const rows = projectionRows(fin).slice(0, 10);
+  const labels = rows.map((r, i) => String(r?.year ?? r?.label ?? `Year ${i + 1}`).replace(/^year\s*/i, "Yr "));
+  const charts: string[] = [];
+  const commonFont = { family: FONT_STACK, size: 11 };
+  const gridColor = "rgba(181, 165, 128, 0.25)";
+  const moneyTick = "function(v){return Math.abs(v)>=1000000?'$'+(v/1000000).toFixed(1)+'m':Math.abs(v)>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v.toFixed(0);}";
+
+  if (labels.length >= 3) {
+    const propertyValue = pickSeries(rows, ["propertyValue", "value", "estimatedValue", "marketValue"]);
+    const equity = pickSeries(rows, ["equity", "netEquity"]);
+    const loanBalance = pickSeries(rows, ["loanBalance", "debt", "loanAmount"]);
+    const datasets = [
+      propertyValue && { label: "Property value", data: propertyValue, borderColor: CHART_PALETTE[0], backgroundColor: withAlpha(CHART_PALETTE[0], 0.16), borderWidth: 2.4, tension: 0.38, pointRadius: 2.8, fill: true },
+      equity && { label: "Equity", data: equity, borderColor: CHART_PALETTE[2], backgroundColor: withAlpha(CHART_PALETTE[2], 0.06), borderWidth: 2.2, tension: 0.38, pointRadius: 2.8, fill: false },
+      loanBalance && { label: "Loan balance", data: loanBalance, borderColor: CHART_PALETTE[1], backgroundColor: withAlpha(CHART_PALETTE[1], 0.04), borderWidth: 2.2, tension: 0.38, pointRadius: 2.8, fill: false },
+    ].filter(Boolean);
+    if (datasets.length) {
+      const uri = await chartDataUri({
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          plugins: { legend: { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } } },
+          scales: {
+            x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+            y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+          },
+        },
+      }, 820, 370, "financial:value-equity-debt");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">10-year value, equity and debt path</div><figure class="auto-chart"><img src="${uri}" alt="10-year value equity and debt chart"/></figure></div>`);
+    }
+
+    const cashFlow = pickSeries(rows, ["cashFlow", "annualNet", "netCashflow", "annualNetCashflow"]);
+    const annualRent = pickSeries(rows, ["annualRent", "rent", "rentalIncome"]);
+    if (cashFlow || annualRent) {
+      const uri = await chartDataUri({
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            annualRent && { label: "Annual rent", data: annualRent, backgroundColor: withAlpha(CHART_PALETTE[2], 0.88), borderRadius: 6, borderSkipped: false, maxBarThickness: 34 },
+            cashFlow && { label: "Net cash flow", data: cashFlow, backgroundColor: withAlpha(CHART_PALETTE[3], 0.86), borderRadius: 6, borderSkipped: false, maxBarThickness: 34 },
+          ].filter(Boolean),
+        },
+        options: {
+          plugins: { legend: { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } } },
+          scales: {
+            x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+            y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+          },
+        },
+      }, 820, 370, "financial:rent-cashflow");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Rental income versus net cash flow</div><figure class="auto-chart"><img src="${uri}" alt="Rental income and cash flow chart"/></figure></div>`);
+    }
+  }
+
+  const km = fin?.keyMetrics || fin?.key_metrics || {};
+  const yieldBars = [
+    ["Gross yield", num(km.grossRentalYield)],
+    ["Net yield", num(km.netRentalYield)],
+    ["Cash-on-cash", num(km.cashOnCashReturn)],
+    ["LVR", num(km.lvr)],
+  ].filter(([, v]) => v !== null) as Array<[string, number]>;
+  if (yieldBars.length >= 2) {
+    const uri = await chartDataUri({
+      type: "bar",
+      data: { labels: yieldBars.map(([label]) => label), datasets: [{ data: yieldBars.map(([, v]) => v), backgroundColor: yieldBars.map((_, i) => withAlpha(CHART_PALETTE[i % CHART_PALETTE.length], 0.9)), borderRadius: 6, borderSkipped: false, maxBarThickness: 46 }] },
+      options: {
+        plugins: { legend: { display: false }, datalabels: { anchor: "end", align: "top", color: "#2A2317", font: { ...commonFont, weight: "600" }, formatter: "function(v){return v.toFixed(1)+'%';}" } },
+        scales: {
+          x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+          y: { ticks: { color: "#5F5546", font: commonFont, callback: "function(v){return v.toFixed(0)+'%';}" }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+        },
+      },
+    }, 820, 340, "financial:yield-bars");
+    if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Yield and leverage profile</div><figure class="auto-chart"><img src="${uri}" alt="Yield and leverage chart"/></figure></div>`);
+  }
+
+  return charts.length ? `<section class="body-page financial-charts"><h2 id="ch-financial-visuals">Financial Visuals</h2>${charts.join("")}</section>` : "";
+}
+
 // ─────────────────────────────────────────────────────────────
 // Infographic block detectors — compare cards + process timelines
 // ─────────────────────────────────────────────────────────────
