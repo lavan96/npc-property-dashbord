@@ -1542,6 +1542,10 @@ export function InvestmentReportGenerator() {
                           <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4" />
                             State-Wide Market Analysis
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Generation Engine Selection */}
@@ -1573,10 +1577,7 @@ export function InvestmentReportGenerator() {
                       You can switch engines later via the Regenerate action on each report.
                     </p>
                   </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
 
                   {/* Query Input */}
                   <div className="space-y-3">
