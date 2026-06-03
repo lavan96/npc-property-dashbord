@@ -958,7 +958,7 @@ export async function buildHtml(
   // ── Executive Summary (replaces Snapshot + Finance Visuals section) ──
   const suburbLabel = loc?.suburb && loc?.state
     ? `${loc.suburb}, ${loc.state}`
-    : (addrTailForSummary(address) || address);
+    : address;
   const priceTxt = km.purchasePrice != null ? fmtMoney(km.purchasePrice) : null;
   const yieldTxt = km.grossRentalYield != null ? fmtPct(km.grossRentalYield) : null;
   const rentTxt = km.weeklyRent != null ? fmtMoney(km.weeklyRent) : null;
