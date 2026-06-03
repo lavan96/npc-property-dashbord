@@ -173,58 +173,62 @@ Deno.serve(async (req) => {
       }
 
       if (pfIds.length) {
-        // Status changes
-        const { data: statusEvents } = await supabase
-          .from('purchase_file_status_history')
-          .select('purchase_file_id, status, changed_at, notes')
+        // PF activity feed (status, decisions, conditions, docs, etc.)
+        const { data: events } = await supabase
+          .from('purchase_file_activity_feed')
+          .select('purchase_file_id, event_type, to_value, source, created_at')
           .in('purchase_file_id', pfIds)
-          .gt('changed_at', sinceIso)
-          .order('changed_at', { ascending: false })
-          .limit(20);
-        for (const ev of statusEvents || []) {
-          const pf: any = pfById.get(ev.purchase_file_id);
-          changed.push({
-            type: 'status_change',
-            label: `${pf?.title || 'File'} → ${String(ev.status).replace(/_/g, ' ')}`,
-            link: `/finance/purchase-files/${ev.purchase_file_id}`,
-            at: ev.changed_at,
-          });
-        }
-
-        // Client messages inbound
-        const { data: msgs } = await supabase
-          .from('finance_portal_messages')
-          .select('id, purchase_file_id, sender_role, created_at, body')
-          .in('purchase_file_id', pfIds)
-          .neq('sender_role', 'finance_partner')
           .gt('created_at', sinceIso)
           .order('created_at', { ascending: false })
-          .limit(20);
-        for (const m of msgs || []) {
-          const pf: any = pfById.get(m.purchase_file_id);
+          .limit(30);
+        for (const ev of events || []) {
+          const pf: any = pfById.get(ev.purchase_file_id);
+          const verb = String(ev.event_type || 'updated').replace(/_/g, ' ');
+          const value = ev.to_value ? ` → ${String(ev.to_value).replace(/_/g, ' ')}` : '';
           changed.push({
-            type: 'message',
-            label: `New message on ${pf?.title || 'file'}`,
-            link: `/finance/purchase-files/${m.purchase_file_id}`,
-            at: m.created_at,
+            type: ev.event_type || 'activity',
+            label: `${pf?.title || 'File'}: ${verb}${value}`,
+            link: `/finance/purchase-files/${ev.purchase_file_id}`,
+            at: ev.created_at,
           });
         }
 
-        // New documents
+        // New documents uploaded on assigned PFs
         const { data: docs } = await supabase
-          .from('documents')
-          .select('id, name, purchase_file_id, created_at')
+          .from('finance_portal_documents')
+          .select('id, original_filename, purchase_file_id, created_at')
           .in('purchase_file_id', pfIds)
+          .is('deleted_at', null)
           .gt('created_at', sinceIso)
           .order('created_at', { ascending: false })
           .limit(20);
         for (const d of docs || []) {
           const pf: any = pfById.get(d.purchase_file_id);
           changed.push({
-            type: 'document',
-            label: `Document uploaded — ${d.name || 'file'} (${pf?.title || ''})`,
+            type: 'document_uploaded',
+            label: `Document uploaded — ${d.original_filename || 'file'} (${pf?.title || ''})`,
             link: `/finance/purchase-files/${d.purchase_file_id}`,
             at: d.created_at,
+          });
+        }
+      }
+
+      // Inbound messages from client (across all assigned clients)
+      if (clientIds.length) {
+        const { data: msgs } = await supabase
+          .from('finance_portal_messages')
+          .select('id, client_id, sender_type, created_at')
+          .in('client_id', clientIds)
+          .neq('sender_type', 'finance_partner')
+          .gt('created_at', sinceIso)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        for (const m of msgs || []) {
+          changed.push({
+            type: 'message',
+            label: `New ${m.sender_type === 'client' ? 'client' : 'team'} message`,
+            link: `/finance/messages`,
+            at: m.created_at,
           });
         }
       }
