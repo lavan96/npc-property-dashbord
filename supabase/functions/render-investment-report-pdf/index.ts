@@ -1,6 +1,6 @@
 // Premium investment report PDF renderer.
 // Pipeline: fetch report row → build hybrid HTML (marketing cover + editorial body)
-// → POST to Api2PDF WeasyPrint endpoint → return hosted FileUrl.
+// → POST to Api2PDF Headless Chrome HTML endpoint → return hosted FileUrl.
 //
 // Side-by-side with the legacy jsPDF (PixelPerfectPDFGenerator) renderer.
 
@@ -437,13 +437,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const body = await req.json();
-
-    if (body?.diagnostic_key === "diag-20260603-npc-premium-pdf") {
-      const fileUrl = await callApi2Pdf("<html><body><h1>Api2PDF diagnostic</h1></body></html>", "api2pdf-diagnostic.pdf");
-      return new Response(JSON.stringify({ fileUrl, fileName: "api2pdf-diagnostic.pdf" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { error: authError } = await verifyAuth(supabase, req.headers, body);
     if (authError) return createUnauthorizedResponse(authError, corsHeaders);
