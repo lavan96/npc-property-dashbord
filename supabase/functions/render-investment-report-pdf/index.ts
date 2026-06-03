@@ -363,19 +363,13 @@ ${
 }
 
 async function callApi2Pdf(html: string, fileName: string): Promise<string> {
-  // Api2PDF V2 — Headless Chrome HTML→PDF endpoint.
-  // (Api2PDF does not expose a WeasyPrint endpoint; Chrome renders our CSS
-  // — including web fonts, gradients and conic-gradient — with high fidelity.)
-  const res = await fetch("https://v2.api2pdf.com/chrome/pdf/html", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: API2PDF_KEY,
-    },
-    body: JSON.stringify({
+  // Api2PDF Headless Chrome HTML→PDF. Api2PDF has both documented v2 shapes
+  // in circulation; try the current docs path first, then the compatibility path.
+  const payload = {
       html,
       fileName,
       inline: false,
+      inlinePdf: false,
       options: {
         printBackground: true,
         preferCSSPageSize: true,
@@ -386,19 +380,45 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginLeft: 0,
         marginRight: 0,
       },
-    }),
-  });
+    };
 
-  const text = await res.text();
-  let json: any = null;
-  try { json = JSON.parse(text); } catch { /* ignore */ }
+  let lastStatus = 0;
+  let lastBody = "";
+  let lastError = "";
+  for (const endpoint of [
+    "https://v2.api2pdf.com/chrome/html",
+    "https://v2.api2pdf.com/chrome/pdf/html",
+  ]) {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: API2PDF_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (!res.ok || !json?.Success || !json?.FileUrl) {
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* ignore */ }
+
+    lastStatus = res.status;
+    lastBody = text;
+    lastError = json?.Error || json?.error || "";
+
+    const success = json?.Success === true || json?.success === true;
+    const fileUrl = json?.FileUrl || json?.fileUrl || json?.pdf;
+    if (res.ok && success && fileUrl) return fileUrl as string;
+
+    // 404 may mean this project/account is on the other Api2PDF route shape.
+    if (res.status !== 404) break;
+  }
+
+  if (true) {
     throw new Error(
-      `Api2PDF failed (${res.status}): ${json?.Error || text.slice(0, 400)}`,
+      `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
     );
   }
-  return json.FileUrl as string;
 }
 
 Deno.serve(async (req) => {
