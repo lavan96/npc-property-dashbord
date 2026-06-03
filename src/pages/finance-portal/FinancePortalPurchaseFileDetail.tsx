@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox, Users,
+  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox, Users, PackageCheck,
 } from 'lucide-react';
+import { ComplianceTab } from '@/components/finance-portal/ComplianceTab';
 import { ApplicantsCard } from '@/components/finance-portal/ApplicantsCard';
 import { OnboardingChecklistCard } from '@/components/finance-portal/OnboardingChecklistCard';
 import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
@@ -259,6 +260,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="inbox"><Inbox className="h-4 w-4 mr-2" />Unified Inbox</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
           <TabsTrigger value="onboarding"><Users className="h-4 w-4 mr-2" />Onboarding</TabsTrigger>
+          <TabsTrigger value="compliance"><PackageCheck className="h-4 w-4 mr-2" />Compliance</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
 
@@ -310,6 +312,7 @@ export default function FinancePortalPurchaseFileDetail() {
             <OnboardingChecklistCard fileId={fileId!} />
           </div>
         </TabsContent>
+        <TabsContent value="compliance"><ComplianceTab fileId={fileId!} clientId={data.client_id} /></TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
