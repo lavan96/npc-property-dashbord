@@ -53,7 +53,10 @@ export interface PropertyListing {
   isValidPrice?: boolean;
   isValidLocation?: boolean;
   completenessScore?: number;
+  /** Raw Airtable fields exactly as returned by the proxy — used for table-specific extended views. */
+  rawFields?: Record<string, any>;
 }
+
 
 export interface AirtableGetRecordsOptions {
   pageSize?: number;
