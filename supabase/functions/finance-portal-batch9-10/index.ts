@@ -245,33 +245,57 @@ Deno.serve(async (req) => {
       if (pf.client_deal_id) {
         const { data: d } = await supabase
           .from('client_deals')
-          .select('id, deal_name, stage, status, owner_user_id, updated_at, last_activity_at')
+          .select('id, deal_type, current_stage, risk_status, responsible_person, created_by, updated_at')
           .eq('id', pf.client_deal_id)
           .maybeSingle();
-        deal = d;
-        if (d?.owner_user_id) {
+        deal = d
+          ? {
+              id: d.id,
+              deal_name: d.deal_type ?? null,
+              stage: d.current_stage ?? null,
+              status: d.risk_status ?? null,
+              owner_user_id: d.created_by ?? null,
+              updated_at: d.updated_at,
+            }
+          : null;
+        const ownerId = d?.created_by;
+        if (ownerId) {
           const { data: o } = await supabase
             .from('custom_users')
-            .select('id, email, full_name')
-            .eq('id', d.owner_user_id)
+            .select('id, email, username')
+            .eq('id', ownerId)
             .maybeSingle();
-          owner = o;
+          owner = o ? { id: o.id, email: o.email, full_name: o.username } : null;
+        } else if (d?.responsible_person) {
+          owner = { id: null, email: null, full_name: d.responsible_person };
         }
       }
 
       const { data: lastActivity } = await supabase
-        .from('activity_log')
-        .select('id, action_type, description, created_at, user_id')
+        .from('purchase_file_activity_feed')
+        .select('id, event_type, payload, created_at, actor_id, actor_kind, source')
         .eq('purchase_file_id', fid)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      const lastActivityNorm = lastActivity
+        ? {
+            id: lastActivity.id,
+            action_type: lastActivity.event_type,
+            description:
+              (lastActivity.payload as any)?.summary ??
+              (lastActivity.payload as any)?.description ??
+              null,
+            created_at: lastActivity.created_at,
+            user_id: lastActivity.actor_id,
+          }
+        : null;
 
       return json({
         purchase_file: pf,
         deal,
         npc_owner: owner,
-        last_npc_activity: lastActivity,
+        last_npc_activity: lastActivityNorm,
       });
     }
 
