@@ -394,6 +394,16 @@ export default function InvestmentReportView() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Hero images</span>
                   <Switch checked={includeHeroImages} onCheckedChange={setIncludeHeroImages} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setHeroDialogOpen(true)}
+                    title="Generate, preview and choose hero images"
+                  >
+                    <Images className="h-3.5 w-3.5 mr-1" />
+                    Manage
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Sparklines</span>
