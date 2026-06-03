@@ -800,6 +800,108 @@ export async function buildHtml(
       page-break-inside: avoid;
     }
     .disclaimer h4 { margin-top: 0; color: ${THEME.inkMuted}; }
+
+    /* ── Auto-injected charts ── */
+    .chart-wrap { margin: 14pt 0 18pt; page-break-inside: avoid; }
+    .auto-chart { margin: 0 0 6pt; text-align: center; page-break-inside: avoid; }
+    .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .chart-wrap > table { margin-top: 4pt; font-size: 8pt; }
+
+    /* ── KPI sparklines ── */
+    .kpi-spark { margin-top: 8pt; height: 28pt; opacity: 0.95; }
+    .kpi-spark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* ── Compare cards (Strengths/Watch, Pros/Cons) ── */
+    .compare-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12pt;
+      margin: 16pt 0;
+      page-break-inside: avoid;
+    }
+    .compare-col {
+      padding: 13pt 15pt 11pt;
+      border-radius: 3pt;
+      border: 0.5pt solid ${THEME.rule};
+      background: #FFFDF8;
+    }
+    .compare-pos { background: linear-gradient(180deg, #ECF4E1 0%, #F4F8EC 100%); border-left: 3pt solid ${THEME.good}; }
+    .compare-neg { background: linear-gradient(180deg, #F5E0D9 0%, #F9EBE5 100%); border-left: 3pt solid ${THEME.risk}; }
+    .compare-head {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      font-size: 7.5pt;
+      margin-bottom: 8pt;
+      padding-bottom: 5pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+    }
+    .compare-pos .compare-head { color: ${THEME.good}; }
+    .compare-neg .compare-head { color: ${THEME.risk}; }
+    .compare-col ul { margin: 0; padding: 0; }
+    .compare-col li { padding-left: 16pt; border-bottom: 0.25pt dotted ${THEME.rule}; font-size: 9pt; }
+    .compare-pos li::before { background: ${THEME.good}; }
+    .compare-neg li::before { background: ${THEME.risk}; }
+
+    /* ── Process timeline ── */
+    ol.timeline {
+      counter-reset: none;
+      list-style: none;
+      padding: 0;
+      margin: 16pt 0;
+    }
+    ol.timeline li {
+      display: grid;
+      grid-template-columns: 64pt 1fr;
+      gap: 14pt;
+      padding: 12pt 0;
+      border-bottom: 0.5pt solid ${THEME.rule};
+      page-break-inside: avoid;
+      counter-increment: none;
+    }
+    ol.timeline li::before { content: none; }
+    ol.timeline .step-no {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-style: italic;
+      color: ${THEME.goldSoft};
+      font-size: 15pt;
+      line-height: 1.1;
+      padding-top: 2pt;
+      border-right: 1.5pt solid ${THEME.gold};
+      padding-right: 10pt;
+    }
+    ol.timeline .step-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 12.5pt;
+      margin-bottom: 4pt;
+      color: ${THEME.ink};
+    }
+    ol.timeline .step-body { font-size: 9.5pt; }
+    ol.timeline .step-body p { margin-bottom: 4pt; }
+
+    /* ── Chapter hero illustrations ── */
+    .chapter-hero {
+      margin: 18pt -17mm 16pt;
+      page-break-inside: avoid;
+      page-break-after: avoid;
+      position: relative;
+    }
+    .chapter-hero img {
+      width: 210mm;
+      height: 55mm;
+      object-fit: cover;
+      display: block;
+    }
+    .chapter-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(247,242,232,0.0) 60%, rgba(247,242,232,0.55) 100%);
+      pointer-events: none;
+    }
   `;
 
   const scoreCard = scoreOverall != null
