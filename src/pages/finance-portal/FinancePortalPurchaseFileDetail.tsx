@@ -315,6 +315,7 @@ export default function FinancePortalPurchaseFileDetail() {
           </div>
         </TabsContent>
         <TabsContent value="compliance"><ComplianceTab fileId={fileId!} clientId={data.client_id} /></TabsContent>
+        <TabsContent value="calculators"><CalculatorsTab fileId={fileId!} file={data} /></TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>
