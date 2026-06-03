@@ -6624,6 +6624,59 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_partner_message_templates: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string
+          id: string
+          is_shared: boolean
+          kind: string
+          last_used_at: string | null
+          merge_tags: string[]
+          owner_finance_contact_id: string | null
+          title: string
+          updated_at: string
+          use_count: number
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_shared?: boolean
+          kind: string
+          last_used_at?: string | null
+          merge_tags?: string[]
+          owner_finance_contact_id?: string | null
+          title: string
+          updated_at?: string
+          use_count?: number
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_shared?: boolean
+          kind?: string
+          last_used_at?: string | null
+          merge_tags?: string[]
+          owner_finance_contact_id?: string | null
+          title?: string
+          updated_at?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_message_templates_owner_finance_contact_id_fkey"
+            columns: ["owner_finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_partner_notification_prefs: {
         Row: {
           channels: string[]
@@ -6662,6 +6715,73 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      finance_partner_snoozes: {
+        Row: {
+          cleared_at: string | null
+          client_id: string | null
+          created_at: string
+          finance_contact_id: string
+          id: string
+          notified: boolean
+          purchase_file_id: string | null
+          raw_input: string | null
+          reason: string | null
+          scope: string
+          snooze_until: string
+          updated_at: string
+        }
+        Insert: {
+          cleared_at?: string | null
+          client_id?: string | null
+          created_at?: string
+          finance_contact_id: string
+          id?: string
+          notified?: boolean
+          purchase_file_id?: string | null
+          raw_input?: string | null
+          reason?: string | null
+          scope?: string
+          snooze_until: string
+          updated_at?: string
+        }
+        Update: {
+          cleared_at?: string | null
+          client_id?: string | null
+          created_at?: string
+          finance_contact_id?: string
+          id?: string
+          notified?: boolean
+          purchase_file_id?: string | null
+          raw_input?: string | null
+          reason?: string | null
+          scope?: string
+          snooze_until?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_snoozes_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_snoozes_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_snoozes_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
       }
       finance_partner_statement_lines: {
         Row: {
