@@ -34,6 +34,7 @@ import { BorrowingSnapshotCard } from '@/components/finance-portal/BorrowingSnap
 import { ActivityTimeline } from '@/components/finance-portal/ActivityTimeline';
 import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLinkCard';
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
+import { RecordOutcomeDialog } from '@/components/finance-portal/RecordOutcomeDialog';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
 import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
 import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
@@ -232,8 +233,14 @@ export default function FinancePortalPurchaseFileDetail() {
               ))}
             </SelectContent>
           </Select>
+          <RecordOutcomeDialog
+            purchaseFileId={fileId!}
+            defaultLender={data.lender}
+            defaultLoanAmount={Number(data.loan_amount || data.purchase_price || 0)}
+          />
         </div>
       </div>
+
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList>
