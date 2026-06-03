@@ -74,6 +74,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [packetOpen, setPacketOpen] = useState(false);
+  const [remindersOpen, setRemindersOpen] = useState(false);
   const [rerequestFor, setRerequestFor] = useState<any | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
