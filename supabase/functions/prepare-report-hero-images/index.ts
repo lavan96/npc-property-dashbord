@@ -44,6 +44,8 @@ function cleanReportMarkdown(markdown: string, address: string): string {
   return out.trim();
 }
 
+const MAX_HERO_IMAGES = 15;
+
 function extractChapterTitles(markdown: string, address: string): string[] {
   const cleaned = cleanReportMarkdown(String(markdown || ""), address);
   const titles: string[] = [];
@@ -53,10 +55,14 @@ function extractChapterTitles(markdown: string, address: string): string[] {
   while ((m = re.exec(cleaned))) {
     const title = m[1].replace(/[*_`#]/g, "").trim();
     if (!title) continue;
+    // Skip trivial / non-chapter headings
+    if (title.length < 4) continue;
+    if (/^(sources?|references?|appendix|disclaimer|notes?|glossary)\b/i.test(title)) continue;
     const key = slugify(title);
     if (!key || seen.has(key)) continue;
     seen.add(key);
     titles.push(title);
+    if (titles.length >= MAX_HERO_IMAGES) break;
   }
   return titles;
 }
