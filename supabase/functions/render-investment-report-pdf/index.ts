@@ -1189,27 +1189,26 @@ export async function buildHtml(
     .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
     .toc ol li {
       counter-increment: tocnum;
-      display: flex; align-items: baseline; gap: 8pt;
-      padding: 7pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
-      font-family: 'Inter', sans-serif; font-size: 10.5pt;
+      display: flex; align-items: baseline; gap: 14pt;
+      padding: 9pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
+      font-family: 'Inter', sans-serif; font-size: 11pt;
       color: ${THEME.ink};
     }
     .toc ol li::before {
       content: counter(tocnum, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
       font-style: italic; font-weight: 500;
-      color: ${THEME.goldSoft}; font-size: 11pt;
-      width: 28pt; flex-shrink: 0;
+      color: ${THEME.goldSoft}; font-size: 13pt;
+      width: 42pt; flex-shrink: 0;
     }
-    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 13pt; }
-    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 6pt 3pt; height: 0; align-self: flex-end; }
+    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; padding-left: 4pt; }
+    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 8pt 3pt; height: 0; align-self: flex-end; }
     .toc ol li .page {
       font-family: 'Playfair Display', serif;
-      font-weight: 700; color: ${THEME.ink}; font-size: 11pt;
-      width: 22pt; text-align: right;
+      font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
+      min-width: 28pt; text-align: right;
     }
     .toc ol li a { color: ${THEME.ink}; text-decoration: none; display: contents; }
-    .toc ol li a .page::after { content: target-counter(attr(href), page); }
 
     /* ── Snapshot KPI grid ── */
     .snapshot {
