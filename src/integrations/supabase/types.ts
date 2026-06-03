@@ -6528,6 +6528,63 @@ export type Database = {
           },
         ]
       }
+      finance_partner_daily_activity: {
+        Row: {
+          action_count: number
+          activity_date: string
+          created_at: string
+          finance_contact_id: string
+          first_action_at: string
+          id: string
+          last_action_at: string
+          metadata: Json
+        }
+        Insert: {
+          action_count?: number
+          activity_date: string
+          created_at?: string
+          finance_contact_id: string
+          first_action_at?: string
+          id?: string
+          last_action_at?: string
+          metadata?: Json
+        }
+        Update: {
+          action_count?: number
+          activity_date?: string
+          created_at?: string
+          finance_contact_id?: string
+          first_action_at?: string
+          id?: string
+          last_action_at?: string
+          metadata?: Json
+        }
+        Relationships: []
+      }
+      finance_partner_engagement_badges: {
+        Row: {
+          badge_key: string
+          earned_at: string
+          finance_contact_id: string
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          badge_key: string
+          earned_at?: string
+          finance_contact_id: string
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          badge_key?: string
+          earned_at?: string
+          finance_contact_id?: string
+          id?: string
+          metadata?: Json
+        }
+        Relationships: []
+      }
       finance_partner_goals: {
         Row: {
           commission_target_net: number | null
@@ -7680,7 +7737,10 @@ export type Database = {
           invite_token_expires_at: string | null
           invited_by: string | null
           is_active: boolean
+          last_briefing_sent_at: string | null
+          last_eod_sent_at: string | null
           last_login_at: string | null
+          last_seen_at: string | null
           locked_until: string | null
           must_change_password: boolean
           password_hash: string | null
@@ -7690,6 +7750,7 @@ export type Database = {
           revoked_by: string | null
           session_expires_at: string | null
           session_token: string | null
+          streak_freeze_until: string | null
           terms_accepted_at: string | null
           updated_at: string
         }
@@ -7708,7 +7769,10 @@ export type Database = {
           invite_token_expires_at?: string | null
           invited_by?: string | null
           is_active?: boolean
+          last_briefing_sent_at?: string | null
+          last_eod_sent_at?: string | null
           last_login_at?: string | null
+          last_seen_at?: string | null
           locked_until?: string | null
           must_change_password?: boolean
           password_hash?: string | null
@@ -7718,6 +7782,7 @@ export type Database = {
           revoked_by?: string | null
           session_expires_at?: string | null
           session_token?: string | null
+          streak_freeze_until?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
         }
@@ -7736,7 +7801,10 @@ export type Database = {
           invite_token_expires_at?: string | null
           invited_by?: string | null
           is_active?: boolean
+          last_briefing_sent_at?: string | null
+          last_eod_sent_at?: string | null
           last_login_at?: string | null
+          last_seen_at?: string | null
           locked_until?: string | null
           must_change_password?: boolean
           password_hash?: string | null
@@ -7746,6 +7814,7 @@ export type Database = {
           revoked_by?: string | null
           session_expires_at?: string | null
           session_token?: string | null
+          streak_freeze_until?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
         }
@@ -14535,6 +14604,10 @@ export type Database = {
           id: string
           row_count: number
         }[]
+      }
+      bump_finance_partner_activity: {
+        Args: { _contact_id: string }
+        Returns: undefined
       }
       calculate_data_quality_score: {
         Args: { report_id: string }
