@@ -272,12 +272,12 @@ export function ClientCommsInboxTab({
             </Select>
             <div className="ml-auto">
               <TemplatesPicker
-                kind={composeChannel === 'portal' ? 'message' : composeChannel === 'email' ? 'email' : composeChannel === 'whatsapp' ? 'whatsapp' : 'sms'}
-                onSelect={(rendered) => {
+                kind={composeChannel === 'portal' ? 'message' : composeChannel === 'sms' || composeChannel === 'whatsapp' ? 'sms' : 'message'}
+                onPick={(rendered) => {
                   setComposeBody(rendered.body || '');
-                  if (rendered.subject) setComposeSubject(rendered.subject);
+                  if (rendered.title && composeChannel === 'email') setComposeSubject(rendered.title);
                 }}
-                context={{ client_id: clientId, purchase_file_id: purchaseFileId }}
+                vars={{ client_id: clientId, purchase_file_id: purchaseFileId || '' }}
               />
             </div>
           </div>
