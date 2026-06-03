@@ -9,7 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Bell, Palette, Loader2, Save, Upload, Clock } from 'lucide-react';
+import { Settings, Bell, Palette, Loader2, Save, Upload, Clock, CalendarClock } from 'lucide-react';
+import { AvailabilityCard } from '@/components/finance-portal/AvailabilityCard';
+import { BookingsCard } from '@/components/finance-portal/BookingsCard';
 import { toast } from 'sonner';
 
 const EVENT_TYPES: { key: string; label: string; description: string }[] = [
