@@ -235,13 +235,13 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 /**
- * Render charts server-side and embed them as data URIs. This avoids Api2PDF's
- * remote-image timing/CORS variability and keeps the PDF render deterministic.
+ * Render charts via QuickChart's short-URL service. Returning a remote URL
+ * (instead of an inline base64 data URI) keeps edge-function memory usage tiny
+ * — Api2PDF's headless Chrome fetches each image directly when rendering the
+ * PDF. Previous data-URI approach blew the 256MB worker limit on reports with
+ * ~13+ charts.
  */
-async function chartDataUri(config: Record<string, unknown>, width = 780, height = 360, purpose = "chart"): Promise<string | null> {
-  // chart MUST be a JS string (not a JSON object) so QuickChart evaluates
-  // function expressions (tick callbacks, datalabels formatters).  Passing an
-  // object causes JSON.stringify to double-quote them into inert strings.
+async function chartDataUri(config: Record<string, unknown>, width = 720, height = 340, purpose = "chart"): Promise<string | null> {
   const chartJs = configToJs(config);
   const payload = {
     chart: chartJs,
@@ -250,6 +250,7 @@ async function chartDataUri(config: Record<string, unknown>, width = 780, height
     format: "png",
     backgroundColor: "transparent",
     version: "4",
+    devicePixelRatio: 1.5,
   };
   const cacheKey = chartJs + `|${width}x${height}`;
   if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
@@ -257,23 +258,26 @@ async function chartDataUri(config: Record<string, unknown>, width = 780, height
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch("https://quickchart.io/chart?devicePixelRatio=2", {
+    const res = await fetch("https://quickchart.io/chart/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    const contentType = res.headers.get("content-type") || "";
-    const buffer = await res.arrayBuffer();
-    if (!res.ok || !contentType.includes("image/")) {
-      const preview = new TextDecoder().decode(buffer.slice(0, 240));
-      console.warn("[charts] QuickChart render failed", { purpose, status: res.status, contentType, preview });
+    if (!res.ok) {
+      const preview = (await res.text()).slice(0, 240);
+      console.warn("[charts] QuickChart short-url failed", { purpose, status: res.status, preview });
       chartImageCache.set(cacheKey, null);
       return null;
     }
-    const uri = `data:${contentType.split(";")[0] || "image/png"};base64,${arrayBufferToBase64(buffer)}`;
-    chartImageCache.set(cacheKey, uri);
-    return uri;
+    const json = await res.json() as { success?: boolean; url?: string };
+    if (!json?.success || !json.url) {
+      console.warn("[charts] QuickChart short-url payload invalid", { purpose, json });
+      chartImageCache.set(cacheKey, null);
+      return null;
+    }
+    chartImageCache.set(cacheKey, json.url);
+    return json.url;
   } catch (err) {
     console.warn("[charts] QuickChart render error", { purpose, error: err instanceof Error ? err.message : String(err) });
     chartImageCache.set(cacheKey, null);
@@ -282,6 +286,7 @@ async function chartDataUri(config: Record<string, unknown>, width = 780, height
     clearTimeout(timeout);
   }
 }
+
 
 async function quickSparklineUrl(values: number[], color: string = THEME.gold): Promise<string | null> {
   const cfg = {
