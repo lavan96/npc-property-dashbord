@@ -825,6 +825,367 @@ export type Database = {
           },
         ]
       }
+      ai_coach_insights: {
+        Row: {
+          action_label: string | null
+          action_path: string | null
+          body: string | null
+          category: string | null
+          dismissed_at: string | null
+          finance_user_id: string
+          generated_at: string
+          id: string
+          model: string | null
+          title: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_path?: string | null
+          body?: string | null
+          category?: string | null
+          dismissed_at?: string | null
+          finance_user_id: string
+          generated_at?: string
+          id?: string
+          model?: string | null
+          title: string
+        }
+        Update: {
+          action_label?: string | null
+          action_path?: string | null
+          body?: string | null
+          category?: string | null
+          dismissed_at?: string | null
+          finance_user_id?: string
+          generated_at?: string
+          id?: string
+          model?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_coach_insights_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_doc_classifications: {
+        Row: {
+          classified_type: string | null
+          confidence: number | null
+          document_id: string | null
+          document_instance_id: string | null
+          extracted_fields: Json | null
+          generated_at: string
+          id: string
+          is_expired: boolean | null
+          model: string | null
+          period_label: string | null
+          purchase_file_id: string | null
+          suggested_label: string | null
+        }
+        Insert: {
+          classified_type?: string | null
+          confidence?: number | null
+          document_id?: string | null
+          document_instance_id?: string | null
+          extracted_fields?: Json | null
+          generated_at?: string
+          id?: string
+          is_expired?: boolean | null
+          model?: string | null
+          period_label?: string | null
+          purchase_file_id?: string | null
+          suggested_label?: string | null
+        }
+        Update: {
+          classified_type?: string | null
+          confidence?: number | null
+          document_id?: string | null
+          document_instance_id?: string | null
+          extracted_fields?: Json | null
+          generated_at?: string
+          id?: string
+          is_expired?: boolean | null
+          model?: string | null
+          period_label?: string | null
+          purchase_file_id?: string | null
+          suggested_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_doc_classifications_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_doc_classifications_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      ai_lender_recommendations: {
+        Row: {
+          generated_at: string
+          id: string
+          model: string | null
+          purchase_file_id: string
+          rationale: string | null
+          recommendations: Json
+        }
+        Insert: {
+          generated_at?: string
+          id?: string
+          model?: string | null
+          purchase_file_id: string
+          rationale?: string | null
+          recommendations?: Json
+        }
+        Update: {
+          generated_at?: string
+          id?: string
+          model?: string | null
+          purchase_file_id?: string
+          rationale?: string | null
+          recommendations?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_lender_recommendations_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_lender_recommendations_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      ai_loan_app_prefills: {
+        Row: {
+          extracted: Json
+          generated_at: string
+          generated_by: string | null
+          id: string
+          model: string | null
+          purchase_file_id: string
+          source_doc_ids: string[] | null
+        }
+        Insert: {
+          extracted?: Json
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          model?: string | null
+          purchase_file_id: string
+          source_doc_ids?: string[] | null
+        }
+        Update: {
+          extracted?: Json
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          model?: string | null
+          purchase_file_id?: string
+          source_doc_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_loan_app_prefills_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_loan_app_prefills_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      ai_pf_summaries: {
+        Row: {
+          generated_at: string
+          generated_by: string | null
+          model: string | null
+          purchase_file_id: string
+          summary: Json
+        }
+        Insert: {
+          generated_at?: string
+          generated_by?: string | null
+          model?: string | null
+          purchase_file_id: string
+          summary?: Json
+        }
+        Update: {
+          generated_at?: string
+          generated_by?: string | null
+          model?: string | null
+          purchase_file_id?: string
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_pf_summaries_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pf_summaries_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: true
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      ai_risk_alerts: {
+        Row: {
+          alert_type: string
+          details: Json | null
+          finance_user_id: string | null
+          generated_at: string
+          id: string
+          model: string | null
+          purchase_file_id: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          summary: string | null
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          details?: Json | null
+          finance_user_id?: string | null
+          generated_at?: string
+          id?: string
+          model?: string | null
+          purchase_file_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          summary?: string | null
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          details?: Json | null
+          finance_user_id?: string | null
+          generated_at?: string
+          id?: string
+          model?: string | null
+          purchase_file_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          summary?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_risk_alerts_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_risk_alerts_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_risk_alerts_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      ai_voice_memos: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          finance_user_id: string
+          id: string
+          model: string | null
+          purchase_file_id: string | null
+          saved_as_note: boolean | null
+          summary: string | null
+          transcript: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          finance_user_id: string
+          id?: string
+          model?: string | null
+          purchase_file_id?: string | null
+          saved_as_note?: boolean | null
+          summary?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          finance_user_id?: string
+          id?: string
+          model?: string | null
+          purchase_file_id?: string | null
+          saved_as_note?: boolean | null
+          summary?: string | null
+          transcript?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_voice_memos_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_voice_memos_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_voice_memos_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
       api_health_log: {
         Row: {
           created_at: string
