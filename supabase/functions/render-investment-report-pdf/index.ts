@@ -388,6 +388,8 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
   for (const endpoint of [
     "https://v2.api2pdf.com/chrome/html",
     "https://v2.api2pdf.com/chrome/pdf/html",
+    "https://v2018.api2pdf.com/chrome/html",
+    "https://v2018.api2pdf.com/chrome/pdf/html",
   ]) {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -405,6 +407,13 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     lastStatus = res.status;
     lastBody = text;
     lastError = json?.Error || json?.error || "";
+    console.log("[render-investment-report-pdf] Api2PDF attempt", {
+      endpoint,
+      status: res.status,
+      success: json?.Success ?? json?.success ?? false,
+      hasFileUrl: Boolean(json?.FileUrl || json?.fileUrl || json?.pdf),
+      error: lastError || undefined,
+    });
 
     const success = json?.Success === true || json?.success === true;
     const fileUrl = json?.FileUrl || json?.fileUrl || json?.pdf;
