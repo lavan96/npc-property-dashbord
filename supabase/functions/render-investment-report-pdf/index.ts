@@ -1,22 +1,16 @@
 // Premium investment report PDF renderer.
 // Pipeline: fetch report row → build hybrid HTML (marketing cover + editorial body)
-// → POST to Api2PDF WeasyPrint endpoint → return hosted FileUrl.
+// → POST to Api2PDF Headless Chrome HTML endpoint → return hosted FileUrl.
 //
 // Side-by-side with the legacy jsPDF (PixelPerfectPDFGenerator) renderer.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { marked } from "https://esm.sh/marked@12.0.2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-portal-session-token, x-finance-session-token",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const API2PDF_KEY = Deno.env.get("API2PDF_API_KEY")!;
+const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -369,19 +363,13 @@ ${
 }
 
 async function callApi2Pdf(html: string, fileName: string): Promise<string> {
-  // Api2PDF V2 — Headless Chrome HTML→PDF endpoint.
-  // (Api2PDF does not expose a WeasyPrint endpoint; Chrome renders our CSS
-  // — including web fonts, gradients and conic-gradient — with high fidelity.)
-  const res = await fetch("https://v2.api2pdf.com/chrome/pdf/html", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: API2PDF_KEY,
-    },
-    body: JSON.stringify({
+  // Api2PDF Headless Chrome HTML→PDF. Api2PDF has both documented v2 shapes
+  // in circulation; try the current docs path first, then the compatibility path.
+  const payload = {
       html,
       fileName,
       inline: false,
+      inlinePdf: false,
       options: {
         printBackground: true,
         preferCSSPageSize: true,
@@ -392,36 +380,74 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
         marginLeft: 0,
         marginRight: 0,
       },
-    }),
-  });
+    };
 
-  const text = await res.text();
-  let json: any = null;
-  try { json = JSON.parse(text); } catch { /* ignore */ }
+  let lastStatus = 0;
+  let lastBody = "";
+  let lastError = "";
+  for (const endpoint of [
+    "https://v2.api2pdf.com/chrome/html",
+    "https://v2.api2pdf.com/chrome/pdf/html",
+    "https://v2018.api2pdf.com/chrome/html",
+    "https://v2018.api2pdf.com/chrome/pdf/html",
+  ]) {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: API2PDF_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (!res.ok || !json?.Success || !json?.FileUrl) {
-    throw new Error(
-      `Api2PDF failed (${res.status}): ${json?.Error || text.slice(0, 400)}`,
-    );
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* ignore */ }
+
+    lastStatus = res.status;
+    lastBody = text;
+    lastError = json?.Error || json?.error || "";
+    console.log("[render-investment-report-pdf] Api2PDF attempt", {
+      endpoint,
+      status: res.status,
+      success: json?.Success ?? json?.success ?? false,
+      hasFileUrl: Boolean(json?.FileUrl || json?.fileUrl || json?.pdf),
+      error: lastError || undefined,
+    });
+
+    const success = json?.Success === true || json?.success === true;
+    const fileUrl = json?.FileUrl || json?.fileUrl || json?.pdf;
+    if (res.ok && success && fileUrl) return fileUrl as string;
+
+    // 404 may mean this project/account is on the other Api2PDF route shape.
+    if (res.status !== 404) break;
   }
-  return json.FileUrl as string;
+
+  throw new Error(
+    `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
+  );
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     if (!API2PDF_KEY) throw new Error("API2PDF_API_KEY is not configured");
 
-    const { reportId } = await req.json();
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const body = await req.json();
+
+    const { error: authError } = await verifyAuth(supabase, req.headers, body);
+    if (authError) return createUnauthorizedResponse(authError, corsHeaders);
+
+    const { reportId } = body;
     if (!reportId || typeof reportId !== "string") {
       return new Response(JSON.stringify({ error: "reportId required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: report, error } = await supabase
       .from("investment_reports")

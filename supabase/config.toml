@@ -323,6 +323,10 @@ verify_jwt = true
 [functions.manage-investment-reports]
 verify_jwt = true
 
+[functions.render-investment-report-pdf]
+verify_jwt = false
+request_timeout = 120
+
 [functions.get-call-logs]
 verify_jwt = true
 
