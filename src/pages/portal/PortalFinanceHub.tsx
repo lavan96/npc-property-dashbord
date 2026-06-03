@@ -11,6 +11,8 @@ import {
 
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ClientOnboardingCard } from '@/components/portal/ClientOnboardingCard';
+import { ClientBookingCard } from '@/components/portal/ClientBookingCard';
 
 const SUPABASE_URL = 'https://dduzbchuswwbefdunfct.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
@@ -92,6 +94,7 @@ export default function PortalFinanceHub() {
   const [files, setFiles] = useState<FileRow[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,6 +122,15 @@ export default function PortalFinanceHub() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const token = getSessionToken(); if (!token) return;
+    fetch(`${SUPABASE_URL}/functions/v1/client-portal-batch6`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'x-portal-session-token': token },
+      body: JSON.stringify({ operation: 'assigned_partner' }),
+    }).then(r => r.json()).then(j => setPartnerId(j?.partner?.id ?? null)).catch(() => {});
+  }, []);
 
   const totalOpenTasks = portfolio?.total_open_tasks ?? files.reduce((acc, f) => acc + f.open_task_count, 0);
 
@@ -152,6 +164,8 @@ export default function PortalFinanceHub() {
       ) : (
         <div className="space-y-4">
           {portfolio && portfolio.total_files > 1 && <PortfolioSummary portfolio={portfolio} />}
+          <ClientBookingCard financeUserId={partnerId} />
+          <ClientOnboardingCard />
           {files.map(f => <FileCard key={f.id} file={f} />)}
         </div>
       )}

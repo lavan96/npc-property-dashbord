@@ -19,8 +19,10 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox,
+  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox, Users,
 } from 'lucide-react';
+import { ApplicantsCard } from '@/components/finance-portal/ApplicantsCard';
+import { OnboardingChecklistCard } from '@/components/finance-portal/OnboardingChecklistCard';
 import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
@@ -256,6 +258,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
           <TabsTrigger value="inbox"><Inbox className="h-4 w-4 mr-2" />Unified Inbox</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
+          <TabsTrigger value="onboarding"><Users className="h-4 w-4 mr-2" />Onboarding</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
 
@@ -301,6 +304,12 @@ export default function FinancePortalPurchaseFileDetail() {
         </TabsContent>
         <TabsContent value="inbox"><ClientCommsInboxTab clientId={data.client_id} purchaseFileId={fileId!} /></TabsContent>
         <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
+        <TabsContent value="onboarding">
+          <div className="grid gap-4 md:grid-cols-2">
+            <ApplicantsCard fileId={fileId!} />
+            <OnboardingChecklistCard fileId={fileId!} />
+          </div>
+        </TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
     </div>

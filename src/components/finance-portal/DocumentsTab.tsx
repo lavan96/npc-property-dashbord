@@ -16,11 +16,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   Send, Plus, Trash2, CheckCircle2, ShieldCheck, AlertCircle, Clock, FileCheck,
-  Sparkles, Loader2, FileText, Eye, EyeOff, Package, ScanLine, RefreshCw, AlertTriangle,
+  Sparkles, Loader2, FileText, Eye, EyeOff, Package, ScanLine, RefreshCw, AlertTriangle, BellRing,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { LenderPacketDialog } from './LenderPacketDialog';
+import { AutoRemindersDialog } from './AutoRemindersDialog';
 
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -73,6 +74,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [packetOpen, setPacketOpen] = useState(false);
+  const [remindersOpen, setRemindersOpen] = useState(false);
   const [rerequestFor, setRerequestFor] = useState<any | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -347,6 +349,9 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
               <Button size="sm" variant="outline" onClick={() => setPacketOpen(true)} className="gap-1.5">
                 <Package className="h-4 w-4" /> Lender packet
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setRemindersOpen(true)} className="gap-1.5">
+                <BellRing className="h-4 w-4" /> Auto-reminders
+              </Button>
               <Button size="sm" variant="outline" onClick={handleInstantiate} disabled={busy} className="gap-1.5">
                 <Sparkles className="h-4 w-4" /> Add missing defaults
               </Button>
@@ -583,6 +588,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
       />
 
       <LenderPacketDialog open={packetOpen} onOpenChange={setPacketOpen} fileId={fileId} />
+      <AutoRemindersDialog open={remindersOpen} onOpenChange={setRemindersOpen} requirements={requirements || []} onSaved={refresh} />
     </div>
   );
 }
