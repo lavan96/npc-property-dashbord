@@ -11178,6 +11178,84 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_rate_cards: {
+        Row: {
+          comparison_rate: number | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          fixed_term_months: number | null
+          id: string
+          is_active: boolean
+          lender_key: string
+          lmi_waiver_at_lvr: number | null
+          loan_purpose: string
+          max_loan: number | null
+          max_lvr: number
+          metadata: Json
+          min_loan: number | null
+          notes: string | null
+          offset_available: boolean
+          ongoing_fees_annual: number
+          product_name: string
+          rate_pa: number
+          redraw_available: boolean
+          repayment_type: string
+          updated_at: string
+          upfront_fees: number
+        }
+        Insert: {
+          comparison_rate?: number | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          fixed_term_months?: number | null
+          id?: string
+          is_active?: boolean
+          lender_key: string
+          lmi_waiver_at_lvr?: number | null
+          loan_purpose?: string
+          max_loan?: number | null
+          max_lvr?: number
+          metadata?: Json
+          min_loan?: number | null
+          notes?: string | null
+          offset_available?: boolean
+          ongoing_fees_annual?: number
+          product_name: string
+          rate_pa: number
+          redraw_available?: boolean
+          repayment_type?: string
+          updated_at?: string
+          upfront_fees?: number
+        }
+        Update: {
+          comparison_rate?: number | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          fixed_term_months?: number | null
+          id?: string
+          is_active?: boolean
+          lender_key?: string
+          lmi_waiver_at_lvr?: number | null
+          loan_purpose?: string
+          max_loan?: number | null
+          max_lvr?: number
+          metadata?: Json
+          min_loan?: number | null
+          notes?: string | null
+          offset_available?: boolean
+          ongoing_fees_annual?: number
+          product_name?: string
+          rate_pa?: number
+          redraw_available?: boolean
+          repayment_type?: string
+          updated_at?: string
+          upfront_fees?: number
+        }
+        Relationships: []
+      }
       lender_submission_documents: {
         Row: {
           created_at: string
@@ -12816,6 +12894,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      purchase_file_calculator_scenarios: {
+        Row: {
+          calculator_type: string
+          created_at: string
+          finance_user_id: string | null
+          id: string
+          inputs: Json
+          is_pinned: boolean
+          label: string | null
+          purchase_file_id: string | null
+          results: Json
+          updated_at: string
+        }
+        Insert: {
+          calculator_type: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          inputs?: Json
+          is_pinned?: boolean
+          label?: string | null
+          purchase_file_id?: string | null
+          results?: Json
+          updated_at?: string
+        }
+        Update: {
+          calculator_type?: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          inputs?: Json
+          is_pinned?: boolean
+          label?: string | null
+          purchase_file_id?: string | null
+          results?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_file_calculator_scenarios_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_file_calculator_scenarios_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
       }
       purchase_file_client_tasks: {
         Row: {
