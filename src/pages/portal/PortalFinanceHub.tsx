@@ -94,6 +94,7 @@ export default function PortalFinanceHub() {
   const [files, setFiles] = useState<FileRow[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
