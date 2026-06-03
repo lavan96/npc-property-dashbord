@@ -820,6 +820,7 @@ export async function buildHtml(
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
+  const financialChartsHtml = includeCharts ? await buildFinancialChartsHtml(fin) : "";
 
   // KPI tiles (with optional sparklines from projection series)
   const series = includeSparklines ? findProjectionSeries(fin) : {};
@@ -1160,6 +1161,17 @@ export async function buildHtml(
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
+    .financial-charts { page-break-after: auto; }
+    .financial-chart { margin-bottom: 14pt; }
+    .chart-title {
+      font-family: 'Playfair Display', 'Georgia', serif;
+      font-size: 13.5pt;
+      font-weight: 700;
+      color: ${THEME.ink};
+      margin: 0 0 8pt;
+      padding-bottom: 5pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+    }
 
     /* ── KPI sparklines ── */
     .kpi-spark { margin-top: 8pt; height: 28pt; opacity: 0.95; }
@@ -1321,6 +1333,8 @@ ${tocHtml}
 </section>
 
 <!-- ── Body (markdown) ── -->
+${financialChartsHtml}
+
 <section class="body-page">
   ${bodyWithHeroes}
 </section>
