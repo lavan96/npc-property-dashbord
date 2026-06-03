@@ -188,13 +188,102 @@ function withAlpha(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/** Build a QuickChart `/chart` URL from a Chart.js config. Uses POST-style short URL helper when long. */
-function chartUrl(config: Record<string, unknown>, width = 780, height = 360): string {
-  const c = encodeURIComponent(JSON.stringify(config));
-  return `https://quickchart.io/chart?w=${width}&h=${height}&devicePixelRatio=2&bkg=transparent&v=4&c=${c}`;
+const chartImageCache = new Map<string, string | null>();
+
+/**
+ * Serialize a Chart.js config to a JS (not JSON) string so that function-string
+ * values — tick callbacks, datalabels formatters, etc. — appear unquoted in the
+ * payload and are evaluated by QuickChart's Node/JSDOM sandbox rather than being
+ * treated as inert string literals.
+ *
+ * Rules:
+ *  • String values that look like function/arrow-fn expressions → emitted unquoted
+ *  • All other string values → JSON-quoted (safe, handles special chars)
+ *  • Objects / arrays → recursed
+ *  • Primitives (number, boolean, null) → toString as-is
+ */
+function isFnStr(s: string): boolean {
+  const t = s.trim();
+  // function(...){...}  |  (v) => ...  |  v => ...
+  return /^function[\s(]/.test(t) || /^\(.*\)\s*=>/.test(t) || /^\w+\s*=>/.test(t);
+}
+function configToJs(val: unknown): string {
+  if (val === null || val === undefined) return "null";
+  if (typeof val === "boolean" || typeof val === "number") return String(val);
+  if (typeof val === "string") return isFnStr(val) ? val : JSON.stringify(val);
+  if (Array.isArray(val)) return "[" + val.map(configToJs).join(",") + "]";
+  if (typeof val === "object") {
+    const pairs = Object.entries(val as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => {
+        const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+        return `${key}:${configToJs(v)}`;
+      });
+    return "{" + pairs.join(",") + "}";
+  }
+  return String(val);
 }
 
-function quickSparklineUrl(values: number[], color: string = THEME.gold): string {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Render charts server-side and embed them as data URIs. This avoids Api2PDF's
+ * remote-image timing/CORS variability and keeps the PDF render deterministic.
+ */
+async function chartDataUri(config: Record<string, unknown>, width = 780, height = 360, purpose = "chart"): Promise<string | null> {
+  // chart MUST be a JS string (not a JSON object) so QuickChart evaluates
+  // function expressions (tick callbacks, datalabels formatters).  Passing an
+  // object causes JSON.stringify to double-quote them into inert strings.
+  const chartJs = configToJs(config);
+  const payload = {
+    chart: chartJs,
+    width,
+    height,
+    format: "png",
+    backgroundColor: "transparent",
+    version: "4",
+  };
+  const cacheKey = chartJs + `|${width}x${height}`;
+  if (chartImageCache.has(cacheKey)) return chartImageCache.get(cacheKey) ?? null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch("https://quickchart.io/chart?devicePixelRatio=2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const contentType = res.headers.get("content-type") || "";
+    const buffer = await res.arrayBuffer();
+    if (!res.ok || !contentType.includes("image/")) {
+      const preview = new TextDecoder().decode(buffer.slice(0, 240));
+      console.warn("[charts] QuickChart render failed", { purpose, status: res.status, contentType, preview });
+      chartImageCache.set(cacheKey, null);
+      return null;
+    }
+    const uri = `data:${contentType.split(";")[0] || "image/png"};base64,${arrayBufferToBase64(buffer)}`;
+    chartImageCache.set(cacheKey, uri);
+    return uri;
+  } catch (err) {
+    console.warn("[charts] QuickChart render error", { purpose, error: err instanceof Error ? err.message : String(err) });
+    chartImageCache.set(cacheKey, null);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function quickSparklineUrl(values: number[], color: string = THEME.gold): Promise<string | null> {
   const cfg = {
     type: "sparkline",
     data: {
@@ -210,8 +299,7 @@ function quickSparklineUrl(values: number[], color: string = THEME.gold): string
     },
     options: { plugins: { legend: { display: false } } },
   };
-  const c = encodeURIComponent(JSON.stringify(cfg));
-  return `https://quickchart.io/chart?w=260&h=60&bkg=transparent&devicePixelRatio=2&c=${c}`;
+  return chartDataUri(cfg, 260, 60, "sparkline");
 }
 
 function parseLooseNumber(raw: string): number | null {
@@ -233,7 +321,37 @@ function isPctHeader(h: string): boolean {
   return /%|yield|rate|growth|return|roi|lvr|ratio/i.test(h);
 }
 
-function tableToChartHtml(headers: string[], rows: string[][]): string | null {
+function num(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") return parseLooseNumber(v);
+  return null;
+}
+
+function projectionRows(fin: any): any[] {
+  const p = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen;
+  if (Array.isArray(p)) return p;
+  if (p && typeof p === "object") {
+    for (const key of ["moderate", "base", "baseline", "conservative", "optimistic"]) {
+      if (Array.isArray(p[key])) return p[key];
+    }
+    const firstArray = Object.values(p).find((v) => Array.isArray(v));
+    if (Array.isArray(firstArray)) return firstArray;
+  }
+  return [];
+}
+
+function pickSeries(rows: any[], keys: string[]): number[] | null {
+  const vals = rows.map((row) => {
+    for (const key of keys) {
+      const picked = num(row?.[key]);
+      if (picked !== null) return picked;
+    }
+    return null;
+  });
+  return vals.length >= 3 && vals.every((v) => v !== null) ? vals as number[] : null;
+}
+
+async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
   if (rows.length < 2 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
 
@@ -292,7 +410,9 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
         },
       },
     };
-    return `<figure class="auto-chart"><img src="${chartUrl(config, 780, 380)}" alt="Data visualisation"/></figure>`;
+    const uri = await chartDataUri(config, 780, 380, `donut:${numericCols[0].header}`);
+    if (!uri) return null;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
   }
 
   // ── Line: time series ──
@@ -340,7 +460,9 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
         },
       },
     };
-    return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 360)}" alt="Trend visualisation"/></figure>`;
+    const uri = await chartDataUri(config, 820, 360, `line:${numericCols.map((c) => c.header).join(",")}`);
+    if (!uri) return null;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Trend visualisation"/></figure>`;
   }
 
   // ── Bar (default) ──
@@ -388,12 +510,21 @@ function tableToChartHtml(headers: string[], rows: string[][]): string | null {
       },
     },
   };
-  return `<figure class="auto-chart"><img src="${chartUrl(config, 820, 380)}" alt="Data visualisation"/></figure>`;
+  const uri = await chartDataUri(config, 820, 380, `bar:${numericCols.map((c) => c.header).join(",")}`);
+  if (!uri) return null;
+  return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
 }
 
 /** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
-function injectTableCharts(html: string): string {
-  return html.replace(/<table[\s\S]*?<\/table>/gi, (tbl) => {
+async function injectTableCharts(html: string): Promise<string> {
+  const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
+  if (tables.length === 0) return html;
+
+  const replacements = new Array<string>(tables.length);
+  const queue = tables.map((match, index) => ({ tbl: match[0], index }));
+  const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
+    while (queue.length) {
+      const { tbl, index } = queue.shift()!;
     const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
     const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
     const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
@@ -405,10 +536,95 @@ function injectTableCharts(html: string): string {
         .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
-    const chart = tableToChartHtml(headers, dataRows);
-    if (!chart) return tbl;
-    return `<div class="chart-wrap">${chart}${tbl}</div>`;
+    const chart = await tableToChartHtml(headers, dataRows);
+      replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
+    }
   });
+  await Promise.all(workers);
+
+  let i = 0;
+  return html.replace(/<table[\s\S]*?<\/table>/gi, () => replacements[i++]);
+}
+
+async function buildFinancialChartsHtml(fin: any): Promise<string> {
+  const rows = projectionRows(fin).slice(0, 10);
+  const labels = rows.map((r, i) => String(r?.year ?? r?.label ?? `Year ${i + 1}`).replace(/^year\s*/i, "Yr "));
+  const charts: string[] = [];
+  const commonFont = { family: FONT_STACK, size: 11 };
+  const gridColor = "rgba(181, 165, 128, 0.25)";
+  const moneyTick = "function(v){return Math.abs(v)>=1000000?'$'+(v/1000000).toFixed(1)+'m':Math.abs(v)>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v.toFixed(0);}";
+
+  if (labels.length >= 3) {
+    const propertyValue = pickSeries(rows, ["propertyValue", "value", "estimatedValue", "marketValue"]);
+    const equity = pickSeries(rows, ["equity", "netEquity"]);
+    const loanBalance = pickSeries(rows, ["loanBalance", "debt", "loanAmount"]);
+    const datasets = [
+      propertyValue && { label: "Property value", data: propertyValue, borderColor: CHART_PALETTE[0], backgroundColor: withAlpha(CHART_PALETTE[0], 0.16), borderWidth: 2.4, tension: 0.38, pointRadius: 2.8, fill: true },
+      equity && { label: "Equity", data: equity, borderColor: CHART_PALETTE[2], backgroundColor: withAlpha(CHART_PALETTE[2], 0.06), borderWidth: 2.2, tension: 0.38, pointRadius: 2.8, fill: false },
+      loanBalance && { label: "Loan balance", data: loanBalance, borderColor: CHART_PALETTE[1], backgroundColor: withAlpha(CHART_PALETTE[1], 0.04), borderWidth: 2.2, tension: 0.38, pointRadius: 2.8, fill: false },
+    ].filter(Boolean);
+    if (datasets.length) {
+      const uri = await chartDataUri({
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          plugins: { legend: { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } } },
+          scales: {
+            x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+            y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+          },
+        },
+      }, 820, 370, "financial:value-equity-debt");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">10-year value, equity and debt path</div><figure class="auto-chart"><img src="${uri}" alt="10-year value equity and debt chart"/></figure></div>`);
+    }
+
+    const cashFlow = pickSeries(rows, ["cashFlow", "annualNet", "netCashflow", "annualNetCashflow"]);
+    const annualRent = pickSeries(rows, ["annualRent", "rent", "rentalIncome"]);
+    if (cashFlow || annualRent) {
+      const uri = await chartDataUri({
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            annualRent && { label: "Annual rent", data: annualRent, backgroundColor: withAlpha(CHART_PALETTE[2], 0.88), borderRadius: 6, borderSkipped: false, maxBarThickness: 34 },
+            cashFlow && { label: "Net cash flow", data: cashFlow, backgroundColor: withAlpha(CHART_PALETTE[3], 0.86), borderRadius: 6, borderSkipped: false, maxBarThickness: 34 },
+          ].filter(Boolean),
+        },
+        options: {
+          plugins: { legend: { position: "bottom", labels: { color: "#17130D", font: commonFont, boxWidth: 12, padding: 12, usePointStyle: true } } },
+          scales: {
+            x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+            y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+          },
+        },
+      }, 820, 370, "financial:rent-cashflow");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Rental income versus net cash flow</div><figure class="auto-chart"><img src="${uri}" alt="Rental income and cash flow chart"/></figure></div>`);
+    }
+  }
+
+  const km = fin?.keyMetrics || fin?.key_metrics || {};
+  const yieldBars = [
+    ["Gross yield", num(km.grossRentalYield)],
+    ["Net yield", num(km.netRentalYield)],
+    ["Cash-on-cash", num(km.cashOnCashReturn)],
+    ["LVR", num(km.lvr)],
+  ].filter(([, v]) => v !== null) as Array<[string, number]>;
+  if (yieldBars.length >= 2) {
+    const uri = await chartDataUri({
+      type: "bar",
+      data: { labels: yieldBars.map(([label]) => label), datasets: [{ data: yieldBars.map(([, v]) => v), backgroundColor: yieldBars.map((_, i) => withAlpha(CHART_PALETTE[i % CHART_PALETTE.length], 0.9)), borderRadius: 6, borderSkipped: false, maxBarThickness: 46 }] },
+      options: {
+        plugins: { legend: { display: false }, datalabels: { anchor: "end", align: "top", color: "#2A2317", font: { ...commonFont, weight: "600" }, formatter: "function(v){return v.toFixed(1)+'%';}" } },
+        scales: {
+          x: { ticks: { color: "#5F5546", font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+          y: { ticks: { color: "#5F5546", font: commonFont, callback: "function(v){return v.toFixed(0)+'%';}" }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+        },
+      },
+    }, 820, 340, "financial:yield-bars");
+    if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Yield and leverage profile</div><figure class="auto-chart"><img src="${uri}" alt="Yield and leverage chart"/></figure></div>`);
+  }
+
+  return charts.length ? `<section class="body-page financial-charts"><h2 id="ch-financial-visuals">Financial Visuals</h2>${charts.join("")}</section>` : "";
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -464,14 +680,13 @@ function wrapProcessTimeline(html: string): string {
 // Projection series → sparklines beside KPI tiles
 // ─────────────────────────────────────────────────────────────
 function findProjectionSeries(fin: any): { valueSeries?: number[]; cashflowSeries?: number[]; yieldSeries?: number[]; rentSeries?: number[] } {
-  const proj = fin?.projections || fin?.tenYearProjections || fin?.yearByYear || fin?.yearOneToTen || [];
+  const proj = projectionRows(fin);
   if (!Array.isArray(proj) || proj.length < 3) return {};
   const pick = (keys: string[]) => {
     const vals = proj.map((p: any) => {
       for (const k of keys) {
-        const v = p?.[k];
-        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-        if (Number.isFinite(n)) return n;
+        const n = num(p?.[k]);
+        if (n !== null) return n;
       }
       return null;
     });
@@ -588,7 +803,10 @@ export async function buildHtml(
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
-  if (includeCharts) bodyHtml = injectTableCharts(bodyHtml);
+  if (includeCharts) {
+    bodyHtml = await injectTableCharts(bodyHtml);
+    console.log("[charts] embedded table charts", { count: (bodyHtml.match(/class=\"chart-wrap\"/g) || []).length });
+  }
   bodyHtml = colourCodeTableCells(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
@@ -602,16 +820,17 @@ export async function buildHtml(
   const sourcesHtml = report.sources_content
     ? marked.parse(String(report.sources_content), { gfm: true }) as string
     : "";
+  const financialChartsHtml = includeCharts ? await buildFinancialChartsHtml(fin) : "";
 
   // KPI tiles (with optional sparklines from projection series)
   const series = includeSparklines ? findProjectionSeries(fin) : {};
   const kpis: Array<{ label: string; value: string; spark?: string }> = [];
-  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice), spark: series.valueSeries && series.valueSeries.length >= 3 ? quickSparklineUrl(series.valueSeries) : undefined });
-  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield), spark: series.yieldSeries && series.yieldSeries.length >= 3 ? quickSparklineUrl(series.yieldSeries, THEME.success) : undefined });
+  if (km.purchasePrice != null) kpis.push({ label: "Purchase Price", value: fmtMoney(km.purchasePrice), spark: series.valueSeries && series.valueSeries.length >= 3 ? await quickSparklineUrl(series.valueSeries) || undefined : undefined });
+  if (km.grossRentalYield != null) kpis.push({ label: "Gross Yield", value: fmtPct(km.grossRentalYield), spark: series.yieldSeries && series.yieldSeries.length >= 3 ? await quickSparklineUrl(series.yieldSeries, THEME.success) || undefined : undefined });
   if (km.netRentalYield != null) kpis.push({ label: "Net Yield", value: fmtPct(km.netRentalYield) });
-  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet), spark: series.cashflowSeries && series.cashflowSeries.length >= 3 ? quickSparklineUrl(series.cashflowSeries, THEME.success) : undefined });
+  if (km.weeklyNet != null) kpis.push({ label: "Weekly Cash Flow", value: fmtMoney(km.weeklyNet), spark: series.cashflowSeries && series.cashflowSeries.length >= 3 ? await quickSparklineUrl(series.cashflowSeries, THEME.success) || undefined : undefined });
   if (km.lvr != null) kpis.push({ label: "LVR", value: fmtPct(km.lvr, 1) });
-  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent), spark: series.rentSeries && series.rentSeries.length >= 3 ? quickSparklineUrl(series.rentSeries) : undefined });
+  if (km.weeklyRent != null) kpis.push({ label: "Weekly Rent", value: fmtMoney(km.weeklyRent), spark: series.rentSeries && series.rentSeries.length >= 3 ? await quickSparklineUrl(series.rentSeries) || undefined : undefined });
 
   const scoreOverall =
     score?.overall_score ?? score?.overallScore ?? score?.score ?? null;
@@ -942,6 +1161,17 @@ export async function buildHtml(
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
+    .financial-charts { page-break-after: auto; }
+    .financial-chart { margin-bottom: 14pt; }
+    .chart-title {
+      font-family: 'Playfair Display', 'Georgia', serif;
+      font-size: 13.5pt;
+      font-weight: 700;
+      color: ${THEME.ink};
+      margin: 0 0 8pt;
+      padding-bottom: 5pt;
+      border-bottom: 0.5pt solid ${THEME.rule};
+    }
 
     /* ── KPI sparklines ── */
     .kpi-spark { margin-top: 8pt; height: 28pt; opacity: 0.95; }
@@ -1103,6 +1333,8 @@ ${tocHtml}
 </section>
 
 <!-- ── Body (markdown) ── -->
+${financialChartsHtml}
+
 <section class="body-page">
   ${bodyWithHeroes}
 </section>
