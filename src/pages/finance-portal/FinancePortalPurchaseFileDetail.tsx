@@ -284,6 +284,7 @@ export default function FinancePortalPurchaseFileDetail() {
             updatedAt={data.borrowing_snapshot_updated_at}
           />
         </TabsContent>
+        <TabsContent value="inbox"><ClientCommsInboxTab clientId={data.client_id} purchaseFileId={fileId!} /></TabsContent>
         <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>
