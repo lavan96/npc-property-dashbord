@@ -128,6 +128,7 @@ import FinancePortalSettings from "./pages/finance-portal/FinancePortalSettings"
 
 import FinancePortalPurchaseFiles from "./pages/finance-portal/FinancePortalPurchaseFiles";
 import FinancePortalPurchaseFileDetail from "./pages/finance-portal/FinancePortalPurchaseFileDetail";
+import FinancePortalClientInbox from "./pages/finance-portal/FinancePortalClientInbox";
 
 const queryClient = new QueryClient();
 
