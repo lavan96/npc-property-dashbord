@@ -4,15 +4,9 @@
 //
 // Side-by-side with the legacy jsPDF (PixelPerfectPDFGenerator) renderer.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { marked } from "https://esm.sh/marked@12.0.2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-portal-session-token, x-finance-session-token",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
