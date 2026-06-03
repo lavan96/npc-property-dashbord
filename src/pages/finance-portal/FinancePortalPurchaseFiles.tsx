@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -24,6 +25,9 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { SavedViewsBar } from '@/components/finance-portal/SavedViewsBar';
+import { BulkActionsBar } from '@/components/finance-portal/BulkActionsBar';
+import { InlineEdit } from '@/components/finance-portal/InlineEdit';
+import { SmartSnoozeDialog } from '@/components/finance-portal/SmartSnoozeDialog';
 
 function agingTone(iso: string | null | undefined) {
   if (!iso) return { label: 'no activity', cls: 'bg-muted text-muted-foreground' };
@@ -96,12 +100,37 @@ function urgencyTone(date: string | null | undefined) {
 
 export default function FinancePortalPurchaseFiles() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [inbox, setInbox] = useState<'mine' | 'team' | 'watching'>('mine');
   const [newOpen, setNewOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [snoozeId, setSnoozeId] = useState<string | null>(null);
+
+  // Honour ?new=1 deep-link + initial inbox
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setNewOpen(true);
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    const inb = searchParams.get('inbox');
+    if (inb === 'mine' || inb === 'team' || inb === 'watching') setInbox(inb);
+  }, []);
+
+  // Global "s" key trigger for snooze (first visible file)
+  useEffect(() => {
+    const handler = () => {
+      if (selected.size > 0) setSnoozeId('__bulk__');
+    };
+    window.addEventListener('finance:open-snooze', handler);
+    return () => window.removeEventListener('finance:open-snooze', handler);
+  }, [selected]);
+
+
 
   const { data: payload, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-files'],
