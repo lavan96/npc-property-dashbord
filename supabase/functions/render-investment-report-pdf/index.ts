@@ -1024,6 +1024,12 @@ export async function buildHtml(
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
     }
+    @page disclaimer-page {
+      margin: 0;
+      background: #141414;
+      @top-left { content: none; } @top-right { content: none; }
+      @bottom-left { content: none; } @bottom-right { content: none; }
+    }
     @page toc {
       @top-left { content: "Contents"; }
     }
