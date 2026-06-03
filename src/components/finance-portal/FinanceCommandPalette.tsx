@@ -1,3 +1,7 @@
+/**
+ * Batch 7.1 Command Palette + Batch 13 #69 Global Search Upgrade.
+ * Now searches purchase files, clients, notes/comments, messages and docs.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -6,15 +10,18 @@ import {
   CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  LayoutDashboard, Briefcase, Users, MessageSquare, Wallet, Plus, Eye,
+  LayoutDashboard, Briefcase, Users, MessageSquare, Wallet, Plus, Eye, FileText, MessageCircle, StickyNote,
 } from 'lucide-react';
 import { smartCapitalize } from '@/lib/nameUtils';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export function FinanceCommandPalette() {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const { invokeFinanceFunction, user } = useFinancePortalAuth();
   const isAuthenticated = !!user;
+  const debouncedQuery = useDebounce(query, 220);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -47,14 +54,35 @@ export function FinanceCommandPalette() {
     staleTime: 30_000,
   });
 
+  // Batch 13 #69 — Global search across notes, messages and docs.
+  const { data: deepResults } = useQuery({
+    queryKey: ['finance-cmd-global', debouncedQuery],
+    queryFn: async () => {
+      const { data } = await invokeFinanceFunction('finance-portal-batch9-10', {
+        operation: 'global_search',
+        query: debouncedQuery,
+      });
+      return data?.results || { notes: [], messages: [], docs: [] };
+    },
+    enabled: isAuthenticated && open && debouncedQuery.trim().length >= 2,
+    staleTime: 15_000,
+  });
+
   const files = useMemo(() => (filesData || []).slice(0, 12), [filesData]);
   const clients = useMemo(() => (clientsData || []).slice(0, 12), [clientsData]);
+  const notes = deepResults?.notes || [];
+  const messages = deepResults?.messages || [];
+  const docs = deepResults?.docs || [];
 
-  const go = (path: string) => { setOpen(false); navigate(path); };
+  const go = (path: string) => { setOpen(false); setQuery(''); navigate(path); };
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Jump to a file, client, page… (⌘K)" />
+      <CommandInput
+        placeholder="Search files, clients, notes, messages, docs… (⌘K)"
+        value={query}
+        onValueChange={setQuery}
+      />
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
         <CommandGroup heading="Navigate">
@@ -104,6 +132,63 @@ export function FinanceCommandPalette() {
                   </CommandItem>
                 );
               })}
+            </CommandGroup>
+          </>
+        )}
+
+        {notes.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Notes & comments">
+              {notes.slice(0, 8).map((n: any) => (
+                <CommandItem
+                  key={`note-${n.id}`}
+                  value={`note ${n.body}`}
+                  onSelect={() => go(`/finance/purchase-files/${n.purchase_file_id}`)}
+                >
+                  <StickyNote className="h-4 w-4 mr-2 text-primary/80" />
+                  <span className="truncate">{n.body?.slice(0, 80) || 'Untitled note'}</span>
+                  {n.pf_title && <span className="ml-2 text-xs text-muted-foreground truncate">· {n.pf_title}</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {messages.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Messages">
+              {messages.slice(0, 8).map((m: any) => (
+                <CommandItem
+                  key={`msg-${m.id}`}
+                  value={`msg ${m.snippet}`}
+                  onSelect={() => go(m.client_id ? `/finance/clients/${m.client_id}` : '/finance/messages')}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2 text-primary/80" />
+                  <span className="truncate">{m.snippet?.slice(0, 80)}</span>
+                  {m.channel && <span className="ml-2 text-xs text-muted-foreground uppercase">· {m.channel}</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {docs.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Documents">
+              {docs.slice(0, 8).map((d: any) => (
+                <CommandItem
+                  key={`doc-${d.id}`}
+                  value={`doc ${d.label}`}
+                  onSelect={() => go(`/finance/purchase-files/${d.purchase_file_id}`)}
+                >
+                  <FileText className="h-4 w-4 mr-2 text-primary/80" />
+                  <span className="truncate">{d.label}</span>
+                  {d.pf_title && <span className="ml-2 text-xs text-muted-foreground truncate">· {d.pf_title}</span>}
+                </CommandItem>
+              ))}
             </CommandGroup>
           </>
         )}
