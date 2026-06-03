@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, TrendingUp, BarChart3, Settings as SettingsIcon,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, TrendingUp, BarChart3, Settings as SettingsIcon, Inbox,
 } from 'lucide-react';
 
 import {
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { to: '/finance/purchase-files', label: 'Active Purchase Files', icon: Briefcase, end: false },
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
   { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
+  { to: '/finance/client-inbox', label: 'Client Inbox', icon: Inbox, end: false },
   { to: '/finance/lender-intelligence', label: 'Lender Intelligence', icon: BookOpen, end: false },
   { to: '/finance/forecasting', label: 'Forecasting', icon: TrendingUp, end: false },
   { to: '/finance/reports', label: 'Reports & KPIs', icon: BarChart3, end: false },

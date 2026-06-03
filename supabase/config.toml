@@ -1,5 +1,11 @@
 project_id = "dduzbchuswwbefdunfct"
 
+[functions.finance-email-track-pixel]
+verify_jwt = false
+
+[functions.finance-portal-client-comms]
+verify_jwt = false
+
 [functions.outlook-calendar]
 verify_jwt = false
 

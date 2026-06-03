@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
-  ShieldAlert, Calculator, ListChecks, Ship, FileSearch,
+  ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox,
 } from 'lucide-react';
+import { ClientCommsInboxTab } from '@/components/finance-portal/ClientCommsInboxTab';
 import { AuditTrailTab } from '@/components/finance-portal/AuditTrailTab';
 import { ClientTasksTab } from '@/components/finance-portal/ClientTasksTab';
 import { DocumentsTab } from '@/components/finance-portal/DocumentsTab';
@@ -243,6 +244,7 @@ export default function FinancePortalPurchaseFileDetail() {
           <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
           <TabsTrigger value="runway"><Ship className="h-4 w-4 mr-2" />Settlement Runway</TabsTrigger>
           <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
+          <TabsTrigger value="inbox"><Inbox className="h-4 w-4 mr-2" />Unified Inbox</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
           <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
         </TabsList>
@@ -282,6 +284,7 @@ export default function FinancePortalPurchaseFileDetail() {
             updatedAt={data.borrowing_snapshot_updated_at}
           />
         </TabsContent>
+        <TabsContent value="inbox"><ClientCommsInboxTab clientId={data.client_id} purchaseFileId={fileId!} /></TabsContent>
         <TabsContent value="activity"><ActivityTimeline fileId={fileId!} /></TabsContent>
         <TabsContent value="audit"><AuditTrailTab fileId={fileId!} /></TabsContent>
       </Tabs>

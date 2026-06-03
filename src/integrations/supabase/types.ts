@@ -6338,6 +6338,213 @@ export type Database = {
           },
         ]
       }
+      finance_email_opens: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          finance_contact_id: string | null
+          ghl_message_id: string | null
+          id: string
+          last_ip: string | null
+          last_user_agent: string | null
+          open_count: number
+          opened_at: string | null
+          outlook_message_id: string | null
+          purchase_file_id: string | null
+          recipient_email: string | null
+          subject: string | null
+          tracking_token: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          finance_contact_id?: string | null
+          ghl_message_id?: string | null
+          id?: string
+          last_ip?: string | null
+          last_user_agent?: string | null
+          open_count?: number
+          opened_at?: string | null
+          outlook_message_id?: string | null
+          purchase_file_id?: string | null
+          recipient_email?: string | null
+          subject?: string | null
+          tracking_token: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          finance_contact_id?: string | null
+          ghl_message_id?: string | null
+          id?: string
+          last_ip?: string | null
+          last_user_agent?: string | null
+          open_count?: number
+          opened_at?: string | null
+          outlook_message_id?: string | null
+          purchase_file_id?: string | null
+          recipient_email?: string | null
+          subject?: string | null
+          tracking_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_email_opens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_email_opens_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_email_opens_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+        ]
+      }
+      finance_message_translations: {
+        Row: {
+          created_at: string
+          id: string
+          model: string | null
+          requested_by_finance_contact_id: string | null
+          source_id: string
+          source_kind: string
+          source_lang: string | null
+          target_lang: string
+          translated_text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          requested_by_finance_contact_id?: string | null
+          source_id: string
+          source_kind: string
+          source_lang?: string | null
+          target_lang: string
+          translated_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          requested_by_finance_contact_id?: string | null
+          source_id?: string
+          source_kind?: string
+          source_lang?: string | null
+          target_lang?: string
+          translated_text?: string
+        }
+        Relationships: []
+      }
+      finance_outbound_messages: {
+        Row: {
+          body: string
+          channel: string
+          client_id: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          finance_contact_id: string | null
+          ghl_conversation_id: string | null
+          id: string
+          metadata: Json
+          provider: string | null
+          provider_message_id: string | null
+          purchase_file_id: string | null
+          read_at: string | null
+          recipient: string | null
+          status: string
+          subject: string | null
+          template_id: string | null
+          tracking_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel: string
+          client_id: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          finance_contact_id?: string | null
+          ghl_conversation_id?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_message_id?: string | null
+          purchase_file_id?: string | null
+          read_at?: string | null
+          recipient?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          tracking_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          client_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          finance_contact_id?: string | null
+          ghl_conversation_id?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string | null
+          provider_message_id?: string | null
+          purchase_file_id?: string | null
+          read_at?: string | null
+          recipient?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          tracking_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_outbound_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_outbound_messages_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_outbound_messages_purchase_file_id_fkey"
+            columns: ["purchase_file_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_file_deal_drift"
+            referencedColumns: ["purchase_file_id"]
+          },
+          {
+            foreignKeyName: "finance_outbound_messages_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "finance_partner_message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_partner_branding: {
         Row: {
           accent_hsl: string | null
