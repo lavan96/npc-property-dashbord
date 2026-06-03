@@ -1007,37 +1007,38 @@ export async function buildHtml(
       color: transparent;
     }
     h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
-    h1 { font-size: 30pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
+    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
     h2 {
       counter-increment: section;
       string-set: chapter content();
-      font-size: 22pt; font-weight: 700; letter-spacing: -0.005em;
-      margin-top: 22pt;
-      padding-bottom: 8pt;
+      font-size: 28pt; font-weight: 700; letter-spacing: -0.005em;
+      margin-top: 24pt;
+      padding-bottom: 10pt;
       border-bottom: 0.5pt solid ${THEME.rule};
       display: block;
       page-break-before: auto;
     }
     h2::before {
-      content: counter(section, decimal-leading-zero) "  ";
+      content: counter(section, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
       font-weight: 500; font-style: italic;
-      font-size: 14pt;
+      font-size: 18pt;
       -webkit-text-fill-color: ${THEME.gold};
       color: ${THEME.gold};
       letter-spacing: .04em;
+      margin-right: 14pt;
     }
     h3 {
-      font-size: 14pt; font-weight: 600; margin-top: 16pt;
+      font-size: 17pt; font-weight: 600; margin-top: 18pt;
       padding-left: 10pt;
       border-left: 2.5pt solid ${THEME.gold};
     }
     h4 {
       font-family: 'Inter', sans-serif;
-      font-size: 8.5pt; font-weight: 700;
+      font-size: 10pt; font-weight: 700;
       color: ${THEME.goldSoft};
       text-transform: uppercase; letter-spacing: .15em;
-      margin-top: 12pt;
+      margin-top: 14pt;
     }
     p { margin: 0 0 .72em; orphans: 3; widows: 3; }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
@@ -1188,27 +1189,26 @@ export async function buildHtml(
     .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
     .toc ol li {
       counter-increment: tocnum;
-      display: flex; align-items: baseline; gap: 8pt;
-      padding: 7pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
-      font-family: 'Inter', sans-serif; font-size: 10.5pt;
+      display: flex; align-items: baseline; gap: 14pt;
+      padding: 9pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
+      font-family: 'Inter', sans-serif; font-size: 11pt;
       color: ${THEME.ink};
     }
     .toc ol li::before {
       content: counter(tocnum, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
       font-style: italic; font-weight: 500;
-      color: ${THEME.goldSoft}; font-size: 11pt;
-      width: 28pt; flex-shrink: 0;
+      color: ${THEME.goldSoft}; font-size: 13pt;
+      width: 42pt; flex-shrink: 0;
     }
-    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 13pt; }
-    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 6pt 3pt; height: 0; align-self: flex-end; }
+    .toc ol li .title { flex: 1; font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; padding-left: 4pt; }
+    .toc ol li .dots { flex: 0 1 auto; border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; margin: 0 8pt 3pt; height: 0; align-self: flex-end; }
     .toc ol li .page {
       font-family: 'Playfair Display', serif;
-      font-weight: 700; color: ${THEME.ink}; font-size: 11pt;
-      width: 22pt; text-align: right;
+      font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
+      min-width: 28pt; text-align: right;
     }
     .toc ol li a { color: ${THEME.ink}; text-decoration: none; display: contents; }
-    .toc ol li a .page::after { content: target-counter(attr(href), page); }
 
     /* ── Snapshot KPI grid ── */
     .snapshot {
@@ -1472,6 +1472,40 @@ ${
     <p>This report is provided for general informational purposes only and does not constitute financial, taxation, legal, or investment advice. All figures, projections, and market commentary are derived from publicly available data and reasonable assumptions at the time of writing, and may change. Recipients should seek independent professional advice before making any investment decisions.</p>
   </div>
 </section>
+
+<script>
+  // Estimate page number for each TOC entry by measuring chapter offset.
+  // Headless Chrome doesn't support CSS target-counter, so we approximate.
+  (function () {
+    try {
+      // A4 printable height at 96dpi minus top/bottom margins (20mm each).
+      // 297mm - 40mm = 257mm => 257 * 3.7795 ≈ 971px
+      var PAGE_PX = 971;
+      // Cover (1) + TOC pages (estimated by toc section height).
+      var tocSection = document.querySelector('.toc');
+      var tocPages = tocSection ? Math.max(1, Math.ceil(tocSection.getBoundingClientRect().height / PAGE_PX)) : 1;
+      var bodyStartOffset = 1 + tocPages; // pages BEFORE body content (cover + toc)
+      // Body content starts after the cover+toc sections in the DOM.
+      // We measure each h2's offsetTop relative to the first body h2.
+      var firstBody = document.querySelector('section.body-page h2');
+      if (!firstBody) return;
+      var firstTop = firstBody.getBoundingClientRect().top + window.scrollY;
+      document.querySelectorAll('.toc ol li a').forEach(function (a) {
+        var href = a.getAttribute('href') || '';
+        if (!href.startsWith('#')) return;
+        var target = document.getElementById(href.slice(1));
+        var pageSpan = a.querySelector('.page');
+        if (!target || !pageSpan) return;
+        var top = target.getBoundingClientRect().top + window.scrollY;
+        var relative = Math.max(0, top - firstTop);
+        var pageWithinBody = Math.floor(relative / PAGE_PX) + 1;
+        pageSpan.textContent = String(bodyStartOffset + pageWithinBody);
+      });
+    } catch (e) {
+      console.error('[toc-pagenum]', e);
+    }
+  })();
+</script>
 
 </body>
 </html>`;
