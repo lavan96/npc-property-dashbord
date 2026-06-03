@@ -460,8 +460,20 @@ function ReportGenerationProgressInner() {
     cleanupRetryState(currentIds);
 
     processedReports.forEach((report) => {
+      // Reset retry attempts whenever progress moves forward — we only want
+      // the maxRetries cap to bite when a report is genuinely stuck, not
+      // when a long generation is steadily completing sections.
+      const prevSections = lastSectionsRef.current.get(report.id) ?? -1;
+      if (prevSections >= 0 && report.sectionsCompleted > prevSections) {
+        const rs = retryStateRef.current[report.id];
+        if (rs && rs.attempts > 0) {
+          rs.attempts = 0;
+          saveRetryState();
+        }
+      }
+
       const timeSinceUpdate = now - report.lastUpdated.getTime();
-      const isTimedOut = timeSinceUpdate > 120000;
+      const isTimedOut = timeSinceUpdate > 75000; // 75s — react before a chunk fully times out
       const hasPartialContent = report.contentLength > 1000;
       const isIncomplete = report.sectionsCompleted < report.totalSections;
       const isStuck =
@@ -469,15 +481,21 @@ function ReportGenerationProgressInner() {
 
       const isInitiallyStuck =
         report.status === 'processing' &&
-        timeSinceUpdate > 300000 &&
+        timeSinceUpdate > 180000 &&
         report.contentLength < 100 &&
         report.sectionsCompleted === 0;
 
-      if ((isStuck || isInitiallyStuck) && autoContinueSettings.enabled && !paused) {
+      // Failed/pending status with partial progress → resume immediately
+      const hasFailedMidway =
+        (report.status === 'failed' || report.status === 'pending') &&
+        hasPartialContent &&
+        isIncomplete;
+
+      if ((isStuck || isInitiallyStuck || hasFailedMidway) && autoContinueSettings.enabled && !paused) {
         scheduleAutoRetry(report);
       }
     });
-  }, [autoContinueSettings.enabled, cleanupRetryState, paused, scheduleAutoRetry]);
+  }, [autoContinueSettings.enabled, cleanupRetryState, paused, saveRetryState, scheduleAutoRetry]);
 
   const finalizeJob = useCallback(
     async (prev: ReportProgress) => {
