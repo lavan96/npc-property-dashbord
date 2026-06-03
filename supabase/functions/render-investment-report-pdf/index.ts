@@ -10,7 +10,7 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const API2PDF_KEY = Deno.env.get("API2PDF_API_KEY")!;
+const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -414,28 +414,31 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     if (res.status !== 404) break;
   }
 
-  if (true) {
-    throw new Error(
-      `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
-    );
-  }
+  throw new Error(
+    `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
+  );
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     if (!API2PDF_KEY) throw new Error("API2PDF_API_KEY is not configured");
 
-    const { reportId } = await req.json();
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const body = await req.json();
+
+    const { error: authError } = await verifyAuth(supabase, req.headers, body);
+    if (authError) return createUnauthorizedResponse(authError, corsHeaders);
+
+    const { reportId } = body;
     if (!reportId || typeof reportId !== "string") {
       return new Response(JSON.stringify({ error: "reportId required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: report, error } = await supabase
       .from("investment_reports")
