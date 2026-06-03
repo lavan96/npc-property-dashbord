@@ -110,8 +110,10 @@ class PropertyDataService {
       this.cache = {
         data: processedListings,
         timestamp: now,
-        ttl: this.cache.ttl
+        ttl: this.cache.ttl,
+        tableKey,
       };
+
 
       console.log(`Processed data: ${processedListings.length} unique records`);
 
