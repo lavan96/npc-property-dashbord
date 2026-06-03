@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
+import { PropertyIntakeDetails } from '@/components/listings/PropertyIntakeDetails';
+
 import { getFullStateName } from '@/lib/states';
 import { buildFullAddress } from '@/lib/addressUtils';
 import { PropertyListing } from '@/lib/airtable';
@@ -327,7 +329,11 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             </div>
           )}
 
+          {/* Property Intake Master — extended fields (renders only when present) */}
+          {listing.rawFields && <PropertyIntakeDetails fields={listing.rawFields} />}
+
           <Separator />
+
 
           {/* Email Source Details */}
           {(listing.emailSubject || listing.from || listing.messageId) && (
