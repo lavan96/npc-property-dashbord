@@ -640,8 +640,8 @@ async function injectTableCharts(html: string): Promise<string> {
     const dataRows = theadMatch ? allRows : allRows.slice(1);
 
       const canAddChart = chartAttempts < MAX_AUTO_TABLE_CHARTS;
-      if (canAddChart) chartAttempts += 1;
       const chart = canAddChart ? await tableToChartHtml(headers, dataRows) : null;
+      if (chart) chartAttempts += 1;
       replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
     }
   });
@@ -1306,8 +1306,6 @@ export async function buildHtml(
       font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
       text-align: right;
     }
-
-    .toc ol li a { color: ${THEME.ink}; text-decoration: none; display: contents; }
 
     /* ── Snapshot KPI grid ── */
     .snapshot {
