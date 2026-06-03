@@ -856,8 +856,10 @@ function injectHeroImages(
   return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
     const slug = idToSlug.get(id);
     const url = slug ? heroesBySlug[slug] : undefined;
-    const finalUrl = url || fallbackHeroSvg(String(inner).replace(/<[^>]+>/g, "").trim());
-    return `<div class="chapter-hero"><img src="${finalUrl}" alt=""/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+    // Only render the chapter hero when an asset is both ready AND selected
+    // for inclusion. Deselected chapters render the heading on its own.
+    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    return `<div class="chapter-hero"><img src="${url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
   });
 }
 
