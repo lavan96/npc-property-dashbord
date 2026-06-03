@@ -45,29 +45,24 @@ export function AirtableTableSelector({ value, onChange }: AirtableTableSelector
     if (data?.defaultTableName) setDefaultTableName(data.defaultTableName);
   }, [data?.defaultTableName]);
 
-  // If nothing selected yet and we know the default, surface it as the active value (without persisting)
-  const effectiveValue = value ?? defaultTableName ?? '';
+  const tables: AirtableTableInfo[] = data?.tables || [];
+
+  // defaultTableName from env may be a table id (tblXXXX) or a name. Resolve to a name.
+  const resolvedDefaultName =
+    tables.find((t) => t.id === defaultTableName || t.name === defaultTableName)?.name ?? null;
+
+  const effectiveValue = value ?? resolvedDefaultName ?? '';
 
   const handleChange = (next: string) => {
     if (!next) return;
-    const isDefault = defaultTableName && next === defaultTableName;
+    const isDefault = resolvedDefaultName != null && next === resolvedDefaultName;
     try {
-      if (isDefault) {
-        localStorage.removeItem(STORAGE_KEY);
-      } else {
-        localStorage.setItem(STORAGE_KEY, next);
-      }
-    } catch {
-      // ignore
-    }
+      if (isDefault) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, next);
+    } catch { /* ignore */ }
     onChange(isDefault ? null : next);
-    toast({
-      title: 'Airtable table changed',
-      description: `Now pulling from "${next}"`,
-    });
+    toast({ title: 'Airtable table changed', description: `Now pulling from "${next}"` });
   };
-
-  const tables: AirtableTableInfo[] = data?.tables || [];
 
   return (
     <div className="flex items-center gap-2 min-w-[200px]">
