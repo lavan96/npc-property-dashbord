@@ -89,6 +89,9 @@ export function InvestmentReportGenerator() {
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
 
+  // Generation engine selection (legacy vs compass-40 trimmed)
+  const [generationEngine, setGenerationEngine] = useState<'legacy' | 'compass-40'>('legacy');
+
   // Whether current query type is property-specific (needs property details, overrides, etc.)
   const isPropertySpecific = queryType === 'address';
 
@@ -361,6 +364,7 @@ export function InvestmentReportGenerator() {
       const propertyDetails: any = { 
         queryType, 
         originalQuery: query,
+        generationEngine,
         // Include pre-generation manual overrides ONLY for address-scope reports
         ...(isPropertyScope ? { manualOverrides: sanitizedPreGenData } : {}),
       };
@@ -482,6 +486,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: queryType, // Track the scope type
           generated_by: user?.id ?? null,
+          generation_engine: generationEngine,
           manual_overrides: cleanedOverrides, // Save pre-generation overrides (empty for area reports)
         },
       });
@@ -758,6 +763,7 @@ export function InvestmentReportGenerator() {
       const propertyDetails: any = { 
         queryType: 'address', 
         originalQuery: propertyAddress,
+        generationEngine,
         scrapedContent,
         sourceUrl,
         fromUrlScrape: true,
@@ -848,6 +854,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: 'address',
           generated_by: user?.id ?? null,
+          generation_engine: generationEngine,
           manual_overrides: cleanedOverrides,
         },
       });
@@ -1192,6 +1199,7 @@ export function InvestmentReportGenerator() {
       const propertyDetails: any = { 
         queryType: 'address', 
         originalQuery: propertyAddress,
+        generationEngine,
         pdfContent,
         fromPdfUpload: true,
         manualOverrides: preGenData,
@@ -1281,6 +1289,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: 'address',
           generated_by: user?.id ?? null,
+          generation_engine: generationEngine,
           manual_overrides: pdfOverrides,
         },
       });
@@ -1538,6 +1547,37 @@ export function InvestmentReportGenerator() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Generation Engine Selection */}
+                  <div className="space-y-3">
+                    <Label htmlFor="generationEngine">Generation Engine</Label>
+                    <Select
+                      value={generationEngine}
+                      onValueChange={(value: 'legacy' | 'compass-40') => setGenerationEngine(value)}
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select engine" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        <SelectItem value="legacy">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium">Legacy Compass — Stable</span>
+                            <span className="text-xs text-muted-foreground">Full DB template, ~12 chunks, battle-tested</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="compass-40">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium">Compass-40 — Trimmed</span>
+                            <span className="text-xs text-muted-foreground">~38–42 pages, finance content removed (Financial Analysis Report covers it)</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      You can switch engines later via the Regenerate action on each report.
+                    </p>
+                  </div>
+
 
                   {/* Query Input */}
                   <div className="space-y-3">
