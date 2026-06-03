@@ -60,7 +60,15 @@ export interface AirtableGetRecordsOptions {
   offset?: string;
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
+  tableName?: string;
 }
+
+export interface AirtableTableInfo {
+  id: string;
+  name: string;
+  primaryFieldId?: string;
+}
+
 
 export interface AirtableResponse {
   records: PropertyListing[];
@@ -71,14 +79,15 @@ export interface AirtableResponse {
 class AirtableService {
   async getRecords(options: AirtableGetRecordsOptions = {}): Promise<AirtableResponse> {
     try {
-      const { pageSize = 100, offset, sortField = 'Created', sortDirection = 'desc' } = options;
-      
+      const { pageSize = 100, offset, sortField = 'Created', sortDirection = 'desc', tableName } = options;
+
       // Call the Supabase edge function instead of direct Airtable API
       const { data, error } = await invokeSecureFunction('airtable-proxy', {
         pageSize,
         offset,
         sortField,
         sortDirection,
+        ...(tableName ? { tableName } : {}),
       });
 
       if (error) {
@@ -106,6 +115,18 @@ class AirtableService {
       throw error;
     }
   }
+
+  async listTables(): Promise<{ tables: AirtableTableInfo[]; defaultTableName: string | null }> {
+    const { data, error } = await invokeSecureFunction('airtable-proxy', { op: 'list_tables' });
+    if (error) throw new Error(`Failed to list Airtable tables: ${error.message}`);
+    if (!data) throw new Error('No data returned from airtable-proxy list_tables');
+    if (data.error) throw new Error(`Airtable API error: ${data.error}`);
+    return {
+      tables: (data.tables || []) as AirtableTableInfo[],
+      defaultTableName: data.defaultTableName ?? null,
+    };
+  }
+
 
   async testConnection(): Promise<boolean> {
     try {

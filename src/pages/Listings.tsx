@@ -15,6 +15,8 @@ import { MobileFilterSheet } from '@/components/listings/MobileFilterSheet';
 import { PropertyCard } from '@/components/listings/PropertyCard';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
+import { AirtableTableSelector, getSelectedAirtableTable } from '@/components/listings/AirtableTableSelector';
+
 import { buildFullAddress, extractAUState, extractPostcode } from '@/lib/addressUtils';
 import { getNearbySuburbs } from '@/lib/postcodeProximity';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -77,18 +79,22 @@ export default function Listings() {
   const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
   
+  const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
+
   // Use React Query for caching and efficient data fetching
   const { data: listings = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['listings'],
+    queryKey: ['listings', selectedTable ?? '__default__'],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
-        includeDebugInfo: true
+        includeDebugInfo: true,
+        tableName: selectedTable ?? undefined,
       });
       return result.listings;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
   
   // Load filters from localStorage — always reset keywordSearch to blank on mount
   const [filters, setFilters] = useState(() => {
@@ -442,7 +448,15 @@ export default function Listings() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AirtableTableSelector
+            value={selectedTable}
+            onChange={(next) => {
+              setSelectedTable(next);
+              propertyDataService.clearCache();
+            }}
+          />
+
           {selectedListings.size > 0 && !isMobile && (
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />

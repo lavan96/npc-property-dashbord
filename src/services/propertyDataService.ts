@@ -4,7 +4,9 @@ export interface PropertyDataOptions {
   maxRecords?: number;
   includeDebugInfo?: boolean;
   bypassCache?: boolean;
+  tableName?: string;
 }
+
 
 export interface PropertyDataResult {
   listings: PropertyListing[];
@@ -32,10 +34,12 @@ class PropertyDataService {
     data: PropertyListing[] | null;
     timestamp: number;
     ttl: number;
+    tableKey: string | null;
   } = {
     data: null,
     timestamp: 0,
-    ttl: 5 * 60 * 1000 // 5 minutes
+    ttl: 5 * 60 * 1000, // 5 minutes
+    tableKey: null,
   };
 
   /**
@@ -43,12 +47,18 @@ class PropertyDataService {
    */
   async fetchAllListings(options: PropertyDataOptions = {}): Promise<PropertyDataResult> {
     const startTime = Date.now();
-    const { maxRecords, includeDebugInfo = false, bypassCache = false } = options;
+    const { maxRecords, includeDebugInfo = false, bypassCache = false, tableName } = options;
+    const tableKey = tableName || '__default__';
 
     const now = Date.now();
 
-    // Use cache if valid and not bypassed
-    if (!bypassCache && this.cache.data && (now - this.cache.timestamp) < this.cache.ttl) {
+    // Use cache if valid, same table, and not bypassed
+    if (
+      !bypassCache &&
+      this.cache.data &&
+      this.cache.tableKey === tableKey &&
+      (now - this.cache.timestamp) < this.cache.ttl
+    ) {
       console.log('Using cached property data:', this.cache.data.length, 'records');
       let listings = this.cache.data;
       if (maxRecords) {
@@ -63,15 +73,18 @@ class PropertyDataService {
       let pageCount = 0;
       const maxPages = maxRecords ? Math.ceil(maxRecords / 100) : Infinity;
 
-      console.log('Fetching fresh property data from Airtable...');
+      console.log('Fetching fresh property data from Airtable...', { tableName: tableName || '(default)' });
 
       do {
         const response = await airtableService.getRecords({
           pageSize: 100,
           offset,
           sortField: 'Created',
-          sortDirection: 'desc'
+          sortDirection: 'desc',
+          tableName,
         });
+
+
 
         allRecords = [...allRecords, ...response.records];
         offset = response.offset;
@@ -97,8 +110,10 @@ class PropertyDataService {
       this.cache = {
         data: processedListings,
         timestamp: now,
-        ttl: this.cache.ttl
+        ttl: this.cache.ttl,
+        tableKey,
       };
+
 
       console.log(`Processed data: ${processedListings.length} unique records`);
 
@@ -117,8 +132,10 @@ class PropertyDataService {
     this.cache = {
       data: null,
       timestamp: 0,
-      ttl: this.cache.ttl
+      ttl: this.cache.ttl,
+      tableKey: null,
     };
+
   }
 
   /**

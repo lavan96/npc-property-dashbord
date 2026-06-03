@@ -29,50 +29,83 @@ Deno.serve(async (req) => {
     // Get secrets from environment variables (managed by Supabase)
     const token = Deno.env.get('AIRTABLE_TOKEN');
     const baseId = Deno.env.get('AIRTABLE_BASE_ID');
-    const tableName = Deno.env.get('AIRTABLE_TABLE_NAME');
+    const defaultTableName = Deno.env.get('AIRTABLE_TABLE_NAME');
 
     console.log('Environment check:', {
       hasToken: !!token,
       hasBaseId: !!baseId,
-      hasTableName: !!tableName
+      hasDefaultTableName: !!defaultTableName,
     });
 
-    if (!token || !baseId || !tableName) {
+    if (!token || !baseId) {
       console.error('Missing required credentials');
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Airtable credentials not configured',
-          missing: {
-            token: !token,
-            baseId: !baseId,
-            tableName: !tableName
-          }
+          missing: { token: !token, baseId: !baseId },
         }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Parse request parameters from body (POST) or URL params (GET)
     let pageSize = '100';
     let offset = '';
-    let sortField = null;
+    let sortField: string | null = null;
     let sortDirection = 'desc';
+    let op: string | null = null;
+    let tableOverride: string | null = null;
 
     if (req.method === 'POST') {
-      const body = await req.json();
+      const body = await req.json().catch(() => ({}));
       pageSize = body.pageSize?.toString() || '100';
       offset = body.offset || '';
       sortField = body.sortField || null;
       sortDirection = body.sortDirection || 'desc';
+      op = body.op || null;
+      tableOverride = typeof body.tableName === 'string' && body.tableName.trim() ? body.tableName.trim() : null;
     } else {
       const url = new URL(req.url);
       pageSize = url.searchParams.get('pageSize') || '100';
       offset = url.searchParams.get('offset') || '';
       sortField = url.searchParams.get('sortField') || null;
       sortDirection = url.searchParams.get('sortDirection') || 'desc';
+      op = url.searchParams.get('op') || null;
+      tableOverride = url.searchParams.get('tableName');
+    }
+
+    // Op: list tables in the base via Airtable Metadata API
+    if (op === 'list_tables') {
+      const metaUrl = `https://api.airtable.com/v0/meta/bases/${baseId}/tables`;
+      const metaRes = await fetch(metaUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!metaRes.ok) {
+        const errorText = await metaRes.text();
+        console.error('Airtable metadata error:', metaRes.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Airtable metadata error: ${metaRes.status}`, details: errorText }),
+          { status: metaRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const metaJson = await metaRes.json();
+      const tables = (metaJson.tables || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        primaryFieldId: t.primaryFieldId,
+      }));
+      return new Response(
+        JSON.stringify({ tables, defaultTableName: defaultTableName || null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const tableName = tableOverride || defaultTableName;
+    if (!tableName) {
+      return new Response(
+        JSON.stringify({ error: 'No table specified and no AIRTABLE_TABLE_NAME default configured' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Build Airtable API URL
@@ -88,6 +121,7 @@ Deno.serve(async (req) => {
     }
 
     console.log('Making request to Airtable:', airtableUrl.toString());
+
 
     // Make request to Airtable
     const airtableResponse = await fetch(airtableUrl.toString(), {
