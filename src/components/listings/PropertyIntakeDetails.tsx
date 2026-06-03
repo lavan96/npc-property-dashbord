@@ -44,16 +44,31 @@ const ConfBar = ({ label, value }: { label: string; value: any }) => {
   if (pct === null) return null;
   const tone =
     pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-primary' : pct >= 40 ? 'bg-warning' : 'bg-destructive';
+  const ring =
+    pct >= 80 ? 'ring-success/20' : pct >= 60 ? 'ring-primary/20' : pct >= 40 ? 'ring-warning/20' : 'ring-destructive/20';
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{pct}%</span>
+    <div className={`rounded-lg border border-border/60 bg-card/40 p-3 ring-1 ${ring}`}>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className="text-sm font-semibold tabular-nums">{pct}%</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
+        <div className={`h-full ${tone} transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
+  );
+};
+
+const SectionCard = ({ icon: Icon, title, tone = 'default', children }: { icon?: any; title: string; tone?: 'default' | 'destructive' | 'warning'; children: React.ReactNode }) => {
+  const border = tone === 'destructive' ? 'border-destructive/30 bg-destructive/5' : tone === 'warning' ? 'border-warning/30 bg-warning/5' : 'border-border/60 bg-card/30';
+  const titleTone = tone === 'destructive' ? 'text-destructive' : tone === 'warning' ? 'text-warning' : 'text-muted-foreground';
+  return (
+    <section className={`rounded-xl border ${border} p-5`}>
+      <h3 className={`text-sm font-semibold uppercase tracking-wider ${titleTone} mb-3 flex items-center gap-2`}>
+        {Icon && <Icon className="h-3.5 w-3.5" />} {title}
+      </h3>
+      {children}
+    </section>
   );
 };
 
