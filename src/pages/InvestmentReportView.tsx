@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import { PremiumPdfButton } from '@/components/reports/PremiumPdfButton';
 import type { PixelPerfectPDFGeneratorHandle } from '@/components/reports/PixelPerfectPDFGenerator';
 import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
@@ -390,6 +391,8 @@ export default function InvestmentReportView() {
               <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}>
                 <ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} />
               </ErrorBoundary>
+
+              <PremiumPdfButton reportId={report.id} propertyAddress={report.property_address} />
 
               <RegenerateWithPerplexityButton
                 reportId={report.id}
