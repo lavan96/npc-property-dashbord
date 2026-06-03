@@ -12760,6 +12760,63 @@ export type Database = {
           },
         ]
       }
+      purchase_file_bank_statement_requests: {
+        Row: {
+          account_count: number | null
+          applicant_id: string | null
+          client_id: string | null
+          consent_url: string | null
+          created_at: string
+          id: string
+          initiated_by: string | null
+          notes: string | null
+          payload: Json
+          period_days: number
+          provider: string
+          provider_ref: string | null
+          purchase_file_id: string
+          statements_received_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_count?: number | null
+          applicant_id?: string | null
+          client_id?: string | null
+          consent_url?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          payload?: Json
+          period_days?: number
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id: string
+          statements_received_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_count?: number | null
+          applicant_id?: string | null
+          client_id?: string | null
+          consent_url?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          payload?: Json
+          period_days?: number
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id?: string
+          statements_received_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       purchase_file_client_tasks: {
         Row: {
           client_id: string
@@ -13011,6 +13068,72 @@ export type Database = {
           },
         ]
       }
+      purchase_file_credit_checks: {
+        Row: {
+          applicant_id: string | null
+          band: string | null
+          client_id: string | null
+          consent_given_at: string | null
+          consent_ip: unknown
+          consent_proof: Json
+          created_at: string
+          id: string
+          initiated_by: string | null
+          notes: string | null
+          provider: string
+          provider_ref: string | null
+          purchase_file_id: string
+          ran_at: string | null
+          raw: Json
+          report_url: string | null
+          score: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_id?: string | null
+          band?: string | null
+          client_id?: string | null
+          consent_given_at?: string | null
+          consent_ip?: unknown
+          consent_proof?: Json
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id: string
+          ran_at?: string | null
+          raw?: Json
+          report_url?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string | null
+          band?: string | null
+          client_id?: string | null
+          consent_given_at?: string | null
+          consent_ip?: unknown
+          consent_proof?: Json
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id?: string
+          ran_at?: string | null
+          raw?: Json
+          report_url?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       purchase_file_critical_dates: {
         Row: {
           completed_at: string | null
@@ -13095,6 +13218,138 @@ export type Database = {
           note?: string | null
           purchase_file_id?: string | null
           source?: string
+        }
+        Relationships: []
+      }
+      purchase_file_discovery_signatures: {
+        Row: {
+          applicant_id: string | null
+          client_id: string | null
+          created_at: string
+          doc_label: string | null
+          doc_type: string
+          document_url: string | null
+          envelope_id: string | null
+          id: string
+          initiated_by: string | null
+          metadata: Json
+          provider: string
+          purchase_file_id: string
+          recipient_email: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          signed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          doc_label?: string | null
+          doc_type: string
+          document_url?: string | null
+          envelope_id?: string | null
+          id?: string
+          initiated_by?: string | null
+          metadata?: Json
+          provider?: string
+          purchase_file_id: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          doc_label?: string | null
+          doc_type?: string
+          document_url?: string | null
+          envelope_id?: string | null
+          id?: string
+          initiated_by?: string | null
+          metadata?: Json
+          provider?: string
+          purchase_file_id?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_file_doc_compliance_checks: {
+        Row: {
+          ai_summary: string | null
+          applicant_id: string | null
+          check_type: string
+          created_at: string
+          detected_date: string | null
+          detected_doc_type: string | null
+          detected_name: string | null
+          document_id: string | null
+          expires_at: string | null
+          findings: Json
+          id: string
+          metadata: Json
+          ocr_text: string | null
+          purchase_file_id: string
+          ran_at: string
+          ran_by: string | null
+          requirement_instance_id: string | null
+          status: string
+          tamper_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          applicant_id?: string | null
+          check_type?: string
+          created_at?: string
+          detected_date?: string | null
+          detected_doc_type?: string | null
+          detected_name?: string | null
+          document_id?: string | null
+          expires_at?: string | null
+          findings?: Json
+          id?: string
+          metadata?: Json
+          ocr_text?: string | null
+          purchase_file_id: string
+          ran_at?: string
+          ran_by?: string | null
+          requirement_instance_id?: string | null
+          status?: string
+          tamper_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          applicant_id?: string | null
+          check_type?: string
+          created_at?: string
+          detected_date?: string | null
+          detected_doc_type?: string | null
+          detected_name?: string | null
+          document_id?: string | null
+          expires_at?: string | null
+          findings?: Json
+          id?: string
+          metadata?: Json
+          ocr_text?: string | null
+          purchase_file_id?: string
+          ran_at?: string
+          ran_by?: string | null
+          requirement_instance_id?: string | null
+          status?: string
+          tamper_score?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -13366,6 +13621,54 @@ export type Database = {
             referencedColumns: ["purchase_file_id"]
           },
         ]
+      }
+      purchase_file_nccp_bundles: {
+        Row: {
+          bundle_url: string | null
+          completeness_pct: number | null
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          manifest: Json
+          metadata: Json
+          missing_items: Json
+          notes: string | null
+          purchase_file_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_url?: string | null
+          completeness_pct?: number | null
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          manifest?: Json
+          metadata?: Json
+          missing_items?: Json
+          notes?: string | null
+          purchase_file_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_url?: string | null
+          completeness_pct?: number | null
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          manifest?: Json
+          metadata?: Json
+          missing_items?: Json
+          notes?: string | null
+          purchase_file_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       purchase_file_onboarding_checklist: {
         Row: {
@@ -13846,6 +14149,66 @@ export type Database = {
             referencedColumns: ["purchase_file_id"]
           },
         ]
+      }
+      purchase_file_voi_verifications: {
+        Row: {
+          applicant_id: string | null
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          id_documents: Json
+          initiated_by: string | null
+          notes: string | null
+          provider: string
+          provider_ref: string | null
+          purchase_file_id: string
+          result: Json
+          selfie_match: boolean | null
+          status: string
+          updated_at: string
+          verification_url: string | null
+        }
+        Insert: {
+          applicant_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          id_documents?: Json
+          initiated_by?: string | null
+          notes?: string | null
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id: string
+          result?: Json
+          selfie_match?: boolean | null
+          status?: string
+          updated_at?: string
+          verification_url?: string | null
+        }
+        Update: {
+          applicant_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          id_documents?: Json
+          initiated_by?: string | null
+          notes?: string | null
+          provider?: string
+          provider_ref?: string | null
+          purchase_file_id?: string
+          result?: Json
+          selfie_match?: boolean | null
+          status?: string
+          updated_at?: string
+          verification_url?: string | null
+        }
+        Relationships: []
       }
       purchase_files: {
         Row: {
