@@ -149,6 +149,29 @@ function wrapInsightSections(html: string): string {
     },
   );
 
+  // Form 3: list-item bold-prefix form  →  <li><strong>What This Means:</strong> body…</li>
+  // Many narrative bullets in the report use this pattern. Style the <li> as an
+  // inline gold callout so it visually matches the .insight-box panels above.
+  out = out.replace(
+    /<li([^>]*)>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*([\s\S]*?)<\/li>/gi,
+    (match, attrs, rawLabel, body) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      return `<li${attrs} class="insight-li"><span class="insight-label-inline">${esc(label)}</span><span class="insight-li-body">${body}</span></li>`;
+    },
+  );
+
+  // Form 4: bare label paragraph  →  <p><strong>What This Means:</strong></p><p>body…</p>
+  // (Form 2 sometimes fails to catch this when the lookahead does not match.)
+  out = out.replace(
+    /<p>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*<\/p>\s*(<p>[\s\S]*?<\/p>)/gi,
+    (match, rawLabel, bodyPara) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div>${bodyPara}</div>`;
+    },
+  );
+
   return out;
 }
 
