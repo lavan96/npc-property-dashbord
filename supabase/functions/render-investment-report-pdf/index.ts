@@ -1811,9 +1811,11 @@ export async function buildHtml(
 <head>
 <meta charset="utf-8" />
 <title>${esc(address)} — Investment Report</title>
+<!-- Fonts bundled in the WeasyPrint container at /usr/share/fonts/truetype/premium.
+     Kept as fallback for the Api2PDF/headless-Chrome render path. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap">
 <style>${styles}</style>
 </head>
 <body>
