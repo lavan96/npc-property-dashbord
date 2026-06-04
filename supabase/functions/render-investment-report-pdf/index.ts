@@ -723,6 +723,327 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
   return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EDITORIAL PRIMITIVES (Tier 2 — items 5–8)
+//   • Pull-quotes, sidenotes, multi-column wrappers          (#5)
+//   • Inline SVG heatmaps + score wheels                     (#6)
+//   • Custom visualisations: gauge + waterfall + compare      (#7)
+//   • Footnotes (CSS Paged Media) + "See p. X" cross-refs    (#8)
+//
+// All shortcodes live in markdown and survive `marked.parse()` because they
+// emit block-level HTML, which GFM passes through verbatim. SVG figures are
+// rendered server-side so they print at infinite resolution.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VIZ_GOLD     = "#D4A843";
+const VIZ_GOLD_SOFT = "#B8893A";
+const VIZ_NAVY     = "#0A2540";
+const VIZ_INK      = "#2A2317";
+const VIZ_INK_MUTED = "#6B604F";
+const VIZ_PAPER    = "#FFFDF8";
+const VIZ_PAPER_ALT = "#F7EFD9";
+const VIZ_RULE     = "#CFC1A8";
+const VIZ_GOOD     = "#4F7A33";
+const VIZ_WARN     = "#C58A2E";
+const VIZ_RISK     = "#A8401C";
+
+function svgEscape(s: string): string {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** Half-circle gauge — KPI score visualiser. */
+function renderGaugeSvg(value: number, max = 100, label = "", caption = ""): string {
+  const v = Math.max(0, Math.min(max, Number(value) || 0));
+  const pct = v / max;
+  const w = 460, h = 260;
+  const cx = w / 2, cy = 180, r = 130;
+  // Arc geometry: 180° (left -180°) → 0° (right). Sweep `pct` of that.
+  const startA = Math.PI;          // left
+  const endA   = Math.PI + Math.PI * pct;
+  const polarX = (a: number) => cx + r * Math.cos(a);
+  const polarY = (a: number) => cy + r * Math.sin(a);
+  const largeArc = pct > 0.5 ? 1 : 0;
+  const trackPath = `M ${polarX(Math.PI)} ${polarY(Math.PI)} A ${r} ${r} 0 1 1 ${polarX(2 * Math.PI - 0.0001)} ${polarY(2 * Math.PI - 0.0001)}`;
+  const valuePath = pct > 0
+    ? `M ${polarX(startA)} ${polarY(startA)} A ${r} ${r} 0 ${largeArc} 1 ${polarX(endA)} ${polarY(endA)}`
+    : "";
+  // Tick marks every 10%
+  const ticks = Array.from({ length: 11 }, (_, i) => {
+    const a = Math.PI + (i / 10) * Math.PI;
+    const x1 = cx + (r - 10) * Math.cos(a), y1 = cy + (r - 10) * Math.sin(a);
+    const x2 = cx + (r + 2)  * Math.cos(a), y2 = cy + (r + 2)  * Math.sin(a);
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${VIZ_RULE}" stroke-width="${i % 5 === 0 ? 1.4 : 0.6}"/>`;
+  }).join("");
+  const band = v / max >= 0.8 ? "Strong"
+             : v / max >= 0.65 ? "Solid"
+             : v / max >= 0.5 ? "Mixed" : "Cautious";
+  const bandColor = v / max >= 0.65 ? VIZ_GOOD : v / max >= 0.5 ? VIZ_WARN : VIZ_RISK;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <linearGradient id="gauge-fill" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="${VIZ_GOLD_SOFT}"/><stop offset="1" stop-color="${VIZ_GOLD}"/>
+      </linearGradient>
+    </defs>
+    <path d="${trackPath}" stroke="${VIZ_PAPER_ALT}" stroke-width="22" fill="none" stroke-linecap="round"/>
+    ${valuePath ? `<path d="${valuePath}" stroke="url(#gauge-fill)" stroke-width="22" fill="none" stroke-linecap="round"/>` : ""}
+    <g>${ticks}</g>
+    <text x="${cx}" y="${cy - 6}" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="800" font-size="62" fill="${VIZ_INK}" style="font-variant-numeric:lining-nums tabular-nums;">${Math.round(v)}</text>
+    <text x="${cx}" y="${cy + 20}" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" letter-spacing="2.6" fill="${VIZ_INK_MUTED}">${svgEscape(("/" + max + "  ·  " + band).toUpperCase())}</text>
+    <rect x="${cx - 38}" y="${cy + 30}" width="76" height="3" fill="${bandColor}" rx="1.5"/>
+    ${label ? `<text x="${cx}" y="42" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="18" fill="${VIZ_INK}">${svgEscape(label)}</text>` : ""}
+    ${caption ? `<text x="${cx}" y="62" text-anchor="middle" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}" letter-spacing="1.4">${svgEscape(caption.toUpperCase())}</text>` : ""}
+  </svg>`;
+}
+
+/** Waterfall chart — show cumulative cash-flow build-up (positive + negative bars). */
+function renderWaterfallSvg(items: Array<{ label: string; value: number; total?: boolean }>): string {
+  if (!items.length) return "";
+  const w = 760, h = 360, padL = 70, padR = 24, padT = 30, padB = 70;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  // Compute running totals to find y-range
+  let running = 0;
+  const bars = items.map((it) => {
+    const start = it.total ? 0 : running;
+    const end   = it.total ? it.value : running + it.value;
+    if (!it.total) running += it.value;
+    else running = it.value;
+    return { ...it, start, end };
+  });
+  const allY = bars.flatMap((b) => [b.start, b.end, 0]);
+  const yMin = Math.min(...allY), yMax = Math.max(...allY);
+  const span = (yMax - yMin) || 1;
+  const yOf = (v: number) => padT + plotH - ((v - yMin) / span) * plotH;
+  const barW = Math.max(18, Math.min(58, (plotW / bars.length) * 0.62));
+  const groupW = plotW / bars.length;
+  // Gridlines
+  const grid = Array.from({ length: 5 }, (_, i) => {
+    const t = i / 4;
+    const yv = yMax - t * span;
+    const y = padT + t * plotH;
+    return `<line x1="${padL}" x2="${w - padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${VIZ_RULE}" stroke-opacity="0.5" stroke-width="0.5"/>
+      <text x="${padL - 8}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}" style="font-variant-numeric:tabular-nums;">${formatAxisValue(yv, "money")}</text>`;
+  }).join("");
+  const zeroY = yOf(0);
+  // Bars + connectors
+  let connectors = "";
+  const rects = bars.map((b, i) => {
+    const cx = padL + i * groupW + groupW / 2;
+    const x = cx - barW / 2;
+    const yTop = yOf(Math.max(b.start, b.end));
+    const yBot = yOf(Math.min(b.start, b.end));
+    const isUp = b.end >= b.start;
+    const color = b.total ? VIZ_NAVY : isUp ? VIZ_GOOD : VIZ_RISK;
+    const valTxt = formatAxisValue(b.end - b.start, "money");
+    const labelY = yTop - 8;
+    if (i < bars.length - 1) {
+      const nextStart = bars[i + 1].start;
+      connectors += `<line x1="${x + barW}" y1="${yOf(b.end)}" x2="${padL + (i + 1) * groupW + groupW / 2 - barW / 2}" y2="${yOf(nextStart)}" stroke="${VIZ_RULE}" stroke-dasharray="3 3" stroke-width="0.7"/>`;
+    }
+    return `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW}" height="${Math.max(2, yBot - yTop).toFixed(1)}" fill="${color}" fill-opacity="0.92" rx="2"/>
+      <text x="${cx}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-weight="600" font-size="9.5" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${svgEscape(valTxt)}</text>
+      <text x="${cx}" y="${(h - padB + 16).toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}">${svgEscape(b.label.length > 16 ? b.label.slice(0, 14) + "…" : b.label)}</text>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
+    <g>${grid}</g>
+    <line x1="${padL}" x2="${w - padR}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="${VIZ_INK_MUTED}" stroke-width="0.8"/>
+    ${connectors}
+    ${rects}
+  </svg>`;
+}
+
+/** Heatmap — m×n grid with gold-saturation cells. Useful for suburb growth matrices. */
+function renderHeatmapSvg(grid: number[][], rowLabels: string[] = [], colLabels: string[] = [], title = ""): string {
+  if (!grid.length || !grid[0]?.length) return "";
+  const rows = grid.length, cols = grid[0].length;
+  const flat = grid.flat();
+  const lo = Math.min(...flat), hi = Math.max(...flat), span = (hi - lo) || 1;
+  const padL = 110, padT = title ? 50 : 30, padR = 18, padB = 26;
+  const cellW = 56, cellH = 36;
+  const w = padL + padR + cols * cellW;
+  const h = padT + padB + rows * cellH;
+  const colorFor = (v: number) => {
+    const t = (v - lo) / span;
+    // Interpolate between cream and deep navy via gold midpoint.
+    const a = Math.round(0.08 + t * 0.82 * 100) / 100;
+    return `rgba(212,168,67,${a.toFixed(2)})`;
+  };
+  let cells = "";
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = grid[r][c];
+      const x = padL + c * cellW, y = padT + r * cellH;
+      cells += `<rect x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="1.5" fill="${colorFor(v)}" stroke="${VIZ_PAPER}" stroke-width="1"/>
+        <text x="${x + cellW / 2}" y="${y + cellH / 2 + 3.5}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9.5" font-weight="600" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${svgEscape(Number.isInteger(v) ? String(v) : v.toFixed(1))}</text>`;
+    }
+  }
+  const rowL = rowLabels.map((lbl, r) => `<text x="${padL - 8}" y="${padT + r * cellH + cellH / 2 + 3.5}" text-anchor="end" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}">${svgEscape(lbl)}</text>`).join("");
+  const colL = colLabels.map((lbl, c) => `<text x="${padL + c * cellW + cellW / 2}" y="${padT - 8}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(lbl)}</text>`).join("");
+  const t = title ? `<text x="${padL}" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(title)}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
+    ${t}${colL}${rowL}${cells}
+  </svg>`;
+}
+
+/** Score wheel — radar/polar for multi-dimensional scoring. */
+function renderScoreWheelSvg(scores: number[], labels: string[] = [], max = 100): string {
+  if (scores.length < 3) return "";
+  const w = 460, h = 360, cx = w / 2, cy = h / 2 + 8, R = 130;
+  const n = scores.length;
+  const angle = (i: number) => -Math.PI / 2 + (i / n) * Math.PI * 2;
+  const pt = (i: number, r: number) => `${(cx + r * Math.cos(angle(i))).toFixed(1)},${(cy + r * Math.sin(angle(i))).toFixed(1)}`;
+  // Rings
+  const rings = [0.25, 0.5, 0.75, 1].map((t) =>
+    `<polygon points="${Array.from({ length: n }, (_, i) => pt(i, R * t)).join(" ")}" fill="none" stroke="${VIZ_RULE}" stroke-opacity="${0.4 + t * 0.2}" stroke-width="0.6"/>`,
+  ).join("");
+  const spokes = Array.from({ length: n }, (_, i) => `<line x1="${cx}" y1="${cy}" x2="${(cx + R * Math.cos(angle(i))).toFixed(1)}" y2="${(cy + R * Math.sin(angle(i))).toFixed(1)}" stroke="${VIZ_RULE}" stroke-width="0.5"/>`).join("");
+  const polyPts = scores.map((s, i) => pt(i, R * Math.max(0, Math.min(1, (Number(s) || 0) / max)))).join(" ");
+  const dots = scores.map((s, i) => {
+    const r = R * Math.max(0, Math.min(1, (Number(s) || 0) / max));
+    return `<circle cx="${(cx + r * Math.cos(angle(i))).toFixed(1)}" cy="${(cy + r * Math.sin(angle(i))).toFixed(1)}" r="3" fill="${VIZ_GOLD}" stroke="${VIZ_PAPER}" stroke-width="1"/>`;
+  }).join("");
+  const lbls = (labels.length ? labels : scores.map((_, i) => `D${i + 1}`)).map((lbl, i) => {
+    const a = angle(i);
+    const lx = cx + (R + 22) * Math.cos(a);
+    const ly = cy + (R + 22) * Math.sin(a);
+    const anchor = Math.abs(Math.cos(a)) < 0.2 ? "middle" : Math.cos(a) > 0 ? "start" : "end";
+    return `<text x="${lx.toFixed(1)}" y="${(ly + 3.5).toFixed(1)}" text-anchor="${anchor}" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}" letter-spacing="0.4">${svgEscape(lbl.toUpperCase())}</text>
+      <text x="${lx.toFixed(1)}" y="${(ly + 15).toFixed(1)}" text-anchor="${anchor}" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="11" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${Math.round(Number(scores[i]) || 0)}</text>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
+    ${rings}${spokes}
+    <polygon points="${polyPts}" fill="${VIZ_GOLD}" fill-opacity="0.18" stroke="${VIZ_GOLD_SOFT}" stroke-width="1.6" stroke-linejoin="round"/>
+    ${dots}${lbls}
+  </svg>`;
+}
+
+/** Wrap an SVG into a print-ready figure with optional caption. */
+function vizFigure(svg: string, caption = ""): string {
+  return `<figure class="vis-figure">${svg}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
+}
+
+/**
+ * Pre-marked markdown processor: turns editorial shortcodes into block-level
+ * HTML so they survive `marked.parse()` untouched.
+ *
+ * Supported syntax:
+ *   ::: pullquote
+ *   The quoted line.
+ *   :::
+ *
+ *   ::: sidenote
+ *   Aside text.
+ *   :::
+ *
+ *   ::: cols                          (two-column flow)
+ *   long paragraph body…
+ *   :::
+ *
+ *   {{gauge: 72 | Investment Score | Weighted composite}}
+ *   {{waterfall: Rent +24000, Interest -18000, Tax -3200, Total =2800}}
+ *   {{heatmap: 1,2,3 / 4,5,6 / 7,8,9 | rows=A,B,C | cols=X,Y,Z | title=Growth}}
+ *   {{wheel: 78,64,82,71,55 | labels=Yield,Growth,Risk,Demand,Infra}}
+ *
+ *   [[see:#anchor]]                   (cross-reference; resolved to page #)
+ *   [^1]                              (footnote call; def below)
+ *   [^1]: Footnote definition text.
+ */
+function applyEditorialMarkdown(md: string): string {
+  let out = md;
+
+  // Fenced editorial blocks: ::: name … :::
+  out = out.replace(/^::: *(pullquote|sidenote|cols) *\n([\s\S]*?)\n::: *$/gm, (_m, name, body) => {
+    const inner = String(body).trim();
+    if (name === "pullquote") return `\n<aside class="pull-quote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+    if (name === "sidenote") return `\n<aside class="sidenote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+    if (name === "cols") return `\n<div class="two-col">\n\n${inner}\n\n</div>\n`;
+    return _m;
+  });
+
+  // {{gauge: VALUE [/ MAX] | LABEL | CAPTION}}
+  out = out.replace(/\{\{gauge:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const [val, label = "", caption = ""] = parts;
+    const [v, max = "100"] = val.split("/").map((s) => s.trim());
+    return vizFigure(renderGaugeSvg(Number(v) || 0, Number(max) || 100, label, caption), caption ? "" : label);
+  });
+
+  // {{waterfall: Label1 +123, Label2 -45, Total =78}}
+  out = out.replace(/\{\{waterfall:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const items = String(args).split(/[,;]/).map((seg) => {
+      const m = seg.trim().match(/^(.+?)\s*([=+\-])\s*([\d.,$\s-]+)$/);
+      if (!m) return null;
+      const label = m[1].trim();
+      const total = m[2] === "=";
+      const value = parseLooseNumber(m[3]) ?? 0;
+      return { label, value, total };
+    }).filter(Boolean) as Array<{ label: string; value: number; total?: boolean }>;
+    if (!items.length) return _m;
+    return vizFigure(renderWaterfallSvg(items), "Cash-flow waterfall");
+  });
+
+  // {{heatmap: r1c1,r1c2 / r2c1,r2c2 | rows=A,B | cols=X,Y | title=…}}
+  out = out.replace(/\{\{heatmap:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const grid = parts[0].split("/").map((row) => row.split(",").map((v) => Number(v.trim())).filter((n) => Number.isFinite(n)));
+    if (!grid.length || !grid[0].length) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(rows|cols|title)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    const rowLabels = opts.rows ? opts.rows.split(",").map((s) => s.trim()) : [];
+    const colLabels = opts.cols ? opts.cols.split(",").map((s) => s.trim()) : [];
+    return vizFigure(renderHeatmapSvg(grid, rowLabels, colLabels, opts.title || ""), opts.title || "");
+  });
+
+  // {{wheel: 78,64,82 | labels=Yield,Growth,Risk | max=100 | title=…}}
+  out = out.replace(/\{\{wheel:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const scores = parts[0].split(",").map((v) => Number(v.trim())).filter((n) => Number.isFinite(n));
+    if (scores.length < 3) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(labels|max|title)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    const labels = opts.labels ? opts.labels.split(",").map((s) => s.trim()) : [];
+    return vizFigure(renderScoreWheelSvg(scores, labels, Number(opts.max) || 100), opts.title || "");
+  });
+
+  return out;
+}
+
+/**
+ * Post-marked HTML processor: converts footnote calls/defs into CSS Paged Media
+ * footnotes (WeasyPrint native), and turns [[see:#id]] into target-counter xrefs.
+ */
+function applyFootnotesAndXrefs(html: string): string {
+  // 1. Collect footnote defs: [^id]: text  (marked may leave them in <p> or escape ^).
+  const defs = new Map<string, string>();
+  let out = html.replace(/<p>\s*\[\^([\w-]+)\]\s*:\s*([\s\S]*?)<\/p>/gi, (_m, id, body) => {
+    defs.set(String(id), String(body).trim());
+    return "";
+  });
+
+  // 2. Replace inline calls [^id] with a footnote span (float: footnote in CSS).
+  out = out.replace(/\[\^([\w-]+)\]/g, (_m, id) => {
+    const body = defs.get(String(id));
+    if (!body) return "";
+    return `<span class="footnote">${body}</span>`;
+  });
+
+  // 3. Cross-references: [[see:#anchor]] or [[see:#anchor|prefix]]
+  out = out.replace(/\[\[see:#([\w-]+)(?:\|([^\]]+))?\]\]/g, (_m, id, prefix) => {
+    const label = prefix ? String(prefix).trim() : "see p.";
+    return `<a class="xref" href="#${id}"><span class="xref-prefix">${esc(label)}</span><span class="xref-page"></span></a>`;
+  });
+
+  return out;
+}
+
 /** Detect numeric markdown tables in rendered HTML, prepend a chart visualisation. */
 async function injectTableCharts(html: string): Promise<string> {
   const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
@@ -1065,9 +1386,10 @@ export async function buildHtml(
   const loc = report.location_intelligence || {};
 
   // Render + post-process markdown body.
-  const md = cleanReportMarkdown(String(report.report_content || ""), address);
+  const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
+  bodyHtml = applyFootnotesAndXrefs(bodyHtml);
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
@@ -1225,6 +1547,19 @@ export async function buildHtml(
     @page chapter-opener {
       @top-left { content: none; }
       @top-right { content: none; }
+    }
+    /* CSS Paged Media footnotes (WeasyPrint native). The @footnote area sits
+       above the bottom margin box, divided by a hairline rule. */
+    @page {
+      @footnote {
+        border-top: 0.5pt solid ${THEME.rule};
+        padding-top: 4pt;
+        margin-top: 6pt;
+        font-size: 7.8pt;
+        line-height: 1.45;
+        color: ${THEME.inkMuted};
+        font-family: 'Inter', 'Helvetica', sans-serif;
+      }
     }
 
     * { box-sizing: border-box; }
@@ -1783,6 +2118,145 @@ export async function buildHtml(
     .chapter-hero.hero-focal-top img    { object-position: center top; }
     .chapter-hero.hero-focal-center img { object-position: center center; }
     .chapter-hero.hero-focal-bottom img { object-position: center bottom; }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Editorial primitives (Tier 2 — pull-quotes, sidenotes, columns,
+       custom SVG visualisations, footnotes + cross-references)
+       ────────────────────────────────────────────────────────────────── */
+
+    /* Pull-quote — full-bleed editorial highlight. */
+    aside.pull-quote {
+      margin: 22pt -8mm 22pt -8mm;
+      padding: 18pt 28pt 16pt 60pt;
+      background: linear-gradient(180deg, ${THEME.paperAlt} 0%, ${THEME.paper} 100%);
+      border-top: 0.5pt solid ${THEME.rule};
+      border-bottom: 0.5pt solid ${THEME.rule};
+      position: relative;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.pull-quote::before {
+      content: "\\201C";
+      position: absolute; left: 18pt; top: 4pt;
+      font-family: 'Playfair Display', serif;
+      font-weight: 800; font-size: 72pt; line-height: 1;
+      color: ${THEME.gold};
+    }
+    aside.pull-quote p {
+      margin: 0;
+      font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+      font-style: italic; font-weight: 500;
+      font-size: 18pt; line-height: 1.35;
+      color: ${THEME.ink};
+      text-align: left; hyphens: none;
+      font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+    }
+
+    /* Side-note — hangs in the right margin (gutter) for editorial commentary. */
+    aside.sidenote {
+      float: right;
+      width: 38mm;
+      margin: 4pt -12mm 8pt 12pt;
+      padding: 9pt 10pt 8pt;
+      background: ${THEME.paperAlt};
+      border-left: 2pt solid ${THEME.goldSoft};
+      font-family: 'Inter', sans-serif;
+      font-size: 8.2pt;
+      line-height: 1.5;
+      color: ${THEME.inkMuted};
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.sidenote p { margin: 0; }
+    aside.sidenote::before {
+      content: "NOTE";
+      display: block;
+      font-weight: 700; font-size: 7pt;
+      letter-spacing: .18em;
+      color: ${THEME.goldSoft};
+      margin-bottom: 4pt;
+    }
+
+    /* Two-column flow — multi-column body for dense narrative sections. */
+    .two-col {
+      column-count: 2;
+      column-gap: 14pt;
+      column-rule: 0.4pt solid ${THEME.rule};
+      orphans: 3; widows: 3;
+      margin: 12pt 0;
+    }
+    .two-col h3, .two-col h4 { column-span: all; }
+    .two-col p { margin-top: 0; }
+
+    /* ── Custom SVG visualisations (gauge, waterfall, heatmap, wheel) ── */
+    figure.vis-figure {
+      margin: 16pt 0 20pt;
+      padding: 14pt 16pt 10pt;
+      background: ${THEME.paper};
+      border: 0.4pt solid ${THEME.rule};
+      border-radius: 4pt;
+      box-shadow: 0 1pt 0 rgba(40,28,10,0.04);
+      page-break-inside: avoid;
+      break-inside: avoid;
+      text-align: center;
+    }
+    figure.vis-figure svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    figure.vis-figure figcaption {
+      margin-top: 8pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.8pt;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: ${THEME.inkMuted};
+    }
+
+    /* ── Footnotes (CSS Paged Media — WeasyPrint) ── */
+    span.footnote {
+      float: footnote;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.8pt; line-height: 1.45;
+      color: ${THEME.inkMuted};
+    }
+    ::footnote-call {
+      content: counter(footnote);
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      color: ${THEME.gold};
+      vertical-align: super;
+      font-size: 0.72em;
+      line-height: 0;
+      margin-left: 1pt;
+    }
+    ::footnote-marker {
+      content: counter(footnote) ". ";
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      color: ${THEME.gold};
+      font-size: 8pt;
+    }
+
+    /* ── Cross-references — "see p. X" auto-resolved by WeasyPrint ── */
+    a.xref {
+      color: ${THEME.goldSoft};
+      text-decoration: none;
+      font-family: 'Inter', sans-serif;
+      font-style: italic;
+      font-size: 0.94em;
+      white-space: nowrap;
+    }
+    a.xref .xref-prefix { margin-right: 3pt; }
+    a.xref .xref-page::before {
+      content: " " target-counter(attr(href), page);
+      font-weight: 600;
+      font-style: normal;
+      color: ${THEME.ink};
+      font-variant-numeric: lining-nums tabular-nums;
+    }
   `;
 
   const scoreCard = scoreOverall != null
