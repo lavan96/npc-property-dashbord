@@ -1440,6 +1440,8 @@ export async function buildHtml(
       font-size: 8.5pt; background: #FFFDF8;
       page-break-inside: auto;
       table-layout: auto;
+      font-variant-numeric: tabular-nums lining-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1, "kern" 1;
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
     tr:nth-child(even) td { background: ${THEME.paperAlt}; }
@@ -1458,10 +1460,13 @@ export async function buildHtml(
       font-size: 7pt; border-bottom: none;
     }
     td { color: ${THEME.ink}; }
+    /* Numeric columns: right-align cells whose content reads numeric. */
+    td.num, th.num, td:last-child, th:last-child { text-align: right; font-variant-numeric: tabular-nums lining-nums; }
     td:first-child, th:first-child {
       font-weight: 600;
       width: 1%;
       white-space: nowrap;
+      text-align: left;
     }
     /* Allow long first-column labels (>22 chars) to wrap naturally instead of being broken mid-word */
     td:first-child { white-space: normal; min-width: 80pt; max-width: 180pt; }
