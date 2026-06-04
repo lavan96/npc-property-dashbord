@@ -16,13 +16,10 @@ interface PremiumPdfButtonProps {
 }
 
 /**
- * Premium PDF — HTML+CSS rendered via Api2PDF Headless Chrome for true editorial layout.
+ * Premium PDF — HTML+CSS rendered through WeasyPrint first, with Api2PDF as fallback.
  *
- * Hero images are generated and selected separately through the "Manage Hero
- * Images" dialog (HeroImagesDialog). When `includeHeroImages` is on, the
- * renderer simply consumes whatever ready + selected assets exist in
- * `report_visual_assets`. Chapters without a selected ready asset render
- * with no banner instead of a fallback SVG.
+ * Design controls are passed through as explicit renderer inputs so the final
+ * PDF changes even when the report markdown has no editorial shortcodes.
  */
 export function PremiumPdfButton({
   reportId,
