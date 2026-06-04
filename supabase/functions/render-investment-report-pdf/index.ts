@@ -2609,9 +2609,24 @@ ${(() => {
     ["Address", contact.address],
     ["ABN", contact.abn],
   ];
+  const linkifyValue = (label: string, value: string): string => {
+    const v = String(value).trim();
+    if (label === "Email" && /^[^@\s]+@[^@\s]+$/.test(v)) {
+      return `<a class="contact-link" href="mailto:${esc(v)}">${esc(v)}</a>`;
+    }
+    if (label === "Phone") {
+      const tel = v.replace(/[^\d+]/g, "");
+      return tel ? `<a class="contact-link" href="tel:${esc(tel)}">${esc(v)}</a>` : esc(v);
+    }
+    if (label === "Website") {
+      const href = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+      return `<a class="contact-link" href="${esc(href)}">${esc(v)}</a>`;
+    }
+    return esc(v);
+  };
   const rowsHtml = rows
     .filter(([, v]) => v)
-    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`)
+    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${linkifyValue(String(l), String(v))}</div></div>`)
     .join("");
   const discText = disclaimer.is_enabled !== false && disclaimer.text
     ? String(disclaimer.text)
