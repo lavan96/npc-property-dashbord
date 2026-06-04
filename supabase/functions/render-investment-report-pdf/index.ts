@@ -1163,29 +1163,68 @@ export async function buildHtml(
       : address;
 
   const styles = `
+    /* ── Paged-media foundation ──────────────────────────────────────── */
     @page {
       size: A4;
-      margin: 20mm 17mm 20mm 17mm;
+      margin: 22mm 18mm 22mm 18mm;
       background: ${THEME.paper};
-      @top-left { content: string(chapter); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
-      @top-right { content: "${esc(address)}"; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 8.5pt; color: ${THEME.inkMuted}; }
-      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
-      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @top-left {
+        content: string(chapter);
+        font-family: 'Inter', sans-serif;
+        font-size: 7.5pt; color: ${THEME.inkMuted};
+        letter-spacing: .14em; text-transform: uppercase;
+        font-variant-numeric: oldstyle-nums proportional-nums;
+      }
+      @top-right {
+        content: "${esc(address)}";
+        font-family: 'Cormorant Garamond', serif;
+        font-style: italic; font-size: 9pt; color: ${THEME.inkMuted};
+      }
+      @bottom-left {
+        content: "${esc(brandName)}";
+        font-family: 'Inter', sans-serif;
+        font-size: 7.5pt; color: ${THEME.inkMuted};
+        letter-spacing: .14em; text-transform: uppercase;
+      }
+      @bottom-center {
+        content: "";
+        border-top: 0.3pt solid ${THEME.rule};
+        width: 24pt; height: 0;
+        margin: 0 auto;
+      }
+      @bottom-right {
+        content: counter(page) " · " counter(pages);
+        font-family: 'Playfair Display', serif;
+        font-style: italic; font-size: 9pt; color: ${THEME.ink};
+        font-variant-numeric: oldstyle-nums proportional-nums;
+      }
     }
+    /* Slightly asymmetric gutter for a real bound-document feel. */
+    @page :left  { margin-left: 16mm; margin-right: 20mm; }
+    @page :right { margin-left: 20mm; margin-right: 16mm; }
+
     @page cover {
       margin: 0;
       background: ${THEME.bg};
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
     }
     @page disclaimer-page {
       margin: 0;
       background: #141414;
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
     }
     @page toc {
       @top-left { content: "Contents"; }
+      @top-right { content: none; }
+    }
+    /* Chapter opener — first page of each chapter suppresses the running header. */
+    @page chapter-opener {
+      @top-left { content: none; }
+      @top-right { content: none; }
     }
 
     * { box-sizing: border-box; }
@@ -1195,34 +1234,50 @@ export async function buildHtml(
       color: ${THEME.ink};
       font-family: 'Inter', 'Helvetica', sans-serif;
       font-size: 9.8pt;
-      line-height: 1.58;
+      line-height: 1.6;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      /* OpenType: kerning, ligatures, contextual alternates. */
+      font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+      font-variant-numeric: oldstyle-nums proportional-nums;
+      text-rendering: geometricPrecision;
     }
 
     body { counter-reset: section; }
 
     h1, h2, h3 {
       font-family: 'Playfair Display', 'Georgia', serif;
-      margin: 0 0 .45em; page-break-after: avoid;
+      margin: 0 0 .45em; page-break-after: avoid; break-after: avoid;
       background: ${NAVY_GRADIENT};
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
+      hyphens: manual;
+      font-feature-settings: "kern" 1, "liga" 1, "dlig" 1, "swsh" 1;
     }
-    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
-    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
+    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; break-after: avoid; }
+    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; bookmark-level: 1; bookmark-label: content(text); }
     h2 {
       counter-increment: section;
-      string-set: chapter content();
+      string-set: chapter content(text);
       font-size: 28pt; font-weight: 700; letter-spacing: -0.005em;
-      margin-top: 24pt;
+      margin-top: 0;
       padding-bottom: 10pt;
+      padding-top: 6pt;
       border-bottom: 0.5pt solid ${THEME.rule};
       display: block;
-      page-break-before: auto;
+      /* Each chapter starts on a fresh page — editorial polish. */
+      break-before: page;
+      page-break-before: always;
+      bookmark-level: 1;
+      bookmark-label: content(text);
+      bookmark-state: open;
+      page: chapter-opener;
     }
+    /* The very first h2 of the body should not force an extra blank page after the TOC. */
+    section.body-page:first-of-type > h2:first-child { break-before: auto; page-break-before: auto; }
+
     h2::before {
       content: counter(section, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
@@ -1233,11 +1288,13 @@ export async function buildHtml(
       letter-spacing: .04em;
       margin-right: 28pt;
       padding-right: 6pt;
+      font-variant-numeric: lining-nums tabular-nums;
     }
     h3 {
       font-size: 17pt; font-weight: 600; margin-top: 18pt;
       padding-left: 10pt;
       border-left: 2.5pt solid ${THEME.gold};
+      bookmark-level: 2; bookmark-label: content(text);
     }
     h4 {
       font-family: 'Inter', sans-serif;
@@ -1245,15 +1302,36 @@ export async function buildHtml(
       color: ${THEME.goldSoft};
       text-transform: uppercase; letter-spacing: .15em;
       margin-top: 14pt;
+      bookmark-level: 3; bookmark-label: content(text);
     }
-    p { margin: 0 0 .72em; orphans: 3; widows: 3; }
+    p {
+      margin: 0 0 .72em;
+      orphans: 3; widows: 3;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      hyphenate-limit-chars: 8 4 4;
+      text-align: justify;
+      text-justify: inter-word;
+    }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
     strong { color: ${THEME.ink}; font-weight: 700; }
     em, i { color: ${THEME.ink}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
+    /* Drop-cap on the first paragraph after each chapter title — editorial signature. */
+    h2 + p::first-letter {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-size: 3.6em;
+      line-height: 0.85;
+      float: left;
+      padding: 4pt 8pt 0 0;
+      color: ${THEME.gold};
+      font-feature-settings: "kern" 1, "dlig" 1;
+    }
+
     h2 + p {
       font-family: 'Inter', 'Helvetica', sans-serif;
-      font-size: 9.8pt; line-height: 1.58;
+      font-size: 9.8pt; line-height: 1.6;
       color: ${THEME.ink}; margin-bottom: .72em;
     }
 
@@ -1362,6 +1440,8 @@ export async function buildHtml(
       font-size: 8.5pt; background: #FFFDF8;
       page-break-inside: auto;
       table-layout: auto;
+      font-variant-numeric: tabular-nums lining-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1, "kern" 1;
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
     tr:nth-child(even) td { background: ${THEME.paperAlt}; }
@@ -1380,10 +1460,13 @@ export async function buildHtml(
       font-size: 7pt; border-bottom: none;
     }
     td { color: ${THEME.ink}; }
+    /* Numeric columns: right-align cells whose content reads numeric. */
+    td.num, th.num, td:last-child, th:last-child { text-align: right; font-variant-numeric: tabular-nums lining-nums; }
     td:first-child, th:first-child {
       font-weight: 600;
       width: 1%;
       white-space: nowrap;
+      text-align: left;
     }
     /* Allow long first-column labels (>22 chars) to wrap naturally instead of being broken mid-word */
     td:first-child { white-space: normal; min-width: 80pt; max-width: 180pt; }
@@ -1452,8 +1535,9 @@ export async function buildHtml(
     }
     .disclaimer-page .disclaimer-body p { margin: 0 0 6pt; }
 
-    /* ── Table of Contents ── */
+    /* ── Table of Contents (real page numbers via target-counter) ── */
     .toc { page: toc; page-break-after: always; padding-top: 6mm; }
+    .toc h1 { bookmark-level: 1; bookmark-label: "Contents"; }
     .toc .toc-eyebrow { font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.goldSoft}; letter-spacing: .25em; text-transform: uppercase; margin-bottom: 4mm; }
     .toc h1 { font-family: 'Playfair Display', serif; font-size: 38pt; font-weight: 800; margin: 0 0 12mm; letter-spacing: -0.01em; }
     .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
@@ -1462,11 +1546,12 @@ export async function buildHtml(
       padding: 9pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
       font-family: 'Inter', sans-serif; font-size: 11pt;
       color: ${THEME.ink};
+      page-break-inside: avoid;
     }
     .toc ol li a {
       color: ${THEME.ink}; text-decoration: none;
       display: grid;
-      grid-template-columns: 46pt 1fr auto 34pt;
+      grid-template-columns: 46pt 1fr auto 40pt;
       align-items: baseline;
       column-gap: 10pt;
     }
@@ -1476,13 +1561,17 @@ export async function buildHtml(
       font-style: italic; font-weight: 500;
       color: ${THEME.goldSoft}; font-size: 13pt;
       text-align: left;
+      font-variant-numeric: lining-nums tabular-nums;
     }
     .toc ol li .title { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; min-width: 0; overflow-wrap: break-word; }
     .toc ol li .dots { border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; height: 0; transform: translateY(-3pt); }
-    .toc ol li .page {
+    /* WeasyPrint: real cross-referenced page numbers — resolved at paginate time. */
+    .toc ol li a::after {
+      content: target-counter(attr(href), page);
       font-family: 'Playfair Display', serif;
       font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
       text-align: right;
+      font-variant-numeric: lining-nums tabular-nums;
     }
 
     /* ── Snapshot KPI grid ── */
@@ -1501,7 +1590,13 @@ export async function buildHtml(
       position: relative;
     }
     .kpi-label { font-family: 'Inter', sans-serif; font-size: 7pt; text-transform: uppercase; letter-spacing: .14em; color: ${THEME.inkMuted}; margin-bottom: 6pt; font-weight: 600; }
-    .kpi-value { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 19pt; color: ${THEME.ink}; line-height: 1; }
+    .kpi-value {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 19pt;
+      color: ${THEME.ink}; line-height: 1;
+      font-variant-numeric: lining-nums tabular-nums;
+      font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1;
+    }
 
     .score-card {
       background: linear-gradient(135deg, #FFFDF8 0%, #F4ECD8 100%);
@@ -1706,7 +1801,7 @@ export async function buildHtml(
          <div class="toc-eyebrow">${esc(brandName)} · Investment Report</div>
          <h1>Contents</h1>
          <ol>
-           ${toc.map((t) => `<li><a href="#${t.id}"><span class="title">${esc(t.title)}</span><span class="dots"></span><span class="page"></span></a></li>`).join("")}
+           ${toc.map((t) => `<li><a href="#${t.id}"><span class="title">${esc(t.title)}</span><span class="dots"></span></a></li>`).join("")}
          </ol>
        </section>`
     : "";
@@ -1716,9 +1811,11 @@ export async function buildHtml(
 <head>
 <meta charset="utf-8" />
 <title>${esc(address)} — Investment Report</title>
+<!-- Fonts bundled in the WeasyPrint container at /usr/share/fonts/truetype/premium.
+     Kept as fallback for the Api2PDF/headless-Chrome render path. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap">
 <style>${styles}</style>
 </head>
 <body>
@@ -1782,39 +1879,9 @@ ${(() => {
   </section>`;
 })()}
 
-<script>
-  // Estimate page number for each TOC entry by measuring chapter offset.
-  // Headless Chrome doesn't support CSS target-counter, so we approximate.
-  (function () {
-    try {
-      // A4 printable height at 96dpi minus top/bottom margins (20mm each).
-      // 297mm - 40mm = 257mm => 257 * 3.7795 ≈ 971px
-      var PAGE_PX = 971;
-      // Cover (1) + TOC pages (estimated by toc section height).
-      var tocSection = document.querySelector('.toc');
-      var tocPages = tocSection ? Math.max(1, Math.ceil(tocSection.getBoundingClientRect().height / PAGE_PX)) : 1;
-      var bodyStartOffset = 1 + tocPages; // pages BEFORE body content (cover + toc)
-      // Body content starts after the cover+toc sections in the DOM.
-      // We measure each h2's offsetTop relative to the first body h2.
-      var firstBody = document.querySelector('section.body-page h2');
-      if (!firstBody) return;
-      var firstTop = firstBody.getBoundingClientRect().top + window.scrollY;
-      document.querySelectorAll('.toc ol li a').forEach(function (a) {
-        var href = a.getAttribute('href') || '';
-        if (!href.startsWith('#')) return;
-        var target = document.getElementById(href.slice(1));
-        var pageSpan = a.querySelector('.page');
-        if (!target || !pageSpan) return;
-        var top = target.getBoundingClientRect().top + window.scrollY;
-        var relative = Math.max(0, top - firstTop);
-        var pageWithinBody = Math.floor(relative / PAGE_PX) + 1;
-        pageSpan.textContent = String(bodyStartOffset + pageWithinBody);
-      });
-    } catch (e) {
-      console.error('[toc-pagenum]', e);
-    }
-  })();
-</script>
+<!-- TOC page numbers are resolved natively by WeasyPrint via CSS target-counter().
+     The legacy JS estimator has been removed — Chrome/Api2PDF fallback will simply
+     show blank pages in the TOC, which is acceptable since WeasyPrint is now primary. -->
 
 </body>
 </html>`;

@@ -21,10 +21,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libpango-1.0-0 libpangoft2-1.0-0 \
       libcairo2 libgdk-pixbuf-2.0-0 \
       libffi-dev shared-mime-info \
+      fontconfig \
       fonts-dejavu fonts-liberation fonts-noto fonts-noto-cjk \
       fonts-inter fonts-roboto fonts-lato \
       curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Premium editorial typography — self-host so PDFs don't depend on the network.
+# Variable .ttf files pulled from the official Google Fonts repo.
+RUN mkdir -p /usr/share/fonts/truetype/premium && \
+    cd /usr/share/fonts/truetype/premium && \
+    BASE="https://github.com/google/fonts/raw/main/ofl" && \
+    curl -fsSL -o "PlayfairDisplay-VF.ttf"          "$BASE/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" && \
+    curl -fsSL -o "PlayfairDisplay-Italic-VF.ttf"   "$BASE/playfairdisplay/PlayfairDisplay-Italic%5Bwght%5D.ttf" && \
+    curl -fsSL -o "Inter-VF.ttf"                    "$BASE/inter/Inter%5Bopsz%2Cwght%5D.ttf" && \
+    curl -fsSL -o "Inter-Italic-VF.ttf"             "$BASE/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf" && \
+    curl -fsSL -o "Fraunces-VF.ttf"                 "$BASE/fraunces/Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf" && \
+    curl -fsSL -o "Fraunces-Italic-VF.ttf"          "$BASE/fraunces/Fraunces-Italic%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf" && \
+    curl -fsSL -o "CormorantGaramond-Regular.ttf"   "$BASE/cormorantgaramond/CormorantGaramond-Regular.ttf" && \
+    curl -fsSL -o "CormorantGaramond-Italic.ttf"    "$BASE/cormorantgaramond/CormorantGaramond-Italic.ttf" && \
+    curl -fsSL -o "CormorantGaramond-Medium.ttf"    "$BASE/cormorantgaramond/CormorantGaramond-Medium.ttf" && \
+    curl -fsSL -o "CormorantGaramond-SemiBold.ttf"  "$BASE/cormorantgaramond/CormorantGaramond-SemiBold.ttf" && \
+    curl -fsSL -o "CormorantGaramond-Bold.ttf"      "$BASE/cormorantgaramond/CormorantGaramond-Bold.ttf" && \
+    fc-cache -fv && \
+    fc-list | grep -iE "playfair|inter|fraunces|cormorant" | sort
 
 WORKDIR /app
 COPY requirements.txt .
