@@ -1335,6 +1335,8 @@ ${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysi
 - If a property is negatively geared, describe it honestly as "growth-focused with negative cashflow" — never as "balanced growth + income".
 - All time-sensitive economic data must include "as at [Month Year]".
 
+${EDITORIAL_PRIMITIVES_BLOCK}
+
 Generate the ${sectionDef.name} sections now:`;
 
   // Retry loop with improved backoff and jitter
