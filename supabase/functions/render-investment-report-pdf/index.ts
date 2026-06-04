@@ -1145,7 +1145,7 @@ function applyEditorialMarkdown(md: string): string {
   //   The fully-spread editorial quote sits here.
   //   :::
   out = out.replace(
-    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
+    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat|dashboard|signature) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
     (_m, name, attrRaw, body) => {
       const inner = String(body).trim();
       const attrs: Record<string, string> = {};
