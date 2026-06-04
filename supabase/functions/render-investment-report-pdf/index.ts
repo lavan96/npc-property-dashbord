@@ -1535,8 +1535,9 @@ export async function buildHtml(
     }
     .disclaimer-page .disclaimer-body p { margin: 0 0 6pt; }
 
-    /* ── Table of Contents ── */
+    /* ── Table of Contents (real page numbers via target-counter) ── */
     .toc { page: toc; page-break-after: always; padding-top: 6mm; }
+    .toc h1 { bookmark-level: 1; bookmark-label: "Contents"; }
     .toc .toc-eyebrow { font-family: 'Inter', sans-serif; font-size: 8pt; color: ${THEME.goldSoft}; letter-spacing: .25em; text-transform: uppercase; margin-bottom: 4mm; }
     .toc h1 { font-family: 'Playfair Display', serif; font-size: 38pt; font-weight: 800; margin: 0 0 12mm; letter-spacing: -0.01em; }
     .toc ol { counter-reset: tocnum; list-style: none; padding: 0; margin: 0; }
@@ -1545,11 +1546,12 @@ export async function buildHtml(
       padding: 9pt 0; border-bottom: 0.5pt dotted ${THEME.rule};
       font-family: 'Inter', sans-serif; font-size: 11pt;
       color: ${THEME.ink};
+      page-break-inside: avoid;
     }
     .toc ol li a {
       color: ${THEME.ink}; text-decoration: none;
       display: grid;
-      grid-template-columns: 46pt 1fr auto 34pt;
+      grid-template-columns: 46pt 1fr auto 40pt;
       align-items: baseline;
       column-gap: 10pt;
     }
@@ -1559,13 +1561,17 @@ export async function buildHtml(
       font-style: italic; font-weight: 500;
       color: ${THEME.goldSoft}; font-size: 13pt;
       text-align: left;
+      font-variant-numeric: lining-nums tabular-nums;
     }
     .toc ol li .title { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 14pt; min-width: 0; overflow-wrap: break-word; }
     .toc ol li .dots { border-bottom: 0.5pt dotted ${THEME.rule}; min-width: 30pt; height: 0; transform: translateY(-3pt); }
-    .toc ol li .page {
+    /* WeasyPrint: real cross-referenced page numbers — resolved at paginate time. */
+    .toc ol li a::after {
+      content: target-counter(attr(href), page);
       font-family: 'Playfair Display', serif;
       font-weight: 700; color: ${THEME.ink}; font-size: 12pt;
       text-align: right;
+      font-variant-numeric: lining-nums tabular-nums;
     }
 
     /* ── Snapshot KPI grid ── */
@@ -1584,7 +1590,13 @@ export async function buildHtml(
       position: relative;
     }
     .kpi-label { font-family: 'Inter', sans-serif; font-size: 7pt; text-transform: uppercase; letter-spacing: .14em; color: ${THEME.inkMuted}; margin-bottom: 6pt; font-weight: 600; }
-    .kpi-value { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 19pt; color: ${THEME.ink}; line-height: 1; }
+    .kpi-value {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 19pt;
+      color: ${THEME.ink}; line-height: 1;
+      font-variant-numeric: lining-nums tabular-nums;
+      font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1;
+    }
 
     .score-card {
       background: linear-gradient(135deg, #FFFDF8 0%, #F4ECD8 100%);
