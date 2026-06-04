@@ -1252,6 +1252,36 @@ The 5-year capital growth rate sits at 7.2%[^abs1].
 For full risk methodology [[see:#ch-risk-analysis]].
 \`\`\`
 
+9. SECTION DIVIDER — full-bleed dark "chapter break" page with one oversized
+   statistic. Use AT MOST ONCE per chapter, only when a single headline number
+   genuinely anchors the section's argument (e.g. "78" for an investment score,
+   "4.8%" for a yield, "$28k" for projected first-year cash flow).
+   Format:
+\`\`\`
+::: divider stat="78" label="Composite investment score" eyebrow="Chapter 04 · Verdict"
+Why this property earns a top-quartile rating.
+:::
+\`\`\`
+
+10. QUOTE PAGE — full-bleed paper-toned page with a single editorial pull-quote
+    on its own spread. Use AT MOST ONCE per report, reserved for the most
+    important strategic line (e.g. our thesis on the suburb, RBA commentary).
+    Format:
+\`\`\`
+::: quote-page attribution="RBA Statement on Monetary Policy, May 2026" eyebrow="Market context"
+"Housing demand remains underpinned by population growth running well above the long-run average."
+:::
+\`\`\`
+
+11. STAT BLOCK — inline oversized statistic that breaks up dense prose. Use for
+    a key in-flow number that doesn't warrant a full divider page.
+    Format: \`::: stat label="…" unit="%" sub="…"  \\n  4.8  \\n  :::\`
+\`\`\`
+::: stat label="Median rental yield" unit="%" sub="Suburb median, 12-mo trailing"
+4.8
+:::
+\`\`\`
+
 RULES:
 - Only use a visualisation (gauge/waterfall/heatmap/wheel) when the data is
   meaningful and SUPPORTS the surrounding narrative. Never invent numbers
@@ -1260,6 +1290,8 @@ RULES:
 - If a visualisation would duplicate a table on the same page, choose ONE.
 - Cross-references must point to a chapter heading that actually exists.
 - Footnote definitions must appear in the same section as the call.
+- Section dividers and quote pages BREAK THE PAGE — only use when a moment of
+  pause genuinely serves the reader. Never two in a row.
 `;
 
 // Helper function to generate a single section via API with retry logic

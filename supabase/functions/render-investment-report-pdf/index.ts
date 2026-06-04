@@ -953,14 +953,59 @@ function vizFigure(svg: string, caption = ""): string {
 function applyEditorialMarkdown(md: string): string {
   let out = md;
 
-  // Fenced editorial blocks: ::: name … :::
-  out = out.replace(/^::: *(pullquote|sidenote|cols) *\n([\s\S]*?)\n::: *$/gm, (_m, name, body) => {
-    const inner = String(body).trim();
-    if (name === "pullquote") return `\n<aside class="pull-quote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
-    if (name === "sidenote") return `\n<aside class="sidenote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
-    if (name === "cols") return `\n<div class="two-col">\n\n${inner}\n\n</div>\n`;
-    return _m;
-  });
+  // Fenced editorial blocks with optional `key=value` attributes on the opening fence.
+  // Examples:
+  //   ::: divider stat="78" label="Investment score" eyebrow="Chapter 04"
+  //   The chapter title or sub-heading goes here.
+  //   :::
+  //
+  //   ::: quote-page attribution="— RBA, May 2026"
+  //   The fully-spread editorial quote sits here.
+  //   :::
+  out = out.replace(
+    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
+    (_m, name, attrRaw, body) => {
+      const inner = String(body).trim();
+      const attrs: Record<string, string> = {};
+      String(attrRaw || "").replace(/(\w[\w-]*)\s*=\s*"([^"]*)"/g, (_x, k, v) => {
+        attrs[String(k).toLowerCase()] = String(v);
+        return "";
+      });
+      if (name === "pullquote") return `\n<aside class="pull-quote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+      if (name === "sidenote") return `\n<aside class="sidenote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+      if (name === "cols") return `\n<div class="two-col">\n\n${inner}\n\n</div>\n`;
+      if (name === "stat") {
+        // Inline oversized statistic block: ::: stat label="Median yield" unit="%"  → body = "4.8"
+        const label = esc(attrs.label || "");
+        const unit = esc(attrs.unit || "");
+        const sub = esc(attrs.sub || "");
+        return `\n<div class="stat-block"><div class="stat-value">${esc(inner)}${unit ? `<span class="stat-unit">${unit}</span>` : ""}</div>${label ? `<div class="stat-label">${label}</div>` : ""}${sub ? `<div class="stat-sub">${sub}</div>` : ""}</div>\n`;
+      }
+      if (name === "divider") {
+        // Full-bleed section divider with oversized stat + label + headline.
+        const stat = esc(attrs.stat || "");
+        const label = esc(attrs.label || "");
+        const eyebrow = esc(attrs.eyebrow || "");
+        const headline = esc(inner.replace(/\n+/g, " "));
+        return `\n<section class="section-divider">
+          ${eyebrow ? `<div class="sd-eyebrow">${eyebrow}</div>` : ""}
+          ${stat ? `<div class="sd-stat">${stat}</div>` : ""}
+          ${label ? `<div class="sd-label">${label}</div>` : ""}
+          ${headline ? `<div class="sd-headline">${headline}</div>` : ""}
+        </section>\n`;
+      }
+      if (name === "quote-page") {
+        const attribution = esc(attrs.attribution || "");
+        const eyebrow = esc(attrs.eyebrow || "Chapter quote");
+        return `\n<section class="quote-page">
+          <div class="qp-eyebrow">${eyebrow}</div>
+          <blockquote class="qp-body">${esc(inner.replace(/\n+/g, " "))}</blockquote>
+          ${attribution ? `<div class="qp-attrib">${attribution}</div>` : ""}
+        </section>\n`;
+      }
+      return _m;
+    },
+  );
 
   // {{gauge: VALUE [/ MAX] | LABEL | CAPTION}}
   out = out.replace(/\{\{gauge:\s*([^}]+)\}\}/gi, (_m, args) => {
@@ -2257,6 +2302,197 @@ export async function buildHtml(
       color: ${THEME.ink};
       font-variant-numeric: lining-nums tabular-nums;
     }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Tier 3 — Section dividers, quote pages, oversized stat blocks
+       ────────────────────────────────────────────────────────────────── */
+    @page section-divider-page {
+      margin: 0;
+      background: ${THEME.bg};
+      @top-left { content: none; } @top-right { content: none; }
+      @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
+    }
+    @page quote-page {
+      margin: 0;
+      background: ${THEME.paperAlt};
+      @top-left { content: none; } @top-right { content: none; }
+      @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
+    }
+    section.section-divider {
+      page: section-divider-page;
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      width: 210mm; min-height: 297mm;
+      margin: 0 -20mm; padding: 38mm 24mm;
+      background:
+        radial-gradient(120% 80% at 80% 10%, rgba(212,168,67,0.20) 0%, rgba(212,168,67,0) 60%),
+        radial-gradient(80% 60% at 10% 90%, rgba(46,108,176,0.18) 0%, rgba(46,108,176,0) 65%),
+        linear-gradient(170deg, ${THEME.bg} 0%, #1a1409 100%);
+      color: ${THEME.text};
+      display: block;
+      position: relative;
+    }
+    section.section-divider .sd-eyebrow {
+      font-family: 'Inter', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .26em;
+      font-size: 9pt; font-weight: 600;
+      color: ${THEME.gold};
+      margin-bottom: 28mm;
+    }
+    section.section-divider .sd-stat {
+      font-family: 'Playfair Display', 'Fraunces', serif;
+      font-weight: 800;
+      font-size: 220pt;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, ${THEME.gold} 0%, ${THEME.goldSoft} 60%, #8a6418 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+      font-variant-numeric: lining-nums proportional-nums;
+      margin: 0;
+    }
+    section.section-divider .sd-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 18pt;
+      color: ${THEME.muted};
+      margin-top: 6pt;
+      max-width: 120mm;
+    }
+    section.section-divider .sd-headline {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: 32pt;
+      line-height: 1.15;
+      color: ${THEME.text};
+      margin-top: 24mm;
+      max-width: 150mm;
+      border-top: 0.5pt solid rgba(212,168,67,0.35);
+      padding-top: 14pt;
+    }
+
+    section.quote-page {
+      page: quote-page;
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      width: 210mm; min-height: 297mm;
+      margin: 0 -20mm; padding: 60mm 32mm;
+      background: ${THEME.paperAlt};
+      color: ${THEME.ink};
+      display: block;
+      position: relative;
+    }
+    section.quote-page::before {
+      content: "\\201C";
+      position: absolute; top: 32mm; left: 28mm;
+      font-family: 'Playfair Display', serif;
+      font-weight: 800; font-size: 360pt; line-height: 0.8;
+      color: ${THEME.gold}; opacity: 0.18;
+    }
+    section.quote-page .qp-eyebrow {
+      font-family: 'Inter', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .24em;
+      font-size: 8.5pt; font-weight: 600;
+      color: ${THEME.goldSoft};
+      margin-bottom: 14mm;
+      position: relative;
+    }
+    section.quote-page blockquote.qp-body {
+      font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+      font-style: italic; font-weight: 500;
+      font-size: 38pt; line-height: 1.18;
+      color: ${THEME.ink};
+      margin: 0; padding: 0;
+      max-width: 140mm;
+      position: relative;
+      hyphens: none;
+      font-feature-settings: "kern" 1, "liga" 1, "dlig" 1, "swsh" 1;
+    }
+    section.quote-page .qp-attrib {
+      font-family: 'Inter', sans-serif;
+      font-size: 10pt; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: ${THEME.inkMuted};
+      margin-top: 18mm;
+      position: relative;
+    }
+
+    /* Inline oversized statistic block (smaller cousin of section-divider). */
+    .stat-block {
+      margin: 18pt 0 22pt;
+      padding: 16pt 20pt;
+      background: linear-gradient(180deg, ${THEME.paperAlt} 0%, ${THEME.paper} 100%);
+      border-left: 4pt solid ${THEME.gold};
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .stat-block .stat-value {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800; font-size: 64pt; line-height: 1;
+      color: ${THEME.navy};
+      font-variant-numeric: lining-nums proportional-nums;
+      letter-spacing: -0.02em;
+    }
+    .stat-block .stat-value .stat-unit {
+      font-size: 0.45em; font-weight: 500; color: ${THEME.goldSoft};
+      margin-left: 6pt; vertical-align: 0.4em;
+    }
+    .stat-block .stat-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .18em;
+      color: ${THEME.inkMuted};
+      margin-top: 4pt;
+    }
+    .stat-block .stat-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 11pt; color: ${THEME.inkMuted};
+      margin-top: 2pt;
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Tier 3 #10 — Print-quality image treatments
+       SVG filter primitives defined once in the body, classes opt-in.
+       ────────────────────────────────────────────────────────────────── */
+    .chapter-hero.hero-treatment-grain img,
+    .chapter-hero.hero-treatment-duotone img {
+      /* WeasyPrint resolves filter URLs to in-document <defs>. */
+    }
+    .chapter-hero.hero-treatment-grain img    { filter: url(#npc-grain); }
+    .chapter-hero.hero-treatment-duotone img  { filter: url(#npc-duotone-gold); }
+    .chapter-hero.hero-treatment-warm img     { filter: sepia(0.18) saturate(1.08) contrast(1.03); }
+
+    /* Auto-numbered figure captions: "FIGURE 04 — Caption…" */
+    body { counter-reset: section figure footnote; }
+    figure.auto-chart, figure.vis-figure { counter-increment: figure; }
+    figure.auto-chart figcaption::before,
+    figure.vis-figure figcaption::before {
+      content: "Figure " counter(figure, decimal-leading-zero) " — ";
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: ${THEME.gold};
+      margin-right: 4pt;
+    }
+    figure figcaption .photo-credit {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 7.5pt;
+      color: ${THEME.inkMuted};
+      margin-top: 2pt;
+    }
+
+    /* External / contact links — visible affordance in interactive PDF viewers. */
+    a.contact-link, a.ext-link {
+      color: ${THEME.gold};
+      text-decoration: none;
+      border-bottom: 0.4pt dotted ${THEME.goldSoft};
+    }
   `;
 
   const scoreCard = scoreOverall != null
@@ -2280,11 +2516,32 @@ export async function buildHtml(
        </section>`
     : "";
 
+  // PDF metadata — surfaced in Acrobat properties + search indexing.
+  const docTitle = `${address} — Investment Report`;
+  const docAuthor = String(contact.company_name || brandName || "NPC Property");
+  const docDescription = `Comprehensive investment analysis for ${address}.`;
+  const locKeywords = [loc?.suburb, loc?.state, loc?.postcode].filter(Boolean).join(", ");
+  const docKeywords = [
+    "investment property",
+    "Australian real estate",
+    locKeywords,
+    docAuthor,
+    "Compass report",
+  ].filter(Boolean).join(", ");
+  const docCreated = new Date().toISOString();
+
   return `<!DOCTYPE html>
 <html lang="en-AU">
 <head>
 <meta charset="utf-8" />
-<title>${esc(address)} — Investment Report</title>
+<title>${esc(docTitle)}</title>
+<meta name="author" content="${esc(docAuthor)}" />
+<meta name="description" content="${esc(docDescription)}" />
+<meta name="keywords" content="${esc(docKeywords)}" />
+<meta name="subject" content="${esc(`Investment Report — ${address}`)}" />
+<meta name="generator" content="NPC Premium PDF (WeasyPrint)" />
+<meta name="dcterms.created" content="${esc(docCreated)}" />
+<meta name="dcterms.creator" content="${esc(docAuthor)}" />
 <!-- Fonts bundled in the WeasyPrint container at /usr/share/fonts/truetype/premium.
      Kept as fallback for the Api2PDF/headless-Chrome render path. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2294,10 +2551,31 @@ export async function buildHtml(
 </head>
 <body>
 
+<!-- ── Tier 3 #10 — SVG filter primitives for hero treatments (grain + duotone). ── -->
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="npc-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" seed="7"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0"/>
+      <feComposite in2="SourceGraphic" operator="in" result="grain"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+    </filter>
+    <filter id="npc-duotone-gold" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"/>
+      <feComponentTransfer>
+        <feFuncR type="table" tableValues="0.05 0.83"/>
+        <feFuncG type="table" tableValues="0.07 0.66"/>
+        <feFuncB type="table" tableValues="0.10 0.26"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+</svg>
+
 <!-- ── Cover (standard NPC cover image) ── -->
 <section class="cover">
   <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
 </section>
+
 
 ${tocHtml}
 
@@ -2331,9 +2609,24 @@ ${(() => {
     ["Address", contact.address],
     ["ABN", contact.abn],
   ];
+  const linkifyValue = (label: string, value: string): string => {
+    const v = String(value).trim();
+    if (label === "Email" && /^[^@\s]+@[^@\s]+$/.test(v)) {
+      return `<a class="contact-link" href="mailto:${esc(v)}">${esc(v)}</a>`;
+    }
+    if (label === "Phone") {
+      const tel = v.replace(/[^\d+]/g, "");
+      return tel ? `<a class="contact-link" href="tel:${esc(tel)}">${esc(v)}</a>` : esc(v);
+    }
+    if (label === "Website") {
+      const href = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+      return `<a class="contact-link" href="${esc(href)}">${esc(v)}</a>`;
+    }
+    return esc(v);
+  };
   const rowsHtml = rows
     .filter(([, v]) => v)
-    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`)
+    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${linkifyValue(String(l), String(v))}</div></div>`)
     .join("");
   const discText = disclaimer.is_enabled !== false && disclaimer.text
     ? String(disclaimer.text)

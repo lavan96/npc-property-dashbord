@@ -1256,6 +1256,9 @@ The renderer converts these shortcodes to print-quality typography and inline SV
 - Score wheel: \`{{wheel: 78,64,82,71 | labels=Yield,Growth,Risk,Demand | title=Breakdown}}\`
 - Footnote: inline \`[^id]\` + def line \`[^id]: source text.\` (same section)
 - Cross-ref: \`[[see:#ch-risk-analysis]]\` resolves to a real page number.
+- Section divider (max 1/chapter, breaks page): \`::: divider stat="78" label="Composite score" eyebrow="Chapter 04"\\nHeadline thesis line.\\n:::\`
+- Quote page (max 1/report, breaks page): \`::: quote-page attribution="RBA, May 2026" eyebrow="Market context"\\n"Single editorial line."\\n:::\`
+- Inline stat block: \`::: stat label="Median yield" unit="%" sub="trailing 12mo"\\n4.8\\n:::\`
 
 Generate the ${sectionDef.name} section now:`;
 
