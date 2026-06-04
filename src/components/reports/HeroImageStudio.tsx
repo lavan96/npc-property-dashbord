@@ -127,9 +127,11 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
   const [prompt, setPrompt] = useState("");
   const [enhancing, setEnhancing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [model, setModel] = useState("openai/gpt-image-2");
   const [aspect, setAspect] = useState("3:2");
   const [variations, setVariations] = useState(1);
+  const [refImages, setRefImages] = useState<{ name: string; dataUrl: string }[]>([]);
 
   // Library
   const [library, setLibrary] = useState<LibraryImage[]>([]);
@@ -143,6 +145,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [previewPlacement, setPreviewPlacement] = useState<Placement | null>(null);
 
   // Load data
   const fetchLibrary = useCallback(async () => {
