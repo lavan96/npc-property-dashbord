@@ -1260,10 +1260,11 @@ export async function buildHtml(
     .disclaimer-page .company-main { font-size: 28pt; font-weight: 800; letter-spacing: .02em; color: #BF9B50; line-height: 1.05; }
     .disclaimer-page .company-sub { font-size: 16pt; font-weight: 400; color: #BF9B50; margin-top: 4pt; }
     .disclaimer-page .contact-heading { margin-top: 18mm; font-size: 14pt; font-weight: 700; color: #BF9B50; letter-spacing: .04em; }
-    .disclaimer-page table.contact { margin-top: 10pt; border-collapse: collapse; }
-    .disclaimer-page table.contact td { font-size: 9pt; color: #BF9B50; padding: 4pt 0; vertical-align: top; }
-    .disclaimer-page table.contact td.label { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding-right: 18pt; white-space: nowrap; }
-    .disclaimer-page table.contact td.value { font-weight: 400; color: #BF9B50; }
+    .disclaimer-page .contact-list { margin-top: 12pt; display: block; }
+    .disclaimer-page .contact-row { display: flex; align-items: baseline; gap: 14pt; padding: 5pt 0; border-bottom: 0.4pt solid rgba(191,155,80,0.18); }
+    .disclaimer-page .contact-row:last-child { border-bottom: none; }
+    .disclaimer-page .contact-row .label { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #BF9B50; min-width: 70pt; }
+    .disclaimer-page .contact-row .value { font-size: 10pt; font-weight: 400; color: #E8D7A8; word-break: break-word; }
     .disclaimer-page .disclaimer-body {
       position: absolute;
       left: 20mm; right: 20mm; bottom: 20mm;
@@ -1557,7 +1558,7 @@ ${(() => {
   ];
   const rowsHtml = rows
     .filter(([, v]) => v)
-    .map(([l, v]) => `<tr><td class="label">${esc(l)}:</td><td class="value">${esc(v)}</td></tr>`)
+    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`)
     .join("");
   const discText = disclaimer.is_enabled !== false && disclaimer.text
     ? String(disclaimer.text)
@@ -1572,7 +1573,7 @@ ${(() => {
     <div class="company-main">${esc(mainCompany)}</div>
     ${subCompany ? `<div class="company-sub">${esc(subCompany)}</div>` : ""}
     <div class="contact-heading">CONTACT US</div>
-    <table class="contact">${rowsHtml}</table>
+    <div class="contact-list">${rowsHtml}</div>
     <div class="disclaimer-body">${discParas}</div>
   </section>`;
 })()}
@@ -1624,6 +1625,9 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
       options: {
         printBackground: true,
         preferCSSPageSize: true,
+        format: "A4",
+        width: "210mm",
+        height: "297mm",
         displayHeaderFooter: false,
         scale: 1,
         marginTop: 0,
