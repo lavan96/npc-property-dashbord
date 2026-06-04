@@ -1616,6 +1616,8 @@ export async function buildHtml(
   const designOverrideStyles = `
     /* ── Front-end controlled WeasyPrint design layer ─────────────────── */
     @page { margin: ${pageMargin}; background: ${palette.paper}; }
+    @page :left  { margin: ${pageMargin}; }
+    @page :right { margin: ${pageMargin}; }
     html, body {
       background: ${palette.paper};
       color: ${palette.ink};
