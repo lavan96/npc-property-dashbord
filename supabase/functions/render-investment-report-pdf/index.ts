@@ -1473,6 +1473,7 @@ export async function buildHtml(
     includeCharts?: boolean;
     includeHeroImages?: boolean;
     includeSparklines?: boolean;
+    designOptions?: unknown;
     contact?: Record<string, any>;
     disclaimer?: { is_enabled?: boolean; text?: string; font_size?: string };
   } = {},
@@ -1482,6 +1483,13 @@ export async function buildHtml(
   const includeCharts = opts.includeCharts !== false;
   const includeSparklines = opts.includeSparklines !== false;
   const includeHeroImages = opts.includeHeroImages === true; // opt-in, costs tokens
+  const design = normalizePdfDesign(opts.designOptions);
+  const palette = DESIGN_PALETTES[design.preset];
+  const densityScale = design.density === "compact" ? 0.9 : design.density === "spacious" ? 1.12 : 1;
+  const bodyPt = Math.round(98 * (design.bodyScale / 100) * densityScale) / 10;
+  const paragraphGap = design.density === "compact" ? ".54em" : design.density === "spacious" ? ".96em" : ".72em";
+  const pageMargin = design.density === "compact" ? "18mm 15mm 18mm 15mm" : design.density === "spacious" ? "25mm 21mm 25mm 21mm" : "22mm 18mm 22mm 18mm";
+  const intensity = design.visualIntensity / 100;
 
   const address = report.property_address || "Property";
   const generated = new Date(report.created_at || Date.now()).toLocaleDateString(
@@ -1592,6 +1600,102 @@ export async function buildHtml(
     : addrTail.length >= 2
       ? addrTail.slice(-2).join(", ")
       : address;
+
+  const coverHtml = design.coverStyle === "image"
+    ? `<section class="cover cover-clean"><img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" /></section>`
+    : `<section class="cover cover-${design.coverStyle}">
+        <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
+        <div class="cover-scrim"></div>
+        <div class="cover-copy">
+          <div class="cover-kicker">${esc(brandName)} · Investment Report</div>
+          <h1>${esc(address)}</h1>
+          <div class="cover-meta">${esc(coverLocation)} · ${esc(generated)}</div>
+        </div>
+      </section>`;
+
+  const designOverrideStyles = `
+    /* ── Front-end controlled WeasyPrint design layer ─────────────────── */
+    @page { margin: ${pageMargin}; background: ${palette.paper}; }
+    html, body {
+      background: ${palette.paper};
+      color: ${palette.ink};
+      font-size: ${bodyPt}pt;
+      line-height: ${design.density === "compact" ? "1.48" : design.density === "spacious" ? "1.72" : "1.6"};
+    }
+    p { margin-bottom: ${paragraphGap}; text-align: ${design.justifyText ? "justify" : "left"}; }
+    strong, em, i, td { color: ${palette.ink}; }
+    a, a.contact-link, a.ext-link { color: ${palette.accentSoft}; border-bottom-color: ${palette.accentSoft}; }
+    h1, h2, h3 {
+      background: linear-gradient(135deg, ${palette.heading} 0%, ${palette.heading2} 62%, ${palette.accent} 100%);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    h2 { border-bottom-color: ${palette.accent}; padding-bottom: ${design.density === "spacious" ? "14pt" : "9pt"}; }
+    h2::before { ${design.showSectionNumbers ? `color: ${palette.accent}; -webkit-text-fill-color: ${palette.accent};` : "content: none; display: none;"} }
+    h2 + p::first-letter { ${design.showDropCaps ? `color: ${palette.accent};` : "font-size: inherit; float: none; padding: 0; color: inherit; font-family: inherit; font-weight: inherit;"} }
+    h3 { border-left-color: ${palette.accent}; }
+    h4, .insight-box .insight-label, li.insight-li .insight-label-inline { color: ${palette.accentSoft}; }
+    ul li::before { background: ${palette.accent}; }
+    blockquote, .insight-box, li.insight-li, .stat-block, aside.pull-quote, aside.sidenote {
+      background: ${palette.paperAlt};
+      border-color: ${palette.accent};
+      box-shadow: inset 0 0 0 ${Math.max(0.25, intensity * 0.8)}pt ${palette.accent}22;
+    }
+    .cover { background: ${palette.cover}; }
+    .cover-scrim {
+      position: absolute; inset: 0;
+      background: linear-gradient(115deg, ${palette.cover}F2 0%, ${palette.cover}D9 42%, ${palette.cover}40 100%);
+    }
+    .cover-copy {
+      position: absolute; left: 18mm; right: 18mm; bottom: ${design.coverStyle === "editorial" ? "34mm" : "26mm"};
+      color: ${THEME.text}; z-index: 2;
+    }
+    .cover-copy h1 {
+      max-width: ${design.coverStyle === "editorial" ? "150mm" : "128mm"};
+      font-size: ${design.coverStyle === "editorial" ? "44pt" : "34pt"};
+      line-height: 1.05; margin: 0;
+      color: ${THEME.text}; -webkit-text-fill-color: ${THEME.text}; background: none;
+      text-shadow: 0 1.5pt 10pt rgba(0,0,0,${0.22 + intensity * 0.32});
+    }
+    .cover-kicker, .cover-meta {
+      font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .22em;
+      color: ${palette.accent}; font-weight: 700;
+    }
+    .cover-kicker { font-size: 8.2pt; margin-bottom: 10mm; }
+    .cover-meta { font-size: 8.5pt; margin-top: 8mm; color: ${THEME.muted}; }
+    .cover-editorial .cover-copy { top: 34mm; bottom: auto; }
+    .cover-editorial .cover-copy::after {
+      content: ""; display: block; width: ${40 + intensity * 40}mm; height: 1pt; background: ${palette.accent}; margin-top: 13mm;
+    }
+    ${design.chapterStyle === "opener_band" ? `
+      h2 {
+        margin: 0 -8mm 12pt; padding: 15pt 10mm 13pt;
+        background: linear-gradient(110deg, ${palette.heading} 0%, ${palette.heading2} 100%);
+        color: ${THEME.text}; -webkit-text-fill-color: ${THEME.text}; border: 0;
+      }
+      h2::before { color: ${palette.accent}; -webkit-text-fill-color: ${palette.accent}; }
+    ` : ""}
+    ${design.chapterStyle === "minimal" ? `
+      h2 { font-size: 22pt; border-bottom: 0.35pt solid ${palette.muted}; background: none; color: ${palette.heading}; -webkit-text-fill-color: ${palette.heading}; }
+      h2::before { font-size: 12pt; margin-right: 12pt; }
+      h3 { background: none; color: ${palette.heading}; -webkit-text-fill-color: ${palette.heading}; border-left-width: 1pt; }
+    ` : ""}
+    ${design.tableStyle === "ledger" ? `
+      table { background: ${palette.paper}; border-top: 1pt solid ${palette.ink}; border-bottom: 1pt solid ${palette.ink}; }
+      th { background: transparent; color: ${palette.ink}; border-bottom: 1pt solid ${palette.ink}; }
+      tr:nth-child(even) td { background: transparent; }
+      td { border-bottom: 0.35pt solid ${palette.muted}66; }
+    ` : ""}
+    ${design.tableStyle === "minimal" ? `
+      table { background: transparent; font-size: 8.2pt; }
+      th { background: ${palette.paperAlt}; color: ${palette.ink}; }
+      th, td { border-bottom: 0.25pt solid ${palette.muted}55; padding: 4.2pt 5.5pt; }
+      tr:nth-child(even) td { background: transparent; }
+    ` : ""}
+    figure.vis-figure, figure.auto-chart {
+      background: ${palette.paperAlt}; border-color: ${palette.accent}66;
+      padding: ${12 + Math.round(intensity * 8)}pt ${14 + Math.round(intensity * 7)}pt ${9 + Math.round(intensity * 4)}pt;
+    }
+  `;
 
   const styles = `
     /* ── Paged-media foundation ──────────────────────────────────────── */
