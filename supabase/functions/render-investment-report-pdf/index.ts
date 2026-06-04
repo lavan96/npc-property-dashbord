@@ -1435,13 +1435,13 @@ function chapterGlanceLabels(title: string): { sym: string; label: string }[] {
   return [{ sym: "✓", label: "Key signal" }, { sym: "⚠", label: "Watch" }, { sym: "▲", label: "Trend" }, { sym: "★", label: "NPC view" }];
 }
 
-function firstSentenceMatching(text: string, re: RegExp, maxLen = 90): string | null {
+function firstSentenceMatching(text: string, re: RegExp, _maxLen = 0): string | null {
   const sentences = text.split(/(?<=[.!?])\s+/);
   for (const s of sentences) {
     const clean = s.trim();
     if (clean.length < 12) continue;
     if (re.test(clean)) {
-      return clean.length > maxLen ? clean.slice(0, maxLen - 1).replace(/[,;:\s]+\S*$/, "") + "…" : clean.replace(/[.!?]+$/, "");
+      return clean.replace(/[.!?]+$/, "");
     }
   }
   return null;
@@ -1452,10 +1452,10 @@ function deriveGlanceValues(title: string, chapterText: string): (string | null)
   const text = chapterText.replace(/\s+/g, " ").trim();
   if (!text) return [null, null, null, null];
 
-  // Signal — first positive/headline sentence
-  const signal = firstSentenceMatching(text, /\b(outperform|strong|leading|above|rose|grew|growth|robust|resilient|expand|accelerat|surpass|exceed|record|premium)\b/i, 85);
+  // Signal — first positive/headline sentence (full sentence; cell wraps it)
+  const signal = firstSentenceMatching(text, /\b(outperform|strong|leading|above|rose|grew|growth|robust|resilient|expand|accelerat|surpass|exceed|record|premium)\b/i);
   // Watch — first risk/caveat sentence
-  const watch = firstSentenceMatching(text, /\b(risk|concern|vacancy|declin|soft|weak|caution|watch|below|under-?perform|exposure|oversupply|headwind|fragile|stretched)\b/i, 85);
+  const watch = firstSentenceMatching(text, /\b(risk|concern|vacancy|declin|soft|weak|caution|watch|below|under-?perform|exposure|oversupply|headwind|fragile|stretched)\b/i);
 
   // Trend — strongest pct/movement number
   let trend: string | null = null;
@@ -1469,11 +1469,11 @@ function deriveGlanceValues(title: string, chapterText: string): (string | null)
   }
 
   // NPC view — verdict/recommendation if present
-  let view = firstSentenceMatching(text, /\b(verdict|npc view|recommend|our view|conclusion|bottom line|net-net|on balance|suits?|fits?|aligns?|accumulate|hold|pass)\b/i, 90);
+  let view = firstSentenceMatching(text, /\b(verdict|npc view|recommend|our view|conclusion|bottom line|net-net|on balance|suits?|fits?|aligns?|accumulate|hold|pass)\b/i);
   if (!view) {
     // fallback to last meaningful sentence in chapter
     const sentences = text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length > 30);
-    if (sentences.length >= 2) view = sentences[sentences.length - 1].slice(0, 90).replace(/[.!?]+$/, "");
+    if (sentences.length >= 2) view = sentences[sentences.length - 1].replace(/[.!?]+$/, "");
   }
   void lower;
   return [signal, watch, trend, view];
