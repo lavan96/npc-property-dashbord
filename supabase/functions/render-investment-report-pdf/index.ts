@@ -1454,6 +1454,17 @@ function injectHeroImages(
 function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array<{ id: string; title: string }> } {
   const toc: Array<{ id: string; title: string }> = [];
   const used = new Set<string>();
+  // Phase 2 #16/#17 — palette rotated per chapter so thumb-index tabs stagger
+  // both vertically (top) and chromatically across the page edge.
+  const TAB_HUES = [
+    "linear-gradient(180deg,#D4A843,#8a6418)",
+    "linear-gradient(180deg,#2E6CB0,#143b73)",
+    "linear-gradient(180deg,#7A8C5C,#3d4a2a)",
+    "linear-gradient(180deg,#B85C3A,#6b2f1c)",
+    "linear-gradient(180deg,#5C4A8C,#2f2454)",
+    "linear-gradient(180deg,#3C8C8A,#1f4a48)",
+  ];
+  let chapterIndex = 0;
   const annotated = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attrs, inner) => {
     const text = String(inner).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").trim();
     let id = `ch-${slugify(text) || `${toc.length + 1}`}`;
@@ -1461,9 +1472,28 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
     while (used.has(id)) id = `ch-${slugify(text) || "section"}-${++n}`;
     used.add(id);
     toc.push({ id, title: text });
-    return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    const i = chapterIndex++;
+    const topMm = 18 + (i % 8) * 28;          // stagger down the page edge
+    const grad = TAB_HUES[i % TAB_HUES.length];
+    const thumbTab = `<span class="thumb-tab" style="top:${topMm}mm;background:${grad}" aria-hidden="true">${esc(text)}</span>`;
+    const ghostNum = `<span class="ch-ghost" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>`;
+    return `<h2 id="${id}" data-ch="${i + 1}"${attrs}>${thumbTab}${ghostNum}${inner}</h2>`;
   });
   return { html: annotated, toc };
+}
+
+// Phase 1 #1 — wrap any wide table (>5 columns) in a landscape spread so
+// dense data tables get the full A4 width instead of crushing into portrait.
+function wrapWideTablesLandscape(html: string): string {
+  return html.replace(/<table([\s\S]*?)<\/table>/gi, (full) => {
+    // Count <th> in the first <tr>; fall back to first row of <td>.
+    const firstRow = full.match(/<tr[^>]*>[\s\S]*?<\/tr>/i)?.[0] || "";
+    const thCount = (firstRow.match(/<th\b/gi) || []).length;
+    const tdCount = (firstRow.match(/<td\b/gi) || []).length;
+    const cols = Math.max(thCount, tdCount);
+    if (cols < 6) return full;
+    return `<div class="landscape-spread"><div class="landscape-inner">${full}</div></div>`;
+  });
 }
 
 export async function buildHtml(
