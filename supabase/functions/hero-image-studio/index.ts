@@ -94,16 +94,29 @@ async function generateOne(opts: {
   width: number;
   height: number;
   aspect: string;
+  referenceImages?: string[];
 }): Promise<Uint8Array> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
   try {
     const isGemini = opts.model.startsWith("google/");
+    const refs = (opts.referenceImages || []).slice(0, 4).map((r) => {
+      const url = r.startsWith("data:") ? r : `data:image/png;base64,${r}`;
+      return { type: "image_url", image_url: { url } };
+    });
+
     const body: any = isGemini
       ? {
           model: opts.model,
-          messages: [{ role: "user", content: opts.prompt }],
+          messages: [
+            {
+              role: "user",
+              content: refs.length
+                ? [{ type: "text", text: opts.prompt }, ...refs]
+                : opts.prompt,
+            },
+          ],
           modalities: ["image", "text"],
         }
       : {
@@ -168,13 +181,16 @@ Deno.serve(async (req) => {
       const { w, h } = ASPECT_TO_SIZE[aspect];
       const variations = Math.min(Math.max(Number(body?.variations) || 1, 1), 4);
       const sourceReportId = body?.sourceReportId ? String(body.sourceReportId) : null;
+      const referenceImages: string[] = Array.isArray(body?.referenceImages)
+        ? body.referenceImages.map((r: any) => String(r)).filter(Boolean).slice(0, 4)
+        : [];
 
       const results: any[] = [];
       const errors: string[] = [];
 
       for (let i = 0; i < variations; i++) {
         try {
-          const bytes = await generateOne({ prompt, model, width: w, height: h, aspect });
+          const bytes = await generateOne({ prompt, model, width: w, height: h, aspect, referenceImages });
           const id = crypto.randomUUID();
           const path = `${STORAGE_PREFIX}/${userId || "anon"}/${id}.png`;
           const { error: upErr } = await supabase
