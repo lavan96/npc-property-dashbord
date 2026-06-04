@@ -1843,6 +1843,7 @@ export async function buildHtml(
 
   // Editor's Note — auto-generated, one-paragraph foreword that lifts 2-3 real
   // figures from the report. Pure presentation, no AI call.
+  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
   const editorsNoteBits: string[] = [];
   if (priceTxt && rentTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong> with assessed rent of <strong>${rentTxt}/wk</strong>`);
   else if (priceTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong>`);
@@ -1895,7 +1896,7 @@ export async function buildHtml(
       <rect width='210' height='297' fill='url(%23sheen)'/>
       <rect width='210' height='297' filter='url(%23nz)'/>
     </svg>`)}`;
-  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
+  // advisorLine declared above (used by editors-note).
   const coverHtml = design.coverStyle === "image"
     ? `<section class="cover cover-clean">
         <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
