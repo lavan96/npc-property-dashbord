@@ -2516,11 +2516,32 @@ export async function buildHtml(
        </section>`
     : "";
 
+  // PDF metadata — surfaced in Acrobat properties + search indexing.
+  const docTitle = `${address} — Investment Report`;
+  const docAuthor = String(contact.company_name || brandName || "NPC Property");
+  const docDescription = `Comprehensive investment analysis for ${address}.`;
+  const locKeywords = [loc?.suburb, loc?.state, loc?.postcode].filter(Boolean).join(", ");
+  const docKeywords = [
+    "investment property",
+    "Australian real estate",
+    locKeywords,
+    docAuthor,
+    "Compass report",
+  ].filter(Boolean).join(", ");
+  const docCreated = new Date().toISOString();
+
   return `<!DOCTYPE html>
 <html lang="en-AU">
 <head>
 <meta charset="utf-8" />
-<title>${esc(address)} — Investment Report</title>
+<title>${esc(docTitle)}</title>
+<meta name="author" content="${esc(docAuthor)}" />
+<meta name="description" content="${esc(docDescription)}" />
+<meta name="keywords" content="${esc(docKeywords)}" />
+<meta name="subject" content="${esc(`Investment Report — ${address}`)}" />
+<meta name="generator" content="NPC Premium PDF (WeasyPrint)" />
+<meta name="dcterms.created" content="${esc(docCreated)}" />
+<meta name="dcterms.creator" content="${esc(docAuthor)}" />
 <!-- Fonts bundled in the WeasyPrint container at /usr/share/fonts/truetype/premium.
      Kept as fallback for the Api2PDF/headless-Chrome render path. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2530,10 +2551,31 @@ export async function buildHtml(
 </head>
 <body>
 
+<!-- ── Tier 3 #10 — SVG filter primitives for hero treatments (grain + duotone). ── -->
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="npc-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" seed="7"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0"/>
+      <feComposite in2="SourceGraphic" operator="in" result="grain"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+    </filter>
+    <filter id="npc-duotone-gold" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"/>
+      <feComponentTransfer>
+        <feFuncR type="table" tableValues="0.05 0.83"/>
+        <feFuncG type="table" tableValues="0.07 0.66"/>
+        <feFuncB type="table" tableValues="0.10 0.26"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+</svg>
+
 <!-- ── Cover (standard NPC cover image) ── -->
 <section class="cover">
   <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
 </section>
+
 
 ${tocHtml}
 
