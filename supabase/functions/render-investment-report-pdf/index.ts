@@ -3178,7 +3178,12 @@ async function callWeasyPrint(html: string): Promise<Uint8Array> {
         Authorization: `Bearer ${WEASYPRINT_SERVICE_TOKEN}`,
         Accept: "application/pdf",
       },
-      body: JSON.stringify({ html }),
+      body: JSON.stringify({
+        html,
+        pdf_variant: "pdf/a-2b",   // Phase 1 #21 — archival, accessible PDF
+        tagged: true,
+        optimize_images: true,
+      }),
       signal: controller.signal,
     });
     if (!res.ok) {
