@@ -1321,15 +1321,42 @@ Why this property earns a top-quartile rating.
 Median values have climbed steadily ~~[820,860,910,980,1050,1180]~~ over six years.
 \`\`\`
 
+17. DONUT / RING — composition chart for mixes (tenure, demographics, capital
+    allocation, expense shares). Center number is the headline slice.
+    Format: \`{{donut: SliceA value, SliceB value, … | title=… | center=58% | centerSub=Owner-occupied}}\`
+\`\`\`
+{{donut: Owner-occupied 58, Renter 32, Other 10 | title=Tenure mix | center=58% | centerSub=Owner-occupied}}
+\`\`\`
+
+18. SUBURB TILES — small-multiples grid that reads like a faux-choropleth. Use
+    for "this suburb + 3-7 adjacent suburbs" comparisons. \`int=0..1\` shades the
+    tile (higher = stronger). \`sub\` lives in quotes.
+    Format: \`{{tiles: Label value sub="…" int=0.7, Label value sub="…" int=0.5 | title=… | cols=4}}\`
+\`\`\`
+{{tiles: Hawthorn $1.42M sub="↑ 6.4% YoY" int=0.85, Kew $1.61M sub="↑ 5.1% YoY" int=0.70, Camberwell $1.28M sub="↑ 4.8% YoY" int=0.60, Glen Iris $1.19M sub="↑ 3.2% YoY" int=0.45 | title=Adjacent suburbs · median house | cols=4}}
+\`\`\`
+
+19. MARGIN MICRO-CHART — editorial sidenote with a tiny sparkline. Use to flag
+    a single supporting datum without breaking prose flow. Keep \`note\` to one line.
+    Format: \`{{margin: Title | spark=v1,v2,v3,… | note=One-line context | label=Context}}\`
+\`\`\`
+{{margin: RBA cash-rate trajectory | spark=4.35,4.35,4.10,3.85,3.60,3.35 | note=Six-month decline supports the refinancing window in Q3. | label=Macro watch}}
+\`\`\`
+
 VISUAL-FIRST RULES (CRITICAL):
 - Every chapter MUST open with a \`{{glance: …}}\` strip immediately after the H2.
-- Aim for **2-3 visualisations per chapter** (gauge / bars / quadrant / pictograph /
-  waterfall / heatmap / wheel / pictograph / inline sparkline). Prose should
-  EXPLAIN visualisations, not duplicate them.
+- Aim for **3-4 visualisations per chapter** drawn from the full library
+  (gauge / bars / quadrant / pictograph / donut / tiles / heatmap / wheel /
+  waterfall / margin / inline sparkline). Prose EXPLAINS visualisations, never duplicates them.
 - Any list of 3+ ranked metrics MUST be rendered as \`{{bars: …}}\` instead of a table.
 - Any "X of Y households / dwellings / buyers" stat MUST use \`{{pictograph: …}}\`.
+- Any composition / share-of-total (tenure mix, age bands, expense split, capital
+  allocation) MUST use \`{{donut: …}}\` instead of a table.
+- Any "subject suburb vs N nearby suburbs" comparison MUST use \`{{tiles: …}}\`.
 - Any trade-off between two dimensions (yield vs growth, risk vs return) MUST use
   \`{{quadrant: …}}\`. Highlight the subject property with a trailing \`*\`.
+- Use \`{{margin: …}}\` to push secondary context off the main column instead of
+  parenthetical asides — saves prose and adds visual rhythm.
 - Use \`~~[…]~~\` inline sparklines liberally for any time-series mentioned in prose.
 - All shortcodes must use REAL figures from the data provided. Never fabricate.
 - If a visualisation would duplicate a table on the same page, choose the visualisation.
