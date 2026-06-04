@@ -799,14 +799,26 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                           {c.section_title}
                         </span>
                         {p && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => { e.stopPropagation(); clearPlacement(p); }}
-                            className="h-5 w-5"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => { e.stopPropagation(); setPreviewPlacement(p); }}
+                              className="h-5 w-5"
+                              title="Preview in PDF"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => { e.stopPropagation(); clearPlacement(p); }}
+                              className="h-5 w-5"
+                              title="Remove"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
                       </div>
                       {p?.library?.public_url ? (
