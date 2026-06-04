@@ -1698,7 +1698,14 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
     const grad = TAB_HUES[i % TAB_HUES.length];
     const thumbTab = `<span class="thumb-tab" style="top:${topMm}mm;background:${grad}" aria-hidden="true">${esc(text)}</span>`;
     const ghostNum = `<span class="ch-ghost" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>`;
-    return `<h2 id="${id}" data-ch="${i + 1}"${attrs}>${thumbTab}${ghostNum}${inner}</h2>`;
+    // Insert a tasteful end-of-chapter mark before every chapter except the first.
+    // The ::before/::after on the h2 itself can't render outside the chapter's
+    // own page, so we emit the closer as a sibling block that lives at the *end*
+    // of the previous chapter's flow (paged-media floats it to that page's tail).
+    const closer = i > 0
+      ? `<div class="chapter-closer" aria-hidden="true"><span class="chapter-closer-rule"></span><span class="chapter-closer-mark">◆</span><span class="chapter-closer-rule"></span></div>`
+      : "";
+    return `${closer}<h2 id="${id}" data-ch="${i + 1}"${attrs}>${thumbTab}${ghostNum}${inner}</h2>`;
   });
   return { html: annotated, toc };
 }
