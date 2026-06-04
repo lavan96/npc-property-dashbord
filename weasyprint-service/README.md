@@ -7,7 +7,7 @@ full control over typography, page layout, and engine version.
 ## Endpoints
 
 - `GET  /healthz` — liveness probe.
-- `POST /render`  — `Authorization: Bearer $WEASYPRINT_SERVICE_TOKEN`, JSON
+- `POST /render`  — `Authorization: Bearer $WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY)`, JSON
   body `{ "html": "...", "base_url": "https://..." }`, returns
   `application/pdf` bytes.
 
@@ -17,7 +17,7 @@ full control over typography, page layout, and engine version.
 cd weasyprint-service
 docker build -t weasyprint-service .
 docker run --rm -p 8080:8080 \
-  -e WEASYPRINT_SERVICE_TOKEN=dev-token \
+  -e WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY)=dev-token \
   weasyprint-service
 curl -X POST http://localhost:8080/render \
   -H "Authorization: Bearer dev-token" \
@@ -43,11 +43,11 @@ gcloud run deploy weasyprint-service \
   --memory 2Gi --cpu 2 \
   --concurrency 4 --timeout 600 \
   --min-instances 0 --max-instances 10 \
-  --set-env-vars WEASYPRINT_SERVICE_TOKEN=$TOKEN
+  --set-env-vars WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY)=$TOKEN
 
 # Note the deployed URL, then add these as Supabase Edge Function secrets:
 #   WEASYPRINT_SERVICE_URL   = https://weasyprint-service-xxxx.a.run.app
-#   WEASYPRINT_SERVICE_TOKEN = <the TOKEN you generated>
+#   WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY) = <the TOKEN you generated>
 ```
 
 Cloud Run scales to zero — typical cost is a few cents per thousand renders.
@@ -55,8 +55,8 @@ Cloud Run scales to zero — typical cost is a few cents per thousand renders.
 ## Deploy — Fly.io / Railway / Render alternatives
 
 Any container host that runs the Dockerfile works. Set the same two env vars
-(`WEASYPRINT_SERVICE_TOKEN` on the service, `WEASYPRINT_SERVICE_URL` +
-`WEASYPRINT_SERVICE_TOKEN` on Supabase) and you're done.
+(`WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY)` on the service, `WEASYPRINT_SERVICE_URL` +
+`WEASYPRINT_SERVICE_TOKEN (or WEASYPRINT_API_KEY)` on Supabase) and you're done.
 
 ## Edge function wiring
 
