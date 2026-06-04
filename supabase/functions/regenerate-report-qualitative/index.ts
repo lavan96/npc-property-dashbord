@@ -1245,6 +1245,18 @@ ${previousSections.substring(0, 4000)}...
 9. Include inline citations in [Source] format (e.g., [ABS Census 2021], [RBA], [Domain], [SEIFA], [BOM])
 ${sectionDef.id === 'section4' ? '10. MUST include the Investment Score Analysis with the EXACT score values provided above' : ''}
 
+**EDITORIAL PRIMITIVES (USE SPARINGLY — max 1 visualisation + 1 pull-quote per chapter)**
+The renderer converts these shortcodes to print-quality typography and inline SVG. Each must sit on its own line(s) with a blank line before and after. Use REAL figures only — never fabricate to fill a chart.
+
+- Pull quote: \`::: pullquote\\nOne striking sentence.\\n:::\`
+- Sidenote (margin aside, ≤25 words): \`::: sidenote\\nShort aside.\\n:::\`
+- Gauge: \`{{gauge: 78 | Label | Caption}}\`  (value 0–100 unless \`78/MAX\`)
+- Waterfall: \`{{waterfall: Rent +28000, Interest -19500, Net =8500}}\`
+- Heatmap: \`{{heatmap: 5.2,6.1 / 4.8,5.9 | rows=2025,2026 | cols=Q1,Q2 | title=Growth %}}\`
+- Score wheel: \`{{wheel: 78,64,82,71 | labels=Yield,Growth,Risk,Demand | title=Breakdown}}\`
+- Footnote: inline \`[^id]\` + def line \`[^id]: source text.\` (same section)
+- Cross-ref: \`[[see:#ch-risk-analysis]]\` resolves to a real page number.
+
 Generate the ${sectionDef.name} section now:`;
 
   // MUST match generate-investment-report, with regeneration note added
