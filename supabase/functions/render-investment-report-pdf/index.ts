@@ -3037,6 +3037,17 @@ export async function buildHtml(
       gap: 9pt;
       margin: 10pt 0 16pt;
     }
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9pt;
+      margin: 14pt 0 18pt;
+      page-break-inside: avoid;
+    }
+    .kpi-strip-inline .big-number-card {
+      min-height: 92pt;
+      overflow: hidden;
+    }
     .kpi {
       background: linear-gradient(180deg, #FFFDF8 0%, #FBF6EA 100%);
       border: 0.5pt solid ${THEME.rule};
@@ -3053,6 +3064,16 @@ export async function buildHtml(
       font-variant-numeric: lining-nums tabular-nums;
       font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1;
     }
+    .kpi-delta {
+      margin-top: 5pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt;
+      font-weight: 700;
+      color: ${THEME.goldSoft};
+      letter-spacing: .06em;
+    }
+    .kpi-inline-spark { margin-top: 7pt; height: 24pt; }
+    .kpi-inline-spark svg { width: 100%; height: 24pt; display: block; }
 
     .score-card {
       background: linear-gradient(135deg, #FFFDF8 0%, #F4ECD8 100%);
