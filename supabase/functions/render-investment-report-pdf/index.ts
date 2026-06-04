@@ -3012,6 +3012,78 @@ ${(() => {
 
     /* TOC chapter dots: aligned leader dots with real page nums. */
     .toc ol li a { font-feature-settings: "tnum" 1, "lnum" 1; }
+
+    /* ── Phase 1 #8 — Sidenote floats into outer margin rail ── */
+    aside.sidenote {
+      float: right;
+      clear: right;
+      width: 38mm;
+      margin: 0 -30mm 8pt 10pt;
+      padding: 8pt 10pt;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 8.4pt;
+      line-height: 1.45;
+      color: ${palette.ink};
+      background: ${palette.paperAlt};
+      border-left: 2pt solid ${palette.accent};
+      shape-outside: margin-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.sidenote::before {
+      content: "";
+      display: block;
+      width: 18pt; height: 0.5pt;
+      background: ${palette.accent};
+      margin-bottom: 4pt;
+    }
+    aside.sidenote p { margin: 0 0 4pt; font-size: inherit; }
+
+    /* ── Phase 1 #1 — Auto-landscape spread for wide tables ── */
+    @page landscape-table-page {
+      size: A4 landscape;
+      margin: 18mm 16mm 16mm 16mm;
+      background: ${palette.paper};
+      @top-left { content: string(chapter); }
+      @top-right { content: "${esc(address)}"; font-style: italic; }
+      @bottom-right { content: counter(page) " · " counter(pages); }
+    }
+    .landscape-spread {
+      page: landscape-table-page;
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      margin: 0; padding: 0;
+    }
+    .landscape-spread .landscape-inner { width: 100%; }
+    .landscape-spread table {
+      width: 100% !important;
+      font-size: 9pt;
+      page-break-inside: auto;
+    }
+    .landscape-spread table th,
+    .landscape-spread table td { padding: 6pt 8pt; }
+    .landscape-spread::before {
+      content: "Detailed data spread";
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.5pt; font-weight: 700;
+      letter-spacing: .28em; text-transform: uppercase;
+      color: ${palette.accent};
+      margin-bottom: 8pt;
+    }
+
+    /* ── Phase 2 #7 — Chapter opener typographic spread (no-hero fallback).
+       Every chapter opener page gets a hairline gold rule under the running
+       header area and extra top padding so the title breathes. */
+    h2[data-ch] {
+      padding-top: 22pt;
+      border-top: 0.5pt solid ${withAlpha(palette.accent, 0.45)};
+      margin-top: 0;
+    }
+    h2[data-ch]::before {
+      ${design.showSectionNumbers ? `` : `content: none;`}
+    }
   `;
 })()}</style>
 </head>
