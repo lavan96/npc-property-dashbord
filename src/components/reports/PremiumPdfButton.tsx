@@ -4,6 +4,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
+import type { PdfDesignOptions } from "./premiumPdfDesign";
 
 interface PremiumPdfButtonProps {
   reportId: string;
@@ -11,6 +12,7 @@ interface PremiumPdfButtonProps {
   includeCharts?: boolean;
   includeHeroImages?: boolean;
   includeSparklines?: boolean;
+  designOptions?: PdfDesignOptions;
 }
 
 /**
@@ -28,6 +30,7 @@ export function PremiumPdfButton({
   includeCharts = true,
   includeHeroImages = false,
   includeSparklines = true,
+  designOptions,
 }: PremiumPdfButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -38,7 +41,7 @@ export function PremiumPdfButton({
     try {
       const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string }>(
         "render-investment-report-pdf",
-        { reportId, includeCharts, includeHeroImages, includeSparklines },
+        { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
         { timeoutMs: 240_000 },
       );
 
@@ -51,7 +54,7 @@ export function PremiumPdfButton({
         entityType: "investment_report",
         entityId: reportId,
         entityName: propertyAddress,
-        metadata: { format: "pdf", source: "premium_api2pdf_chrome" },
+        metadata: { format: "pdf", source: "premium_weasyprint", designOptions },
       });
 
       try {
