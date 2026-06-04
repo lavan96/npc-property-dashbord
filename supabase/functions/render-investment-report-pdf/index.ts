@@ -1587,8 +1587,26 @@ export async function buildHtml(
   if (cashflowTxt) para2Parts.push(`Indicative weekly cash flow tracks at <strong>${cashflowTxt}</strong> after holding costs, providing a baseline for the comparative scenarios and sensitivity tables that follow.`);
   para2Parts.push(`Use this summary as orientation: detailed evidence, calculations, charts, and source attributions for every claim are set out across the remaining sections of the report.`);
 
+  // Editor's Note — auto-generated, one-paragraph foreword that lifts 2-3 real
+  // figures from the report. Pure presentation, no AI call.
+  const editorsNoteBits: string[] = [];
+  if (priceTxt && rentTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong> with assessed rent of <strong>${rentTxt}/wk</strong>`);
+  else if (priceTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong>`);
+  if (yieldTxt) editorsNoteBits.push(`gross yield <strong>${yieldTxt}</strong>`);
+  if (scoreTxt) editorsNoteBits.push(`investment score <strong>${scoreTxt}</strong>`);
+  const editorsNoteHtml = `
+    <aside class="editors-note">
+      <div class="en-eyebrow">Editor's Note</div>
+      <p class="en-body">${esc(suburbLabel)} continues to sit inside our active research universe${
+        editorsNoteBits.length ? ` — this dossier captures the subject ${editorsNoteBits.join(", ")}` : ""
+      }. The pages that follow set out the location case, the financials, and the residual risks in equal measure, so you can weigh the opportunity on its merits rather than its narrative.</p>
+      <div class="en-sig">— ${esc(String(advisorLine))}, ${esc(generated)}</div>
+    </aside>
+  `;
+
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary">Executive Summary</h2>
+    ${editorsNoteHtml}
     <p>${para1Parts.filter(Boolean).join(" ")}</p>
     <p>${para2Parts.filter(Boolean).join(" ")}</p>
   `;
