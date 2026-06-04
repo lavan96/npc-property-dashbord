@@ -1454,6 +1454,17 @@ function injectHeroImages(
 function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array<{ id: string; title: string }> } {
   const toc: Array<{ id: string; title: string }> = [];
   const used = new Set<string>();
+  // Phase 2 #16/#17 — palette rotated per chapter so thumb-index tabs stagger
+  // both vertically (top) and chromatically across the page edge.
+  const TAB_HUES = [
+    "linear-gradient(180deg,#D4A843,#8a6418)",
+    "linear-gradient(180deg,#2E6CB0,#143b73)",
+    "linear-gradient(180deg,#7A8C5C,#3d4a2a)",
+    "linear-gradient(180deg,#B85C3A,#6b2f1c)",
+    "linear-gradient(180deg,#5C4A8C,#2f2454)",
+    "linear-gradient(180deg,#3C8C8A,#1f4a48)",
+  ];
+  let chapterIndex = 0;
   const annotated = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attrs, inner) => {
     const text = String(inner).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").trim();
     let id = `ch-${slugify(text) || `${toc.length + 1}`}`;
@@ -1461,9 +1472,28 @@ function annotateChaptersAndExtractToc(html: string): { html: string; toc: Array
     while (used.has(id)) id = `ch-${slugify(text) || "section"}-${++n}`;
     used.add(id);
     toc.push({ id, title: text });
-    return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    const i = chapterIndex++;
+    const topMm = 18 + (i % 8) * 28;          // stagger down the page edge
+    const grad = TAB_HUES[i % TAB_HUES.length];
+    const thumbTab = `<span class="thumb-tab" style="top:${topMm}mm;background:${grad}" aria-hidden="true">${esc(text)}</span>`;
+    const ghostNum = `<span class="ch-ghost" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>`;
+    return `<h2 id="${id}" data-ch="${i + 1}"${attrs}>${thumbTab}${ghostNum}${inner}</h2>`;
   });
   return { html: annotated, toc };
+}
+
+// Phase 1 #1 — wrap any wide table (>5 columns) in a landscape spread so
+// dense data tables get the full A4 width instead of crushing into portrait.
+function wrapWideTablesLandscape(html: string): string {
+  return html.replace(/<table([\s\S]*?)<\/table>/gi, (full) => {
+    // Count <th> in the first <tr>; fall back to first row of <td>.
+    const firstRow = full.match(/<tr[^>]*>[\s\S]*?<\/tr>/i)?.[0] || "";
+    const thCount = (firstRow.match(/<th\b/gi) || []).length;
+    const tdCount = (firstRow.match(/<td\b/gi) || []).length;
+    const cols = Math.max(thCount, tdCount);
+    if (cols < 6) return full;
+    return `<div class="landscape-spread"><div class="landscape-inner">${full}</div></div>`;
+  });
 }
 
 export async function buildHtml(
@@ -1515,6 +1545,7 @@ export async function buildHtml(
     console.log("[charts] embedded table charts", { count: (bodyHtml.match(/class=\"chart-wrap\"/g) || []).length });
   }
   bodyHtml = colourCodeTableCells(bodyHtml);
+  bodyHtml = wrapWideTablesLandscape(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
   // Hero illustrations per chapter — consumes ONLY pre-generated assets
@@ -2794,31 +2825,37 @@ ${(() => {
     @page :left  { margin: 24mm 14mm 22mm 26mm; }
     @page :right { margin: 24mm 26mm 22mm 14mm; }
 
-    /* Thumb-index tab — vertical chapter name in outer margin on chapter openers. */
-    @page chapter-opener {
-      @right-middle {
-        content: string(chapter);
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        font-family: 'Inter', sans-serif;
-        font-size: 7pt; font-weight: 700;
-        letter-spacing: .28em; text-transform: uppercase;
-        color: ${palette.paper};
-        background: linear-gradient(180deg, ${palette.accent} 0%, ${palette.heading2} 100%);
-        padding: 14pt 4pt;
-        border-radius: 2pt 0 0 2pt;
-      }
-    }
-
-    /* Ghosted oversized chapter numeral behind chapter title. */
-    h2 { position: relative; overflow: visible; }
-    h2::after {
-      content: counter(section, decimal-leading-zero);
+    /* Thumb-index tabs — rendered as DOM spans inside each h2, positioned into
+       the wide outer margin, with per-chapter top offset + colour rotation set
+       inline by the annotator. Mirrors a printed annual-report thumb index. */
+    .thumb-tab {
       position: absolute;
-      right: -4mm; top: -34mm;
+      right: -28mm;
+      width: 22mm;
+      padding: 6pt 5pt 6pt 7pt;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-family: 'Inter', sans-serif;
+      font-size: 7pt; font-weight: 800;
+      letter-spacing: .26em; text-transform: uppercase;
+      color: #fff;
+      border-radius: 2pt 0 0 2pt;
+      box-shadow: -0.5pt 0.5pt 2pt rgba(0,0,0,0.18);
+      -webkit-text-fill-color: #fff;
+      background: ${palette.accent}; /* overridden inline per chapter */
+      max-height: 50mm;
+      overflow: hidden;
+      z-index: 4;
+    }
+    /* Ghost chapter numeral now also rendered via DOM span so we can show the
+       *real* chapter index from the annotator (not relying on CSS counter, which
+       resets per @page chapter-opener flow). */
+    .ch-ghost {
+      position: absolute;
+      right: -8mm; top: -32mm;
       font-family: 'Playfair Display', 'Fraunces', serif;
       font-weight: 800; font-style: italic;
-      font-size: 200pt; line-height: 1;
+      font-size: 220pt; line-height: 1;
       color: ${withAlpha(palette.accent, 0.07)};
       -webkit-text-fill-color: ${withAlpha(palette.accent, 0.07)};
       background: none;
@@ -2826,7 +2863,10 @@ ${(() => {
       letter-spacing: -0.05em;
       font-variant-numeric: lining-nums;
     }
-    h2 { z-index: 1; }
+
+    /* Old CSS-counter ghost numeral superseded by .ch-ghost DOM span. */
+    h2 { position: relative; overflow: visible; z-index: 1; }
+    h2::after { content: none !important; }
     h2 + p { position: relative; z-index: 2; }
 
     /* Real initial-letter drop cap (WeasyPrint supports this; degrades to ::first-letter). */
@@ -2972,6 +3012,78 @@ ${(() => {
 
     /* TOC chapter dots: aligned leader dots with real page nums. */
     .toc ol li a { font-feature-settings: "tnum" 1, "lnum" 1; }
+
+    /* ── Phase 1 #8 — Sidenote floats into outer margin rail ── */
+    aside.sidenote {
+      float: right;
+      clear: right;
+      width: 38mm;
+      margin: 0 -30mm 8pt 10pt;
+      padding: 8pt 10pt;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 8.4pt;
+      line-height: 1.45;
+      color: ${palette.ink};
+      background: ${palette.paperAlt};
+      border-left: 2pt solid ${palette.accent};
+      shape-outside: margin-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.sidenote::before {
+      content: "";
+      display: block;
+      width: 18pt; height: 0.5pt;
+      background: ${palette.accent};
+      margin-bottom: 4pt;
+    }
+    aside.sidenote p { margin: 0 0 4pt; font-size: inherit; }
+
+    /* ── Phase 1 #1 — Auto-landscape spread for wide tables ── */
+    @page landscape-table-page {
+      size: A4 landscape;
+      margin: 18mm 16mm 16mm 16mm;
+      background: ${palette.paper};
+      @top-left { content: string(chapter); }
+      @top-right { content: "${esc(address)}"; font-style: italic; }
+      @bottom-right { content: counter(page) " · " counter(pages); }
+    }
+    .landscape-spread {
+      page: landscape-table-page;
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      margin: 0; padding: 0;
+    }
+    .landscape-spread .landscape-inner { width: 100%; }
+    .landscape-spread table {
+      width: 100% !important;
+      font-size: 9pt;
+      page-break-inside: auto;
+    }
+    .landscape-spread table th,
+    .landscape-spread table td { padding: 6pt 8pt; }
+    .landscape-spread::before {
+      content: "Detailed data spread";
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.5pt; font-weight: 700;
+      letter-spacing: .28em; text-transform: uppercase;
+      color: ${palette.accent};
+      margin-bottom: 8pt;
+    }
+
+    /* ── Phase 2 #7 — Chapter opener typographic spread (no-hero fallback).
+       Every chapter opener page gets a hairline gold rule under the running
+       header area and extra top padding so the title breathes. */
+    h2[data-ch] {
+      padding-top: 22pt;
+      border-top: 0.5pt solid ${withAlpha(palette.accent, 0.45)};
+      margin-top: 0;
+    }
+    h2[data-ch]::before {
+      ${design.showSectionNumbers ? `` : `content: none;`}
+    }
   `;
 })()}</style>
 </head>
@@ -3178,7 +3290,12 @@ async function callWeasyPrint(html: string): Promise<Uint8Array> {
         Authorization: `Bearer ${WEASYPRINT_SERVICE_TOKEN}`,
         Accept: "application/pdf",
       },
-      body: JSON.stringify({ html }),
+      body: JSON.stringify({
+        html,
+        pdf_variant: "pdf/a-2b",   // Phase 1 #21 — archival, accessible PDF
+        tagged: true,
+        optimize_images: true,
+      }),
       signal: controller.signal,
     });
     if (!res.ok) {
