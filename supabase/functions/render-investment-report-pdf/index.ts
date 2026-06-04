@@ -3664,7 +3664,14 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     if (res.ok && success && fileUrl) return fileUrl as string;
 
     if (res.status !== 404) break;
+  }
+
+  throw new Error(
+    `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
+  );
 }
+
+
 
 /**
  * Render via self-hosted WeasyPrint microservice.
@@ -3729,10 +3736,6 @@ async function uploadPdfAndSign(
   return signed.signedUrl;
 }
 
-  throw new Error(
-    `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
-  );
-}
 
 if (import.meta.main) Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get("origin"));
