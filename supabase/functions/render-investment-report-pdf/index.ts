@@ -1157,6 +1157,31 @@ export async function buildHtml(
     .insight-box p,
     .insight-box li { font-size: 9.8pt; line-height: 1.55; }
 
+    /* Inline list-item callout (Form 3): "What This Means:" inside a <li> */
+    li.insight-li {
+      list-style: none;
+      padding: 10pt 14pt 9pt 14pt;
+      margin: 8pt 0;
+      background: ${THEME.paperAlt};
+      border-left: 3pt solid ${THEME.gold};
+      border-radius: 2pt;
+      border-bottom: none !important;
+      box-shadow: inset 0 0 0 0.5pt ${THEME.rule};
+      page-break-inside: avoid;
+    }
+    li.insight-li::before { display: none !important; content: none !important; }
+    li.insight-li .insight-label-inline {
+      display: inline-block;
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt; font-weight: 700;
+      color: ${THEME.goldSoft};
+      text-transform: uppercase; letter-spacing: .14em;
+      margin-right: 8pt;
+    }
+    li.insight-li .insight-li-body {
+      font-size: 9.8pt; line-height: 1.55; color: ${THEME.ink};
+    }
+
     ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
     li {
       position: relative;
