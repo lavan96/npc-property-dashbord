@@ -1333,6 +1333,117 @@ function renderMarginSparkSvg(vals: number[]): string {
   </svg>`;
 }
 
+/** Infrastructure ribbon — compact phase timeline for Existing → 0-2y → 3-5y → 5y+. */
+function renderTimelineRibbonSvg(items: Array<{ phase: string; label: string; confidence?: string }>, title = "Infrastructure pipeline"): string {
+  const phases = ["Existing", "0-2y", "3-5y", "5y+"];
+  const w = 760, h = 176, padX = 44, axisY = 86;
+  const step = (w - padX * 2) / (phases.length - 1);
+  const phaseNorm = (p: string) => {
+    const s = p.toLowerCase();
+    if (/existing|now|current/.test(s)) return "Existing";
+    if (/0\s*-?\s*2|short/.test(s)) return "0-2y";
+    if (/3\s*-?\s*5|medium/.test(s)) return "3-5y";
+    return "5y+";
+  };
+  const grouped = new Map(phases.map((p) => [p, [] as typeof items]));
+  items.forEach((it) => grouped.get(phaseNorm(it.phase))?.push(it));
+  const markers = phases.map((phase, i) => {
+    const x = padX + i * step;
+    const list = (grouped.get(phase) || []).slice(0, 2);
+    const labels = list.map((it, j) => `<text x="${x}" y="${axisY + 36 + j * 15}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK}" font-weight="${j === 0 ? 700 : 500}">${svgEscape(it.label.length > 28 ? it.label.slice(0, 26) + "…" : it.label)}</text>`).join("");
+    return `<g>
+      <circle cx="${x}" cy="${axisY}" r="8" fill="${i === 0 ? VIZ_NAVY : VIZ_GOLD}" stroke="${VIZ_PAPER}" stroke-width="2"/>
+      <text x="${x}" y="${axisY - 24}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" letter-spacing="1.4" fill="${VIZ_INK_MUTED}" font-weight="700">${svgEscape(phase.toUpperCase())}</text>
+      ${labels}
+    </g>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
+    <text x="24" y="26" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="15" fill="${VIZ_INK}">${svgEscape(title)}</text>
+    <path d="M ${padX} ${axisY} C ${padX + step * 0.5} ${axisY - 18}, ${padX + step * 0.5} ${axisY + 18}, ${padX + step} ${axisY} S ${padX + step * 1.5} ${axisY + 18}, ${padX + step * 2} ${axisY} S ${padX + step * 2.5} ${axisY - 18}, ${padX + step * 3} ${axisY}" fill="none" stroke="${VIZ_RULE}" stroke-width="8" stroke-linecap="round"/>
+    <path d="M ${padX} ${axisY} C ${padX + step * 0.5} ${axisY - 18}, ${padX + step * 0.5} ${axisY + 18}, ${padX + step} ${axisY} S ${padX + step * 1.5} ${axisY + 18}, ${padX + step * 2} ${axisY} S ${padX + step * 2.5} ${axisY - 18}, ${padX + step * 3} ${axisY}" fill="none" stroke="${VIZ_GOLD}" stroke-width="3" stroke-linecap="round"/>
+    ${markers}
+  </svg>`;
+}
+
+function renderKpiStripHtml(items: Array<{ label: string; value: string; delta?: string; spark?: number[] }>): string {
+  if (!items.length) return "";
+  return `<div class="kpi-strip kpi-strip-inline">${items.slice(0, 4).map((it) => `
+    <div class="kpi big-number-card">
+      <div class="kpi-label">${esc(it.label)}</div>
+      <div class="kpi-value">${esc(it.value)}</div>
+      ${it.delta ? `<div class="kpi-delta">${esc(it.delta)}</div>` : ""}
+      ${it.spark && it.spark.length >= 2 ? `<div class="kpi-inline-spark">${renderMarginSparkSvg(it.spark)}</div>` : ""}
+    </div>`).join("")}</div>`;
+}
+
+function extractScoreBreakdownItems(score: any): Array<{ label: string; value: number; display: string }> {
+  const raw = score?.breakdown || score?.scores || score?.components || {};
+  if (!raw || typeof raw !== "object") return [];
+  return Object.entries(raw).map(([key, val]: [string, any]) => {
+    const n = typeof val === "number" ? val : Number(val?.score ?? val?.value ?? val?.rating);
+    if (!Number.isFinite(n)) return null;
+    const label = key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").replace(/\bscore\b/ig, "").trim();
+    return { label: label || key, value: n, display: `${Math.round(n)}` };
+  }).filter(Boolean) as Array<{ label: string; value: number; display: string }>;
+}
+
+function recursiveNumberByKey(obj: unknown, patterns: RegExp[], seen = new Set<unknown>()): number | null {
+  if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
+  seen.add(obj);
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (patterns.some((p) => p.test(key))) {
+      const n = typeof val === "number" ? val : typeof val === "string" ? parseLooseNumber(val) : null;
+      if (n != null && Number.isFinite(n)) return n;
+    }
+    const nested = recursiveNumberByKey(val, patterns, seen);
+    if (nested != null) return nested;
+  }
+  return null;
+}
+
+function normaliseShare(value: number | null): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return value > 0 && value <= 1 ? value * 100 : value;
+}
+
+function chapterGlanceHtml(title: string): string {
+  const lower = title.toLowerCase();
+  const cells = lower.includes("risk") || lower.includes("safety")
+    ? ["✓ Risk register", "⚠ Verify overlays", "▲ Mitigants mapped", "★ Decision lens"]
+    : lower.includes("transport") || lower.includes("infrastructure")
+      ? ["✓ Access drivers", "⚠ Delivery timing", "▲ Pipeline view", "★ Location fit"]
+      : lower.includes("demographic") || lower.includes("demand")
+        ? ["✓ Demand base", "⚠ Cohort shifts", "▲ Household trend", "★ Tenant fit"]
+        : lower.includes("score") || lower.includes("swot")
+          ? ["✓ Strengths", "⚠ Watch points", "▲ Score drivers", "★ Verdict"]
+          : ["✓ Key signal", "⚠ Watch", "▲ Trend", "★ NPC view"];
+  return `<div class="glance-strip">${cells.map((raw) => {
+    const m = raw.match(/^(\S+)\s+(.+)$/);
+    return `<div class="glance-cell"><span class="glance-sym">${esc(m?.[1] || "•")}</span><span class="glance-text">${esc(m?.[2] || raw)}</span></div>`;
+  }).join("")}</div>`;
+}
+
+function injectChapterGlanceFallbacks(html: string): string {
+  return html.replace(/(<h2\b[^>]*>([\s\S]*?)<\/h2>)(?!\s*<div class="glance-strip")/gi, (_m, heading, inner) => {
+    const title = String(inner).replace(/<[^>]+>/g, "").trim();
+    if (/sources|references|disclaimer/i.test(title)) return heading;
+    return `${heading}\n${chapterGlanceHtml(title)}\n`;
+  });
+}
+
+function addDataSparklinesToParagraphs(html: string): string {
+  return html.replace(/<p>([\s\S]*?)<\/p>/gi, (match, inner) => {
+    if (/spark-inline|<svg|<img|<table/i.test(inner)) return match;
+    if (!/\b(growth|grew|trend|median|yield|rent|vacancy|population|income|price|rose|climbed|increased|declined)\b/i.test(inner)) return match;
+    const vals = Array.from(String(inner).matchAll(/(?:\$\s*)?-?\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*%?/g))
+      .map((m) => parseLooseNumber(m[0]))
+      .filter((n): n is number => n != null && !(n >= 1900 && n <= 2100));
+    if (vals.length < 3) return match;
+    return `<p>${inner} ${renderInlineSparkSvg(vals.slice(-10))}</p>`;
+  });
+}
+
 /**
  * Pre-marked markdown processor: turns editorial shortcodes into block-level
  * HTML so they survive `marked.parse()` untouched.
