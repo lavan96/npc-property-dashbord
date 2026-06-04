@@ -736,6 +736,15 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={() => downloadImage(img)}
+                              className="h-7 w-7"
+                              title="Download"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => archiveImage(img)}
                               className="h-7 w-7"
                               title={img.is_archived ? "Unarchive" : "Archive"}
