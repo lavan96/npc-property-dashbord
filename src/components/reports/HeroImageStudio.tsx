@@ -539,6 +539,43 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                   />
                 </div>
 
+                {/* Reference images (Gemini only) */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex justify-between">
+                    <span>Reference images</span>
+                    <span className="text-muted-foreground">{refImages.length}/4</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {refImages.map((r, i) => (
+                      <div key={i} className="relative w-12 h-12 rounded border overflow-hidden bg-muted">
+                        <img src={r.dataUrl} alt={r.name} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => setRefImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center"
+                          title="Remove"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {refImages.length < 4 && (
+                      <label className="w-12 h-12 rounded border-2 border-dashed flex items-center justify-center cursor-pointer hover:border-primary/60 hover:bg-muted/40">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { handleAddReferenceImages(e.target.files); e.target.value = ""; }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Gemini models only. Used as style/composition guidance.
+                  </p>
+                </div>
+
                 <Button
                   onClick={handleGenerate}
                   disabled={generating || enhancing || !prompt.trim()}
@@ -551,6 +588,38 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                   )}
                   {generating ? `Generating ${variations}…` : `Generate ${variations} image${variations === 1 ? "" : "s"}`}
                 </Button>
+
+                <div className="pt-2 border-t">
+                  <Label className="text-xs mb-1.5 block">Or upload your own</Label>
+                  <label className="block">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={uploading}
+                    >
+                      <span>
+                        {uploading ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-1" />
+                        )}
+                        {uploading ? "Uploading…" : "Upload image"}
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => { handleRawUpload(e.target.files); e.target.value = ""; }}
+                    />
+                  </label>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Skip AI — embed your own photo directly in the PDF.
+                  </p>
+                </div>
+
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
                   Heads-up: variations run sequentially. Larger requests can take 30–90s each.
                 </p>
