@@ -1,0 +1,76 @@
+"""
+WeasyPrint PDF rendering microservice.
+
+POST /render
+  Headers:
+    Authorization: Bearer <WEASYPRINT_SERVICE_TOKEN>
+    Content-Type:  application/json
+  Body:
+    { "html": "<!doctype html>...", "base_url": "https://optional/" }
+  Returns:
+    application/pdf bytes (200) or { "error": "..." } (4xx/5xx)
+
+GET /healthz -> 200 "ok"
+"""
+
+import os
+import logging
+from flask import Flask, request, Response, jsonify
+from weasyprint import HTML
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("weasyprint-service")
+
+app = Flask(__name__)
+
+EXPECTED_TOKEN = os.environ.get("WEASYPRINT_SERVICE_TOKEN", "").strip()
+MAX_HTML_BYTES = int(os.environ.get("MAX_HTML_BYTES", str(25 * 1024 * 1024)))  # 25 MB
+
+
+def _auth_ok(req) -> bool:
+    if not EXPECTED_TOKEN:
+        # If no token is set, refuse everything — fail closed.
+        return False
+    header = req.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return False
+    return header.split(" ", 1)[1].strip() == EXPECTED_TOKEN
+
+
+@app.get("/healthz")
+def healthz():
+    return Response("ok", mimetype="text/plain")
+
+
+@app.post("/render")
+def render():
+    if not _auth_ok(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    if request.content_length and request.content_length > MAX_HTML_BYTES:
+        return jsonify({"error": "html too large"}), 413
+
+    payload = request.get_json(silent=True) or {}
+    html = payload.get("html")
+    base_url = payload.get("base_url") or None
+
+    if not isinstance(html, str) or not html.strip():
+        return jsonify({"error": "html is required"}), 400
+
+    try:
+        pdf_bytes = HTML(string=html, base_url=base_url).write_pdf()
+    except Exception as exc:  # noqa: BLE001
+        log.exception("weasyprint render failed")
+        return jsonify({"error": f"render_failed: {exc}"}), 500
+
+    log.info("rendered pdf bytes=%d html_bytes=%d", len(pdf_bytes), len(html))
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="report.pdf"'},
+    )
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "8080"))
+    app.run(host="0.0.0.0", port=port)
