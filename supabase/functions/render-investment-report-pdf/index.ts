@@ -3194,6 +3194,34 @@ export async function buildHtml(
     }
     .glance-text { display: block; }
 
+    /* ── Margin micro-chart (sidenote variant) ── */
+    aside.sidenote-margin {
+      background: ${THEME.paper};
+      border-left: 2pt solid ${THEME.gold};
+      padding: 8pt 10pt 9pt;
+      margin: 10pt 0 14pt;
+      page-break-inside: avoid;
+    }
+    aside.sidenote-margin .margin-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 10.5pt;
+      color: ${THEME.ink};
+      margin-bottom: 5pt;
+      line-height: 1.25;
+    }
+    aside.sidenote-margin .margin-spark {
+      margin: 4pt 0 6pt;
+      max-width: 100%;
+    }
+    aside.sidenote-margin .margin-note {
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt;
+      line-height: 1.4;
+      color: ${THEME.inkMuted};
+      margin: 0;
+    }
+
     /* ── Inline sparkline (flows in prose) ── */
     svg.spark-inline {
       display: inline-block;
