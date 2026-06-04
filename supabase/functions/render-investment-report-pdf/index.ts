@@ -1558,7 +1558,7 @@ ${(() => {
   ];
   const rowsHtml = rows
     .filter(([, v]) => v)
-    .map(([l, v]) => `<tr><td class="label">${esc(l)}:</td><td class="value">${esc(v)}</td></tr>`)
+    .map(([l, v]) => `<div class="contact-row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`)
     .join("");
   const discText = disclaimer.is_enabled !== false && disclaimer.text
     ? String(disclaimer.text)
@@ -1573,7 +1573,7 @@ ${(() => {
     <div class="company-main">${esc(mainCompany)}</div>
     ${subCompany ? `<div class="company-sub">${esc(subCompany)}</div>` : ""}
     <div class="contact-heading">CONTACT US</div>
-    <table class="contact">${rowsHtml}</table>
+    <div class="contact-list">${rowsHtml}</div>
     <div class="disclaimer-body">${discParas}</div>
   </section>`;
 })()}
