@@ -2118,6 +2118,145 @@ export async function buildHtml(
     .chapter-hero.hero-focal-top img    { object-position: center top; }
     .chapter-hero.hero-focal-center img { object-position: center center; }
     .chapter-hero.hero-focal-bottom img { object-position: center bottom; }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Editorial primitives (Tier 2 — pull-quotes, sidenotes, columns,
+       custom SVG visualisations, footnotes + cross-references)
+       ────────────────────────────────────────────────────────────────── */
+
+    /* Pull-quote — full-bleed editorial highlight. */
+    aside.pull-quote {
+      margin: 22pt -8mm 22pt -8mm;
+      padding: 18pt 28pt 16pt 60pt;
+      background: linear-gradient(180deg, ${THEME.paperAlt} 0%, ${THEME.paper} 100%);
+      border-top: 0.5pt solid ${THEME.rule};
+      border-bottom: 0.5pt solid ${THEME.rule};
+      position: relative;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.pull-quote::before {
+      content: "\\201C";
+      position: absolute; left: 18pt; top: 4pt;
+      font-family: 'Playfair Display', serif;
+      font-weight: 800; font-size: 72pt; line-height: 1;
+      color: ${THEME.gold};
+    }
+    aside.pull-quote p {
+      margin: 0;
+      font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+      font-style: italic; font-weight: 500;
+      font-size: 18pt; line-height: 1.35;
+      color: ${THEME.ink};
+      text-align: left; hyphens: none;
+      font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+    }
+
+    /* Side-note — hangs in the right margin (gutter) for editorial commentary. */
+    aside.sidenote {
+      float: right;
+      width: 38mm;
+      margin: 4pt -12mm 8pt 12pt;
+      padding: 9pt 10pt 8pt;
+      background: ${THEME.paperAlt};
+      border-left: 2pt solid ${THEME.goldSoft};
+      font-family: 'Inter', sans-serif;
+      font-size: 8.2pt;
+      line-height: 1.5;
+      color: ${THEME.inkMuted};
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    aside.sidenote p { margin: 0; }
+    aside.sidenote::before {
+      content: "NOTE";
+      display: block;
+      font-weight: 700; font-size: 7pt;
+      letter-spacing: .18em;
+      color: ${THEME.goldSoft};
+      margin-bottom: 4pt;
+    }
+
+    /* Two-column flow — multi-column body for dense narrative sections. */
+    .two-col {
+      column-count: 2;
+      column-gap: 14pt;
+      column-rule: 0.4pt solid ${THEME.rule};
+      orphans: 3; widows: 3;
+      margin: 12pt 0;
+    }
+    .two-col h3, .two-col h4 { column-span: all; }
+    .two-col p { margin-top: 0; }
+
+    /* ── Custom SVG visualisations (gauge, waterfall, heatmap, wheel) ── */
+    figure.vis-figure {
+      margin: 16pt 0 20pt;
+      padding: 14pt 16pt 10pt;
+      background: ${THEME.paper};
+      border: 0.4pt solid ${THEME.rule};
+      border-radius: 4pt;
+      box-shadow: 0 1pt 0 rgba(40,28,10,0.04);
+      page-break-inside: avoid;
+      break-inside: avoid;
+      text-align: center;
+    }
+    figure.vis-figure svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    figure.vis-figure figcaption {
+      margin-top: 8pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.8pt;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: ${THEME.inkMuted};
+    }
+
+    /* ── Footnotes (CSS Paged Media — WeasyPrint) ── */
+    span.footnote {
+      float: footnote;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.8pt; line-height: 1.45;
+      color: ${THEME.inkMuted};
+    }
+    ::footnote-call {
+      content: counter(footnote);
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      color: ${THEME.gold};
+      vertical-align: super;
+      font-size: 0.72em;
+      line-height: 0;
+      margin-left: 1pt;
+    }
+    ::footnote-marker {
+      content: counter(footnote) ". ";
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      color: ${THEME.gold};
+      font-size: 8pt;
+    }
+
+    /* ── Cross-references — "see p. X" auto-resolved by WeasyPrint ── */
+    a.xref {
+      color: ${THEME.goldSoft};
+      text-decoration: none;
+      font-family: 'Inter', sans-serif;
+      font-style: italic;
+      font-size: 0.94em;
+      white-space: nowrap;
+    }
+    a.xref .xref-prefix { margin-right: 3pt; }
+    a.xref .xref-page::before {
+      content: " " target-counter(attr(href), page);
+      font-weight: 600;
+      font-style: normal;
+      color: ${THEME.ink};
+      font-variant-numeric: lining-nums tabular-nums;
+    }
   `;
 
   const scoreCard = scoreOverall != null
