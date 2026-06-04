@@ -191,6 +191,21 @@ const INSIGHT_LABEL_RE =
  *   2. Inline bold-prefix form  →  **What This Means:** body…
  */
 function wrapInsightSections(html: string): string {
+  // Form 0 (normaliser): rewrite italic/underline/plain insight-label paragraphs
+  // into the <strong> form so Forms 2/4 catch them. Covers the variants where
+  // the model emits "What This Means:" in italics or as plain text.
+  html = html.replace(
+    /<p>\s*(?:<(em|i|u)>\s*)?([A-Za-z][A-Za-z'\s]{2,40}?)\s*[:：]\s*(?:<\/\1>)?\s*([\s\S]*?)<\/p>/gi,
+    (match, _tag, rawLabel, rest) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      // Already strong? leave as-is for Form 2/4.
+      if (/^<\s*(strong|b)\b/i.test(match.replace(/^<p>\s*/i, ""))) return match;
+      const body = String(rest).trim();
+      return `<p><strong>${label}:</strong> ${body}</p>`;
+    },
+  );
+
   // Form 1: h3 / h4 heading captures content until next h1–h4
   let out = html.replace(
     /<h([34])[^>]*>([\s\S]*?)<\/h\1>([\s\S]*?)(?=<h[1-4][\s>]|<section|$)/gi,
