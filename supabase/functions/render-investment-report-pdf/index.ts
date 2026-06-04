@@ -1548,6 +1548,19 @@ export async function buildHtml(
       @top-left { content: none; }
       @top-right { content: none; }
     }
+    /* CSS Paged Media footnotes (WeasyPrint native). The @footnote area sits
+       above the bottom margin box, divided by a hairline rule. */
+    @page {
+      @footnote {
+        border-top: 0.5pt solid ${THEME.rule};
+        padding-top: 4pt;
+        margin-top: 6pt;
+        font-size: 7.8pt;
+        line-height: 1.45;
+        color: ${THEME.inkMuted};
+        font-family: 'Inter', 'Helvetica', sans-serif;
+      }
+    }
 
     * { box-sizing: border-box; }
     html, body {
