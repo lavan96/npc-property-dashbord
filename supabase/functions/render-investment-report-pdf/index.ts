@@ -1624,6 +1624,9 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
       options: {
         printBackground: true,
         preferCSSPageSize: true,
+        format: "A4",
+        width: "210mm",
+        height: "297mm",
         displayHeaderFooter: false,
         scale: 1,
         marginTop: 0,
