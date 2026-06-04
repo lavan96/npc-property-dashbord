@@ -262,22 +262,68 @@ function inferAxisMode(config: any): "money" | "percent" | "plain" {
   return "plain";
 }
 
+/**
+ * Standardised editorial chart sizes used across the report.
+ * Callers should prefer these over ad-hoc dimensions so all charts read as a
+ * coherent family.
+ *   TREND_WIDE    — line / multi-series time series
+ *   BAR_WIDE      — horizontal-feel bar groups, KPI bar comparisons
+ *   DONUT_WIDE    — donut/pie with side legend
+ *   COMPACT       — small in-flow visualisations
+ */
+const CHART_PRESETS = {
+  TREND_WIDE:  { width: 760, height: 320 },
+  BAR_WIDE:    { width: 760, height: 320 },
+  DONUT_WIDE:  { width: 720, height: 320 },
+  COMPACT:     { width: 480, height: 260 },
+} as const;
+
+/**
+ * Render a path approximating a rectangle whose TOP two corners are rounded
+ * and bottom corners are square. Editorial bar style.
+ */
+function topRoundedBarPath(x: number, y: number, w: number, h: number, r: number): string {
+  const rr = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+}
+
 function renderSvgChart(config: Record<string, unknown>, width: number, height: number): string {
   const cfg: any = config || {};
   const type = String(cfg.type || "bar").toLowerCase();
   const labels = (cfg.data?.labels || []).map((l: unknown) => String(l ?? ""));
   const datasets = Array.isArray(cfg.data?.datasets) ? cfg.data.datasets : [];
   const axisMode = inferAxisMode(cfg);
+  // Editorial palette + thinner rules
   const bg = "#FFFDF8";
   const ink = "#2A2317";
   const muted = "#6B604F";
-  const grid = "#D8CBB6";
-  const plot = { x: 58, y: 28, w: Math.max(120, width - 86), h: Math.max(80, height - 86) };
+  const grid = "#CFC1A8";
+  const baseline = "#9C8C6A";
   const title = String(cfg.options?.plugins?.title?.text || datasets[0]?.label || "");
+  // Reserve title strip + legend strip so plot never collides with labels.
+  const titleH  = title ? 26 : 8;
+  const legendH = datasets.length > 1 ? 24 : 8;
+  const plot = {
+    x: 62,
+    y: titleH + 8,
+    w: Math.max(160, width - 86),
+    h: Math.max(80, height - titleH - legendH - 36),
+  };
 
-  const defs = `<defs><filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#281C0A" flood-opacity="0.16"/></filter></defs>`;
-  const frame = `<rect x="0" y="0" width="${width}" height="${height}" rx="10" fill="${bg}"/><rect x="10" y="10" width="${width - 20}" height="${height - 20}" rx="8" fill="none" stroke="#E4D8C4"/>`;
+  // Tabular figures + crisp Inter axis font.
+  const axisFontStyle  = `font-family="Inter,Arial,sans-serif" font-size="10.5" font-style="normal" letter-spacing="0.02em"`;
+  const tabular        = `style="font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;"`;
+  const titleFontStyle = `font-family="Playfair Display,Georgia,serif" font-size="14.5" font-weight="700"`;
+  const legendFontStyle = `font-family="Inter,Arial,sans-serif" font-size="10.5"`;
 
+  const titleSvg = title
+    ? `<text x="${plot.x}" y="20" ${titleFontStyle} fill="${ink}">${svgEsc(title)}</text>`
+    : "";
+
+  // Soft paper background only — no double border frame.
+  const frame = `<rect x="0" y="0" width="${width}" height="${height}" rx="6" fill="${bg}"/>`;
+
+  // ── Sparkline ────────────────────────────────────────────────────────────
   if (type === "sparkline") {
     const values = datasetValues(datasets[0]);
     if (values.length < 2) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`;
@@ -289,27 +335,44 @@ function renderSvgChart(config: Record<string, unknown>, width: number, height: 
     });
     const color = String(datasets[0]?.borderColor || THEME.gold);
     const area = `${pts[0]} ${pts.slice(1).join(" ")} ${width - 8},${height - 7} 8,${height - 7}`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polygon points="${area}" fill="${withAlpha(color, 0.14)}"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polygon points="${area}" fill="${withAlpha(color, 0.14)}"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
 
+  // ── Donut / Pie with side legend (value + %) ─────────────────────────────
   if (type === "doughnut" || type === "pie") {
     const values = datasetValues(datasets[0]);
     const total = values.reduce((a, b) => a + Math.max(0, b), 0) || 1;
-    const cx = width * 0.38, cy = height * 0.52, r = Math.min(width, height) * 0.28;
-    const sw = type === "doughnut" ? r * 0.38 : r;
+    const ringCx = width * 0.30;
+    const ringCy = (titleH + height) / 2 + 4;
+    const r = Math.min(width * 0.22, (height - titleH) * 0.36);
+    const sw = type === "doughnut" ? Math.max(14, r * 0.42) : r;
     let offset = 25;
-    const circles = values.map((v, i) => {
+    const slices = values.map((v, i) => {
       const pct = Math.max(0, v) / total;
       const dash = `${(pct * 100).toFixed(4)} ${(100 - pct * 100).toFixed(4)}`;
       const color = CHART_PALETTE[i % CHART_PALETTE.length];
-      const c = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${dash}" stroke-dashoffset="${offset}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/>`;
+      const c = `<circle cx="${ringCx}" cy="${ringCy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${dash}" stroke-dashoffset="${offset}" pathLength="100" transform="rotate(-90 ${ringCx} ${ringCy})"/>`;
       offset -= pct * 100;
       return c;
     }).join("");
-    const legend = labels.map((label, i) => `<g transform="translate(${width * 0.68},${54 + i * 24})"><rect width="12" height="12" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/><text x="20" y="10" font-family="Inter,Arial" font-size="12" fill="${muted}">${svgEsc(label)} · ${formatAxisValue(values[i] || 0, axisMode)}</text></g>`).join("");
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g filter="url(#softShadow)">${circles}</g>${type === "doughnut" ? `<circle cx="${cx}" cy="${cy}" r="${r - sw / 2 - 2}" fill="${bg}"/>` : ""}${legend}</svg>`;
+    const legendX = ringCx + r + sw / 2 + 28;
+    const lineH = 20;
+    const startY = ringCy - (values.length - 1) * lineH / 2 - 6;
+    const legend = values.map((v, i) => {
+      const pct = ((Math.max(0, v) / total) * 100).toFixed(1);
+      const y = startY + i * lineH;
+      const valueLabel = `${formatAxisValue(v, axisMode)}  ·  ${pct}%`;
+      return `<g transform="translate(${legendX},${y})">
+        <rect x="0" y="-8" width="10" height="10" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/>
+        <text x="18" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(labels[i] || "")}</text>
+        <text x="18" y="13" ${legendFontStyle} ${tabular} fill="${muted}">${svgEsc(valueLabel)}</text>
+      </g>`;
+    }).join("");
+    const inner = type === "doughnut" ? `<circle cx="${ringCx}" cy="${ringCy}" r="${r - sw / 2 - 1}" fill="${bg}"/>` : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${titleSvg}${slices}${inner}${legend}</svg>`;
   }
 
+  // ── Line / Bar ───────────────────────────────────────────────────────────
   const series = datasets.map((d: any, i: number) => ({
     label: String(d?.label || ""),
     values: datasetValues(d),
@@ -320,39 +383,55 @@ function renderSvgChart(config: Record<string, unknown>, width: number, height: 
   const rawMin = Math.min(0, ...all), rawMax = Math.max(...all, 1);
   const span = rawMax - rawMin || 1;
   const yOf = (v: number) => plot.y + plot.h - ((v - rawMin) / span) * plot.h;
-  const gridLines = Array.from({ length: 4 }, (_, i) => {
-    const t = i / 3;
+
+  // 5 gridlines, hairline 0.5pt, soft alpha
+  const gridLines = Array.from({ length: 5 }, (_, i) => {
+    const t = i / 4;
     const y = plot.y + t * plot.h;
     const val = rawMax - t * span;
-    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y}" y2="${y}" stroke="${grid}" stroke-opacity="0.72" stroke-width="1"/><text x="${plot.x - 10}" y="${y + 4}" text-anchor="end" font-family="Inter,Arial" font-size="10" fill="${muted}">${formatAxisValue(val, axisMode)}</text>`;
+    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y}" y2="${y}" stroke="${grid}" stroke-opacity="0.55" stroke-width="0.5"/>` +
+      `<text x="${plot.x - 10}" y="${y + 3.5}" text-anchor="end" ${axisFontStyle} ${tabular} fill="${muted}">${formatAxisValue(val, axisMode)}</text>`;
   }).join("");
 
   let marks = "";
   if (type === "line") {
     marks = series.map((s: any) => {
       const pts = s.values.map((v: number, i: number) => `${(plot.x + (i / Math.max(1, labels.length - 1)) * plot.w).toFixed(1)},${yOf(v).toFixed(1)}`);
-      return `<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g>${pts.map((p: string) => `<circle cx="${p.split(",")[0]}" cy="${p.split(",")[1]}" r="3.3" fill="${s.color}" stroke="${bg}" stroke-width="1.4"/>`).join("")}</g>`;
+      const area = s.values.length > 1
+        ? `<polygon points="${pts[0]} ${pts.slice(1).join(" ")} ${plot.x + plot.w},${yOf(0)} ${plot.x},${yOf(0)}" fill="${withAlpha(s.color, 0.10)}"/>`
+        : "";
+      const dots = pts.map((p: string) => `<circle cx="${p.split(",")[0]}" cy="${p.split(",")[1]}" r="2.6" fill="${bg}" stroke="${s.color}" stroke-width="1.6"/>`).join("");
+      return `${area}<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
     }).join("");
   } else {
     const groups = labels.length;
     const groupW = plot.w / groups;
-    const barW = Math.max(8, Math.min(42, (groupW * 0.72) / Math.max(1, series.length)));
+    const innerW = groupW * 0.7;
+    const barW = Math.max(6, Math.min(34, innerW / Math.max(1, series.length)));
+    const corner = Math.min(3, barW / 2.5);
     marks = labels.map((_, i) => series.map((s: any, si: number) => {
       const v = s.values[i] ?? 0;
       const y = yOf(Math.max(v, 0));
       const zero = yOf(0);
       const x = plot.x + i * groupW + (groupW - barW * series.length) / 2 + si * barW;
       const h = Math.max(1, Math.abs(zero - y));
-      return `<rect x="${x.toFixed(1)}" y="${Math.min(y, zero).toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${s.color}" opacity="0.92" filter="url(#softShadow)"/>`;
+      return `<path d="${topRoundedBarPath(x, Math.min(y, zero), barW - 1.5, h, corner)}" fill="${s.color}" fill-opacity="0.94"/>`;
     }).join("")).join("");
   }
   const xLabels = labels.map((label, i) => {
-    const x = plot.x + (i + 0.5) * (plot.w / labels.length);
-    return `<text x="${x}" y="${plot.y + plot.h + 22}" text-anchor="middle" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(label.length > 14 ? label.slice(0, 12) + "…" : label)}</text>`;
+    const x = type === "line"
+      ? plot.x + (i / Math.max(1, labels.length - 1)) * plot.w
+      : plot.x + (i + 0.5) * (plot.w / labels.length);
+    return `<text x="${x}" y="${plot.y + plot.h + 18}" text-anchor="middle" ${axisFontStyle} fill="${muted}">${svgEsc(label.length > 14 ? label.slice(0, 12) + "…" : label)}</text>`;
   }).join("");
-  const legend = series.length > 1 ? `<g transform="translate(${plot.x},${height - 20})">${series.map((s: any, i: number) => `<g transform="translate(${i * 132},0)"><rect width="11" height="11" rx="2" fill="${s.color}"/><text x="17" y="10" font-family="Inter,Arial" font-size="10" fill="${muted}">${svgEsc(s.label)}</text></g>`).join("")}</g>` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${defs}${frame}${title ? `<text x="28" y="32" font-family="Georgia" font-size="17" font-weight="700" fill="${ink}">${svgEsc(title)}</text>` : ""}<g>${gridLines}</g><line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${yOf(0)}" y2="${yOf(0)}" stroke="#B5A580"/>${marks}${xLabels}${legend}</svg>`;
+  const legendY = height - 12;
+  const legend = series.length > 1
+    ? `<g transform="translate(${plot.x},${legendY})">${series.map((s: any, i: number) => `<g transform="translate(${i * 140},0)"><rect x="0" y="-8" width="10" height="10" rx="2" fill="${s.color}"/><text x="16" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(s.label)}</text></g>`).join("")}</g>`
+    : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${titleSvg}<g>${gridLines}</g><line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${yOf(0)}" y2="${yOf(0)}" stroke="${baseline}" stroke-width="0.6"/>${marks}${xLabels}${legend}</svg>`;
 }
+
 
 /**
  * Serialize a Chart.js config to a JS (not JSON) string so that function-string
@@ -535,7 +614,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
         },
       },
     };
-    const uri = await chartDataUri(config, 780, 380, `donut:${numericCols[0].header}`);
+    const uri = await chartDataUri(config, CHART_PRESETS.DONUT_WIDE.width, CHART_PRESETS.DONUT_WIDE.height, `donut:${numericCols[0].header}`);
     if (!uri) return null;
     return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
   }
@@ -585,7 +664,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
         },
       },
     };
-    const uri = await chartDataUri(config, 820, 360, `line:${numericCols.map((c) => c.header).join(",")}`);
+    const uri = await chartDataUri(config, CHART_PRESETS.TREND_WIDE.width, CHART_PRESETS.TREND_WIDE.height, `line:${numericCols.map((c) => c.header).join(",")}`);
     if (!uri) return null;
     return `<figure class="auto-chart"><img src="${uri}" alt="Trend visualisation"/></figure>`;
   }
@@ -635,7 +714,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
       },
     },
   };
-  const uri = await chartDataUri(config, 820, 380, `bar:${numericCols.map((c) => c.header).join(",")}`);
+  const uri = await chartDataUri(config, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, `bar:${numericCols.map((c) => c.header).join(",")}`);
   if (!uri) return null;
   return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
 }
@@ -702,8 +781,8 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
             y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
           },
         },
-      }, 820, 370, "financial:value-equity-debt");
-      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">10-year value, equity and debt path</div><figure class="auto-chart"><img src="${uri}" alt="10-year value equity and debt chart"/></figure></div>`);
+      }, CHART_PRESETS.TREND_WIDE.width, CHART_PRESETS.TREND_WIDE.height, "financial:value-equity-debt");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">10-year value, equity and debt path</div><figure class="auto-chart"><img src="${uri}" alt="10-year value equity and debt chart"/><figcaption>Source: NPC projections, modelled over 10 years.</figcaption></figure></div>`);
     }
 
     const cashFlow = pickSeries(rows, ["cashFlow", "annualNet", "netCashflow", "annualNetCashflow"]);
@@ -725,8 +804,8 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
             y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
           },
         },
-      }, 820, 370, "financial:rent-cashflow");
-      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Rental income versus net cash flow</div><figure class="auto-chart"><img src="${uri}" alt="Rental income and cash flow chart"/></figure></div>`);
+      }, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, "financial:rent-cashflow");
+      if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Rental income versus net cash flow</div><figure class="auto-chart"><img src="${uri}" alt="Rental income and cash flow chart"/><figcaption>Source: NPC projections, modelled over 10 years.</figcaption></figure></div>`);
     }
   }
 
@@ -748,8 +827,8 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
           y: { ticks: { color: "#5F5546", font: commonFont, callback: "function(v){return v.toFixed(0)+'%';}" }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
         },
       },
-    }, 820, 340, "financial:yield-bars");
-    if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Yield and leverage profile</div><figure class="auto-chart"><img src="${uri}" alt="Yield and leverage chart"/></figure></div>`);
+    }, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, "financial:yield-bars");
+    if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Yield and leverage profile</div><figure class="auto-chart"><img src="${uri}" alt="Yield and leverage chart"/><figcaption>Source: NPC key-metrics snapshot.</figcaption></figure></div>`);
   }
 
   return charts.length ? `<section class="body-page financial-charts"><h2 id="ch-financial-visuals">Financial Visuals</h2>${charts.join("")}</section>` : "";
@@ -1412,18 +1491,26 @@ export async function buildHtml(
 
     /* ── Premium auto-injected charts ── */
     .chart-wrap {
-      margin: 18pt 0 22pt;
-      padding: 14pt 14pt 10pt;
-      background: linear-gradient(180deg, #FFFDF8 0%, #FAF4E4 100%);
-      border: 0.5pt solid ${THEME.rule};
-      border-radius: 4pt;
-      box-shadow: 0 1pt 0 rgba(40,28,10,0.04), 0 6pt 16pt -8pt rgba(40,28,10,0.18);
+      margin: 16pt 0 20pt;
+      padding: 12pt 14pt 10pt;
+      background: #FFFDF8;
+      border: 0.4pt solid ${THEME.rule};
+      border-radius: 3pt;
+      box-shadow: 0 1pt 0 rgba(40,28,10,0.03);
       page-break-inside: avoid;
     }
-    .auto-chart { margin: 0 0 8pt; text-align: center; page-break-inside: avoid; }
+    .auto-chart { margin: 0; text-align: center; page-break-inside: avoid; }
     .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .auto-chart figcaption {
+      margin-top: 6pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.6pt;
+      letter-spacing: .08em;
+      color: ${THEME.inkMuted};
+      text-align: center;
+    }
     .chart-wrap > table {
-      margin-top: 10pt; font-size: 8.2pt;
+      margin-top: 12pt; font-size: 8.2pt;
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
@@ -1431,12 +1518,12 @@ export async function buildHtml(
     .financial-chart { margin-bottom: 14pt; }
     .chart-title {
       font-family: 'Playfair Display', 'Georgia', serif;
-      font-size: 13.5pt;
+      font-size: 12.5pt;
       font-weight: 700;
       color: ${THEME.ink};
-      margin: 0 0 8pt;
-      padding-bottom: 5pt;
-      border-bottom: 0.5pt solid ${THEME.rule};
+      margin: 0 0 6pt;
+      padding-bottom: 4pt;
+      border-bottom: 0.4pt solid ${THEME.rule};
     }
 
     /* ── KPI sparklines ── */
