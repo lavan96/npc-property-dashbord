@@ -233,6 +233,15 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
       toast({ title: "Add a prompt first", variant: "destructive" });
       return;
     }
+    const isGemini = model.startsWith("google/");
+    if (refImages.length && !isGemini) {
+      toast({
+        title: "Reference images need a Gemini model",
+        description: "Switch to Gemini 3 Pro Image or Nano Banana to use references.",
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(true);
     const { data, error } = await invokeSecureFunction<{ images: LibraryImage[]; errors: string[] }>(
       "hero-image-studio",
@@ -243,6 +252,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
         aspectRatio: aspect,
         variations,
         sourceReportId: reportId,
+        referenceImages: refImages.map((r) => r.dataUrl),
       },
       { timeoutMs: 220_000 },
     );
@@ -259,6 +269,93 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
     });
     await fetchLibrary();
   };
+
+  const readFileAsDataUrl = (f: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(f);
+    });
+
+  const decodeImageSize = (dataUrl: string): Promise<{ width: number; height: number }> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve({ width: 1, height: 1 });
+      img.src = dataUrl;
+    });
+
+  const handleAddReferenceImages = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const arr = Array.from(files).slice(0, 4 - refImages.length);
+    const next: { name: string; dataUrl: string }[] = [];
+    for (const f of arr) {
+      if (!f.type.startsWith("image/")) continue;
+      if (f.size > 8 * 1024 * 1024) {
+        toast({ title: `${f.name} too large`, description: "Max 8MB per reference.", variant: "destructive" });
+        continue;
+      }
+      next.push({ name: f.name, dataUrl: await readFileAsDataUrl(f) });
+    }
+    setRefImages((prev) => [...prev, ...next].slice(0, 4));
+  };
+
+  const handleRawUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const f of Array.from(files)) {
+        if (!f.type.startsWith("image/")) continue;
+        if (f.size > 20 * 1024 * 1024) {
+          toast({ title: `${f.name} too large`, description: "Max 20MB.", variant: "destructive" });
+          continue;
+        }
+        const dataUrl = await readFileAsDataUrl(f);
+        const { width, height } = await decodeImageSize(dataUrl);
+        const { error } = await invokeSecureFunction(
+          "hero-image-studio",
+          {
+            action: "library_upload",
+            fileBase64: dataUrl,
+            contentType: f.type || "image/png",
+            width,
+            height,
+            prompt: f.name,
+            sourceReportId: reportId,
+          },
+          { timeoutMs: 120_000 },
+        );
+        if (error) {
+          toast({ title: `Upload failed: ${f.name}`, description: error.message, variant: "destructive" });
+        }
+      }
+      await fetchLibrary();
+      toast({ title: "Upload complete" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadImage = async (img: LibraryImage) => {
+    if (!img.public_url) return;
+    try {
+      const res = await fetch(img.public_url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = (blob.type.split("/")[1] || "png").split("+")[0];
+      a.download = `hero-${img.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
 
   const placeImage = async (img: LibraryImage) => {
     if (!selectedSlug) {
