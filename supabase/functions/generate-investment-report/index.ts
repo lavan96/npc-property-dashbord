@@ -1185,7 +1185,85 @@ async function fetchServiceWithFallback<T>(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EDITORIAL PRIMITIVES — shortcodes the WeasyPrint renderer converts into
+// pull-quotes, sidenotes, multi-column blocks, SVG visualisations, footnotes
+// and cross-references. Inject this block into every generator prompt so the
+// model knows the exact syntax. Keep terse — the model just needs the contract.
+// ─────────────────────────────────────────────────────────────────────────────
+const EDITORIAL_PRIMITIVES_BLOCK = `
+**EDITORIAL PRIMITIVES (USE SPARINGLY FOR VISUAL IMPACT)**
+
+You may emit these block-level shortcodes inside the markdown. The renderer
+converts them to print-quality typography and inline SVG. Do NOT overuse —
+1 pull-quote per chapter max, 1 visualisation per chapter max, sidenotes only
+when they genuinely add context. Each shortcode must sit on its own line(s),
+with a blank line before and after.
+
+1. PULL QUOTE — for one striking sentence that summarises the chapter's thesis.
+\`\`\`
+::: pullquote
+A weighted score of 78/100 places this property in the top quartile for combined yield and growth.
+:::
+\`\`\`
+
+2. SIDENOTE — short aside that hangs in the right margin (≤25 words).
+\`\`\`
+::: sidenote
+Council rezoning to MU3 was gazetted March 2026, lifting permissible density.
+:::
+\`\`\`
+
+3. GAUGE — single-metric score visualisation (0–100 unless max specified).
+   Format: \`{{gauge: VALUE[/MAX] | LABEL | CAPTION}}\`
+\`\`\`
+{{gauge: 78 | Investment Score | Weighted composite}}
+\`\`\`
+
+4. WATERFALL — cash-flow build-up. Use \`+\` / \`-\` for movements, \`=\` for totals.
+   Numbers can include $ signs and commas; they will be parsed.
+\`\`\`
+{{waterfall: Gross Rent +28000, Interest -19500, Outgoings -4200, Tax shield +1100, Net =5400}}
+\`\`\`
+
+5. HEATMAP — m×n matrix; rows separated by \`/\`, cells by \`,\`.
+   Format: \`{{heatmap: VALUES | rows=A,B,C | cols=X,Y,Z | title=…}}\`
+\`\`\`
+{{heatmap: 5.2,6.1,7.4 / 4.8,5.9,6.7 / 3.1,4.0,5.2 | rows=2024,2025,2026 | cols=Q1,Q2,Q3 | title=Suburb Growth %}}
+\`\`\`
+
+6. SCORE WHEEL — multi-dimensional radar (3+ scores).
+   Format: \`{{wheel: s1,s2,s3,… | labels=L1,L2,L3,… | max=100 | title=…}}\`
+\`\`\`
+{{wheel: 78,64,82,71,55 | labels=Yield,Growth,Risk,Demand,Infra | title=Score Breakdown}}
+\`\`\`
+
+7. FOOTNOTES — for source citations or methodology notes. Use \`[^id]\` at the
+   call-site and \`[^id]: text\` on its own line for the definition.
+\`\`\`
+The 5-year capital growth rate sits at 7.2%[^abs1].
+
+[^abs1]: ABS Cat. 6416.0, residential property price indexes, March 2026.
+\`\`\`
+
+8. CROSS-REFERENCE — auto-resolves to the printed page number.
+   Format: \`[[see:#chapter-anchor-id]]\` or \`[[see:#id|custom prefix]]\`
+\`\`\`
+For full risk methodology [[see:#ch-risk-analysis]].
+\`\`\`
+
+RULES:
+- Only use a visualisation (gauge/waterfall/heatmap/wheel) when the data is
+  meaningful and SUPPORTS the surrounding narrative. Never invent numbers
+  just to fill a chart.
+- All shortcodes must use REAL figures from the data provided. Never fabricate.
+- If a visualisation would duplicate a table on the same page, choose ONE.
+- Cross-references must point to a chapter heading that actually exists.
+- Footnote definitions must appear in the same section as the call.
+`;
+
 // Helper function to generate a single section via API with retry logic
+
 async function generateReportSection(
   sectionDef: typeof REPORT_SECTIONS[0],
   basePrompt: string,
