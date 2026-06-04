@@ -1645,26 +1645,45 @@ export async function buildHtml(
     ol.timeline .step-body { font-size: 9.5pt; }
     ol.timeline .step-body p { margin-bottom: 4pt; }
 
-    /* ── Chapter hero illustrations ── */
+    /* ── Chapter hero illustrations (placement-driven) ── */
     .chapter-hero {
-      margin: 18pt -17mm 16pt;
+      margin: 18pt 0 16pt;
       page-break-inside: avoid;
       page-break-after: avoid;
       position: relative;
+      overflow: hidden;
     }
     .chapter-hero img {
-      width: 210mm;
-      height: 55mm;
-      object-fit: cover;
       display: block;
+      width: 100%;
+      height: 100%;
     }
-    .chapter-hero::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(247,242,232,0.0) 60%, rgba(247,242,232,0.55) 100%);
-      pointer-events: none;
+    .chapter-hero.hero-rounded { border-radius: 8pt; }
+    .chapter-hero.hero-flush { border-radius: 0; }
+
+    /* width modes */
+    .chapter-hero.hero-w-content { width: auto; }
+    .chapter-hero.hero-w-bleed { margin-left: -17mm; margin-right: -17mm; width: 210mm; border-radius: 0; }
+
+    /* height modes — fixed pt heights so image always fills the frame */
+    .chapter-hero.hero-h-compact  { height: 110pt; }
+    .chapter-hero.hero-h-standard { height: 170pt; }
+    .chapter-hero.hero-h-tall     { height: 260pt; }
+    .chapter-hero.hero-h-full {
+      height: 257mm;
+      margin: 0 -17mm;
+      width: 210mm;
+      border-radius: 0;
+      page-break-before: always;
+      page-break-after: always;
     }
+
+    /* fit + focal */
+    .chapter-hero.hero-fit-cover img   { object-fit: cover; }
+    .chapter-hero.hero-fit-contain img { object-fit: contain; background: ${THEME.paperAlt}; }
+    .chapter-hero.hero-focal-top img    { object-position: center top; }
+    .chapter-hero.hero-focal-center img { object-position: center center; }
+    .chapter-hero.hero-focal-bottom img { object-position: center bottom; }
   `;
 
   const scoreCard = scoreOverall != null
