@@ -10152,6 +10152,69 @@ export type Database = {
         }
         Relationships: []
       }
+      hero_image_library: {
+        Row: {
+          aspect_ratio: string
+          created_at: string
+          enhanced_prompt: string | null
+          error: string | null
+          height: number
+          id: string
+          is_archived: boolean
+          model: string
+          owner_user_id: string
+          prompt: string
+          public_url: string | null
+          source_report_id: string | null
+          status: string
+          storage_path: string | null
+          tags: string[]
+          thumbnail_url: string | null
+          updated_at: string
+          width: number
+        }
+        Insert: {
+          aspect_ratio?: string
+          created_at?: string
+          enhanced_prompt?: string | null
+          error?: string | null
+          height?: number
+          id?: string
+          is_archived?: boolean
+          model?: string
+          owner_user_id: string
+          prompt: string
+          public_url?: string | null
+          source_report_id?: string | null
+          status?: string
+          storage_path?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: number
+        }
+        Update: {
+          aspect_ratio?: string
+          created_at?: string
+          enhanced_prompt?: string | null
+          error?: string | null
+          height?: number
+          id?: string
+          is_archived?: boolean
+          model?: string
+          owner_user_id?: string
+          prompt?: string
+          public_url?: string | null
+          source_report_id?: string | null
+          status?: string
+          storage_path?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: number
+        }
+        Relationships: []
+      }
       industrial_capex: {
         Row: {
           amount: number
@@ -14680,6 +14743,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      report_hero_placements: {
+        Row: {
+          created_at: string
+          focal: string
+          id: string
+          library_image_id: string
+          object_fit: string
+          position_order: number
+          render_height: string
+          render_width: string
+          report_id: string
+          rounded: boolean
+          section_key: string
+          section_title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          focal?: string
+          id?: string
+          library_image_id: string
+          object_fit?: string
+          position_order?: number
+          render_height?: string
+          render_width?: string
+          report_id: string
+          rounded?: boolean
+          section_key: string
+          section_title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          focal?: string
+          id?: string
+          library_image_id?: string
+          object_fit?: string
+          position_order?: number
+          render_height?: string
+          render_width?: string
+          report_id?: string
+          rounded?: boolean
+          section_key?: string
+          section_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_hero_placements_library_image_id_fkey"
+            columns: ["library_image_id"]
+            isOneToOne: false
+            referencedRelation: "hero_image_library"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_qa_conversation_shares: {
         Row: {

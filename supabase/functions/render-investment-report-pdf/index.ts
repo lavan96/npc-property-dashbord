@@ -931,29 +931,67 @@ function fallbackHeroSvg(chapterTitle: string): string {
   return compactDataUri(svg);
 }
 
-async function loadReadyHeroImages(reportId: string): Promise<Record<string, string>> {
+type HeroPlacement = {
+  url: string;
+  height: "compact" | "standard" | "tall" | "full_bleed";
+  width: "content" | "full_bleed";
+  fit: "cover" | "contain";
+  focal: "top" | "center" | "bottom";
+  rounded: boolean;
+};
+
+async function loadHeroPlacements(reportId: string): Promise<Record<string, HeroPlacement>> {
+  const out: Record<string, HeroPlacement> = {};
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const { data } = await supabase
+    // 1. Modern placements (per-chapter controls)
+    const { data: placements } = await supabase
+      .from("report_hero_placements")
+      .select(`
+        section_key, render_height, render_width, object_fit, focal, rounded,
+        library:hero_image_library!report_hero_placements_library_image_id_fkey ( public_url )
+      `)
+      .eq("report_id", reportId);
+    for (const p of (placements || []) as any[]) {
+      const url = p?.library?.public_url;
+      if (!url || !p.section_key) continue;
+      out[p.section_key] = {
+        url,
+        height: p.render_height || "standard",
+        width: p.render_width || "content",
+        fit: p.object_fit || "cover",
+        focal: p.focal || "center",
+        rounded: p.rounded !== false,
+      };
+    }
+    // 2. Legacy fallback for slugs not in placements
+    const { data: legacy } = await supabase
       .from("report_visual_assets")
-      .select("section_key, public_url, include_in_report")
+      .select("section_key, public_url")
       .eq("report_id", reportId)
       .eq("status", "ready")
       .eq("include_in_report", true);
-    const out: Record<string, string> = {};
-    for (const r of (data || []) as Array<{ section_key: string; public_url: string }>) {
-      if (r.public_url) out[r.section_key] = r.public_url;
+    for (const r of (legacy || []) as Array<{ section_key: string; public_url: string }>) {
+      if (!r.public_url || out[r.section_key]) continue;
+      out[r.section_key] = {
+        url: r.public_url,
+        height: "standard",
+        width: "full_bleed",
+        fit: "cover",
+        focal: "center",
+        rounded: false,
+      };
     }
     return out;
   } catch (err) {
     console.warn("[render-investment-report-pdf] hero asset load failed", err);
-    return {};
+    return out;
   }
 }
 
 function injectHeroImages(
   html: string,
-  heroesBySlug: Record<string, string>,
+  heroesBySlug: Record<string, HeroPlacement>,
   toc: Array<{ id: string; title: string }>,
 ): string {
   const idToSlug = new Map<string, string>();
@@ -961,11 +999,17 @@ function injectHeroImages(
 
   return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
     const slug = idToSlug.get(id);
-    const url = slug ? heroesBySlug[slug] : undefined;
-    // Only render the chapter hero when an asset is both ready AND selected
-    // for inclusion. Deselected chapters render the heading on its own.
-    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
-    return `<div class="chapter-hero"><img src="${url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+    const p = slug ? heroesBySlug[slug] : undefined;
+    if (!p) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    const cls = [
+      "chapter-hero",
+      `hero-h-${p.height}`,
+      `hero-w-${p.width}`,
+      `hero-fit-${p.fit}`,
+      `hero-focal-${p.focal}`,
+      p.rounded ? "hero-rounded" : "hero-flush",
+    ].join(" ");
+    return `<div class="${cls}"><img src="${p.url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
   });
 }
 
@@ -1035,7 +1079,7 @@ export async function buildHtml(
   // fall back to the navy/gold SVG banner so the PDF still renders.
   let bodyWithHeroes = bodyAnnotated;
   if (includeHeroImages && toc.length > 0) {
-    const heroes = report.id ? await loadReadyHeroImages(String(report.id)) : {};
+    const heroes = report.id ? await loadHeroPlacements(String(report.id)) : {};
     bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes, toc);
   }
 
@@ -1601,26 +1645,45 @@ export async function buildHtml(
     ol.timeline .step-body { font-size: 9.5pt; }
     ol.timeline .step-body p { margin-bottom: 4pt; }
 
-    /* ── Chapter hero illustrations ── */
+    /* ── Chapter hero illustrations (placement-driven) ── */
     .chapter-hero {
-      margin: 18pt -17mm 16pt;
+      margin: 18pt 0 16pt;
       page-break-inside: avoid;
       page-break-after: avoid;
       position: relative;
+      overflow: hidden;
     }
     .chapter-hero img {
-      width: 210mm;
-      height: 55mm;
-      object-fit: cover;
       display: block;
+      width: 100%;
+      height: 100%;
     }
-    .chapter-hero::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(247,242,232,0.0) 60%, rgba(247,242,232,0.55) 100%);
-      pointer-events: none;
+    .chapter-hero.hero-rounded { border-radius: 8pt; }
+    .chapter-hero.hero-flush { border-radius: 0; }
+
+    /* width modes */
+    .chapter-hero.hero-w-content { width: auto; }
+    .chapter-hero.hero-w-bleed { margin-left: -17mm; margin-right: -17mm; width: 210mm; border-radius: 0; }
+
+    /* height modes — fixed pt heights so image always fills the frame */
+    .chapter-hero.hero-h-compact  { height: 110pt; }
+    .chapter-hero.hero-h-standard { height: 170pt; }
+    .chapter-hero.hero-h-tall     { height: 260pt; }
+    .chapter-hero.hero-h-full {
+      height: 257mm;
+      margin: 0 -17mm;
+      width: 210mm;
+      border-radius: 0;
+      page-break-before: always;
+      page-break-after: always;
     }
+
+    /* fit + focal */
+    .chapter-hero.hero-fit-cover img   { object-fit: cover; }
+    .chapter-hero.hero-fit-contain img { object-fit: contain; background: ${THEME.paperAlt}; }
+    .chapter-hero.hero-focal-top img    { object-position: center top; }
+    .chapter-hero.hero-focal-center img { object-position: center center; }
+    .chapter-hero.hero-focal-bottom img { object-position: center bottom; }
   `;
 
   const scoreCard = scoreOverall != null

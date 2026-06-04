@@ -21,7 +21,7 @@ import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateW
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
-import { HeroImagesDialog } from '@/components/reports/HeroImagesDialog';
+import { HeroImageStudio } from '@/components/reports/HeroImageStudio';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
@@ -507,8 +507,8 @@ export default function InvestmentReportView() {
         }}
       />
 
-      {/* Hero Images Manager */}
-      <HeroImagesDialog
+      {/* Hero Image Studio */}
+      <HeroImageStudio
         reportId={report.id}
         open={heroDialogOpen}
         onOpenChange={setHeroDialogOpen}
