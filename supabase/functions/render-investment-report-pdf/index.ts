@@ -2864,23 +2864,9 @@ ${(() => {
       font-variant-numeric: lining-nums;
     }
 
-    /* Ghosted oversized chapter numeral behind chapter title. */
-    h2 { position: relative; overflow: visible; }
-    h2::after {
-      content: counter(section, decimal-leading-zero);
-      position: absolute;
-      right: -4mm; top: -34mm;
-      font-family: 'Playfair Display', 'Fraunces', serif;
-      font-weight: 800; font-style: italic;
-      font-size: 200pt; line-height: 1;
-      color: ${withAlpha(palette.accent, 0.07)};
-      -webkit-text-fill-color: ${withAlpha(palette.accent, 0.07)};
-      background: none;
-      pointer-events: none; z-index: 0;
-      letter-spacing: -0.05em;
-      font-variant-numeric: lining-nums;
-    }
-    h2 { z-index: 1; }
+    /* Old CSS-counter ghost numeral superseded by .ch-ghost DOM span. */
+    h2 { position: relative; overflow: visible; z-index: 1; }
+    h2::after { content: none !important; }
     h2 + p { position: relative; z-index: 2; }
 
     /* Real initial-letter drop cap (WeasyPrint supports this; degrades to ::first-letter). */
