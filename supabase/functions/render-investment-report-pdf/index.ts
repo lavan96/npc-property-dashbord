@@ -3702,7 +3702,11 @@ async function callWeasyPrint(html: string): Promise<Uint8Array> {
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      throw new Error(`WeasyPrint render failed (${res.status}): ${errBody.slice(0, 400)}`);
+      const hint =
+        res.status === 401
+          ? " (token mismatch — the WEASYPRINT_SERVICE_TOKEN secret in Supabase does not equal the token deployed on the Cloud Run service; update one side to match the other)"
+          : "";
+      throw new Error(`WeasyPrint render failed (${res.status})${hint}: ${errBody.slice(0, 400)}`);
     }
     const buf = await res.arrayBuffer();
     return new Uint8Array(buf);
