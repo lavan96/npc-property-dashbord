@@ -2119,12 +2119,13 @@ export async function buildHtml(
     h2 {
       counter-increment: section;
       string-set: chapter content(text);
-      font-size: 28pt; font-weight: 700; letter-spacing: -0.005em;
-      margin-top: 0;
-      padding-bottom: 10pt;
-      padding-top: 6pt;
-      border-bottom: 0.5pt solid ${THEME.rule};
+      font-family: 'Playfair Display', 'Georgia', serif;
+      font-size: 40pt; font-weight: 700; letter-spacing: -0.012em; line-height: 1.04;
+      margin: 0 0 24pt;
+      padding: 96pt 0 22pt 0;
+      border-bottom: none;
       display: block;
+      position: relative;
       /* Each chapter starts on a fresh page — editorial polish. */
       break-before: page;
       page-break-before: always;
@@ -2132,22 +2133,68 @@ export async function buildHtml(
       bookmark-label: content(text);
       bookmark-state: open;
       page: chapter-opener;
+      /* Gold underline rule sits below the title, not the eyebrow. */
     }
     /* The very first h2 of the body should not force an extra blank page after the TOC. */
     section.body-page:first-of-type > h2:first-child { break-before: auto; page-break-before: auto; }
 
+    /* Editorial chapter opener: huge ghosted gold numeral, mono eyebrow above title,
+       gold hairline beneath. Replaces the old inline ::before numeral. */
     h2::before {
-      content: counter(section, decimal-leading-zero);
-      font-family: 'Playfair Display', serif;
-      font-weight: 500; font-style: italic;
-      font-size: 18pt;
-      -webkit-text-fill-color: ${THEME.gold};
+      content: "CHAPTER " counter(section, decimal-leading-zero);
+      display: block;
+      position: absolute;
+      top: 50pt; left: 0;
+      font-family: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+      font-weight: 500; font-style: normal;
+      font-size: 9pt;
+      letter-spacing: 0.22em;
       color: ${THEME.gold};
-      letter-spacing: .04em;
-      margin-right: 28pt;
-      padding-right: 6pt;
+      -webkit-text-fill-color: ${THEME.gold};
+      background: none;
+      -webkit-background-clip: initial;
+      background-clip: initial;
+      margin: 0; padding: 0;
       font-variant-numeric: lining-nums tabular-nums;
     }
+    h2::after {
+      content: counter(section, decimal-leading-zero);
+      position: absolute;
+      top: 18pt; right: -6pt;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700; font-style: italic;
+      font-size: 180pt;
+      line-height: 1;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 1.1pt ${THEME.gold};
+      opacity: 0.32;
+      letter-spacing: -0.04em;
+      pointer-events: none;
+      z-index: 0;
+    }
+    h2 > * { position: relative; z-index: 1; }
+    /* Gold hairline that sits *under* the title (not the eyebrow). */
+    h2 + p, h2 + .insight, h2 + .compare-card, h2 + figure, h2 + ul, h2 + ol, h2 + .standfirst {
+      border-top: 1.4pt solid ${THEME.gold};
+      padding-top: 14pt;
+      margin-top: 28pt;
+    }
+    /* Editorial drop cap on the first paragraph of each chapter. */
+    h2 + p::first-letter {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 54pt;
+      line-height: 0.86;
+      float: left;
+      padding: 4pt 8pt 0 0;
+      color: ${THEME.gold};
+      -webkit-text-fill-color: ${THEME.gold};
+      background: none;
+      -webkit-background-clip: initial;
+    }
+    /* Tasteful end-of-chapter mark: a centred gold lozenge before the next h2. */
+    h2:not(:first-of-type)::before { /* keep eyebrow; mark is handled separately below */ }
     h3 {
       font-size: 17pt; font-weight: 600; margin-top: 18pt;
       padding-left: 10pt;
