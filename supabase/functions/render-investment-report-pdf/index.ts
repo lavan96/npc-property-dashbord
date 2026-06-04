@@ -3812,7 +3812,9 @@ if (import.meta.main) Deno.serve(async (req) => {
       .slice(0, 60);
     const fileName = `investment-report-${safeAddr}.pdf`;
 
-    // Prefer self-hosted WeasyPrint (superior typography); fall back to Api2PDF.
+    // Prefer self-hosted WeasyPrint (superior typography). If it is configured
+    // but fails, fail loudly instead of silently returning another Chrome/Api2PDF
+    // PDF that looks identical to the old renderer.
     let fileUrl: string | null = null;
     let renderer: "weasyprint" | "api2pdf" = "api2pdf";
     if (weasyConfigured) {
@@ -3821,8 +3823,9 @@ if (import.meta.main) Deno.serve(async (req) => {
         fileUrl = await uploadPdfAndSign(supabase, pdfBytes, fileName);
         renderer = "weasyprint";
       } catch (err) {
-        console.warn("[render-investment-report-pdf] WeasyPrint failed, falling back to Api2PDF", err);
-        if (!API2PDF_KEY) throw err;
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[render-investment-report-pdf] WeasyPrint failed; Chrome fallback disabled", err);
+        throw new Error(`WeasyPrint render failed; Chrome fallback disabled to avoid stale-looking PDFs. ${message}`);
       }
     }
     if (!fileUrl) {
