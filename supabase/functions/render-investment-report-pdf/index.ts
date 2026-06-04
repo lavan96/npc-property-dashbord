@@ -1121,7 +1121,7 @@ function renderBarsSvg(
   const barX = labelW + 12;
   const barW = w - barX - valueW - 16;
   const h = padT + items.length * rowH + padB;
-  const max = opts.max ?? Math.max(...items.map((i) => Math.abs(i.value))) || 1;
+  const max = (opts.max ?? Math.max(...items.map((i) => Math.abs(i.value)))) || 1;
   const rows = items.map((it, i) => {
     const y = padT + i * rowH;
     const pct = Math.max(0, Math.min(1, Math.abs(it.value) / max));
