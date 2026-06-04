@@ -2335,7 +2335,20 @@ export async function buildHtml(
   const dem = report.demographics_data || {};
 
   // Render + post-process markdown body.
-  const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
+  // Deterministic visual injection runs FIRST so generated tables / score mentions
+  // are converted into shortcodes (heatmap / bars / gauge / tiles / sparkline) that
+  // applyEditorialMarkdown then expands. This makes the renderer self-sufficient
+  // even when the LLM emits pure prose + tables.
+  const mdRaw = cleanReportMarkdown(String(report.report_content || ""), address);
+  const mdWithVisuals = autoInjectVisualShortcodes(mdRaw);
+  console.log("[visuals] shortcodes injected:", {
+    heatmaps: (mdWithVisuals.match(/\{\{heatmap:/g) || []).length,
+    gauges: (mdWithVisuals.match(/\{\{gauge:/g) || []).length,
+    bars: (mdWithVisuals.match(/\{\{bars:/g) || []).length,
+    tiles: (mdWithVisuals.match(/\{\{tiles:/g) || []).length,
+    sparklines: (mdWithVisuals.match(/~~\[/g) || []).length,
+  });
+  const md = applyEditorialMarkdown(mdWithVisuals);
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
   // Repair LLM currency artefacts where "$45,872.969" leaks a 3-digit
