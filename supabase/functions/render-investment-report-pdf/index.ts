@@ -931,29 +931,67 @@ function fallbackHeroSvg(chapterTitle: string): string {
   return compactDataUri(svg);
 }
 
-async function loadReadyHeroImages(reportId: string): Promise<Record<string, string>> {
+type HeroPlacement = {
+  url: string;
+  height: "compact" | "standard" | "tall" | "full_bleed";
+  width: "content" | "full_bleed";
+  fit: "cover" | "contain";
+  focal: "top" | "center" | "bottom";
+  rounded: boolean;
+};
+
+async function loadHeroPlacements(reportId: string): Promise<Record<string, HeroPlacement>> {
+  const out: Record<string, HeroPlacement> = {};
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const { data } = await supabase
+    // 1. Modern placements (per-chapter controls)
+    const { data: placements } = await supabase
+      .from("report_hero_placements")
+      .select(`
+        section_key, render_height, render_width, object_fit, focal, rounded,
+        library:hero_image_library!report_hero_placements_library_image_id_fkey ( public_url )
+      `)
+      .eq("report_id", reportId);
+    for (const p of (placements || []) as any[]) {
+      const url = p?.library?.public_url;
+      if (!url || !p.section_key) continue;
+      out[p.section_key] = {
+        url,
+        height: p.render_height || "standard",
+        width: p.render_width || "content",
+        fit: p.object_fit || "cover",
+        focal: p.focal || "center",
+        rounded: p.rounded !== false,
+      };
+    }
+    // 2. Legacy fallback for slugs not in placements
+    const { data: legacy } = await supabase
       .from("report_visual_assets")
-      .select("section_key, public_url, include_in_report")
+      .select("section_key, public_url")
       .eq("report_id", reportId)
       .eq("status", "ready")
       .eq("include_in_report", true);
-    const out: Record<string, string> = {};
-    for (const r of (data || []) as Array<{ section_key: string; public_url: string }>) {
-      if (r.public_url) out[r.section_key] = r.public_url;
+    for (const r of (legacy || []) as Array<{ section_key: string; public_url: string }>) {
+      if (!r.public_url || out[r.section_key]) continue;
+      out[r.section_key] = {
+        url: r.public_url,
+        height: "standard",
+        width: "full_bleed",
+        fit: "cover",
+        focal: "center",
+        rounded: false,
+      };
     }
     return out;
   } catch (err) {
     console.warn("[render-investment-report-pdf] hero asset load failed", err);
-    return {};
+    return out;
   }
 }
 
 function injectHeroImages(
   html: string,
-  heroesBySlug: Record<string, string>,
+  heroesBySlug: Record<string, HeroPlacement>,
   toc: Array<{ id: string; title: string }>,
 ): string {
   const idToSlug = new Map<string, string>();
@@ -961,11 +999,17 @@ function injectHeroImages(
 
   return html.replace(/<h2 id="(ch-[^"]+)"([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, id, attrs, inner) => {
     const slug = idToSlug.get(id);
-    const url = slug ? heroesBySlug[slug] : undefined;
-    // Only render the chapter hero when an asset is both ready AND selected
-    // for inclusion. Deselected chapters render the heading on its own.
-    if (!url) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
-    return `<div class="chapter-hero"><img src="${url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
+    const p = slug ? heroesBySlug[slug] : undefined;
+    if (!p) return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+    const cls = [
+      "chapter-hero",
+      `hero-h-${p.height}`,
+      `hero-w-${p.width}`,
+      `hero-fit-${p.fit}`,
+      `hero-focal-${p.focal}`,
+      p.rounded ? "hero-rounded" : "hero-flush",
+    ].join(" ");
+    return `<div class="${cls}"><img src="${p.url}" alt="" crossorigin="anonymous"/></div><h2 id="${id}"${attrs}>${inner}</h2>`;
   });
 }
 
