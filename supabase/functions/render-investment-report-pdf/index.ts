@@ -3139,9 +3139,11 @@ ${(() => {
       font-variant-numeric: lining-nums;
     }
 
-    /* Old CSS-counter ghost numeral superseded by .ch-ghost DOM span. */
+    /* The new editorial opener (mono eyebrow ::before + ghosted-outline ::after
+       numeral defined upstream) replaces the legacy .ch-ghost DOM span. Hide it
+       so we don't render two ghost numerals on top of each other. */
+    .ch-ghost { display: none !important; }
     h2 { position: relative; overflow: visible; z-index: 1; }
-    h2::after { content: none !important; }
     h2 + p { position: relative; z-index: 2; }
 
     /* Real initial-letter drop cap (WeasyPrint supports this; degrades to ::first-letter). */
