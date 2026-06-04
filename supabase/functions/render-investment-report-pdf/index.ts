@@ -1843,6 +1843,7 @@ export async function buildHtml(
 
   // Editor's Note — auto-generated, one-paragraph foreword that lifts 2-3 real
   // figures from the report. Pure presentation, no AI call.
+  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
   const editorsNoteBits: string[] = [];
   if (priceTxt && rentTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong> with assessed rent of <strong>${rentTxt}/wk</strong>`);
   else if (priceTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong>`);
