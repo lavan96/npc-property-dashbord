@@ -1638,12 +1638,12 @@ export async function buildHtml(
     blockquote, .insight-box, li.insight-li, .stat-block, aside.pull-quote, aside.sidenote {
       background: ${palette.paperAlt};
       border-color: ${palette.accent};
-      box-shadow: inset 0 0 0 ${Math.max(0.25, intensity * 0.8)}pt ${palette.accent}22;
+      box-shadow: inset 0 0 0 ${Math.max(0.25, intensity * 0.8)}pt ${withAlpha(palette.accent, 0.13)};
     }
     .cover { background: ${palette.cover}; }
     .cover-scrim {
       position: absolute; inset: 0;
-      background: linear-gradient(115deg, ${palette.cover}F2 0%, ${palette.cover}D9 42%, ${palette.cover}40 100%);
+      background: linear-gradient(115deg, ${withAlpha(palette.cover, 0.95)} 0%, ${withAlpha(palette.cover, 0.85)} 42%, ${withAlpha(palette.cover, 0.25)} 100%);
     }
     .cover-copy {
       position: absolute; left: 18mm; right: 18mm; bottom: ${design.coverStyle === "editorial" ? "34mm" : "26mm"};
@@ -1683,16 +1683,16 @@ export async function buildHtml(
       table { background: ${palette.paper}; border-top: 1pt solid ${palette.ink}; border-bottom: 1pt solid ${palette.ink}; }
       th { background: transparent; color: ${palette.ink}; border-bottom: 1pt solid ${palette.ink}; }
       tr:nth-child(even) td { background: transparent; }
-      td { border-bottom: 0.35pt solid ${palette.muted}66; }
+      td { border-bottom: 0.35pt solid ${withAlpha(palette.muted, 0.4)}; }
     ` : ""}
     ${design.tableStyle === "minimal" ? `
       table { background: transparent; font-size: 8.2pt; }
       th { background: ${palette.paperAlt}; color: ${palette.ink}; }
-      th, td { border-bottom: 0.25pt solid ${palette.muted}55; padding: 4.2pt 5.5pt; }
+      th, td { border-bottom: 0.25pt solid ${withAlpha(palette.muted, 0.33)}; padding: 4.2pt 5.5pt; }
       tr:nth-child(even) td { background: transparent; }
     ` : ""}
     figure.vis-figure, figure.auto-chart {
-      background: ${palette.paperAlt}; border-color: ${palette.accent}66;
+      background: ${palette.paperAlt}; border-color: ${withAlpha(palette.accent, 0.4)};
       padding: ${12 + Math.round(intensity * 8)}pt ${14 + Math.round(intensity * 7)}pt ${9 + Math.round(intensity * 4)}pt;
     }
   `;
