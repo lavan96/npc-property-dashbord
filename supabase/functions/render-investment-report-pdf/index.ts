@@ -1079,7 +1079,7 @@ export async function buildHtml(
   // fall back to the navy/gold SVG banner so the PDF still renders.
   let bodyWithHeroes = bodyAnnotated;
   if (includeHeroImages && toc.length > 0) {
-    const heroes = report.id ? await loadReadyHeroImages(String(report.id)) : {};
+    const heroes = report.id ? await loadHeroPlacements(String(report.id)) : {};
     bodyWithHeroes = injectHeroImages(bodyAnnotated, heroes, toc);
   }
 
