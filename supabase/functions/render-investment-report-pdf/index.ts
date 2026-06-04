@@ -1545,6 +1545,7 @@ export async function buildHtml(
     console.log("[charts] embedded table charts", { count: (bodyHtml.match(/class=\"chart-wrap\"/g) || []).length });
   }
   bodyHtml = colourCodeTableCells(bodyHtml);
+  bodyHtml = wrapWideTablesLandscape(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
   // Hero illustrations per chapter — consumes ONLY pre-generated assets
