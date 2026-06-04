@@ -3454,6 +3454,23 @@ export async function buildHtml(
       line-height: 1;
     }
     .glance-text { display: block; }
+    .glance-label {
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7pt;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: ${THEME.inkMuted};
+      margin-bottom: 2pt;
+    }
+    .glance-value {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: ${THEME.ink};
+      line-height: 1.3;
+    }
 
     /* ── Margin micro-chart (sidenote variant) ── */
     aside.sidenote-margin {
