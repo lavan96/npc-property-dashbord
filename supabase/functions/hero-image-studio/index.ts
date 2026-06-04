@@ -94,16 +94,29 @@ async function generateOne(opts: {
   width: number;
   height: number;
   aspect: string;
+  referenceImages?: string[];
 }): Promise<Uint8Array> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
   try {
     const isGemini = opts.model.startsWith("google/");
+    const refs = (opts.referenceImages || []).slice(0, 4).map((r) => {
+      const url = r.startsWith("data:") ? r : `data:image/png;base64,${r}`;
+      return { type: "image_url", image_url: { url } };
+    });
+
     const body: any = isGemini
       ? {
           model: opts.model,
-          messages: [{ role: "user", content: opts.prompt }],
+          messages: [
+            {
+              role: "user",
+              content: refs.length
+                ? [{ type: "text", text: opts.prompt }, ...refs]
+                : opts.prompt,
+            },
+          ],
           modalities: ["image", "text"],
         }
       : {
@@ -168,13 +181,16 @@ Deno.serve(async (req) => {
       const { w, h } = ASPECT_TO_SIZE[aspect];
       const variations = Math.min(Math.max(Number(body?.variations) || 1, 1), 4);
       const sourceReportId = body?.sourceReportId ? String(body.sourceReportId) : null;
+      const referenceImages: string[] = Array.isArray(body?.referenceImages)
+        ? body.referenceImages.map((r: any) => String(r)).filter(Boolean).slice(0, 4)
+        : [];
 
       const results: any[] = [];
       const errors: string[] = [];
 
       for (let i = 0; i < variations; i++) {
         try {
-          const bytes = await generateOne({ prompt, model, width: w, height: h, aspect });
+          const bytes = await generateOne({ prompt, model, width: w, height: h, aspect, referenceImages });
           const id = crypto.randomUUID();
           const path = `${STORAGE_PREFIX}/${userId || "anon"}/${id}.png`;
           const { error: upErr } = await supabase
@@ -280,6 +296,67 @@ Deno.serve(async (req) => {
         .eq("owner_user_id", userId);
       if (error) return jsonErr(error.message, corsHeaders, 500);
       return jsonOk({ deleted: true }, corsHeaders);
+    }
+
+    // ── library_upload (raw image, no AI) ────────────────────────────────
+    if (action === "library_upload") {
+      const fileBase64 = String(body?.fileBase64 || "");
+      if (!fileBase64) return jsonErr("fileBase64 required", corsHeaders);
+      const contentType = String(body?.contentType || "image/png");
+      const width = Math.max(Number(body?.width) || 0, 1);
+      const height = Math.max(Number(body?.height) || 0, 1);
+      const aspect = (() => {
+        const ratio = width / Math.max(height, 1);
+        const closest = Object.entries(ASPECT_TO_SIZE).reduce(
+          (best, [k, v]) => {
+            const d = Math.abs(v.w / v.h - ratio);
+            return d < best.d ? { k, d } : best;
+          },
+          { k: "3:2", d: Infinity },
+        );
+        return closest.k;
+      })();
+      const label = String(body?.prompt || "Uploaded image").slice(0, 240);
+      const sourceReportId = body?.sourceReportId ? String(body.sourceReportId) : null;
+
+      let pure = fileBase64;
+      const m = fileBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (m) pure = m[2];
+      const bin = atob(pure);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+      const id = crypto.randomUUID();
+      const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
+      const path = `${STORAGE_PREFIX}/${userId || "anon"}/${id}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+        contentType,
+        upsert: true,
+        cacheControl: "31536000",
+      });
+      if (upErr) return jsonErr(upErr.message, corsHeaders, 500);
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const { data: inserted, error: insErr } = await supabase
+        .from("hero_image_library")
+        .insert({
+          id,
+          owner_user_id: userId,
+          source_report_id: sourceReportId,
+          prompt: label,
+          enhanced_prompt: null,
+          model: "upload/raw",
+          aspect_ratio: aspect,
+          width,
+          height,
+          status: "ready",
+          storage_path: path,
+          public_url: pub.publicUrl,
+          thumbnail_url: pub.publicUrl,
+        })
+        .select()
+        .single();
+      if (insErr) return jsonErr(insErr.message, corsHeaders, 500);
+      return jsonOk({ image: inserted }, corsHeaders);
     }
 
     // ── chapters_list ────────────────────────────────────────────────────

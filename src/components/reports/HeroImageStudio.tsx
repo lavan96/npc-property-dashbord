@@ -33,6 +33,10 @@ import {
   Layers,
   Search,
   X,
+  Upload,
+  Download,
+  Eye,
+  Paperclip,
 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
@@ -123,9 +127,11 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
   const [prompt, setPrompt] = useState("");
   const [enhancing, setEnhancing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [model, setModel] = useState("openai/gpt-image-2");
   const [aspect, setAspect] = useState("3:2");
   const [variations, setVariations] = useState(1);
+  const [refImages, setRefImages] = useState<{ name: string; dataUrl: string }[]>([]);
 
   // Library
   const [library, setLibrary] = useState<LibraryImage[]>([]);
@@ -139,6 +145,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [previewPlacement, setPreviewPlacement] = useState<Placement | null>(null);
 
   // Load data
   const fetchLibrary = useCallback(async () => {
@@ -226,6 +233,15 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
       toast({ title: "Add a prompt first", variant: "destructive" });
       return;
     }
+    const isGemini = model.startsWith("google/");
+    if (refImages.length && !isGemini) {
+      toast({
+        title: "Reference images need a Gemini model",
+        description: "Switch to Gemini 3 Pro Image or Nano Banana to use references.",
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(true);
     const { data, error } = await invokeSecureFunction<{ images: LibraryImage[]; errors: string[] }>(
       "hero-image-studio",
@@ -236,6 +252,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
         aspectRatio: aspect,
         variations,
         sourceReportId: reportId,
+        referenceImages: refImages.map((r) => r.dataUrl),
       },
       { timeoutMs: 220_000 },
     );
@@ -252,6 +269,93 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
     });
     await fetchLibrary();
   };
+
+  const readFileAsDataUrl = (f: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(f);
+    });
+
+  const decodeImageSize = (dataUrl: string): Promise<{ width: number; height: number }> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve({ width: 1, height: 1 });
+      img.src = dataUrl;
+    });
+
+  const handleAddReferenceImages = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const arr = Array.from(files).slice(0, 4 - refImages.length);
+    const next: { name: string; dataUrl: string }[] = [];
+    for (const f of arr) {
+      if (!f.type.startsWith("image/")) continue;
+      if (f.size > 8 * 1024 * 1024) {
+        toast({ title: `${f.name} too large`, description: "Max 8MB per reference.", variant: "destructive" });
+        continue;
+      }
+      next.push({ name: f.name, dataUrl: await readFileAsDataUrl(f) });
+    }
+    setRefImages((prev) => [...prev, ...next].slice(0, 4));
+  };
+
+  const handleRawUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const f of Array.from(files)) {
+        if (!f.type.startsWith("image/")) continue;
+        if (f.size > 20 * 1024 * 1024) {
+          toast({ title: `${f.name} too large`, description: "Max 20MB.", variant: "destructive" });
+          continue;
+        }
+        const dataUrl = await readFileAsDataUrl(f);
+        const { width, height } = await decodeImageSize(dataUrl);
+        const { error } = await invokeSecureFunction(
+          "hero-image-studio",
+          {
+            action: "library_upload",
+            fileBase64: dataUrl,
+            contentType: f.type || "image/png",
+            width,
+            height,
+            prompt: f.name,
+            sourceReportId: reportId,
+          },
+          { timeoutMs: 120_000 },
+        );
+        if (error) {
+          toast({ title: `Upload failed: ${f.name}`, description: error.message, variant: "destructive" });
+        }
+      }
+      await fetchLibrary();
+      toast({ title: "Upload complete" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadImage = async (img: LibraryImage) => {
+    if (!img.public_url) return;
+    try {
+      const res = await fetch(img.public_url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = (blob.type.split("/")[1] || "png").split("+")[0];
+      a.download = `hero-${img.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
 
   const placeImage = async (img: LibraryImage) => {
     if (!selectedSlug) {
@@ -435,6 +539,43 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                   />
                 </div>
 
+                {/* Reference images (Gemini only) */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex justify-between">
+                    <span>Reference images</span>
+                    <span className="text-muted-foreground">{refImages.length}/4</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {refImages.map((r, i) => (
+                      <div key={i} className="relative w-12 h-12 rounded border overflow-hidden bg-muted">
+                        <img src={r.dataUrl} alt={r.name} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => setRefImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center"
+                          title="Remove"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {refImages.length < 4 && (
+                      <label className="w-12 h-12 rounded border-2 border-dashed flex items-center justify-center cursor-pointer hover:border-primary/60 hover:bg-muted/40">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { handleAddReferenceImages(e.target.files); e.target.value = ""; }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Gemini models only. Used as style/composition guidance.
+                  </p>
+                </div>
+
                 <Button
                   onClick={handleGenerate}
                   disabled={generating || enhancing || !prompt.trim()}
@@ -447,6 +588,38 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                   )}
                   {generating ? `Generating ${variations}…` : `Generate ${variations} image${variations === 1 ? "" : "s"}`}
                 </Button>
+
+                <div className="pt-2 border-t">
+                  <Label className="text-xs mb-1.5 block">Or upload your own</Label>
+                  <label className="block">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={uploading}
+                    >
+                      <span>
+                        {uploading ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-1" />
+                        )}
+                        {uploading ? "Uploading…" : "Upload image"}
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => { handleRawUpload(e.target.files); e.target.value = ""; }}
+                    />
+                  </label>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Skip AI — embed your own photo directly in the PDF.
+                  </p>
+                </div>
+
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
                   Heads-up: variations run sequentially. Larger requests can take 30–90s each.
                 </p>
@@ -563,6 +736,15 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={() => downloadImage(img)}
+                              className="h-7 w-7"
+                              title="Download"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => archiveImage(img)}
                               className="h-7 w-7"
                               title={img.is_archived ? "Unarchive" : "Archive"}
@@ -617,14 +799,26 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                           {c.section_title}
                         </span>
                         {p && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => { e.stopPropagation(); clearPlacement(p); }}
-                            className="h-5 w-5"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => { e.stopPropagation(); setPreviewPlacement(p); }}
+                              className="h-5 w-5"
+                              title="Preview in PDF"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => { e.stopPropagation(); clearPlacement(p); }}
+                              className="h-5 w-5"
+                              title="Remove"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
                       </div>
                       {p?.library?.public_url ? (
@@ -663,6 +857,87 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
           </aside>
         </div>
       </DialogContent>
+
+      {/* PDF preview for a placement */}
+      <Dialog open={!!previewPlacement} onOpenChange={(o) => !o && setPreviewPlacement(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              PDF preview — {previewPlacement?.section_title}
+            </DialogTitle>
+            <DialogDescription>
+              Approximation of how this hero will appear on the rendered PDF page.
+            </DialogDescription>
+          </DialogHeader>
+          {previewPlacement && (
+            <div className="space-y-3">
+              {/* A4-ish page wrapper at 595×842 scaled */}
+              <div
+                className="mx-auto border bg-white shadow-sm relative overflow-hidden"
+                style={{ width: 480, height: 680 }}
+              >
+                {/* Header strip */}
+                <div className="absolute top-0 left-0 right-0 h-6 bg-muted/40 border-b" />
+                {(() => {
+                  const heightPx = previewPlacement.render_height === "compact" ? 90
+                    : previewPlacement.render_height === "tall" ? 220
+                    : previewPlacement.render_height === "full_bleed" ? 680
+                    : 150;
+                  const fullBleed = previewPlacement.render_width === "full_bleed";
+                  const radius = previewPlacement.rounded && previewPlacement.render_height !== "full_bleed" ? 8 : 0;
+                  const inset = fullBleed ? 0 : 32;
+                  const top = previewPlacement.render_height === "full_bleed" ? 0 : 32;
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top,
+                        left: inset,
+                        right: inset,
+                        height: heightPx,
+                        borderRadius: radius,
+                        overflow: "hidden",
+                        background: "hsl(var(--muted))",
+                      }}
+                    >
+                      {previewPlacement.library?.public_url && (
+                        <img
+                          src={previewPlacement.library.public_url}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: previewPlacement.object_fit,
+                            objectPosition: previewPlacement.focal,
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+                {/* Body placeholder */}
+                {previewPlacement.render_height !== "full_bleed" && (
+                  <div className="absolute left-8 right-8 bottom-8 space-y-2">
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                    <div className="h-2 bg-muted/70 rounded w-full" />
+                    <div className="h-2 bg-muted/70 rounded w-11/12" />
+                    <div className="h-2 bg-muted/70 rounded w-10/12" />
+                    <div className="h-2 bg-muted/70 rounded w-9/12" />
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center text-xs text-muted-foreground gap-3">
+                <Badge variant="outline" className="text-[10px]">{previewPlacement.render_height}</Badge>
+                <Badge variant="outline" className="text-[10px]">{previewPlacement.render_width}</Badge>
+                <Badge variant="outline" className="text-[10px]">fit: {previewPlacement.object_fit}</Badge>
+                <Badge variant="outline" className="text-[10px]">focal: {previewPlacement.focal}</Badge>
+                {previewPlacement.rounded && <Badge variant="outline" className="text-[10px]">rounded</Badge>}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
