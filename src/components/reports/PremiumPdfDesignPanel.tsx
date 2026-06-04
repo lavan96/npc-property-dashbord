@@ -49,7 +49,7 @@ export function PremiumPdfDesignPanel({ value, onChange }: PremiumPdfDesignPanel
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Visual preset</Label>
-          <Select value={value.preset} onValueChange={(preset: PdfDesignPreset) => patch({ preset })}>
+          <Select value={value.preset} onValueChange={(preset) => patch({ preset: preset as PdfDesignPreset })}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="signature">NPC Signature Gold</SelectItem>
@@ -73,7 +73,7 @@ export function PremiumPdfDesignPanel({ value, onChange }: PremiumPdfDesignPanel
 
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Cover</Label>
-          <Select value={value.coverStyle} onValueChange={(coverStyle: PdfCoverStyle) => patch({ coverStyle })}>
+          <Select value={value.coverStyle} onValueChange={(coverStyle) => patch({ coverStyle: coverStyle as PdfCoverStyle })}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="image">Clean image</SelectItem>
@@ -85,7 +85,7 @@ export function PremiumPdfDesignPanel({ value, onChange }: PremiumPdfDesignPanel
 
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Chapter openings</Label>
-          <Select value={value.chapterStyle} onValueChange={(chapterStyle: PdfChapterStyle) => patch({ chapterStyle })}>
+          <Select value={value.chapterStyle} onValueChange={(chapterStyle) => patch({ chapterStyle: chapterStyle as PdfChapterStyle })}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="classic">Classic numbered</SelectItem>
@@ -97,7 +97,7 @@ export function PremiumPdfDesignPanel({ value, onChange }: PremiumPdfDesignPanel
 
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Tables</Label>
-          <Select value={value.tableStyle} onValueChange={(tableStyle: PdfTableStyle) => patch({ tableStyle })}>
+          <Select value={value.tableStyle} onValueChange={(tableStyle) => patch({ tableStyle: tableStyle as PdfTableStyle })}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="classic">Classic contrast</SelectItem>
@@ -109,7 +109,7 @@ export function PremiumPdfDesignPanel({ value, onChange }: PremiumPdfDesignPanel
 
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Density</Label>
-          <Select value={value.density} onValueChange={(density: PdfDensity) => patch({ density })}>
+          <Select value={value.density} onValueChange={(density) => patch({ density: density as PdfDensity })}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="compact">Compact</SelectItem>
