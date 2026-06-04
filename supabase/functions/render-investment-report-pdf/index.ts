@@ -2237,6 +2237,7 @@ export async function buildHtml(
   const km = fin.keyMetrics || fin.key_metrics || {};
   const score = report.investment_score || {};
   const loc = report.location_intelligence || {};
+  const dem = report.demographics_data || {};
 
   // Render + post-process markdown body.
   const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
@@ -2257,6 +2258,8 @@ export async function buildHtml(
   }
   bodyHtml = colourCodeTableCells(bodyHtml);
   bodyHtml = wrapWideTablesLandscape(bodyHtml);
+  bodyHtml = addDataSparklinesToParagraphs(bodyHtml);
+  bodyHtml = injectChapterGlanceFallbacks(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
   // Hero illustrations per chapter — consumes ONLY pre-generated assets
@@ -2297,6 +2300,42 @@ export async function buildHtml(
       ${k.spark ? `<div class="kpi-spark"><img src="${k.spark}" alt=""/></div>` : ""}
     </div>`)
     .join("");
+
+  const trendDelta = (vals?: number[], mode: "money" | "percent" | "plain" = "plain") => {
+    if (!vals || vals.length < 2) return undefined;
+    const delta = vals[vals.length - 1] - vals[0];
+    if (!Number.isFinite(delta) || Math.abs(delta) < 0.0001) return "→ flat";
+    const sign = delta > 0 ? "▲" : "▼";
+    const abs = Math.abs(delta);
+    const formatted = mode === "money" ? fmtMoney(abs) : mode === "percent" ? `${abs.toFixed(1)} pts` : abs.toFixed(abs >= 10 ? 0 : 1);
+    return `${sign} ${formatted}`;
+  };
+
+  const summaryKpiHtml = renderKpiStripHtml([
+    km.purchasePrice != null ? { label: "Median / Price", value: fmtMoney(km.purchasePrice), delta: trendDelta(series.valueSeries, "money"), spark: series.valueSeries } : null,
+    km.grossRentalYield != null ? { label: "Yield", value: fmtPct(km.grossRentalYield), delta: trendDelta(series.yieldSeries, "percent"), spark: series.yieldSeries } : null,
+    km.weeklyRent != null ? { label: "Rent", value: `${fmtMoney(km.weeklyRent)}/wk`, delta: trendDelta(series.rentSeries, "money"), spark: series.rentSeries } : null,
+    km.weeklyNet != null ? { label: "Cash flow", value: fmtMoney(km.weeklyNet), delta: trendDelta(series.cashflowSeries, "money"), spark: series.cashflowSeries } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string; delta?: string; spark?: number[] }>);
+
+  const scoreBreakdownItems = extractScoreBreakdownItems(score).slice(0, 6);
+  const scoreVisualsHtml = [
+    scoreOverall != null ? vizFigure(renderGaugeSvg(Number(scoreOverall), 100, "Investment Score", scoreBand || "Weighted composite"), "Investment score gauge") : "",
+    scoreBreakdownItems.length >= 3 ? vizFigure(renderBarsSvg(scoreBreakdownItems, { title: "Score drivers", max: 100 }), "Score driver comparator") : "",
+  ].filter(Boolean).join("");
+
+  const renterShare = normaliseShare(recursiveNumberByKey(dem, [/renter/i, /renting/i, /tenant/i]));
+  const ownerShare = normaliseShare(recursiveNumberByKey(dem, [/owner.?occup/i, /owned/i]));
+  const demographicVisualHtml = [
+    renterShare != null || ownerShare != null
+      ? vizFigure(renderDonutSvg([
+          ...(ownerShare != null ? [{ label: "Owner-occupied", value: ownerShare }] : []),
+          ...(renterShare != null ? [{ label: "Renter", value: renterShare }] : []),
+          ...((ownerShare != null || renterShare != null) && (ownerShare || 0) + (renterShare || 0) < 100 ? [{ label: "Other", value: 100 - (ownerShare || 0) - (renterShare || 0) }] : []),
+        ], { title: "Tenure mix", centerLabel: renterShare != null ? `${Math.round(renterShare)}%` : undefined, centerSub: renterShare != null ? "Renter" : undefined }), "Tenure composition")
+      : "",
+    renterShare != null ? vizFigure(renderPictographSvg(Math.max(1, Math.round(renterShare / 10)), 10, { icon: "house", label: "Renter share", sub: `${Math.round(renterShare)} in 100 dwellings rent`, cols: 10 }), "Renter share pictograph") : "",
+  ].filter(Boolean).join("");
 
   // ── Executive Summary (replaces Snapshot + Finance Visuals section) ──
   const suburbLabel = loc?.suburb && loc?.state
