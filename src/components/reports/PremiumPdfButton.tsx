@@ -36,7 +36,7 @@ export function PremiumPdfButton({
     if (loading) return;
     setLoading(true);
     try {
-      const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string }>(
+      const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string; renderer?: string }>(
         "render-investment-report-pdf",
         { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
         { timeoutMs: 240_000 },
@@ -73,7 +73,7 @@ export function PremiumPdfButton({
 
       toast({
         title: "Premium PDF ready",
-        description: "Your download should begin shortly.",
+        description: `Rendered with ${data.renderer === "weasyprint" ? "WeasyPrint" : "PDF fallback"}. Your download should begin shortly.`,
       });
     } catch (err: any) {
       console.error("[PremiumPdfButton]", err);
