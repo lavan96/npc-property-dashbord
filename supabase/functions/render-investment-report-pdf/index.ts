@@ -2403,7 +2403,11 @@ export async function buildHtml(
 
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary" data-ch="1">Executive Summary</h2>
+    ${chapterGlanceHtml("Executive Summary")}
     ${editorsNoteHtml}
+    ${summaryKpiHtml || (kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : "")}
+    ${scoreVisualsHtml}
+    ${demographicVisualHtml}
     <p>${para1Parts.filter(Boolean).join(" ")}</p>
     <p>${para2Parts.filter(Boolean).join(" ")}</p>
   `;
