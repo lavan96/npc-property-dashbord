@@ -1812,6 +1812,22 @@ function applyEditorialMarkdown(md: string): string {
     </aside>\n`;
   });
 
+  // {{timeline: Existing "Rail station", 0-2y "Shopping upgrade", 3-5y "Hospital stage" | title=Infrastructure ribbon}}
+  out = out.replace(/\{\{timeline:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(title)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    const items = parts[0].split(/,(?=\s*(?:existing|0\s*-?\s*2|3\s*-?\s*5|5\s*y\+?|short|medium|long)\b)/i).map((seg) => {
+      const m = seg.trim().match(/^(existing|0\s*-?\s*2y?|3\s*-?\s*5y?|5y\+?|short(?:-term)?|medium(?:-term)?|long(?:-term)?)\s+"([^"]+)"(?:\s+confidence="([^"]+)")?/i);
+      return m ? { phase: m[1], label: m[2], confidence: m[3] } : null;
+    }).filter(Boolean) as Array<{ phase: string; label: string; confidence?: string }>;
+    if (!items.length) return _m;
+    return vizFigure(renderTimelineRibbonSvg(items, opts.title || "Infrastructure pipeline"), opts.title || "Infrastructure pipeline");
+  });
+
 
   out = out.replace(/~~\[([\d.,\s\-]+)\]~~/g, (_m, list) => {
     const vals = String(list).split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
