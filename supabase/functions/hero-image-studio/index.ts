@@ -298,6 +298,67 @@ Deno.serve(async (req) => {
       return jsonOk({ deleted: true }, corsHeaders);
     }
 
+    // ── library_upload (raw image, no AI) ────────────────────────────────
+    if (action === "library_upload") {
+      const fileBase64 = String(body?.fileBase64 || "");
+      if (!fileBase64) return jsonErr("fileBase64 required", corsHeaders);
+      const contentType = String(body?.contentType || "image/png");
+      const width = Math.max(Number(body?.width) || 0, 1);
+      const height = Math.max(Number(body?.height) || 0, 1);
+      const aspect = (() => {
+        const ratio = width / Math.max(height, 1);
+        const closest = Object.entries(ASPECT_TO_SIZE).reduce(
+          (best, [k, v]) => {
+            const d = Math.abs(v.w / v.h - ratio);
+            return d < best.d ? { k, d } : best;
+          },
+          { k: "3:2", d: Infinity },
+        );
+        return closest.k;
+      })();
+      const label = String(body?.prompt || "Uploaded image").slice(0, 240);
+      const sourceReportId = body?.sourceReportId ? String(body.sourceReportId) : null;
+
+      let pure = fileBase64;
+      const m = fileBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (m) pure = m[2];
+      const bin = atob(pure);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+      const id = crypto.randomUUID();
+      const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
+      const path = `${STORAGE_PREFIX}/${userId || "anon"}/${id}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+        contentType,
+        upsert: true,
+        cacheControl: "31536000",
+      });
+      if (upErr) return jsonErr(upErr.message, corsHeaders, 500);
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const { data: inserted, error: insErr } = await supabase
+        .from("hero_image_library")
+        .insert({
+          id,
+          owner_user_id: userId,
+          source_report_id: sourceReportId,
+          prompt: label,
+          enhanced_prompt: null,
+          model: "upload/raw",
+          aspect_ratio: aspect,
+          width,
+          height,
+          status: "ready",
+          storage_path: path,
+          public_url: pub.publicUrl,
+          thumbnail_url: pub.publicUrl,
+        })
+        .select()
+        .single();
+      if (insErr) return jsonErr(insErr.message, corsHeaders, 500);
+      return jsonOk({ image: inserted }, corsHeaders);
+    }
+
     // ── chapters_list ────────────────────────────────────────────────────
     if (action === "chapters_list") {
       const reportId = String(body?.reportId || "");
