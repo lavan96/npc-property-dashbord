@@ -2825,20 +2825,43 @@ ${(() => {
     @page :left  { margin: 24mm 14mm 22mm 26mm; }
     @page :right { margin: 24mm 26mm 22mm 14mm; }
 
-    /* Thumb-index tab — vertical chapter name in outer margin on chapter openers. */
-    @page chapter-opener {
-      @right-middle {
-        content: string(chapter);
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        font-family: 'Inter', sans-serif;
-        font-size: 7pt; font-weight: 700;
-        letter-spacing: .28em; text-transform: uppercase;
-        color: ${palette.paper};
-        background: linear-gradient(180deg, ${palette.accent} 0%, ${palette.heading2} 100%);
-        padding: 14pt 4pt;
-        border-radius: 2pt 0 0 2pt;
-      }
+    /* Thumb-index tabs — rendered as DOM spans inside each h2, positioned into
+       the wide outer margin, with per-chapter top offset + colour rotation set
+       inline by the annotator. Mirrors a printed annual-report thumb index. */
+    .thumb-tab {
+      position: absolute;
+      right: -28mm;
+      width: 22mm;
+      padding: 6pt 5pt 6pt 7pt;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-family: 'Inter', sans-serif;
+      font-size: 7pt; font-weight: 800;
+      letter-spacing: .26em; text-transform: uppercase;
+      color: #fff;
+      border-radius: 2pt 0 0 2pt;
+      box-shadow: -0.5pt 0.5pt 2pt rgba(0,0,0,0.18);
+      -webkit-text-fill-color: #fff;
+      background: ${palette.accent}; /* overridden inline per chapter */
+      max-height: 50mm;
+      overflow: hidden;
+      z-index: 4;
+    }
+    /* Ghost chapter numeral now also rendered via DOM span so we can show the
+       *real* chapter index from the annotator (not relying on CSS counter, which
+       resets per @page chapter-opener flow). */
+    .ch-ghost {
+      position: absolute;
+      right: -8mm; top: -32mm;
+      font-family: 'Playfair Display', 'Fraunces', serif;
+      font-weight: 800; font-style: italic;
+      font-size: 220pt; line-height: 1;
+      color: ${withAlpha(palette.accent, 0.07)};
+      -webkit-text-fill-color: ${withAlpha(palette.accent, 0.07)};
+      background: none;
+      pointer-events: none; z-index: 0;
+      letter-spacing: -0.05em;
+      font-variant-numeric: lining-nums;
     }
 
     /* Ghosted oversized chapter numeral behind chapter title. */
