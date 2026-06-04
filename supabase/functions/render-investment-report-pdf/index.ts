@@ -1163,29 +1163,68 @@ export async function buildHtml(
       : address;
 
   const styles = `
+    /* ── Paged-media foundation ──────────────────────────────────────── */
     @page {
       size: A4;
-      margin: 20mm 17mm 20mm 17mm;
+      margin: 22mm 18mm 22mm 18mm;
       background: ${THEME.paper};
-      @top-left { content: string(chapter); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
-      @top-right { content: "${esc(address)}"; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 8.5pt; color: ${THEME.inkMuted}; }
-      @bottom-left { content: "${esc(brandName)}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; letter-spacing: .14em; text-transform: uppercase; }
-      @bottom-right { content: counter(page) " / " counter(pages); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: ${THEME.inkMuted}; }
+      @top-left {
+        content: string(chapter);
+        font-family: 'Inter', sans-serif;
+        font-size: 7.5pt; color: ${THEME.inkMuted};
+        letter-spacing: .14em; text-transform: uppercase;
+        font-variant-numeric: oldstyle-nums proportional-nums;
+      }
+      @top-right {
+        content: "${esc(address)}";
+        font-family: 'Cormorant Garamond', serif;
+        font-style: italic; font-size: 9pt; color: ${THEME.inkMuted};
+      }
+      @bottom-left {
+        content: "${esc(brandName)}";
+        font-family: 'Inter', sans-serif;
+        font-size: 7.5pt; color: ${THEME.inkMuted};
+        letter-spacing: .14em; text-transform: uppercase;
+      }
+      @bottom-center {
+        content: "";
+        border-top: 0.3pt solid ${THEME.rule};
+        width: 24pt; height: 0;
+        margin: 0 auto;
+      }
+      @bottom-right {
+        content: counter(page) " · " counter(pages);
+        font-family: 'Playfair Display', serif;
+        font-style: italic; font-size: 9pt; color: ${THEME.ink};
+        font-variant-numeric: oldstyle-nums proportional-nums;
+      }
     }
+    /* Slightly asymmetric gutter for a real bound-document feel. */
+    @page :left  { margin-left: 16mm; margin-right: 20mm; }
+    @page :right { margin-left: 20mm; margin-right: 16mm; }
+
     @page cover {
       margin: 0;
       background: ${THEME.bg};
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
     }
     @page disclaimer-page {
       margin: 0;
       background: #141414;
       @top-left { content: none; } @top-right { content: none; }
       @bottom-left { content: none; } @bottom-right { content: none; }
+      @bottom-center { content: none; }
     }
     @page toc {
       @top-left { content: "Contents"; }
+      @top-right { content: none; }
+    }
+    /* Chapter opener — first page of each chapter suppresses the running header. */
+    @page chapter-opener {
+      @top-left { content: none; }
+      @top-right { content: none; }
     }
 
     * { box-sizing: border-box; }
@@ -1195,34 +1234,50 @@ export async function buildHtml(
       color: ${THEME.ink};
       font-family: 'Inter', 'Helvetica', sans-serif;
       font-size: 9.8pt;
-      line-height: 1.58;
+      line-height: 1.6;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      /* OpenType: kerning, ligatures, contextual alternates. */
+      font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+      font-variant-numeric: oldstyle-nums proportional-nums;
+      text-rendering: geometricPrecision;
     }
 
     body { counter-reset: section; }
 
     h1, h2, h3 {
       font-family: 'Playfair Display', 'Georgia', serif;
-      margin: 0 0 .45em; page-break-after: avoid;
+      margin: 0 0 .45em; page-break-after: avoid; break-after: avoid;
       background: ${NAVY_GRADIENT};
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
+      hyphens: manual;
+      font-feature-settings: "kern" 1, "liga" 1, "dlig" 1, "swsh" 1;
     }
-    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; }
-    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; }
+    h4 { font-family: 'Playfair Display', 'Georgia', serif; color: ${THEME.navy}; margin: 0 0 .45em; page-break-after: avoid; break-after: avoid; }
+    h1 { font-size: 36pt; font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; bookmark-level: 1; bookmark-label: content(text); }
     h2 {
       counter-increment: section;
-      string-set: chapter content();
+      string-set: chapter content(text);
       font-size: 28pt; font-weight: 700; letter-spacing: -0.005em;
-      margin-top: 24pt;
+      margin-top: 0;
       padding-bottom: 10pt;
+      padding-top: 6pt;
       border-bottom: 0.5pt solid ${THEME.rule};
       display: block;
-      page-break-before: auto;
+      /* Each chapter starts on a fresh page — editorial polish. */
+      break-before: page;
+      page-break-before: always;
+      bookmark-level: 1;
+      bookmark-label: content(text);
+      bookmark-state: open;
+      page: chapter-opener;
     }
+    /* The very first h2 of the body should not force an extra blank page after the TOC. */
+    section.body-page:first-of-type > h2:first-child { break-before: auto; page-break-before: auto; }
+
     h2::before {
       content: counter(section, decimal-leading-zero);
       font-family: 'Playfair Display', serif;
@@ -1233,11 +1288,13 @@ export async function buildHtml(
       letter-spacing: .04em;
       margin-right: 28pt;
       padding-right: 6pt;
+      font-variant-numeric: lining-nums tabular-nums;
     }
     h3 {
       font-size: 17pt; font-weight: 600; margin-top: 18pt;
       padding-left: 10pt;
       border-left: 2.5pt solid ${THEME.gold};
+      bookmark-level: 2; bookmark-label: content(text);
     }
     h4 {
       font-family: 'Inter', sans-serif;
@@ -1245,15 +1302,36 @@ export async function buildHtml(
       color: ${THEME.goldSoft};
       text-transform: uppercase; letter-spacing: .15em;
       margin-top: 14pt;
+      bookmark-level: 3; bookmark-label: content(text);
     }
-    p { margin: 0 0 .72em; orphans: 3; widows: 3; }
+    p {
+      margin: 0 0 .72em;
+      orphans: 3; widows: 3;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      hyphenate-limit-chars: 8 4 4;
+      text-align: justify;
+      text-justify: inter-word;
+    }
     a { color: ${THEME.goldSoft}; text-decoration: none; }
     strong { color: ${THEME.ink}; font-weight: 700; }
     em, i { color: ${THEME.ink}; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05em; }
 
+    /* Drop-cap on the first paragraph after each chapter title — editorial signature. */
+    h2 + p::first-letter {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-size: 3.6em;
+      line-height: 0.85;
+      float: left;
+      padding: 4pt 8pt 0 0;
+      color: ${THEME.gold};
+      font-feature-settings: "kern" 1, "dlig" 1;
+    }
+
     h2 + p {
       font-family: 'Inter', 'Helvetica', sans-serif;
-      font-size: 9.8pt; line-height: 1.58;
+      font-size: 9.8pt; line-height: 1.6;
       color: ${THEME.ink}; margin-bottom: .72em;
     }
 
