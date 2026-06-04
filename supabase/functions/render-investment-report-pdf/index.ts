@@ -3846,10 +3846,38 @@ ${(() => {
       padding: 14pt 0 6pt !important; border-radius: 0 !important;
     }
 
-    h2 + p::first-letter {
-      color: var(--ed-navy-deep) !important;
-      font-family: 'Playfair Display', serif !important;
-      font-weight: 600 !important;
+    /* ── Drop caps: disabled per editorial decision. Reset every prior rule. ── */
+    h2 + p::first-letter,
+    h2 + .standfirst::first-letter,
+    .chapter > p:first-of-type::first-letter,
+    p::first-letter {
+      -webkit-initial-letter: normal !important;
+      initial-letter: normal !important;
+      float: none !important;
+      font-size: inherit !important;
+      font-family: inherit !important;
+      font-weight: inherit !important;
+      color: inherit !important;
+      -webkit-text-fill-color: inherit !important;
+      line-height: inherit !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: none !important;
+    }
+
+    /* ── Chapter headings: balance multi-line wraps and tighten leading so
+         a long title never orphans a single word onto its own line. ── */
+    h2, h2[data-ch] {
+      font-size: 22pt !important;
+      line-height: 1.12 !important;
+      letter-spacing: -0.015em !important;
+      text-wrap: balance;
+      -webkit-hyphens: manual !important;
+      hyphens: manual !important;
+      word-break: normal !important;
+      overflow-wrap: normal !important;
+      max-width: 100%;
+      padding-right: 6mm;
     }
   `;
 })()}</style>
