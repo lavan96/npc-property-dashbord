@@ -1760,6 +1760,11 @@ export async function buildHtml(
   const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
+  // Repair LLM currency artefacts where "$45,872.969" leaks a 3-digit
+  // fractional group instead of a thousands separator. Any $-prefixed number
+  // ending in exactly ".ddd" (and not followed by another digit) is treated
+  // as a stray grouping and the trailing group is reattached with a comma.
+  bodyHtml = bodyHtml.replace(/\$(\d{1,3}(?:,\d{3})*)\.(\d{3})(?!\d)/g, "$$$1,$2");
   bodyHtml = applyFootnotesAndXrefs(bodyHtml);
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
