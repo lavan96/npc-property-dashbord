@@ -11,11 +11,15 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
+const WEASYPRINT_SERVICE_URL = (Deno.env.get("WEASYPRINT_SERVICE_URL") || "").trim().replace(/\/$/, "");
+const WEASYPRINT_SERVICE_TOKEN = (Deno.env.get("WEASYPRINT_SERVICE_TOKEN") || "").trim();
+const PDF_BUCKET = "investment-reports";
 const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
 const RENDER_SAFETY_BUFFER_MS = 45_000;
 const MAX_RENDER_WAIT_MS = EDGE_FUNCTION_TIMEOUT_MS - RENDER_SAFETY_BUFFER_MS;
 // (Hero-image generation is now offloaded to `prepare-report-hero-images`.)
 const API2PDF_REQUEST_TIMEOUT_MS = 600_000;
+const WEASYPRINT_REQUEST_TIMEOUT_MS = 600_000;
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
@@ -1895,7 +1899,65 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
     if (res.ok && success && fileUrl) return fileUrl as string;
 
     if (res.status !== 404) break;
+}
+
+/**
+ * Render via self-hosted WeasyPrint microservice.
+ * Returns raw PDF bytes — the caller uploads to Supabase storage and
+ * returns a signed URL so behaviour matches the legacy Api2PDF path.
+ */
+async function callWeasyPrint(html: string): Promise<Uint8Array> {
+  if (!WEASYPRINT_SERVICE_URL || !WEASYPRINT_SERVICE_TOKEN) {
+    throw new Error("WeasyPrint service not configured");
   }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WEASYPRINT_REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${WEASYPRINT_SERVICE_URL}/render`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WEASYPRINT_SERVICE_TOKEN}`,
+        Accept: "application/pdf",
+      },
+      body: JSON.stringify({ html }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      throw new Error(`WeasyPrint render failed (${res.status}): ${errBody.slice(0, 400)}`);
+    }
+    const buf = await res.arrayBuffer();
+    return new Uint8Array(buf);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function uploadPdfAndSign(
+  supabase: ReturnType<typeof createClient>,
+  bytes: Uint8Array,
+  fileName: string,
+): Promise<string> {
+  const path = `generated/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${fileName}`;
+  const { error: upErr } = await supabase.storage.from(PDF_BUCKET).upload(path, bytes, {
+    contentType: "application/pdf",
+    upsert: false,
+    cacheControl: "3600",
+  });
+  if (upErr) throw new Error(`storage upload failed: ${upErr.message}`);
+  const { data: signed, error: signErr } = await supabase
+    .storage
+    .from(PDF_BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+  if (signErr || !signed?.signedUrl) {
+    // Fall back to public URL if the bucket is public.
+    const { data: pub } = supabase.storage.from(PDF_BUCKET).getPublicUrl(path);
+    if (pub?.publicUrl) return pub.publicUrl;
+    throw new Error(`signed URL failed: ${signErr?.message || "unknown"}`);
+  }
+  return signed.signedUrl;
+}
 
   throw new Error(
     `Api2PDF failed (${lastStatus}): ${lastError || lastBody.slice(0, 400)}`,
@@ -1907,7 +1969,10 @@ if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!API2PDF_KEY) throw new Error("API2PDF_API_KEY is not configured");
+    const weasyConfigured = Boolean(WEASYPRINT_SERVICE_URL && WEASYPRINT_SERVICE_TOKEN);
+    if (!weasyConfigured && !API2PDF_KEY) {
+      throw new Error("No PDF renderer configured (set WEASYPRINT_SERVICE_URL+WEASYPRINT_SERVICE_TOKEN or API2PDF_API_KEY)");
+    }
 
     // Reset module-scoped chart cache each invocation to prevent
     // unbounded growth across warm restarts (root cause of recent OOMs).
@@ -1973,9 +2038,25 @@ if (import.meta.main) Deno.serve(async (req) => {
       .slice(0, 60);
     const fileName = `investment-report-${safeAddr}.pdf`;
 
-    const fileUrl = await callApi2Pdf(html, fileName);
+    // Prefer self-hosted WeasyPrint (superior typography); fall back to Api2PDF.
+    let fileUrl: string | null = null;
+    let renderer: "weasyprint" | "api2pdf" = "api2pdf";
+    if (weasyConfigured) {
+      try {
+        const pdfBytes = await callWeasyPrint(html);
+        fileUrl = await uploadPdfAndSign(supabase, pdfBytes, fileName);
+        renderer = "weasyprint";
+      } catch (err) {
+        console.warn("[render-investment-report-pdf] WeasyPrint failed, falling back to Api2PDF", err);
+        if (!API2PDF_KEY) throw err;
+      }
+    }
+    if (!fileUrl) {
+      fileUrl = await callApi2Pdf(html, fileName);
+      renderer = "api2pdf";
+    }
 
-    return new Response(JSON.stringify({ fileUrl, fileName }), {
+    return new Response(JSON.stringify({ fileUrl, fileName, renderer }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
