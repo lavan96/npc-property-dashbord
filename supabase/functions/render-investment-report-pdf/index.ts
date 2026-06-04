@@ -1407,29 +1407,93 @@ function normaliseShare(value: number | null): number | null {
   return value > 0 && value <= 1 ? value * 100 : value;
 }
 
-function chapterGlanceHtml(title: string): string {
+function chapterGlanceLabels(title: string): { sym: string; label: string }[] {
   const lower = title.toLowerCase();
-  const cells = lower.includes("risk") || lower.includes("safety")
-    ? ["✓ Risk register", "⚠ Verify overlays", "▲ Mitigants mapped", "★ Decision lens"]
-    : lower.includes("transport") || lower.includes("infrastructure")
-      ? ["✓ Access drivers", "⚠ Delivery timing", "▲ Pipeline view", "★ Location fit"]
-      : lower.includes("demographic") || lower.includes("demand")
-        ? ["✓ Demand base", "⚠ Cohort shifts", "▲ Household trend", "★ Tenant fit"]
-        : lower.includes("score") || lower.includes("swot")
-          ? ["✓ Strengths", "⚠ Watch points", "▲ Score drivers", "★ Verdict"]
-          : ["✓ Key signal", "⚠ Watch", "▲ Trend", "★ NPC view"];
-  return `<div class="glance-strip">${cells.map((raw) => {
-    const m = raw.match(/^(\S+)\s+(.+)$/);
-    return `<div class="glance-cell"><span class="glance-sym">${esc(m?.[1] || "•")}</span><span class="glance-text">${esc(m?.[2] || raw)}</span></div>`;
-  }).join("")}</div>`;
+  if (lower.includes("risk") || lower.includes("safety"))
+    return [{ sym: "✓", label: "Risk register" }, { sym: "⚠", label: "Verify" }, { sym: "▲", label: "Mitigants" }, { sym: "★", label: "Decision lens" }];
+  if (lower.includes("transport") || lower.includes("infrastructure"))
+    return [{ sym: "✓", label: "Access driver" }, { sym: "⚠", label: "Delivery risk" }, { sym: "▲", label: "Pipeline" }, { sym: "★", label: "Location fit" }];
+  if (lower.includes("demographic") || lower.includes("demand"))
+    return [{ sym: "✓", label: "Demand base" }, { sym: "⚠", label: "Cohort watch" }, { sym: "▲", label: "Trend" }, { sym: "★", label: "Tenant fit" }];
+  if (lower.includes("score") || lower.includes("swot"))
+    return [{ sym: "✓", label: "Strength" }, { sym: "⚠", label: "Watch point" }, { sym: "▲", label: "Score driver" }, { sym: "★", label: "Verdict" }];
+  return [{ sym: "✓", label: "Key signal" }, { sym: "⚠", label: "Watch" }, { sym: "▲", label: "Trend" }, { sym: "★", label: "NPC view" }];
+}
+
+function firstSentenceMatching(text: string, re: RegExp, maxLen = 90): string | null {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  for (const s of sentences) {
+    const clean = s.trim();
+    if (clean.length < 12) continue;
+    if (re.test(clean)) {
+      return clean.length > maxLen ? clean.slice(0, maxLen - 1).replace(/[,;:\s]+\S*$/, "") + "…" : clean.replace(/[.!?]+$/, "");
+    }
+  }
+  return null;
+}
+
+function deriveGlanceValues(title: string, chapterText: string): (string | null)[] {
+  const lower = title.toLowerCase();
+  const text = chapterText.replace(/\s+/g, " ").trim();
+  if (!text) return [null, null, null, null];
+
+  // Signal — first positive/headline sentence
+  const signal = firstSentenceMatching(text, /\b(outperform|strong|leading|above|rose|grew|growth|robust|resilient|expand|accelerat|surpass|exceed|record|premium)\b/i, 85);
+  // Watch — first risk/caveat sentence
+  const watch = firstSentenceMatching(text, /\b(risk|concern|vacancy|declin|soft|weak|caution|watch|below|under-?perform|exposure|oversupply|headwind|fragile|stretched)\b/i, 85);
+
+  // Trend — strongest pct/movement number
+  let trend: string | null = null;
+  const pctMatches = Array.from(text.matchAll(/([+-]?\d{1,3}(?:\.\d+)?\s?%)\s*(YoY|p\.?a\.?|annual|year|growth|yield|change)?/gi));
+  if (pctMatches.length) {
+    const best = pctMatches.map((m) => ({ raw: m[0], abs: Math.abs(parseFloat(m[1])) })).sort((a, b) => b.abs - a.abs)[0];
+    trend = best.raw.replace(/\s+/g, " ").trim();
+  } else {
+    const dollar = text.match(/\$\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:k|m|million|thousand))?/i);
+    if (dollar) trend = dollar[0];
+  }
+
+  // NPC view — verdict/recommendation if present
+  let view = firstSentenceMatching(text, /\b(verdict|npc view|recommend|our view|conclusion|bottom line|net-net|on balance|suits?|fits?|aligns?|accumulate|hold|pass)\b/i, 90);
+  if (!view) {
+    // fallback to last meaningful sentence in chapter
+    const sentences = text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length > 30);
+    if (sentences.length >= 2) view = sentences[sentences.length - 1].slice(0, 90).replace(/[.!?]+$/, "");
+  }
+  void lower;
+  return [signal, watch, trend, view];
+}
+
+function chapterGlanceHtmlFromValues(title: string, values: (string | null)[]): string {
+  const labels = chapterGlanceLabels(title);
+  const cells = labels.map((l, i) => ({ ...l, value: values[i] })).filter((c) => c.value && c.value.trim().length > 0);
+  if (cells.length < 2) return "";
+  return `<div class="glance-strip">${cells.map((c) => (
+    `<div class="glance-cell">` +
+      `<span class="glance-sym">${esc(c.sym)}</span>` +
+      `<span class="glance-label">${esc(c.label)}</span>` +
+      `<span class="glance-value">${esc(c.value!)}</span>` +
+    `</div>`
+  )).join("")}</div>`;
 }
 
 function injectChapterGlanceFallbacks(html: string): string {
-  return html.replace(/(<h2\b[^>]*>([\s\S]*?)<\/h2>)(?!\s*<div class="glance-strip")/gi, (_m, heading, inner) => {
-    const title = String(inner).replace(/<[^>]+>/g, "").trim();
-    if (/sources|references|disclaimer/i.test(title)) return heading;
-    return `${heading}\n${chapterGlanceHtml(title)}\n`;
-  });
+  // Split on H2 boundaries so we can read each chapter's body
+  const parts = html.split(/(<h2\b[^>]*>[\s\S]*?<\/h2>)/i);
+  for (let i = 1; i < parts.length; i += 2) {
+    const heading = parts[i];
+    const body = parts[i + 1] ?? "";
+    if (/glance-strip/.test(body.slice(0, 400))) continue; // already has one
+    const titleMatch = heading.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i);
+    const title = (titleMatch?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
+    if (!title || /sources|references|disclaimer|table of contents/i.test(title)) continue;
+    const plain = body.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
+    const values = deriveGlanceValues(title, plain);
+    const strip = chapterGlanceHtmlFromValues(title, values);
+    if (!strip) continue; // suppress empty
+    parts[i + 1] = `\n${strip}\n${body}`;
+  }
+  return parts.join("");
 }
 
 function addDataSparklinesToParagraphs(html: string): string {
@@ -2401,9 +2465,15 @@ export async function buildHtml(
     </aside>
   `;
 
+  const execSignal = priceTxt && rentTxt ? `${priceTxt} · ${rentTxt}/wk` : (priceTxt || rentTxt || null);
+  const execWatch = (para2Parts.join(" ").match(/[^.!?]*\b(risk|vacancy|caution|watch|exposure|concern|soft)\b[^.!?]*[.!?]/i)?.[0] || "").trim() || null;
+  const execTrend = yieldTxt ? `Yield ${yieldTxt}` : null;
+  const execView = scoreTxt ? `Score ${scoreTxt}` : null;
+  const execGlance = chapterGlanceHtmlFromValues("Executive Summary", [execSignal, execWatch ? execWatch.slice(0, 80) : null, execTrend, execView]);
+
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary" data-ch="1">Executive Summary</h2>
-    ${chapterGlanceHtml("Executive Summary")}
+    ${execGlance}
     ${editorsNoteHtml}
     ${summaryKpiHtml || (kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : "")}
     ${scoreVisualsHtml}
@@ -3384,6 +3454,23 @@ export async function buildHtml(
       line-height: 1;
     }
     .glance-text { display: block; }
+    .glance-label {
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7pt;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: ${THEME.inkMuted};
+      margin-bottom: 2pt;
+    }
+    .glance-value {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: ${THEME.ink};
+      line-height: 1.3;
+    }
 
     /* ── Margin micro-chart (sidenote variant) ── */
     aside.sidenote-margin {
