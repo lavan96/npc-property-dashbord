@@ -983,6 +983,124 @@ function renderScoreWheelSvg(scores: number[], labels: string[] = [], max = 100)
   </svg>`;
 }
 
+/** Bullet chart — compact KPI with actual / target / range bands (Tufte-style). */
+function renderBulletSvg(opts: { value: number; target?: number; max?: number; ranges?: number[]; label?: string; sub?: string }): string {
+  const max = opts.max ?? Math.max(opts.value, opts.target ?? 0, ...(opts.ranges || []), 1);
+  const w = 520, h = 78;
+  const padL = 150, padR = 14, padT = 26, padB = 14;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xOf = (v: number) => padL + (Math.max(0, Math.min(max, v)) / max) * plotW;
+  const ranges = (opts.ranges && opts.ranges.length ? opts.ranges : [max * 0.4, max * 0.7, max]).slice().sort((a, b) => a - b);
+  const bands = ranges.map((r, i) => {
+    const prev = i === 0 ? 0 : ranges[i - 1];
+    const alpha = 0.18 + (i / Math.max(1, ranges.length - 1)) * 0.42;
+    return `<rect x="${xOf(prev).toFixed(1)}" y="${padT}" width="${(xOf(r) - xOf(prev)).toFixed(1)}" height="${plotH}" fill="${VIZ_GOLD}" fill-opacity="${alpha.toFixed(2)}"/>`;
+  }).join("");
+  const barH = plotH * 0.42;
+  const barY = padT + (plotH - barH) / 2;
+  const bar = `<rect x="${padL}" y="${barY}" width="${(xOf(opts.value) - padL).toFixed(1)}" height="${barH}" fill="${VIZ_INK}" rx="1"/>`;
+  const tgt = opts.target != null
+    ? `<line x1="${xOf(opts.target).toFixed(1)}" x2="${xOf(opts.target).toFixed(1)}" y1="${padT + 2}" y2="${padT + plotH - 2}" stroke="${VIZ_RISK}" stroke-width="3"/>`
+    : "";
+  const label = opts.label ? `<text x="${padL - 12}" y="${padT + plotH / 2 - 2}" text-anchor="end" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="12" fill="${VIZ_INK}">${svgEscape(opts.label)}</text>` : "";
+  const sub = opts.sub ? `<text x="${padL - 12}" y="${padT + plotH / 2 + 13}" text-anchor="end" font-family="Inter,sans-serif" font-size="8.5" fill="${VIZ_INK_MUTED}" letter-spacing="0.6">${svgEscape(opts.sub.toUpperCase())}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="4"/>${bands}${bar}${tgt}${label}${sub}
+  </svg>`;
+}
+
+/** Marimekko — variable-width stacked bars (composition + magnitude). */
+function renderMarimekkoSvg(rows: Array<{ label: string; weight: number; segments: number[] }>, segLabels: string[] = []): string {
+  if (!rows.length) return "";
+  const w = 760, h = 360, padL = 90, padR = 20, padT = 32, padB = 50;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const totalWeight = rows.reduce((a, r) => a + (r.weight || 0), 0) || 1;
+  const palette = [VIZ_GOLD, VIZ_NAVY, VIZ_GOOD, VIZ_WARN, VIZ_RISK, VIZ_INK_MUTED];
+  let x = padL;
+  const groups = rows.map((row) => {
+    const colW = ((row.weight || 0) / totalWeight) * plotW;
+    const sum = row.segments.reduce((a, b) => a + b, 0) || 1;
+    let y = padT;
+    const segs = row.segments.map((v, i) => {
+      const segH = (v / sum) * plotH;
+      const r = `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(colW - 1).toFixed(1)}" height="${segH.toFixed(1)}" fill="${palette[i % palette.length]}" fill-opacity="0.85"/>
+        ${segH > 16 ? `<text x="${(x + colW / 2).toFixed(1)}" y="${(y + segH / 2 + 3.5).toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="${VIZ_PAPER}">${Math.round((v / sum) * 100)}%</text>` : ""}`;
+      y += segH;
+      return r;
+    }).join("");
+    const lbl = `<text x="${(x + colW / 2).toFixed(1)}" y="${(h - padB + 16).toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK}">${svgEscape(row.label)}</text>`;
+    const x0 = x; x += colW;
+    return segs + lbl;
+  }).join("");
+  const legend = segLabels.map((lbl, i) => {
+    const lx = padL + i * 110;
+    return `<rect x="${lx}" y="10" width="10" height="10" fill="${palette[i % palette.length]}"/><text x="${lx + 14}" y="19" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(lbl.toUpperCase())}</text>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${legend}${groups}
+  </svg>`;
+}
+
+/** Micro-map — abstract suburb locator (concentric rings + cardinal markers + pin). */
+function renderMicroMapSvg(opts: { suburb: string; state?: string; postcode?: string; neighbours?: string[] }): string {
+  const w = 460, h = 320, cx = w / 2, cy = h / 2 + 6;
+  const rings = [120, 84, 50].map((r, i) =>
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${i === 2 ? withAlphaHex(VIZ_GOLD, 0.18) : "none"}" stroke="${VIZ_RULE}" stroke-width="0.7" stroke-dasharray="${i === 0 ? "3 4" : "1 2"}"/>`).join("");
+  const compass = `
+    <text x="${cx}" y="${cy - 128}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">N</text>
+    <text x="${cx}" y="${cy + 138}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">S</text>
+    <text x="${cx + 132}" y="${cy + 4}" text-anchor="start" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">E</text>
+    <text x="${cx - 132}" y="${cy + 4}" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">W</text>`;
+  const neighbours = (opts.neighbours || []).slice(0, 6);
+  const nbDots = neighbours.map((nb, i) => {
+    const a = -Math.PI / 2 + (i / Math.max(1, neighbours.length)) * Math.PI * 2;
+    const r = 100;
+    const nx = cx + r * Math.cos(a), ny = cy + r * Math.sin(a);
+    return `<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3" fill="${VIZ_INK_MUTED}"/>
+      <text x="${(nx + (Math.cos(a) > 0 ? 6 : -6)).toFixed(1)}" y="${(ny + 3.5).toFixed(1)}" text-anchor="${Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle"}" font-family="Inter,sans-serif" font-size="8.5" fill="${VIZ_INK_MUTED}">${svgEscape(nb)}</text>`;
+  }).join("");
+  const pin = `
+    <path d="M ${cx} ${cy - 18} C ${cx - 14} ${cy - 18} ${cx - 14} ${cy + 2} ${cx} ${cy + 14} C ${cx + 14} ${cy + 2} ${cx + 14} ${cy - 18} ${cx} ${cy - 18} Z" fill="${VIZ_GOLD}" stroke="${VIZ_INK}" stroke-width="1.2"/>
+    <circle cx="${cx}" cy="${cy - 8}" r="4.5" fill="${VIZ_PAPER}"/>`;
+  const title = `<text x="${cx}" y="28" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="16" fill="${VIZ_INK}">${svgEscape(opts.suburb)}</text>
+    <text x="${cx}" y="44" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" letter-spacing="2.5" fill="${VIZ_INK_MUTED}">${svgEscape([opts.state, opts.postcode].filter(Boolean).join(" · ").toUpperCase())}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${title}${rings}${compass}${nbDots}${pin}
+  </svg>`;
+}
+
+/** Calendar heatmap — 12-month grid (or arbitrary cells). */
+function renderCalendarHeatmapSvg(values: number[], title = "", monthLabels: string[] = []): string {
+  if (!values.length) return "";
+  const months = monthLabels.length === values.length ? monthLabels : ["J","F","M","A","M","J","J","A","S","O","N","D"].slice(0, values.length);
+  const lo = Math.min(...values), hi = Math.max(...values), span = (hi - lo) || 1;
+  const cellW = 44, cellH = 44, gap = 4;
+  const cols = Math.min(12, values.length);
+  const rows = Math.ceil(values.length / cols);
+  const padL = 16, padT = title ? 40 : 18, padR = 16, padB = 22;
+  const w = padL + padR + cols * (cellW + gap) - gap;
+  const h = padT + padB + rows * (cellH + gap) - gap;
+  const cells = values.map((v, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const x = padL + c * (cellW + gap), y = padT + r * (cellH + gap);
+    const t = (v - lo) / span;
+    const fill = `rgba(212,168,67,${(0.12 + t * 0.78).toFixed(2)})`;
+    return `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="3" fill="${fill}" stroke="${VIZ_RULE}" stroke-width="0.4"/>
+      <text x="${x + cellW / 2}" y="${y + 16}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(months[i] || "")}</text>
+      <text x="${x + cellW / 2}" y="${y + cellH - 10}" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="12" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`;
+  }).join("");
+  const t = title ? `<text x="${padL}" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(title)}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${t}${cells}
+  </svg>`;
+}
+
+function withAlphaHex(hex: string, alpha: number): string {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 /** Wrap an SVG into a print-ready figure with optional caption. */
 function vizFigure(svg: string, caption = ""): string {
   return `<figure class="vis-figure">${svg}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
@@ -1027,7 +1145,7 @@ function applyEditorialMarkdown(md: string): string {
   //   The fully-spread editorial quote sits here.
   //   :::
   out = out.replace(
-    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
+    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat|dashboard|signature) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
     (_m, name, attrRaw, body) => {
       const inner = String(body).trim();
       const attrs: Record<string, string> = {};
@@ -1067,9 +1185,114 @@ function applyEditorialMarkdown(md: string): string {
           ${attribution ? `<div class="qp-attrib">${attribution}</div>` : ""}
         </section>\n`;
       }
+      if (name === "dashboard") {
+        // ::: dashboard eyebrow="..." title="..." big="3.2%" bigLabel="Yield" spark="1,2,3,4" peers="Avg 2.8|This 3.2|Top 3.9" map="Suburb,VIC,3000"
+        const eyebrow = esc(attrs.eyebrow || "Snapshot");
+        const title = esc(attrs.title || inner.split("\n")[0] || "Dashboard");
+        const big = esc(attrs.big || "");
+        const bigLabel = esc(attrs.biglabel || attrs.big_label || "");
+        const sparkVals = (attrs.spark || "").split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+        const sparkSvg = sparkVals.length >= 2 ? (() => {
+          const w = 320, h = 70, lo = Math.min(...sparkVals), hi = Math.max(...sparkVals), span = (hi - lo) || 1;
+          const pts = sparkVals.map((v, i) => `${(i / (sparkVals.length - 1)) * w},${h - 4 - ((v - lo) / span) * (h - 12)}`).join(" ");
+          return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%"><polyline points="${pts}" fill="none" stroke="${VIZ_GOLD}" stroke-width="2.5"/></svg>`;
+        })() : "";
+        const peerRows = (attrs.peers || "").split("|").map((p) => p.trim()).filter(Boolean).map((p) => {
+          const m = p.match(/^(.+?)\s+([\d.,%$\-]+)$/);
+          const label = m ? m[1] : p, val = m ? m[2] : "";
+          return `<div class="dash-peer-row"><span>${esc(label)}</span><span>${esc(val)}</span></div>`;
+        }).join("");
+        let mapSvg = "";
+        if (attrs.map) {
+          const [sub, st, pc, ...nb] = attrs.map.split(",").map((s) => s.trim());
+          mapSvg = renderMicroMapSvg({ suburb: sub, state: st, postcode: pc, neighbours: nb });
+        }
+        const narrative = inner.split("\n").slice(1).join(" ").trim();
+        return `\n<section class="dashboard-page">
+          <div class="dp-eyebrow">${eyebrow}</div>
+          <h2 class="dp-title">${title}</h2>
+          <div class="dp-grid">
+            <div class="dp-big-cell">
+              <div class="dp-big-value">${big}</div>
+              ${bigLabel ? `<div class="dp-big-label">${bigLabel}</div>` : ""}
+              ${sparkSvg ? `<div class="dp-spark">${sparkSvg}</div>` : ""}
+            </div>
+            ${peerRows ? `<div class="dp-peers"><div class="dp-peers-title">Peer benchmark</div>${peerRows}</div>` : ""}
+            ${mapSvg ? `<div class="dp-map">${mapSvg}</div>` : ""}
+          </div>
+          ${narrative ? `<p class="dp-narrative">${esc(narrative)}</p>` : ""}
+        </section>\n`;
+      }
+      if (name === "signature") {
+        const name1 = esc(attrs.name || "");
+        const role = esc(attrs.role || "");
+        const company = esc(attrs.company || "");
+        const date = esc(attrs.date || new Date().toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" }));
+        const qrUrl = attrs.qr ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&format=svg&qzone=1&data=${encodeURIComponent(attrs.qr)}` : "";
+        const body = esc(inner.replace(/\n+/g, " "));
+        // SVG ribbon signature placeholder (looks like handwriting).
+        const sigSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="220"><path d="M8 56 C 30 8, 60 78, 90 30 S 150 70, 180 26 S 250 70, 312 22" fill="none" stroke="${VIZ_INK}" stroke-width="2.2" stroke-linecap="round"/><path d="M40 64 L 280 64" stroke="${VIZ_RULE}" stroke-width="0.6"/></svg>`;
+        return `\n<section class="signature-page">
+          <div class="sg-eyebrow">${esc(attrs.eyebrow || "Personally prepared")}</div>
+          <p class="sg-body">${body}</p>
+          <div class="sg-row">
+            <div class="sg-sig">
+              <div class="sg-sig-mark">${sigSvg}</div>
+              <div class="sg-sig-name">${name1}</div>
+              ${role ? `<div class="sg-sig-role">${role}</div>` : ""}
+              ${company ? `<div class="sg-sig-company">${company}</div>` : ""}
+              <div class="sg-sig-date">${date}</div>
+            </div>
+            ${qrUrl ? `<div class="sg-qr"><img src="${qrUrl}" alt="Scan to verify"/><div class="sg-qr-cap">Scan to verify</div></div>` : ""}
+          </div>
+        </section>\n`;
+      }
       return _m;
     },
   );
+
+  // {{bullet: VALUE | target=80 | max=100 | label=… | sub=…}}
+  out = out.replace(/\{\{bullet:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const value = Number(parts[0]); if (!Number.isFinite(value)) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(target|max|label|sub|ranges)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    const ranges = opts.ranges ? opts.ranges.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) : undefined;
+    return vizFigure(renderBulletSvg({ value, target: opts.target ? Number(opts.target) : undefined, max: opts.max ? Number(opts.max) : undefined, label: opts.label, sub: opts.sub, ranges }), opts.label || "");
+  });
+
+  // {{marimekko: rowLabel*weight: s1,s2,s3 | rowLabel*weight: s1,s2,s3 | legend=A,B,C}}
+  out = out.replace(/\{\{marimekko:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    let legend: string[] = [];
+    const rows = parts.map((p) => {
+      const leg = p.match(/^legend\s*=\s*(.+)$/i); if (leg) { legend = leg[1].split(",").map((s) => s.trim()); return null; }
+      const m = p.match(/^(.+?)\*([\d.]+)\s*:\s*(.+)$/); if (!m) return null;
+      return { label: m[1].trim(), weight: Number(m[2]) || 1, segments: m[3].split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) };
+    }).filter(Boolean) as Array<{ label: string; weight: number; segments: number[] }>;
+    if (!rows.length) return _m;
+    return vizFigure(renderMarimekkoSvg(rows, legend), "Composition × magnitude");
+  });
+
+  // {{micromap: Suburb | state=VIC | postcode=3000 | neighbours=A,B,C}}
+  out = out.replace(/\{\{micromap:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const suburb = parts[0]; if (!suburb) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(state|postcode|neighbours)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    return vizFigure(renderMicroMapSvg({ suburb, state: opts.state, postcode: opts.postcode, neighbours: opts.neighbours ? opts.neighbours.split(",").map((s) => s.trim()) : [] }), `${suburb} locator`);
+  });
+
+  // {{calendar: 1,2,3,4,5,6,7,8,9,10,11,12 | title=Sales by month | months=Jan,Feb,…}}
+  out = out.replace(/\{\{calendar:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const vals = parts[0].split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    if (!vals.length) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(title|months)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    const months = opts.months ? opts.months.split(",").map((s) => s.trim()) : [];
+    return vizFigure(renderCalendarHeatmapSvg(vals, opts.title || "", months), opts.title || "");
+  });
 
   // {{gauge: VALUE [/ MAX] | LABEL | CAPTION}}
   out = out.replace(/\{\{gauge:\s*([^}]+)\}\}/gi, (_m, args) => {
@@ -3083,6 +3306,176 @@ ${(() => {
     }
     h2[data-ch]::before {
       ${design.showSectionNumbers ? `` : `content: none;`}
+    }
+
+    /* ── Phase 4 — Pull-quote / quote-page full-bleed editorial spread ── */
+    .quote-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      min-height: 240mm;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 40mm 28mm;
+      background: ${palette.paperAlt};
+      position: relative;
+    }
+    .quote-page .qp-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt; font-weight: 800;
+      letter-spacing: .32em; text-transform: uppercase;
+      color: ${palette.accent};
+      margin-bottom: 18pt;
+    }
+    .quote-page .qp-body {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 500;
+      font-size: 38pt; line-height: 1.18;
+      color: ${palette.heading2};
+      margin: 0; padding: 0; border: 0;
+      letter-spacing: -0.01em;
+      hanging-punctuation: first last;
+    }
+    .quote-page .qp-body::before { content: "\\201C"; font-size: 1em; color: ${palette.accent}; margin-right: .05em; }
+    .quote-page .qp-body::after  { content: "\\201D"; color: ${palette.accent}; margin-left: .05em; }
+    .quote-page .qp-attrib {
+      margin-top: 22pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 9.5pt; letter-spacing: .12em; text-transform: uppercase;
+      color: ${palette.heading3};
+    }
+
+    /* ── Phase 4 — Data dashboard full-page spread ── */
+    .dashboard-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      padding: 26mm 22mm;
+      background: ${palette.paper};
+    }
+    .dashboard-page .dp-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt; font-weight: 800; letter-spacing: .32em; text-transform: uppercase;
+      color: ${palette.accent}; margin-bottom: 6pt;
+    }
+    .dashboard-page .dp-title {
+      font-family: 'Playfair Display', serif; font-weight: 700;
+      font-size: 28pt; line-height: 1.1; color: ${palette.heading2};
+      margin: 0 0 18pt; border: 0; padding: 0;
+    }
+    .dashboard-page .dp-title::before { content: none !important; }
+    .dashboard-page .dp-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 12pt;
+      margin-bottom: 14pt;
+    }
+    .dashboard-page .dp-big-cell {
+      grid-row: span 2;
+      padding: 18pt 20pt;
+      background: ${palette.paperAlt};
+      border-top: 2pt solid ${palette.accent};
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-height: 130mm;
+    }
+    .dashboard-page .dp-big-value {
+      font-family: 'Playfair Display', serif; font-weight: 800;
+      font-size: 120pt; line-height: 0.95; color: ${palette.heading2};
+      font-variant-numeric: lining-nums tabular-nums;
+      letter-spacing: -0.03em;
+    }
+    .dashboard-page .dp-big-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 10pt; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+      color: ${palette.heading3}; margin-top: 8pt;
+    }
+    .dashboard-page .dp-spark { margin-top: auto; }
+    .dashboard-page .dp-peers {
+      padding: 14pt 16pt; background: ${palette.paperAlt};
+      border-left: 2pt solid ${palette.accent};
+    }
+    .dashboard-page .dp-peers-title {
+      font-family: 'Inter', sans-serif; font-size: 8pt; font-weight: 800;
+      letter-spacing: .22em; text-transform: uppercase; color: ${palette.accent};
+      margin-bottom: 8pt;
+    }
+    .dashboard-page .dp-peer-row {
+      display: flex; justify-content: space-between;
+      padding: 5pt 0; border-bottom: 0.4pt solid ${withAlpha(palette.accent, 0.25)};
+      font-family: 'Inter', sans-serif; font-size: 10pt; color: ${palette.ink};
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .dashboard-page .dp-peer-row:last-child { border-bottom: 0; }
+    .dashboard-page .dp-map { padding: 8pt; background: ${palette.paperAlt}; }
+    .dashboard-page .dp-narrative {
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 13pt; line-height: 1.5; color: ${palette.ink};
+      margin: 18pt 0 0; padding-top: 12pt;
+      border-top: 0.5pt solid ${palette.accent};
+    }
+
+    /* ── Phase 4 — Signature page (personalised sign-off + QR) ── */
+    .signature-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      padding: 50mm 28mm;
+      background: ${palette.paper};
+      min-height: 240mm;
+    }
+    .signature-page .sg-eyebrow {
+      font-family: 'Inter', sans-serif; font-size: 8pt; font-weight: 800;
+      letter-spacing: .32em; text-transform: uppercase; color: ${palette.accent};
+      margin-bottom: 24pt;
+    }
+    .signature-page .sg-body {
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 18pt; line-height: 1.45; color: ${palette.heading2};
+      margin: 0 0 40pt; max-width: 130mm;
+    }
+    .signature-page .sg-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 20pt; padding-top: 18pt;
+      border-top: 0.5pt solid ${palette.accent};
+    }
+    .signature-page .sg-sig-mark { margin-bottom: 6pt; }
+    .signature-page .sg-sig-name {
+      font-family: 'Playfair Display', serif; font-weight: 700;
+      font-size: 14pt; color: ${palette.heading2};
+    }
+    .signature-page .sg-sig-role,
+    .signature-page .sg-sig-company,
+    .signature-page .sg-sig-date {
+      font-family: 'Inter', sans-serif; font-size: 9.5pt;
+      color: ${palette.heading3}; margin-top: 2pt;
+    }
+    .signature-page .sg-sig-date {
+      font-size: 8pt; letter-spacing: .2em; text-transform: uppercase;
+      color: ${palette.accent}; margin-top: 6pt;
+    }
+    .signature-page .sg-qr {
+      text-align: center;
+    }
+    .signature-page .sg-qr img { width: 100pt; height: 100pt; }
+    .signature-page .sg-qr-cap {
+      font-family: 'Inter', sans-serif; font-size: 7.5pt;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: ${palette.heading3}; margin-top: 6pt;
+    }
+
+    /* ── Phase 3 — Visualisation figure container (bullet/marimekko/map/calendar) ── */
+    .vis-figure {
+      margin: 14pt 0 16pt;
+      padding: 10pt; background: ${palette.paper};
+      border: 0.4pt solid ${withAlpha(palette.accent, 0.35)};
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .vis-figure figcaption {
+      margin-top: 8pt; padding-top: 6pt;
+      border-top: 0.4pt solid ${withAlpha(palette.accent, 0.25)};
+      font-family: 'Inter', sans-serif; font-size: 8pt;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: ${palette.heading3}; text-align: center;
     }
   `;
 })()}</style>
