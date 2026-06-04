@@ -3153,6 +3153,35 @@ ${(() => {
     h2 { position: relative; overflow: visible; z-index: 1; }
     h2 + p { position: relative; z-index: 2; }
 
+    /* End-of-chapter ornament — fills the inevitable tail whitespace with a
+       quiet editorial sign-off instead of dead cream. Sits at the bottom of
+       the previous chapter's last page; the next h2 still forces a fresh page. */
+    .chapter-closer {
+      display: flex;
+      align-items: center;
+      gap: 12pt;
+      margin: 36pt auto 0;
+      padding: 0;
+      width: 60%;
+      break-after: page;        /* push the next h2 onto its own opener page */
+      page-break-after: always;
+      break-inside: avoid;
+    }
+    .chapter-closer-rule {
+      flex: 1;
+      height: 0.5pt;
+      background: linear-gradient(90deg, transparent 0%, ${THEME.gold} 50%, transparent 100%);
+      opacity: 0.6;
+    }
+    .chapter-closer-mark {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 10pt;
+      color: ${THEME.gold};
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    /* The first chapter has no preceding closer, so its opener still works. */
+
     /* Real initial-letter drop cap (WeasyPrint supports this; degrades to ::first-letter). */
     ${design.showDropCaps ? `
     h2 + p::first-letter {
