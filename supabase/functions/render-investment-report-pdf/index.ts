@@ -1634,7 +1634,74 @@ function applyEditorialMarkdown(md: string): string {
     return `\n<div class="glance-strip">${cells}</div>\n`;
   });
 
-  // Inline sparkline: ~~[1,2,3,4,5]~~ flows next to prose.
+  // {{donut: Owner 58, Renter 32, Other 10 | title=Tenure mix | center=58% | centerSub=Owner-occupied}}
+  out = out.replace(/\{\{donut:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    const segs: Array<{ label: string; value: number }> = [];
+    for (const it of parts[0].split(",").map((s) => s.trim()).filter(Boolean)) {
+      const m = it.match(/^(.+?)\s+([\-+]?[\d.]+)$/);
+      if (m) segs.push({ label: m[1].trim(), value: Number(m[2]) || 0 });
+    }
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(title|center|centersub)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    if (!segs.length) return _m;
+    return vizFigure(renderDonutSvg(segs, { title: opts.title, centerLabel: opts.center, centerSub: opts.centersub }), opts.title || "");
+  });
+
+  // {{tiles: Suburb1 $1.2M sub="↑ 6.4% YoY" int=0.8, Suburb2 $980k sub="↑ 4.1% YoY" int=0.55 | title=Adjacent suburbs | cols=4}}
+  out = out.replace(/\{\{tiles:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(title|cols)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    // split items on commas that are NOT inside quotes
+    const items: Array<{ label: string; value: string; sub?: string; intensity?: number }> = [];
+    const segRe = /([^,"]+?(?:"[^"]*"[^,"]*?)*)(?:,|$)/g;
+    let mm: RegExpExecArray | null;
+    while ((mm = segRe.exec(parts[0])) !== null) {
+      const raw = mm[1].trim();
+      if (!raw) continue;
+      const subMatch = raw.match(/sub\s*=\s*"([^"]*)"/i);
+      const intMatch = raw.match(/int\s*=\s*([\d.]+)/i);
+      const stripped = raw.replace(/\s*sub\s*=\s*"[^"]*"/i, "").replace(/\s*int\s*=\s*[\d.]+/i, "").trim();
+      const head = stripped.match(/^(.+?)\s+(\S.*)$/);
+      if (!head) continue;
+      items.push({
+        label: head[1].trim(),
+        value: head[2].trim(),
+        sub: subMatch?.[1],
+        intensity: intMatch ? Number(intMatch[1]) : undefined,
+      });
+    }
+    if (!items.length) return _m;
+    return vizFigure(renderTilesSvg(items, { title: opts.title, cols: opts.cols ? Number(opts.cols) : undefined }), opts.title || "");
+  });
+
+  // {{margin: Title text | spark=1,2,3,4,5 | note=One-line context that sits in the margin.}}
+  out = out.replace(/\{\{margin:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const title = parts[0];
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(spark|note|label)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    const vals = (opts.spark || "").split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    const spark = vals.length >= 2 ? renderMarginSparkSvg(vals) : "";
+    return `\n<aside class="sidenote sidenote-margin">
+      ${opts.label ? `<span class="sidenote-label">${esc(opts.label)}</span>` : ""}
+      ${title ? `<div class="margin-title">${esc(title)}</div>` : ""}
+      ${spark ? `<div class="margin-spark">${spark}</div>` : ""}
+      ${opts.note ? `<p class="margin-note">${esc(opts.note)}</p>` : ""}
+    </aside>\n`;
+  });
+
+
   out = out.replace(/~~\[([\d.,\s\-]+)\]~~/g, (_m, list) => {
     const vals = String(list).split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
     return renderInlineSparkSvg(vals);
