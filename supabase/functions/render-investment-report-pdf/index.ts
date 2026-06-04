@@ -2465,9 +2465,15 @@ export async function buildHtml(
     </aside>
   `;
 
+  const execSignal = priceTxt && rentTxt ? `${priceTxt} · ${rentTxt}/wk` : (priceTxt || rentTxt || null);
+  const execWatch = (para2Parts.join(" ").match(/[^.!?]*\b(risk|vacancy|caution|watch|exposure|concern|soft)\b[^.!?]*[.!?]/i)?.[0] || "").trim() || null;
+  const execTrend = yieldTxt ? `Yield ${yieldTxt}` : null;
+  const execView = scoreTxt ? `Score ${scoreTxt}` : null;
+  const execGlance = chapterGlanceHtmlFromValues("Executive Summary", [execSignal, execWatch ? execWatch.slice(0, 80) : null, execTrend, execView]);
+
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary" data-ch="1">Executive Summary</h2>
-    ${chapterGlanceHtml("Executive Summary")}
+    ${execGlance}
     ${editorsNoteHtml}
     ${summaryKpiHtml || (kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : "")}
     ${scoreVisualsHtml}
