@@ -614,7 +614,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
         },
       },
     };
-    const uri = await chartDataUri(config, 780, 380, `donut:${numericCols[0].header}`);
+    const uri = await chartDataUri(config, CHART_PRESETS.DONUT_WIDE.width, CHART_PRESETS.DONUT_WIDE.height, `donut:${numericCols[0].header}`);
     if (!uri) return null;
     return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
   }
@@ -664,7 +664,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
         },
       },
     };
-    const uri = await chartDataUri(config, 820, 360, `line:${numericCols.map((c) => c.header).join(",")}`);
+    const uri = await chartDataUri(config, CHART_PRESETS.TREND_WIDE.width, CHART_PRESETS.TREND_WIDE.height, `line:${numericCols.map((c) => c.header).join(",")}`);
     if (!uri) return null;
     return `<figure class="auto-chart"><img src="${uri}" alt="Trend visualisation"/></figure>`;
   }
@@ -714,7 +714,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
       },
     },
   };
-  const uri = await chartDataUri(config, 820, 380, `bar:${numericCols.map((c) => c.header).join(",")}`);
+  const uri = await chartDataUri(config, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, `bar:${numericCols.map((c) => c.header).join(",")}`);
   if (!uri) return null;
   return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
 }
