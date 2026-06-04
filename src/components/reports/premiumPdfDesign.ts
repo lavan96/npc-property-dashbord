@@ -25,7 +25,7 @@ export const DEFAULT_PDF_DESIGN_OPTIONS: PdfDesignOptions = {
   coverStyle: "title_overlay",
   bodyScale: 100,
   visualIntensity: 70,
-  showDropCaps: true,
+  showDropCaps: false,
   showSectionNumbers: true,
   justifyText: true,
 };

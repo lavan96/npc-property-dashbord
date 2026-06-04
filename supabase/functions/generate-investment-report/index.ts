@@ -1192,13 +1192,13 @@ async function fetchServiceWithFallback<T>(
 // model knows the exact syntax. Keep terse — the model just needs the contract.
 // ─────────────────────────────────────────────────────────────────────────────
 const EDITORIAL_PRIMITIVES_BLOCK = `
-**EDITORIAL PRIMITIVES (USE SPARINGLY FOR VISUAL IMPACT)**
+**EDITORIAL PRIMITIVES (VISUAL-FIRST — USE THESE TO REPLACE DENSE PROSE)**
 
 You may emit these block-level shortcodes inside the markdown. The renderer
-converts them to print-quality typography and inline SVG. Do NOT overuse —
-1 pull-quote per chapter max, 1 visualisation per chapter max, sidenotes only
-when they genuinely add context. Each shortcode must sit on its own line(s),
-with a blank line before and after.
+converts them to print-quality typography and inline SVG. Visuals are not optional:
+each chapter should carry one opener strip plus multiple in-flow visualisations.
+Keep pull-quotes rare, but use data visuals wherever they replace a paragraph or
+table. Each shortcode must sit on its own line(s), with a blank line before and after.
 
 1. PULL QUOTE — for one striking sentence that summarises the chapter's thesis.
 \`\`\`
@@ -1343,15 +1343,29 @@ Median values have climbed steadily ~~[820,860,910,980,1050,1180]~~ over six yea
 {{margin: RBA cash-rate trajectory | spark=4.35,4.35,4.10,3.85,3.60,3.35 | note=Six-month decline supports the refinancing window in Q3. | label=Macro watch}}
 \`\`\`
 
+20. TIMELINE RIBBON — infrastructure / delivery pipeline. Use instead of a list
+    of projects and timing windows.
+    Format: \`{{timeline: Existing "Station access", 0-2y "Road upgrade", 3-5y "Hospital stage", 5y+ "Town centre renewal" | title=Infrastructure pipeline}}\`
+
+21. BIG-NUMBER KPI STRIPS — when a sentence says "median grew from X to Y" or
+    compares 3 headline metrics, use stat blocks / gauges / bars rather than prose.
+    Use \`::: stat\` for a single in-flow number, \`{{bars}}\` for X vs suburb vs metro,
+    and \`~~[…]~~\` beside any trend sentence.
+
 VISUAL-FIRST RULES (CRITICAL):
 - Every chapter MUST open with a \`{{glance: …}}\` strip immediately after the H2.
 - Aim for **3-4 visualisations per chapter** drawn from the full library
   (gauge / bars / quadrant / pictograph / donut / tiles / heatmap / wheel /
-  waterfall / margin / inline sparkline). Prose EXPLAINS visualisations, never duplicates them.
+  waterfall / margin / timeline / stat / inline sparkline). Prose EXPLAINS visualisations, never duplicates them.
+- Any "median grew from X to Y" / trend sentence MUST include either \`~~[…]~~\` inline or a \`::: stat\` callout nearby.
+- Any "subject vs suburb vs metro/state" comparison MUST use \`{{bars: Subject X, Suburb Y, Metro Z | title=…}}\`.
+- Investment Score, Affordability, Risk, Suitability, Confidence, and similar 0-100 ratings MUST use \`{{gauge: …}}\`.
 - Any list of 3+ ranked metrics MUST be rendered as \`{{bars: …}}\` instead of a table.
 - Any "X of Y households / dwellings / buyers" stat MUST use \`{{pictograph: …}}\`.
 - Any composition / share-of-total (tenure mix, age bands, expense split, capital
   allocation) MUST use \`{{donut: …}}\` instead of a table.
+- Any suburb × metric matrix MUST use \`{{heatmap: …}}\`.
+- Any infrastructure/project pipeline MUST use \`{{timeline: …}}\`.
 - Any "subject suburb vs N nearby suburbs" comparison MUST use \`{{tiles: …}}\`.
 - Any trade-off between two dimensions (yield vs growth, risk vs return) MUST use
   \`{{quadrant: …}}\`. Highlight the subject property with a trailing \`*\`.
@@ -1422,10 +1436,10 @@ ${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
  2. Follow the exact markdown formatting with ## for main section headings and ### for subsections
-3. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows per table). Prefer well-written narrative paragraphs over tables for general information
-4. After every table or significant data point, include a brief "What This Means" explanation in plain English
-5. Lead each section with a clear insight or takeaway before presenting supporting data
-6. Be thorough and accurate, but write in a warm, consultative tone that a non-expert investor can easily understand
+3. Use tables ONLY when a visual shortcode cannot express the data. Prefer \`{{bars}}\`, \`{{heatmap}}\`, \`{{donut}}\`, \`{{tiles}}\`, \`{{timeline}}\`, \`{{gauge}}\`, \`{{pictograph}}\`, and inline \`~~[…]~~\` sparklines over tables or long paragraphs.
+4. After every visual/table/significant data point, include only a brief "What This Means" explanation in plain English — 1 short paragraph max.
+5. Lead each section with a \`{{glance: …}}\` strip and a clear insight before presenting supporting data.
+6. Be thorough and accurate, but compress prose aggressively; every paragraph should earn its place beside a visual.
 7. Start immediately with the first section heading - no preamble
 8. Use contextual comparisons (e.g., "30% above the state average") to make numbers meaningful
 9. Include a brief transition sentence at the end of each section to connect to what comes next
@@ -4791,14 +4805,14 @@ You are generating the trimmed, client-facing version of the Investor Compass re
 
 ### 1. KEEP (Priority 1) — write these in full, but strip every financial figure
 
-- **Executive Summary** — exactly ONE page. Cover: location verdict, property fit, tenant demand, key risks, recommendation. DO NOT include purchase price, LVR, yield, weekly rent, loan or cashflow figures. No KPI dashboard row.
+- **Executive Summary** — exactly ONE page. Cover: location verdict, property fit, tenant demand, key risks, recommendation. DO NOT include purchase price, LVR, yield, weekly rent, loan or cashflow figures. Use a non-financial \`{{glance}}\` opener and visual callouts rather than a financial KPI dashboard row.
 - **Property Snapshot** — physical and strategic only: property type, bed/bath/car, land size, estate, suburb, target tenant, locality fit. DO NOT include price, rent, yield, LVR or loan details.
 - **Location Overview** — strengthen. This is a core section explaining why the area matters.
 - **Population & Development Trends** — keep in full (macro demand, master-planned growth corridor).
 - **Suburb Character & Lifestyle** — keep but REDUCE. Who lives there, why tenants/buyers want it.
 - **Demand Drivers** — major client-facing section: tenant demand, family formation, employment access, master-planned amenity.
 - **Property-Level Information** — non-financial only: layout, land size, dwelling type, position within estate, tenant suitability, strengths, limitations.
-- **Risk Summary** — consolidate crime + environmental + planning + supply into ONE clear risk dashboard table (Risk / Rating / Why it matters / What to verify).
+- **Risk Summary** — consolidate crime + environmental + planning + supply into ONE visual risk panel using \`{{gauge}}\`, \`{{heatmap}}\` or \`{{bars}}\`; only use a table if the data cannot be visualised.
 - **Final Recommendation** — rewrite as a simple verdict: **Proceed**, **Proceed with caution**, or **Not suitable**, followed by 150–250 words of plain rationale tied to location, tenant demand and risk. No financial verdict.
 
 ### 2. COMPRESS (Priority 2) — cap pages as specified, no padding
@@ -4857,7 +4871,7 @@ Aim for ~38–42 pages total after these trims. If the template would push you l
       // Append at end AND prepend a short hard-rule banner at the very start
       // so the model sees the financial exclusions before any legacy template
       // language it may still be biased by from training data.
-      const compass40Banner = `\n**⚠️ COMPASS-40 HARD RULES (read first, apply globally)**\n- This is a Location & Property Fit report. NO financial modelling appears anywhere: no purchase price, weekly rent, LVR, gross/net yield, loan amount, interest rate, monthly/annual repayment, cashflow, sensitivity, 10-year projections, stamp duty, deposit, LMI, depreciation, negative gearing, land tax.\n- NO KPI dashboard tiles or rows. NO "Purchase Price | $X | Weekly Rent | $Y" tables.\n- NO inline citation markers like [1] [2] [1][2] — name the real source inline or omit the claim.\n- Finish every sentence and paragraph. Do NOT stop mid-thought. If running out of room, end the section cleanly.\n- Render Education, Transport and Employment exactly ONCE, in their own dedicated sections, never repeated under other sections.\n---\n`;
+      const compass40Banner = `\n**⚠️ COMPASS-40 HARD RULES (read first, apply globally)**\n- This is a Location & Property Fit report. NO financial modelling appears anywhere: no purchase price, weekly rent, LVR, gross/net yield, loan amount, interest rate, monthly/annual repayment, cashflow, sensitivity, 10-year projections, stamp duty, deposit, LMI, depreciation, negative gearing, land tax.\n- NO FINANCIAL KPI dashboard rows. NO "Purchase Price | $X | Weekly Rent | $Y" tables. Non-financial visual callouts, gauges, bars, heatmaps, timelines, pictographs, donuts and glance strips are REQUIRED.\n- NO inline citation markers like [1] [2] [1][2] — name the real source inline or omit the claim.\n- Finish every sentence and paragraph. Do NOT stop mid-thought. If running out of room, end the section cleanly.\n- Render Education, Transport and Employment exactly ONCE, in their own dedicated sections, never repeated under other sections.\n---\n`;
       prompt = compass40Banner + prompt + compass40Overlay;
       console.log(`✓ Compass-40 banner + overlay injected. Prompt length now: ${prompt.length}`);
     }

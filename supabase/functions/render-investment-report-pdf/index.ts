@@ -80,7 +80,7 @@ const DEFAULT_PDF_DESIGN: PdfDesignOptions = {
   coverStyle: "title_overlay",
   bodyScale: 100,
   visualIntensity: 70,
-  showDropCaps: true,
+  showDropCaps: false,
   showSectionNumbers: true,
   justifyText: true,
 };
@@ -112,7 +112,7 @@ function normalizePdfDesign(input: unknown): PdfDesignOptions {
     coverStyle: pick(raw.coverStyle, ["image", "title_overlay", "editorial"] as const, DEFAULT_PDF_DESIGN.coverStyle),
     bodyScale: clampNumber(raw.bodyScale, 90, 112, DEFAULT_PDF_DESIGN.bodyScale),
     visualIntensity: clampNumber(raw.visualIntensity, 0, 100, DEFAULT_PDF_DESIGN.visualIntensity),
-    showDropCaps: raw.showDropCaps !== false,
+    showDropCaps: raw.showDropCaps === true,
     showSectionNumbers: raw.showSectionNumbers !== false,
     justifyText: raw.justifyText !== false,
   };
@@ -1333,6 +1333,117 @@ function renderMarginSparkSvg(vals: number[]): string {
   </svg>`;
 }
 
+/** Infrastructure ribbon — compact phase timeline for Existing → 0-2y → 3-5y → 5y+. */
+function renderTimelineRibbonSvg(items: Array<{ phase: string; label: string; confidence?: string }>, title = "Infrastructure pipeline"): string {
+  const phases = ["Existing", "0-2y", "3-5y", "5y+"];
+  const w = 760, h = 176, padX = 44, axisY = 86;
+  const step = (w - padX * 2) / (phases.length - 1);
+  const phaseNorm = (p: string) => {
+    const s = p.toLowerCase();
+    if (/existing|now|current/.test(s)) return "Existing";
+    if (/0\s*-?\s*2|short/.test(s)) return "0-2y";
+    if (/3\s*-?\s*5|medium/.test(s)) return "3-5y";
+    return "5y+";
+  };
+  const grouped = new Map(phases.map((p) => [p, [] as typeof items]));
+  items.forEach((it) => grouped.get(phaseNorm(it.phase))?.push(it));
+  const markers = phases.map((phase, i) => {
+    const x = padX + i * step;
+    const list = (grouped.get(phase) || []).slice(0, 2);
+    const labels = list.map((it, j) => `<text x="${x}" y="${axisY + 36 + j * 15}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK}" font-weight="${j === 0 ? 700 : 500}">${svgEscape(it.label.length > 28 ? it.label.slice(0, 26) + "…" : it.label)}</text>`).join("");
+    return `<g>
+      <circle cx="${x}" cy="${axisY}" r="8" fill="${i === 0 ? VIZ_NAVY : VIZ_GOLD}" stroke="${VIZ_PAPER}" stroke-width="2"/>
+      <text x="${x}" y="${axisY - 24}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" letter-spacing="1.4" fill="${VIZ_INK_MUTED}" font-weight="700">${svgEscape(phase.toUpperCase())}</text>
+      ${labels}
+    </g>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
+    <text x="24" y="26" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="15" fill="${VIZ_INK}">${svgEscape(title)}</text>
+    <path d="M ${padX} ${axisY} C ${padX + step * 0.5} ${axisY - 18}, ${padX + step * 0.5} ${axisY + 18}, ${padX + step} ${axisY} S ${padX + step * 1.5} ${axisY + 18}, ${padX + step * 2} ${axisY} S ${padX + step * 2.5} ${axisY - 18}, ${padX + step * 3} ${axisY}" fill="none" stroke="${VIZ_RULE}" stroke-width="8" stroke-linecap="round"/>
+    <path d="M ${padX} ${axisY} C ${padX + step * 0.5} ${axisY - 18}, ${padX + step * 0.5} ${axisY + 18}, ${padX + step} ${axisY} S ${padX + step * 1.5} ${axisY + 18}, ${padX + step * 2} ${axisY} S ${padX + step * 2.5} ${axisY - 18}, ${padX + step * 3} ${axisY}" fill="none" stroke="${VIZ_GOLD}" stroke-width="3" stroke-linecap="round"/>
+    ${markers}
+  </svg>`;
+}
+
+function renderKpiStripHtml(items: Array<{ label: string; value: string; delta?: string; spark?: number[] }>): string {
+  if (!items.length) return "";
+  return `<div class="kpi-strip kpi-strip-inline">${items.slice(0, 4).map((it) => `
+    <div class="kpi big-number-card">
+      <div class="kpi-label">${esc(it.label)}</div>
+      <div class="kpi-value">${esc(it.value)}</div>
+      ${it.delta ? `<div class="kpi-delta">${esc(it.delta)}</div>` : ""}
+      ${it.spark && it.spark.length >= 2 ? `<div class="kpi-inline-spark">${renderMarginSparkSvg(it.spark)}</div>` : ""}
+    </div>`).join("")}</div>`;
+}
+
+function extractScoreBreakdownItems(score: any): Array<{ label: string; value: number; display: string }> {
+  const raw = score?.breakdown || score?.scores || score?.components || {};
+  if (!raw || typeof raw !== "object") return [];
+  return Object.entries(raw).map(([key, val]: [string, any]) => {
+    const n = typeof val === "number" ? val : Number(val?.score ?? val?.value ?? val?.rating);
+    if (!Number.isFinite(n)) return null;
+    const label = key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").replace(/\bscore\b/ig, "").trim();
+    return { label: label || key, value: n, display: `${Math.round(n)}` };
+  }).filter(Boolean) as Array<{ label: string; value: number; display: string }>;
+}
+
+function recursiveNumberByKey(obj: unknown, patterns: RegExp[], seen = new Set<unknown>()): number | null {
+  if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
+  seen.add(obj);
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (patterns.some((p) => p.test(key))) {
+      const n = typeof val === "number" ? val : typeof val === "string" ? parseLooseNumber(val) : null;
+      if (n != null && Number.isFinite(n)) return n;
+    }
+    const nested = recursiveNumberByKey(val, patterns, seen);
+    if (nested != null) return nested;
+  }
+  return null;
+}
+
+function normaliseShare(value: number | null): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return value > 0 && value <= 1 ? value * 100 : value;
+}
+
+function chapterGlanceHtml(title: string): string {
+  const lower = title.toLowerCase();
+  const cells = lower.includes("risk") || lower.includes("safety")
+    ? ["✓ Risk register", "⚠ Verify overlays", "▲ Mitigants mapped", "★ Decision lens"]
+    : lower.includes("transport") || lower.includes("infrastructure")
+      ? ["✓ Access drivers", "⚠ Delivery timing", "▲ Pipeline view", "★ Location fit"]
+      : lower.includes("demographic") || lower.includes("demand")
+        ? ["✓ Demand base", "⚠ Cohort shifts", "▲ Household trend", "★ Tenant fit"]
+        : lower.includes("score") || lower.includes("swot")
+          ? ["✓ Strengths", "⚠ Watch points", "▲ Score drivers", "★ Verdict"]
+          : ["✓ Key signal", "⚠ Watch", "▲ Trend", "★ NPC view"];
+  return `<div class="glance-strip">${cells.map((raw) => {
+    const m = raw.match(/^(\S+)\s+(.+)$/);
+    return `<div class="glance-cell"><span class="glance-sym">${esc(m?.[1] || "•")}</span><span class="glance-text">${esc(m?.[2] || raw)}</span></div>`;
+  }).join("")}</div>`;
+}
+
+function injectChapterGlanceFallbacks(html: string): string {
+  return html.replace(/(<h2\b[^>]*>([\s\S]*?)<\/h2>)(?!\s*<div class="glance-strip")/gi, (_m, heading, inner) => {
+    const title = String(inner).replace(/<[^>]+>/g, "").trim();
+    if (/sources|references|disclaimer/i.test(title)) return heading;
+    return `${heading}\n${chapterGlanceHtml(title)}\n`;
+  });
+}
+
+function addDataSparklinesToParagraphs(html: string): string {
+  return html.replace(/<p>([\s\S]*?)<\/p>/gi, (match, inner) => {
+    if (/spark-inline|<svg|<img|<table/i.test(inner)) return match;
+    if (!/\b(growth|grew|trend|median|yield|rent|vacancy|population|income|price|rose|climbed|increased|declined)\b/i.test(inner)) return match;
+    const vals = Array.from(String(inner).matchAll(/(?:\$\s*)?-?\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*%?/g))
+      .map((m) => parseLooseNumber(m[0]))
+      .filter((n): n is number => n != null && !(n >= 1900 && n <= 2100));
+    if (vals.length < 3) return match;
+    return `<p>${inner} ${renderInlineSparkSvg(vals.slice(-10))}</p>`;
+  });
+}
+
 /**
  * Pre-marked markdown processor: turns editorial shortcodes into block-level
  * HTML so they survive `marked.parse()` untouched.
@@ -1699,6 +1810,22 @@ function applyEditorialMarkdown(md: string): string {
       ${spark ? `<div class="margin-spark">${spark}</div>` : ""}
       ${opts.note ? `<p class="margin-note">${esc(opts.note)}</p>` : ""}
     </aside>\n`;
+  });
+
+  // {{timeline: Existing "Rail station", 0-2y "Shopping upgrade", 3-5y "Hospital stage" | title=Infrastructure ribbon}}
+  out = out.replace(/\{\{timeline:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^(title)\s*=\s*(.+)$/i);
+      if (m) opts[m[1].toLowerCase()] = m[2];
+    }
+    const items = parts[0].split(/,(?=\s*(?:existing|0\s*-?\s*2|3\s*-?\s*5|5\s*y\+?|short|medium|long)\b)/i).map((seg) => {
+      const m = seg.trim().match(/^(existing|0\s*-?\s*2y?|3\s*-?\s*5y?|5y\+?|short(?:-term)?|medium(?:-term)?|long(?:-term)?)\s+"([^"]+)"(?:\s+confidence="([^"]+)")?/i);
+      return m ? { phase: m[1], label: m[2], confidence: m[3] } : null;
+    }).filter(Boolean) as Array<{ phase: string; label: string; confidence?: string }>;
+    if (!items.length) return _m;
+    return vizFigure(renderTimelineRibbonSvg(items, opts.title || "Infrastructure pipeline"), opts.title || "Infrastructure pipeline");
   });
 
 
@@ -2126,6 +2253,7 @@ export async function buildHtml(
   const km = fin.keyMetrics || fin.key_metrics || {};
   const score = report.investment_score || {};
   const loc = report.location_intelligence || {};
+  const dem = report.demographics_data || {};
 
   // Render + post-process markdown body.
   const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
@@ -2146,6 +2274,8 @@ export async function buildHtml(
   }
   bodyHtml = colourCodeTableCells(bodyHtml);
   bodyHtml = wrapWideTablesLandscape(bodyHtml);
+  bodyHtml = addDataSparklinesToParagraphs(bodyHtml);
+  bodyHtml = injectChapterGlanceFallbacks(bodyHtml);
   const { html: bodyAnnotated, toc } = annotateChaptersAndExtractToc(bodyHtml);
 
   // Hero illustrations per chapter — consumes ONLY pre-generated assets
@@ -2186,6 +2316,42 @@ export async function buildHtml(
       ${k.spark ? `<div class="kpi-spark"><img src="${k.spark}" alt=""/></div>` : ""}
     </div>`)
     .join("");
+
+  const trendDelta = (vals?: number[], mode: "money" | "percent" | "plain" = "plain") => {
+    if (!vals || vals.length < 2) return undefined;
+    const delta = vals[vals.length - 1] - vals[0];
+    if (!Number.isFinite(delta) || Math.abs(delta) < 0.0001) return "→ flat";
+    const sign = delta > 0 ? "▲" : "▼";
+    const abs = Math.abs(delta);
+    const formatted = mode === "money" ? fmtMoney(abs) : mode === "percent" ? `${abs.toFixed(1)} pts` : abs.toFixed(abs >= 10 ? 0 : 1);
+    return `${sign} ${formatted}`;
+  };
+
+  const summaryKpiHtml = renderKpiStripHtml([
+    km.purchasePrice != null ? { label: "Median / Price", value: fmtMoney(km.purchasePrice), delta: trendDelta(series.valueSeries, "money"), spark: series.valueSeries } : null,
+    km.grossRentalYield != null ? { label: "Yield", value: fmtPct(km.grossRentalYield), delta: trendDelta(series.yieldSeries, "percent"), spark: series.yieldSeries } : null,
+    km.weeklyRent != null ? { label: "Rent", value: `${fmtMoney(km.weeklyRent)}/wk`, delta: trendDelta(series.rentSeries, "money"), spark: series.rentSeries } : null,
+    km.weeklyNet != null ? { label: "Cash flow", value: fmtMoney(km.weeklyNet), delta: trendDelta(series.cashflowSeries, "money"), spark: series.cashflowSeries } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string; delta?: string; spark?: number[] }>);
+
+  const scoreBreakdownItems = extractScoreBreakdownItems(score).slice(0, 6);
+  const scoreVisualsHtml = [
+    scoreOverall != null ? vizFigure(renderGaugeSvg(Number(scoreOverall), 100, "Investment Score", scoreBand || "Weighted composite"), "Investment score gauge") : "",
+    scoreBreakdownItems.length >= 3 ? vizFigure(renderBarsSvg(scoreBreakdownItems, { title: "Score drivers", max: 100 }), "Score driver comparator") : "",
+  ].filter(Boolean).join("");
+
+  const renterShare = normaliseShare(recursiveNumberByKey(dem, [/renter/i, /renting/i, /tenant/i]));
+  const ownerShare = normaliseShare(recursiveNumberByKey(dem, [/owner.?occup/i, /owned/i]));
+  const demographicVisualHtml = [
+    renterShare != null || ownerShare != null
+      ? vizFigure(renderDonutSvg([
+          ...(ownerShare != null ? [{ label: "Owner-occupied", value: ownerShare }] : []),
+          ...(renterShare != null ? [{ label: "Renter", value: renterShare }] : []),
+          ...((ownerShare != null || renterShare != null) && (ownerShare || 0) + (renterShare || 0) < 100 ? [{ label: "Other", value: 100 - (ownerShare || 0) - (renterShare || 0) }] : []),
+        ], { title: "Tenure mix", centerLabel: renterShare != null ? `${Math.round(renterShare)}%` : undefined, centerSub: renterShare != null ? "Renter" : undefined }), "Tenure composition")
+      : "",
+    renterShare != null ? vizFigure(renderPictographSvg(Math.max(1, Math.round(renterShare / 10)), 10, { icon: "house", label: "Renter share", sub: `${Math.round(renterShare)} in 100 dwellings rent`, cols: 10 }), "Renter share pictograph") : "",
+  ].filter(Boolean).join("");
 
   // ── Executive Summary (replaces Snapshot + Finance Visuals section) ──
   const suburbLabel = loc?.suburb && loc?.state
@@ -2237,7 +2403,11 @@ export async function buildHtml(
 
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary" data-ch="1">Executive Summary</h2>
+    ${chapterGlanceHtml("Executive Summary")}
     ${editorsNoteHtml}
+    ${summaryKpiHtml || (kpiTiles ? `<div class="snapshot">${kpiTiles}</div>` : "")}
+    ${scoreVisualsHtml}
+    ${demographicVisualHtml}
     <p>${para1Parts.filter(Boolean).join(" ")}</p>
     <p>${para2Parts.filter(Boolean).join(" ")}</p>
   `;
@@ -2867,6 +3037,17 @@ export async function buildHtml(
       gap: 9pt;
       margin: 10pt 0 16pt;
     }
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9pt;
+      margin: 14pt 0 18pt;
+      page-break-inside: avoid;
+    }
+    .kpi-strip-inline .big-number-card {
+      min-height: 92pt;
+      overflow: hidden;
+    }
     .kpi {
       background: linear-gradient(180deg, #FFFDF8 0%, #FBF6EA 100%);
       border: 0.5pt solid ${THEME.rule};
@@ -2883,6 +3064,16 @@ export async function buildHtml(
       font-variant-numeric: lining-nums tabular-nums;
       font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1;
     }
+    .kpi-delta {
+      margin-top: 5pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt;
+      font-weight: 700;
+      color: ${THEME.goldSoft};
+      letter-spacing: .06em;
+    }
+    .kpi-inline-spark { margin-top: 7pt; height: 24pt; }
+    .kpi-inline-spark svg { width: 100%; height: 24pt; display: block; }
 
     .score-card {
       background: linear-gradient(135deg, #FFFDF8 0%, #F4ECD8 100%);
@@ -4616,7 +4807,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     const { data: report, error } = await supabase
       .from("investment_reports")
       .select(
-        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence",
+        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence, demographics_data",
       )
       .eq("id", reportId)
       .maybeSingle();
