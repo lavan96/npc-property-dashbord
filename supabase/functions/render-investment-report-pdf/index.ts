@@ -1491,18 +1491,26 @@ export async function buildHtml(
 
     /* ── Premium auto-injected charts ── */
     .chart-wrap {
-      margin: 18pt 0 22pt;
-      padding: 14pt 14pt 10pt;
-      background: linear-gradient(180deg, #FFFDF8 0%, #FAF4E4 100%);
-      border: 0.5pt solid ${THEME.rule};
-      border-radius: 4pt;
-      box-shadow: 0 1pt 0 rgba(40,28,10,0.04), 0 6pt 16pt -8pt rgba(40,28,10,0.18);
+      margin: 16pt 0 20pt;
+      padding: 12pt 14pt 10pt;
+      background: #FFFDF8;
+      border: 0.4pt solid ${THEME.rule};
+      border-radius: 3pt;
+      box-shadow: 0 1pt 0 rgba(40,28,10,0.03);
       page-break-inside: avoid;
     }
-    .auto-chart { margin: 0 0 8pt; text-align: center; page-break-inside: avoid; }
+    .auto-chart { margin: 0; text-align: center; page-break-inside: avoid; }
     .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .auto-chart figcaption {
+      margin-top: 6pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 7.6pt;
+      letter-spacing: .08em;
+      color: ${THEME.inkMuted};
+      text-align: center;
+    }
     .chart-wrap > table {
-      margin-top: 10pt; font-size: 8.2pt;
+      margin-top: 12pt; font-size: 8.2pt;
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
@@ -1510,12 +1518,12 @@ export async function buildHtml(
     .financial-chart { margin-bottom: 14pt; }
     .chart-title {
       font-family: 'Playfair Display', 'Georgia', serif;
-      font-size: 13.5pt;
+      font-size: 12.5pt;
       font-weight: 700;
       color: ${THEME.ink};
-      margin: 0 0 8pt;
-      padding-bottom: 5pt;
-      border-bottom: 0.5pt solid ${THEME.rule};
+      margin: 0 0 6pt;
+      padding-bottom: 4pt;
+      border-bottom: 0.4pt solid ${THEME.rule};
     }
 
     /* ── KPI sparklines ── */
