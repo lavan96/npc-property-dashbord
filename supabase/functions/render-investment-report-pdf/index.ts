@@ -3007,6 +3007,44 @@ export async function buildHtml(
       color: ${THEME.inkMuted};
     }
 
+    /* ── At-a-glance chapter opener strip ── */
+    .glance-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120pt, 1fr));
+      margin: 14pt 0 18pt;
+      border-top: 0.6pt solid ${THEME.gold};
+      border-bottom: 0.6pt solid ${THEME.gold};
+      background: ${THEME.paper};
+      page-break-inside: avoid;
+    }
+    .glance-cell {
+      padding: 10pt 12pt;
+      border-right: 0.4pt dotted ${THEME.rule};
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt;
+      line-height: 1.35;
+      color: ${THEME.ink};
+    }
+    .glance-cell:last-child { border-right: none; }
+    .glance-sym {
+      display: block;
+      font-size: 14pt;
+      color: ${THEME.gold};
+      margin-bottom: 3pt;
+      line-height: 1;
+    }
+    .glance-text { display: block; }
+
+    /* ── Inline sparkline (flows in prose) ── */
+    svg.spark-inline {
+      display: inline-block;
+      vertical-align: -2px;
+      height: 12pt;
+      width: auto;
+    }
+
+
+
     /* ── Footnotes (CSS Paged Media — WeasyPrint) ── */
     span.footnote {
       float: footnote;
