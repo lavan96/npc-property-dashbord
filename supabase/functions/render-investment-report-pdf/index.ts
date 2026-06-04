@@ -1969,7 +1969,10 @@ if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!API2PDF_KEY) throw new Error("API2PDF_API_KEY is not configured");
+    const weasyConfigured = Boolean(WEASYPRINT_SERVICE_URL && WEASYPRINT_SERVICE_TOKEN);
+    if (!weasyConfigured && !API2PDF_KEY) {
+      throw new Error("No PDF renderer configured (set WEASYPRINT_SERVICE_URL+WEASYPRINT_SERVICE_TOKEN or API2PDF_API_KEY)");
+    }
 
     // Reset module-scoped chart cache each invocation to prevent
     // unbounded growth across warm restarts (root cause of recent OOMs).
