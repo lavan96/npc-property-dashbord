@@ -1801,7 +1801,7 @@ export async function buildHtml(
          <div class="toc-eyebrow">${esc(brandName)} · Investment Report</div>
          <h1>Contents</h1>
          <ol>
-           ${toc.map((t) => `<li><a href="#${t.id}"><span class="title">${esc(t.title)}</span><span class="dots"></span><span class="page"></span></a></li>`).join("")}
+           ${toc.map((t) => `<li><a href="#${t.id}"><span class="title">${esc(t.title)}</span><span class="dots"></span></a></li>`).join("")}
          </ol>
        </section>`
     : "";
