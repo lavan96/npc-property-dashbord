@@ -2038,9 +2038,25 @@ if (import.meta.main) Deno.serve(async (req) => {
       .slice(0, 60);
     const fileName = `investment-report-${safeAddr}.pdf`;
 
-    const fileUrl = await callApi2Pdf(html, fileName);
+    // Prefer self-hosted WeasyPrint (superior typography); fall back to Api2PDF.
+    let fileUrl: string | null = null;
+    let renderer: "weasyprint" | "api2pdf" = "api2pdf";
+    if (weasyConfigured) {
+      try {
+        const pdfBytes = await callWeasyPrint(html);
+        fileUrl = await uploadPdfAndSign(supabase, pdfBytes, fileName);
+        renderer = "weasyprint";
+      } catch (err) {
+        console.warn("[render-investment-report-pdf] WeasyPrint failed, falling back to Api2PDF", err);
+        if (!API2PDF_KEY) throw err;
+      }
+    }
+    if (!fileUrl) {
+      fileUrl = await callApi2Pdf(html, fileName);
+      renderer = "api2pdf";
+    }
 
-    return new Response(JSON.stringify({ fileUrl, fileName }), {
+    return new Response(JSON.stringify({ fileUrl, fileName, renderer }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
