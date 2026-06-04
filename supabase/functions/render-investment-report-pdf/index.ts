@@ -1601,16 +1601,47 @@ export async function buildHtml(
       ? addrTail.slice(-2).join(", ")
       : address;
 
+  // Foil-stamp overlay: radial gold highlight + diagonal sheen + subtle noise.
+  // Pure SVG so it scales infinitely and prints crisp.
+  const foilOverlaySvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 210 297' preserveAspectRatio='xMidYMid slice'>
+      <defs>
+        <radialGradient id='hl' cx='28%' cy='18%' r='62%'>
+          <stop offset='0%' stop-color='#f3d98a' stop-opacity='0.55'/>
+          <stop offset='42%' stop-color='#b88a2c' stop-opacity='0.18'/>
+          <stop offset='100%' stop-color='#000' stop-opacity='0'/>
+        </radialGradient>
+        <linearGradient id='sheen' x1='0' y1='0' x2='1' y2='1'>
+          <stop offset='0%' stop-color='#fff' stop-opacity='0'/>
+          <stop offset='48%' stop-color='#fff' stop-opacity='0.10'/>
+          <stop offset='52%' stop-color='#fff' stop-opacity='0.18'/>
+          <stop offset='56%' stop-color='#fff' stop-opacity='0'/>
+        </linearGradient>
+        <filter id='nz'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter>
+      </defs>
+      <rect width='210' height='297' fill='url(%23hl)'/>
+      <rect width='210' height='297' fill='url(%23sheen)'/>
+      <rect width='210' height='297' filter='url(%23nz)'/>
+    </svg>`)}`;
+  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
   const coverHtml = design.coverStyle === "image"
-    ? `<section class="cover cover-clean"><img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" /></section>`
+    ? `<section class="cover cover-clean">
+        <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
+        <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
+      </section>`
     : `<section class="cover cover-${design.coverStyle}">
         <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
         <div class="cover-scrim"></div>
+        <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
+        <div class="cover-masthead">${esc(String(brandName).toUpperCase())}</div>
         <div class="cover-copy">
-          <div class="cover-kicker">${esc(brandName)} · Investment Report</div>
+          <div class="cover-kicker">Investment Report · ${esc(generated)}</div>
           <h1>${esc(address)}</h1>
-          <div class="cover-meta">${esc(coverLocation)} · ${esc(generated)}</div>
+          <div class="cover-rule"></div>
+          <div class="cover-meta">${esc(coverLocation)}</div>
+          <div class="cover-prepared">Prepared by <strong>${esc(String(advisorLine))}</strong></div>
         </div>
+        <div class="cover-edition">VOL. ${new Date().getFullYear()} · ED. ${String(new Date().getMonth() + 1).padStart(2, "0")}</div>
       </section>`;
 
   const designOverrideStyles = `
