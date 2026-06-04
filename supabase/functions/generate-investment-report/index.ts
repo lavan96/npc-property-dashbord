@@ -1192,13 +1192,13 @@ async function fetchServiceWithFallback<T>(
 // model knows the exact syntax. Keep terse — the model just needs the contract.
 // ─────────────────────────────────────────────────────────────────────────────
 const EDITORIAL_PRIMITIVES_BLOCK = `
-**EDITORIAL PRIMITIVES (USE SPARINGLY FOR VISUAL IMPACT)**
+**EDITORIAL PRIMITIVES (VISUAL-FIRST — USE THESE TO REPLACE DENSE PROSE)**
 
 You may emit these block-level shortcodes inside the markdown. The renderer
-converts them to print-quality typography and inline SVG. Do NOT overuse —
-1 pull-quote per chapter max, 1 visualisation per chapter max, sidenotes only
-when they genuinely add context. Each shortcode must sit on its own line(s),
-with a blank line before and after.
+converts them to print-quality typography and inline SVG. Visuals are not optional:
+each chapter should carry one opener strip plus multiple in-flow visualisations.
+Keep pull-quotes rare, but use data visuals wherever they replace a paragraph or
+table. Each shortcode must sit on its own line(s), with a blank line before and after.
 
 1. PULL QUOTE — for one striking sentence that summarises the chapter's thesis.
 \`\`\`
@@ -1343,15 +1343,29 @@ Median values have climbed steadily ~~[820,860,910,980,1050,1180]~~ over six yea
 {{margin: RBA cash-rate trajectory | spark=4.35,4.35,4.10,3.85,3.60,3.35 | note=Six-month decline supports the refinancing window in Q3. | label=Macro watch}}
 \`\`\`
 
+20. TIMELINE RIBBON — infrastructure / delivery pipeline. Use instead of a list
+    of projects and timing windows.
+    Format: \`{{timeline: Existing "Station access", 0-2y "Road upgrade", 3-5y "Hospital stage", 5y+ "Town centre renewal" | title=Infrastructure pipeline}}\`
+
+21. BIG-NUMBER KPI STRIPS — when a sentence says "median grew from X to Y" or
+    compares 3 headline metrics, use stat blocks / gauges / bars rather than prose.
+    Use \`::: stat\` for a single in-flow number, \`{{bars}}\` for X vs suburb vs metro,
+    and \`~~[…]~~\` beside any trend sentence.
+
 VISUAL-FIRST RULES (CRITICAL):
 - Every chapter MUST open with a \`{{glance: …}}\` strip immediately after the H2.
 - Aim for **3-4 visualisations per chapter** drawn from the full library
   (gauge / bars / quadrant / pictograph / donut / tiles / heatmap / wheel /
-  waterfall / margin / inline sparkline). Prose EXPLAINS visualisations, never duplicates them.
+  waterfall / margin / timeline / stat / inline sparkline). Prose EXPLAINS visualisations, never duplicates them.
+- Any "median grew from X to Y" / trend sentence MUST include either \`~~[…]~~\` inline or a \`::: stat\` callout nearby.
+- Any "subject vs suburb vs metro/state" comparison MUST use \`{{bars: Subject X, Suburb Y, Metro Z | title=…}}\`.
+- Investment Score, Affordability, Risk, Suitability, Confidence, and similar 0-100 ratings MUST use \`{{gauge: …}}\`.
 - Any list of 3+ ranked metrics MUST be rendered as \`{{bars: …}}\` instead of a table.
 - Any "X of Y households / dwellings / buyers" stat MUST use \`{{pictograph: …}}\`.
 - Any composition / share-of-total (tenure mix, age bands, expense split, capital
   allocation) MUST use \`{{donut: …}}\` instead of a table.
+- Any suburb × metric matrix MUST use \`{{heatmap: …}}\`.
+- Any infrastructure/project pipeline MUST use \`{{timeline: …}}\`.
 - Any "subject suburb vs N nearby suburbs" comparison MUST use \`{{tiles: …}}\`.
 - Any trade-off between two dimensions (yield vs growth, risk vs return) MUST use
   \`{{quadrant: …}}\`. Highlight the subject property with a trailing \`*\`.
