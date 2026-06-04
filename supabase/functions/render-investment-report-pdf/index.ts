@@ -3307,6 +3307,176 @@ ${(() => {
     h2[data-ch]::before {
       ${design.showSectionNumbers ? `` : `content: none;`}
     }
+
+    /* ── Phase 4 — Pull-quote / quote-page full-bleed editorial spread ── */
+    .quote-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      min-height: 240mm;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 40mm 28mm;
+      background: ${palette.paperAlt};
+      position: relative;
+    }
+    .quote-page .qp-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt; font-weight: 800;
+      letter-spacing: .32em; text-transform: uppercase;
+      color: ${palette.accent};
+      margin-bottom: 18pt;
+    }
+    .quote-page .qp-body {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 500;
+      font-size: 38pt; line-height: 1.18;
+      color: ${palette.heading2};
+      margin: 0; padding: 0; border: 0;
+      letter-spacing: -0.01em;
+      hanging-punctuation: first last;
+    }
+    .quote-page .qp-body::before { content: "\\201C"; font-size: 1em; color: ${palette.accent}; margin-right: .05em; }
+    .quote-page .qp-body::after  { content: "\\201D"; color: ${palette.accent}; margin-left: .05em; }
+    .quote-page .qp-attrib {
+      margin-top: 22pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 9.5pt; letter-spacing: .12em; text-transform: uppercase;
+      color: ${palette.heading3};
+    }
+
+    /* ── Phase 4 — Data dashboard full-page spread ── */
+    .dashboard-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      padding: 26mm 22mm;
+      background: ${palette.paper};
+    }
+    .dashboard-page .dp-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt; font-weight: 800; letter-spacing: .32em; text-transform: uppercase;
+      color: ${palette.accent}; margin-bottom: 6pt;
+    }
+    .dashboard-page .dp-title {
+      font-family: 'Playfair Display', serif; font-weight: 700;
+      font-size: 28pt; line-height: 1.1; color: ${palette.heading2};
+      margin: 0 0 18pt; border: 0; padding: 0;
+    }
+    .dashboard-page .dp-title::before { content: none !important; }
+    .dashboard-page .dp-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 12pt;
+      margin-bottom: 14pt;
+    }
+    .dashboard-page .dp-big-cell {
+      grid-row: span 2;
+      padding: 18pt 20pt;
+      background: ${palette.paperAlt};
+      border-top: 2pt solid ${palette.accent};
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-height: 130mm;
+    }
+    .dashboard-page .dp-big-value {
+      font-family: 'Playfair Display', serif; font-weight: 800;
+      font-size: 120pt; line-height: 0.95; color: ${palette.heading2};
+      font-variant-numeric: lining-nums tabular-nums;
+      letter-spacing: -0.03em;
+    }
+    .dashboard-page .dp-big-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 10pt; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+      color: ${palette.heading3}; margin-top: 8pt;
+    }
+    .dashboard-page .dp-spark { margin-top: auto; }
+    .dashboard-page .dp-peers {
+      padding: 14pt 16pt; background: ${palette.paperAlt};
+      border-left: 2pt solid ${palette.accent};
+    }
+    .dashboard-page .dp-peers-title {
+      font-family: 'Inter', sans-serif; font-size: 8pt; font-weight: 800;
+      letter-spacing: .22em; text-transform: uppercase; color: ${palette.accent};
+      margin-bottom: 8pt;
+    }
+    .dashboard-page .dp-peer-row {
+      display: flex; justify-content: space-between;
+      padding: 5pt 0; border-bottom: 0.4pt solid ${withAlpha(palette.accent, 0.25)};
+      font-family: 'Inter', sans-serif; font-size: 10pt; color: ${palette.ink};
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .dashboard-page .dp-peer-row:last-child { border-bottom: 0; }
+    .dashboard-page .dp-map { padding: 8pt; background: ${palette.paperAlt}; }
+    .dashboard-page .dp-narrative {
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 13pt; line-height: 1.5; color: ${palette.ink};
+      margin: 18pt 0 0; padding-top: 12pt;
+      border-top: 0.5pt solid ${palette.accent};
+    }
+
+    /* ── Phase 4 — Signature page (personalised sign-off + QR) ── */
+    .signature-page {
+      break-before: page; page-break-before: always;
+      break-after: page;  page-break-after: always;
+      page: chapter-opener-page;
+      padding: 50mm 28mm;
+      background: ${palette.paper};
+      min-height: 240mm;
+    }
+    .signature-page .sg-eyebrow {
+      font-family: 'Inter', sans-serif; font-size: 8pt; font-weight: 800;
+      letter-spacing: .32em; text-transform: uppercase; color: ${palette.accent};
+      margin-bottom: 24pt;
+    }
+    .signature-page .sg-body {
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 18pt; line-height: 1.45; color: ${palette.heading2};
+      margin: 0 0 40pt; max-width: 130mm;
+    }
+    .signature-page .sg-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 20pt; padding-top: 18pt;
+      border-top: 0.5pt solid ${palette.accent};
+    }
+    .signature-page .sg-sig-mark { margin-bottom: 6pt; }
+    .signature-page .sg-sig-name {
+      font-family: 'Playfair Display', serif; font-weight: 700;
+      font-size: 14pt; color: ${palette.heading2};
+    }
+    .signature-page .sg-sig-role,
+    .signature-page .sg-sig-company,
+    .signature-page .sg-sig-date {
+      font-family: 'Inter', sans-serif; font-size: 9.5pt;
+      color: ${palette.heading3}; margin-top: 2pt;
+    }
+    .signature-page .sg-sig-date {
+      font-size: 8pt; letter-spacing: .2em; text-transform: uppercase;
+      color: ${palette.accent}; margin-top: 6pt;
+    }
+    .signature-page .sg-qr {
+      text-align: center;
+    }
+    .signature-page .sg-qr img { width: 100pt; height: 100pt; }
+    .signature-page .sg-qr-cap {
+      font-family: 'Inter', sans-serif; font-size: 7.5pt;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: ${palette.heading3}; margin-top: 6pt;
+    }
+
+    /* ── Phase 3 — Visualisation figure container (bullet/marimekko/map/calendar) ── */
+    .vis-figure {
+      margin: 14pt 0 16pt;
+      padding: 10pt; background: ${palette.paper};
+      border: 0.4pt solid ${withAlpha(palette.accent, 0.35)};
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .vis-figure figcaption {
+      margin-top: 8pt; padding-top: 6pt;
+      border-top: 0.4pt solid ${withAlpha(palette.accent, 0.25)};
+      font-family: 'Inter', sans-serif; font-size: 8pt;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: ${palette.heading3}; text-align: center;
+    }
   `;
 })()}</style>
 </head>
