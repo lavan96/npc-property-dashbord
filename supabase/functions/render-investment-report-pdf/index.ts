@@ -1148,15 +1148,16 @@ export async function buildHtml(
       background: ${THEME.gold};
       transform: rotate(45deg);
     }
-    ol { counter-reset: ol; }
-    ol li { counter-increment: ol; }
-    ol li::before {
+    .prose ol, article ol { counter-reset: ol; }
+    .prose ol > li, article ol > li { counter-increment: ol; }
+    .prose ol > li::before, article ol > li::before {
       content: counter(ol, decimal-leading-zero);
       position: absolute; left: 0; top: 3pt;
       font-family: 'Playfair Display', serif;
       font-weight: 700; font-size: 9pt;
       color: ${THEME.goldSoft};
     }
+    .toc ol > li::before { content: none !important; }
 
     blockquote {
       margin: 14pt 0;
