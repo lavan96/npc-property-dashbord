@@ -4805,14 +4805,14 @@ You are generating the trimmed, client-facing version of the Investor Compass re
 
 ### 1. KEEP (Priority 1) — write these in full, but strip every financial figure
 
-- **Executive Summary** — exactly ONE page. Cover: location verdict, property fit, tenant demand, key risks, recommendation. DO NOT include purchase price, LVR, yield, weekly rent, loan or cashflow figures. No KPI dashboard row.
+- **Executive Summary** — exactly ONE page. Cover: location verdict, property fit, tenant demand, key risks, recommendation. DO NOT include purchase price, LVR, yield, weekly rent, loan or cashflow figures. Use a non-financial `{{glance}}` opener and visual callouts rather than a financial KPI dashboard row.
 - **Property Snapshot** — physical and strategic only: property type, bed/bath/car, land size, estate, suburb, target tenant, locality fit. DO NOT include price, rent, yield, LVR or loan details.
 - **Location Overview** — strengthen. This is a core section explaining why the area matters.
 - **Population & Development Trends** — keep in full (macro demand, master-planned growth corridor).
 - **Suburb Character & Lifestyle** — keep but REDUCE. Who lives there, why tenants/buyers want it.
 - **Demand Drivers** — major client-facing section: tenant demand, family formation, employment access, master-planned amenity.
 - **Property-Level Information** — non-financial only: layout, land size, dwelling type, position within estate, tenant suitability, strengths, limitations.
-- **Risk Summary** — consolidate crime + environmental + planning + supply into ONE clear risk dashboard table (Risk / Rating / Why it matters / What to verify).
+- **Risk Summary** — consolidate crime + environmental + planning + supply into ONE visual risk panel using `{{gauge}}`, `{{heatmap}}` or `{{bars}}`; only use a table if the data cannot be visualised.
 - **Final Recommendation** — rewrite as a simple verdict: **Proceed**, **Proceed with caution**, or **Not suitable**, followed by 150–250 words of plain rationale tied to location, tenant demand and risk. No financial verdict.
 
 ### 2. COMPRESS (Priority 2) — cap pages as specified, no padding
