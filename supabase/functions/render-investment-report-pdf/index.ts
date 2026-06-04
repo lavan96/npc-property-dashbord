@@ -983,6 +983,124 @@ function renderScoreWheelSvg(scores: number[], labels: string[] = [], max = 100)
   </svg>`;
 }
 
+/** Bullet chart — compact KPI with actual / target / range bands (Tufte-style). */
+function renderBulletSvg(opts: { value: number; target?: number; max?: number; ranges?: number[]; label?: string; sub?: string }): string {
+  const max = opts.max ?? Math.max(opts.value, opts.target ?? 0, ...(opts.ranges || []), 1);
+  const w = 520, h = 78;
+  const padL = 150, padR = 14, padT = 26, padB = 14;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xOf = (v: number) => padL + (Math.max(0, Math.min(max, v)) / max) * plotW;
+  const ranges = (opts.ranges && opts.ranges.length ? opts.ranges : [max * 0.4, max * 0.7, max]).slice().sort((a, b) => a - b);
+  const bands = ranges.map((r, i) => {
+    const prev = i === 0 ? 0 : ranges[i - 1];
+    const alpha = 0.18 + (i / Math.max(1, ranges.length - 1)) * 0.42;
+    return `<rect x="${xOf(prev).toFixed(1)}" y="${padT}" width="${(xOf(r) - xOf(prev)).toFixed(1)}" height="${plotH}" fill="${VIZ_GOLD}" fill-opacity="${alpha.toFixed(2)}"/>`;
+  }).join("");
+  const barH = plotH * 0.42;
+  const barY = padT + (plotH - barH) / 2;
+  const bar = `<rect x="${padL}" y="${barY}" width="${(xOf(opts.value) - padL).toFixed(1)}" height="${barH}" fill="${VIZ_INK}" rx="1"/>`;
+  const tgt = opts.target != null
+    ? `<line x1="${xOf(opts.target).toFixed(1)}" x2="${xOf(opts.target).toFixed(1)}" y1="${padT + 2}" y2="${padT + plotH - 2}" stroke="${VIZ_RISK}" stroke-width="3"/>`
+    : "";
+  const label = opts.label ? `<text x="${padL - 12}" y="${padT + plotH / 2 - 2}" text-anchor="end" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="12" fill="${VIZ_INK}">${svgEscape(opts.label)}</text>` : "";
+  const sub = opts.sub ? `<text x="${padL - 12}" y="${padT + plotH / 2 + 13}" text-anchor="end" font-family="Inter,sans-serif" font-size="8.5" fill="${VIZ_INK_MUTED}" letter-spacing="0.6">${svgEscape(opts.sub.toUpperCase())}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="4"/>${bands}${bar}${tgt}${label}${sub}
+  </svg>`;
+}
+
+/** Marimekko — variable-width stacked bars (composition + magnitude). */
+function renderMarimekkoSvg(rows: Array<{ label: string; weight: number; segments: number[] }>, segLabels: string[] = []): string {
+  if (!rows.length) return "";
+  const w = 760, h = 360, padL = 90, padR = 20, padT = 32, padB = 50;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const totalWeight = rows.reduce((a, r) => a + (r.weight || 0), 0) || 1;
+  const palette = [VIZ_GOLD, VIZ_NAVY, VIZ_GOOD, VIZ_WARN, VIZ_RISK, VIZ_INK_MUTED];
+  let x = padL;
+  const groups = rows.map((row) => {
+    const colW = ((row.weight || 0) / totalWeight) * plotW;
+    const sum = row.segments.reduce((a, b) => a + b, 0) || 1;
+    let y = padT;
+    const segs = row.segments.map((v, i) => {
+      const segH = (v / sum) * plotH;
+      const r = `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(colW - 1).toFixed(1)}" height="${segH.toFixed(1)}" fill="${palette[i % palette.length]}" fill-opacity="0.85"/>
+        ${segH > 16 ? `<text x="${(x + colW / 2).toFixed(1)}" y="${(y + segH / 2 + 3.5).toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="${VIZ_PAPER}">${Math.round((v / sum) * 100)}%</text>` : ""}`;
+      y += segH;
+      return r;
+    }).join("");
+    const lbl = `<text x="${(x + colW / 2).toFixed(1)}" y="${(h - padB + 16).toFixed(1)}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK}">${svgEscape(row.label)}</text>`;
+    const x0 = x; x += colW;
+    return segs + lbl;
+  }).join("");
+  const legend = segLabels.map((lbl, i) => {
+    const lx = padL + i * 110;
+    return `<rect x="${lx}" y="10" width="10" height="10" fill="${palette[i % palette.length]}"/><text x="${lx + 14}" y="19" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(lbl.toUpperCase())}</text>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${legend}${groups}
+  </svg>`;
+}
+
+/** Micro-map — abstract suburb locator (concentric rings + cardinal markers + pin). */
+function renderMicroMapSvg(opts: { suburb: string; state?: string; postcode?: string; neighbours?: string[] }): string {
+  const w = 460, h = 320, cx = w / 2, cy = h / 2 + 6;
+  const rings = [120, 84, 50].map((r, i) =>
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${i === 2 ? withAlphaHex(VIZ_GOLD, 0.18) : "none"}" stroke="${VIZ_RULE}" stroke-width="0.7" stroke-dasharray="${i === 0 ? "3 4" : "1 2"}"/>`).join("");
+  const compass = `
+    <text x="${cx}" y="${cy - 128}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">N</text>
+    <text x="${cx}" y="${cy + 138}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">S</text>
+    <text x="${cx + 132}" y="${cy + 4}" text-anchor="start" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">E</text>
+    <text x="${cx - 132}" y="${cy + 4}" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="2">W</text>`;
+  const neighbours = (opts.neighbours || []).slice(0, 6);
+  const nbDots = neighbours.map((nb, i) => {
+    const a = -Math.PI / 2 + (i / Math.max(1, neighbours.length)) * Math.PI * 2;
+    const r = 100;
+    const nx = cx + r * Math.cos(a), ny = cy + r * Math.sin(a);
+    return `<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3" fill="${VIZ_INK_MUTED}"/>
+      <text x="${(nx + (Math.cos(a) > 0 ? 6 : -6)).toFixed(1)}" y="${(ny + 3.5).toFixed(1)}" text-anchor="${Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle"}" font-family="Inter,sans-serif" font-size="8.5" fill="${VIZ_INK_MUTED}">${svgEscape(nb)}</text>`;
+  }).join("");
+  const pin = `
+    <path d="M ${cx} ${cy - 18} C ${cx - 14} ${cy - 18} ${cx - 14} ${cy + 2} ${cx} ${cy + 14} C ${cx + 14} ${cy + 2} ${cx + 14} ${cy - 18} ${cx} ${cy - 18} Z" fill="${VIZ_GOLD}" stroke="${VIZ_INK}" stroke-width="1.2"/>
+    <circle cx="${cx}" cy="${cy - 8}" r="4.5" fill="${VIZ_PAPER}"/>`;
+  const title = `<text x="${cx}" y="28" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="16" fill="${VIZ_INK}">${svgEscape(opts.suburb)}</text>
+    <text x="${cx}" y="44" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" letter-spacing="2.5" fill="${VIZ_INK_MUTED}">${svgEscape([opts.state, opts.postcode].filter(Boolean).join(" · ").toUpperCase())}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${title}${rings}${compass}${nbDots}${pin}
+  </svg>`;
+}
+
+/** Calendar heatmap — 12-month grid (or arbitrary cells). */
+function renderCalendarHeatmapSvg(values: number[], title = "", monthLabels: string[] = []): string {
+  if (!values.length) return "";
+  const months = monthLabels.length === values.length ? monthLabels : ["J","F","M","A","M","J","J","A","S","O","N","D"].slice(0, values.length);
+  const lo = Math.min(...values), hi = Math.max(...values), span = (hi - lo) || 1;
+  const cellW = 44, cellH = 44, gap = 4;
+  const cols = Math.min(12, values.length);
+  const rows = Math.ceil(values.length / cols);
+  const padL = 16, padT = title ? 40 : 18, padR = 16, padB = 22;
+  const w = padL + padR + cols * (cellW + gap) - gap;
+  const h = padT + padB + rows * (cellH + gap) - gap;
+  const cells = values.map((v, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const x = padL + c * (cellW + gap), y = padT + r * (cellH + gap);
+    const t = (v - lo) / span;
+    const fill = `rgba(212,168,67,${(0.12 + t * 0.78).toFixed(2)})`;
+    return `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="3" fill="${fill}" stroke="${VIZ_RULE}" stroke-width="0.4"/>
+      <text x="${x + cellW / 2}" y="${y + 16}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(months[i] || "")}</text>
+      <text x="${x + cellW / 2}" y="${y + cellH - 10}" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="12" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`;
+  }).join("");
+  const t = title ? `<text x="${padL}" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(title)}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <rect width="${w}" height="${h}" fill="${VIZ_PAPER}" rx="6"/>${t}${cells}
+  </svg>`;
+}
+
+function withAlphaHex(hex: string, alpha: number): string {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 /** Wrap an SVG into a print-ready figure with optional caption. */
 function vizFigure(svg: string, caption = ""): string {
   return `<figure class="vis-figure">${svg}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
