@@ -80,7 +80,7 @@ const DEFAULT_PDF_DESIGN: PdfDesignOptions = {
   coverStyle: "title_overlay",
   bodyScale: 100,
   visualIntensity: 70,
-  showDropCaps: true,
+  showDropCaps: false,
   showSectionNumbers: true,
   justifyText: true,
 };
@@ -112,7 +112,7 @@ function normalizePdfDesign(input: unknown): PdfDesignOptions {
     coverStyle: pick(raw.coverStyle, ["image", "title_overlay", "editorial"] as const, DEFAULT_PDF_DESIGN.coverStyle),
     bodyScale: clampNumber(raw.bodyScale, 90, 112, DEFAULT_PDF_DESIGN.bodyScale),
     visualIntensity: clampNumber(raw.visualIntensity, 0, 100, DEFAULT_PDF_DESIGN.visualIntensity),
-    showDropCaps: raw.showDropCaps !== false,
+    showDropCaps: raw.showDropCaps === true,
     showSectionNumbers: raw.showSectionNumbers !== false,
     justifyText: raw.justifyText !== false,
   };
