@@ -1386,9 +1386,10 @@ export async function buildHtml(
   const loc = report.location_intelligence || {};
 
   // Render + post-process markdown body.
-  const md = cleanReportMarkdown(String(report.report_content || ""), address);
+  const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
+  bodyHtml = applyFootnotesAndXrefs(bodyHtml);
   bodyHtml = wrapCompareCards(bodyHtml);
   bodyHtml = wrapProcessTimeline(bodyHtml);
   bodyHtml = wrapInsightSections(bodyHtml);
