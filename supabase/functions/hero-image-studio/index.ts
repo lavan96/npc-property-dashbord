@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
         const s = String(body.search).replace(/[%_]/g, "");
         q = q.or(`prompt.ilike.%${s}%,enhanced_prompt.ilike.%${s}%`);
       }
-      if (body?.orientation === "landscape") q = q.gt("width", "height" as any); // will refine client-side
+      // Orientation filtering done client-side below
       const { data, count, error } = await q.range(offset, offset + limit - 1);
       if (error) return jsonErr(error.message, corsHeaders, 500);
       let images = data || [];
