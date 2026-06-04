@@ -1877,39 +1877,9 @@ ${(() => {
   </section>`;
 })()}
 
-<script>
-  // Estimate page number for each TOC entry by measuring chapter offset.
-  // Headless Chrome doesn't support CSS target-counter, so we approximate.
-  (function () {
-    try {
-      // A4 printable height at 96dpi minus top/bottom margins (20mm each).
-      // 297mm - 40mm = 257mm => 257 * 3.7795 ≈ 971px
-      var PAGE_PX = 971;
-      // Cover (1) + TOC pages (estimated by toc section height).
-      var tocSection = document.querySelector('.toc');
-      var tocPages = tocSection ? Math.max(1, Math.ceil(tocSection.getBoundingClientRect().height / PAGE_PX)) : 1;
-      var bodyStartOffset = 1 + tocPages; // pages BEFORE body content (cover + toc)
-      // Body content starts after the cover+toc sections in the DOM.
-      // We measure each h2's offsetTop relative to the first body h2.
-      var firstBody = document.querySelector('section.body-page h2');
-      if (!firstBody) return;
-      var firstTop = firstBody.getBoundingClientRect().top + window.scrollY;
-      document.querySelectorAll('.toc ol li a').forEach(function (a) {
-        var href = a.getAttribute('href') || '';
-        if (!href.startsWith('#')) return;
-        var target = document.getElementById(href.slice(1));
-        var pageSpan = a.querySelector('.page');
-        if (!target || !pageSpan) return;
-        var top = target.getBoundingClientRect().top + window.scrollY;
-        var relative = Math.max(0, top - firstTop);
-        var pageWithinBody = Math.floor(relative / PAGE_PX) + 1;
-        pageSpan.textContent = String(bodyStartOffset + pageWithinBody);
-      });
-    } catch (e) {
-      console.error('[toc-pagenum]', e);
-    }
-  })();
-</script>
+<!-- TOC page numbers are resolved natively by WeasyPrint via CSS target-counter().
+     The legacy JS estimator has been removed — Chrome/Api2PDF fallback will simply
+     show blank pages in the TOC, which is acceptable since WeasyPrint is now primary. -->
 
 </body>
 </html>`;
