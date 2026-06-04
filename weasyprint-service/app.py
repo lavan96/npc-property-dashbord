@@ -15,6 +15,7 @@ GET /healthz -> 200 "ok"
 
 import os
 import logging
+from importlib import metadata
 from flask import Flask, request, Response, jsonify
 from weasyprint import HTML
 
@@ -27,6 +28,13 @@ EXPECTED_TOKEN = os.environ.get("WEASYPRINT_SERVICE_TOKEN", "").strip()
 MAX_HTML_BYTES = int(os.environ.get("MAX_HTML_BYTES", str(25 * 1024 * 1024)))  # 25 MB
 
 
+def _package_version(name: str) -> str:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+
 def _auth_ok(req) -> bool:
     if not EXPECTED_TOKEN:
         # If no token is set, refuse everything — fail closed.
@@ -37,9 +45,32 @@ def _auth_ok(req) -> bool:
     return header.split(" ", 1)[1].strip() == EXPECTED_TOKEN
 
 
+@app.get("/")
+def root():
+    return jsonify(
+        {
+            "service": "weasyprint-service",
+            "status": "ok",
+            "endpoints": ["GET /healthz", "GET /health", "GET /version", "POST /render"],
+        }
+    )
+
+
+@app.get("/health")
 @app.get("/healthz")
 def healthz():
     return Response("ok", mimetype="text/plain")
+
+
+@app.get("/version")
+def version():
+    return jsonify(
+        {
+            "weasyprint": _package_version("weasyprint"),
+            "pydyf": _package_version("pydyf"),
+            "flask": _package_version("flask"),
+        }
+    )
 
 
 @app.post("/render")
