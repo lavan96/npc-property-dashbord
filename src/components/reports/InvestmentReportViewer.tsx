@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
+import { PremiumPdfButton } from './PremiumPdfButton';
 import { RegenerateWithPerplexityButton } from './RegenerateWithPerplexityButton';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { TierBadge, type ReportTier } from './TierBadge';
@@ -587,6 +588,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                   >
                     <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
                   </ErrorBoundary>
+                  <PremiumPdfButton
+                    reportId={report.id}
+                    propertyAddress={report.property_address}
+                  />
                   <RegenerateWithPerplexityButton
                     reportId={report.id}
                     propertyAddress={report.property_address}
