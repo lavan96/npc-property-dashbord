@@ -1549,8 +1549,145 @@ function addDataSparklinesToParagraphs(html: string): string {
  *   [^1]                              (footnote call; def below)
  *   [^1]: Footnote definition text.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-INJECT VISUAL SHORTCODES
+// The LLM rarely emits the editorial shortcodes; we synthesise them from the
+// patterns it DOES emit (markdown tables, decile mentions, sub-score lists,
+// suburb comparisons, trend numbers). Runs once on raw markdown.
+// ─────────────────────────────────────────────────────────────────────────────
+function autoInjectVisualShortcodes(md: string): string {
+  if (!md || md.length < 200) return md;
+  let out = md;
+
+  const stripMd = (s: string) => String(s).replace(/[*_`]/g, "").replace(/\s+/g, " ").trim();
+  const toNumber = (s: string): number | null => {
+    const cleaned = String(s).replace(/[\$,\s]/g, "").replace(/%$/, "");
+    const m = cleaned.match(/-?\d+(?:\.\d+)?/);
+    if (!m) return null;
+    const n = parseFloat(m[0]);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // ── 1. Markdown tables → {{heatmap}} when ≥2 numeric columns and ≥2 data rows.
+  //    Preserve the original table; insert shortcode immediately AFTER it.
+  out = out.replace(
+    /(^\|[^\n]+\|\s*\n\|[\s\-:|]+\|\s*\n(?:\|[^\n]+\|\s*\n?)+)/gm,
+    (block) => {
+      try {
+        const lines = block.trim().split("\n").filter((l) => l.trim().startsWith("|"));
+        if (lines.length < 4) return block;
+        const parse = (l: string) => l.replace(/^\||\|$/g, "").split("|").map((c) => stripMd(c));
+        const header = parse(lines[0]);
+        const rows = lines.slice(2).map(parse).filter((r) => r.length === header.length);
+        if (header.length < 3 || rows.length < 2) return block;
+
+        // Find numeric columns (skip first column = label).
+        const numericCols: number[] = [];
+        for (let c = 1; c < header.length; c++) {
+          const vals = rows.map((r) => toNumber(r[c] ?? ""));
+          if (vals.filter((v) => v != null).length >= Math.max(2, Math.floor(rows.length * 0.7))) {
+            numericCols.push(c);
+          }
+        }
+        if (numericCols.length < 2) return block;
+
+        const rowLabels = rows.map((r) => stripMd(r[0]).slice(0, 24)).join(",");
+        const colLabels = numericCols.map((c) => stripMd(header[c]).slice(0, 18)).join(",");
+        const matrix = rows.map((r) =>
+          numericCols.map((c) => toNumber(r[c] ?? "") ?? 0).join(",")
+        ).join(" / ");
+        const title = "Comparative matrix";
+        return `${block}\n\n{{heatmap: ${matrix} | rows=${rowLabels} | cols=${colLabels} | title=${title}}}\n`;
+      } catch { return block; }
+    },
+  );
+
+  // ── 2. SEIFA decile mentions → {{gauge: N/10 | LABEL | …}}
+  //    Pattern: "SEIFA IRSAD decile 7/10" or "IRSAD score: 8 out of 10"
+  out = out.replace(
+    /(\b(?:SEIFA(?:\s+(?:IRSAD|IRSD|IEO|IER))?|IRSAD|IRSD|IEO|IER)\b[^\n.]{0,80}?\b(\d{1,2})\s*(?:\/|out of)\s*10\b)/gi,
+    (full, _phrase, n) => {
+      const v = parseInt(n, 10);
+      if (!(v >= 1 && v <= 10)) return full;
+      // De-dupe: skip if a gauge for the same metric already follows nearby.
+      return `${full}\n\n{{gauge: ${v}/10 | Socio-economic decile | Higher = more advantaged}}\n`;
+    },
+  );
+
+  // ── 3. Sub-score bullet lists → {{bars: …}}
+  //    Pattern: 3+ consecutive bullets each of form "- Label: 72" or "- Label — 8/10"
+  out = out.replace(
+    /((?:^[ \t]*[-*][ \t]+[^\n]+:[ \t]*(?:\$?\d[\d.,]*%?|\d+\s*\/\s*\d+)[^\n]*\n){3,})/gm,
+    (block) => {
+      try {
+        const items = block.trim().split("\n").map((ln) => {
+          const m = ln.match(/^[ \t]*[-*][ \t]+(.+?):[ \t]*(\$?\d[\d.,]*%?|\d+\s*\/\s*\d+)/);
+          if (!m) return null;
+          const label = stripMd(m[1]).slice(0, 22).replace(/,/g, "");
+          const rawVal = m[2].trim();
+          const numerator = rawVal.includes("/") ? rawVal.split("/")[0] : rawVal;
+          const n = toNumber(numerator);
+          if (n == null) return null;
+          const isPct = rawVal.includes("%") || (rawVal.includes("/") && rawVal.includes("/10"));
+          return { label, n, isPct };
+        }).filter(Boolean) as { label: string; n: number; isPct: boolean }[];
+        if (items.length < 3) return block;
+        const allPct = items.every((it) => it.isPct);
+        const max = allPct ? (items[0].isPct && block.includes("/10") ? 10 : 100) : Math.max(...items.map((i) => i.n)) * 1.1;
+        const unit = allPct && max === 100 ? "%" : "";
+        const series = items.map((it) => `${it.label} ${it.n}${it.isPct && unit === "%" ? "%" : ""}`).join(", ");
+        return `${block}\n{{bars: ${series} | title=Sub-score breakdown | max=${Math.round(max)}${unit ? ` | unit=${unit}` : ""}}}\n\n`;
+      } catch { return block; }
+    },
+  );
+
+  // ── 4. Suburb-comparison tables → also add {{tiles}} if first col looks like
+  //    suburb names and there's a price column.
+  out = out.replace(
+    /(^\|[^\n]+\|\s*\n\|[\s\-:|]+\|\s*\n(?:\|[^\n]+\|\s*\n?)+)/gm,
+    (block) => {
+      try {
+        if (block.includes("{{tiles:")) return block;
+        const lines = block.trim().split("\n");
+        const parse = (l: string) => l.replace(/^\||\|$/g, "").split("|").map((c) => stripMd(c));
+        const header = parse(lines[0]).map((h) => h.toLowerCase());
+        if (!/suburb|locality|area/i.test(header[0])) return block;
+        const priceCol = header.findIndex((h) => /price|median|value/.test(h));
+        const trendCol = header.findIndex((h) => /growth|yoy|change|yield/.test(h));
+        if (priceCol < 0) return block;
+        const rows = lines.slice(2).map(parse).filter((r) => r.length === header.length);
+        if (rows.length < 2 || rows.length > 8) return block;
+        const tiles = rows.map((r) => {
+          const name = stripMd(r[0]).replace(/,/g, "").slice(0, 22);
+          const price = stripMd(r[priceCol]).replace(/,/g, "").slice(0, 14);
+          const sub = trendCol >= 0 ? stripMd(r[trendCol]).slice(0, 18) : "";
+          const subAttr = sub ? ` sub="${sub.replace(/"/g, "")}"` : "";
+          return `${name} ${price}${subAttr} int=0.6`;
+        }).join(", ");
+        return `${block}\n\n{{tiles: ${tiles} | title=Adjacent suburbs | cols=${Math.min(4, rows.length)}}}\n`;
+      } catch { return block; }
+    },
+  );
+
+  // ── 5. Inline sparklines: paragraphs that recite ≥4 numbers of the same kind.
+  //    Format expected by renderer: ~~[n1,n2,n3,…]~~  (handled in applyEditorialMarkdown).
+  out = out.replace(/(^(?!\||#|\s*[-*])[^\n]{120,})$/gm, (line) => {
+    if (line.includes("~~[")) return line;
+    const nums = Array.from(line.matchAll(/(?:\$\s*)?-?\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*%?/g))
+      .map((m) => toNumber(m[0]))
+      .filter((n): n is number => n != null && !(n >= 1900 && n <= 2100));
+    if (nums.length < 4) return line;
+    const trimmed = nums.slice(-8);
+    return `${line} ~~[${trimmed.join(",")}]~~`;
+  });
+
+  return out;
+}
+
 function applyEditorialMarkdown(md: string): string {
   let out = md;
+
 
   // Fenced editorial blocks with optional `key=value` attributes on the opening fence.
   // Examples:
@@ -2335,7 +2472,20 @@ export async function buildHtml(
   const dem = report.demographics_data || {};
 
   // Render + post-process markdown body.
-  const md = applyEditorialMarkdown(cleanReportMarkdown(String(report.report_content || ""), address));
+  // Deterministic visual injection runs FIRST so generated tables / score mentions
+  // are converted into shortcodes (heatmap / bars / gauge / tiles / sparkline) that
+  // applyEditorialMarkdown then expands. This makes the renderer self-sufficient
+  // even when the LLM emits pure prose + tables.
+  const mdRaw = cleanReportMarkdown(String(report.report_content || ""), address);
+  const mdWithVisuals = autoInjectVisualShortcodes(mdRaw);
+  console.log("[visuals] shortcodes injected:", {
+    heatmaps: (mdWithVisuals.match(/\{\{heatmap:/g) || []).length,
+    gauges: (mdWithVisuals.match(/\{\{gauge:/g) || []).length,
+    bars: (mdWithVisuals.match(/\{\{bars:/g) || []).length,
+    tiles: (mdWithVisuals.match(/\{\{tiles:/g) || []).length,
+    sparklines: (mdWithVisuals.match(/~~\[/g) || []).length,
+  });
+  const md = applyEditorialMarkdown(mdWithVisuals);
   let bodyHtml = marked.parse(md, { gfm: true, breaks: false }) as string;
   bodyHtml = stripBareCitations(bodyHtml);
   // Repair LLM currency artefacts where "$45,872.969" leaks a 3-digit
