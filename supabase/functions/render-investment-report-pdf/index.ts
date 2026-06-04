@@ -781,7 +781,7 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
             y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
           },
         },
-      }, 820, 370, "financial:value-equity-debt");
+      }, CHART_PRESETS.TREND_WIDE.width, CHART_PRESETS.TREND_WIDE.height, "financial:value-equity-debt");
       if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">10-year value, equity and debt path</div><figure class="auto-chart"><img src="${uri}" alt="10-year value equity and debt chart"/></figure></div>`);
     }
 
@@ -804,7 +804,7 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
             y: { ticks: { color: "#5F5546", font: commonFont, callback: moneyTick }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
           },
         },
-      }, 820, 370, "financial:rent-cashflow");
+      }, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, "financial:rent-cashflow");
       if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Rental income versus net cash flow</div><figure class="auto-chart"><img src="${uri}" alt="Rental income and cash flow chart"/></figure></div>`);
     }
   }
@@ -827,7 +827,7 @@ async function buildFinancialChartsHtml(fin: any): Promise<string> {
           y: { ticks: { color: "#5F5546", font: commonFont, callback: "function(v){return v.toFixed(0)+'%';}" }, grid: { color: gridColor, drawBorder: false }, border: { display: false } },
         },
       },
-    }, 820, 340, "financial:yield-bars");
+    }, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, "financial:yield-bars");
     if (uri) charts.push(`<div class="chart-wrap financial-chart"><div class="chart-title">Yield and leverage profile</div><figure class="auto-chart"><img src="${uri}" alt="Yield and leverage chart"/></figure></div>`);
   }
 
