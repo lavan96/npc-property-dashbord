@@ -11,8 +11,6 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
-const WEASYPRINT_SERVICE_URL = (Deno.env.get("WEASYPRINT_SERVICE_URL") || "").trim().replace(/\/$/, "");
-const WEASYPRINT_SERVICE_TOKEN = (Deno.env.get("WEASYPRINT_SERVICE_TOKEN") || Deno.env.get("WEASYPRINT_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
 const PDF_BUCKET = "investment-reports";
 const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
 const RENDER_SAFETY_BUFFER_MS = 45_000;
@@ -3679,17 +3677,19 @@ async function callApi2Pdf(html: string, fileName: string): Promise<string> {
  * returns a signed URL so behaviour matches the legacy Api2PDF path.
  */
 async function callWeasyPrint(html: string): Promise<Uint8Array> {
-  if (!WEASYPRINT_SERVICE_URL || !WEASYPRINT_SERVICE_TOKEN) {
+  const serviceUrl = (Deno.env.get("WEASYPRINT_SERVICE_URL") || "").trim().replace(/\/$/, "");
+  const serviceToken = (Deno.env.get("WEASYPRINT_SERVICE_TOKEN") || Deno.env.get("WEASYPRINT_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
+  if (!serviceUrl || !serviceToken) {
     throw new Error("WeasyPrint service not configured");
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), WEASYPRINT_REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(`${WEASYPRINT_SERVICE_URL}/render`, {
+    const res = await fetch(`${serviceUrl}/render`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${WEASYPRINT_SERVICE_TOKEN}`,
+        Authorization: `Bearer ${serviceToken}`,
         Accept: "application/pdf",
       },
       body: JSON.stringify({
@@ -3746,6 +3746,8 @@ if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const WEASYPRINT_SERVICE_URL = (Deno.env.get("WEASYPRINT_SERVICE_URL") || "").trim();
+    const WEASYPRINT_SERVICE_TOKEN = (Deno.env.get("WEASYPRINT_SERVICE_TOKEN") || Deno.env.get("WEASYPRINT_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
     const weasyConfigured = Boolean(WEASYPRINT_SERVICE_URL && WEASYPRINT_SERVICE_TOKEN);
     if (!weasyConfigured && !API2PDF_KEY) {
       throw new Error("No PDF renderer configured (set WEASYPRINT_SERVICE_URL+WEASYPRINT_SERVICE_TOKEN or API2PDF_API_KEY)");
