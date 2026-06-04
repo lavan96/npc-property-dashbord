@@ -857,6 +857,87 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
           </aside>
         </div>
       </DialogContent>
+
+      {/* PDF preview for a placement */}
+      <Dialog open={!!previewPlacement} onOpenChange={(o) => !o && setPreviewPlacement(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              PDF preview — {previewPlacement?.section_title}
+            </DialogTitle>
+            <DialogDescription>
+              Approximation of how this hero will appear on the rendered PDF page.
+            </DialogDescription>
+          </DialogHeader>
+          {previewPlacement && (
+            <div className="space-y-3">
+              {/* A4-ish page wrapper at 595×842 scaled */}
+              <div
+                className="mx-auto border bg-white shadow-sm relative overflow-hidden"
+                style={{ width: 480, height: 680 }}
+              >
+                {/* Header strip */}
+                <div className="absolute top-0 left-0 right-0 h-6 bg-muted/40 border-b" />
+                {(() => {
+                  const heightPx = previewPlacement.render_height === "compact" ? 90
+                    : previewPlacement.render_height === "tall" ? 220
+                    : previewPlacement.render_height === "full_bleed" ? 680
+                    : 150;
+                  const fullBleed = previewPlacement.render_width === "full_bleed";
+                  const radius = previewPlacement.rounded && previewPlacement.render_height !== "full_bleed" ? 8 : 0;
+                  const inset = fullBleed ? 0 : 32;
+                  const top = previewPlacement.render_height === "full_bleed" ? 0 : 32;
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top,
+                        left: inset,
+                        right: inset,
+                        height: heightPx,
+                        borderRadius: radius,
+                        overflow: "hidden",
+                        background: "hsl(var(--muted))",
+                      }}
+                    >
+                      {previewPlacement.library?.public_url && (
+                        <img
+                          src={previewPlacement.library.public_url}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: previewPlacement.object_fit,
+                            objectPosition: previewPlacement.focal,
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+                {/* Body placeholder */}
+                {previewPlacement.render_height !== "full_bleed" && (
+                  <div className="absolute left-8 right-8 bottom-8 space-y-2">
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                    <div className="h-2 bg-muted/70 rounded w-full" />
+                    <div className="h-2 bg-muted/70 rounded w-11/12" />
+                    <div className="h-2 bg-muted/70 rounded w-10/12" />
+                    <div className="h-2 bg-muted/70 rounded w-9/12" />
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center text-xs text-muted-foreground gap-3">
+                <Badge variant="outline" className="text-[10px]">{previewPlacement.render_height}</Badge>
+                <Badge variant="outline" className="text-[10px]">{previewPlacement.render_width}</Badge>
+                <Badge variant="outline" className="text-[10px]">fit: {previewPlacement.object_fit}</Badge>
+                <Badge variant="outline" className="text-[10px]">focal: {previewPlacement.focal}</Badge>
+                {previewPlacement.rounded && <Badge variant="outline" className="text-[10px]">rounded</Badge>}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
