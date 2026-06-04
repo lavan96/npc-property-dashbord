@@ -1896,7 +1896,7 @@ export async function buildHtml(
       <rect width='210' height='297' fill='url(%23sheen)'/>
       <rect width='210' height='297' filter='url(%23nz)'/>
     </svg>`)}`;
-  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
+  // advisorLine declared above (used by editors-note).
   const coverHtml = design.coverStyle === "image"
     ? `<section class="cover cover-clean">
         <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
