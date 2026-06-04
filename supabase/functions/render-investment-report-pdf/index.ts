@@ -149,6 +149,29 @@ function wrapInsightSections(html: string): string {
     },
   );
 
+  // Form 3: list-item bold-prefix form  →  <li><strong>What This Means:</strong> body…</li>
+  // Many narrative bullets in the report use this pattern. Style the <li> as an
+  // inline gold callout so it visually matches the .insight-box panels above.
+  out = out.replace(
+    /<li([^>]*)>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*([\s\S]*?)<\/li>/gi,
+    (match, attrs, rawLabel, body) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      return `<li${attrs} class="insight-li"><span class="insight-label-inline">${esc(label)}</span><span class="insight-li-body">${body}</span></li>`;
+    },
+  );
+
+  // Form 4: bare label paragraph  →  <p><strong>What This Means:</strong></p><p>body…</p>
+  // (Form 2 sometimes fails to catch this when the lookahead does not match.)
+  out = out.replace(
+    /<p>\s*<(?:strong|b)>\s*([^<:：]+?)\s*[:：]?\s*<\/(?:strong|b)>\s*[:：]?\s*<\/p>\s*(<p>[\s\S]*?<\/p>)/gi,
+    (match, rawLabel, bodyPara) => {
+      const label = String(rawLabel).trim();
+      if (!INSIGHT_LABEL_RE.test(label)) return match;
+      return `<div class="insight-box"><div class="insight-label">${esc(label)}</div>${bodyPara}</div>`;
+    },
+  );
+
   return out;
 }
 
@@ -1133,6 +1156,31 @@ export async function buildHtml(
     .insight-box ol:last-child { margin-bottom: 0; }
     .insight-box p,
     .insight-box li { font-size: 9.8pt; line-height: 1.55; }
+
+    /* Inline list-item callout (Form 3): "What This Means:" inside a <li> */
+    li.insight-li {
+      list-style: none;
+      padding: 10pt 14pt 9pt 14pt;
+      margin: 8pt 0;
+      background: ${THEME.paperAlt};
+      border-left: 3pt solid ${THEME.gold};
+      border-radius: 2pt;
+      border-bottom: none !important;
+      box-shadow: inset 0 0 0 0.5pt ${THEME.rule};
+      page-break-inside: avoid;
+    }
+    li.insight-li::before { display: none !important; content: none !important; }
+    li.insight-li .insight-label-inline {
+      display: inline-block;
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt; font-weight: 700;
+      color: ${THEME.goldSoft};
+      text-transform: uppercase; letter-spacing: .14em;
+      margin-right: 8pt;
+    }
+    li.insight-li .insight-li-body {
+      font-size: 9.8pt; line-height: 1.55; color: ${THEME.ink};
+    }
 
     ul, ol { margin: 4pt 0 .9em 0; padding: 0; list-style: none; }
     li {
