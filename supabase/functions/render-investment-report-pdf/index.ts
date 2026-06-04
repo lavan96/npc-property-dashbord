@@ -1185,9 +1185,114 @@ function applyEditorialMarkdown(md: string): string {
           ${attribution ? `<div class="qp-attrib">${attribution}</div>` : ""}
         </section>\n`;
       }
+      if (name === "dashboard") {
+        // ::: dashboard eyebrow="..." title="..." big="3.2%" bigLabel="Yield" spark="1,2,3,4" peers="Avg 2.8|This 3.2|Top 3.9" map="Suburb,VIC,3000"
+        const eyebrow = esc(attrs.eyebrow || "Snapshot");
+        const title = esc(attrs.title || inner.split("\n")[0] || "Dashboard");
+        const big = esc(attrs.big || "");
+        const bigLabel = esc(attrs.biglabel || attrs.big_label || "");
+        const sparkVals = (attrs.spark || "").split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+        const sparkSvg = sparkVals.length >= 2 ? (() => {
+          const w = 320, h = 70, lo = Math.min(...sparkVals), hi = Math.max(...sparkVals), span = (hi - lo) || 1;
+          const pts = sparkVals.map((v, i) => `${(i / (sparkVals.length - 1)) * w},${h - 4 - ((v - lo) / span) * (h - 12)}`).join(" ");
+          return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%"><polyline points="${pts}" fill="none" stroke="${VIZ_GOLD}" stroke-width="2.5"/></svg>`;
+        })() : "";
+        const peerRows = (attrs.peers || "").split("|").map((p) => p.trim()).filter(Boolean).map((p) => {
+          const m = p.match(/^(.+?)\s+([\d.,%$\-]+)$/);
+          const label = m ? m[1] : p, val = m ? m[2] : "";
+          return `<div class="dash-peer-row"><span>${esc(label)}</span><span>${esc(val)}</span></div>`;
+        }).join("");
+        let mapSvg = "";
+        if (attrs.map) {
+          const [sub, st, pc, ...nb] = attrs.map.split(",").map((s) => s.trim());
+          mapSvg = renderMicroMapSvg({ suburb: sub, state: st, postcode: pc, neighbours: nb });
+        }
+        const narrative = inner.split("\n").slice(1).join(" ").trim();
+        return `\n<section class="dashboard-page">
+          <div class="dp-eyebrow">${eyebrow}</div>
+          <h2 class="dp-title">${title}</h2>
+          <div class="dp-grid">
+            <div class="dp-big-cell">
+              <div class="dp-big-value">${big}</div>
+              ${bigLabel ? `<div class="dp-big-label">${bigLabel}</div>` : ""}
+              ${sparkSvg ? `<div class="dp-spark">${sparkSvg}</div>` : ""}
+            </div>
+            ${peerRows ? `<div class="dp-peers"><div class="dp-peers-title">Peer benchmark</div>${peerRows}</div>` : ""}
+            ${mapSvg ? `<div class="dp-map">${mapSvg}</div>` : ""}
+          </div>
+          ${narrative ? `<p class="dp-narrative">${esc(narrative)}</p>` : ""}
+        </section>\n`;
+      }
+      if (name === "signature") {
+        const name1 = esc(attrs.name || "");
+        const role = esc(attrs.role || "");
+        const company = esc(attrs.company || "");
+        const date = esc(attrs.date || new Date().toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" }));
+        const qrUrl = attrs.qr ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&format=svg&qzone=1&data=${encodeURIComponent(attrs.qr)}` : "";
+        const body = esc(inner.replace(/\n+/g, " "));
+        // SVG ribbon signature placeholder (looks like handwriting).
+        const sigSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="220"><path d="M8 56 C 30 8, 60 78, 90 30 S 150 70, 180 26 S 250 70, 312 22" fill="none" stroke="${VIZ_INK}" stroke-width="2.2" stroke-linecap="round"/><path d="M40 64 L 280 64" stroke="${VIZ_RULE}" stroke-width="0.6"/></svg>`;
+        return `\n<section class="signature-page">
+          <div class="sg-eyebrow">${esc(attrs.eyebrow || "Personally prepared")}</div>
+          <p class="sg-body">${body}</p>
+          <div class="sg-row">
+            <div class="sg-sig">
+              <div class="sg-sig-mark">${sigSvg}</div>
+              <div class="sg-sig-name">${name1}</div>
+              ${role ? `<div class="sg-sig-role">${role}</div>` : ""}
+              ${company ? `<div class="sg-sig-company">${company}</div>` : ""}
+              <div class="sg-sig-date">${date}</div>
+            </div>
+            ${qrUrl ? `<div class="sg-qr"><img src="${qrUrl}" alt="Scan to verify"/><div class="sg-qr-cap">Scan to verify</div></div>` : ""}
+          </div>
+        </section>\n`;
+      }
       return _m;
     },
   );
+
+  // {{bullet: VALUE | target=80 | max=100 | label=… | sub=…}}
+  out = out.replace(/\{\{bullet:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const value = Number(parts[0]); if (!Number.isFinite(value)) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(target|max|label|sub|ranges)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    const ranges = opts.ranges ? opts.ranges.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) : undefined;
+    return vizFigure(renderBulletSvg({ value, target: opts.target ? Number(opts.target) : undefined, max: opts.max ? Number(opts.max) : undefined, label: opts.label, sub: opts.sub, ranges }), opts.label || "");
+  });
+
+  // {{marimekko: rowLabel*weight: s1,s2,s3 | rowLabel*weight: s1,s2,s3 | legend=A,B,C}}
+  out = out.replace(/\{\{marimekko:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    let legend: string[] = [];
+    const rows = parts.map((p) => {
+      const leg = p.match(/^legend\s*=\s*(.+)$/i); if (leg) { legend = leg[1].split(",").map((s) => s.trim()); return null; }
+      const m = p.match(/^(.+?)\*([\d.]+)\s*:\s*(.+)$/); if (!m) return null;
+      return { label: m[1].trim(), weight: Number(m[2]) || 1, segments: m[3].split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) };
+    }).filter(Boolean) as Array<{ label: string; weight: number; segments: number[] }>;
+    if (!rows.length) return _m;
+    return vizFigure(renderMarimekkoSvg(rows, legend), "Composition × magnitude");
+  });
+
+  // {{micromap: Suburb | state=VIC | postcode=3000 | neighbours=A,B,C}}
+  out = out.replace(/\{\{micromap:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const suburb = parts[0]; if (!suburb) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(state|postcode|neighbours)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    return vizFigure(renderMicroMapSvg({ suburb, state: opts.state, postcode: opts.postcode, neighbours: opts.neighbours ? opts.neighbours.split(",").map((s) => s.trim()) : [] }), `${suburb} locator`);
+  });
+
+  // {{calendar: 1,2,3,4,5,6,7,8,9,10,11,12 | title=Sales by month | months=Jan,Feb,…}}
+  out = out.replace(/\{\{calendar:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const vals = parts[0].split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    if (!vals.length) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(title|months)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    const months = opts.months ? opts.months.split(",").map((s) => s.trim()) : [];
+    return vizFigure(renderCalendarHeatmapSvg(vals, opts.title || "", months), opts.title || "");
+  });
 
   // {{gauge: VALUE [/ MAX] | LABEL | CAPTION}}
   out = out.replace(/\{\{gauge:\s*([^}]+)\}\}/gi, (_m, args) => {
