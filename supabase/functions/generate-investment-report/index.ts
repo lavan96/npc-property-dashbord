@@ -1436,9 +1436,9 @@ ${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
  2. Follow the exact markdown formatting with ## for main section headings and ### for subsections
-3. Use tables ONLY when a visual shortcode cannot express the data. Prefer `{{bars}}`, `{{heatmap}}`, `{{donut}}`, `{{tiles}}`, `{{timeline}}`, `{{gauge}}`, `{{pictograph}}`, and inline `~~[…]~~` sparklines over tables or long paragraphs.
+3. Use tables ONLY when a visual shortcode cannot express the data. Prefer \`{{bars}}\`, \`{{heatmap}}\`, \`{{donut}}\`, \`{{tiles}}\`, \`{{timeline}}\`, \`{{gauge}}\`, \`{{pictograph}}\`, and inline \`~~[…]~~\` sparklines over tables or long paragraphs.
 4. After every visual/table/significant data point, include only a brief "What This Means" explanation in plain English — 1 short paragraph max.
-5. Lead each section with a `{{glance: …}}` strip and a clear insight before presenting supporting data.
+5. Lead each section with a \`{{glance: …}}\` strip and a clear insight before presenting supporting data.
 6. Be thorough and accurate, but compress prose aggressively; every paragraph should earn its place beside a visual.
 7. Start immediately with the first section heading - no preamble
 8. Use contextual comparisons (e.g., "30% above the state average") to make numbers meaningful
