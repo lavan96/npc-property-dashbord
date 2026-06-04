@@ -56,6 +56,70 @@ const THEME = {
 // Reusable navy gradient (applied via background-clip:text on headings)
 const NAVY_GRADIENT = `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navyMid} 50%, ${THEME.navyAccent} 100%)`;
 
+type PdfDesignPreset = "signature" | "editorial_navy" | "minimal_ink" | "high_contrast";
+type PdfDensity = "compact" | "balanced" | "spacious";
+type PdfChapterStyle = "classic" | "opener_band" | "minimal";
+type PdfTableStyle = "classic" | "ledger" | "minimal";
+type PdfCoverStyle = "image" | "title_overlay" | "editorial";
+type PdfDesignOptions = {
+  preset: PdfDesignPreset;
+  density: PdfDensity;
+  chapterStyle: PdfChapterStyle;
+  tableStyle: PdfTableStyle;
+  coverStyle: PdfCoverStyle;
+  bodyScale: number;
+  visualIntensity: number;
+  showDropCaps: boolean;
+  showSectionNumbers: boolean;
+  justifyText: boolean;
+};
+
+const DEFAULT_PDF_DESIGN: PdfDesignOptions = {
+  preset: "signature",
+  density: "balanced",
+  chapterStyle: "classic",
+  tableStyle: "classic",
+  coverStyle: "title_overlay",
+  bodyScale: 100,
+  visualIntensity: 70,
+  showDropCaps: true,
+  showSectionNumbers: true,
+  justifyText: true,
+};
+
+const DESIGN_PALETTES: Record<PdfDesignPreset, { paper: string; paperAlt: string; ink: string; muted: string; accent: string; accentSoft: string; heading: string; heading2: string; cover: string }> = {
+  signature: { paper: THEME.paper, paperAlt: THEME.paperAlt, ink: THEME.ink, muted: THEME.inkMuted, accent: THEME.gold, accentSoft: THEME.goldSoft, heading: THEME.navyDeep, heading2: THEME.navyAccent, cover: THEME.bg },
+  editorial_navy: { paper: "#F3F0E7", paperAlt: "#E8E1D2", ink: "#111A24", muted: "#5C6570", accent: "#B9923E", accentSoft: "#8B6B23", heading: "#061A33", heading2: "#275F9C", cover: "#061A33" },
+  minimal_ink: { paper: "#FAF8F2", paperAlt: "#EFEAE0", ink: "#151515", muted: "#62605A", accent: "#151515", accentSoft: "#4A4740", heading: "#151515", heading2: "#4A4740", cover: "#151515" },
+  high_contrast: { paper: "#FFFFFF", paperAlt: "#F0F0F0", ink: "#080808", muted: "#3A3A3A", accent: "#D4A843", accentSoft: "#8A6418", heading: "#000000", heading2: "#2B2B2B", cover: "#000000" },
+};
+
+function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? value as T : fallback;
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function normalizePdfDesign(input: unknown): PdfDesignOptions {
+  const raw = typeof input === "object" && input ? input as Record<string, unknown> : {};
+  return {
+    preset: pick(raw.preset, ["signature", "editorial_navy", "minimal_ink", "high_contrast"] as const, DEFAULT_PDF_DESIGN.preset),
+    density: pick(raw.density, ["compact", "balanced", "spacious"] as const, DEFAULT_PDF_DESIGN.density),
+    chapterStyle: pick(raw.chapterStyle, ["classic", "opener_band", "minimal"] as const, DEFAULT_PDF_DESIGN.chapterStyle),
+    tableStyle: pick(raw.tableStyle, ["classic", "ledger", "minimal"] as const, DEFAULT_PDF_DESIGN.tableStyle),
+    coverStyle: pick(raw.coverStyle, ["image", "title_overlay", "editorial"] as const, DEFAULT_PDF_DESIGN.coverStyle),
+    bodyScale: clampNumber(raw.bodyScale, 90, 112, DEFAULT_PDF_DESIGN.bodyScale),
+    visualIntensity: clampNumber(raw.visualIntensity, 0, 100, DEFAULT_PDF_DESIGN.visualIntensity),
+    showDropCaps: raw.showDropCaps !== false,
+    showSectionNumbers: raw.showSectionNumbers !== false,
+    justifyText: raw.justifyText !== false,
+  };
+}
+
 function fmtMoney(v: unknown): string {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
   if (!Number.isFinite(n)) return "—";
