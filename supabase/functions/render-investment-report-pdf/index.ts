@@ -11,11 +11,15 @@ import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_s
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const API2PDF_KEY = (Deno.env.get("API2PDF_API_KEY") || "").trim();
+const WEASYPRINT_SERVICE_URL = (Deno.env.get("WEASYPRINT_SERVICE_URL") || "").trim().replace(/\/$/, "");
+const WEASYPRINT_SERVICE_TOKEN = (Deno.env.get("WEASYPRINT_SERVICE_TOKEN") || "").trim();
+const PDF_BUCKET = "investment-reports";
 const EDGE_FUNCTION_TIMEOUT_MS = 1_500_000;
 const RENDER_SAFETY_BUFFER_MS = 45_000;
 const MAX_RENDER_WAIT_MS = EDGE_FUNCTION_TIMEOUT_MS - RENDER_SAFETY_BUFFER_MS;
 // (Hero-image generation is now offloaded to `prepare-report-hero-images`.)
 const API2PDF_REQUEST_TIMEOUT_MS = 600_000;
+const WEASYPRINT_REQUEST_TIMEOUT_MS = 600_000;
 
 // Dark-gold theme tokens mirrored from the app.
 const THEME = {
