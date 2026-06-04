@@ -22,7 +22,7 @@ interface PremiumPdfDesignPanelProps {
 
 const presetSwatches: Record<PdfDesignPreset, string> = {
   signature: "bg-primary",
-  editorial_navy: "bg-info",
+  editorial_navy: "bg-chart-2",
   minimal_ink: "bg-foreground",
   high_contrast: "bg-success",
 };
