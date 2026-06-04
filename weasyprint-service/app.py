@@ -24,7 +24,7 @@ log = logging.getLogger("weasyprint-service")
 
 app = Flask(__name__)
 
-EXPECTED_TOKEN = os.environ.get("WEASYPRINT_SERVICE_TOKEN", "").strip()
+EXPECTED_TOKEN = (os.environ.get("WEASYPRINT_SERVICE_TOKEN") or os.environ.get("WEASYPRINT_API_KEY") or "").strip().strip('"')
 MAX_HTML_BYTES = int(os.environ.get("MAX_HTML_BYTES", str(25 * 1024 * 1024)))  # 25 MB
 
 
@@ -42,7 +42,9 @@ def _auth_ok(req) -> bool:
     header = req.headers.get("Authorization", "")
     if not header.startswith("Bearer "):
         return False
-    return header.split(" ", 1)[1].strip() == EXPECTED_TOKEN
+    # Support both "Bearer <token>" and "Bearer "<token>""
+    received_token = header.split(" ", 1)[1].strip().strip('"')
+    return received_token == EXPECTED_TOKEN
 
 
 @app.get("/")
