@@ -1587,8 +1587,26 @@ export async function buildHtml(
   if (cashflowTxt) para2Parts.push(`Indicative weekly cash flow tracks at <strong>${cashflowTxt}</strong> after holding costs, providing a baseline for the comparative scenarios and sensitivity tables that follow.`);
   para2Parts.push(`Use this summary as orientation: detailed evidence, calculations, charts, and source attributions for every claim are set out across the remaining sections of the report.`);
 
+  // Editor's Note — auto-generated, one-paragraph foreword that lifts 2-3 real
+  // figures from the report. Pure presentation, no AI call.
+  const editorsNoteBits: string[] = [];
+  if (priceTxt && rentTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong> with assessed rent of <strong>${rentTxt}/wk</strong>`);
+  else if (priceTxt) editorsNoteBits.push(`at <strong>${priceTxt}</strong>`);
+  if (yieldTxt) editorsNoteBits.push(`gross yield <strong>${yieldTxt}</strong>`);
+  if (scoreTxt) editorsNoteBits.push(`investment score <strong>${scoreTxt}</strong>`);
+  const editorsNoteHtml = `
+    <aside class="editors-note">
+      <div class="en-eyebrow">Editor's Note</div>
+      <p class="en-body">${esc(suburbLabel)} continues to sit inside our active research universe${
+        editorsNoteBits.length ? ` — this dossier captures the subject ${editorsNoteBits.join(", ")}` : ""
+      }. The pages that follow set out the location case, the financials, and the residual risks in equal measure, so you can weigh the opportunity on its merits rather than its narrative.</p>
+      <div class="en-sig">— ${esc(String(advisorLine))}, ${esc(generated)}</div>
+    </aside>
+  `;
+
   const executiveSummaryHtml = `
     <h2 id="ch-executive-summary">Executive Summary</h2>
+    ${editorsNoteHtml}
     <p>${para1Parts.filter(Boolean).join(" ")}</p>
     <p>${para2Parts.filter(Boolean).join(" ")}</p>
   `;
@@ -1601,16 +1619,47 @@ export async function buildHtml(
       ? addrTail.slice(-2).join(", ")
       : address;
 
+  // Foil-stamp overlay: radial gold highlight + diagonal sheen + subtle noise.
+  // Pure SVG so it scales infinitely and prints crisp.
+  const foilOverlaySvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 210 297' preserveAspectRatio='xMidYMid slice'>
+      <defs>
+        <radialGradient id='hl' cx='28%' cy='18%' r='62%'>
+          <stop offset='0%' stop-color='#f3d98a' stop-opacity='0.55'/>
+          <stop offset='42%' stop-color='#b88a2c' stop-opacity='0.18'/>
+          <stop offset='100%' stop-color='#000' stop-opacity='0'/>
+        </radialGradient>
+        <linearGradient id='sheen' x1='0' y1='0' x2='1' y2='1'>
+          <stop offset='0%' stop-color='#fff' stop-opacity='0'/>
+          <stop offset='48%' stop-color='#fff' stop-opacity='0.10'/>
+          <stop offset='52%' stop-color='#fff' stop-opacity='0.18'/>
+          <stop offset='56%' stop-color='#fff' stop-opacity='0'/>
+        </linearGradient>
+        <filter id='nz'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter>
+      </defs>
+      <rect width='210' height='297' fill='url(%23hl)'/>
+      <rect width='210' height='297' fill='url(%23sheen)'/>
+      <rect width='210' height='297' filter='url(%23nz)'/>
+    </svg>`)}`;
+  const advisorLine = contact.name || contact.advisor || contact.company_name || brandName;
   const coverHtml = design.coverStyle === "image"
-    ? `<section class="cover cover-clean"><img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" /></section>`
+    ? `<section class="cover cover-clean">
+        <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
+        <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
+      </section>`
     : `<section class="cover cover-${design.coverStyle}">
         <img class="cover-bg" src="https://npc-property-dashbord.lovable.app/templates/npc-portfolio-cover-new.jpg" alt="" />
         <div class="cover-scrim"></div>
+        <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
+        <div class="cover-masthead">${esc(String(brandName).toUpperCase())}</div>
         <div class="cover-copy">
-          <div class="cover-kicker">${esc(brandName)} · Investment Report</div>
+          <div class="cover-kicker">Investment Report · ${esc(generated)}</div>
           <h1>${esc(address)}</h1>
-          <div class="cover-meta">${esc(coverLocation)} · ${esc(generated)}</div>
+          <div class="cover-rule"></div>
+          <div class="cover-meta">${esc(coverLocation)}</div>
+          <div class="cover-prepared">Prepared by <strong>${esc(String(advisorLine))}</strong></div>
         </div>
+        <div class="cover-edition">VOL. ${new Date().getFullYear()} · ED. ${String(new Date().getMonth() + 1).padStart(2, "0")}</div>
       </section>`;
 
   const designOverrideStyles = `
@@ -2717,7 +2766,214 @@ export async function buildHtml(
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap">
-<style>${styles}\n${designOverrideStyles}</style>
+<style>${styles}
+${designOverrideStyles}
+${(() => {
+  // ── Premium Layer (Phase 1+2) — wins specificity over all earlier rules.
+  // Watermark generated as a tiled SVG data URI: ultra-light diagonal brand
+  // string repeated across every page background.
+  const wmText = String(contact.company_name || brandName || "NPC").toUpperCase();
+  const wmSvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' width='560' height='560' viewBox='0 0 560 560'>
+      <g transform='rotate(-32 280 280)' font-family='Inter, sans-serif' font-size='13' font-weight='700'
+         letter-spacing='6' fill='${palette.ink}' fill-opacity='0.035'>
+        <text x='-40' y='90'>${wmText}</text>
+        <text x='80'  y='250'>${wmText}</text>
+        <text x='-40' y='410'>${wmText}</text>
+        <text x='80'  y='570'>${wmText}</text>
+      </g>
+    </svg>`)}`;
+  return `
+    /* ── Phase 1+2 Premium Layer ─────────────────────────────────────── */
+
+    /* Tiled watermark on every body page (cover/disclaimer/divider exempt). */
+    @page { background: ${palette.paper} url('${wmSvg}') repeat; background-size: 280px 280px; }
+    @page cover, @page disclaimer-page, @page section-divider-page, @page quote-page { background-image: none; }
+
+    /* Wider outer margin → real marginalia rail. */
+    @page :left  { margin: 24mm 14mm 22mm 26mm; }
+    @page :right { margin: 24mm 26mm 22mm 14mm; }
+
+    /* Thumb-index tab — vertical chapter name in outer margin on chapter openers. */
+    @page chapter-opener {
+      @right-middle {
+        content: string(chapter);
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-family: 'Inter', sans-serif;
+        font-size: 7pt; font-weight: 700;
+        letter-spacing: .28em; text-transform: uppercase;
+        color: ${palette.paper};
+        background: linear-gradient(180deg, ${palette.accent} 0%, ${palette.heading2} 100%);
+        padding: 14pt 4pt;
+        border-radius: 2pt 0 0 2pt;
+      }
+    }
+
+    /* Ghosted oversized chapter numeral behind chapter title. */
+    h2 { position: relative; overflow: visible; }
+    h2::after {
+      content: counter(section, decimal-leading-zero);
+      position: absolute;
+      right: -4mm; top: -34mm;
+      font-family: 'Playfair Display', 'Fraunces', serif;
+      font-weight: 800; font-style: italic;
+      font-size: 200pt; line-height: 1;
+      color: ${withAlpha(palette.accent, 0.07)};
+      -webkit-text-fill-color: ${withAlpha(palette.accent, 0.07)};
+      background: none;
+      pointer-events: none; z-index: 0;
+      letter-spacing: -0.05em;
+      font-variant-numeric: lining-nums;
+    }
+    h2 { z-index: 1; }
+    h2 + p { position: relative; z-index: 2; }
+
+    /* Real initial-letter drop cap (WeasyPrint supports this; degrades to ::first-letter). */
+    ${design.showDropCaps ? `
+    h2 + p::first-letter {
+      -webkit-initial-letter: 3 2;
+      initial-letter: 3 2;
+      font-family: 'Playfair Display', 'Fraunces', serif;
+      font-weight: 800;
+      color: ${palette.accent};
+      margin-right: 6pt;
+      padding-right: 3pt;
+      font-feature-settings: "kern" 1, "dlig" 1, "swsh" 1;
+      line-height: 0.82;
+    }
+    ` : ""}
+
+    /* ── Foil-stamp cover ── */
+    .cover-foil {
+      position: absolute; inset: 0; z-index: 1;
+      background-size: cover; background-position: center;
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+    .cover-masthead {
+      position: absolute; left: 0; right: 0; top: 22mm;
+      text-align: center; z-index: 3;
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt; font-weight: 800;
+      letter-spacing: .42em;
+      color: ${palette.accent};
+      text-shadow: 0 0 14pt rgba(0,0,0,0.6);
+    }
+    .cover-masthead::before, .cover-masthead::after {
+      content: ""; display: inline-block;
+      width: 28mm; height: 0.5pt;
+      background: ${palette.accent};
+      vertical-align: middle;
+      margin: 0 8mm;
+      opacity: 0.7;
+    }
+    .cover-rule {
+      width: 36mm; height: 1pt;
+      background: linear-gradient(90deg, ${palette.accent} 0%, ${withAlpha(palette.accent, 0)} 100%);
+      margin: 8mm 0 8mm;
+    }
+    .cover-prepared {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 11pt;
+      color: rgba(255,255,255,0.78);
+      margin-top: 6mm; letter-spacing: 0;
+      text-transform: none;
+    }
+    .cover-prepared strong {
+      font-style: normal; font-weight: 600;
+      color: ${palette.accent}; letter-spacing: .04em;
+    }
+    .cover-edition {
+      position: absolute; right: 18mm; bottom: 14mm; z-index: 3;
+      font-family: 'Inter', sans-serif;
+      font-size: 7pt; font-weight: 700;
+      letter-spacing: .32em;
+      color: ${palette.accent}; opacity: 0.85;
+    }
+
+    /* Cover scrim deepened so masthead + foil pop against any background. */
+    .cover-scrim {
+      background: linear-gradient(160deg,
+        rgba(0,0,0,0.75) 0%,
+        rgba(0,0,0,0.55) 38%,
+        rgba(0,0,0,0.20) 72%,
+        rgba(0,0,0,0.62) 100%) !important;
+    }
+
+    /* ── Editor's Note (intro card) ── */
+    .editors-note {
+      margin: 0 0 22pt;
+      padding: 16pt 22pt 14pt;
+      background: ${palette.paperAlt};
+      border-top: 0.5pt solid ${palette.accent};
+      border-bottom: 0.5pt solid ${palette.accent};
+      page-break-inside: avoid; break-inside: avoid;
+      position: relative;
+    }
+    .editors-note .en-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 7.5pt; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .26em;
+      color: ${palette.accent};
+      margin-bottom: 8pt;
+    }
+    .editors-note .en-body {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 13pt; line-height: 1.5;
+      color: ${palette.ink};
+      margin: 0;
+    }
+    .editors-note .en-sig {
+      margin-top: 10pt;
+      font-family: 'Playfair Display', serif;
+      font-size: 10pt; font-style: italic;
+      color: ${palette.heading2};
+    }
+
+    /* Stronger pull-quote / blockquote treatment. */
+    blockquote {
+      border-left-width: 4pt !important;
+      padding-left: 44pt !important;
+    }
+    blockquote::before {
+      font-size: 64pt !important; top: -4pt !important;
+      color: ${withAlpha(palette.accent, 0.55)} !important;
+    }
+
+    /* Tight widows/orphans across the board (Phase 1 #4). */
+    p, li, td, th { widows: 3; orphans: 3; }
+    h2, h3, h4 { break-after: avoid-page; page-break-after: avoid; }
+    h2 + p, h3 + p { break-before: avoid-page; }
+    figure, .insight-box, .stat-block, table, .kpi, .score-card,
+    blockquote, aside.pull-quote, aside.sidenote {
+      break-inside: avoid-page; page-break-inside: avoid;
+      box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    }
+
+    /* OpenType: small-caps for eyebrow labels everywhere. */
+    .toc-eyebrow, .insight-label, .insight-label-inline,
+    .kpi-label, .stat-label, .cover-kicker, .cover-meta,
+    .sd-eyebrow, .qp-eyebrow, .en-eyebrow {
+      font-feature-settings: "smcp" 1, "c2sc" 1, "kern" 1;
+      font-variant-caps: all-small-caps;
+    }
+
+    /* Tabular figures on every number-heavy surface. */
+    table, .kpi-value, .stat-value, .score-card,
+    .cover-edition, .cover-meta {
+      font-variant-numeric: tabular-nums lining-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1, "kern" 1;
+    }
+
+    /* Hanging punctuation for body paragraphs. */
+    p, blockquote, li { hanging-punctuation: first last; }
+
+    /* TOC chapter dots: aligned leader dots with real page nums. */
+    .toc ol li a { font-feature-settings: "tnum" 1, "lnum" 1; }
+  `;
+})()}</style>
 </head>
 <body>
 
