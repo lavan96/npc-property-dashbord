@@ -3019,7 +3019,7 @@ export async function buildHtml(
      Kept as fallback for the Api2PDF/headless-Chrome render path. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <style>${styles}
 ${designOverrideStyles}
 ${(() => {
@@ -3476,6 +3476,290 @@ ${(() => {
       font-family: 'Inter', sans-serif; font-size: 8pt;
       letter-spacing: .2em; text-transform: uppercase;
       color: ${palette.heading3}; text-align: center;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       EDITORIAL PREMIUM LAYER v3 — final-pass override
+       Blends Ref-A magazine editorial (Playfair display, mono eyebrows,
+       generous negative space) with Ref-B warm brochure (cream paper,
+       calm two-column copy, photo-led), in our brand palette.
+       Loaded last so it wins specificity over all earlier rules.
+       ════════════════════════════════════════════════════════════════════ */
+
+    :root {
+      --ed-ink:        #0F0F10;
+      --ed-ink-soft:   #4A4438;
+      --ed-paper:      #FAF7F1;
+      --ed-paper-2:    #F1ECDF;
+      --ed-rule:       #D8CBB6;
+      --ed-gold:       #D4A843;
+      --ed-gold-deep:  #8A6418;
+      --ed-navy:       #14233A;
+      --ed-navy-deep:  #061A33;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 10.5pt; line-height: 1.55;
+      color: var(--ed-ink); background: var(--ed-paper);
+      font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
+      -webkit-font-smoothing: antialiased;
+    }
+    p { hyphens: auto; orphans: 3; widows: 3; }
+
+    h1, h2, h3, .display, .cover-title {
+      font-family: 'Playfair Display', 'Fraunces', Georgia, serif !important;
+      font-weight: 700 !important;
+      color: var(--ed-navy-deep);
+      letter-spacing: -0.012em; line-height: 1.08;
+      font-feature-settings: "lnum" 1, "kern" 1, "dlig" 1;
+      background: none !important;
+      -webkit-text-fill-color: var(--ed-navy-deep);
+    }
+    h1 { font-size: 36pt; }
+    h2 { font-size: 26pt; margin-top: 0; }
+    h3 { font-size: 15pt; }
+
+    .eyebrow, .toc-eyebrow,
+    .insight-label, .insight-label-inline,
+    .kpi-label, .stat-label,
+    .cover-kicker, .cover-meta,
+    .sd-eyebrow, .qp-eyebrow, .en-eyebrow,
+    .compare-head, .chart-title-eyebrow,
+    .npc-view-label {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+      font-variant-caps: normal !important;
+      font-feature-settings: "lnum" 1, "tnum" 1 !important;
+      font-weight: 500 !important;
+      text-transform: uppercase; letter-spacing: 0.18em;
+      font-size: 7.6pt; color: var(--ed-gold-deep) !important;
+    }
+    .eyebrow::before, .en-eyebrow::before,
+    .sd-eyebrow::before, .qp-eyebrow::before {
+      content: "— "; color: var(--ed-gold); margin-right: 2pt;
+    }
+
+    @page {
+      background: var(--ed-paper);
+      background-image: none !important;
+      @top-left {
+        content: string(chapter);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 7.6pt; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.22em;
+        color: var(--ed-ink-soft);
+      }
+      @top-right {
+        content: "${esc(address)}";
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 7.6pt; font-weight: 400;
+        color: var(--ed-ink-soft);
+        font-style: normal; letter-spacing: 0.08em;
+      }
+      @bottom-left {
+        content: "${esc(brandName)}";
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 7.4pt; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.22em;
+        color: var(--ed-ink-soft);
+      }
+      @bottom-center { content: ""; border-top: none; }
+      @bottom-right {
+        content: counter(page, decimal-leading-zero) "  /  " counter(pages, decimal-leading-zero);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8pt; font-weight: 600;
+        color: var(--ed-ink);
+        font-style: normal; letter-spacing: 0.08em;
+        font-variant-numeric: lining-nums tabular-nums;
+      }
+    }
+
+    @page cover { background: var(--ed-navy-deep); }
+    .cover { background: var(--ed-navy-deep) !important; }
+    .cover .cover-scrim {
+      background: linear-gradient(180deg,
+        rgba(6,26,51,0.20) 0%,
+        rgba(6,26,51,0.30) 55%,
+        rgba(6,26,51,0.88) 100%) !important;
+    }
+    .cover-masthead {
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-weight: 500 !important;
+      letter-spacing: 0.32em !important;
+      font-size: 8pt !important;
+      color: var(--ed-gold) !important;
+      text-shadow: none !important; top: 18mm !important;
+    }
+    .cover-masthead::before, .cover-masthead::after {
+      width: 14mm !important; background: var(--ed-gold) !important;
+      opacity: 0.55 !important; margin: 0 6mm !important;
+    }
+    .cover-kicker {
+      font-family: 'IBM Plex Mono', monospace !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.22em !important;
+      font-size: 8pt !important; color: var(--ed-gold) !important;
+      font-weight: 500 !important;
+    }
+    .cover-title {
+      font-family: 'Playfair Display', serif !important;
+      font-weight: 600 !important; font-style: normal;
+      font-size: 48pt !important; line-height: 1.04 !important;
+      letter-spacing: -0.018em !important;
+      color: #FAF7F1 !important;
+      -webkit-text-fill-color: #FAF7F1 !important;
+      background: none !important; max-width: 84%;
+    }
+    .cover-title em, .cover-title i {
+      font-style: italic; color: var(--ed-gold) !important;
+      -webkit-text-fill-color: var(--ed-gold) !important;
+    }
+    .cover-rule {
+      width: 28mm !important; height: 0.6pt !important;
+      background: var(--ed-gold) !important;
+      margin: 7mm 0 7mm !important; opacity: 0.85;
+    }
+    .cover-meta {
+      font-family: 'IBM Plex Mono', monospace !important;
+      letter-spacing: 0.14em !important; font-size: 9pt !important;
+      text-transform: uppercase !important;
+      color: rgba(250,247,241,0.82) !important;
+    }
+    .cover-prepared {
+      font-family: 'Inter', sans-serif !important;
+      font-style: normal !important; font-size: 9.5pt !important;
+      color: rgba(250,247,241,0.7) !important;
+    }
+    .cover-prepared strong {
+      color: var(--ed-gold) !important;
+      font-weight: 600 !important; letter-spacing: 0.02em !important;
+    }
+    .cover-edition {
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-weight: 500 !important; font-size: 7.4pt !important;
+      letter-spacing: 0.24em !important;
+      color: rgba(250,247,241,0.55) !important; opacity: 1 !important;
+    }
+    .cover-foil { opacity: 0.18 !important; mix-blend-mode: soft-light !important; }
+
+    .ch-ghost { display: none !important; }
+    .thumb-tab { display: none !important; }
+
+    .kpi {
+      background: transparent !important; border: 0 !important;
+      border-top: 0.6pt solid var(--ed-gold) !important;
+      border-radius: 0 !important; padding: 10pt 0 4pt !important;
+    }
+    .kpi-label {
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-size: 7.2pt !important; letter-spacing: 0.18em !important;
+      color: var(--ed-ink-soft) !important; font-weight: 500 !important;
+    }
+    .kpi-value {
+      font-family: 'Playfair Display', serif !important;
+      font-weight: 600 !important; font-size: 24pt !important;
+      color: var(--ed-navy-deep) !important; letter-spacing: -0.01em;
+    }
+    .score-card {
+      background: var(--ed-paper-2) !important; border: 0 !important;
+      border-left: 2.5pt solid var(--ed-gold) !important;
+      padding: 18pt 22pt !important;
+    }
+    .score-card .ring {
+      background: conic-gradient(var(--ed-gold) 0%, var(--ed-gold) var(--p,0%), rgba(20,35,58,0.08) var(--p,0%)) !important;
+      color: var(--ed-navy-deep) !important;
+    }
+    .score-card .ring::after { background: var(--ed-paper-2) !important; }
+    .score-card .band {
+      font-family: 'IBM Plex Mono', monospace !important;
+      color: var(--ed-gold-deep) !important;
+      letter-spacing: 0.22em !important; font-weight: 500 !important;
+    }
+
+    .compare-col {
+      background: transparent !important; border: 0 !important;
+      border-top: 0.6pt solid var(--ed-rule) !important;
+      border-radius: 0 !important; padding: 12pt 0 0 !important;
+    }
+    .compare-pos, .compare-neg { border-left: 0 !important; }
+    .compare-head {
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-weight: 500 !important; letter-spacing: 0.22em !important;
+      font-size: 7.6pt !important;
+    }
+
+    table {
+      border-collapse: collapse !important; width: 100%;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+    table th {
+      background: transparent !important;
+      color: var(--ed-ink-soft) !important;
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-size: 7.4pt !important; font-weight: 500 !important;
+      letter-spacing: 0.18em !important; text-transform: uppercase !important;
+      border-bottom: 0.6pt solid var(--ed-ink) !important;
+      padding: 8pt 6pt !important; text-align: left;
+    }
+    table td {
+      border-bottom: 0.3pt solid var(--ed-rule) !important;
+      padding: 7pt 6pt !important; font-size: 9.6pt !important;
+    }
+    table tbody tr:nth-child(even) td { background: transparent !important; }
+
+    blockquote, aside.pull-quote {
+      font-family: 'Playfair Display', serif !important;
+      font-style: italic !important;
+      font-size: 18pt !important; line-height: 1.35 !important;
+      color: var(--ed-navy-deep) !important;
+      border-left: 2pt solid var(--ed-gold) !important;
+      padding: 4pt 0 4pt 22pt !important; margin: 18pt 0 !important;
+      background: transparent !important;
+    }
+    blockquote::before { content: none !important; }
+
+    .editors-note {
+      background: var(--ed-paper-2) !important;
+      border-top: 0.6pt solid var(--ed-gold) !important;
+      border-bottom: 0 !important; padding: 18pt 22pt !important;
+    }
+    .editors-note .en-body {
+      font-family: 'Playfair Display', serif !important;
+      font-style: italic !important;
+      font-size: 14pt !important; line-height: 1.5 !important;
+      color: var(--ed-navy-deep) !important;
+    }
+
+    .chapter-hero { border-radius: 0 !important; box-shadow: none !important; }
+    .chapter-hero.hero-w-bleed {
+      margin-left: -18mm !important; margin-right: -18mm !important;
+      width: 210mm !important;
+    }
+    figure.auto-chart figcaption,
+    figure.vis-figure figcaption,
+    .chapter-hero figcaption {
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-size: 7.4pt !important; letter-spacing: 0.18em !important;
+      text-transform: uppercase !important;
+      color: var(--ed-ink-soft) !important; text-align: left !important;
+    }
+    figure.auto-chart figcaption::before,
+    figure.vis-figure figcaption::before {
+      color: var(--ed-gold) !important;
+      font-family: 'IBM Plex Mono', monospace !important;
+      font-weight: 600 !important;
+    }
+    .chart-wrap, .vis-figure {
+      background: transparent !important; border: 0 !important;
+      border-top: 0.4pt solid var(--ed-rule) !important;
+      box-shadow: none !important;
+      padding: 14pt 0 6pt !important; border-radius: 0 !important;
+    }
+
+    h2 + p::first-letter {
+      color: var(--ed-navy-deep) !important;
+      font-family: 'Playfair Display', serif !important;
+      font-weight: 600 !important;
     }
   `;
 })()}</style>

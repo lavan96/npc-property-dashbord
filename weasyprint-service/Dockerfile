@@ -43,8 +43,13 @@ RUN mkdir -p /usr/share/fonts/truetype/premium && \
     curl -fsSL -o "CormorantGaramond-Medium.ttf"    "$BASE/cormorantgaramond/CormorantGaramond-Medium.ttf" && \
     curl -fsSL -o "CormorantGaramond-SemiBold.ttf"  "$BASE/cormorantgaramond/CormorantGaramond-SemiBold.ttf" && \
     curl -fsSL -o "CormorantGaramond-Bold.ttf"      "$BASE/cormorantgaramond/CormorantGaramond-Bold.ttf" && \
+    curl -fsSL -o "CormorantGaramond-Bold.ttf"      "$BASE/cormorantgaramond/CormorantGaramond-Bold.ttf" && \
+    curl -fsSL -o "IBMPlexMono-Regular.ttf"         "$BASE/ibmplexmono/IBMPlexMono-Regular.ttf" && \
+    curl -fsSL -o "IBMPlexMono-Medium.ttf"          "$BASE/ibmplexmono/IBMPlexMono-Medium.ttf" && \
+    curl -fsSL -o "IBMPlexMono-SemiBold.ttf"        "$BASE/ibmplexmono/IBMPlexMono-SemiBold.ttf" && \
+    curl -fsSL -o "IBMPlexMono-Bold.ttf"            "$BASE/ibmplexmono/IBMPlexMono-Bold.ttf" && \
     fc-cache -fv && \
-    fc-list | grep -iE "playfair|inter|fraunces|cormorant" | sort
+    fc-list | grep -iE "playfair|inter|fraunces|cormorant|plex" | sort
 
 WORKDIR /app
 COPY requirements.txt .
