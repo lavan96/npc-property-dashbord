@@ -1872,11 +1872,21 @@ export async function buildHtml(
   `;
 
   const executiveSummaryHtml = `
-    <h2 id="ch-executive-summary">Executive Summary</h2>
+    <h2 id="ch-executive-summary" data-ch="1">Executive Summary</h2>
     ${editorsNoteHtml}
     <p>${para1Parts.filter(Boolean).join(" ")}</p>
     <p>${para2Parts.filter(Boolean).join(" ")}</p>
   `;
+
+  // Executive Summary is the first chapter — register it in the TOC and shift
+  // every subsequent chapter's data-ch index up by one so the page numerals
+  // line up with the TOC ordering.
+  if (!toc.some((t) => t.id === "ch-executive-summary")) {
+    toc.unshift({ id: "ch-executive-summary", title: "Executive Summary" });
+    bodyWithHeroes = bodyWithHeroes.replace(/<h2([^>]*?)\sdata-ch="(\d+)"/gi, (_m, attrs, n) => {
+      return `<h2${attrs} data-ch="${Number(n) + 1}"`;
+    });
+  }
 
   // Parse address tail for cover meta (Suburb, STATE Postcode).
   const addrTail = address.split(",").map((s: string) => s.trim()).filter(Boolean);
