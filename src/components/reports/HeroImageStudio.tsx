@@ -33,6 +33,10 @@ import {
   Layers,
   Search,
   X,
+  Upload,
+  Download,
+  Eye,
+  Paperclip,
 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
