@@ -84,12 +84,29 @@ def render():
     payload = request.get_json(silent=True) or {}
     html = payload.get("html")
     base_url = payload.get("base_url") or None
+    pdf_variant = payload.get("pdf_variant") or None  # e.g. "pdf/a-2b", "pdf/ua-1"
+    tagged = bool(payload.get("tagged", True))         # accessible/tagged PDF by default
+    optimize_images = bool(payload.get("optimize_images", True))
 
     if not isinstance(html, str) or not html.strip():
         return jsonify({"error": "html is required"}), 400
 
     try:
-        pdf_bytes = HTML(string=html, base_url=base_url).write_pdf()
+        write_kwargs = {}
+        # WeasyPrint ≥60 supports pdf_variant + pdf_identifier; older builds ignore unknowns.
+        if pdf_variant:
+            write_kwargs["pdf_variant"] = pdf_variant
+        # `pdf_forms`/`uncompressed_pdf` skipped; we want tagged + compressed.
+        try:
+            pdf_bytes = HTML(string=html, base_url=base_url).write_pdf(
+                **write_kwargs,
+                optimize_images=optimize_images,
+                presentational_hints=False,
+            )
+        except TypeError:
+            # Fallback for very old WeasyPrint builds that don't accept these kwargs.
+            log.warning("write_pdf kwargs unsupported, falling back to defaults")
+            pdf_bytes = HTML(string=html, base_url=base_url).write_pdf()
     except Exception as exc:  # noqa: BLE001
         log.exception("weasyprint render failed")
         return jsonify({"error": f"render_failed: {exc}"}), 500
