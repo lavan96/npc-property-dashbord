@@ -1480,6 +1480,74 @@ function applyEditorialMarkdown(md: string): string {
     return vizFigure(renderScoreWheelSvg(scores, labels, Number(opts.max) || 100), opts.title || "");
   });
 
+  // {{bars: Label1 70, Label2 45%, Label3 $1.2M | title=… | max=100 | unit=%}}
+  out = out.replace(/\{\{bars:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    const rows: Array<{ label: string; value: number; display?: string }> = [];
+    const items = parts[0].split(",").map((s) => s.trim()).filter(Boolean);
+    for (const it of items) {
+      const m = it.match(/^(.+?)\s+([\-+]?[\d.,]+\s*[%$kKmM]?[a-zA-Z]*)$/);
+      if (!m) continue;
+      const display = m[2].trim();
+      const num = parseLooseNumber(display.replace(/[%$,kKmM]/g, "")) ?? 0;
+      const mult = /m\b/i.test(display) ? 1_000_000 : /k\b/i.test(display) ? 1_000 : 1;
+      rows.push({ label: m[1].trim(), value: num * mult, display });
+    }
+    for (const p of parts.slice(1)) { const m = p.match(/^(title|max|unit)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    if (!rows.length) return _m;
+    return vizFigure(renderBarsSvg(rows, { title: opts.title, max: opts.max ? Number(opts.max) : undefined, unit: opts.unit }), opts.title || "");
+  });
+
+  // {{quadrant: 8,7 "This property", 5,4 "Suburb avg" | xlabel=Yield | ylabel=Growth | xmax=10 | ymax=10 | title=… | q1=… | q2=… | q3=… | q4=…}}
+  out = out.replace(/\{\{quadrant:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const points: Array<{ x: number; y: number; label: string; highlight?: boolean }> = [];
+    parts[0].split(/,(?=\s*[\d.]+\s*,\s*[\d.]+)/).forEach((seg) => {
+      const m = seg.trim().match(/^([\d.]+)\s*,\s*([\d.]+)\s*"([^"]+)"(\s*\*)?$/);
+      if (m) points.push({ x: Number(m[1]), y: Number(m[2]), label: m[3], highlight: !!m[4] });
+    });
+    if (!points.length) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(xlabel|ylabel|xmax|ymax|title|q1|q2|q3|q4)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    return vizFigure(renderQuadrantSvg(points, {
+      xLabel: opts.xlabel, yLabel: opts.ylabel,
+      xMax: opts.xmax ? Number(opts.xmax) : undefined, yMax: opts.ymax ? Number(opts.ymax) : undefined,
+      title: opts.title, q1: opts.q1, q2: opts.q2, q3: opts.q3, q4: opts.q4,
+    }), opts.title || "");
+  });
+
+  // {{pictograph: FILLED/TOTAL | label=… | sub=… | icon=person|house|dollar | cols=10}}
+  out = out.replace(/\{\{pictograph:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const m = parts[0].match(/^(\d+)\s*\/\s*(\d+)$/); if (!m) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const mm = p.match(/^(label|sub|icon|cols)\s*=\s*(.+)$/i); if (mm) opts[mm[1].toLowerCase()] = mm[2]; }
+    const icon = (opts.icon as "person" | "house" | "dollar") || "house";
+    return vizFigure(renderPictographSvg(Number(m[1]), Number(m[2]), {
+      icon, label: opts.label, sub: opts.sub, cols: opts.cols ? Number(opts.cols) : undefined,
+    }), opts.label || "");
+  });
+
+  // {{glance: ✓ Strong fundamentals | ⚠ Vacancy uptick | 📈 Yield 4.8% | 🎯 Buy with caveats}}
+  out = out.replace(/\{\{glance:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const items = String(args).split("|").map((s) => s.trim()).filter(Boolean);
+    if (!items.length) return _m;
+    const cells = items.slice(0, 4).map((raw) => {
+      const m = raw.match(/^(\S+)\s+(.+)$/);
+      const sym = m ? m[1] : "•";
+      const text = m ? m[2] : raw;
+      return `<div class="glance-cell"><span class="glance-sym">${esc(sym)}</span><span class="glance-text">${esc(text)}</span></div>`;
+    }).join("");
+    return `\n<div class="glance-strip">${cells}</div>\n`;
+  });
+
+  // Inline sparkline: ~~[1,2,3,4,5]~~ flows next to prose.
+  out = out.replace(/~~\[([\d.,\s\-]+)\]~~/g, (_m, list) => {
+    const vals = String(list).split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    return renderInlineSparkSvg(vals);
+  });
+
   return out;
 }
 
