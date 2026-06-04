@@ -1282,12 +1282,57 @@ Why this property earns a top-quartile rating.
 :::
 \`\`\`
 
-RULES:
-- Only use a visualisation (gauge/waterfall/heatmap/wheel) when the data is
-  meaningful and SUPPORTS the surrounding narrative. Never invent numbers
-  just to fill a chart.
+12. HORIZONTAL BARS — Tufte-style ranked comparator. Perfect for scorecards,
+    suburb rankings, lender comparisons, expense breakdowns. Each row = label + value.
+    Values can be raw numbers, percentages (e.g. \`70%\`), or money (\`$1.2M\`, \`450k\`).
+    Format: \`{{bars: Label1 70, Label2 45%, Label3 $1.2M | title=… | max=100 | unit=%}}\`
+\`\`\`
+{{bars: Yield 7.4, Growth 8.1, Liquidity 5.2, Demand 8.6, Infrastructure 6.9 | title=Investment Pillars | max=10}}
+\`\`\`
+
+13. QUADRANT MATRIX — 2×2 scatter for trade-off framing (Risk×Return, Yield×Growth,
+    Cost×Speed). Append \`*\` to a point to highlight (gold). Quadrant labels (q1..q4)
+    label corners clockwise from top-right.
+    Format: \`{{quadrant: x,y "label", x,y "label"* | xlabel=Yield | ylabel=Growth | xmax=10 | ymax=10 | q1=Sweet spot | q2=Capital play | q3=Avoid | q4=Income play | title=…}}\`
+\`\`\`
+{{quadrant: 7.4,8.1 "This property"*, 5.2,6.8 "Suburb median", 4.1,5.5 "Metro median" | xlabel=Yield % | ylabel=Growth % | xmax=10 | ymax=10 | q1=Sweet spot | q2=Capital play | q3=Avoid | q4=Income play | title=Yield vs Growth}}
+\`\`\`
+
+14. PICTOGRAPH — icon-array showing "K of N". Killer for tenure mix, demographics,
+    ownership ratios. \`icon\` is \`person\`, \`house\` or \`dollar\`.
+    Format: \`{{pictograph: FILLED/TOTAL | label=… | sub=… | icon=person | cols=10}}\`
+\`\`\`
+{{pictograph: 3/10 | label=Renter share | sub=3 in 10 dwellings are tenanted | icon=person | cols=10}}
+\`\`\`
+
+15. AT-A-GLANCE STRIP — 3-4 cell editorial strip that opens a chapter. Each cell:
+    "<symbol> <text>". Symbols: ✓ strength, ⚠ watch, ▲ trend up, ▼ trend down, ◆ metric, ★ verdict.
+    Use ONCE at the very top of each chapter (right after the H2) to compress the
+    "TL;DR" so the reader doesn't have to wade through prose to find the verdict.
+    Format: \`{{glance: ✓ Strong fundamentals | ⚠ Vacancy uptick | ◆ Yield 4.8% | ★ Buy with caveats}}\`
+\`\`\`
+{{glance: ✓ Top-quartile growth | ⚠ Body-corporate fees rising | ◆ Median $1.18M | ★ Hold 7-10y}}
+\`\`\`
+
+16. INLINE SPARKLINE — tiny chart that flows next to prose. Use inside a sentence
+    to show a trend ("yields ~~[4.2,4.4,4.6,4.5,4.8]~~ now 4.8%"). 5-12 numbers ideal.
+    Format: \`~~[v1,v2,v3,…]~~\`
+\`\`\`
+Median values have climbed steadily ~~[820,860,910,980,1050,1180]~~ over six years.
+\`\`\`
+
+VISUAL-FIRST RULES (CRITICAL):
+- Every chapter MUST open with a \`{{glance: …}}\` strip immediately after the H2.
+- Aim for **2-3 visualisations per chapter** (gauge / bars / quadrant / pictograph /
+  waterfall / heatmap / wheel / pictograph / inline sparkline). Prose should
+  EXPLAIN visualisations, not duplicate them.
+- Any list of 3+ ranked metrics MUST be rendered as \`{{bars: …}}\` instead of a table.
+- Any "X of Y households / dwellings / buyers" stat MUST use \`{{pictograph: …}}\`.
+- Any trade-off between two dimensions (yield vs growth, risk vs return) MUST use
+  \`{{quadrant: …}}\`. Highlight the subject property with a trailing \`*\`.
+- Use \`~~[…]~~\` inline sparklines liberally for any time-series mentioned in prose.
 - All shortcodes must use REAL figures from the data provided. Never fabricate.
-- If a visualisation would duplicate a table on the same page, choose ONE.
+- If a visualisation would duplicate a table on the same page, choose the visualisation.
 - Cross-references must point to a chapter heading that actually exists.
 - Footnote definitions must appear in the same section as the call.
 - Section dividers and quote pages BREAK THE PAGE — only use when a moment of

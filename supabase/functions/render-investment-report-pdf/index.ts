@@ -1104,6 +1104,143 @@ function vizFigure(svg: string, caption = ""): string {
   return `<figure class="vis-figure">${svg}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
 }
 
+/** Tufte-style horizontal comparator bars. Each bar = label + value + bar + numeric tag. */
+function renderBarsSvg(
+  items: Array<{ label: string; value: number; display?: string; accent?: string }>,
+  opts: { title?: string; max?: number; unit?: string } = {},
+): string {
+  if (!items.length) return "";
+  const w = 760;
+  const rowH = 28;
+  const padT = opts.title ? 36 : 14;
+  const padB = 14;
+  const padL = 0;
+  const padR = 0;
+  const labelW = 180;
+  const valueW = 76;
+  const barX = labelW + 12;
+  const barW = w - barX - valueW - 16;
+  const h = padT + items.length * rowH + padB;
+  const max = opts.max ?? Math.max(...items.map((i) => Math.abs(i.value))) || 1;
+  const rows = items.map((it, i) => {
+    const y = padT + i * rowH;
+    const pct = Math.max(0, Math.min(1, Math.abs(it.value) / max));
+    const bw = Math.max(2, pct * barW);
+    const fill = it.accent || (pct >= 0.66 ? VIZ_GOOD : pct >= 0.4 ? VIZ_GOLD : pct >= 0.2 ? VIZ_WARN : VIZ_RISK);
+    const display = it.display ?? (Number.isInteger(it.value) ? String(it.value) : it.value.toFixed(1)) + (opts.unit || "");
+    return `
+      <text x="${labelW}" y="${y + 17}" text-anchor="end" font-family="Inter,sans-serif" font-size="10" fill="${VIZ_INK}">${svgEscape(it.label)}</text>
+      <rect x="${barX}" y="${y + 8}" width="${barW}" height="12" fill="${VIZ_PAPER_ALT}" rx="2"/>
+      <rect x="${barX}" y="${y + 8}" width="${bw.toFixed(1)}" height="12" fill="${fill}" rx="2"/>
+      <text x="${barX + barW + 10}" y="${y + 17}" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${svgEscape(display)}</text>
+    `;
+  }).join("");
+  const title = opts.title
+    ? `<text x="0" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(opts.title)}</text>
+       <line x1="0" x2="${w}" y1="30" y2="30" stroke="${VIZ_RULE}" stroke-width="0.6"/>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">${title}${rows}</svg>`;
+}
+
+/** 2×2 quadrant matrix — plot labelled dots on Risk×Return / Growth×Yield style axes. */
+function renderQuadrantSvg(
+  points: Array<{ x: number; y: number; label: string; highlight?: boolean }>,
+  opts: { xLabel?: string; yLabel?: string; xMax?: number; yMax?: number; title?: string;
+          q1?: string; q2?: string; q3?: string; q4?: string } = {},
+): string {
+  const w = 560, h = 420, padT = opts.title ? 50 : 24, padB = 56, padL = 60, padR = 20;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xMax = opts.xMax ?? Math.max(...points.map((p) => p.x), 10);
+  const yMax = opts.yMax ?? Math.max(...points.map((p) => p.y), 10);
+  const xOf = (v: number) => padL + (v / xMax) * plotW;
+  const yOf = (v: number) => padT + plotH - (v / yMax) * plotH;
+  const midX = padL + plotW / 2, midY = padT + plotH / 2;
+  const title = opts.title
+    ? `<text x="${padL}" y="24" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(opts.title)}</text>`
+    : "";
+  const quadLabels = [
+    { x: midX + plotW / 4, y: padT + 16, text: opts.q1 || "" },
+    { x: midX - plotW / 4, y: padT + 16, text: opts.q2 || "" },
+    { x: midX - plotW / 4, y: padT + plotH - 8, text: opts.q3 || "" },
+    { x: midX + plotW / 4, y: padT + plotH - 8, text: opts.q4 || "" },
+  ].filter((q) => q.text).map((q) =>
+    `<text x="${q.x}" y="${q.y}" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="${VIZ_INK_MUTED}" letter-spacing="1.6">${svgEscape(q.text.toUpperCase())}</text>`
+  ).join("");
+  const dots = points.map((p) => {
+    const cx = xOf(p.x), cy = yOf(p.y);
+    const fill = p.highlight ? VIZ_GOLD : VIZ_NAVY;
+    const r = p.highlight ? 7.5 : 5;
+    return `<g>
+      <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="${fill}" stroke="${VIZ_PAPER}" stroke-width="2"/>
+      <text x="${cx + 10}" y="${cy + 4}" font-family="Inter,sans-serif" font-size="9.5" font-weight="${p.highlight ? 700 : 500}" fill="${VIZ_INK}">${svgEscape(p.label)}</text>
+    </g>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    ${title}
+    <rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="${VIZ_PAPER}" stroke="${VIZ_RULE}" stroke-width="0.5"/>
+    <line x1="${midX}" x2="${midX}" y1="${padT}" y2="${padT + plotH}" stroke="${VIZ_RULE}" stroke-dasharray="3 3" stroke-width="0.6"/>
+    <line x1="${padL}" x2="${padL + plotW}" y1="${midY}" y2="${midY}" stroke="${VIZ_RULE}" stroke-dasharray="3 3" stroke-width="0.6"/>
+    ${quadLabels}
+    ${dots}
+    <text x="${padL + plotW / 2}" y="${h - 18}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="${VIZ_INK_MUTED}" letter-spacing="1.6">${svgEscape((opts.xLabel || "").toUpperCase())} →</text>
+    <text x="20" y="${padT + plotH / 2}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="${VIZ_INK_MUTED}" letter-spacing="1.6" transform="rotate(-90 20 ${padT + plotH / 2})">${svgEscape((opts.yLabel || "").toUpperCase())} →</text>
+  </svg>`;
+}
+
+/** Icon-array pictograph — N glyphs in a grid, first K filled gold. */
+function renderPictographSvg(
+  filled: number,
+  total: number,
+  opts: { icon?: "person" | "house" | "dollar"; label?: string; sub?: string; cols?: number } = {},
+): string {
+  const t = Math.max(1, Math.min(100, Math.floor(total)));
+  const f = Math.max(0, Math.min(t, Math.floor(filled)));
+  const cols = Math.min(opts.cols ?? Math.min(t, 10), 20);
+  const rows = Math.ceil(t / cols);
+  const cell = 38;
+  const padT = opts.label ? 40 : 14;
+  const padB = opts.sub ? 26 : 12;
+  const w = cols * cell + 24;
+  const h = padT + rows * cell + padB;
+  // Glyph paths (kept inside a 28×28 box at 5,5)
+  const glyphs: Record<string, string> = {
+    person: `<path d="M14 6 a4 4 0 1 1 0 8 a4 4 0 1 1 0 -8 z M6 26 q0 -8 8 -8 q8 0 8 8 z"/>`,
+    house:  `<path d="M14 4 L25 13 L25 26 L17 26 L17 19 L11 19 L11 26 L3 26 L3 13 z"/>`,
+    dollar: `<path d="M14 4 L14 26 M19 9 q-1 -3 -5 -3 q-5 0 -5 4 q0 4 5 4 q5 0 5 4 q0 4 -5 4 q-4 0 -5 -3"
+                    stroke-width="2.5" stroke-linecap="round" fill="none" stroke="currentColor"/>`,
+  };
+  const glyph = glyphs[opts.icon ?? "house"];
+  const isStroke = (opts.icon ?? "house") === "dollar";
+  const tiles = Array.from({ length: t }, (_, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const x = 12 + c * cell, y = padT + r * cell;
+    const color = i < f ? VIZ_GOLD : VIZ_RULE;
+    return `<g transform="translate(${x} ${y})" ${isStroke ? `stroke="${color}"` : `fill="${color}"`} color="${color}">${glyph}</g>`;
+  }).join("");
+  const label = opts.label
+    ? `<text x="12" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(opts.label)}</text>
+       <text x="${w - 12}" y="22" text-anchor="end" font-family="Inter,sans-serif" font-weight="700" font-size="13" fill="${VIZ_GOLD_SOFT}" style="font-variant-numeric:tabular-nums;">${f} / ${t}</text>` : "";
+  const sub = opts.sub
+    ? `<text x="12" y="${h - 8}" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.6">${svgEscape(opts.sub)}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">${label}${tiles}${sub}</svg>`;
+}
+
+/** Inline sparkline — meant to flow next to text. */
+function renderInlineSparkSvg(vals: number[]): string {
+  if (vals.length < 2) return "";
+  const w = 64, h = 16;
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+  const pts = vals.map((v, i) =>
+    `${((i / (vals.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((v - lo) / span) * (h - 4)).toFixed(1)}`
+  ).join(" ");
+  const last = vals[vals.length - 1];
+  const lastX = w - 2, lastY = h - 2 - ((last - lo) / span) * (h - 4);
+  const trend = vals[vals.length - 1] >= vals[0] ? VIZ_GOOD : VIZ_RISK;
+  return `<svg class="spark-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="vertical-align:-2px;margin:0 2px;">
+    <polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="1.6" fill="${trend}"/>
+  </svg>`;
+}
+
 /**
  * Pre-marked markdown processor: turns editorial shortcodes into block-level
  * HTML so they survive `marked.parse()` untouched.
@@ -1341,6 +1478,74 @@ function applyEditorialMarkdown(md: string): string {
     }
     const labels = opts.labels ? opts.labels.split(",").map((s) => s.trim()) : [];
     return vizFigure(renderScoreWheelSvg(scores, labels, Number(opts.max) || 100), opts.title || "");
+  });
+
+  // {{bars: Label1 70, Label2 45%, Label3 $1.2M | title=… | max=100 | unit=%}}
+  out = out.replace(/\{\{bars:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const opts: Record<string, string> = {};
+    const rows: Array<{ label: string; value: number; display?: string }> = [];
+    const items = parts[0].split(",").map((s) => s.trim()).filter(Boolean);
+    for (const it of items) {
+      const m = it.match(/^(.+?)\s+([\-+]?[\d.,]+\s*[%$kKmM]?[a-zA-Z]*)$/);
+      if (!m) continue;
+      const display = m[2].trim();
+      const num = parseLooseNumber(display.replace(/[%$,kKmM]/g, "")) ?? 0;
+      const mult = /m\b/i.test(display) ? 1_000_000 : /k\b/i.test(display) ? 1_000 : 1;
+      rows.push({ label: m[1].trim(), value: num * mult, display });
+    }
+    for (const p of parts.slice(1)) { const m = p.match(/^(title|max|unit)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    if (!rows.length) return _m;
+    return vizFigure(renderBarsSvg(rows, { title: opts.title, max: opts.max ? Number(opts.max) : undefined, unit: opts.unit }), opts.title || "");
+  });
+
+  // {{quadrant: 8,7 "This property", 5,4 "Suburb avg" | xlabel=Yield | ylabel=Growth | xmax=10 | ymax=10 | title=… | q1=… | q2=… | q3=… | q4=…}}
+  out = out.replace(/\{\{quadrant:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const points: Array<{ x: number; y: number; label: string; highlight?: boolean }> = [];
+    parts[0].split(/,(?=\s*[\d.]+\s*,\s*[\d.]+)/).forEach((seg) => {
+      const m = seg.trim().match(/^([\d.]+)\s*,\s*([\d.]+)\s*"([^"]+)"(\s*\*)?$/);
+      if (m) points.push({ x: Number(m[1]), y: Number(m[2]), label: m[3], highlight: !!m[4] });
+    });
+    if (!points.length) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const m = p.match(/^(xlabel|ylabel|xmax|ymax|title|q1|q2|q3|q4)\s*=\s*(.+)$/i); if (m) opts[m[1].toLowerCase()] = m[2]; }
+    return vizFigure(renderQuadrantSvg(points, {
+      xLabel: opts.xlabel, yLabel: opts.ylabel,
+      xMax: opts.xmax ? Number(opts.xmax) : undefined, yMax: opts.ymax ? Number(opts.ymax) : undefined,
+      title: opts.title, q1: opts.q1, q2: opts.q2, q3: opts.q3, q4: opts.q4,
+    }), opts.title || "");
+  });
+
+  // {{pictograph: FILLED/TOTAL | label=… | sub=… | icon=person|house|dollar | cols=10}}
+  out = out.replace(/\{\{pictograph:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const parts = String(args).split("|").map((s) => s.trim());
+    const m = parts[0].match(/^(\d+)\s*\/\s*(\d+)$/); if (!m) return _m;
+    const opts: Record<string, string> = {};
+    for (const p of parts.slice(1)) { const mm = p.match(/^(label|sub|icon|cols)\s*=\s*(.+)$/i); if (mm) opts[mm[1].toLowerCase()] = mm[2]; }
+    const icon = (opts.icon as "person" | "house" | "dollar") || "house";
+    return vizFigure(renderPictographSvg(Number(m[1]), Number(m[2]), {
+      icon, label: opts.label, sub: opts.sub, cols: opts.cols ? Number(opts.cols) : undefined,
+    }), opts.label || "");
+  });
+
+  // {{glance: ✓ Strong fundamentals | ⚠ Vacancy uptick | 📈 Yield 4.8% | 🎯 Buy with caveats}}
+  out = out.replace(/\{\{glance:\s*([^}]+)\}\}/gi, (_m, args) => {
+    const items = String(args).split("|").map((s) => s.trim()).filter(Boolean);
+    if (!items.length) return _m;
+    const cells = items.slice(0, 4).map((raw) => {
+      const m = raw.match(/^(\S+)\s+(.+)$/);
+      const sym = m ? m[1] : "•";
+      const text = m ? m[2] : raw;
+      return `<div class="glance-cell"><span class="glance-sym">${esc(sym)}</span><span class="glance-text">${esc(text)}</span></div>`;
+    }).join("");
+    return `\n<div class="glance-strip">${cells}</div>\n`;
+  });
+
+  // Inline sparkline: ~~[1,2,3,4,5]~~ flows next to prose.
+  out = out.replace(/~~\[([\d.,\s\-]+)\]~~/g, (_m, list) => {
+    const vals = String(list).split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+    return renderInlineSparkSvg(vals);
   });
 
   return out;
@@ -2801,6 +3006,44 @@ export async function buildHtml(
       text-transform: uppercase;
       color: ${THEME.inkMuted};
     }
+
+    /* ── At-a-glance chapter opener strip ── */
+    .glance-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120pt, 1fr));
+      margin: 14pt 0 18pt;
+      border-top: 0.6pt solid ${THEME.gold};
+      border-bottom: 0.6pt solid ${THEME.gold};
+      background: ${THEME.paper};
+      page-break-inside: avoid;
+    }
+    .glance-cell {
+      padding: 10pt 12pt;
+      border-right: 0.4pt dotted ${THEME.rule};
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt;
+      line-height: 1.35;
+      color: ${THEME.ink};
+    }
+    .glance-cell:last-child { border-right: none; }
+    .glance-sym {
+      display: block;
+      font-size: 14pt;
+      color: ${THEME.gold};
+      margin-bottom: 3pt;
+      line-height: 1;
+    }
+    .glance-text { display: block; }
+
+    /* ── Inline sparkline (flows in prose) ── */
+    svg.spark-inline {
+      display: inline-block;
+      vertical-align: -2px;
+      height: 12pt;
+      width: auto;
+    }
+
+
 
     /* ── Footnotes (CSS Paged Media — WeasyPrint) ── */
     span.footnote {
