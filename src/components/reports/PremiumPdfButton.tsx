@@ -4,6 +4,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
+import type { PdfDesignOptions } from "./premiumPdfDesign";
 
 interface PremiumPdfButtonProps {
   reportId: string;
@@ -11,16 +12,14 @@ interface PremiumPdfButtonProps {
   includeCharts?: boolean;
   includeHeroImages?: boolean;
   includeSparklines?: boolean;
+  designOptions?: PdfDesignOptions;
 }
 
 /**
- * Premium PDF — HTML+CSS rendered via Api2PDF Headless Chrome for true editorial layout.
+ * Premium PDF — HTML+CSS rendered through WeasyPrint first, with Api2PDF as fallback.
  *
- * Hero images are generated and selected separately through the "Manage Hero
- * Images" dialog (HeroImagesDialog). When `includeHeroImages` is on, the
- * renderer simply consumes whatever ready + selected assets exist in
- * `report_visual_assets`. Chapters without a selected ready asset render
- * with no banner instead of a fallback SVG.
+ * Design controls are passed through as explicit renderer inputs so the final
+ * PDF changes even when the report markdown has no editorial shortcodes.
  */
 export function PremiumPdfButton({
   reportId,
@@ -28,6 +27,7 @@ export function PremiumPdfButton({
   includeCharts = true,
   includeHeroImages = false,
   includeSparklines = true,
+  designOptions,
 }: PremiumPdfButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -36,9 +36,9 @@ export function PremiumPdfButton({
     if (loading) return;
     setLoading(true);
     try {
-      const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string }>(
+      const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string; renderer?: string }>(
         "render-investment-report-pdf",
-        { reportId, includeCharts, includeHeroImages, includeSparklines },
+        { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
         { timeoutMs: 240_000 },
       );
 
@@ -51,7 +51,7 @@ export function PremiumPdfButton({
         entityType: "investment_report",
         entityId: reportId,
         entityName: propertyAddress,
-        metadata: { format: "pdf", source: "premium_api2pdf_chrome" },
+        metadata: { format: "pdf", source: "premium_weasyprint", designOptions },
       });
 
       try {
@@ -73,7 +73,7 @@ export function PremiumPdfButton({
 
       toast({
         title: "Premium PDF ready",
-        description: "Your download should begin shortly.",
+        description: `Rendered with ${data.renderer === "weasyprint" ? "WeasyPrint" : "PDF fallback"}. Your download should begin shortly.`,
       });
     } catch (err: any) {
       console.error("[PremiumPdfButton]", err);

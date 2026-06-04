@@ -22,6 +22,8 @@ import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEdi
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { HeroImageStudio } from '@/components/reports/HeroImageStudio';
+import { PremiumPdfDesignPanel } from '@/components/reports/PremiumPdfDesignPanel';
+import { DEFAULT_PDF_DESIGN_OPTIONS, type PdfDesignOptions } from '@/components/reports/premiumPdfDesign';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
@@ -68,6 +70,7 @@ export default function InvestmentReportView() {
   const [includeCharts, setIncludeCharts] = useState(true);
   const [includeHeroImages, setIncludeHeroImages] = useState(false);
   const [includeSparklines, setIncludeSparklines] = useState(true);
+  const [pdfDesignOptions, setPdfDesignOptions] = useState<PdfDesignOptions>(DEFAULT_PDF_DESIGN_OPTIONS);
   const [showOverrides, setShowOverrides] = useState(true);
   const pdfGeneratorRef = useRef<PixelPerfectPDFGeneratorHandle>(null);
 
@@ -425,6 +428,7 @@ export default function InvestmentReportView() {
                 includeCharts={includeCharts}
                 includeHeroImages={includeHeroImages}
                 includeSparklines={includeSparklines}
+                designOptions={pdfDesignOptions}
               />
 
 
@@ -435,6 +439,7 @@ export default function InvestmentReportView() {
                 variant="default"
                 size="sm"
               />
+              <PremiumPdfDesignPanel value={pdfDesignOptions} onChange={setPdfDesignOptions} />
             </div>
             <div className="p-6 prose prose-sm max-w-none dark:prose-invert">
               <ErrorBoundary
