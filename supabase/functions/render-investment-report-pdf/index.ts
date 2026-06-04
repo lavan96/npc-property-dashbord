@@ -1241,6 +1241,98 @@ function renderInlineSparkSvg(vals: number[]): string {
   </svg>`;
 }
 
+/** Donut / ring chart — for tenure mix, demographic splits, allocation. */
+function renderDonutSvg(
+  segments: Array<{ label: string; value: number; color?: string }>,
+  opts: { title?: string; centerLabel?: string; centerSub?: string } = {},
+): string {
+  const total = segments.reduce((s, x) => s + Math.max(0, x.value), 0) || 1;
+  const palette = [VIZ_GOLD, "#7A5A2E", "#B58A3C", VIZ_INK_MUTED, "#9E8862", "#C9B07A"];
+  const w = 460, h = 240, cx = 120, cy = 120, R = 92, r = 56;
+  const TAU = Math.PI * 2;
+  let a0 = -Math.PI / 2;
+  const arcs = segments.map((s, i) => {
+    const frac = Math.max(0, s.value) / total;
+    if (frac <= 0) return "";
+    const a1 = a0 + frac * TAU;
+    const large = frac > 0.5 ? 1 : 0;
+    const xo0 = cx + R * Math.cos(a0), yo0 = cy + R * Math.sin(a0);
+    const xo1 = cx + R * Math.cos(a1), yo1 = cy + R * Math.sin(a1);
+    const xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1);
+    const xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
+    const fill = s.color || palette[i % palette.length];
+    const d = `M ${xo0.toFixed(1)} ${yo0.toFixed(1)} A ${R} ${R} 0 ${large} 1 ${xo1.toFixed(1)} ${yo1.toFixed(1)} L ${xi1.toFixed(1)} ${yi1.toFixed(1)} A ${r} ${r} 0 ${large} 0 ${xi0.toFixed(1)} ${yi0.toFixed(1)} Z`;
+    a0 = a1;
+    return `<path d="${d}" fill="${fill}" stroke="${VIZ_PAPER}" stroke-width="1.2"/>`;
+  }).join("");
+  const centerVal = opts.centerLabel ?? `${Math.round((segments[0]?.value || 0) / total * 100)}%`;
+  const centerSub = opts.centerSub ?? svgEscape(segments[0]?.label || "");
+  const legend = segments.map((s, i) => {
+    const pct = Math.round((Math.max(0, s.value) / total) * 100);
+    const y = 48 + i * 22;
+    const fill = s.color || palette[i % palette.length];
+    return `<rect x="250" y="${y - 9}" width="10" height="10" rx="2" fill="${fill}"/>
+      <text x="266" y="${y}" font-family="Inter,sans-serif" font-size="10" fill="${VIZ_INK}">${svgEscape(s.label)}</text>
+      <text x="${w - 12}" y="${y}" text-anchor="end" font-family="Inter,sans-serif" font-weight="700" font-size="10" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${pct}%</text>`;
+  }).join("");
+  const title = opts.title
+    ? `<text x="250" y="28" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(opts.title)}</text>
+       <line x1="250" x2="${w - 12}" y1="34" y2="34" stroke="${VIZ_RULE}" stroke-width="0.5"/>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    ${title}${arcs}
+    <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="800" font-size="28" fill="${VIZ_INK}" style="font-variant-numeric:lining-nums tabular-nums;">${svgEscape(centerVal)}</text>
+    <text x="${cx}" y="${cy + 18}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" letter-spacing="1.6" fill="${VIZ_INK_MUTED}">${centerSub.toUpperCase()}</text>
+    ${legend}
+  </svg>`;
+}
+
+/** Suburb-tiles grid — small multiples that read like a faux-choropleth. */
+function renderTilesSvg(
+  tiles: Array<{ label: string; value: string; sub?: string; intensity?: number }>,
+  opts: { title?: string; cols?: number } = {},
+): string {
+  if (!tiles.length) return "";
+  const cols = Math.min(opts.cols ?? Math.min(tiles.length, 4), 6);
+  const rows = Math.ceil(tiles.length / cols);
+  const cellW = 130, cellH = 88, gap = 8;
+  const padL = 12, padT = opts.title ? 38 : 12, padB = 12;
+  const w = padL * 2 + cols * cellW + (cols - 1) * gap;
+  const h = padT + rows * cellH + (rows - 1) * gap + padB;
+  const intensities = tiles.map((t) => Math.max(0, Math.min(1, t.intensity ?? 0.5)));
+  const cells = tiles.map((t, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const x = padL + c * (cellW + gap), y = padT + r * (cellH + gap);
+    const alpha = 0.08 + intensities[i] * 0.42;
+    const fill = `rgba(212,168,67,${alpha.toFixed(2)})`;
+    return `<g>
+      <rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="4" fill="${fill}" stroke="${VIZ_RULE}" stroke-width="0.6"/>
+      <text x="${x + 12}" y="${y + 20}" font-family="Inter,sans-serif" font-size="8.5" letter-spacing="1.2" fill="${VIZ_INK_MUTED}">${svgEscape((t.label || "").toUpperCase())}</text>
+      <text x="${x + 12}" y="${y + 50}" font-family="Playfair Display,Georgia,serif" font-weight="800" font-size="22" fill="${VIZ_INK}" style="font-variant-numeric:lining-nums tabular-nums;">${svgEscape(t.value)}</text>
+      ${t.sub ? `<text x="${x + 12}" y="${y + cellH - 12}" font-family="Inter,sans-serif" font-size="8.5" fill="${VIZ_INK_MUTED}">${svgEscape(t.sub)}</text>` : ""}
+    </g>`;
+  }).join("");
+  const title = opts.title
+    ? `<text x="${padL}" y="24" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(opts.title)}</text>
+       <line x1="${padL}" x2="${w - padL}" y1="30" y2="30" stroke="${VIZ_RULE}" stroke-width="0.5"/>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">${title}${cells}</svg>`;
+}
+
+/** Tiny margin-chart sparkline used inside .sidenote-margin asides. */
+function renderMarginSparkSvg(vals: number[]): string {
+  if (vals.length < 2) return "";
+  const w = 180, h = 38;
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+  const pts = vals.map((v, i) =>
+    `${((i / (vals.length - 1)) * (w - 4) + 2).toFixed(1)},${(h - 4 - ((v - lo) / span) * (h - 8)).toFixed(1)}`
+  ).join(" ");
+  const area = `${pts} ${(w - 2).toFixed(1)},${h - 2} 2,${h - 2}`;
+  const trend = vals[vals.length - 1] >= vals[0] ? VIZ_GOOD : VIZ_RISK;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="none">
+    <polygon points="${area}" fill="${trend}" fill-opacity="0.12"/>
+    <polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="1.4" stroke-linejoin="round"/>
+  </svg>`;
+}
+
 /**
  * Pre-marked markdown processor: turns editorial shortcodes into block-level
  * HTML so they survive `marked.parse()` untouched.
