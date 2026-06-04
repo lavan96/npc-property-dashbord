@@ -3484,8 +3484,16 @@ export async function buildHtml(
       font-size: 9.5pt;
       font-weight: 600;
       color: ${THEME.ink};
-      line-height: 1.3;
+      line-height: 1.35;
+      white-space: normal;
+      overflow: visible;
+      overflow-wrap: break-word;
+      word-break: normal;
+      hyphens: auto;
+      text-overflow: clip;
     }
+    .glance-cell { overflow: visible; min-width: 0; }
+    .glance-text { overflow-wrap: break-word; }
 
     /* ── Margin micro-chart (sidenote variant) ── */
     aside.sidenote-margin {
