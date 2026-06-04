@@ -953,14 +953,59 @@ function vizFigure(svg: string, caption = ""): string {
 function applyEditorialMarkdown(md: string): string {
   let out = md;
 
-  // Fenced editorial blocks: ::: name … :::
-  out = out.replace(/^::: *(pullquote|sidenote|cols) *\n([\s\S]*?)\n::: *$/gm, (_m, name, body) => {
-    const inner = String(body).trim();
-    if (name === "pullquote") return `\n<aside class="pull-quote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
-    if (name === "sidenote") return `\n<aside class="sidenote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
-    if (name === "cols") return `\n<div class="two-col">\n\n${inner}\n\n</div>\n`;
-    return _m;
-  });
+  // Fenced editorial blocks with optional `key=value` attributes on the opening fence.
+  // Examples:
+  //   ::: divider stat="78" label="Investment score" eyebrow="Chapter 04"
+  //   The chapter title or sub-heading goes here.
+  //   :::
+  //
+  //   ::: quote-page attribution="— RBA, May 2026"
+  //   The fully-spread editorial quote sits here.
+  //   :::
+  out = out.replace(
+    /^::: *(pullquote|sidenote|cols|divider|quote-page|stat) *([^\n]*)\n([\s\S]*?)\n::: *$/gm,
+    (_m, name, attrRaw, body) => {
+      const inner = String(body).trim();
+      const attrs: Record<string, string> = {};
+      String(attrRaw || "").replace(/(\w[\w-]*)\s*=\s*"([^"]*)"/g, (_x, k, v) => {
+        attrs[String(k).toLowerCase()] = String(v);
+        return "";
+      });
+      if (name === "pullquote") return `\n<aside class="pull-quote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+      if (name === "sidenote") return `\n<aside class="sidenote"><p>${inner.replace(/\n+/g, " ")}</p></aside>\n`;
+      if (name === "cols") return `\n<div class="two-col">\n\n${inner}\n\n</div>\n`;
+      if (name === "stat") {
+        // Inline oversized statistic block: ::: stat label="Median yield" unit="%"  → body = "4.8"
+        const label = esc(attrs.label || "");
+        const unit = esc(attrs.unit || "");
+        const sub = esc(attrs.sub || "");
+        return `\n<div class="stat-block"><div class="stat-value">${esc(inner)}${unit ? `<span class="stat-unit">${unit}</span>` : ""}</div>${label ? `<div class="stat-label">${label}</div>` : ""}${sub ? `<div class="stat-sub">${sub}</div>` : ""}</div>\n`;
+      }
+      if (name === "divider") {
+        // Full-bleed section divider with oversized stat + label + headline.
+        const stat = esc(attrs.stat || "");
+        const label = esc(attrs.label || "");
+        const eyebrow = esc(attrs.eyebrow || "");
+        const headline = esc(inner.replace(/\n+/g, " "));
+        return `\n<section class="section-divider">
+          ${eyebrow ? `<div class="sd-eyebrow">${eyebrow}</div>` : ""}
+          ${stat ? `<div class="sd-stat">${stat}</div>` : ""}
+          ${label ? `<div class="sd-label">${label}</div>` : ""}
+          ${headline ? `<div class="sd-headline">${headline}</div>` : ""}
+        </section>\n`;
+      }
+      if (name === "quote-page") {
+        const attribution = esc(attrs.attribution || "");
+        const eyebrow = esc(attrs.eyebrow || "Chapter quote");
+        return `\n<section class="quote-page">
+          <div class="qp-eyebrow">${eyebrow}</div>
+          <blockquote class="qp-body">${esc(inner.replace(/\n+/g, " "))}</blockquote>
+          ${attribution ? `<div class="qp-attrib">${attribution}</div>` : ""}
+        </section>\n`;
+      }
+      return _m;
+    },
+  );
 
   // {{gauge: VALUE [/ MAX] | LABEL | CAPTION}}
   out = out.replace(/\{\{gauge:\s*([^}]+)\}\}/gi, (_m, args) => {
