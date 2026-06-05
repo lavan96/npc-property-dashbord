@@ -196,9 +196,9 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
 }
 
 
-function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string[] {
+function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string[] {
   const r = block.repeat;
-  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx)];
+  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages)];
   const raw = r.path.split('.').reduce((acc: any, k: string) => (acc == null ? acc : acc[k.trim()]), ctxBase.data);
   const items = Array.isArray(raw) ? raw : [];
   const max = r.max ?? items.length;
@@ -215,10 +215,11 @@ function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: Ht
     };
     const itemCtx: ResolveContext = { ...ctxBase, data: { ...ctxBase.data, [alias]: items[i], [`${alias}Index`]: i } };
     const itemBlockCtx: HtmlBlockContext = { ...blockCtx, data: itemCtx.data };
-    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx));
+    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages));
   }
   return out;
 }
+
 
 function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[]): string {
   const blockCtx: HtmlBlockContext = {
