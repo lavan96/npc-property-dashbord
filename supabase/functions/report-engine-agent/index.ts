@@ -525,6 +525,23 @@ function toolDefs() {
         },
       },
     },
+    {
+      type: 'function',
+      function: {
+        name: 'simulate_data_packet',
+        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates). Use when the user asks about what gets sent to the model for a specific report id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            scope: { type: 'string', description: 'override scope (defaults to report.report_tier or report.report_scope or compass)' },
+            section_key: { type: 'string', description: 'optional — also return the per-section slice (pinned templates + their chunk counts + override hints) for this section_key' },
+            include_raw_overrides: { type: 'boolean', description: 'inline the full manual_overrides jsonb (default false — only keys + sizes)' },
+          },
+          required: ['report_id'],
+        },
+      },
+    },
   ];
 }
 
