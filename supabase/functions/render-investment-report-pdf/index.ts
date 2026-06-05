@@ -1114,9 +1114,20 @@ function withAlphaHex(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/** Collapse all whitespace between tags / inside the SVG so that `marked`
+ *  cannot misinterpret indented lines as code blocks (which causes raw SVG
+ *  markup to leak into the rendered output). */
+function minifySvg(svg: string): string {
+  return String(svg)
+    .replace(/>\s+</g, "><")     // strip whitespace between tags
+    .replace(/\s{2,}/g, " ")     // collapse runs of whitespace inside attrs
+    .replace(/\n+/g, "")          // drop any remaining newlines
+    .trim();
+}
+
 /** Wrap an SVG into a print-ready figure with optional caption. */
 function vizFigure(svg: string, caption = ""): string {
-  return `<figure class="vis-figure">${svg}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
+  return `<figure class="vis-figure">${minifySvg(svg)}${caption ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
 }
 
 /** Tufte-style horizontal comparator bars. Each bar = label + value + bar + numeric tag. */
