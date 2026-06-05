@@ -75,6 +75,44 @@ export const TextOverlaySchema = BaseOverlay.extend({
   letterSpacing: z.number().default(0),
 });
 
+export const TextOverlaySchema = BaseOverlay.extend({
+  type: z.literal('text'),
+  content: BindableStringSchema,
+  fontFamily: BindableStringSchema.default('Helvetica'),
+  fontSize: BindableNumberSchema.default(12),
+  fontWeight: z.enum(['normal', 'bold']).default('normal'),
+  fontStyle: z.enum(['normal', 'italic']).default('normal'),
+  color: BindableColorSchema.default('#000000'),
+  align: z.enum(['left', 'center', 'right', 'justify']).default('left'),
+  lineHeight: z.number().default(1.3),
+  letterSpacing: z.number().default(0),
+  // Phase 5 — advanced typography (all optional, additive)
+  rich: z.boolean().optional(),                                   // interpret content as HTML
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textShadow: z.string().optional(),                              // raw CSS
+  whiteSpace: z.enum(['normal','nowrap','pre','pre-wrap','pre-line']).optional(),
+  hyphens: z.enum(['none','manual','auto']).optional(),
+  columns: z.number().int().min(1).max(6).optional(),
+  columnGap: z.number().min(0).max(96).optional(),
+  paragraphIndent: z.number().min(0).max(96).optional(),          // pt — first-line indent
+  paragraphSpacing: z.number().min(0).max(96).optional(),         // pt — gap between <p>
+  verticalAlign: z.enum(['top','middle','bottom']).optional(),
+  maxLines: z.number().int().min(1).max(50).optional(),           // -webkit-line-clamp
+  paddingTop: z.number().min(0).max(96).optional(),
+  paddingRight: z.number().min(0).max(96).optional(),
+  paddingBottom: z.number().min(0).max(96).optional(),
+  paddingLeft: z.number().min(0).max(96).optional(),
+  // OpenType
+  kerning: z.boolean().optional(),                                // font-kerning
+  ligatures: z.enum(['none','common','discretionary','historical','contextual','all']).optional(),
+  fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
+  fontFeatureSettings: z.string().optional(),                     // raw, advanced override
+  fontVariationSettings: z.string().optional(),                   // variable axes
+  // Baseline alignment — snap top to baseline grid in pt
+  snapToBaseline: z.boolean().optional(),
+});
+
 export const ImageOverlaySchema = BaseOverlay.extend({
   type: z.literal('image'),
   src: BindableStringSchema,
