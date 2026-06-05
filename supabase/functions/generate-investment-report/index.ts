@@ -5048,7 +5048,7 @@ YOUR DEDICATED PROPERTY PARTNER
     const _traceRunId: string | null = await traceStartRun(_traceSb, {
       report_id: reportId ?? null,
       scope: reportScope ?? null,
-      variant: (body as any)?.variant ?? null,
+      variant: (requestBody as any)?.variant ?? null,
       engine_version: 'composite-v1',
       trigger_source: isContinuation ? 'chunked-resume' : 'generate',
       template_ids: [],
