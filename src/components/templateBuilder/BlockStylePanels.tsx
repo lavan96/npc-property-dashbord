@@ -296,3 +296,136 @@ export function BlockAlignmentPanel({ block, page, onChange }: { block: Block; p
     </div>
   );
 }
+
+// ─── Phase 8 — Interactions (link + bookmark) ────────────────────────────────
+export function BlockInteractionsPanel({
+  block, onChange, pages,
+}: {
+  block: Block;
+  onChange: (next: Block) => void;
+  pages: Array<{ id: string; name: string }>;
+}) {
+  const link = (block.link ?? {}) as any;
+  const bm = (block.bookmark ?? {}) as any;
+  const setLink = (patch: any) => onChange({ ...block, link: patch });
+  const setBm = (patch: any) => onChange({ ...block, bookmark: patch });
+
+  const href: string = link?.href ?? '';
+  const linkKind: 'none' | 'url' | 'page' | 'anchor' =
+    !href ? 'none'
+    : href.startsWith('page:') ? 'page'
+    : href.startsWith('anchor:') ? 'anchor'
+    : 'url';
+
+  return (
+    <div className="space-y-3">
+      <SectionHeading>Link</SectionHeading>
+      <div className="grid grid-cols-3 gap-1.5">
+        {(['none','url','page','anchor'] as const).map((k) => (
+          <Button
+            key={k}
+            size="sm" variant={linkKind === k ? 'default' : 'outline'} className="h-7 text-[11px] capitalize"
+            onClick={() => {
+              if (k === 'none') return onChange({ ...block, link: undefined });
+              if (k === 'url') return setLink({ ...link, href: 'https://' });
+              if (k === 'page') return setLink({ ...link, href: `page:${pages[0]?.id ?? ''}` });
+              return setLink({ ...link, href: 'anchor:' });
+            }}
+          >
+            {k}
+          </Button>
+        ))}
+      </div>
+
+      {linkKind === 'url' && (
+        <Input
+          value={href}
+          onChange={(e) => setLink({ ...link, href: e.target.value })}
+          placeholder="https://example.com"
+          className="text-xs font-mono"
+        />
+      )}
+      {linkKind === 'page' && (
+        <Select
+          value={href.slice(5)}
+          onValueChange={(v) => setLink({ ...link, href: `page:${v}` })}
+        >
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick page…" /></SelectTrigger>
+          <SelectContent>
+            {pages.map((p, i) => (
+              <SelectItem key={p.id} value={p.id}>{i + 1}. {p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      {linkKind === 'anchor' && (
+        <Input
+          value={href.replace(/^anchor:/, '')}
+          onChange={(e) => setLink({ ...link, href: `anchor:${e.target.value}` })}
+          placeholder="bookmark-name"
+          className="text-xs font-mono"
+        />
+      )}
+
+      {linkKind !== 'none' && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex items-center gap-2 text-[11px]">
+            <Switch
+              checked={link.target === '_blank'}
+              onCheckedChange={(v) => setLink({ ...link, target: v ? '_blank' : '_self' })}
+            />
+            Open in new tab
+          </label>
+          <Input
+            value={link.title ?? ''}
+            onChange={(e) => setLink({ ...link, title: e.target.value || undefined })}
+            placeholder="Tooltip…"
+            className="text-xs"
+          />
+        </div>
+      )}
+
+      <Separator />
+      <SectionHeading>Bookmark / Outline</SectionHeading>
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          value={bm.name ?? ''}
+          onChange={(e) => {
+            const name = e.target.value;
+            if (!name) return onChange({ ...block, bookmark: undefined });
+            setBm({ ...bm, name });
+          }}
+          placeholder="anchor-name"
+          className="text-xs font-mono"
+        />
+        <Input
+          value={bm.label ?? ''}
+          onChange={(e) => setBm({ ...bm, name: bm.name || e.target.value, label: e.target.value || undefined })}
+          placeholder="Display label (TOC)"
+          className="text-xs"
+          disabled={!bm.name}
+        />
+      </div>
+      {bm.name && (
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            value={String(bm.level ?? 2)}
+            onValueChange={(v) => setBm({ ...bm, level: Number(v) })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[1,2,3,4,5,6].map((n) => <SelectItem key={n} value={String(n)}>Level {n}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <label className="flex items-center gap-2 text-[11px]">
+            <Switch
+              checked={bm.includeInToc !== false}
+              onCheckedChange={(v) => setBm({ ...bm, includeInToc: v })}
+            />
+            Include in TOC
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}

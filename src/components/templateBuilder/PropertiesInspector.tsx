@@ -39,7 +39,7 @@ import {
 } from '@/lib/reportTemplate/bindingValidation';
 import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
-import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel } from './BlockStylePanels';
+import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 
 
@@ -588,6 +588,10 @@ function BlockEditor({
 
       <Separator />
       <BlockRepeatPanel block={block} onChange={onChange} />
+
+      <Separator />
+      <BlockInteractionsPanel block={block} onChange={onChange} pages={template.pages.map(p => ({ id: p.id, name: p.name }))} />
+
 
       <Separator />
       <div>

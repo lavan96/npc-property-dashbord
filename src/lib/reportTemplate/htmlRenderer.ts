@@ -37,13 +37,50 @@ export interface HtmlRenderResult {
   css: string;
 }
 
-function mergeTokens(base: Tokens, overrides?: Partial<Tokens>): Tokens {
-  if (!overrides) return base;
-  return {
-    colors: { ...base.colors, ...(overrides.colors ?? {}) },
-    fonts: { ...base.fonts, ...(overrides.fonts ?? {}) },
-    spacing: { ...base.spacing, ...(overrides.spacing ?? {}) },
+function mergeTokens(base: Tokens, ...overrides: Array<Partial<Tokens> | undefined>): Tokens {
+  const out: Tokens = {
+    colors: { ...base.colors },
+    fonts: { ...base.fonts },
+    spacing: { ...base.spacing },
+    radii: { ...(base as any).radii },
+    shadows: { ...(base as any).shadows },
+    gradients: { ...(base as any).gradients },
+    typeScale: { ...(base as any).typeScale },
+    fontFaces: (base as any).fontFaces,
+    computed: (base as any).computed,
+  } as Tokens;
+  for (const o of overrides) {
+    if (!o) continue;
+    if (o.colors) out.colors = { ...out.colors, ...o.colors };
+    if (o.fonts) out.fonts = { ...out.fonts, ...o.fonts };
+    if (o.spacing) out.spacing = { ...out.spacing, ...o.spacing };
+    if ((o as any).radii) (out as any).radii = { ...(out as any).radii, ...(o as any).radii };
+    if ((o as any).shadows) (out as any).shadows = { ...(out as any).shadows, ...(o as any).shadows };
+    if ((o as any).gradients) (out as any).gradients = { ...(out as any).gradients, ...(o as any).gradients };
+    if ((o as any).typeScale) (out as any).typeScale = { ...(out as any).typeScale, ...(o as any).typeScale };
+  }
+  return out;
+}
+
+/** Phase 10 — emit only the *delta* CSS variables for a per-page theme override. */
+function themeOverrideCss(pageIndex: number, base: Tokens, merged: Tokens): string {
+  const diffs: string[] = [];
+  const push = (prefix: string, baseMap: any, mergedMap: any, suffix = '') => {
+    for (const [k, v] of Object.entries(mergedMap || {})) {
+      if ((baseMap || {})[k] !== v) {
+        diffs.push(`  --${prefix}-${String(k).replace(/[^a-zA-Z0-9_-]/g, '-')}: ${v}${suffix};`);
+      }
+    }
   };
+  push('color', base.colors, merged.colors);
+  push('font', base.fonts, merged.fonts);
+  push('space', base.spacing, merged.spacing, 'px');
+  push('radius', (base as any).radii, (merged as any).radii, 'px');
+  push('shadow', (base as any).shadows, (merged as any).shadows);
+  push('gradient', (base as any).gradients, (merged as any).gradients);
+  push('text', (base as any).typeScale, (merged as any).typeScale, 'pt');
+  if (!diffs.length) return '';
+  return `.tpl-page-${pageIndex} {\n${diffs.join('\n')}\n}`;
 }
 
 function baseCss(): string {
@@ -340,8 +377,10 @@ export function renderTemplateToHtml(
   options: HtmlRenderOptions = {},
 ): HtmlRenderResult {
   const template = parseTemplate(rawTemplate);
-  const tokens = mergeTokens(template.tokens, options.tokenOverrides);
-  const ctxBase: ResolveContext = { data: options.data ?? {}, tokens };
+  const themes = (template as any).themes as Record<string, any> | undefined;
+  const activeTheme = themes && (template as any).activeThemeId ? themes[(template as any).activeThemeId] : null;
+  const baseTokens = mergeTokens(template.tokens, activeTheme?.tokens, options.tokenOverrides);
+  const ctxBase: ResolveContext = { data: options.data ?? {}, tokens: baseTokens };
 
   const visiblePages = template.pages.filter((p) => evalConditional(p.conditional, ctxBase));
 
@@ -362,9 +401,18 @@ export function renderTemplateToHtml(
     }
   });
 
+  // Phase 10 — per-page theme delta CSS (only emitted when page.themeId set).
+  const perPageThemeCss: string[] = [];
   const pageHtml = visiblePages.map((page, idx) => {
+    const pageThemeId = (page as any).themeId as string | undefined;
+    const pageTheme = pageThemeId && themes ? themes[pageThemeId] : null;
+    const pageTokens = pageTheme ? mergeTokens(baseTokens, pageTheme.tokens) : baseTokens;
+    if (pageTheme) {
+      const css = themeOverrideCss(idx, baseTokens, pageTokens);
+      if (css) perPageThemeCss.push(css);
+    }
     const pageCtx: ResolveContext = {
-      ...ctxBase,
+      tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
     return renderPage(page, pageCtx, idx, template, visiblePages);
@@ -372,10 +420,11 @@ export function renderTemplateToHtml(
 
 
   const css = [
-    tokensToFontFaceCss(tokens),
-    tokensToCssVariables(tokens),
+    tokensToFontFaceCss(baseTokens),
+    tokensToCssVariables(baseTokens),
     baseCss(),
     pageCss(visiblePages, template, ctxBase).css,
+    perPageThemeCss.join('\n'),
     options.customCss ?? '',
   ].join('\n');
 

@@ -148,6 +148,56 @@ export function PageMastersDialog({ template, onChange }: Props) {
                   </div>
                 </div>
 
+                {/* Live preview tile */}
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Preview</Label>
+                  <div
+                    className="mt-1 mx-auto rounded-md border bg-card relative overflow-hidden"
+                    style={{ width: 240, height: 320 }}
+                  >
+                    {/* Margin guides */}
+                    <div
+                      className="absolute border border-dashed border-primary/30"
+                      style={{
+                        top:    `${(margins.top    / 842) * 320}px`,
+                        bottom: `${(margins.bottom / 842) * 320}px`,
+                        left:   `${(margins.left   / 595) * 240}px`,
+                        right:  `${(margins.right  / 595) * 240}px`,
+                      }}
+                    />
+                    {(['topLeft','topCenter','topRight','bottomLeft','bottomCenter','bottomRight'] as const).map((zone) => {
+                      const v = (active.boxes as any)[zone];
+                      if (!v) return null;
+                      const top = zone.startsWith('top');
+                      const align = zone.endsWith('Left') ? 'left' : zone.endsWith('Right') ? 'right' : 'center';
+                      const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+                      return (
+                        <div
+                          key={zone}
+                          className="absolute text-[9px] px-1.5 flex items-center"
+                          style={{
+                            [top ? 'top' : 'bottom']: 8,
+                            left: 8, right: 8,
+                            justifyContent: justify,
+                            color: String(active.style?.color ?? '#666'),
+                            borderBottom: top && active.style?.borderBottom ? `1px solid ${String(active.style?.borderColor ?? '#ddd')}` : undefined,
+                            borderTop:   !top && active.style?.borderTop    ? `1px solid ${String(active.style?.borderColor ?? '#ddd')}` : undefined,
+                            paddingBottom: top && active.style?.borderBottom ? 2 : undefined,
+                            paddingTop:   !top && active.style?.borderTop    ? 2 : undefined,
+                          }}
+                        >
+                          <span className="truncate max-w-full">
+                            {String(v).replace(/\{\{pageCounter\}\}/g, '1').replace(/\{\{pageNumber\}\}/g, '1').replace(/\{\{pageCount\}\}/g, 'N')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div className="absolute inset-0 flex items-center justify-center text-[9px] text-muted-foreground">
+                      content area
+                    </div>
+                  </div>
+                </div>
+
                 {/* Margins */}
                 <div>
                   <Label className="text-xs">Margins (pt)</Label>
