@@ -1425,18 +1425,24 @@ function StaticPlanTab() {
 
           {/* Sections — clickable rows expand to show per-section template assignment + overrides */}
           <Card className="col-span-7 p-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <h3 className="text-sm font-semibold">Registry Sections ({plan.sections.length})</h3>
-              {plan.overrides && (
-                <div className="flex gap-2">
-                  <Badge variant="warning" className="text-[10px]">
-                    Pre-gen overrides: {plan.overrides.pre_gen_keys.length}
-                  </Badge>
-                  <Badge variant="info" className="text-[10px]">
-                    Post-gen edits: {plan.overrides.post_gen_edits.length}
-                  </Badge>
-                </div>
-              )}
+              <div className="flex gap-2 items-center flex-wrap">
+                <label className="flex items-center gap-1 text-[10px] cursor-pointer select-none px-2 py-1 rounded border bg-muted/30">
+                  <input type="checkbox" checked={proposeMode} onChange={(e) => setProposeMode(e.target.checked)} />
+                  Propose mode {proposeMode ? '(requires Apply)' : '(direct save)'}
+                </label>
+                {plan.overrides && (
+                  <>
+                    <Badge variant="warning" className="text-[10px]">
+                      Pre-gen overrides: {plan.overrides.pre_gen_keys.length}
+                    </Badge>
+                    <Badge variant="info" className="text-[10px]">
+                      Post-gen edits: {plan.overrides.post_gen_edits.length}
+                    </Badge>
+                  </>
+                )}
+              </div>
             </div>
             <ScrollArea className="h-[60vh]">
               <div className="space-y-1">
