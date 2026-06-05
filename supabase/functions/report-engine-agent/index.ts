@@ -307,12 +307,13 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'find_reports',
-        description: 'Search investment_reports by address substring (case-insensitive). Returns up to 20 most recent matches with id, address, scope, tier, variant, status.',
+        description: 'Search investment_reports by address substring or list recent reports. Compass/briefing are report_tier filters, not report_scope. Handles minor suburb typos with fuzzy fallback.',
         parameters: {
           type: 'object',
           properties: {
             address_query: { type: 'string' },
-            scope: { type: 'string' },
+            scope: { type: 'string', description: 'address | suburb | postcode | statewide. If compass/briefing/snapshot is supplied it is treated as report_tier.' },
+            report_tier: { type: 'string', description: 'compass | briefing | snapshot' },
             variant: { type: 'string' },
             limit: { type: 'number' },
           },
@@ -466,7 +467,7 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'get_report_full',
-        description: 'Return the full data spine for a report: manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, plus key listings and byte sizes. Use to audit a report when no runs exist yet.',
+        description: 'Return the full data spine for a report: overrides, financials, demographics, economics, score, location intelligence, property specs, validation flags, data sources, plus key listings and byte sizes. Use when no runs exist.',
         parameters: {
           type: 'object',
           properties: {
@@ -518,7 +519,7 @@ function toolDefs() {
           type: 'object',
           properties: {
             report_id: { type: 'string' },
-            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data, raw_property_data, sales_history, comparable_sales, school_data, infrastructure_data, planning_overlays' },
+            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, property_specs, validation_flags, data_sources' },
           },
           required: ['report_id', 'column'],
         },
