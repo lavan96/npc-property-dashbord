@@ -287,13 +287,7 @@ Return ONLY the formatted markdown report. Do not include any commentary or expl
       messages: [
         {
           role: 'system',
-          content: `You are a professional real estate report formatter. Your output must:
-1. Use clean markdown formatting (no HTML entities)
-2. Include ALL properties in every table and section
-3. Use " • " as bullet separator within table cells
-4. Never truncate tables or split them across sections
-5. Use actual ampersand "&" characters, never "&#x26;" or "&amp;"
-6. Maintain consistent property numbering throughout`,
+          content: (await (await import('../_shared/engine-prompts.ts')).resolvePrompt('comparison.formatter_system')).text,
         },
         { role: 'user', content: prompt },
       ],

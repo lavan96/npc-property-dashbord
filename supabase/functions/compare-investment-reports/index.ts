@@ -441,7 +441,7 @@ Format your response as valid JSON with this structure:
           messages: [
             {
               role: 'system',
-              content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.',
+              content: (await (await import('../_shared/engine-prompts.ts')).resolvePrompt('comparison.report_system')).text,
             },
             { role: 'user', content: prompt },
           ],
