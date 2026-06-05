@@ -5178,6 +5178,22 @@ YOUR DEDICATED PROPERTY PARTNER
         // === END CAPITAL GROWTH EXTRACTION ===
         
         combinedContent += bestContent + '\n\n---\n\n';
+
+        // === OBSERVABILITY: record this chunk ===
+        await traceRecordChunk(_traceSb, _traceRunId, {
+          section_key: sectionDef.id,
+          section_label: sectionDef.name,
+          ordinal: i,
+          phase: sectionAttempts > 1 ? 'retry' : 'first-pass',
+          model: 'sonar-pro',
+          system_prompt: systemMessage,
+          user_prompt: `[section ${sectionDef.name}] basePrompt sha-skipped (len=${prompt.length})`,
+          attached_packet_keys: enhancedData ? Object.keys(enhancedData).filter((k) => !k.startsWith('_')) : [],
+          response: bestContent,
+          retry_count: sectionAttempts - 1,
+          status: 'completed',
+          latency_ms: Date.now() - _chunkStart,
+        });
         
         sectionResults.push({
           id: sectionDef.id,
