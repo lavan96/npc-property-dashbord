@@ -1305,6 +1305,15 @@ export default function TemplateBuilderEdit() {
           )}
         </TabsContent>
       </Tabs>
+      <ExportPipelineDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        template={template}
+        templateId={id}
+        templateName={name}
+        sampleData={sampleData}
+        customCss={(tplRow as any)?.custom_css || undefined}
+      />
     </div>
   );
 }
