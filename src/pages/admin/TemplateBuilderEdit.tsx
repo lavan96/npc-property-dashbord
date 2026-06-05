@@ -587,7 +587,22 @@ export default function TemplateBuilderEdit() {
           schema: template,
         } as any,
       },
-      { onSuccess: () => toast.success(snapshot ? 'Saved as new version' : 'Saved') },
+      {
+        onSuccess: () => {
+          toast.success(snapshot ? 'Saved as new version' : 'Saved');
+          // Phase 14 — analytics
+          logTemplateEvent({
+            templateId: id,
+            eventType: snapshot ? 'edit_snapshot' : 'edit_save',
+            templateVersion: tplRow?.version,
+            pageId: activePage?.id,
+            metadata: {
+              pages: template.pages.length,
+              blocks: template.pages.reduce((n, p: any) => n + (p.blocks?.length || 0), 0),
+            },
+          });
+        },
+      },
     );
   };
 
