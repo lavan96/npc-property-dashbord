@@ -1343,6 +1343,117 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       };
     }
 
+    // ── Split registry tools ─────────────────────────────────────────────
+    case 'get_split_registry': {
+      const live = await loadSplitRegistry(supabase);
+      const defaults = defaultSplitRegistryBundle();
+      const { data: configs } = await supabase
+        .from('report_engine_config').select('config_key, scope, value, updated_at, updated_by')
+        .in('config_key', ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd']);
+      return {
+        source: live.source,
+        live: {
+          routes_count: live.routes.length,
+          routes: live.routes,
+          section_order_fin: live.finSectionOrder,
+          section_order_pldd: live.plddSectionOrder,
+          metadata: {
+            fin_title: live.finTitle, fin_subtitle: live.finSubtitle,
+            pldd_title: live.plddTitle, pldd_subtitle: live.plddSubtitle,
+            fin_lens_preamble: live.finLensPreamble, pldd_lens_preamble: live.plddLensPreamble,
+            fin_footer: live.finFooter, pldd_footer: live.plddFooter,
+          },
+        },
+        defaults,
+        db_rows: configs ?? [],
+        note: 'Edits via propose_split_registry_edit stage into report_engine_proposals; superadmin Apply upserts into report_engine_config. Affects every future FIN/PLDD fork from fork-investment-report.',
+      };
+    }
+
+    case 'propose_split_registry_edit': {
+      const config_key = String(args.config_key || '');
+      if (!['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd'].includes(config_key)) {
+        return { error: 'invalid config_key' };
+      }
+      const { data: before } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', config_key).eq('scope', 'global').maybeSingle();
+      const p = await stageProposal(supabase, {
+        target_kind: 'engine_config',
+        target_id: `${config_key}:global`,
+        before_value: before ?? null,
+        after_value: { config_key, scope: 'global', value: args.new_value },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
+    }
+
+    case 'reset_split_registry_to_defaults': {
+      const defaults = defaultSplitRegistryBundle();
+      const target = String(args.config_key || 'all');
+      const map: Record<string, any> = {
+        split_routes: defaults.routes,
+        split_section_order_fin: defaults.section_order_fin,
+        split_section_order_pldd: defaults.section_order_pldd,
+        split_metadata: defaults.metadata,
+      };
+      const keys = target === 'all' ? Object.keys(map) : [target];
+      const staged: any[] = [];
+      for (const key of keys) {
+        if (!(key in map)) continue;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', key).eq('scope', 'global').maybeSingle();
+        const p = await stageProposal(supabase, {
+          target_kind: 'engine_config',
+          target_id: `${key}:global`,
+          before_value: before ?? null,
+          after_value: { config_key: key, scope: 'global', value: map[key] },
+          rationale: args.rationale + ' (reset to in-code defaults)',
+          proposed_by_agent: true,
+          status: 'pending',
+        });
+        staged.push(p);
+      }
+      return { staged_count: staged.length, proposals: staged };
+    }
+
+    // ── Packet config tools ──────────────────────────────────────────────
+    case 'get_packet_config': {
+      const scope = String(args.scope || 'global');
+      const cfg = await loadPacketConfig(supabase, scope);
+      const { data: rows } = await supabase
+        .from('report_engine_config').select('config_key, scope, value, updated_at, updated_by')
+        .in('config_key', ['packet_config', `packet_config:${scope}`]);
+      return {
+        scope_requested: scope,
+        resolved: cfg,
+        default_packet_keys: DEFAULT_PACKET_KEYS,
+        db_rows: rows ?? [],
+        note: 'inline_keys empty = include all DEFAULT_PACKET_KEYS. exclude_keys always wins. per_section_overrides override the scope-level lists for that section_key only.',
+      };
+    }
+
+    case 'propose_packet_config_edit': {
+      const scope = String(args.scope || 'global');
+      const config_key = scope === 'global' ? 'packet_config' : `packet_config:${scope}`;
+      const { data: before } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', config_key).eq('scope', scope === 'global' ? 'global' : scope).maybeSingle();
+      const p = await stageProposal(supabase, {
+        target_kind: 'engine_config',
+        target_id: `${config_key}:${scope === 'global' ? 'global' : scope}`,
+        before_value: before ?? null,
+        after_value: { config_key, scope: scope === 'global' ? 'global' : scope, value: args.new_value },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
+    }
+
     default:
       return { error: `unknown tool ${name}` };
   }
