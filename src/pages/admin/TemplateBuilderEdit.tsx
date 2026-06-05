@@ -894,6 +894,7 @@ export default function TemplateBuilderEdit() {
       <Tabs defaultValue="visual" className="flex-1 flex flex-col min-h-0">
         <TabsList className="self-start mx-3 mt-2">
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
+          <TabsTrigger value="outline"><Component className="h-3.5 w-3.5 mr-1" /> Outline</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
           <TabsTrigger value="brand"><Palette className="h-3.5 w-3.5 mr-1" /> Brand kit</TabsTrigger>
