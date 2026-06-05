@@ -1143,6 +1143,8 @@ export default function TemplateBuilderEdit() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <BindingPathsPopover template={template} sampleData={sampleData} />
+              <ComputedFieldsDialog template={template} sampleData={sampleData} onChange={setTemplate} />
+
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
               </span>
