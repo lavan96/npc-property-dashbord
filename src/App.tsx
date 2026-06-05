@@ -62,6 +62,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import TemplateBuilder from "./pages/admin/TemplateBuilder";
 import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
+import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
@@ -321,6 +322,7 @@ const App = () => (
                 <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
                 <Route path="admin/template-builder" element={<ModuleGuard moduleKey="templates"><TemplateBuilder /></ModuleGuard>} />
                 <Route path="admin/template-builder/:id" element={<ModuleGuard moduleKey="templates"><TemplateBuilderEdit /></ModuleGuard>} />
+                <Route path="admin/report-engine-inspector" element={<ReportEngineInspector />} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
