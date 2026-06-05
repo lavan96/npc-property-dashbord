@@ -10,6 +10,8 @@ import {
   createUnauthorizedResponse,
   createForbiddenResponse,
 } from '../_shared/auth.ts';
+import { loadSplitRegistry, defaultSplitRegistryBundle } from '../_shared/reportSplitRegistry.ts';
+import { loadPacketConfig, applyPacketConfig, DEFAULT_PACKET_KEYS } from '../_shared/packetConfigLoader.ts';
 
 const SYSTEM_PROMPT = `
 You are the Report Engine Operator: a strictly-scoped AI agent whose ONLY job is to
