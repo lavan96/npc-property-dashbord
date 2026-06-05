@@ -755,10 +755,11 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
 
     // ----- Template chunks -----
     case 'list_template_chunks': {
+      const tplId = String(args.template_id || '');
       const { data, error } = await supabase
         .from('document_chunks')
         .select('id, document_name, chunk_index, chunk_text, page_number, metadata, created_at')
-        .contains('metadata', { template_id: args.template_id })
+        .eq('document_name', `template:${tplId}`)
         .order('chunk_index', { ascending: true })
         .limit(Math.min(args.limit ?? 50, 200));
       if (error) throw error;
@@ -770,8 +771,9 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         length: (c.chunk_text || '').length,
         preview: (c.chunk_text || '').slice(0, 400),
       }));
-      return { template_id: args.template_id, chunk_count: chunks.length, chunks };
+      return { template_id: tplId, chunk_count: chunks.length, chunks };
     }
+
 
     // ----- Section→template pinning map -----
     case 'get_section_template_map': {
