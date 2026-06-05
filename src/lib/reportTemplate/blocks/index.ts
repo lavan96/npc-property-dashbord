@@ -104,6 +104,20 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   sparkline: drawExtrasPlaceholder,
   'before-after': drawExtrasPlaceholder,
   'image-text': drawExtrasPlaceholder,
+  // Phase 6 — data-driven blocks (jsPDF placeholder; real fidelity in HTML)
+  'data-grid': drawExtrasPlaceholder,
+  'pivot-table': drawExtrasPlaceholder,
+  'chart-bar': drawExtrasPlaceholder,
+  'chart-stacked-bar': drawExtrasPlaceholder,
+  'chart-line': drawExtrasPlaceholder,
+  'chart-area': drawExtrasPlaceholder,
+  'chart-pie': drawExtrasPlaceholder,
+  'chart-donut': drawExtrasPlaceholder,
+  'chart-scatter': drawExtrasPlaceholder,
+  'chart-radar': drawExtrasPlaceholder,
+  heatmap: drawExtrasPlaceholder,
+  'kpi-strip': drawExtrasPlaceholder,
+  legend: drawExtrasPlaceholder,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
@@ -970,6 +984,191 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'select', key: 'imageSide', label: 'Image side', options: ['left', 'right'] },
       { kind: 'bindable', key: 'heading', label: 'Heading' },
       { kind: 'bindable', key: 'body', label: 'Body', multiline: true },
+    ],
+  },
+  // ─── Phase 6 — data-driven blocks ──────────────────────────────────────────
+  'data-grid': {
+    type: 'data-grid',
+    label: 'Data grid (bound)',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      dataPath: 'properties',
+      columns: [
+        { key: 'address', label: 'Address' },
+        { key: 'suburb', label: 'Suburb' },
+        { key: 'price', label: 'Price', format: 'currency', align: 'right' },
+      ],
+      maxRows: 20,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'dataPath', label: 'Data path (e.g. properties)' },
+      { kind: 'number', key: 'maxRows', label: 'Max rows', min: 1, max: 200 },
+      { kind: 'color', key: 'headerBg', label: 'Header bg' },
+      { kind: 'color', key: 'stripeBg', label: 'Stripe bg' },
+    ],
+  },
+  'pivot-table': {
+    type: 'pivot-table',
+    label: 'Pivot table',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      dataPath: 'sales',
+      groupBy: 'suburb',
+      metric: 'price',
+      aggregation: 'sum',
+      format: 'currency',
+      showShare: true,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'bindable', key: 'groupBy', label: 'Group by (row key)' },
+      { kind: 'bindable', key: 'metric', label: 'Metric (row key)' },
+      { kind: 'select', key: 'aggregation', label: 'Aggregation', options: ['sum', 'avg', 'count', 'min', 'max'] },
+      { kind: 'select', key: 'format', label: 'Format', options: ['auto', 'currency', 'percent', 'number'] },
+    ],
+  },
+  'chart-bar': {
+    type: 'chart-bar',
+    label: 'Bar chart',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 240,
+      dataPath: 'chartData',
+      labelKey: 'label', valueKey: 'value',
+      orientation: 'vertical',
+      title: '', caption: '',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'bindable', key: 'labelKey', label: 'Label key' },
+      { kind: 'bindable', key: 'valueKey', label: 'Value key' },
+      { kind: 'select', key: 'orientation', label: 'Orientation', options: ['vertical', 'horizontal'] },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+      { kind: 'bindable', key: 'caption', label: 'Caption' },
+    ],
+  },
+  'chart-stacked-bar': {
+    type: 'chart-stacked-bar',
+    label: 'Stacked bar',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 240,
+      dataPath: 'chartData', labelKey: 'label',
+      stackKeys: ['a', 'b', 'c'],
+      title: '',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'bindable', key: 'labelKey', label: 'Label key' },
+      { kind: 'list-strings', key: 'stackKeys', label: 'Stack keys' },
+      { kind: 'bindable', key: 'title', label: 'Title' },
+    ],
+  },
+  'chart-line': {
+    type: 'chart-line',
+    label: 'Line chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 240, dataPath: 'chartData', labelKey: 'label', valueKey: 'value', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'bindable', key: 'labelKey', label: 'Label key' },
+      { kind: 'bindable', key: 'valueKey', label: 'Value key' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'chart-area': {
+    type: 'chart-area',
+    label: 'Area chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 240, dataPath: 'chartData', labelKey: 'label', valueKey: 'value', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'chart-pie': {
+    type: 'chart-pie',
+    label: 'Pie chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 240, dataPath: 'chartData', labelKey: 'label', valueKey: 'value', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+    ],
+  },
+  'chart-donut': {
+    type: 'chart-donut',
+    label: 'Donut chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 240, dataPath: 'chartData', labelKey: 'label', valueKey: 'value', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+    ],
+  },
+  'chart-scatter': {
+    type: 'chart-scatter',
+    label: 'Scatter chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 240, dataPath: 'scatterData', xKey: 'x', yKey: 'y', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'bindable', key: 'xKey', label: 'X key' },
+      { kind: 'bindable', key: 'yKey', label: 'Y key' },
+    ],
+  },
+  'chart-radar': {
+    type: 'chart-radar',
+    label: 'Radar chart',
+    defaultProps: () => ({ x: 24, y: 80, width: 547, height: 280, dataPath: 'chartData', labelKey: 'label', valueKey: 'value', title: '' }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+    ],
+  },
+  heatmap: {
+    type: 'heatmap',
+    label: 'Heatmap',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 220,
+      dataPath: 'matrix',
+      rowLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      colLabels: ['Wk1', 'Wk2', 'Wk3', 'Wk4'],
+      title: '',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'dataPath', label: 'Data path (2D array)' },
+      { kind: 'list-strings', key: 'rowLabels', label: 'Row labels' },
+      { kind: 'list-strings', key: 'colLabels', label: 'Col labels' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'kpi-strip': {
+    type: 'kpi-strip',
+    label: 'KPI strip (bound)',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 64, gap: 8,
+      dataPath: 'kpis',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'dataPath', label: 'Data path' },
+      { kind: 'number', key: 'gap', label: 'Gap' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+      { kind: 'color', key: 'tileBg', label: 'Tile bg' },
+    ],
+  },
+  legend: {
+    type: 'legend',
+    label: 'Legend',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 32,
+      items: [
+        { label: 'Series A', color: '#BF9B50' },
+        { label: 'Series B', color: '#7BAEFF' },
+        { label: 'Series C', color: '#7BD4A7' },
+      ],
+      direction: 'horizontal',
+    }),
+    fields: [
+      { kind: 'select', key: 'direction', label: 'Direction', options: ['horizontal', 'vertical'] },
     ],
   },
   free: {
