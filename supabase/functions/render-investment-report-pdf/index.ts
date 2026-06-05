@@ -755,7 +755,45 @@ function pickSeries(rows: any[], keys: string[]): number[] | null {
   return vals.length >= 3 && vals.every((v) => v !== null) ? vals as number[] : null;
 }
 
-async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
+// ─── Section-aware chart selection ──────────────────────────────────────────
+// Classify a chapter/section title into a domain hint that drives chart-type
+// selection and section-level chart suppression.
+export type SectionHint =
+  | "financial"      // cashflow, projections, equity, ROI, lending — favour LINE
+  | "sensitivity"    // rate-shock, scenarios, what-if — favour GROUPED BAR
+  | "comparison"     // suburb / property / lender compare — favour GROUPED BAR
+  | "distribution"   // age/income/share/composition — favour DONUT (if shares)
+  | "demographics"   // population, household, tenure — favour BAR
+  | "score"          // risk register, scoring, indices — favour HORIZONTAL BAR
+  | "trend"          // growth, yield over time, indices — favour LINE
+  | "ranking"        // top suburbs, lender ranking — favour HORIZONTAL BAR
+  | "skip"           // disclaimer / glossary / methodology / appendix
+  | "generic";
+
+function classifySection(title: string): SectionHint {
+  const t = (title || "").toLowerCase();
+  if (!t) return "generic";
+  if (/(disclaimer|glossary|methodolog|appendix|about\s+(this|us)|notes?$|sources?$|references?)/.test(t)) return "skip";
+  if (/(sensitivity|rate\s*shock|stress|scenario|what[-\s]*if)/.test(t)) return "sensitivity";
+  if (/(cash\s*flow|cashflow|projection|equity|loan|lending|finance|borrowing|repay|serviceab|p\s*&\s*l|cost\s+of\s+ownership|holding\s+cost|tax|depreciation|negative\s+gearing|return|roi|irr)/.test(t)) return "financial";
+  if (/(compare|comparison|versus|vs\.?|side[-\s]*by|benchmark|peer)/.test(t)) return "comparison";
+  if (/(demograph|population|household|tenure|occupation|employment|migration|age\s+profile|family\s+composition|languages?\s+spoken)/.test(t)) return "demographics";
+  if (/(composition|distribution|breakdown|mix|share|split|allocation|property\s+type|dwelling\s+type|bedroom)/.test(t)) return "distribution";
+  if (/(risk(\s+register)?|score|rating|index|indices|grade|signal|confidence)/.test(t)) return "score";
+  if (/(trend|growth|history|historical|over\s+time|yoy|year[-\s]*on[-\s]*year|forecast|outlook|10[-\s]*year|5[-\s]*year)/.test(t)) return "trend";
+  if (/(top\s+\d|ranking|leaderboard|highest|lowest|best\s+performing)/.test(t)) return "ranking";
+  return "generic";
+}
+
+async function tableToChartHtml(
+  headers: string[],
+  rows: string[][],
+  ctx: { sectionTitle?: string; sectionHint?: SectionHint } = {},
+): Promise<string | null> {
+  const hint: SectionHint = ctx.sectionHint ?? classifySection(ctx.sectionTitle || "");
+  // Section-level suppression: never visualise tables in reference/legal pages.
+  if (hint === "skip") return null;
+
   // Tightened heuristics: only chart tables that will actually read as a chart.
   if (rows.length < 3 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
@@ -803,7 +841,6 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
   // Rebind rows to filtered set for downstream code
   rows = filteredRows;
 
-
   const tickCallback = looksPct
     ? "function(v){return v.toFixed(1)+'%';}"
     : looksMoney
@@ -815,12 +852,28 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
   const gridColor = "rgba(181, 165, 128, 0.25)";
   const tickColor = "#5F5546";
 
+  // ── Decide preferred chart type from section context ──
+  // Force-line for trend/financial when we have ≥4 labels (even if labels aren't pure years —
+  // e.g. "Yr 1, Yr 2, ..." or quarter labels).
+  const forceLine = (hint === "financial" || hint === "trend") && labels.length >= 4 && !looksPct;
+  // Force horizontal bar for ranking & score sections (better readability for long labels).
+  const forceHBar = hint === "ranking" || hint === "score";
+  // Force grouped bar for comparison & sensitivity (avoid line — categorical x-axis).
+  const forceGroupedBar = hint === "comparison" || hint === "sensitivity";
+
   let config: Record<string, unknown>;
 
-  // ── Donut: only when single % series, ≤7 rows, AND values plausibly sum to ~100 (a real share-of-total). ──
+  // ── Donut: distributions that genuinely sum to ~100, single % series, ≤7 rows ──
   const donutSum = numericCols[0].values.reduce((a, b) => a + Math.max(0, b), 0);
   const donutIsShare = donutSum >= 80 && donutSum <= 120;
-  if (singleSeries && rows.length <= 7 && looksPct && donutIsShare) {
+  const donutAllowed =
+    singleSeries &&
+    rows.length <= 7 &&
+    looksPct &&
+    donutIsShare &&
+    (hint === "distribution" || hint === "demographics" || hint === "generic") &&
+    !forceLine && !forceHBar && !forceGroupedBar;
+  if (donutAllowed) {
     config = {
       type: "doughnut",
       data: {
@@ -846,11 +899,11 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
     };
     const uri = await chartDataUri(config, CHART_PRESETS.DONUT_WIDE.width, CHART_PRESETS.DONUT_WIDE.height, `donut:${numericCols[0].header}`);
     if (!uri) return null;
-    return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Distribution chart"/></figure>`;
   }
 
-  // ── Line: time series ──
-  if (isTimeSeries) {
+  // ── Line: explicit time series, OR financial/trend sections with enough points ──
+  if ((isTimeSeries || forceLine) && !forceHBar && !forceGroupedBar) {
     config = {
       type: "line",
       data: {
@@ -879,11 +932,7 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
             : { display: false },
         },
         scales: {
-          x: {
-            ticks: { color: tickColor, font: commonFont },
-            grid: { color: "transparent" },
-            border: { color: "#B5A580" },
-          },
+          x: { ticks: { color: tickColor, font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
           y: {
             ticks: tickCallback
               ? { color: tickColor, font: commonFont, callback: tickCallback }
@@ -896,10 +945,50 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
     };
     const uri = await chartDataUri(config, CHART_PRESETS.TREND_WIDE.width, CHART_PRESETS.TREND_WIDE.height, `line:${numericCols.map((c) => c.header).join(",")}`);
     if (!uri) return null;
-    return `<figure class="auto-chart"><img src="${uri}" alt="Trend visualisation"/></figure>`;
+    return `<figure class="auto-chart"><img src="${uri}" alt="Trend chart"/></figure>`;
   }
 
-  // ── Bar (default) ──
+  // ── Horizontal bar for rankings and score-style tables ──
+  if (forceHBar && singleSeries) {
+    config = {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: numericCols[0].header,
+          data: numericCols[0].values,
+          backgroundColor: withAlpha(CHART_PALETTE[0], 0.92),
+          borderColor: CHART_PALETTE[0],
+          borderWidth: 0,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 22,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        plugins: {
+          legend: { display: false },
+          datalabels: { anchor: "end", align: "end", color: "#2A2317", font: { ...commonFont, weight: "600" }, formatter: tickCallback || "(v)=>v" },
+        },
+        scales: {
+          x: {
+            ticks: tickCallback
+              ? { color: tickColor, font: commonFont, callback: tickCallback }
+              : { color: tickColor, font: commonFont },
+            grid: { color: gridColor, drawBorder: false },
+            border: { display: false },
+          },
+          y: { ticks: { color: tickColor, font: commonFont }, grid: { color: "transparent" }, border: { color: "#B5A580" } },
+        },
+      },
+    };
+    const uri = await chartDataUri(config, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, `hbar:${numericCols[0].header}`);
+    if (!uri) return null;
+    return `<figure class="auto-chart"><img src="${uri}" alt="${hint === "ranking" ? "Ranking chart" : "Score chart"}"/></figure>`;
+  }
+
+  // ── Vertical / grouped bar (default + comparison + sensitivity + demographics) ──
   config = {
     type: "bar",
     data: {
@@ -946,7 +1035,12 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
   };
   const uri = await chartDataUri(config, CHART_PRESETS.BAR_WIDE.width, CHART_PRESETS.BAR_WIDE.height, `bar:${numericCols.map((c) => c.header).join(",")}`);
   if (!uri) return null;
-  return `<figure class="auto-chart"><img src="${uri}" alt="Data visualisation"/></figure>`;
+  const alt =
+    hint === "comparison" ? "Comparison chart" :
+    hint === "sensitivity" ? "Sensitivity chart" :
+    hint === "demographics" ? "Demographics chart" :
+    "Data chart";
+  return `<figure class="auto-chart"><img src="${uri}" alt="${alt}"/></figure>`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2253,25 +2347,37 @@ async function injectTableCharts(html: string): Promise<string> {
   const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
   if (tables.length === 0) return html;
 
+  // Pre-compute the nearest preceding heading (h2 preferred, h3 fallback) for
+  // each table so chart selection can be section-aware.
+  const sectionTitles: string[] = tables.map((m) => {
+    const upto = html.slice(0, m.index ?? 0);
+    // Find last h2 or h3 before this table
+    const h2 = [...upto.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)].pop();
+    const h3 = [...upto.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)].pop();
+    // Prefer h3 if it appears AFTER the last h2 (more specific subsection).
+    const pick = (h3 && h2 && (h3.index ?? 0) > (h2.index ?? 0)) ? h3 : (h2 || h3);
+    return (pick?.[1] || "").replace(/<[^>]+>/g, "").trim();
+  });
+
   const replacements = new Array<string>(tables.length);
   let chartAttempts = 0;
-  const queue = tables.map((match, index) => ({ tbl: match[0], index }));
+  const queue = tables.map((match, index) => ({ tbl: match[0], index, sectionTitle: sectionTitles[index] }));
   const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
     while (queue.length) {
-      const { tbl, index } = queue.shift()!;
-    const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
-    const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
-    const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
-      .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+      const { tbl, index, sectionTitle } = queue.shift()!;
+      const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
+      const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
+      const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+        .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
 
-    const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
-    const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
-      .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
-        .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
-    const dataRows = theadMatch ? allRows : allRows.slice(1);
+      const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
+      const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
+        .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+          .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
+      const dataRows = theadMatch ? allRows : allRows.slice(1);
 
       const canAddChart = chartAttempts < MAX_AUTO_TABLE_CHARTS;
-      const chart = canAddChart ? await tableToChartHtml(headers, dataRows) : null;
+      const chart = canAddChart ? await tableToChartHtml(headers, dataRows, { sectionTitle }) : null;
       if (chart) chartAttempts += 1;
       replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
     }
