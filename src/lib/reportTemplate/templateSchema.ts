@@ -251,6 +251,16 @@ export const PageSchema = z.object({
     show: z.boolean().default(false),
     offset: z.number().min(0).max(72).default(0),
   }).optional(),
+  // Phase 9 — page master + numbering overrides per page
+  pageMasterId: z.string().optional(),
+  numbering: z.object({
+    startAt: z.number().int().min(1).optional(),
+    restart: z.boolean().optional(),                  // restart counter on this page
+    format: z.enum(['decimal','lower-roman','upper-roman','lower-alpha','upper-alpha']).optional(),
+    prefix: BindableStringSchema.optional(),
+    suffix: BindableStringSchema.optional(),
+    hide: z.boolean().optional(),                     // suppress page number for this page
+  }).optional(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
