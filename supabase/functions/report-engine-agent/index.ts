@@ -53,8 +53,27 @@ Always read before you write. If the user gives a report_id, start with lookup_r
 to surface address + scope + latest run, then drill into get_run / get_chunk as needed.
 Never invent a "before" value — fetch it.
 
+IMPORTANT — auditing without runs:
+A report can be audited even when report_generation_runs is empty. NEVER refuse on
+that basis. Use this static-audit playbook:
+  1) lookup_report(report_id) — metadata, scope, override key list.
+  2) get_report_full(report_id) — full data spine: manual_overrides, financial_calculations,
+     demographics_data, economic_data, investment_score, location_intelligence, scoring etc.
+  3) static_plan(scope, report_id) — registry sections that WOULD run, eligible template pool,
+     embedding-chunk counts per template, per-section pinned templates, and the report's
+     override → section heuristic mapping. This is the same view the inspector UI shows.
+  4) get_section_template_map(scope) — pinned templates per section_key.
+  5) list_engine_config / get_engine_config — resolved system prompt, retrieval knobs,
+     hard exclusions for the scope.
+  6) get_audit_log(target_id=report_id) — post-gen edits already applied.
+  7) Optionally list_template_chunks on any template you want to inspect.
+Combine these into a structured audit (data coverage, missing fields, override
+collisions, template-pool health, pinned vs unpinned sections, anomalies).
+Only mention "no runs recorded" as a footnote, never as a blocker.
+
 If the user asks something outside your scope, refuse politely and explain why.
 `.trim();
+
 
 async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
@@ -435,13 +454,79 @@ function toolDefs() {
         description: 'Recent applied engine changes from report_engine_audit (who, when, before/after, rationale).',
         parameters: {
           type: 'object',
-          properties: { limit: { type: 'number' }, target_kind: { type: 'string' } },
+          properties: { limit: { type: 'number' }, target_kind: { type: 'string' }, target_id: { type: 'string' } },
           additionalProperties: false,
+        },
+
+      },
+    },
+
+    // ---------- Static audit (no runs required) ----------
+    {
+      type: 'function',
+      function: {
+        name: 'get_report_full',
+        description: 'Return the full data spine for a report: manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, plus key listings and byte sizes. Use to audit a report when no runs exist yet.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            include_raw: { type: 'boolean', description: 'Return full JSON blobs (default false — only key listings + sizes).' },
+          },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'static_plan',
+        description: 'Inspector-style static plan for a scope (no run required): registry sections, eligible template pool with embedding-chunk counts, per-section pinned templates, and (when report_id given) the report\'s override → section heuristic mapping. Equivalent to the inspector UI Static Plan tab.',
+        parameters: {
+          type: 'object',
+          properties: {
+            scope: { type: 'string', description: 'compass | financial | pldd (default compass)' },
+            report_id: { type: 'string' },
+            report_tier: { type: 'string' },
+            report_category: { type: 'string' },
+            template_type: { type: 'string', description: 'default ai_structure' },
+          },
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'audit_report',
+        description: 'One-shot static audit of a report by id. Bundles lookup_report + get_report_full + static_plan + section_template_map + recent audit log into a single structured report. Works even when no generation runs exist.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            scope: { type: 'string', description: 'override the scope used for static_plan (defaults to report.report_scope or compass)' },
+          },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'read_report_column',
+        description: 'Read a specific column from investment_reports (read-only). Useful for inspecting large jsonb fields not surfaced by get_report_full. Allowed columns only.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data, raw_property_data, sales_history, comparable_sales, school_data, infrastructure_data, planning_overlays' },
+          },
+          required: ['report_id', 'column'],
         },
       },
     },
   ];
 }
+
 
 // ---------------------------------------------------------------------------
 // Tool runners
@@ -805,18 +890,218 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
     // ----- Audit -----
     case 'get_audit_log': {
       const q = supabase.from('report_engine_audit')
-        .select('*').order('created_at', { ascending: false })
+        .select('*').order('performed_at', { ascending: false })
         .limit(Math.min(args.limit ?? 25, 100));
       if (args.target_kind) q.eq('target_kind', args.target_kind);
+      if (args.target_id) q.eq('target_id', args.target_id);
       const { data, error } = await q;
       if (error) throw error;
       return { audit: data };
+    }
+
+    // ----- Static audit (works without runs) -----
+    case 'get_report_full': {
+      const cols = [
+        'id','property_address','report_scope','report_tier','report_variant',
+        'status','generation_engine','current_version','total_sections','last_completed_section',
+        'created_at','updated_at','error_message',
+        'manual_overrides','financial_calculations','demographics_data','economic_data',
+        'investment_score','location_intelligence','scoring_breakdown','qualitative_data',
+      ].join(',');
+      const { data, error } = await supabase
+        .from('investment_reports').select(cols).eq('id', args.report_id).maybeSingle();
+      if (error) throw error;
+      if (!data) return { error: 'report not found' };
+      const summarize = (v: any) => {
+        if (v == null) return { present: false };
+        const bytes = JSON.stringify(v).length;
+        if (Array.isArray(v)) return { present: true, kind: 'array', length: v.length, bytes };
+        if (typeof v === 'object') return { present: true, kind: 'object', keys: Object.keys(v), key_count: Object.keys(v).length, bytes };
+        return { present: true, kind: typeof v, bytes };
+      };
+      const jsonFields = ['manual_overrides','financial_calculations','demographics_data','economic_data','investment_score','location_intelligence','scoring_breakdown','qualitative_data'];
+      const spine: any = {};
+      for (const f of jsonFields) spine[f] = summarize((data as any)[f]);
+      const out: any = {
+        report: {
+          id: data.id, property_address: data.property_address,
+          report_scope: data.report_scope, report_tier: data.report_tier, report_variant: data.report_variant,
+          status: data.status, generation_engine: data.generation_engine,
+          current_version: data.current_version, total_sections: data.total_sections,
+          last_completed_section: data.last_completed_section, error_message: data.error_message,
+          created_at: data.created_at, updated_at: data.updated_at,
+        },
+        data_spine: spine,
+      };
+      if (args.include_raw) {
+        out.raw = {};
+        for (const f of jsonFields) out.raw[f] = (data as any)[f];
+      }
+      return out;
+    }
+
+    case 'read_report_column': {
+      const ALLOWED = new Set([
+        'report_content','sources_content','manual_overrides','financial_calculations',
+        'demographics_data','economic_data','investment_score','location_intelligence',
+        'scoring_breakdown','qualitative_data','raw_property_data','sales_history',
+        'comparable_sales','school_data','infrastructure_data','planning_overlays',
+      ]);
+      if (!ALLOWED.has(args.column)) return { error: `column not allowed: ${args.column}` };
+      const { data, error } = await supabase
+        .from('investment_reports').select(`id, ${args.column}`).eq('id', args.report_id).maybeSingle();
+      if (error) throw error;
+      if (!data) return { error: 'report not found' };
+      const val = (data as any)[args.column];
+      const bytes = val == null ? 0 : JSON.stringify(val).length;
+      // Trim huge strings for context safety.
+      let payload = val;
+      if (typeof val === 'string' && val.length > 12000) {
+        payload = val.slice(0, 12000) + `\n…[truncated ${val.length - 12000} chars]…`;
+      }
+      return { report_id: data.id, column: args.column, bytes, value: payload };
+    }
+
+    case 'static_plan': {
+      // Inline implementation that calls the inspector's static_plan helper data
+      // by replicating the same queries (keeps the agent self-contained).
+      const scope = String(args.scope || 'compass').toLowerCase();
+      const templateType = String(args.template_type || 'ai_structure');
+      let tplQ = supabase.from('report_structure_templates')
+        .select('id, name, template_type, report_tier, report_category, is_active, priority')
+        .eq('is_active', true).eq('template_type', templateType);
+      if (args.report_tier) tplQ = tplQ.or(`report_tier.eq.${args.report_tier},report_tier.is.null`);
+      if (args.report_category) tplQ = tplQ.or(`report_category.eq.${args.report_category},report_category.is.null`);
+      const { data: templates, error: tplErr } = await tplQ.order('priority', { ascending: false });
+      if (tplErr) throw tplErr;
+      const docNames = (templates ?? []).map((t: any) => `template:${t.id}`);
+      const chunkCounts: Record<string, number> = {};
+      if (docNames.length) {
+        const { data: chunkRows } = await supabase
+          .from('document_chunks').select('document_name').in('document_name', docNames);
+        for (const r of chunkRows ?? []) chunkCounts[r.document_name] = (chunkCounts[r.document_name] ?? 0) + 1;
+      }
+      const templatesOut = (templates ?? []).map((t: any) => ({
+        ...t, embedding_chunks: chunkCounts[`template:${t.id}`] ?? 0,
+      }));
+      const { data: mapRow } = await supabase
+        .from('report_engine_config').select('value')
+        .eq('config_key', `section_template_map:${scope}`).eq('scope', 'default').maybeSingle();
+      const sectionTemplateMap = (mapRow?.value && typeof mapRow.value === 'object') ? mapRow.value : {};
+
+      let overridesOverlay: any = null;
+      if (args.report_id) {
+        const { data: report } = await supabase
+          .from('investment_reports').select('id, manual_overrides, report_scope')
+          .eq('id', args.report_id).maybeSingle();
+        const preGen = (report?.manual_overrides && typeof report.manual_overrides === 'object')
+          ? report.manual_overrides : {};
+        overridesOverlay = {
+          report_id: report?.id ?? args.report_id,
+          report_scope: report?.report_scope ?? null,
+          pre_gen_keys: Object.keys(preGen),
+          pre_gen_key_count: Object.keys(preGen).length,
+        };
+      }
+      return {
+        scope, template_type: templateType,
+        template_pool_size: templatesOut.length,
+        total_embedding_chunks: Object.values(chunkCounts).reduce((a, b) => a + b, 0),
+        templates: templatesOut,
+        section_template_map: sectionTemplateMap,
+        pinned_section_count: Object.keys(sectionTemplateMap).length,
+        overrides: overridesOverlay,
+        note: 'Registry section lists live in src/lib/reports/reportSplitRegistry.ts (compass-40, fin, pldd). Each section is eligible to draw from the full pool above via semantic retrieval; pinned templates (if any) take precedence.',
+      };
+    }
+
+    case 'audit_report': {
+      const reportId = String(args.report_id || '');
+      if (!reportId) return { error: 'report_id required' };
+      // 1. lookup
+      const { data: report } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data')
+        .eq('id', reportId).maybeSingle();
+      if (!report) return { error: 'report not found' };
+      const scope = String(args.scope || report.report_scope || 'compass').toLowerCase();
+
+      // 2. runs (informational only — absence is OK)
+      const { data: runs } = await supabase
+        .from('report_generation_runs')
+        .select('id, scope, variant, status, started_at, finished_at, model, total_prompt_tokens, total_completion_tokens, error')
+        .eq('report_id', reportId).order('started_at', { ascending: false }).limit(10);
+
+      // 3. data spine summary
+      const summarize = (v: any) => {
+        if (v == null) return { present: false };
+        const bytes = JSON.stringify(v).length;
+        if (Array.isArray(v)) return { present: true, kind: 'array', length: v.length, bytes };
+        if (typeof v === 'object') return { present: true, kind: 'object', keys: Object.keys(v), key_count: Object.keys(v).length, bytes };
+        return { present: true, kind: typeof v, bytes };
+      };
+      const dataSpine = {
+        manual_overrides: summarize(report.manual_overrides),
+        financial_calculations: summarize(report.financial_calculations),
+        demographics_data: summarize(report.demographics_data),
+        economic_data: summarize(report.economic_data),
+        investment_score: summarize(report.investment_score),
+        location_intelligence: summarize(report.location_intelligence),
+        scoring_breakdown: summarize(report.scoring_breakdown),
+        qualitative_data: summarize(report.qualitative_data),
+      };
+
+      // 4. static plan
+      const planRes = await runTool(supabase, 'static_plan', { scope, report_id: reportId });
+
+      // 5. engine config snapshot for scope
+      const { data: configs } = await supabase
+        .from('report_engine_config').select('config_key, scope, value, updated_at')
+        .in('scope', [scope, 'default', 'global'])
+        .order('config_key');
+
+      // 6. audit log targeting this report
+      const { data: audit } = await supabase
+        .from('report_engine_audit')
+        .select('target_kind, target_id, before_value, after_value, performed_at, rationale, performed_by')
+        .eq('target_id', reportId).order('performed_at', { ascending: false }).limit(50);
+
+      // 7. anomaly checks
+      const anomalies: string[] = [];
+      if (!dataSpine.financial_calculations.present) anomalies.push('financial_calculations missing — investment score will degrade');
+      if (!dataSpine.investment_score.present) anomalies.push('investment_score missing');
+      if (!dataSpine.location_intelligence.present) anomalies.push('location_intelligence missing — Compass location chapters will be thin');
+      if (!dataSpine.demographics_data.present) anomalies.push('demographics_data missing');
+      if (planRes?.template_pool_size === 0) anomalies.push('template pool is empty for this scope/tier/category');
+      if (planRes?.total_embedding_chunks === 0) anomalies.push('no embedding chunks indexed for any template in the pool');
+      if (report.status === 'failed' || report.error_message) anomalies.push(`last status: ${report.status}${report.error_message ? ' — ' + report.error_message : ''}`);
+
+      return {
+        report: {
+          id: report.id, property_address: report.property_address,
+          report_scope: report.report_scope, report_tier: report.report_tier, report_variant: report.report_variant,
+          derived_from_report_id: report.derived_from_report_id, parent_report_id: report.parent_report_id,
+          status: report.status, generation_engine: report.generation_engine,
+          current_version: report.current_version, total_sections: report.total_sections,
+          last_completed_section: report.last_completed_section, error_message: report.error_message,
+          created_at: report.created_at, updated_at: report.updated_at,
+        },
+        scope_used: scope,
+        runs: { count: runs?.length ?? 0, latest: runs?.[0] ?? null, all: runs ?? [] },
+        data_spine: dataSpine,
+        static_plan: planRes,
+        engine_config: configs ?? [],
+        post_gen_audit: audit ?? [],
+        anomalies,
+        note: runs && runs.length ? undefined : 'No generation runs recorded for this report — audit performed statically from the data spine + engine config.',
+      };
     }
 
     default:
       return { error: `unknown tool ${name}` };
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Entry
