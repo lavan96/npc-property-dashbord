@@ -777,19 +777,19 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
     case 'get_section_template_map': {
       const { data, error } = await supabase
         .from('report_engine_config').select('*')
-        .eq('config_key', 'section_template_map').eq('scope', args.scope).maybeSingle();
+        .eq('config_key', `section_template_map:${args.scope}`).eq('scope', 'default').maybeSingle();
       if (error) throw error;
       return { scope: args.scope, config: data ?? null };
     }
     case 'propose_section_template_map_edit': {
       const { data: before } = await supabase
         .from('report_engine_config').select('*')
-        .eq('config_key', 'section_template_map').eq('scope', args.scope).maybeSingle();
+        .eq('config_key', `section_template_map:${args.scope}`).eq('scope', 'default').maybeSingle();
       const p = await stageProposal(supabase, {
         target_kind: 'engine_config',
         target_id: `section_template_map:${args.scope}`,
         before_value: before ?? null,
-        after_value: { config_key: 'section_template_map', scope: args.scope, value: args.map },
+        after_value: { config_key: `section_template_map:${args.scope}`, scope: 'default', value: args.map },
         rationale: args.rationale,
         proposed_by_agent: true,
         status: 'pending',
