@@ -533,7 +533,7 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'simulate_data_packet',
-        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates). Use when the user asks about what gets sent to the model for a specific report id.',
+        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map + packet_config. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates, packet_config filtering trace). Use when the user asks about what gets sent to the model for a specific report id.',
         parameters: {
           type: 'object',
           properties: {
@@ -543,6 +543,75 @@ function toolDefs() {
             include_raw_overrides: { type: 'boolean', description: 'inline the full manual_overrides jsonb (default false — only keys + sizes)' },
           },
           required: ['report_id'],
+        },
+      },
+    },
+    // ── Split registry tools (FIN / PLDD fork routing) ──
+    {
+      type: 'function',
+      function: {
+        name: 'get_split_registry',
+        description: 'Read the live composite→fork split registry (routing rules, section orders, titles/subtitles/lens preambles/footers) as resolved by loadSplitRegistry. Returns both the DB-overlaid live values AND the in-code defaults so the agent can diff them. This drives fork-investment-report; edits affect every future FIN/PLDD fork.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_split_registry_edit',
+        description: 'Stage an edit to one of the split registry config_keys (split_routes | split_metadata | split_section_order_fin | split_section_order_pldd). Provide the FULL new value (not a patch) — for routes pass the full array. The inspector apply_proposal handler upserts it into report_engine_config.',
+        parameters: {
+          type: 'object',
+          properties: {
+            config_key: { type: 'string', enum: ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd'] },
+            new_value: { description: 'Full replacement value for the config_key (array for routes/section_orders, object for metadata).' },
+            rationale: { type: 'string' },
+          },
+          required: ['config_key', 'new_value', 'rationale'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'reset_split_registry_to_defaults',
+        description: 'Stage a proposal that restores one (or all) split registry config_keys to the in-code defaults. Use to recover after a bad edit.',
+        parameters: {
+          type: 'object',
+          properties: {
+            config_key: { type: 'string', enum: ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd', 'all'] },
+            rationale: { type: 'string' },
+          },
+          required: ['config_key', 'rationale'],
+        },
+      },
+    },
+    // ── Packet config tools (which keys/columns get inlined into the data_packet) ──
+    {
+      type: 'function',
+      function: {
+        name: 'get_packet_config',
+        description: 'Read the data_packet construction config for a scope. Controls inline_keys (whitelist), exclude_keys (blacklist), inline_columns (extra investment_reports columns to pull), per_section_overrides, and max_bytes_per_key truncation. Returns resolved value + source (default | global | scope).',
+        parameters: {
+          type: 'object',
+          properties: { scope: { type: 'string', description: 'compass | briefing | snapshot | suburb | postcode | statewide | global' } },
+          required: ['scope'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_packet_config_edit',
+        description: 'Stage an edit to the packet_config for a scope. Pass the FULL new value object: { inline_keys?: string[], exclude_keys?: string[], inline_columns?: string[], per_section_overrides?: {[key]: {inline_keys?, exclude_keys?}}, max_bytes_per_key?: number }. Use scope="global" to set a baseline; per-scope rows override it.',
+        parameters: {
+          type: 'object',
+          properties: {
+            scope: { type: 'string' },
+            new_value: { type: 'object' },
+            rationale: { type: 'string' },
+          },
+          required: ['scope', 'new_value', 'rationale'],
         },
       },
     },
