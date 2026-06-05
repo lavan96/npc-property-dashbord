@@ -32,6 +32,30 @@ import { renderDDChecklistHtml } from './ddChecklist.html';
 import { renderInfraTimelineHtml } from './infraTimeline.html';
 import { renderPlanningTableHtml } from './planningTable.html';
 import { renderAmenityMatrixHtml } from './amenityMatrix.html';
+import {
+  renderTimelineHtml,
+  renderSwotHtml,
+  renderGanttHtml,
+  renderComparisonHtml,
+  renderStatCalloutHtml,
+  renderPullQuoteHtml,
+  renderFaqHtml,
+  renderPricingCardHtml,
+  renderFeatureListHtml,
+  renderProcessStepsHtml,
+  renderProgressBarsHtml,
+  renderMapHtml,
+  renderIconGridHtml,
+  renderTestimonialsHtml,
+  renderRibbonHtml,
+  renderMetricDeltaHtml,
+  renderDefinitionListHtml,
+  renderSparklineHtml,
+  renderBeforeAfterHtml,
+  renderImageTextHtml,
+} from './extras.html';
+
+
 
 const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   cover: renderCoverHtml,
@@ -63,6 +87,27 @@ const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   'infra-timeline': renderInfraTimelineHtml,
   'planning-table': renderPlanningTableHtml,
   'amenity-matrix': renderAmenityMatrixHtml,
+  // Phase 3 expansion ─────────────────────────────────────────────────────────
+  timeline: renderTimelineHtml,
+  swot: renderSwotHtml,
+  gantt: renderGanttHtml,
+  comparison: renderComparisonHtml,
+  'stat-callout': renderStatCalloutHtml,
+  'pull-quote': renderPullQuoteHtml,
+  faq: renderFaqHtml,
+  'pricing-card': renderPricingCardHtml,
+  'feature-list': renderFeatureListHtml,
+  'process-steps': renderProcessStepsHtml,
+  'progress-bars': renderProgressBarsHtml,
+  map: renderMapHtml,
+  'icon-grid': renderIconGridHtml,
+  testimonials: renderTestimonialsHtml,
+  ribbon: renderRibbonHtml,
+  'metric-delta': renderMetricDeltaHtml,
+  'definition-list': renderDefinitionListHtml,
+  sparkline: renderSparklineHtml,
+  'before-after': renderBeforeAfterHtml,
+  'image-text': renderImageTextHtml,
   // 'free' blocks have no body — only overlays — and render as nothing.
   free: () => '',
 };
