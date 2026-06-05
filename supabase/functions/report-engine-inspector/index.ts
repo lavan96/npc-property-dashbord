@@ -151,6 +151,21 @@ Deno.serve(async (req) => {
               }, { onConflict: 'config_key,scope' });
             if (error) throw error;
             appliedOk = true;
+          } else if (prop.target_kind === 'report_manual_overrides' && prop.target_id) {
+            // Shallow-merge patch into existing manual_overrides (null value deletes key).
+            const { data: cur } = await supabase
+              .from('investment_reports').select('manual_overrides').eq('id', prop.target_id).maybeSingle();
+            const existing = (cur?.manual_overrides && typeof cur.manual_overrides === 'object') ? cur.manual_overrides : {};
+            const patch = (prop.after_value?.patch && typeof prop.after_value.patch === 'object') ? prop.after_value.patch : {};
+            const merged: Record<string, any> = { ...existing };
+            for (const [k, v] of Object.entries(patch)) {
+              if (v === null) delete merged[k];
+              else merged[k] = v;
+            }
+            const { error } = await supabase
+              .from('investment_reports').update({ manual_overrides: merged }).eq('id', prop.target_id);
+            if (error) throw error;
+            appliedOk = true;
           } else {
             throw new Error(`unknown target_kind: ${prop.target_kind}`);
           }
