@@ -553,6 +553,27 @@ async function stageProposal(supabase: any, row: Record<string, any>) {
   return data;
 }
 
+const TIER_ALIASES = new Set(['compass', 'briefing', 'snapshot']);
+const REPORT_BASE_SELECT = 'id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at';
+const REPORT_JSON_FIELDS = ['manual_overrides','financial_calculations','demographics_data','economic_data','investment_score','location_intelligence','property_specs','validation_flags','data_sources'];
+
+function normaliseSearch(s: string): string {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function reportSearchScore(report: any, query: string): number {
+  const haystack = normaliseSearch(report?.property_address || '');
+  const tokens = normaliseSearch(query).split(' ').filter((t) => t.length >= 4 && !['property','report','compass','briefing','snapshot','recent','latest'].includes(t));
+  if (!tokens.length) return 0;
+  let score = 0;
+  for (const token of tokens) {
+    if (haystack.includes(token)) score += 4;
+    else if (haystack.includes(token.slice(0, 4))) score += 2;
+    else if (token.length >= 6 && haystack.includes(token.slice(0, 5))) score += 1;
+  }
+  return score;
+}
+
 async function runTool(supabase: any, name: string, args: any): Promise<any> {
   switch (name) {
     case 'list_runs': {
