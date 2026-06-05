@@ -15776,7 +15776,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_by_name: string | null
           id: string
+          label: string | null
           note: string | null
           schema: Json
           template_id: string
@@ -15785,7 +15787,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_by_name?: string | null
           id?: string
+          label?: string | null
           note?: string | null
           schema: Json
           template_id: string
@@ -15794,7 +15798,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          created_by_name?: string | null
           id?: string
+          label?: string | null
           note?: string | null
           schema?: Json
           template_id?: string
