@@ -102,11 +102,13 @@ export function PropertiesInspector({
           <BlockEditor
             template={template}
             block={selectedBlock}
+            page={page}
             onChange={(b) => onUpdateBlock?.(b)}
             onDelete={() => { onDeleteBlock?.(selectedBlock.id); onSelectBlock?.(null); }}
             onDuplicate={() => onDuplicateBlock?.(selectedBlock.id)}
             onBack={() => onSelectBlock?.(null)}
           />
+
         ) : (
           page && (
             <PageEditor
@@ -440,6 +442,7 @@ function PageEditor({
 function BlockEditor({
   template,
   block,
+  page,
   onChange,
   onDelete,
   onDuplicate,
@@ -447,11 +450,13 @@ function BlockEditor({
 }: {
   template: ReportTemplate;
   block: Block;
+  page: Page | null;
   onChange: (next: Block) => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onBack: () => void;
 }) {
+
   const def = BLOCK_DEFS[block.type];
   const props = (block.props ?? {}) as Record<string, any>;
   const setProp = (key: string, value: unknown) =>
@@ -496,18 +501,31 @@ function BlockEditor({
       )}
 
       <Separator />
+      <BlockAlignmentPanel block={block} page={page} onChange={onChange} />
+
+      <Separator />
+      <BlockStylePanel block={block} onChange={onChange} />
+
+      <Separator />
+      <BlockVisibilityPanel block={block} onChange={onChange} />
+
+      <Separator />
+      <BlockRepeatPanel block={block} onChange={onChange} />
+
+      <Separator />
       <div>
-        <Label className="text-xs">Conditional</Label>
+        <Label className="text-xs">Legacy conditional (compat)</Label>
         <Input
           value={block.conditional ?? ''}
           onChange={(e) => onChange({ ...block, conditional: e.target.value || undefined })}
-          placeholder="e.g. tier === 'compass'"
+          placeholder="Use Visibility section above instead"
           className="text-xs font-mono"
         />
       </div>
     </div>
   );
 }
+
 
 function BlockFieldInput({
   field, value, onChange, template,
