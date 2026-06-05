@@ -198,6 +198,10 @@ export default function ReportEngineInspector() {
           </div>
         </TabsContent>
 
+        <TabsContent value="static">
+          <StaticPlanTab />
+        </TabsContent>
+
         <TabsContent value="prompts">
           <PromptLibrary />
         </TabsContent>
