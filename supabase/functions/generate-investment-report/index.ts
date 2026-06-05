@@ -5730,6 +5730,7 @@ YOUR DEDICATED PROPERTY PARTNER
     };
 
     console.log('Returning successful response');
+    await traceFinishRun(_traceSb, _traceRunId, { status: 'completed' });
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200
