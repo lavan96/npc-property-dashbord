@@ -324,6 +324,7 @@ const App = () => (
                 <Route path="admin/template-builder" element={<ModuleGuard moduleKey="templates"><TemplateBuilder /></ModuleGuard>} />
                 <Route path="admin/template-builder/:id" element={<ModuleGuard moduleKey="templates"><TemplateBuilderEdit /></ModuleGuard>} />
                 <Route path="admin/report-engine-inspector" element={<ReportEngineInspector />} />
+                <Route path="admin/figma-templates" element={<ModuleGuard moduleKey="templates"><FigmaTemplates /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
