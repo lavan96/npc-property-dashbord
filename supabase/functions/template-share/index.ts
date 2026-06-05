@@ -73,11 +73,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fire-and-forget view counter
+    // Fire-and-forget view counter + analytics event
     supabase
       .from('template_share_links')
       .update({ view_count: (link.view_count ?? 0) + 1, last_viewed_at: new Date().toISOString() })
       .eq('id', link.id)
+      .then(() => {}, () => {});
+
+    supabase
+      .from('template_events')
+      .insert({
+        template_id: link.template_id,
+        event_type: 'share_view',
+        share_token: token,
+        metadata: {
+          mode: link.mode,
+          label: link.label,
+          user_agent: (req.headers.get('user-agent') || '').slice(0, 200),
+        },
+      })
       .then(() => {}, () => {});
 
     return new Response(
