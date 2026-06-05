@@ -92,6 +92,7 @@ export default function TemplateBuilderEdit() {
   const [showComments, setShowComments] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
+  const [showAIAuthor, setShowAIAuthor] = useState(false);
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
