@@ -617,7 +617,7 @@ Deno.serve(async (req) => {
         if (!/^[0-9a-f-]{36}$/i.test(reportId)) return json({ error: 'valid report_id required' }, corsHeaders, 400);
         const { data: report, error: rErr } = await supabase
           .from('investment_reports')
-          .select('id, report_type, status, property_address, suburb, state, postcode, created_at, updated_at, client_id, manual_overrides, report_variant, derived_from_report_id')
+          .select('id, status, property_address, report_scope, report_tier, created_at, updated_at, manual_overrides, report_variant, derived_from_report_id, parent_report_id')
           .eq('id', reportId).maybeSingle();
         if (rErr) throw rErr;
         if (!report) return json({ error: 'report not found' }, corsHeaders, 404);
