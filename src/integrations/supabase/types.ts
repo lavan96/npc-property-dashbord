@@ -6650,6 +6650,134 @@ export type Database = {
           },
         ]
       }
+      figma_template_sync_log: {
+        Row: {
+          created_at: string
+          diff: Json | null
+          duration_ms: number | null
+          error: string | null
+          figma_template_id: string | null
+          id: string
+          operation: string
+          status: string
+          summary: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          diff?: Json | null
+          duration_ms?: number | null
+          error?: string | null
+          figma_template_id?: string | null
+          id?: string
+          operation: string
+          status: string
+          summary?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          diff?: Json | null
+          duration_ms?: number | null
+          error?: string | null
+          figma_template_id?: string | null
+          id?: string
+          operation?: string
+          status?: string
+          summary?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figma_template_sync_log_figma_template_id_fkey"
+            columns: ["figma_template_id"]
+            isOneToOne: false
+            referencedRelation: "figma_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      figma_templates: {
+        Row: {
+          compile_warnings: Json | null
+          compiled_schema: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          figma_file_key: string
+          figma_node_id: string | null
+          figma_url: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          label: string
+          last_sync_error: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          metadata: Json
+          raw_node: Json | null
+          report_type: string
+          thumbnail_expires_at: string | null
+          thumbnail_url: string | null
+          tier: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          compile_warnings?: Json | null
+          compiled_schema?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          figma_file_key: string
+          figma_node_id?: string | null
+          figma_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          metadata?: Json
+          raw_node?: Json | null
+          report_type?: string
+          thumbnail_expires_at?: string | null
+          thumbnail_url?: string | null
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          compile_warnings?: Json | null
+          compiled_schema?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          figma_file_key?: string
+          figma_node_id?: string | null
+          figma_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          metadata?: Json
+          raw_node?: Json | null
+          report_type?: string
+          thumbnail_expires_at?: string | null
+          thumbnail_url?: string | null
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       finance_agent_contacts: {
         Row: {
           abn: string | null
