@@ -953,13 +953,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
 
     // ----- Static audit (works without runs) -----
     case 'get_report_full': {
-      const cols = [
-        'id','property_address','report_scope','report_tier','report_variant',
-        'status','generation_engine','current_version','total_sections','last_completed_section',
-        'created_at','updated_at','error_message',
-        'manual_overrides','financial_calculations','demographics_data','economic_data',
-        'investment_score','location_intelligence','scoring_breakdown','qualitative_data',
-      ].join(',');
+      const cols = `${REPORT_BASE_SELECT}, ${REPORT_JSON_FIELDS.join(',')}`;
       const { data, error } = await supabase
         .from('investment_reports').select(cols).eq('id', args.report_id).maybeSingle();
       if (error) throw error;
@@ -971,9 +965,8 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         if (typeof v === 'object') return { present: true, kind: 'object', keys: Object.keys(v), key_count: Object.keys(v).length, bytes };
         return { present: true, kind: typeof v, bytes };
       };
-      const jsonFields = ['manual_overrides','financial_calculations','demographics_data','economic_data','investment_score','location_intelligence','scoring_breakdown','qualitative_data'];
       const spine: any = {};
-      for (const f of jsonFields) spine[f] = summarize((data as any)[f]);
+      for (const f of REPORT_JSON_FIELDS) spine[f] = summarize((data as any)[f]);
       const out: any = {
         report: {
           id: data.id, property_address: data.property_address,
@@ -987,7 +980,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       };
       if (args.include_raw) {
         out.raw = {};
-        for (const f of jsonFields) out.raw[f] = (data as any)[f];
+        for (const f of REPORT_JSON_FIELDS) out.raw[f] = (data as any)[f];
       }
       return out;
     }
@@ -996,8 +989,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       const ALLOWED = new Set([
         'report_content','sources_content','manual_overrides','financial_calculations',
         'demographics_data','economic_data','investment_score','location_intelligence',
-        'scoring_breakdown','qualitative_data','raw_property_data','sales_history',
-        'comparable_sales','school_data','infrastructure_data','planning_overlays',
+        'property_specs','validation_flags','data_sources',
       ]);
       if (!ALLOWED.has(args.column)) return { error: `column not allowed: ${args.column}` };
       const { data, error } = await supabase
