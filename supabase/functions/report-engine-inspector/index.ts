@@ -40,7 +40,15 @@ Deno.serve(async (req) => {
       return createForbiddenResponse('superadmin only', corsHeaders);
     }
 
-    const op = String(body?.op || '');
+    const rawOp = String(body?.op || body?.operation || body?.action || body?.type || '').trim();
+    const opAliases: Record<string, string> = {
+      listPrompts: 'list_prompts',
+      upsertPrompt: 'upsert_prompt',
+      deletePrompt: 'delete_prompt',
+      exportPrompts: 'export_prompts',
+      importPrompts: 'import_prompts',
+    };
+    const op = opAliases[rawOp] || rawOp;
 
     switch (op) {
       case 'list_runs': {
@@ -362,7 +370,16 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return json({ error: 'unknown op' }, corsHeaders, 400);
+        console.warn('[report-engine-inspector] unknown op', { rawOp, op, bodyKeys: Object.keys(body ?? {}) });
+        return json({
+          error: `unknown op: ${op || '(missing)'}`,
+          allowed_ops: [
+            'list_runs', 'get_run', 'get_chunk', 'list_proposals', 'list_audit',
+            'apply_proposal', 'reject_proposal', 'list_engine_config', 'upsert_engine_config',
+            'delete_engine_config', 'list_prompts', 'upsert_prompt', 'delete_prompt',
+            'export_prompts', 'import_prompts',
+          ],
+        }, corsHeaders, 400);
     }
   } catch (e: any) {
     return json({ error: e?.message || String(e) }, createCorsHeaders(origin), 500);
