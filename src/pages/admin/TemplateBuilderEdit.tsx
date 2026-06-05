@@ -924,6 +924,11 @@ export default function TemplateBuilderEdit() {
             </Button>
           )}
           {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowAnalyticsDialog(true)} title="Usage, edits and share-preview analytics">
+              <Sparkles className="h-4 w-4 mr-1" /> Analytics
+            </Button>
+          )}
+          {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
             </Button>
