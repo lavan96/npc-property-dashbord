@@ -122,6 +122,12 @@ export const PageSchema = z.object({
   }).default({}),
   blocks: z.array(BlockSchema).default([]),
   conditional: z.string().optional(),
+  // Phase 2 — canvas/print furniture (all optional, additive)
+  master: z.boolean().optional(),                   // true → reusable master/template page
+  masterPageId: z.string().optional(),              // resolve master backdrop at render
+  bleed: z.number().min(0).max(36).optional(),      // pt — print bleed
+  safeArea: z.number().min(0).max(72).optional(),   // pt — content safe-area margin
+  notes: z.string().optional(),                     // designer notes (not rendered)
 });
 
 export type Page = z.infer<typeof PageSchema>;
