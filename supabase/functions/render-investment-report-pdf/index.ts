@@ -288,14 +288,17 @@ function stripBareCitations(html: string): string {
 // Premium chart engine — Chart.js v4 via QuickChart's /chart endpoint
 // (editorial palette, soft shadows, rounded bars, premium typography)
 // ─────────────────────────────────────────────────────────────
+// Editorial infographic palette — high-contrast, magazine-grade colour story.
+// Anchored by the brand gold; supporting hues chosen for legibility on cream
+// paper and visual distinctness on small bars / slices.
 const CHART_PALETTE = [
   "#C9962B", // signature gold
-  "#3F6E8A", // deep slate-blue
+  "#1F3A5F", // deep navy
   "#6FA86E", // muted sage
   "#A23A28", // burnt sienna
-  "#B07A1F", // amber-bronze
+  "#8B6F4A", // walnut
   "#5B4A82", // aubergine
-  "#8A6F4A", // walnut
+  "#3F8FA8", // teal
 ];
 const FONT_STACK = "Inter, Helvetica, Arial, sans-serif";
 const SERIF_STACK = "Playfair Display, Georgia, serif";
