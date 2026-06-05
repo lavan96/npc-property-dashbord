@@ -142,6 +142,7 @@ export default function ReportEngineInspector() {
       <Tabs defaultValue="runs">
         <TabsList>
           <TabsTrigger value="runs">Runs</TabsTrigger>
+          <TabsTrigger value="static">Static Plan</TabsTrigger>
           <TabsTrigger value="prompts">Prompt Library</TabsTrigger>
           <TabsTrigger value="config">Engine Config</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
@@ -195,6 +196,10 @@ export default function ReportEngineInspector() {
               <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="static">
+          <StaticPlanTab />
         </TabsContent>
 
         <TabsContent value="prompts">
@@ -1005,5 +1010,292 @@ function AuditLog() {
         </div>
       </ScrollArea>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Static Plan tab — visibility WITHOUT needing a live generation run.
+// ---------------------------------------------------------------------------
+
+interface PlanSection {
+  id: string;
+  ordinal: number;
+  name: string;
+  sourceHeadings?: string[];
+  purpose?: string;
+  pageBudget?: number;
+}
+interface PlanTemplate {
+  id: string;
+  name: string;
+  template_type: string | null;
+  report_tier: string | null;
+  report_category: string | null;
+  is_active: boolean;
+  priority: number | null;
+  embedding_chunks: number;
+}
+interface PlanResponse {
+  scope: string;
+  sections: PlanSection[];
+  templates: PlanTemplate[];
+  template_pool_size: number;
+  total_embedding_chunks: number;
+  retrieval_note: string;
+  overrides: null | {
+    report: any;
+    pre_gen_overrides: Record<string, any>;
+    pre_gen_keys: string[];
+    post_gen_edits: Array<{ target_kind: string; after_value: any; performed_at: string; rationale: string | null }>;
+    section_override_map: Array<{ section_id: string; override_keys: string[] }>;
+  };
+}
+
+function StaticPlanTab() {
+  const [scope, setScope] = useState<string>('compass');
+  const [reportTier, setReportTier] = useState<string>('');
+  const [reportCategory, setReportCategory] = useState<string>('investment');
+  const [reportId, setReportId] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<PlanResponse | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await invokeSecureFunction<PlanResponse>(
+      'report-engine-inspector',
+      {
+        op: 'static_plan',
+        scope,
+        report_tier: reportTier || undefined,
+        report_category: reportCategory || undefined,
+        report_id: reportId.trim() || undefined,
+      },
+    );
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Failed to load static plan', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPlan(data ?? null);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [scope, reportTier, reportCategory]);
+
+  const sectionOverrideMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const r of plan?.overrides?.section_override_map ?? []) m.set(r.section_id, r.override_keys);
+    return m;
+  }, [plan]);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground">Scope / Registry</label>
+            <select value={scope} onChange={(e) => setScope(e.target.value)}
+              className="w-full bg-background border rounded px-2 py-1.5 text-xs">
+              <option value="compass">Compass (Location & Property Fit)</option>
+              <option value="financial">FIN (Financial Performance)</option>
+              <option value="pldd">PLDD (Property & Location DD)</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground">Report Tier</label>
+            <select value={reportTier} onChange={(e) => setReportTier(e.target.value)}
+              className="w-full bg-background border rounded px-2 py-1.5 text-xs">
+              <option value="">(any)</option>
+              <option value="compass">compass</option>
+              <option value="executive">executive</option>
+              <option value="snapshot">snapshot</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground">Report Category</label>
+            <select value={reportCategory} onChange={(e) => setReportCategory(e.target.value)}
+              className="w-full bg-background border rounded px-2 py-1.5 text-xs">
+              <option value="">(any)</option>
+              <option value="investment">investment</option>
+              <option value="comparison">comparison</option>
+              <option value="suburb_snapshot">suburb_snapshot</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-[10px] uppercase text-muted-foreground">Report ID (optional overlay)</label>
+            <div className="flex gap-2">
+              <Input value={reportId} onChange={(e) => setReportId(e.target.value)}
+                placeholder="investment_reports.id — overlays manual_overrides + post-gen edits"
+                className="text-xs h-8 font-mono" />
+              <Button size="sm" onClick={load} disabled={loading}>
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          {plan?.retrieval_note || 'Showing what the engine would do for the selected scope without running it.'}
+        </p>
+      </Card>
+
+      {!plan ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : (
+        <div className="grid grid-cols-12 gap-4">
+          {/* Template pool */}
+          <Card className="col-span-5 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Eligible Template Pool</h3>
+              <div className="flex gap-2">
+                <Badge variant="outline" className="text-[10px]">{plan.template_pool_size} templates</Badge>
+                <Badge variant="secondary" className="text-[10px]">{plan.total_embedding_chunks} embeddings</Badge>
+              </div>
+            </div>
+            <ScrollArea className="h-[60vh]">
+              {plan.templates.length === 0 ? (
+                <div className="text-xs text-muted-foreground p-3">
+                  No active templates match the current filters. Add or activate templates under Report Structure Configuration.
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {plan.templates.map((t) => (
+                    <div key={t.id} className="border rounded p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium truncate">{t.name}</span>
+                        <Badge variant={t.embedding_chunks === 0 ? 'destructive' : 'success'} className="text-[10px] shrink-0">
+                          {t.embedding_chunks} chunks
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {t.template_type && <Badge variant="outline" className="text-[10px]">{t.template_type}</Badge>}
+                        {t.report_tier && <Badge variant="secondary" className="text-[10px]">{t.report_tier}</Badge>}
+                        {t.report_category && <Badge variant="outline" className="text-[10px]">{t.report_category}</Badge>}
+                        {t.priority != null && <Badge variant="outline" className="text-[10px]">p{t.priority}</Badge>}
+                      </div>
+                      <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{t.id}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Every section below is eligible to retrieve from this pool. The live engine picks the top-K embedding chunks per section by semantic similarity.
+            </p>
+          </Card>
+
+          {/* Sections */}
+          <Card className="col-span-7 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Registry Sections ({plan.sections.length})</h3>
+              {plan.overrides && (
+                <div className="flex gap-2">
+                  <Badge variant="warning" className="text-[10px]">
+                    Pre-gen overrides: {plan.overrides.pre_gen_keys.length}
+                  </Badge>
+                  <Badge variant="info" className="text-[10px]">
+                    Post-gen edits: {plan.overrides.post_gen_edits.length}
+                  </Badge>
+                </div>
+              )}
+            </div>
+            <ScrollArea className="h-[60vh]">
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 bg-background z-10">
+                  <tr className="text-muted-foreground">
+                    <th className="text-left p-1.5 w-10">#</th>
+                    <th className="text-left p-1.5">Section</th>
+                    <th className="text-left p-1.5">Template pool</th>
+                    <th className="text-left p-1.5">Pre-gen overrides</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.sections.map((s) => {
+                    const ov = sectionOverrideMap.get(s.id) ?? [];
+                    return (
+                      <tr key={s.id} className="border-t border-border/40 align-top">
+                        <td className="p-1.5 text-muted-foreground">{s.ordinal}</td>
+                        <td className="p-1.5">
+                          <div className="font-medium">{s.name}</div>
+                          <div className="text-[10px] font-mono text-muted-foreground">{s.id}</div>
+                          {s.sourceHeadings && s.sourceHeadings.length > 0 && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              headings: {s.sourceHeadings.join(' · ')}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-1.5">
+                          <Badge variant={plan.template_pool_size === 0 ? 'destructive' : 'success'} className="text-[10px]">
+                            {plan.template_pool_size} eligible · {plan.total_embedding_chunks} chunks
+                          </Badge>
+                        </td>
+                        <td className="p-1.5">
+                          {!plan.overrides ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : ov.length === 0 ? (
+                            <Badge variant="outline" className="text-[10px]">none matched</Badge>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {ov.map((k) => (
+                                <Badge key={k} variant="warning" className="text-[10px] font-mono">★ {k}</Badge>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </ScrollArea>
+          </Card>
+
+          {plan.overrides && (
+            <Card className="col-span-12 p-3">
+              <h3 className="text-sm font-semibold mb-2">Override Overlay for Report</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="warning">Pre-generation</Badge>
+                    <span className="text-[10px] text-muted-foreground">investment_reports.manual_overrides</span>
+                  </div>
+                  <ScrollArea className="h-64 rounded border bg-muted/30 p-2">
+                    <pre className="text-[10px] font-mono whitespace-pre-wrap">
+                      {JSON.stringify(plan.overrides.pre_gen_overrides, null, 2)}
+                    </pre>
+                  </ScrollArea>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="info">Post-generation</Badge>
+                    <span className="text-[10px] text-muted-foreground">report_engine_audit entries for this report</span>
+                  </div>
+                  <ScrollArea className="h-64 rounded border bg-muted/30 p-2">
+                    {plan.overrides.post_gen_edits.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground">No post-gen edits recorded.</div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {plan.overrides.post_gen_edits.map((e, i) => (
+                          <div key={i} className="border-b border-border/40 pb-1">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="text-[10px]">{e.target_kind}</Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(e.performed_at).toLocaleString()}
+                              </span>
+                            </div>
+                            {e.rationale && <div className="text-[10px] text-muted-foreground mt-0.5">{e.rationale}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Per-section mapping above is a heuristic token match between override key names and section ids/headings. A FULL ingestion check requires a live run (see Runs tab → Packet Matrix).
+              </p>
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

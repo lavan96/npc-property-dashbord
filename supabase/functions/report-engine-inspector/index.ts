@@ -11,6 +11,8 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 import { PROMPT_CATALOG, getPromptCatalogEntry } from '../_shared/engine-prompts.ts';
+import { COMPASS_40_SECTIONS } from '../_shared/compassSectionRegistry.ts';
+import { FIN_SECTION_ORDER, PLDD_SECTION_ORDER } from '../_shared/reportSplitRegistry.ts';
 
 async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
@@ -405,6 +407,111 @@ Deno.serve(async (req) => {
         }, corsHeaders);
       }
 
+      case 'static_plan': {
+        // Static (no-run) view of the engine: what sections the registry will
+        // emit, which template pool will be retrieved against, how many
+        // embedding chunks exist per template, and (if report_id is given)
+        // which manual_overrides / post-gen edits are on record for that
+        // report — heuristically mapped to each section.
+        const scope = String(body.scope || 'compass').toLowerCase();
+        const reportTier = body.report_tier ? String(body.report_tier) : null;
+        const reportCategory = body.report_category ? String(body.report_category) : null;
+        const templateType = String(body.template_type || 'ai_structure');
+        const reportId = body.report_id ? String(body.report_id) : null;
+
+        // 1. Registry sections for the requested scope.
+        let sections: Array<{ id: string; ordinal: number; name: string; sourceHeadings?: string[]; purpose?: string; pageBudget?: number }>; 
+        if (scope === 'financial' || scope === 'fin') {
+          sections = FIN_SECTION_ORDER.map((s) => ({
+            id: `fin.${s.ordinal}`, ordinal: s.ordinal, name: s.heading,
+          }));
+        } else if (scope === 'pldd' || scope === 'due_diligence') {
+          sections = PLDD_SECTION_ORDER.map((s) => ({
+            id: `pldd.${s.ordinal}`, ordinal: s.ordinal, name: s.heading,
+          }));
+        } else {
+          sections = COMPASS_40_SECTIONS.map((s) => ({
+            id: s.id, ordinal: s.ordinal, name: s.name,
+            sourceHeadings: s.sourceHeadings, purpose: s.purpose, pageBudget: s.pageBudget,
+          }));
+        }
+
+        // 2. Eligible template pool (mirrors retrieve-template-context filter).
+        let tplQ = supabase
+          .from('report_structure_templates')
+          .select('id, name, template_type, report_tier, report_category, is_active, priority')
+          .eq('is_active', true)
+          .eq('template_type', templateType);
+        if (reportTier) tplQ = tplQ.or(`report_tier.eq.${reportTier},report_tier.is.null`);
+        if (reportCategory) tplQ = tplQ.or(`report_category.eq.${reportCategory},report_category.is.null`);
+        const { data: templates, error: tplErr } = await tplQ.order('priority', { ascending: false });
+        if (tplErr) throw tplErr;
+
+        // 3. Embedding chunk counts for each template (document_chunks.document_name = 'template:<uuid>').
+        const docNames = (templates ?? []).map((t: any) => `template:${t.id}`);
+        let chunkCounts: Record<string, number> = {};
+        if (docNames.length > 0) {
+          const { data: chunkRows } = await supabase
+            .from('document_chunks')
+            .select('document_name')
+            .in('document_name', docNames);
+          for (const r of chunkRows ?? []) {
+            chunkCounts[r.document_name] = (chunkCounts[r.document_name] ?? 0) + 1;
+          }
+        }
+        const templatesOut = (templates ?? []).map((t: any) => ({
+          ...t,
+          embedding_chunks: chunkCounts[`template:${t.id}`] ?? 0,
+        }));
+
+        // 4. Optional report overlay: pre-gen overrides + post-gen edits.
+        let overridesOverlay: any = null;
+        if (reportId) {
+          const { data: report } = await supabase
+            .from('investment_reports')
+            .select('id, manual_overrides, report_scope, updated_at')
+            .eq('id', reportId).maybeSingle();
+          const { data: audit } = await supabase
+            .from('report_engine_audit')
+            .select('target_kind, target_id, before_value, after_value, performed_at, rationale')
+            .eq('target_id', reportId)
+            .order('performed_at', { ascending: false })
+            .limit(100);
+          const preGen = (report?.manual_overrides && typeof report.manual_overrides === 'object')
+            ? report.manual_overrides : {};
+          const preGenKeys = Object.keys(preGen);
+          // Heuristic per-section mapping: an override key maps to a section
+          // when its lowercased name shares a non-trivial token with the
+          // section id / heading / source headings.
+          const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter((w) => w.length > 3);
+          const sectionTokens = sections.map((s) => new Set([
+            ...norm(s.id), ...norm(s.name), ...(s.sourceHeadings ?? []).flatMap(norm),
+          ]));
+          const sectionOverrideMap = sections.map((s, i) => {
+            const tokens = sectionTokens[i];
+            const matched = preGenKeys.filter((k) => norm(k).some((t) => tokens.has(t)));
+            return { section_id: s.id, override_keys: matched };
+          });
+          overridesOverlay = {
+            report,
+            pre_gen_overrides: preGen,
+            pre_gen_keys: preGenKeys,
+            post_gen_edits: audit ?? [],
+            section_override_map: sectionOverrideMap,
+          };
+        }
+
+        return json({
+          scope,
+          sections,
+          templates: templatesOut,
+          template_pool_size: templatesOut.length,
+          total_embedding_chunks: Object.values(chunkCounts).reduce((a, b) => a + b, 0),
+          overrides: overridesOverlay,
+          retrieval_note: 'Live generation picks the top-K embedding chunks from this pool by semantic similarity to each section query. Statically, every section is eligible to draw from the full pool above.',
+        }, corsHeaders);
+      }
+
       default:
         console.warn('[report-engine-inspector] unknown op', { rawOp, op, bodyKeys: Object.keys(body ?? {}) });
         return json({
@@ -414,6 +521,7 @@ Deno.serve(async (req) => {
             'apply_proposal', 'reject_proposal', 'list_engine_config', 'upsert_engine_config',
             'delete_engine_config', 'list_prompts', 'upsert_prompt', 'delete_prompt',
             'export_prompts', 'import_prompts', 'resolve_templates', 'get_report_overrides',
+            'static_plan',
           ],
         }, corsHeaders, 400);
     }
