@@ -288,17 +288,31 @@ export function renderTemplateToHtml(
     options.customCss ?? '',
   ].join('\n');
 
+  // Phase 8 — document metadata
+  const meta = (template as any).meta ?? {};
+  const lang = meta.lang || 'en';
+  const r = (v: unknown) => v ? escapeHtml(resolveBindable(v, ctxBase)) : '';
+  const metaTags = [
+    meta.author   && `<meta name="author" content="${r(meta.author)}"/>`,
+    meta.subject  && `<meta name="description" content="${r(meta.subject)}"/>`,
+    meta.keywords && `<meta name="keywords" content="${r(meta.keywords)}"/>`,
+    meta.creator  && `<meta name="generator" content="${r(meta.creator)}"/>`,
+  ].filter(Boolean).join('\n');
+  const docTitle = options.title ?? (meta.title ? resolveBindable(meta.title, ctxBase) : 'Report');
+
   const html = `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}">
 <head>
 <meta charset="utf-8"/>
-<title>${escapeHtml(options.title ?? 'Report')}</title>
+<title>${escapeHtml(docTitle)}</title>
+${metaTags}
 <style>${css}</style>
 </head>
 <body>
 ${pageHtml}
 </body>
 </html>`;
+
 
   return { html, css };
 }
