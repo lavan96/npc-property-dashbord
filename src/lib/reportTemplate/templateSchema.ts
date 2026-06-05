@@ -239,6 +239,7 @@ export const ReportTemplateSchema = z.object({
     snapToGrid: z.boolean().default(false),
     showBleed: z.boolean().default(false),
     showSafeArea: z.boolean().default(false),
+    showBaselineGrid: z.boolean().default(false),
   }).default({}).optional(),
   savedSelections: z.record(z.array(z.string())).optional(),
 });
