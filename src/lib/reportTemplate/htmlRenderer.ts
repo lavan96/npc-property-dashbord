@@ -231,6 +231,7 @@ export function renderTemplateToHtml(
   }).join('\n');
 
   const css = [
+    tokensToFontFaceCss(tokens),
     tokensToCssVariables(tokens),
     baseCss(),
     pageCss(visiblePages),
