@@ -1,0 +1,327 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sparkles, ExternalLink, Loader2, RefreshCw, FileWarning, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
+import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { format, formatDistanceToNow } from 'date-fns';
+
+interface ExportPipelineDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  template: ReportTemplate;
+  templateId?: string;
+  templateName: string;
+  sampleData: Record<string, any>;
+  customCss?: string | null;
+}
+
+type RenderJobRow = {
+  id: string;
+  status: string;
+  mode: string;
+  pdf_variant: string;
+  tagged: boolean;
+  theme_id: string | null;
+  page_count: number | null;
+  asset_count: number | null;
+  bytes: number | null;
+  duration_ms: number | null;
+  file_name: string;
+  signed_url: string | null;
+  signed_url_expires_at: string | null;
+  error: string | null;
+  created_at: string;
+};
+
+const VARIANT_OPTIONS = [
+  { value: 'pdf/a-2b', label: 'PDF/A-2b (archival, accessible)' },
+  { value: 'pdf/a-3b', label: 'PDF/A-3b (archival + embedded files)' },
+  { value: 'pdf-1.7', label: 'PDF 1.7 (standard)' },
+];
+
+function countAssets(template: ReportTemplate): { images: string[]; total: number } {
+  const urls = new Set<string>();
+  const walk = (val: any) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      if (/^https?:\/\//.test(val) && /\.(png|jpe?g|webp|gif|svg|avif)(\?|$)/i.test(val)) urls.add(val);
+      return;
+    }
+    if (Array.isArray(val)) return val.forEach(walk);
+    if (typeof val === 'object') return Object.values(val).forEach(walk);
+  };
+  walk(template);
+  return { images: Array.from(urls), total: urls.size };
+}
+
+export function ExportPipelineDialog({
+  open, onOpenChange, template, templateId, templateName, sampleData, customCss,
+}: ExportPipelineDialogProps) {
+  const [variant, setVariant] = useState<string>('pdf/a-2b');
+  const [tagged, setTagged] = useState(true);
+  const [optimizeImages, setOptimizeImages] = useState(true);
+  const [mode, setMode] = useState<'preview' | 'final'>('preview');
+  const [themeId, setThemeId] = useState<string>(template.activeThemeId || '__active__');
+  const [preloading, setPreloading] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [jobs, setJobs] = useState<RenderJobRow[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+
+  const assetSummary = useMemo(() => countAssets(template), [template]);
+  const themes = useMemo(() => Object.entries(template.themes ?? {}), [template.themes]);
+  const visiblePages = template.pages.length;
+
+  const loadJobs = async () => {
+    if (!templateId) return;
+    setLoadingJobs(true);
+    const { data, error } = await supabase
+      .from('template_render_jobs')
+      .select('id,status,mode,pdf_variant,tagged,theme_id,page_count,asset_count,bytes,duration_ms,file_name,signed_url,signed_url_expires_at,error,created_at')
+      .eq('template_id', templateId)
+      .order('created_at', { ascending: false })
+      .limit(15);
+    if (!error && data) setJobs(data as RenderJobRow[]);
+    setLoadingJobs(false);
+  };
+
+  useEffect(() => {
+    if (open) loadJobs();
+  }, [open, templateId]);
+
+  const handleExport = async () => {
+    setRunning(true);
+    const toastId = toast.loading('Preparing export…');
+    try {
+      // 1) Preload remote images to warm Cloudflare/CDN cache for WeasyPrint
+      setPreloading(true);
+      if (assetSummary.images.length) {
+        try { await preloadImages(assetSummary.images, { timeoutMs: 8000 }); } catch (_) { /* non-fatal */ }
+      }
+      setPreloading(false);
+
+      // 2) Compile HTML server-friendly (apply theme override if user picked one)
+      const tplForRender: ReportTemplate = themeId && themeId !== '__active__'
+        ? { ...template, activeThemeId: themeId }
+        : template;
+
+      toast.loading('Compiling HTML…', { id: toastId });
+      const { html } = renderTemplateToHtml(tplForRender, {
+        data: sampleData,
+        title: templateName || 'Template Export',
+        customCss: customCss || undefined,
+      });
+
+      // 3) Call edge function
+      toast.loading('Rendering PDF on WeasyPrint…', { id: toastId });
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          html,
+          fileName: `${(templateName || 'template').replace(/[^a-z0-9]+/gi, '-')}-${mode}.pdf`,
+          templateId,
+          templateName,
+          mode,
+          pdfVariant: variant,
+          tagged,
+          optimizeImages,
+          themeId: themeId === '__active__' ? template.activeThemeId ?? null : themeId,
+          pageMasterId: template.defaultPageMasterId ?? null,
+          pageCount: visiblePages,
+          assetCount: assetSummary.total,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+      toast.success(`Export ready (${(json.bytes / 1024).toFixed(0)} KB, ${json.durationMs}ms)`, { id: toastId });
+      window.open(json.url, '_blank', 'noopener');
+      await loadJobs();
+    } catch (e: any) {
+      toast.error(`Export failed: ${e?.message ?? e}`, { id: toastId });
+    } finally {
+      setRunning(false);
+      setPreloading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" /> Production Export Pipeline
+          </DialogTitle>
+          <DialogDescription>
+            Compile this template via the server WeasyPrint service, with PDF/A archival and accessibility tagging.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 px-6">
+          <div className="space-y-6 py-4">
+            {/* Options */}
+            <section className="space-y-4 rounded-lg border bg-card p-4">
+              <h3 className="text-sm font-semibold">Output Options</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>PDF variant</Label>
+                  <Select value={variant} onValueChange={setVariant}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {VARIANT_OPTIONS.map(v => (
+                        <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Mode</Label>
+                  <Select value={mode} onValueChange={(v) => setMode(v as 'preview' | 'final')}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="preview">Preview</SelectItem>
+                      <SelectItem value="final">Final / client-facing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Theme override</Label>
+                  <Select value={themeId} onValueChange={setThemeId}>
+                    <SelectTrigger><SelectValue placeholder="Active theme" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__active__">
+                        Active ({template.activeThemeId || 'default tokens'})
+                      </SelectItem>
+                      {themes.map(([key, t]: any) => (
+                        <SelectItem key={key} value={key}>{t?.name || key}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-3 pt-6">
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>Tagged (accessibility)</span>
+                    <Switch checked={tagged} onCheckedChange={setTagged} />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>Optimize images</span>
+                    <Switch checked={optimizeImages} onCheckedChange={setOptimizeImages} />
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            {/* Pre-flight */}
+            <section className="space-y-3 rounded-lg border bg-card p-4">
+              <h3 className="text-sm font-semibold">Pre-flight</h3>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Pages</div>
+                  <div className="text-2xl font-bold">{visiblePages}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Remote images</div>
+                  <div className="text-2xl font-bold flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    {assetSummary.total}
+                  </div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Themes / masters</div>
+                  <div className="text-2xl font-bold">
+                    {Object.keys(template.themes ?? {}).length} / {Object.keys(template.pageMasters ?? {}).length}
+                  </div>
+                </div>
+              </div>
+              {assetSummary.total > 0 && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <FileWarning className="h-3.5 w-3.5" />
+                  Remote images will be warmed before render to avoid timeouts.
+                </p>
+              )}
+            </section>
+
+            {/* History */}
+            <section className="space-y-3 rounded-lg border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Recent renders</h3>
+                <Button size="sm" variant="ghost" onClick={loadJobs} disabled={loadingJobs}>
+                  {loadingJobs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+              {jobs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No renders yet for this template.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {jobs.map((j) => (
+                    <li key={j.id} className="flex items-center justify-between gap-3 rounded border p-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {j.status === 'succeeded' ? (
+                          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                        ) : j.status === 'failed' ? (
+                          <FileWarning className="h-4 w-4 text-destructive shrink-0" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-mono truncate">{j.file_name}</div>
+                          <div className="text-muted-foreground">
+                            {formatDistanceToNow(new Date(j.created_at), { addSuffix: true })}
+                            {' · '}
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">{j.pdf_variant}</Badge>
+                            {' '}
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">{j.mode}</Badge>
+                            {j.bytes ? ` · ${(j.bytes / 1024).toFixed(0)} KB` : ''}
+                            {j.duration_ms ? ` · ${j.duration_ms}ms` : ''}
+                          </div>
+                          {j.error && <div className="text-destructive truncate" title={j.error}>{j.error}</div>}
+                        </div>
+                      </div>
+                      {j.signed_url && (
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={j.signed_url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
+                          </a>
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="px-6 pb-6 pt-3 border-t">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button onClick={handleExport} disabled={running}>
+            {running ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {preloading ? 'Warming assets…' : 'Rendering…'}</>
+            ) : (
+              <><Sparkles className="h-4 w-4 mr-2" /> Export PDF</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
