@@ -375,7 +375,7 @@ export function renderTemplateToHtml(
     tokensToFontFaceCss(tokens),
     tokensToCssVariables(tokens),
     baseCss(),
-    pageCss(visiblePages),
+    pageCss(visiblePages, template, ctxBase).css,
     options.customCss ?? '',
   ].join('\n');
 
