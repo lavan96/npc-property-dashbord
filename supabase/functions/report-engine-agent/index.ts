@@ -639,6 +639,175 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       return p;
     }
 
+
+    // ----- Report-centric -----
+    case 'find_reports': {
+      const q = supabase.from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, status, created_at, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(Math.min(args.limit ?? 20, 50));
+      if (args.address_query) q.ilike('property_address', `%${args.address_query}%`);
+      if (args.scope) q.eq('report_scope', args.scope);
+      if (args.variant) q.eq('report_variant', args.variant);
+      const { data, error } = await q;
+      if (error) throw error;
+      return { reports: data };
+    }
+    case 'lookup_report': {
+      const { data: report, error } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at, manual_overrides')
+        .eq('id', args.report_id).maybeSingle();
+      if (error) throw error;
+      if (!report) return { error: 'report not found' };
+      const { data: runs } = await supabase
+        .from('report_generation_runs')
+        .select('id, scope, variant, status, started_at, finished_at, model, total_prompt_tokens, total_completion_tokens')
+        .eq('report_id', args.report_id)
+        .order('started_at', { ascending: false })
+        .limit(10);
+      const overrideKeys = report.manual_overrides && typeof report.manual_overrides === 'object'
+        ? Object.keys(report.manual_overrides) : [];
+      const summary = { ...report, manual_overrides: undefined, override_keys: overrideKeys, override_key_count: overrideKeys.length };
+      return { report: summary, latest_run: runs?.[0] ?? null, recent_runs: runs ?? [], run_count_recent: runs?.length ?? 0 };
+    }
+    case 'get_report_runs': {
+      const { data, error } = await supabase
+        .from('report_generation_runs')
+        .select('id, scope, variant, status, started_at, finished_at, model, total_prompt_tokens, total_completion_tokens, error, data_packet_size_bytes')
+        .eq('report_id', args.report_id)
+        .order('started_at', { ascending: false })
+        .limit(Math.min(args.limit ?? 20, 100));
+      if (error) throw error;
+      return { runs: data };
+    }
+    case 'get_report_overrides': {
+      const { data, error } = await supabase
+        .from('investment_reports').select('id, manual_overrides').eq('id', args.report_id).maybeSingle();
+      if (error) throw error;
+      if (!data) return { error: 'report not found' };
+      const overrides = (data.manual_overrides && typeof data.manual_overrides === 'object') ? data.manual_overrides : {};
+      return { report_id: data.id, override_keys: Object.keys(overrides), manual_overrides: overrides };
+    }
+    case 'propose_report_override_edit': {
+      const { data: before } = await supabase
+        .from('investment_reports').select('id, property_address, manual_overrides').eq('id', args.report_id).maybeSingle();
+      if (!before) throw new Error('report not found');
+      const p = await stageProposal(supabase, {
+        target_kind: 'report_manual_overrides',
+        target_id: args.report_id,
+        before_value: { manual_overrides: before.manual_overrides ?? {}, property_address: before.property_address },
+        after_value: { patch: args.patch },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
+    }
+
+    // ----- Chunk drill-down / diff -----
+    case 'get_chunk': {
+      const { data, error } = await supabase
+        .from('report_generation_chunks').select('*').eq('id', args.chunk_id).maybeSingle();
+      if (error) throw error;
+      if (!data) return { error: 'chunk not found' };
+      // Trim ultra-large strings for context safety.
+      const trim = (s: any, n = 6000) => (typeof s === 'string' && s.length > n)
+        ? s.slice(0, n) + `\n…[truncated ${s.length - n} chars]…` : s;
+      data.system_prompt = trim(data.system_prompt);
+      data.user_prompt = trim(data.user_prompt);
+      data.response = trim(data.response);
+      return { chunk: data };
+    }
+    case 'compare_runs': {
+      const [{ data: a }, { data: b }] = await Promise.all([
+        supabase.from('report_generation_runs').select('id, scope, variant, model, system_prompt, data_packet, total_prompt_tokens, total_completion_tokens, started_at, finished_at, status').eq('id', args.run_id_a).maybeSingle(),
+        supabase.from('report_generation_runs').select('id, scope, variant, model, system_prompt, data_packet, total_prompt_tokens, total_completion_tokens, started_at, finished_at, status').eq('id', args.run_id_b).maybeSingle(),
+      ]);
+      if (!a || !b) return { error: 'one or both runs not found' };
+      const [{ data: ca }, { data: cb }] = await Promise.all([
+        supabase.from('report_generation_chunks').select('section_key, status, latency_ms, prompt_tokens, completion_tokens').eq('run_id', args.run_id_a),
+        supabase.from('report_generation_chunks').select('section_key, status, latency_ms, prompt_tokens, completion_tokens').eq('run_id', args.run_id_b),
+      ]);
+      const keysA = new Set(Object.keys(a.data_packet || {}));
+      const keysB = new Set(Object.keys(b.data_packet || {}));
+      const onlyA = [...keysA].filter(k => !keysB.has(k));
+      const onlyB = [...keysB].filter(k => !keysA.has(k));
+      const sectionsA = new Map((ca || []).map((c: any) => [c.section_key, c]));
+      const sectionsB = new Map((cb || []).map((c: any) => [c.section_key, c]));
+      const allSections = new Set([...sectionsA.keys(), ...sectionsB.keys()]);
+      const sectionDiff = [...allSections].map(k => ({
+        section_key: k,
+        in_a: sectionsA.has(k), in_b: sectionsB.has(k),
+        a: sectionsA.get(k), b: sectionsB.get(k),
+      }));
+      return {
+        a: { id: a.id, scope: a.scope, variant: a.variant, model: a.model, tokens: (a.total_prompt_tokens || 0) + (a.total_completion_tokens || 0), status: a.status },
+        b: { id: b.id, scope: b.scope, variant: b.variant, model: b.model, tokens: (b.total_prompt_tokens || 0) + (b.total_completion_tokens || 0), status: b.status },
+        system_prompt_changed: a.system_prompt !== b.system_prompt,
+        system_prompt_a_len: (a.system_prompt || '').length,
+        system_prompt_b_len: (b.system_prompt || '').length,
+        packet_keys_only_in_a: onlyA,
+        packet_keys_only_in_b: onlyB,
+        section_diff: sectionDiff,
+      };
+    }
+
+    // ----- Template chunks -----
+    case 'list_template_chunks': {
+      const { data, error } = await supabase
+        .from('document_chunks')
+        .select('id, document_name, chunk_index, chunk_text, page_number, metadata, created_at')
+        .contains('metadata', { template_id: args.template_id })
+        .order('chunk_index', { ascending: true })
+        .limit(Math.min(args.limit ?? 50, 200));
+      if (error) throw error;
+      const chunks = (data || []).map((c: any) => ({
+        id: c.id,
+        document_name: c.document_name,
+        chunk_index: c.chunk_index,
+        page_number: c.page_number,
+        length: (c.chunk_text || '').length,
+        preview: (c.chunk_text || '').slice(0, 400),
+      }));
+      return { template_id: args.template_id, chunk_count: chunks.length, chunks };
+    }
+
+    // ----- Section→template pinning map -----
+    case 'get_section_template_map': {
+      const { data, error } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', 'section_template_map').eq('scope', args.scope).maybeSingle();
+      if (error) throw error;
+      return { scope: args.scope, config: data ?? null };
+    }
+    case 'propose_section_template_map_edit': {
+      const { data: before } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', 'section_template_map').eq('scope', args.scope).maybeSingle();
+      const p = await stageProposal(supabase, {
+        target_kind: 'engine_config',
+        target_id: `section_template_map:${args.scope}`,
+        before_value: before ?? null,
+        after_value: { config_key: 'section_template_map', scope: args.scope, value: args.map },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
+    }
+
+    // ----- Audit -----
+    case 'get_audit_log': {
+      const q = supabase.from('report_engine_audit')
+        .select('*').order('created_at', { ascending: false })
+        .limit(Math.min(args.limit ?? 25, 100));
+      if (args.target_kind) q.eq('target_kind', args.target_kind);
+      const { data, error } = await q;
+      if (error) throw error;
+      return { audit: data };
+    }
+
     default:
       return { error: `unknown tool ${name}` };
   }
