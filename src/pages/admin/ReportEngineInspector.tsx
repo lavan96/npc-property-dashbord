@@ -1065,6 +1065,47 @@ function StaticPlanTab() {
   const [savingMap, setSavingMap] = useState(false);
   const [overridesDraft, setOverridesDraft] = useState<string>('');
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [proposeMode, setProposeMode] = useState(false);
+  const [pendingMapProps, setPendingMapProps] = useState<any[]>([]);
+  const [lookup, setLookup] = useState<any | null>(null);
+  const [lookupId, setLookupId] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  const loadPendingMapProposals = async () => {
+    const { data } = await invokeSecureFunction<{ proposals: any[] }>(
+      'report-engine-inspector', { op: 'list_proposals', status: 'pending' },
+    );
+    const filtered = (data?.proposals ?? []).filter((p: any) =>
+      p.target_kind === 'engine_config' &&
+      String(p.after_value?.config_key || '').startsWith('section_template_map:')
+    );
+    setPendingMapProps(filtered);
+  };
+  useEffect(() => { loadPendingMapProposals(); }, []);
+
+  const doLookup = async (idArg?: string) => {
+    const id = (idArg ?? lookupId).trim();
+    if (!id) return;
+    setLookupLoading(true);
+    const { data, error } = await invokeSecureFunction<any>(
+      'report-engine-inspector', { op: 'lookup_report', report_id: id },
+    );
+    setLookupLoading(false);
+    if (error) { toast({ title: 'Lookup failed', description: error.message, variant: 'destructive' }); return; }
+    setLookup(data);
+  };
+
+  const applyProposal = async (id: string) => {
+    const { error } = await invokeSecureFunction('report-engine-inspector', { op: 'apply_proposal', proposal_id: id });
+    if (error) { toast({ title: 'Apply failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Applied', description: 'Proposal applied' });
+    await Promise.all([loadPendingMapProposals(), load()]);
+  };
+  const rejectProposal = async (id: string) => {
+    const { error } = await invokeSecureFunction('report-engine-inspector', { op: 'reject_proposal', proposal_id: id, rejection_reason: 'rejected from static plan' });
+    if (error) { toast({ title: 'Reject failed', description: error.message, variant: 'destructive' }); return; }
+    loadPendingMapProposals();
+  };
 
   const load = async () => {
     setLoading(true);
