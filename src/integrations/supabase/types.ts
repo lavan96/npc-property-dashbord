@@ -15689,7 +15689,9 @@ export type Database = {
           config: Json
           created_at: string
           created_by: string | null
+          custom_css: string | null
           description: string | null
+          engine: string
           id: string
           is_active: boolean
           is_default: boolean | null
@@ -15705,7 +15707,9 @@ export type Database = {
           config: Json
           created_at?: string
           created_by?: string | null
+          custom_css?: string | null
           description?: string | null
+          engine?: string
           id?: string
           is_active?: boolean
           is_default?: boolean | null
@@ -15721,7 +15725,9 @@ export type Database = {
           config?: Json
           created_at?: string
           created_by?: string | null
+          custom_css?: string | null
           description?: string | null
+          engine?: string
           id?: string
           is_active?: boolean
           is_default?: boolean | null
