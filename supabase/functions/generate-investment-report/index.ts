@@ -365,9 +365,11 @@ function getDefaultSectionsForScope(scope: string): ReportSectionDefinition[] {
   }
 }
 
-function normaliseGenerationTier(raw: unknown): 'compass-40' | 'financial-analysis' {
-  const tier = String(raw ?? '').toLowerCase().trim();
-  return tier.startsWith('financial') ? 'financial-analysis' : 'compass-40';
+function normaliseGenerationTier(_raw: unknown): 'compass-40' | 'financial-analysis' {
+  // Composite-first strategy: only the Compass-40 composite is ever generated.
+  // Client-facing FIN / PLDD variants are derived post-hoc by fork-investment-report.
+  // The 'financial-analysis' standalone tier is intentionally retired here.
+  return 'compass-40';
 }
 
 function canonicalSectionsToGenerationSections(
