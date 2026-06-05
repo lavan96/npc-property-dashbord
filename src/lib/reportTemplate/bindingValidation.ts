@@ -24,16 +24,10 @@ export const KNOWN_DATA_PATHS: string[] = [
   'pageCount',
 ];
 
-/** Filters supported by the binding resolver. Keep in sync with bindingResolver.ts. */
-export const KNOWN_FILTERS = [
-  'currency',
-  'number',
-  'percent',
-  'date',
-  'upper',
-  'lower',
-  'default',
-];
+/** Filters supported by the binding resolver. Kept in sync with bindingResolver.ts. */
+export { FILTER_NAMES as KNOWN_FILTERS } from './bindingResolver';
+import { FILTER_NAMES } from './bindingResolver';
+
 
 export interface BindingIssue {
   raw: string;        // e.g. "{{property.adres | currency}}"
