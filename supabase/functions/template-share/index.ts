@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     const { data: tpl, error: tplErr } = await supabase
       .from('report_templates')
-      .select('id, name, description, schema, custom_css, sample_data')
+      .select('id, name, description, schema, custom_css')
       .eq('id', link.template_id)
       .maybeSingle();
 
