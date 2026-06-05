@@ -817,8 +817,10 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
 
   let config: Record<string, unknown>;
 
-  // ── Donut: single % series with ≤7 rows ──
-  if (singleSeries && rows.length <= 7 && looksPct) {
+  // ── Donut: only when single % series, ≤7 rows, AND values plausibly sum to ~100 (a real share-of-total). ──
+  const donutSum = numericCols[0].values.reduce((a, b) => a + Math.max(0, b), 0);
+  const donutIsShare = donutSum >= 80 && donutSum <= 120;
+  if (singleSeries && rows.length <= 7 && looksPct && donutIsShare) {
     config = {
       type: "doughnut",
       data: {
