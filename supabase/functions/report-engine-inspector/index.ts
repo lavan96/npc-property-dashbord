@@ -501,6 +501,14 @@ Deno.serve(async (req) => {
           };
         }
 
+        // 5. Per-section template assignment overlay (if any).
+        const { data: mapRow } = await supabase
+          .from('report_engine_config')
+          .select('value')
+          .eq('config_key', `section_template_map:${scope}`)
+          .eq('scope', 'default').maybeSingle();
+        const sectionTemplateMap = (mapRow?.value && typeof mapRow.value === 'object') ? mapRow.value : {};
+
         return json({
           scope,
           sections,
@@ -508,7 +516,8 @@ Deno.serve(async (req) => {
           template_pool_size: templatesOut.length,
           total_embedding_chunks: Object.values(chunkCounts).reduce((a, b) => a + b, 0),
           overrides: overridesOverlay,
-          retrieval_note: 'Live generation picks the top-K embedding chunks from this pool by semantic similarity to each section query. Statically, every section is eligible to draw from the full pool above.',
+          section_template_map: sectionTemplateMap,
+          retrieval_note: 'Live generation picks the top-K embedding chunks from this pool by semantic similarity to each section query. Statically, every section is eligible to draw from the full pool above. Per-section pinned assignments (if set) appear when you expand a section.',
         }, corsHeaders);
       }
 
