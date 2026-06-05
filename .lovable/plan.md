@@ -1,104 +1,86 @@
-# Template Builder → WeasyPrint (Pilot: Investment Compass)
+# Template Builder → Canva/Gamma-Class Editor
 
-## Goal
+Everything from the brainstorm, structured into 12 phases. Each phase is independently shippable; phases are ordered so later work compounds on earlier foundations. We'll run them sequentially at "maximum effort" unless you say otherwise.
 
-Let users edit Investment Compass PDFs visually in the existing Template Builder, with WeasyPrint as the production renderer. The `ReportTemplate` JSON schema stays the single source of truth — jsPDF drives the in-editor live preview, WeasyPrint drives the "Render production PDF" button and the real generation pipeline.
+---
 
-## Architecture
+## Phase 1 — Foundations: Tokens, Theme & Brand Kits
+Goal: every later block reads from a single design-token spine.
+- `design_tokens` table (per-template + per-brand-kit): colors, fonts, type scale, spacing scale, radii, shadows, gradients.
+- `brand_kits` table (org-scoped, reusable): logos, palettes, font pairings, default footer/disclaimer.
+- Theme switcher in builder header (Light / Dark / Print-safe / Custom).
+- Gradient editor, eyedropper, tint/shade ramps, WCAG contrast checker, Pantone/CMYK display values.
+- CSS-variable pipeline: tokens → `cssTokens.ts` → both web preview and WeasyPrint render.
 
-```text
-       ┌─────────────────────────┐
-       │  Template Builder UI    │  edits ReportTemplate JSON
-       └───────────┬─────────────┘
-                   │
-                   ▼
-       ┌─────────────────────────┐
-       │   ReportTemplate JSON    │  (single source of truth)
-       │   pages → blocks → props │
-       └─────┬───────────────┬────┘
-             │               │
-   live preview            production
-     (in editor)           (export + Compass generation)
-             │               │
-             ▼               ▼
-   pdfRenderer.ts       htmlRenderer.ts  ──►  WeasyPrint  ──►  PDF
-     (jsPDF)               (HTML+CSS)         (Python svc)
-```
+## Phase 2 — Canvas & Editing Surface
+Goal: feels like Canva/Figma, not a form.
+- True WYSIWYG canvas with zoom, pan, fit-to-page.
+- Rulers, snap guides, grid overlay, bleed/trim/safe-area indicators.
+- Drag-to-reorder, drag-to-resize, multi-select, group/frame, alignment + distribute tools.
+- Outline panel (page → section → block tree) with drag reordering.
+- Master pages + per-page overrides; section grouping; per-page background.
+- Undo/redo stack, keyboard shortcuts, command palette (⌘K), saved selections.
 
-Both renderers walk the **same** schema. Drift is bounded by per-block unit tests that snapshot props → output.
+## Phase 3 — Block Library Expansion
+Goal: cover every report shape we'll ever need.
+New blocks: Quote, Stat Card, Comparison Table, Timeline, Gantt, SWOT, 2×2 Matrix, Map (static + Mapbox), Mini-charts (spark/bar/donut), Icon, Tag/Badge Cloud, Author Bio, Image Collage, Video Poster, Embed Placeholder, AI Summary, Conditional, Repeater, Divider variants, Pull-quote, Footnote.
+- Each ships with HTML renderer + builder inspector + sample data.
+- Block search + categorized library panel + favorites.
 
-## Phased delivery
+## Phase 4 — Typography System
+- Font picker (Google + uploaded), per-block overrides, paragraph styles, type scale presets.
+- Drop caps, small caps, OpenType features, optical sizing, hyphenation, vertical rhythm.
+- Per-template font loading optimized for WeasyPrint.
 
-### Phase 1 — HTML compiler skeleton (foundation)
+## Phase 5 — Layout & Spacing Controls
+- Margin/padding per block, column layouts, auto-layout containers.
+- Background per block/page, border, shadow, dividers, corner radii tokens.
+- Responsive scaling rules for different page sizes (A4 / Letter / 16:9 / custom).
 
-- New `src/lib/reportTemplate/htmlRenderer.ts` — pure `(template, data, brand) → { html, css }`
-- New `src/lib/reportTemplate/blocks/*.html.ts` siblings for each block type
-- Token → CSS variables compiler: `tokens.colors/fonts/spacing` → `:root { --primary: …; }`
-- Per-template free-form `customCss` field (escape hatch, lint-scoped)
-- Page layout via WeasyPrint `@page` rules driven by `template.pages[].size`
-- Block coverage in Phase 1: cover, text, kpiGrid, dataTable, divider, spacer, footer, pageNumber
+## Phase 6 — Images & Media
+- Built-in image editor (crop, rotate, filters, brightness/contrast).
+- Background remover, smart object-fit + focal point, image masks.
+- Hero Image Studio integration (already live) + stock search + AI image generation + Lottie/static poster.
 
-### Phase 2 — Remaining block coverage
+## Phase 7 — Data Binding & Logic
+Goal: bindings become first-class, not magic strings.
+- Visual binding panel: drag fields from a Data tree onto any block prop.
+- Inline expressions, custom computed fields, conditionals, loops/repeaters.
+- Sample data switcher (per template), missing-data linter, variant blocks.
+- Binding autocomplete + type-safety against the source schema.
 
-Port all remaining blocks in `src/lib/reportTemplate/blocks/`:
-hero, chart, image, gallery, callout, twoColumn, badgeList, toc, signature, slot, disclaimer, qrCode, scorecard, strengthsWatch, riskRegister, decisionBox, ddChecklist, infraTimeline, planningTable, amenityMatrix.
+## Phase 8 — Component System & Reuse
+- Reusable components with overrides (think Figma components).
+- Slot system, component library per workspace, component marketplace seed.
+- Theme inheritance + snippet library.
 
-Charts: render via QuickChart image URL (already used elsewhere) so WeasyPrint just embeds an `<img>`.
+## Phase 9 — AI-Assisted Editing
+- Layout suggestions, copy rewriting, translation, table auto-summarize.
+- Auto-pick hero image, "improve aesthetics" one-click, page-quality score.
+- Generative cover designer, auto-layout from outline, "style match" from reference PDF.
 
-### Phase 3 — Edge function + storage
+## Phase 10 — Versioning, Collaboration & Workflow
+- Version history with diff + restore, branching.
+- Realtime co-editing, comments, review/approval, audit log.
+- Scheduled publish, A/B variants, template analytics (usage, edits heatmap, engagement).
 
-- New edge function `render-template-pdf` (mirrors `render-investment-report-pdf` shape):
-  - Input: `{ templateId, reportData, brand, mode: 'preview' | 'final' }`
-  - Loads template via `manage-templates`, runs htmlRenderer, POSTs to WeasyPrint service, returns signed URL of stored PDF
-- Add `engine` column to `report_templates` (`'jspdf' | 'weasyprint'`, default `'jspdf'`)
-- ALLOWED_TABLES untouched (read uses existing `manage-templates`)
+## Phase 11 — Preview, QA & Export
+- Side-by-side preview (web ↔ PDF), real-data preview, multi-format preview.
+- Broken-binding linter, performance budget, print proof, accessibility audit.
+- Exports: WeasyPrint PDF, PDF/A, PDF/X, PPTX, DOCX, HTML, watermark, password, auto TOC, cross-refs, cover variants.
+- Per-section headers/footers, running headers, first/last-different, custom page-break rules.
 
-### Phase 4 — Editor wiring
+## Phase 12 — Power-User & Polish
+- Custom CSS per template + raw HTML block + CSS variable overrides.
+- Plugin SDK + CLI/API.
+- Asset DAM, locale/RTL, required-disclaimer rules, region-specific content.
+- Onboarding tour, "Wow" generative cover designer, theme marketplace, live brand-sync.
 
-- Existing jsPDF preview stays as the live in-editor canvas (fast)
-- Add **"Preview WeasyPrint output"** button in the editor header → opens generated PDF in new tab
-- Add Engine selector to template settings (jspdf | weasyprint) — chooses which renderer is used at production time
-- Add "Custom CSS" tab next to Tokens / Slots / Versions
+---
 
-### Phase 5 — Investment Compass pilot
+## Execution Notes
+- Each phase ends with: migration (if needed) + builder UI + renderer support + WeasyPrint parity test against the Compass pilot.
+- Compass template stays the canary — every phase is verified by re-rendering it.
+- Feature-flagged rollout per phase; old builder remains usable until Phase 2 lands.
 
-- Seed one `report_templates` row: `report_type = 'investment'`, `tier = 'compass'`, `engine = 'weasyprint'`
-- Initial schema: port the existing `report.html.ts` cover + a representative chapter as blocks, so editors immediately have a usable starting point
-- Add feature flag in `render-investment-report-pdf`: when a Compass report has an active template with `engine = 'weasyprint'`, route through `render-template-pdf` instead of the hard-coded HTML builders
-- All non-Compass reports untouched
-
-## Technical details
-
-**Files added**
-- `src/lib/reportTemplate/htmlRenderer.ts`
-- `src/lib/reportTemplate/blocks/*.html.ts` (one per block)
-- `src/lib/reportTemplate/cssTokens.ts` (token → CSS var compiler)
-- `supabase/functions/render-template-pdf/index.ts`
-
-**Files modified**
-- `src/pages/admin/TemplateBuilderEditor.tsx` (add WeasyPrint preview button + engine selector + custom CSS tab)
-- `src/hooks/useReportTemplates.ts` (surface `engine`, `custom_css`)
-- `supabase/functions/render-investment-report-pdf/index.ts` (Compass-only feature-flag fork)
-- `weasyprint-service/app.py` — only if we need to accept inline CSS (already does)
-
-**DB migration** (one migration, awaiting approval)
-- `report_templates` add `engine text not null default 'jspdf' check (engine in ('jspdf','weasyprint'))`
-- `report_templates` add `custom_css text`
-
-**Risks / known tradeoffs**
-- Absolute-positioned overlays from the editor canvas need translation to `position: absolute` inside a `position: relative` page — pixel parity with jsPDF preview is approximate, not exact. Acceptable for v1.
-- WeasyPrint cold start ~1–2s on the existing service; the editor preview button shows a spinner.
-- Charts via QuickChart introduce an external dependency in the PDF render path (already true elsewhere).
-
-## Scope guardrails
-
-- No changes to non-Compass report generation
-- jsPDF renderer untouched
-- No schema breaking changes — `engine` and `custom_css` are additive with safe defaults
-- WeasyPrint service container itself is not modified
-
-## Out of scope (future phases)
-
-- Migrating other report types (Cash Flow, Q&A, Borrowing) — same pattern, separate ticket
-- Removing jsPDF entirely
-- Visual diff regression tests between jsPDF and WeasyPrint outputs
+Approve and I'll start Phase 1 immediately.
