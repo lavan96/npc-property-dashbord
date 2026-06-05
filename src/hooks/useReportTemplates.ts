@@ -162,6 +162,17 @@ export function useReportTemplateMutations() {
 }
 
 // ─── Version history ──────────────────────────────────────────────────────────
+export interface ReportTemplateVersionRow {
+  id: string;
+  template_id: string;
+  version: number;
+  schema: ReportTemplate;
+  note: string | null;
+  label: string | null;
+  created_by_name: string | null;
+  created_at: string;
+}
+
 export function useReportTemplateVersions(templateId: string | undefined) {
   return useQuery({
     queryKey: templateId ? VERS_KEY(templateId) : ['report-templates', 'no-versions'],
@@ -177,13 +188,76 @@ export function useReportTemplateVersions(templateId: string | undefined) {
         },
       });
       if (error) throw new Error(error.message);
-      return (data?.records || []) as Array<{
-        id: string;
-        version: number;
-        schema: ReportTemplate;
-        note: string | null;
-        created_at: string;
-      }>;
+      return ((data?.records || []) as any[]).map((r) => ({
+        ...r,
+        schema: parseTemplate(r?.schema),
+      })) as ReportTemplateVersionRow[];
     },
   });
 }
+
+/** Mutations specific to version snapshots: label edits + manual snapshots. */
+export function useReportTemplateVersionMutations(templateId: string | undefined) {
+  const qc = useQueryClient();
+
+  const setLabel = useMutation({
+    mutationFn: async (args: { versionRowId: string; label: string | null; note?: string | null }) => {
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_template_versions',
+        recordId: args.versionRowId,
+        data: { label: args.label, ...(args.note !== undefined ? { note: args.note } : {}) },
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      if (templateId) qc.invalidateQueries({ queryKey: VERS_KEY(templateId) });
+    },
+    onError: (e: Error) => toast.error(`Update failed: ${e.message}`),
+  });
+
+  /** Manually snapshot the current template (no schema change), incrementing version. */
+  const snapshotNow = useMutation({
+    mutationFn: async (args: { label?: string | null; note?: string | null }) => {
+      if (!templateId) throw new Error('No template');
+      const current = await invokeSecureFunction('manage-templates', {
+        operation: 'get',
+        table: 'report_templates',
+        recordId: templateId,
+      });
+      const cur = current.data?.record;
+      if (!cur) throw new Error('Template not found');
+      const nextVersion = (cur.version || 1) + 1;
+      const { error: insertErr } = await invokeSecureFunction('manage-templates', {
+        operation: 'insert',
+        table: 'report_template_versions',
+        data: {
+          template_id: templateId,
+          version: cur.version || 1,
+          schema: cur.schema,
+          note: args.note ?? null,
+          label: args.label ?? null,
+        },
+      });
+      if (insertErr) throw new Error(insertErr.message);
+      const { error: updateErr } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_templates',
+        recordId: templateId,
+        data: { version: nextVersion },
+      });
+      if (updateErr) throw new Error(updateErr.message);
+    },
+    onSuccess: () => {
+      if (templateId) {
+        qc.invalidateQueries({ queryKey: VERS_KEY(templateId) });
+        qc.invalidateQueries({ queryKey: ONE_KEY(templateId) });
+      }
+      toast.success('Snapshot saved');
+    },
+    onError: (e: Error) => toast.error(`Snapshot failed: ${e.message}`),
+  });
+
+  return { setLabel, snapshotNow };
+}
+
