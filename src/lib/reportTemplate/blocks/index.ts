@@ -104,6 +104,20 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   sparkline: drawExtrasPlaceholder,
   'before-after': drawExtrasPlaceholder,
   'image-text': drawExtrasPlaceholder,
+  // Phase 6 — data-driven blocks (jsPDF placeholder; real fidelity in HTML)
+  'data-grid': drawExtrasPlaceholder,
+  'pivot-table': drawExtrasPlaceholder,
+  'chart-bar': drawExtrasPlaceholder,
+  'chart-stacked-bar': drawExtrasPlaceholder,
+  'chart-line': drawExtrasPlaceholder,
+  'chart-area': drawExtrasPlaceholder,
+  'chart-pie': drawExtrasPlaceholder,
+  'chart-donut': drawExtrasPlaceholder,
+  'chart-scatter': drawExtrasPlaceholder,
+  'chart-radar': drawExtrasPlaceholder,
+  heatmap: drawExtrasPlaceholder,
+  'kpi-strip': drawExtrasPlaceholder,
+  legend: drawExtrasPlaceholder,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
