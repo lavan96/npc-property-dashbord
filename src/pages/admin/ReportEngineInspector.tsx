@@ -1042,6 +1042,7 @@ interface PlanResponse {
   template_pool_size: number;
   total_embedding_chunks: number;
   retrieval_note: string;
+  section_template_map: Record<string, string[]>;
   overrides: null | {
     report: any;
     pre_gen_overrides: Record<string, any>;
@@ -1058,6 +1059,12 @@ function StaticPlanTab() {
   const [reportId, setReportId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<PlanResponse | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
+  const [templateChunks, setTemplateChunks] = useState<Record<string, any[]>>({});
+  const [savingMap, setSavingMap] = useState(false);
+  const [overridesDraft, setOverridesDraft] = useState<string>('');
+  const [savingOverrides, setSavingOverrides] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -1077,6 +1084,7 @@ function StaticPlanTab() {
       return;
     }
     setPlan(data ?? null);
+    setOverridesDraft(JSON.stringify(data?.overrides?.pre_gen_overrides ?? {}, null, 2));
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [scope, reportTier, reportCategory]);
@@ -1086,6 +1094,46 @@ function StaticPlanTab() {
     for (const r of plan?.overrides?.section_override_map ?? []) m.set(r.section_id, r.override_keys);
     return m;
   }, [plan]);
+
+  const loadTemplateChunks = async (id: string) => {
+    if (templateChunks[id]) return;
+    const { data, error } = await invokeSecureFunction<{ chunks: any[] }>(
+      'report-engine-inspector', { op: 'list_template_chunks', template_id: id, limit: 200 },
+    );
+    if (error) { toast({ title: 'Failed to load chunks', description: error.message, variant: 'destructive' }); return; }
+    setTemplateChunks((prev) => ({ ...prev, [id]: data?.chunks ?? [] }));
+  };
+
+  const toggleSectionTemplate = async (sectionId: string, templateId: string, checked: boolean) => {
+    if (!plan) return;
+    const current = plan.section_template_map?.[sectionId] ?? [];
+    const next = checked ? Array.from(new Set([...current, templateId])) : current.filter((x) => x !== templateId);
+    setSavingMap(true);
+    const { error } = await invokeSecureFunction(
+      'report-engine-inspector',
+      { op: 'set_section_template_map', scope, section_id: sectionId, template_ids: next },
+    );
+    setSavingMap(false);
+    if (error) { toast({ title: 'Failed to save', description: error.message, variant: 'destructive' }); return; }
+    setPlan({ ...plan, section_template_map: { ...plan.section_template_map, [sectionId]: next } });
+    toast({ title: 'Saved', description: `${sectionId} → ${next.length} templates` });
+  };
+
+  const saveOverrides = async () => {
+    if (!reportId.trim()) return;
+    let parsed: any;
+    try { parsed = JSON.parse(overridesDraft); }
+    catch (e: any) { toast({ title: 'Invalid JSON', description: e.message, variant: 'destructive' }); return; }
+    setSavingOverrides(true);
+    const { error } = await invokeSecureFunction(
+      'report-engine-inspector',
+      { op: 'update_report_manual_overrides', report_id: reportId.trim(), manual_overrides: parsed },
+    );
+    setSavingOverrides(false);
+    if (error) { toast({ title: 'Save failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Saved', description: 'manual_overrides updated' });
+    load();
+  };
 
   return (
     <div className="space-y-4">
@@ -1121,10 +1169,10 @@ function StaticPlanTab() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="text-[10px] uppercase text-muted-foreground">Report ID (optional overlay)</label>
+            <label className="text-[10px] uppercase text-muted-foreground">Report ID (optional overlay + edit)</label>
             <div className="flex gap-2">
               <Input value={reportId} onChange={(e) => setReportId(e.target.value)}
-                placeholder="investment_reports.id — overlays manual_overrides + post-gen edits"
+                placeholder="investment_reports.id"
                 className="text-xs h-8 font-mono" />
               <Button size="sm" onClick={load} disabled={loading}>
                 {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
@@ -1134,6 +1182,7 @@ function StaticPlanTab() {
         </div>
         <p className="text-[10px] text-muted-foreground mt-2">
           {plan?.retrieval_note || 'Showing what the engine would do for the selected scope without running it.'}
+          <span className="ml-2 text-foreground/70">Click a section or template row to drill down and edit.</span>
         </p>
       </Card>
 
@@ -1141,7 +1190,7 @@ function StaticPlanTab() {
         <div className="text-sm text-muted-foreground">Loading…</div>
       ) : (
         <div className="grid grid-cols-12 gap-4">
-          {/* Template pool */}
+          {/* Template pool — clickable cards expand to show embedding chunks */}
           <Card className="col-span-5 p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold">Eligible Template Pool</h3>
@@ -1157,32 +1206,63 @@ function StaticPlanTab() {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {plan.templates.map((t) => (
-                    <div key={t.id} className="border rounded p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium truncate">{t.name}</span>
-                        <Badge variant={t.embedding_chunks === 0 ? 'destructive' : 'success'} className="text-[10px] shrink-0">
-                          {t.embedding_chunks} chunks
-                        </Badge>
+                  {plan.templates.map((t) => {
+                    const open = expandedTemplate === t.id;
+                    return (
+                      <div key={t.id} className="border rounded">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = open ? null : t.id;
+                            setExpandedTemplate(next);
+                            if (next) loadTemplateChunks(t.id);
+                          }}
+                          className="w-full text-left p-2 hover:bg-muted/40 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium truncate">{open ? '▾ ' : '▸ '}{t.name}</span>
+                            <Badge variant={t.embedding_chunks === 0 ? 'destructive' : 'success'} className="text-[10px] shrink-0">
+                              {t.embedding_chunks} chunks
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {t.template_type && <Badge variant="outline" className="text-[10px]">{t.template_type}</Badge>}
+                            {t.report_tier && <Badge variant="secondary" className="text-[10px]">{t.report_tier}</Badge>}
+                            {t.report_category && <Badge variant="outline" className="text-[10px]">{t.report_category}</Badge>}
+                            {t.priority != null && <Badge variant="outline" className="text-[10px]">p{t.priority}</Badge>}
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{t.id}</div>
+                        </button>
+                        {open && (
+                          <div className="border-t bg-muted/20 p-2 space-y-1">
+                            {!templateChunks[t.id] ? (
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" /> loading chunks…
+                              </div>
+                            ) : templateChunks[t.id].length === 0 ? (
+                              <div className="text-[10px] text-muted-foreground">No embeddings ingested for this template yet.</div>
+                            ) : (
+                              templateChunks[t.id].map((c: any) => (
+                                <details key={c.id} className="border rounded bg-background/60">
+                                  <summary className="cursor-pointer text-[10px] px-2 py-1 flex justify-between">
+                                    <span>chunk #{c.chunk_index} · {c.token_count ?? '?'} tok</span>
+                                    <span className="font-mono text-muted-foreground">{String(c.id).slice(0, 8)}</span>
+                                  </summary>
+                                  <pre className="text-[10px] whitespace-pre-wrap font-mono p-2 max-h-48 overflow-auto">{c.content}</pre>
+                                </details>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        {t.template_type && <Badge variant="outline" className="text-[10px]">{t.template_type}</Badge>}
-                        {t.report_tier && <Badge variant="secondary" className="text-[10px]">{t.report_tier}</Badge>}
-                        {t.report_category && <Badge variant="outline" className="text-[10px]">{t.report_category}</Badge>}
-                        {t.priority != null && <Badge variant="outline" className="text-[10px]">p{t.priority}</Badge>}
-                      </div>
-                      <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{t.id}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              Every section below is eligible to retrieve from this pool. The live engine picks the top-K embedding chunks per section by semantic similarity.
-            </p>
           </Card>
 
-          {/* Sections */}
+          {/* Sections — clickable rows expand to show per-section template assignment + overrides */}
           <Card className="col-span-7 p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold">Registry Sections ({plan.sections.length})</h3>
@@ -1198,100 +1278,131 @@ function StaticPlanTab() {
               )}
             </div>
             <ScrollArea className="h-[60vh]">
-              <table className="w-full text-[11px]">
-                <thead className="sticky top-0 bg-background z-10">
-                  <tr className="text-muted-foreground">
-                    <th className="text-left p-1.5 w-10">#</th>
-                    <th className="text-left p-1.5">Section</th>
-                    <th className="text-left p-1.5">Template pool</th>
-                    <th className="text-left p-1.5">Pre-gen overrides</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.sections.map((s) => {
-                    const ov = sectionOverrideMap.get(s.id) ?? [];
-                    return (
-                      <tr key={s.id} className="border-t border-border/40 align-top">
-                        <td className="p-1.5 text-muted-foreground">{s.ordinal}</td>
-                        <td className="p-1.5">
-                          <div className="font-medium">{s.name}</div>
-                          <div className="text-[10px] font-mono text-muted-foreground">{s.id}</div>
-                          {s.sourceHeadings && s.sourceHeadings.length > 0 && (
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
-                              headings: {s.sourceHeadings.join(' · ')}
+              <div className="space-y-1">
+                {plan.sections.map((s) => {
+                  const ov = sectionOverrideMap.get(s.id) ?? [];
+                  const assigned = plan.section_template_map?.[s.id] ?? [];
+                  const open = expandedSection === s.id;
+                  return (
+                    <div key={s.id} className="border rounded">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSection(open ? null : s.id)}
+                        className="w-full text-left p-2 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-[11px] text-muted-foreground w-6 shrink-0">{s.ordinal}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium">{open ? '▾ ' : '▸ '}{s.name}</div>
+                            <div className="text-[10px] font-mono text-muted-foreground truncate">{s.id}</div>
+                            {s.sourceHeadings && s.sourceHeadings.length > 0 && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                headings: {s.sourceHeadings.join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <Badge variant={assigned.length > 0 ? 'success' : 'outline'} className="text-[10px]">
+                              {assigned.length > 0 ? `${assigned.length} pinned` : `pool: ${plan.template_pool_size}`}
+                            </Badge>
+                            {ov.length > 0 && (
+                              <Badge variant="warning" className="text-[10px]">★ {ov.length} override{ov.length > 1 ? 's' : ''}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                      {open && (
+                        <div className="border-t bg-muted/20 p-3 space-y-3">
+                          {s.purpose && <div className="text-[10px] text-muted-foreground italic">{s.purpose}</div>}
+                          {s.pageBudget != null && (
+                            <div className="text-[10px] text-muted-foreground">Page budget: {s.pageBudget}</div>
+                          )}
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] uppercase font-semibold text-muted-foreground">Template Assignment</span>
+                              {savingMap && <Loader2 className="h-3 w-3 animate-spin" />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mb-2">
+                              Tick a template to <span className="text-foreground">pin</span> it to this section. If none pinned, the engine retrieves from the full pool by similarity.
+                            </p>
+                            <div className="space-y-1 max-h-56 overflow-auto pr-1">
+                              {plan.templates.map((t) => {
+                                const checked = assigned.includes(t.id);
+                                return (
+                                  <label key={t.id} className="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-muted/30 rounded px-1 py-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      disabled={savingMap}
+                                      onChange={(e) => toggleSectionTemplate(s.id, t.id, e.target.checked)}
+                                    />
+                                    <span className="truncate flex-1">{t.name}</span>
+                                    <Badge variant="outline" className="text-[9px]">{t.embedding_chunks}c</Badge>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {ov.length > 0 && (
+                            <div>
+                              <div className="text-[10px] uppercase font-semibold text-muted-foreground mb-1">Pre-gen override keys matched to this section</div>
+                              <div className="flex flex-wrap gap-1">
+                                {ov.map((k) => (
+                                  <Badge key={k} variant="warning" className="text-[10px] font-mono">★ {k}</Badge>
+                                ))}
+                              </div>
                             </div>
                           )}
-                        </td>
-                        <td className="p-1.5">
-                          <Badge variant={plan.template_pool_size === 0 ? 'destructive' : 'success'} className="text-[10px]">
-                            {plan.template_pool_size} eligible · {plan.total_embedding_chunks} chunks
-                          </Badge>
-                        </td>
-                        <td className="p-1.5">
-                          {!plan.overrides ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : ov.length === 0 ? (
-                            <Badge variant="outline" className="text-[10px]">none matched</Badge>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {ov.map((k) => (
-                                <Badge key={k} variant="warning" className="text-[10px] font-mono">★ {k}</Badge>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </ScrollArea>
           </Card>
 
-          {plan.overrides && (
+          {/* Editable manual_overrides packet */}
+          {reportId.trim() && (
             <Card className="col-span-12 p-3">
-              <h3 className="text-sm font-semibold mb-2">Override Overlay for Report</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="warning">Pre-generation</Badge>
-                    <span className="text-[10px] text-muted-foreground">investment_reports.manual_overrides</span>
-                  </div>
-                  <ScrollArea className="h-64 rounded border bg-muted/30 p-2">
-                    <pre className="text-[10px] font-mono whitespace-pre-wrap">
-                      {JSON.stringify(plan.overrides.pre_gen_overrides, null, 2)}
-                    </pre>
-                  </ScrollArea>
+                  <h3 className="text-sm font-semibold">Data Packet · manual_overrides</h3>
+                  <p className="text-[10px] text-muted-foreground">Direct edit of <span className="font-mono">investment_reports.manual_overrides</span> for report <span className="font-mono">{reportId.trim()}</span>. Audited on save.</p>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="info">Post-generation</Badge>
-                    <span className="text-[10px] text-muted-foreground">report_engine_audit entries for this report</span>
-                  </div>
-                  <ScrollArea className="h-64 rounded border bg-muted/30 p-2">
-                    {plan.overrides.post_gen_edits.length === 0 ? (
-                      <div className="text-[11px] text-muted-foreground">No post-gen edits recorded.</div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {plan.overrides.post_gen_edits.map((e, i) => (
-                          <div key={i} className="border-b border-border/40 pb-1">
-                            <div className="flex items-center justify-between">
-                              <Badge variant="outline" className="text-[10px]">{e.target_kind}</Badge>
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(e.performed_at).toLocaleString()}
-                              </span>
-                            </div>
-                            {e.rationale && <div className="text-[10px] text-muted-foreground mt-0.5">{e.rationale}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setOverridesDraft(JSON.stringify(plan.overrides?.pre_gen_overrides ?? {}, null, 2))}>Reset</Button>
+                  <Button size="sm" onClick={saveOverrides} disabled={savingOverrides}>
+                    {savingOverrides ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Save overrides
+                  </Button>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                Per-section mapping above is a heuristic token match between override key names and section ids/headings. A FULL ingestion check requires a live run (see Runs tab → Packet Matrix).
-              </p>
+              <Textarea
+                value={overridesDraft}
+                onChange={(e) => setOverridesDraft(e.target.value)}
+                className="font-mono text-[11px] h-72"
+                spellCheck={false}
+              />
+              {plan.overrides && plan.overrides.post_gen_edits.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase font-semibold text-muted-foreground mb-1">Recent post-gen audit entries</div>
+                  <ScrollArea className="h-40 rounded border bg-muted/20 p-2">
+                    <div className="space-y-1">
+                      {plan.overrides.post_gen_edits.map((e, i) => (
+                        <div key={i} className="border-b border-border/40 pb-1">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-[10px]">{e.target_kind}</Badge>
+                            <span className="text-[10px] text-muted-foreground">{new Date(e.performed_at).toLocaleString()}</span>
+                          </div>
+                          {e.rationale && <div className="text-[10px] text-muted-foreground mt-0.5">{e.rationale}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
             </Card>
           )}
         </div>
