@@ -369,6 +369,42 @@ Deno.serve(async (req) => {
         return json({ results }, corsHeaders);
       }
 
+      case 'resolve_templates': {
+        // Input: { template_ids: string[] } accepts raw UUIDs or "template:<uuid>".
+        const raw: any[] = Array.isArray(body.template_ids) ? body.template_ids : [];
+        const ids = Array.from(new Set(raw
+          .map((v) => String(v || '').replace(/^template:/, '').trim())
+          .filter((v) => /^[0-9a-f-]{36}$/i.test(v))));
+        if (ids.length === 0) return json({ templates: [] }, corsHeaders);
+        const { data, error } = await supabase
+          .from('report_structure_templates')
+          .select('id, name, template_type, report_tier, report_category, is_active, priority')
+          .in('id', ids);
+        if (error) throw error;
+        return json({ templates: data ?? [] }, corsHeaders);
+      }
+
+      case 'get_report_overrides': {
+        // Pre-gen overrides + best-effort post-gen audit entries for a report.
+        const reportId = String(body.report_id || '');
+        if (!reportId) return json({ error: 'report_id required' }, corsHeaders, 400);
+        const { data: report } = await supabase
+          .from('investment_reports')
+          .select('id, manual_overrides, updated_at, created_at, report_scope')
+          .eq('id', reportId).maybeSingle();
+        const { data: audit } = await supabase
+          .from('report_engine_audit')
+          .select('target_kind, target_id, before_value, after_value, performed_at, rationale')
+          .eq('target_id', reportId)
+          .order('performed_at', { ascending: false })
+          .limit(50);
+        return json({
+          report,
+          pre_gen_overrides: report?.manual_overrides ?? null,
+          post_gen_edits: audit ?? [],
+        }, corsHeaders);
+      }
+
       default:
         console.warn('[report-engine-inspector] unknown op', { rawOp, op, bodyKeys: Object.keys(body ?? {}) });
         return json({
@@ -377,7 +413,7 @@ Deno.serve(async (req) => {
             'list_runs', 'get_run', 'get_chunk', 'list_proposals', 'list_audit',
             'apply_proposal', 'reject_proposal', 'list_engine_config', 'upsert_engine_config',
             'delete_engine_config', 'list_prompts', 'upsert_prompt', 'delete_prompt',
-            'export_prompts', 'import_prompts',
+            'export_prompts', 'import_prompts', 'resolve_templates', 'get_report_overrides',
           ],
         }, corsHeaders, 400);
     }
