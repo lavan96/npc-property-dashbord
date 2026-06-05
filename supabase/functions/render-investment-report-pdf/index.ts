@@ -2065,7 +2065,7 @@ function applyEditorialMarkdown(md: string): string {
 
   out = out.replace(/~~\[([\d.,\s\-]+)\]~~/g, (_m, list) => {
     const vals = String(list).split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
-    return renderInlineSparkSvg(vals);
+    return minifySvg(renderInlineSparkSvg(vals));
   });
 
   return out;
