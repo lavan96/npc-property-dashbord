@@ -389,3 +389,118 @@ export function routeCompositeSection(heading: string): RoutingDecision {
 export function normaliseStructuralHeading(raw: string): string {
   return raw.replace(/^\s*\d+\s*[—\-:.]?\s*/, '').trim();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DB-overlay loader
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants above are fallback defaults. At runtime the loader reads
+// report_engine_config rows (config_key='split_routes' / 'split_metadata' /
+// 'split_section_order_fin' / 'split_section_order_pldd') and overlays them on
+// top. Agent edits these via staged proposals → inspector apply_proposal
+// upserts into report_engine_config. No new table required.
+
+// deno-lint-ignore-file no-explicit-any
+export interface LoadedSplitRegistry {
+  routes: SplitRoute[];
+  finSectionOrder: { ordinal: number; heading: string }[];
+  plddSectionOrder: { ordinal: number; heading: string }[];
+  finTitle: string;
+  finSubtitle: string;
+  plddTitle: string;
+  plddSubtitle: string;
+  finLensPreamble: string;
+  plddLensPreamble: string;
+  finFooter: string;
+  plddFooter: string;
+  source: { routes: 'default' | 'db'; metadata: 'default' | 'db'; section_orders: 'default' | 'db' };
+  routeCompositeSection: (heading: string) => RoutingDecision;
+}
+
+function makeRouter(routes: SplitRoute[]) {
+  return (heading: string): RoutingDecision => {
+    const norm = (heading || '').toLowerCase().trim().replace(/^#+\s*/, '');
+    for (const route of routes) {
+      for (const pattern of route.match) {
+        if (norm.includes(pattern)) return { route, matchedHeading: heading };
+      }
+    }
+    return { route: null, matchedHeading: heading };
+  };
+}
+
+export async function loadSplitRegistry(supabase: any): Promise<LoadedSplitRegistry> {
+  let routes: SplitRoute[] = SPLIT_ROUTES;
+  let finOrder = FIN_SECTION_ORDER;
+  let plddOrder = PLDD_SECTION_ORDER;
+  let finTitle = FIN_REPORT_TITLE;
+  let finSubtitle = FIN_REPORT_SUBTITLE;
+  let plddTitle = PLDD_REPORT_TITLE;
+  let plddSubtitle = PLDD_REPORT_SUBTITLE;
+  let finLens = FIN_LENS_PREAMBLE;
+  let plddLens = PLDD_LENS_PREAMBLE;
+  let finFooter = FIN_FOOTER_DISCLAIMER;
+  let plddFooter = PLDD_FOOTER_DISCLAIMER;
+  const source: LoadedSplitRegistry['source'] = { routes: 'default', metadata: 'default', section_orders: 'default' };
+
+  try {
+    const { data } = await supabase
+      .from('report_engine_config')
+      .select('config_key, value')
+      .in('config_key', ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd']);
+
+    for (const row of (data as any[]) ?? []) {
+      if (row.config_key === 'split_routes' && Array.isArray(row.value)) {
+        const valid = (row.value as any[]).filter((r) => r && Array.isArray(r.match) && typeof r.target === 'string' && typeof r.rule === 'string');
+        if (valid.length) { routes = valid as SplitRoute[]; source.routes = 'db'; }
+      } else if (row.config_key === 'split_section_order_fin' && Array.isArray(row.value)) {
+        finOrder = row.value as any[]; source.section_orders = 'db';
+      } else if (row.config_key === 'split_section_order_pldd' && Array.isArray(row.value)) {
+        plddOrder = row.value as any[]; source.section_orders = 'db';
+      } else if (row.config_key === 'split_metadata' && row.value && typeof row.value === 'object') {
+        const m = row.value as any;
+        if (typeof m.fin_title === 'string') finTitle = m.fin_title;
+        if (typeof m.fin_subtitle === 'string') finSubtitle = m.fin_subtitle;
+        if (typeof m.pldd_title === 'string') plddTitle = m.pldd_title;
+        if (typeof m.pldd_subtitle === 'string') plddSubtitle = m.pldd_subtitle;
+        if (typeof m.fin_lens_preamble === 'string') finLens = m.fin_lens_preamble;
+        if (typeof m.pldd_lens_preamble === 'string') plddLens = m.pldd_lens_preamble;
+        if (typeof m.fin_footer === 'string') finFooter = m.fin_footer;
+        if (typeof m.pldd_footer === 'string') plddFooter = m.pldd_footer;
+        source.metadata = 'db';
+      }
+    }
+  } catch (e) {
+    console.warn('[reportSplitRegistry] DB overlay failed, using defaults:', (e as Error).message);
+  }
+
+  return {
+    routes,
+    finSectionOrder: finOrder,
+    plddSectionOrder: plddOrder,
+    finTitle, finSubtitle, plddTitle, plddSubtitle,
+    finLensPreamble: finLens,
+    plddLensPreamble: plddLens,
+    finFooter, plddFooter,
+    source,
+    routeCompositeSection: makeRouter(routes),
+  };
+}
+
+/** In-code defaults as a JSON bundle — used by the agent's "reset" tool. */
+export function defaultSplitRegistryBundle() {
+  return {
+    routes: SPLIT_ROUTES,
+    section_order_fin: FIN_SECTION_ORDER,
+    section_order_pldd: PLDD_SECTION_ORDER,
+    metadata: {
+      fin_title: FIN_REPORT_TITLE,
+      fin_subtitle: FIN_REPORT_SUBTITLE,
+      pldd_title: PLDD_REPORT_TITLE,
+      pldd_subtitle: PLDD_REPORT_SUBTITLE,
+      fin_lens_preamble: FIN_LENS_PREAMBLE,
+      pldd_lens_preamble: PLDD_LENS_PREAMBLE,
+      fin_footer: FIN_FOOTER_DISCLAIMER,
+      pldd_footer: PLDD_FOOTER_DISCLAIMER,
+    },
+  };
+}

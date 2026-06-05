@@ -10,6 +10,8 @@ import {
   createUnauthorizedResponse,
   createForbiddenResponse,
 } from '../_shared/auth.ts';
+import { loadSplitRegistry, defaultSplitRegistryBundle } from '../_shared/reportSplitRegistry.ts';
+import { loadPacketConfig, applyPacketConfig, DEFAULT_PACKET_KEYS } from '../_shared/packetConfigLoader.ts';
 
 const SYSTEM_PROMPT = `
 You are the Report Engine Operator: a strictly-scoped AI agent whose ONLY job is to
@@ -38,6 +40,15 @@ You can PROPOSE (everything is staged — a superadmin clicks Apply):
 - propose_section_template_map_edit: pin specific templates to specific section_keys for a scope.
 - propose_report_override_edit: shallow-merge a patch into a specific report's
   manual_overrides jsonb (pass null for a key to delete it).
+- propose_split_registry_edit / reset_split_registry_to_defaults: edit the
+  composite→fork routing rules (split_routes), titles/lens/footers (split_metadata),
+  and FIN/PLDD section orders. These drive fork-investment-report — edits affect
+  every future fork. Always read get_split_registry first so you can diff defaults
+  vs live before staging a change.
+- propose_packet_config_edit: control which keys/columns the data_packet inlines
+  per scope (whitelist inline_keys, blacklist exclude_keys, extra inline_columns,
+  per-section overrides, max_bytes_per_key truncation). simulate_data_packet
+  reflects this immediately so you can preview the effect.
 
 You CANNOT:
 - Touch any table other than the engine + report tables listed above.
@@ -533,7 +544,7 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'simulate_data_packet',
-        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates). Use when the user asks about what gets sent to the model for a specific report id.',
+        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map + packet_config. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates, packet_config filtering trace). Use when the user asks about what gets sent to the model for a specific report id.',
         parameters: {
           type: 'object',
           properties: {
@@ -543,6 +554,75 @@ function toolDefs() {
             include_raw_overrides: { type: 'boolean', description: 'inline the full manual_overrides jsonb (default false — only keys + sizes)' },
           },
           required: ['report_id'],
+        },
+      },
+    },
+    // ── Split registry tools (FIN / PLDD fork routing) ──
+    {
+      type: 'function',
+      function: {
+        name: 'get_split_registry',
+        description: 'Read the live composite→fork split registry (routing rules, section orders, titles/subtitles/lens preambles/footers) as resolved by loadSplitRegistry. Returns both the DB-overlaid live values AND the in-code defaults so the agent can diff them. This drives fork-investment-report; edits affect every future FIN/PLDD fork.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_split_registry_edit',
+        description: 'Stage an edit to one of the split registry config_keys (split_routes | split_metadata | split_section_order_fin | split_section_order_pldd). Provide the FULL new value (not a patch) — for routes pass the full array. The inspector apply_proposal handler upserts it into report_engine_config.',
+        parameters: {
+          type: 'object',
+          properties: {
+            config_key: { type: 'string', enum: ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd'] },
+            new_value: { description: 'Full replacement value for the config_key (array for routes/section_orders, object for metadata).' },
+            rationale: { type: 'string' },
+          },
+          required: ['config_key', 'new_value', 'rationale'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'reset_split_registry_to_defaults',
+        description: 'Stage a proposal that restores one (or all) split registry config_keys to the in-code defaults. Use to recover after a bad edit.',
+        parameters: {
+          type: 'object',
+          properties: {
+            config_key: { type: 'string', enum: ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd', 'all'] },
+            rationale: { type: 'string' },
+          },
+          required: ['config_key', 'rationale'],
+        },
+      },
+    },
+    // ── Packet config tools (which keys/columns get inlined into the data_packet) ──
+    {
+      type: 'function',
+      function: {
+        name: 'get_packet_config',
+        description: 'Read the data_packet construction config for a scope. Controls inline_keys (whitelist), exclude_keys (blacklist), inline_columns (extra investment_reports columns to pull), per_section_overrides, and max_bytes_per_key truncation. Returns resolved value + source (default | global | scope).',
+        parameters: {
+          type: 'object',
+          properties: { scope: { type: 'string', description: 'compass | briefing | snapshot | suburb | postcode | statewide | global' } },
+          required: ['scope'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_packet_config_edit',
+        description: 'Stage an edit to the packet_config for a scope. Pass the FULL new value object: { inline_keys?: string[], exclude_keys?: string[], inline_columns?: string[], per_section_overrides?: {[key]: {inline_keys?, exclude_keys?}}, max_bytes_per_key?: number }. Use scope="global" to set a baseline; per-scope rows override it.',
+        parameters: {
+          type: 'object',
+          properties: {
+            scope: { type: 'string' },
+            new_value: { type: 'object' },
+            rationale: { type: 'string' },
+          },
+          required: ['scope', 'new_value', 'rationale'],
         },
       },
     },
@@ -1215,8 +1295,12 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         data_sources: report.data_sources ?? null,
       };
 
+      // Apply packet_config filtering (whitelist/blacklist/truncation)
+      const packetCfg = await loadPacketConfig(supabase, scope);
+      const { filtered: filteredPacket, trace: packetTrace } = applyPacketConfig(packet, packetCfg, args.section_key);
+
       const sizes: Record<string, number> = {};
-      for (const [k, v] of Object.entries(packet)) {
+      for (const [k, v] of Object.entries(filteredPacket)) {
         sizes[k] = v == null ? 0 : JSON.stringify(v).length;
       }
       const totalBytes = Object.values(sizes).reduce((a, b) => a + b, 0);
@@ -1264,12 +1348,124 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
           injected_at_root: true,
           note: 'manual_overrides is shallow-merged into the packet root and also passed verbatim — sections can read it directly.',
         },
-        packet_shape: Object.keys(packet),
+        packet_shape: Object.keys(filteredPacket),
         packet_sizes_bytes: sizes,
         packet_total_bytes: totalBytes,
-        packet_preview: packet,
+        packet_preview: filteredPacket,
+        packet_config: { resolved: packetCfg, trace: packetTrace },
         section_slice: sectionSlice,
       };
+    }
+
+    // ── Split registry tools ─────────────────────────────────────────────
+    case 'get_split_registry': {
+      const live = await loadSplitRegistry(supabase);
+      const defaults = defaultSplitRegistryBundle();
+      const { data: configs } = await supabase
+        .from('report_engine_config').select('config_key, scope, value, updated_at, updated_by')
+        .in('config_key', ['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd']);
+      return {
+        source: live.source,
+        live: {
+          routes_count: live.routes.length,
+          routes: live.routes,
+          section_order_fin: live.finSectionOrder,
+          section_order_pldd: live.plddSectionOrder,
+          metadata: {
+            fin_title: live.finTitle, fin_subtitle: live.finSubtitle,
+            pldd_title: live.plddTitle, pldd_subtitle: live.plddSubtitle,
+            fin_lens_preamble: live.finLensPreamble, pldd_lens_preamble: live.plddLensPreamble,
+            fin_footer: live.finFooter, pldd_footer: live.plddFooter,
+          },
+        },
+        defaults,
+        db_rows: configs ?? [],
+        note: 'Edits via propose_split_registry_edit stage into report_engine_proposals; superadmin Apply upserts into report_engine_config. Affects every future FIN/PLDD fork from fork-investment-report.',
+      };
+    }
+
+    case 'propose_split_registry_edit': {
+      const config_key = String(args.config_key || '');
+      if (!['split_routes', 'split_metadata', 'split_section_order_fin', 'split_section_order_pldd'].includes(config_key)) {
+        return { error: 'invalid config_key' };
+      }
+      const { data: before } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', config_key).eq('scope', 'global').maybeSingle();
+      const p = await stageProposal(supabase, {
+        target_kind: 'engine_config',
+        target_id: `${config_key}:global`,
+        before_value: before ?? null,
+        after_value: { config_key, scope: 'global', value: args.new_value },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
+    }
+
+    case 'reset_split_registry_to_defaults': {
+      const defaults = defaultSplitRegistryBundle();
+      const target = String(args.config_key || 'all');
+      const map: Record<string, any> = {
+        split_routes: defaults.routes,
+        split_section_order_fin: defaults.section_order_fin,
+        split_section_order_pldd: defaults.section_order_pldd,
+        split_metadata: defaults.metadata,
+      };
+      const keys = target === 'all' ? Object.keys(map) : [target];
+      const staged: any[] = [];
+      for (const key of keys) {
+        if (!(key in map)) continue;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', key).eq('scope', 'global').maybeSingle();
+        const p = await stageProposal(supabase, {
+          target_kind: 'engine_config',
+          target_id: `${key}:global`,
+          before_value: before ?? null,
+          after_value: { config_key: key, scope: 'global', value: map[key] },
+          rationale: args.rationale + ' (reset to in-code defaults)',
+          proposed_by_agent: true,
+          status: 'pending',
+        });
+        staged.push(p);
+      }
+      return { staged_count: staged.length, proposals: staged };
+    }
+
+    // ── Packet config tools ──────────────────────────────────────────────
+    case 'get_packet_config': {
+      const scope = String(args.scope || 'global');
+      const cfg = await loadPacketConfig(supabase, scope);
+      const { data: rows } = await supabase
+        .from('report_engine_config').select('config_key, scope, value, updated_at, updated_by')
+        .in('config_key', ['packet_config', `packet_config:${scope}`]);
+      return {
+        scope_requested: scope,
+        resolved: cfg,
+        default_packet_keys: DEFAULT_PACKET_KEYS,
+        db_rows: rows ?? [],
+        note: 'inline_keys empty = include all DEFAULT_PACKET_KEYS. exclude_keys always wins. per_section_overrides override the scope-level lists for that section_key only.',
+      };
+    }
+
+    case 'propose_packet_config_edit': {
+      const scope = String(args.scope || 'global');
+      const config_key = scope === 'global' ? 'packet_config' : `packet_config:${scope}`;
+      const { data: before } = await supabase
+        .from('report_engine_config').select('*')
+        .eq('config_key', config_key).eq('scope', scope === 'global' ? 'global' : scope).maybeSingle();
+      const p = await stageProposal(supabase, {
+        target_kind: 'engine_config',
+        target_id: `${config_key}:${scope === 'global' ? 'global' : scope}`,
+        before_value: before ?? null,
+        after_value: { config_key, scope: scope === 'global' ? 'global' : scope, value: args.new_value },
+        rationale: args.rationale,
+        proposed_by_agent: true,
+        status: 'pending',
+      });
+      return p;
     }
 
     default:
