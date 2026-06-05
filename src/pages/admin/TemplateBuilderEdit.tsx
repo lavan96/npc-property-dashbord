@@ -57,6 +57,7 @@ import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
+import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
 
