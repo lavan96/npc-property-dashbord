@@ -454,9 +454,10 @@ function toolDefs() {
         description: 'Recent applied engine changes from report_engine_audit (who, when, before/after, rationale).',
         parameters: {
           type: 'object',
-          properties: { limit: { type: 'number' }, target_kind: { type: 'string' } },
+          properties: { limit: { type: 'number' }, target_kind: { type: 'string' }, target_id: { type: 'string' } },
           additionalProperties: false,
         },
+
       },
     },
 
