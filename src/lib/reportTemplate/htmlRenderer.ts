@@ -272,13 +272,31 @@ export function renderTemplateToHtml(
 
   const visiblePages = template.pages.filter((p) => evalConditional(p.conditional, ctxBase));
 
+  // Phase 8 — walk all bookmarks to build a TOC index that auto-toc blocks read.
+  const tocEntries: Array<{ label: string; level: number; pageIndex: number; anchor: string }> = [];
+  visiblePages.forEach((pg, pi) => {
+    for (const b of pg.blocks) {
+      const bm: any = (b as any).bookmark;
+      if (!bm?.name) continue;
+      if (bm.includeInToc === false) continue;
+      const label = bm.label ? resolveBindable(bm.label, ctxBase) : (b.name || bm.name);
+      tocEntries.push({
+        label: String(label),
+        level: Number(bm.level ?? 2),
+        pageIndex: pi,
+        anchor: `anc-${String(bm.name).replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      });
+    }
+  });
+
   const pageHtml = visiblePages.map((page, idx) => {
     const pageCtx: ResolveContext = {
       ...ctxBase,
-      data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length },
+      data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
     return renderPage(page, pageCtx, idx, template, visiblePages);
   }).join('\n');
+
 
   const css = [
     tokensToFontFaceCss(tokens),
