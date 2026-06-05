@@ -1238,6 +1238,115 @@ function StaticPlanTab() {
         </p>
       </Card>
 
+      {/* Report ID lookup + drill-down */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold">Report Lookup</h3>
+            <p className="text-[10px] text-muted-foreground">Enter a report ID to see its summary, latest run, and override keys.</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Input
+              value={lookupId}
+              onChange={(e) => setLookupId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') doLookup(); }}
+              placeholder="investment_reports.id (uuid)"
+              className="text-xs h-8 font-mono w-[340px]"
+            />
+            <Button size="sm" onClick={() => doLookup()} disabled={lookupLoading}>
+              {lookupLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Lookup'}
+            </Button>
+            {lookup?.report?.id && (
+              <Button size="sm" variant="outline" onClick={() => { setReportId(lookup.report.id); load(); }}>
+                Load as overlay
+              </Button>
+            )}
+          </div>
+        </div>
+        {lookup?.report && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Summary</div>
+              <div className="text-xs font-medium">{lookup.report.property_address || '—'}</div>
+              <div className="text-[10px] text-muted-foreground">
+                {[lookup.report.suburb, lookup.report.state, lookup.report.postcode].filter(Boolean).join(', ') || '—'}
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                <Badge variant="outline" className="text-[10px]">{lookup.report.report_type || '—'}</Badge>
+                {lookup.report.report_variant && <Badge variant="secondary" className="text-[10px]">{lookup.report.report_variant}</Badge>}
+                <Badge variant={lookup.report.status === 'completed' ? 'success' : 'outline'} className="text-[10px]">{lookup.report.status}</Badge>
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{lookup.report.id}</div>
+            </div>
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Latest run ({lookup.runs?.length ?? 0} total)</div>
+              {lookup.latest_run ? (
+                <>
+                  <div className="text-[10px] font-mono truncate">{lookup.latest_run.id}</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <Badge variant="outline" className="text-[10px]">{lookup.latest_run.scope || '—'}</Badge>
+                    {lookup.latest_run.variant && <Badge variant="secondary" className="text-[10px]">{lookup.latest_run.variant}</Badge>}
+                    <Badge variant={lookup.latest_run.status === 'completed' ? 'success' : lookup.latest_run.status === 'failed' ? 'destructive' : 'outline'} className="text-[10px]">{lookup.latest_run.status}</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {lookup.latest_run.model || '—'} · {(lookup.latest_run.total_prompt_tokens ?? 0) + (lookup.latest_run.total_completion_tokens ?? 0)} tok
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{lookup.latest_run.started_at && new Date(lookup.latest_run.started_at).toLocaleString()}</div>
+                </>
+              ) : <div className="text-[10px] text-muted-foreground">No runs recorded.</div>}
+            </div>
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Override keys ({lookup.override_count})</div>
+              {lookup.override_keys?.length ? (
+                <div className="flex flex-wrap gap-1 mt-1 max-h-28 overflow-auto">
+                  {lookup.override_keys.map((k: string) => (
+                    <Badge key={k} variant="warning" className="text-[10px] font-mono">★ {k}</Badge>
+                  ))}
+                </div>
+              ) : <div className="text-[10px] text-muted-foreground">No manual_overrides on this report.</div>}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Pending section_template_map proposals */}
+      {pendingMapProps.length > 0 && (
+        <Card className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Pending section_template_map proposals</h3>
+            <Badge variant="warning" className="text-[10px]">{pendingMapProps.length}</Badge>
+          </div>
+          <div className="space-y-1">
+            {pendingMapProps.map((p) => {
+              const cfgKey = String(p.after_value?.config_key || '');
+              const beforeMap = p.before_value?.value || {};
+              const afterMap = p.after_value?.value || {};
+              const changedKeys = Array.from(new Set([...Object.keys(beforeMap), ...Object.keys(afterMap)]))
+                .filter((k) => JSON.stringify(beforeMap[k]) !== JSON.stringify(afterMap[k]));
+              return (
+                <div key={p.id} className="border rounded p-2 text-[11px] flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono">{cfgKey}</div>
+                    {changedKeys.map((k) => (
+                      <div key={k} className="text-[10px] text-muted-foreground">
+                        <span className="font-mono">{k}</span>: {Array.isArray(beforeMap[k]) ? beforeMap[k].length : 0} → {Array.isArray(afterMap[k]) ? afterMap[k].length : 0} templates
+                      </div>
+                    ))}
+                    {p.rationale && <div className="text-[10px] text-muted-foreground italic mt-0.5">{p.rationale}</div>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => rejectProposal(p.id)}>Reject</Button>
+                    <Button size="sm" onClick={() => applyProposal(p.id)}>Apply</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+
+
       {!plan ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
       ) : (
