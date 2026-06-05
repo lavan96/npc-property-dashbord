@@ -261,6 +261,8 @@ export const PageSchema = z.object({
     suffix: BindableStringSchema.optional(),
     hide: z.boolean().optional(),                     // suppress page number for this page
   }).optional(),
+  // Phase 10 — per-page theme override (id into template.themes)
+  themeId: z.string().optional(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
