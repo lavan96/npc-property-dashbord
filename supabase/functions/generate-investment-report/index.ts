@@ -4912,29 +4912,49 @@ DATA INTEGRITY & CONSISTENCY RULES (CRITICAL — VIOLATIONS DESTROY REPORT CREDI
 
 This report should feel like a polished advisory document that inspires confidence, not a data spreadsheet.`;
 
-    // Runtime override: report_engine_config.system_message (scope = reportScope, fallback 'default')
+    // Runtime overrides (resolution order, first hit wins):
+    //  1. report_engine_config(config_key='prompt:investment_report.system.<scope>', scope='default')  ← Prompt Library
+    //  2. report_engine_config(config_key='prompt:investment_report.system.default', scope='default')  ← Prompt Library fallback
+    //  3. report_engine_config(config_key='system_message', scope=<scope>)                              ← legacy Engine Config
+    //  4. report_engine_config(config_key='system_message', scope='default')                            ← legacy Engine Config fallback
+    //  5. in-code areaSystemMessages[<scope>] / systemMessageDefault
     let systemMessage = systemMessageDefault;
     let systemMessageOverrideScope: string | null = null;
     try {
-      const { data: cfgRows } = await supabase
-        .from('report_engine_config')
-        .select('scope, value')
-        .eq('config_key', 'system_message')
-        .in('scope', [reportScope, 'default']);
-      if (Array.isArray(cfgRows) && cfgRows.length) {
-        const exact = cfgRows.find((r: any) => r.scope === reportScope);
-        const def = cfgRows.find((r: any) => r.scope === 'default');
-        const pick = exact || def;
-        if (pick && typeof pick.value === 'string' && pick.value.trim()) {
-          systemMessage = pick.value
-            .replace(/\{\{brand_name\}\}/g, _brandName)
-            .replace(/\{\{scope\}\}/g, reportScope || '');
-          systemMessageOverrideScope = pick.scope;
-          console.log(`✏️  system_message override from report_engine_config (scope=${pick.scope})`);
-        }
+      const scopeKey = `prompt:investment_report.system.${reportScope}`;
+      const defaultKey = 'prompt:investment_report.system.default';
+      const [{ data: promptRows }, { data: cfgRows }] = await Promise.all([
+        supabase
+          .from('report_engine_config')
+          .select('config_key, value')
+          .in('config_key', [scopeKey, defaultKey])
+          .eq('scope', 'default'),
+        supabase
+          .from('report_engine_config')
+          .select('scope, value')
+          .eq('config_key', 'system_message')
+          .in('scope', [reportScope, 'default']),
+      ]);
+      const promptScoped = (promptRows ?? []).find((r: any) => r.config_key === scopeKey);
+      const promptDefault = (promptRows ?? []).find((r: any) => r.config_key === defaultKey);
+      const legacyScoped = (cfgRows ?? []).find((r: any) => r.scope === reportScope);
+      const legacyDefault = (cfgRows ?? []).find((r: any) => r.scope === 'default');
+      const pick = promptScoped || (areaSystemMessages[reportScope] ? null : promptDefault) || legacyScoped || legacyDefault;
+      const pickSource = pick === promptScoped ? `prompt-library:${reportScope}`
+        : pick === promptDefault ? 'prompt-library:default'
+        : pick === legacyScoped ? `engine-config:${reportScope}`
+        : pick === legacyDefault ? 'engine-config:default'
+        : null;
+      const rawValue = pick ? (typeof pick.value === 'string' ? pick.value : (pick.value?.text ?? pick.value?.value ?? null)) : null;
+      if (rawValue && typeof rawValue === 'string' && rawValue.trim()) {
+        systemMessage = rawValue
+          .replace(/\{\{brand_name\}\}/g, _brandName)
+          .replace(/\{\{scope\}\}/g, reportScope || '');
+        systemMessageOverrideScope = pickSource;
+        console.log(`✏️  system prompt override from ${pickSource}`);
       }
     } catch (cfgErr) {
-      console.warn('report_engine_config lookup failed (fail-open):', cfgErr);
+      console.warn('system prompt override lookup failed (fail-open):', cfgErr);
     }
 
 
