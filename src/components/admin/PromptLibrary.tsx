@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { toast } from '@/hooks/use-toast';
 import { Copy, Download, Upload, RotateCcw, Save, RefreshCw, Search } from 'lucide-react';
 
