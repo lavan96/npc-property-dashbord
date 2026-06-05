@@ -62,10 +62,10 @@ function splitIntoSections(markdown: string): { preamble: string; sections: Pars
   return { preamble: preambleLines.join('\n').trim(), sections };
 }
 
-function buildLensIntro(variant: ForkVariant, rule: SplitRoute['rule']): string {
+function buildLensIntro(registry: LoadedSplitRegistry, variant: ForkVariant, rule: SplitRoute['rule']): string {
   if (rule === 'verbatim') return '';
-  if (variant === 'financial' && rule === 'financial_lens') return FIN_LENS_PREAMBLE + '\n\n';
-  if (variant === 'due_diligence' && rule === 'property_lens') return PLDD_LENS_PREAMBLE + '\n\n';
+  if (variant === 'financial' && rule === 'financial_lens') return registry.finLensPreamble + '\n\n';
+  if (variant === 'due_diligence' && rule === 'property_lens') return registry.plddLensPreamble + '\n\n';
   return '';
 }
 
@@ -82,6 +82,7 @@ interface AssembledSection {
 }
 
 function assembleForVariant(
+  registry: LoadedSplitRegistry,
   variant: ForkVariant,
   parsed: ParsedSection[],
 ): AssembledSection[] {
@@ -90,7 +91,7 @@ function assembleForVariant(
   let fallbackOrdinal = 100;
 
   for (const section of parsed) {
-    const { route } = routeCompositeSection(section.normalisedHeading);
+    const { route } = registry.routeCompositeSection(section.normalisedHeading);
     if (!route) continue;
 
     const isTargeted =
@@ -113,7 +114,7 @@ function assembleForVariant(
     }
     usedOrdinals.add(ordinal);
 
-    const lensIntro = buildLensIntro(variant, route.rule);
+    const lensIntro = buildLensIntro(registry, variant, route.rule);
     const body = route.rule === 'summarise_only'
       ? summariseBody(section.body)
       : section.body;
@@ -132,13 +133,14 @@ function assembleForVariant(
 }
 
 function renderVariantMarkdown(
+  registry: LoadedSplitRegistry,
   variant: ForkVariant,
   propertyAddress: string,
   sections: AssembledSection[],
 ): string {
-  const title = variant === 'financial' ? FIN_REPORT_TITLE : PLDD_REPORT_TITLE;
-  const subtitle = variant === 'financial' ? FIN_REPORT_SUBTITLE : PLDD_REPORT_SUBTITLE;
-  const footer = variant === 'financial' ? FIN_FOOTER_DISCLAIMER : PLDD_FOOTER_DISCLAIMER;
+  const title = variant === 'financial' ? registry.finTitle : registry.plddTitle;
+  const subtitle = variant === 'financial' ? registry.finSubtitle : registry.plddSubtitle;
+  const footer = variant === 'financial' ? registry.finFooter : registry.plddFooter;
 
   const cover = `# ${title}\n\n_${subtitle}_\n\n**Property:** ${propertyAddress}\n\n**Generated:** ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}\n\n---\n\n`;
 
