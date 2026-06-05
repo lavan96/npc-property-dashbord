@@ -96,12 +96,53 @@ export type Overlay = z.infer<typeof OverlaySchema>;
 // A "block" is a structured, reusable unit (hero, table, disclaimer, ...).
 // Each block has its own `props` shape, validated by the block registry.
 // `overlays[]` sit on top of the block (free-form text/image/shape).
+// Phase 4 — Block-level style/decoration (additive, all optional).
+export const BlockStyleSchema = z.object({
+  // Decoration (rendered as a backdrop behind the block bounds)
+  backgroundColor: BindableColorSchema.optional(),
+  borderColor: BindableColorSchema.optional(),
+  borderWidth: z.number().min(0).max(8).optional(),    // pt
+  borderStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
+  borderRadius: z.number().min(0).max(48).optional(),  // pt
+  shadow: z.enum(['none', 'sm', 'md', 'lg', 'xl']).optional(),
+  // Padding inset for the decoration backdrop (pt)
+  paddingTop: z.number().min(0).max(96).optional(),
+  paddingRight: z.number().min(0).max(96).optional(),
+  paddingBottom: z.number().min(0).max(96).optional(),
+  paddingLeft: z.number().min(0).max(96).optional(),
+  // Transform applied to the rendered group (block + overlays)
+  opacity: z.number().min(0).max(1).optional(),
+  rotation: z.number().min(-360).max(360).optional(),  // deg
+  zIndex: z.number().int().optional(),
+}).optional();
+
+// Phase 4 — Repeat from binding (render this block once per item).
+export const BlockRepeatSchema = z.object({
+  path: z.string().min(1),                      // e.g. "properties" → data.properties[]
+  alias: z.string().optional(),                 // default "item" → exposed as data.{alias}
+  max: z.number().int().min(1).max(50).optional(),
+  spacing: z.number().min(0).max(400).optional(), // pt — vertical offset between repeats
+}).optional();
+
+// Phase 4 — Multi-rule visibility (compiles to conditional expression).
+export const BlockVisibilitySchema = z.object({
+  mode: z.enum(['always', 'when', 'unless']).default('always'),
+  expr: z.string().optional(),                   // mirrors `conditional` semantics
+}).optional();
+
 export const BlockSchema = z.object({
   id: z.string(),
   type: z.string(),                              // 'disclaimer', 'hero', 'kpi-grid', 'free', ...
   props: z.record(z.unknown()).default({}),      // block-specific
   overlays: z.array(OverlaySchema).default([]),
   conditional: z.string().optional(),
+  // Phase 4 additions — all optional, backwards compatible
+  style: BlockStyleSchema,
+  repeat: BlockRepeatSchema,
+  visibility: BlockVisibilitySchema,
+  locked: z.boolean().optional(),                // editor-only: prevent selection/drag
+  hidden: z.boolean().optional(),                // skip render entirely
+  name: z.string().optional(),                   // designer label (Outline)
 });
 
 export type Block = z.infer<typeof BlockSchema>;

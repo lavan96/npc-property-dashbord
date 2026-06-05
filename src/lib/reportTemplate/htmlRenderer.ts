@@ -87,6 +87,90 @@ function pageCss(pages: Page[]): string {
   return rules.join('\n');
 }
 
+const SHADOW_PRESETS: Record<string, string> = {
+  none: 'none',
+  sm: '0 1pt 2pt rgba(15,23,42,0.08)',
+  md: '0 3pt 8pt rgba(15,23,42,0.10)',
+  lg: '0 8pt 20pt rgba(15,23,42,0.14)',
+  xl: '0 16pt 40pt rgba(15,23,42,0.18)',
+};
+
+function evalBlockVisibility(v: any, ctx: ResolveContext): boolean {
+  if (!v || !v.mode || v.mode === 'always') return true;
+  const expr = String(v.expr ?? '').trim();
+  if (!expr) return true;
+  const truthy = evalConditional(expr, ctx);
+  return v.mode === 'unless' ? !truthy : truthy;
+}
+
+function decorationBackdrop(block: any, ctx: ResolveContext): string {
+  const s = block.style;
+  if (!s) return '';
+  const hasDecor =
+    s.backgroundColor || s.borderColor || s.borderWidth || s.borderRadius || (s.shadow && s.shadow !== 'none');
+  if (!hasDecor) return '';
+  const p = (block.props ?? {}) as Record<string, unknown>;
+  const x = Number(p.x ?? 24);
+  const y = Number(p.y ?? 80);
+  const w = Number(p.width ?? 547);
+  const h = Number(p.height ?? 100);
+  const pt = Number(s.paddingTop ?? 0);
+  const pr = Number(s.paddingRight ?? 0);
+  const pb = Number(s.paddingBottom ?? 0);
+  const pl = Number(s.paddingLeft ?? 0);
+  const bg = s.backgroundColor ? resolveBindableColor(s.backgroundColor, ctx, 'transparent') : 'transparent';
+  const borderCol = s.borderColor ? resolveBindableColor(s.borderColor, ctx, 'transparent') : 'transparent';
+  const bw = Number(s.borderWidth ?? 0);
+  const bs = String(s.borderStyle ?? 'solid');
+  const radius = Number(s.borderRadius ?? 0);
+  const shadow = SHADOW_PRESETS[String(s.shadow ?? 'none')] ?? 'none';
+  return `<div aria-hidden="true" style="position:absolute;left:${x - pl}pt;top:${y - pt}pt;width:${w + pl + pr}pt;height:${h + pt + pb}pt;background:${bg};border:${bw}pt ${bs} ${borderCol};border-radius:${radius}pt;box-shadow:${shadow};pointer-events:none;"></div>`;
+}
+
+function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string {
+  const renderer = getHtmlBlockRenderer(block.type);
+  const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
+  const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
+  const backdrop = decorationBackdrop(block, ctxBase);
+  const s = block.style ?? {};
+  const opacity = s.opacity != null ? Number(s.opacity) : 1;
+  const rotation = s.rotation != null ? Number(s.rotation) : 0;
+  const z = s.zIndex != null ? `z-index:${Number(s.zIndex)};` : '';
+  if (opacity === 1 && rotation === 0 && !z) {
+    return `${backdrop}${body}${overlays}`;
+  }
+  // Transform group — wrap so opacity/rotation apply uniformly. We anchor at
+  // the top-left of the block's bounding box for predictable rotation.
+  const p = (block.props ?? {}) as Record<string, unknown>;
+  const ox = Number(p.x ?? 0);
+  const oy = Number(p.y ?? 0);
+  return `<div style="position:absolute;left:0;top:0;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:${ox}pt ${oy}pt;${z}">${backdrop}${body}${overlays}</div>`;
+}
+
+function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string[] {
+  const r = block.repeat;
+  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx)];
+  const raw = r.path.split('.').reduce((acc: any, k: string) => (acc == null ? acc : acc[k.trim()]), ctxBase.data);
+  const items = Array.isArray(raw) ? raw : [];
+  const max = r.max ?? items.length;
+  const alias = r.alias || 'item';
+  const spacing = Number(r.spacing ?? 0);
+  const baseY = Number((block.props as any)?.y ?? 0);
+  const out: string[] = [];
+  for (let i = 0; i < Math.min(items.length, max); i++) {
+    const offsetY = baseY + i * spacing;
+    const itemBlock = {
+      ...block,
+      props: { ...(block.props ?? {}), y: offsetY },
+      repeat: undefined,
+    };
+    const itemCtx: ResolveContext = { ...ctxBase, data: { ...ctxBase.data, [alias]: items[i], [`${alias}Index`]: i } };
+    const itemBlockCtx: HtmlBlockContext = { ...blockCtx, data: itemCtx.data };
+    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx));
+  }
+  return out;
+}
+
 function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[]): string {
   const blockCtx: HtmlBlockContext = {
     ...ctxBase,
@@ -108,13 +192,12 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
 
   const blocks: string[] = [];
   for (const block of page.blocks) {
+    if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
-    const renderer = getHtmlBlockRenderer(block.type);
-    blocks.push(renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx));
-    for (const overlay of block.overlays) {
-      blocks.push(renderOverlay(overlay, ctxBase));
-    }
+    if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx));
   }
+
 
   return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${blocks.join('\n')}</section>`;
 }
