@@ -25,6 +25,7 @@ import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateComm
 import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
+import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
@@ -91,6 +92,7 @@ export default function TemplateBuilderEdit() {
   const [showComments, setShowComments] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
+  const [showAIAuthor, setShowAIAuthor] = useState(false);
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
@@ -928,6 +930,9 @@ export default function TemplateBuilderEdit() {
               <Sparkles className="h-4 w-4 mr-1" /> Analytics
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
+            <Wand2 className="h-4 w-4 mr-1" /> AI Author
+          </Button>
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
@@ -1414,6 +1419,31 @@ export default function TemplateBuilderEdit() {
           template={template}
         />
       )}
+      <TemplateAIAuthorDialog
+        open={showAIAuthor}
+        onOpenChange={setShowAIAuthor}
+        template={template}
+        activePage={activePage ?? null}
+        tier={tier}
+        onAddPage={(page, rationale) => {
+          setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
+          setActivePageId(page.id);
+          toast.success(`Added "${page.name}"${rationale ? '' : ''}`);
+        }}
+        onUpdateOverlayText={(pageId, overlayId, nextText) => {
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => p.id !== pageId ? p : ({
+              ...p,
+              blocks: p.blocks.map((b) => ({
+                ...b,
+                overlays: b.overlays.map((o) => o.id === overlayId && o.type === 'text' ? ({ ...o, content: nextText } as any) : o),
+              })),
+            })),
+          }));
+        }}
+        onApplyName={(n, d) => { setName(n); setDescription(d); }}
+      />
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
           <TemplateCommentsPanel

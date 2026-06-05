@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.template-analytics]
 verify_jwt = false
 
+[functions.template-ai-author]
+verify_jwt = true
+
 [functions.finance-portal-client-comms]
 verify_jwt = false
 
