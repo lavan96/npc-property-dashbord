@@ -5,6 +5,7 @@ import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 import { compassSections, financialSections, type CompassSectionDefinition as CanonicalSectionDefinition } from '../_shared/compassSectionRegistry.ts';
+import { startRun as traceStartRun, recordChunk as traceRecordChunk, finishRun as traceFinishRun, packetKeysAttached as tracePacketKeys } from '../_shared/generation-trace.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -5042,8 +5043,24 @@ YOUR DEDICATED PROPERTY PARTNER
 
     console.log(`📋 Sections to generate: ${filteredSections.length}/${REPORT_SECTIONS.length}${isAreaReport ? ` (${REPORT_SECTIONS.length - filteredSections.length} excluded for area report)` : ''}`);
 
+    // === OBSERVABILITY: start a generation run row (best-effort, never throws) ===
+    const _traceSb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const _traceRunId: string | null = await traceStartRun(_traceSb, {
+      report_id: reportId ?? null,
+      scope: reportScope ?? null,
+      variant: (requestBody as any)?.variant ?? null,
+      engine_version: 'composite-v1',
+      trigger_source: isContinuation ? 'chunked-resume' : 'generate',
+      template_ids: [],
+      system_prompt: systemMessage,
+      data_packet: enhancedData ?? null,
+      model: 'sonar-pro',
+    });
+    if (_traceRunId) console.log(`🔭 generation-trace run started: ${_traceRunId}`);
+
     for (let i = 0; i < filteredSections.length; i++) {
       const sectionDef = filteredSections[i];
+      const _chunkStart = Date.now();
       
       // CONTINUATION MODE: Skip already-completed sections
       if (isContinuation && completedSectionIndices.includes(i)) {
@@ -5161,6 +5178,22 @@ YOUR DEDICATED PROPERTY PARTNER
         // === END CAPITAL GROWTH EXTRACTION ===
         
         combinedContent += bestContent + '\n\n---\n\n';
+
+        // === OBSERVABILITY: record this chunk ===
+        await traceRecordChunk(_traceSb, _traceRunId, {
+          section_key: sectionDef.id,
+          section_label: sectionDef.name,
+          ordinal: i,
+          phase: sectionAttempts > 1 ? 'retry' : 'first-pass',
+          model: 'sonar-pro',
+          system_prompt: systemMessage,
+          user_prompt: `[section ${sectionDef.name}] basePrompt sha-skipped (len=${prompt.length})`,
+          attached_packet_keys: enhancedData ? Object.keys(enhancedData).filter((k) => !k.startsWith('_')) : [],
+          response: bestContent,
+          retry_count: sectionAttempts - 1,
+          status: 'completed',
+          latency_ms: Date.now() - _chunkStart,
+        });
         
         sectionResults.push({
           id: sectionDef.id,
@@ -5697,6 +5730,7 @@ YOUR DEDICATED PROPERTY PARTNER
     };
 
     console.log('Returning successful response');
+    await traceFinishRun(_traceSb, _traceRunId, { status: 'completed' });
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200
