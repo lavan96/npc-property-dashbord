@@ -11,6 +11,8 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 import { PROMPT_CATALOG, getPromptCatalogEntry } from '../_shared/engine-prompts.ts';
+import { COMPASS_40_SECTIONS } from '../_shared/compassSectionRegistry.ts';
+import { FIN_SECTION_ORDER, PLDD_SECTION_ORDER } from '../_shared/reportSplitRegistry.ts';
 
 async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
