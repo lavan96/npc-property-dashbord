@@ -5,6 +5,7 @@ import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
 import { compassSections, financialSections, type CompassSectionDefinition as CanonicalSectionDefinition } from '../_shared/compassSectionRegistry.ts';
+import { startRun as traceStartRun, recordChunk as traceRecordChunk, finishRun as traceFinishRun, packetKeysAttached as tracePacketKeys } from '../_shared/generation-trace.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -5042,8 +5043,24 @@ YOUR DEDICATED PROPERTY PARTNER
 
     console.log(`📋 Sections to generate: ${filteredSections.length}/${REPORT_SECTIONS.length}${isAreaReport ? ` (${REPORT_SECTIONS.length - filteredSections.length} excluded for area report)` : ''}`);
 
+    // === OBSERVABILITY: start a generation run row (best-effort, never throws) ===
+    const _traceSb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const _traceRunId: string | null = await traceStartRun(_traceSb, {
+      report_id: reportId ?? null,
+      scope: reportScope ?? null,
+      variant: (body as any)?.variant ?? null,
+      engine_version: 'composite-v1',
+      trigger_source: isContinuation ? 'chunked-resume' : 'generate',
+      template_ids: (typeof activeTemplate !== 'undefined' && activeTemplate?.id) ? [activeTemplate.id] : [],
+      system_prompt: systemMessage,
+      data_packet: enhancedData ?? null,
+      model: 'sonar-pro',
+    });
+    if (_traceRunId) console.log(`🔭 generation-trace run started: ${_traceRunId}`);
+
     for (let i = 0; i < filteredSections.length; i++) {
       const sectionDef = filteredSections[i];
+      const _chunkStart = Date.now();
       
       // CONTINUATION MODE: Skip already-completed sections
       if (isContinuation && completedSectionIndices.includes(i)) {
