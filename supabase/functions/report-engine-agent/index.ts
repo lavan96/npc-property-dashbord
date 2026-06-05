@@ -66,7 +66,11 @@ that basis. Use this static-audit playbook:
   5) list_engine_config / get_engine_config — resolved system prompt, retrieval knobs,
      hard exclusions for the scope.
   6) get_audit_log(target_id=report_id) — post-gen edits already applied.
-  7) Optionally list_template_chunks on any template you want to inspect.
+  7) simulate_data_packet(report_id) — synthesise the exact payload (system prompt,
+     retrieval knobs, manual_overrides injection, per-section pinned templates) that
+     WOULD be sent to the LLM. Use this whenever the user asks about data_packet
+     contents for a report that has no runs — NEVER answer "cannot confirm injection".
+  8) Optionally list_template_chunks on any template you want to inspect.
 Combine these into a structured audit (data coverage, missing fields, override
 collisions, template-pool health, pinned vs unpinned sections, anomalies).
 Only mention "no runs recorded" as a footnote, never as a blocker.
@@ -522,6 +526,23 @@ function toolDefs() {
             column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, property_specs, validation_flags, data_sources' },
           },
           required: ['report_id', 'column'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'simulate_data_packet',
+        description: 'Synthesize the data_packet that WOULD be sent to the LLM for this report at generation time, using current investment_reports columns + engine_config + section_template_map. Bypasses the "no runs recorded" gap: returns the exact payload shape (top-level keys, sizes, manual_overrides injection, resolved system prompt, retrieval knobs, per-section pinned templates). Use when the user asks about what gets sent to the model for a specific report id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            scope: { type: 'string', description: 'override scope (defaults to report.report_tier or report.report_scope or compass)' },
+            section_key: { type: 'string', description: 'optional — also return the per-section slice (pinned templates + their chunk counts + override hints) for this section_key' },
+            include_raw_overrides: { type: 'boolean', description: 'inline the full manual_overrides jsonb (default false — only keys + sizes)' },
+          },
+          required: ['report_id'],
         },
       },
     },
@@ -1139,6 +1160,115 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         post_gen_audit: audit ?? [],
         anomalies,
         note: runs && runs.length ? undefined : 'No generation runs recorded for this report — audit performed statically from the data spine + engine config.',
+      };
+    }
+
+    case 'simulate_data_packet': {
+      const reportId = String(args.report_id || '');
+      if (!reportId) return { error: 'report_id required' };
+      const { data: report } = await supabase
+        .from('investment_reports')
+        .select(`${REPORT_BASE_SELECT}, ${REPORT_JSON_FIELDS.join(',')}`)
+        .eq('id', reportId).maybeSingle();
+      if (!report) return { error: 'report not found' };
+      const scope = String(args.scope || report.report_tier || report.report_scope || 'compass').toLowerCase();
+
+      // Engine config snapshot (system prompt + retrieval knobs)
+      const { data: configs } = await supabase
+        .from('report_engine_config').select('config_key, scope, value')
+        .in('scope', [scope, 'default', 'global']);
+      const cfgIdx: Record<string, any> = {};
+      for (const c of configs ?? []) {
+        // scope precedence: specific scope > default > global (first-wins after sort)
+      }
+      const pickCfg = (key: string) => {
+        const ordered = (configs ?? []).filter((c: any) => c.config_key === key)
+          .sort((a: any, b: any) => {
+            const rank = (s: string) => s === scope ? 0 : s === 'default' ? 1 : 2;
+            return rank(a.scope) - rank(b.scope);
+          });
+        return ordered[0]?.value ?? null;
+      };
+      const systemPrompt = pickCfg(`system_prompt:${scope}`) ?? pickCfg('system_prompt') ?? null;
+      const retrieval = pickCfg(`retrieval:${scope}`) ?? pickCfg('retrieval') ?? null;
+      const hardExclusions = pickCfg(`hard_exclusions:${scope}`) ?? pickCfg('hard_exclusions') ?? null;
+      const sectionMap = pickCfg(`section_template_map:${scope}`) ?? {};
+
+      const mo = (report.manual_overrides && typeof report.manual_overrides === 'object') ? report.manual_overrides : {};
+      const moKeys = Object.keys(mo);
+
+      // Build the simulated packet (mirrors generate-investment-report's enhancedData shape)
+      const packet: Record<string, any> = {
+        report_id: report.id,
+        property_address: report.property_address,
+        report_scope: report.report_scope,
+        report_tier: report.report_tier,
+        report_variant: report.report_variant,
+        manual_overrides: args.include_raw_overrides ? mo : { __summary: { key_count: moKeys.length, keys: moKeys } },
+        financial_calculations: report.financial_calculations ?? null,
+        demographics_data: report.demographics_data ?? null,
+        economic_data: report.economic_data ?? null,
+        investment_score: report.investment_score ?? null,
+        location_intelligence: report.location_intelligence ?? null,
+        property_specs: report.property_specs ?? null,
+        validation_flags: report.validation_flags ?? null,
+        data_sources: report.data_sources ?? null,
+      };
+
+      const sizes: Record<string, number> = {};
+      for (const [k, v] of Object.entries(packet)) {
+        sizes[k] = v == null ? 0 : JSON.stringify(v).length;
+      }
+      const totalBytes = Object.values(sizes).reduce((a, b) => a + b, 0);
+
+      // Per-section slice
+      let sectionSlice: any = null;
+      if (args.section_key) {
+        const pinnedIds: string[] = Array.isArray(sectionMap[args.section_key]) ? sectionMap[args.section_key] : [];
+        let pinnedTemplates: any[] = [];
+        let chunkCounts: Record<string, number> = {};
+        if (pinnedIds.length) {
+          const { data: tpls } = await supabase
+            .from('report_structure_templates')
+            .select('id, name, template_type, report_tier, report_category, is_active, priority')
+            .in('id', pinnedIds);
+          pinnedTemplates = tpls ?? [];
+          const docNames = pinnedIds.map((id) => `template:${id}`);
+          const { data: chunkRows } = await supabase
+            .from('document_chunks').select('document_name').in('document_name', docNames);
+          for (const r of chunkRows ?? []) chunkCounts[r.document_name] = (chunkCounts[r.document_name] ?? 0) + 1;
+        }
+        const overrideHints = moKeys.filter((k) => k.toLowerCase().includes(String(args.section_key).toLowerCase()));
+        sectionSlice = {
+          section_key: args.section_key,
+          pinned_template_ids: pinnedIds,
+          pinned_templates: pinnedTemplates.map((t: any) => ({ ...t, embedding_chunks: chunkCounts[`template:${t.id}`] ?? 0 })),
+          override_hints: overrideHints,
+        };
+      }
+
+      return {
+        report_id: report.id,
+        scope_used: scope,
+        simulated: true,
+        note: 'Synthesised from current investment_reports row + engine_config + section_template_map. This mirrors what generate-investment-report would inject as data_packet on its next run.',
+        system_prompt: systemPrompt ? { resolved: true, bytes: JSON.stringify(systemPrompt).length, value: typeof systemPrompt === 'string' ? systemPrompt.slice(0, 4000) : systemPrompt } : { resolved: false },
+        retrieval_config: retrieval,
+        hard_exclusions: hardExclusions,
+        section_template_map_keys: Object.keys(sectionMap),
+        manual_overrides_injection: {
+          present: moKeys.length > 0,
+          key_count: moKeys.length,
+          keys: moKeys,
+          bytes: sizes.manual_overrides,
+          injected_at_root: true,
+          note: 'manual_overrides is shallow-merged into the packet root and also passed verbatim — sections can read it directly.',
+        },
+        packet_shape: Object.keys(packet),
+        packet_sizes_bytes: sizes,
+        packet_total_bytes: totalBytes,
+        packet_preview: packet,
+        section_slice: sectionSlice,
       };
     }
 
