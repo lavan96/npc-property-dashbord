@@ -1339,10 +1339,11 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
           injected_at_root: true,
           note: 'manual_overrides is shallow-merged into the packet root and also passed verbatim — sections can read it directly.',
         },
-        packet_shape: Object.keys(packet),
+        packet_shape: Object.keys(filteredPacket),
         packet_sizes_bytes: sizes,
         packet_total_bytes: totalBytes,
-        packet_preview: packet,
+        packet_preview: filteredPacket,
+        packet_config: { resolved: packetCfg, trace: packetTrace },
         section_slice: sectionSlice,
       };
     }
