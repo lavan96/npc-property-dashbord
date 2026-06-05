@@ -66,7 +66,11 @@ that basis. Use this static-audit playbook:
   5) list_engine_config / get_engine_config — resolved system prompt, retrieval knobs,
      hard exclusions for the scope.
   6) get_audit_log(target_id=report_id) — post-gen edits already applied.
-  7) Optionally list_template_chunks on any template you want to inspect.
+  7) simulate_data_packet(report_id) — synthesise the exact payload (system prompt,
+     retrieval knobs, manual_overrides injection, per-section pinned templates) that
+     WOULD be sent to the LLM. Use this whenever the user asks about data_packet
+     contents for a report that has no runs — NEVER answer "cannot confirm injection".
+  8) Optionally list_template_chunks on any template you want to inspect.
 Combine these into a structured audit (data coverage, missing fields, override
 collisions, template-pool health, pinned vs unpinned sections, anomalies).
 Only mention "no runs recorded" as a footnote, never as a blocker.
