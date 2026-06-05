@@ -129,6 +129,14 @@ export function CanvasChrome({ page, canvas, onChangeCanvas }: Props) {
         >
           <Shield className="h-3.5 w-3.5" />
         </Toggle>
+        <Toggle
+          size="sm"
+          pressed={!!canvas.showBaselineGrid}
+          onPressedChange={(v) => onChangeCanvas({ ...canvas, showBaselineGrid: v })}
+          title="Baseline grid"
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
+        </Toggle>
 
         <div className="border-l border-border mx-1 h-5" />
         <span className="text-[10px] text-muted-foreground">Grid</span>
