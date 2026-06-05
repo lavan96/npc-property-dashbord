@@ -122,6 +122,20 @@ const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   sparkline: renderSparklineHtml,
   'before-after': renderBeforeAfterHtml,
   'image-text': renderImageTextHtml,
+  // Phase 6 — data-driven blocks ──────────────────────────────────────────────
+  'data-grid': renderDataGridHtml,
+  'pivot-table': renderPivotTableHtml,
+  'chart-bar': renderBarChartHtml,
+  'chart-stacked-bar': renderStackedBarChartHtml,
+  'chart-line': renderLineChartHtml,
+  'chart-area': renderAreaChartHtml,
+  'chart-pie': renderPieChartHtml,
+  'chart-donut': renderDonutChartHtml,
+  'chart-scatter': renderScatterChartHtml,
+  'chart-radar': renderRadarChartHtml,
+  heatmap: renderHeatmapHtml,
+  'kpi-strip': renderKpiStripHtml,
+  legend: renderLegendHtml,
   // 'free' blocks have no body — only overlays — and render as nothing.
   free: () => '',
 };
