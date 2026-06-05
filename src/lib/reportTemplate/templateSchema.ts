@@ -21,17 +21,31 @@ export const BindableColorSchema = z.string(); // "#hex" or "token:primary" or "
 export const BindableNumberSchema = z.union([z.number(), z.string()]);
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
+// Phase 5 — fontFaces entry. Supports either a remote stylesheet (Google Fonts
+// CSS URL) via `cssUrl`, or a direct font-file `src` for self-hosting.
+export const FontFaceSchema = z.object({
+  family: z.string(),                     // e.g. "Playfair Display"
+  cssUrl: z.string().url().optional(),    // https://fonts.googleapis.com/css2?...
+  src: z.string().url().optional(),       // direct .woff2 / .otf
+  weight: z.union([z.number(), z.string()]).optional(),
+  style: z.enum(['normal', 'italic']).optional(),
+  display: z.enum(['auto', 'swap', 'block', 'fallback', 'optional']).optional(),
+});
+export type FontFace = z.infer<typeof FontFaceSchema>;
+
 export const TokensSchema = z.object({
   colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
   fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
   spacing: z.record(z.number()).default({}),    // { gutter: 16, ... }
   // Phase 1 extensions — optional, additive, backwards-compatible
-  radii: z.record(z.number()).optional(),       // { sm:4, md:8, lg:16 } px
-  shadows: z.record(z.string()).optional(),     // { card:"0 2px 8px rgba(0,0,0,.1)" }
-  gradients: z.record(z.string()).optional(),   // { hero:"linear-gradient(135deg,#bf9b50,#f0d78c)" }
-  typeScale: z.record(z.number()).optional(),   // { xs:11, sm:12, base:14, lg:18, xl:24 } pt
+  radii: z.record(z.number()).optional(),
+  shadows: z.record(z.string()).optional(),
+  gradients: z.record(z.string()).optional(),
+  typeScale: z.record(z.number()).optional(),
   brandKitId: z.string().uuid().optional(),
   activeTheme: z.enum(['light','dark','print','custom']).optional(),
+  // Phase 5 — registered web fonts to inject via @font-face / @import
+  fontFaces: z.array(FontFaceSchema).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
 
 export type Tokens = z.infer<typeof TokensSchema>;
