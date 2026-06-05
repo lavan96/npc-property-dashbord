@@ -16195,6 +16195,81 @@ export type Database = {
         }
         Relationships: []
       }
+      template_render_jobs: {
+        Row: {
+          asset_count: number | null
+          bytes: number | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          file_name: string
+          id: string
+          metadata: Json
+          mode: string
+          page_count: number | null
+          page_master_id: string | null
+          pdf_variant: string
+          requested_by: string | null
+          signed_url: string | null
+          signed_url_expires_at: string | null
+          status: string
+          storage_path: string | null
+          tagged: boolean
+          template_id: string | null
+          template_name: string | null
+          theme_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_count?: number | null
+          bytes?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          file_name: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          page_count?: number | null
+          page_master_id?: string | null
+          pdf_variant?: string
+          requested_by?: string | null
+          signed_url?: string | null
+          signed_url_expires_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tagged?: boolean
+          template_id?: string | null
+          template_name?: string | null
+          theme_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_count?: number | null
+          bytes?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          file_name?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          page_count?: number | null
+          page_master_id?: string | null
+          pdf_variant?: string
+          requested_by?: string | null
+          signed_url?: string | null
+          signed_url_expires_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tagged?: boolean
+          template_id?: string | null
+          template_name?: string | null
+          theme_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       token_audit_log: {
         Row: {
           agency_ref: string
