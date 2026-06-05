@@ -327,6 +327,10 @@ verify_jwt = true
 verify_jwt = false
 request_timeout = 1500
 
+[functions.fork-investment-report]
+verify_jwt = false
+request_timeout = 300
+
 [functions.get-call-logs]
 verify_jwt = true
 
