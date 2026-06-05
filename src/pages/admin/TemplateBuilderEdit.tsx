@@ -57,6 +57,7 @@ import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
+import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
 
@@ -892,6 +893,7 @@ export default function TemplateBuilderEdit() {
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
+          <TabsTrigger value="brand"><Palette className="h-3.5 w-3.5 mr-1" /> Brand kit</TabsTrigger>
           <TabsTrigger value="slots"><Component className="h-3.5 w-3.5 mr-1" /> Slots ({Object.keys(template.slots ?? {}).length})</TabsTrigger>
           <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
@@ -1062,6 +1064,12 @@ export default function TemplateBuilderEdit() {
           />
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
         </TabsContent>
+
+        {/* Brand kit (Phase 1 foundations) */}
+        <TabsContent value="brand" className="px-6 py-4 max-w-3xl space-y-6">
+          <BrandKitPanel template={template} onChange={setTemplate} />
+        </TabsContent>
+
 
         {/* Reusable component slots (Header / Footer / etc.) */}
         <TabsContent value="slots" className="px-6 py-4 max-w-3xl space-y-4">
