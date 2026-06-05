@@ -61,6 +61,23 @@ export const TokensSchema = z.object({
 
 export type Tokens = z.infer<typeof TokensSchema>;
 
+// ─── Interaction (Phase 8) ─────────────────────────────────────────────────────
+// Links can be: external URL ("https://…"), internal page ("page:<pageId>"),
+// or named anchor ("anchor:<name>"). Resolved at render time.
+export const LinkSchema = z.object({
+  href: BindableStringSchema,                           // url, page:<id>, anchor:<name>
+  target: z.enum(['_self','_blank']).optional(),
+  title: BindableStringSchema.optional(),
+}).optional();
+
+// Bookmark = a named destination for cross-linking + PDF outline entry.
+export const BookmarkSchema = z.object({
+  name: z.string().min(1),                              // unique within template, used in anchor:<name>
+  label: BindableStringSchema.optional(),               // display label (TOC/outline)
+  level: z.number().int().min(1).max(6).optional(),     // outline depth
+  includeInToc: z.boolean().optional(),
+}).optional();
+
 // ─── Overlays (free-floating shapes inside a page) ────────────────────────────
 const BaseOverlay = z.object({
   id: z.string(),
@@ -71,7 +88,10 @@ const BaseOverlay = z.object({
   rotation: z.number().default(0),
   opacity: z.number().min(0).max(1).default(1),
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
+  link: LinkSchema,
+  bookmark: BookmarkSchema,
 });
+
 
 
 export const TextOverlaySchema = BaseOverlay.extend({
