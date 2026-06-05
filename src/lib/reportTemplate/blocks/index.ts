@@ -118,7 +118,9 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   heatmap: drawExtrasPlaceholder,
   'kpi-strip': drawExtrasPlaceholder,
   legend: drawExtrasPlaceholder,
+  'auto-toc': drawExtrasPlaceholder,
 };
+
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
   return BLOCK_RENDERERS[type] ?? null;
