@@ -71,9 +71,9 @@ export function TemplateAIAuthorDialog({
             <GeneratePanel
               tier={tier}
               allowedBlockTypes={allowedBlockTypes}
-              pageSize={activePage?.size ?? { width: 595, height: 842 }}
+              pageSize={{ width: activePage?.size?.width ?? 595, height: activePage?.size?.height ?? 842 }}
               onApply={(layout) => {
-                const page = layoutToPage(layout, activePage?.size);
+                const page = layoutToPage(layout, { width: activePage?.size?.width ?? 595, height: activePage?.size?.height ?? 842 });
                 onAddPage(page, layout.rationale);
                 onOpenChange(false);
               }}
