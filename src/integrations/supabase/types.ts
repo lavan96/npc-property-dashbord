@@ -14727,6 +14727,205 @@ export type Database = {
         }
         Relationships: []
       }
+      report_engine_audit: {
+        Row: {
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: string
+          performed_at: string
+          performed_by: string | null
+          proposal_id: string | null
+          rationale: string | null
+          target_id: string | null
+          target_kind: string
+        }
+        Insert: {
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          proposal_id?: string | null
+          rationale?: string | null
+          target_id?: string | null
+          target_kind: string
+        }
+        Update: {
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          proposal_id?: string | null
+          rationale?: string | null
+          target_id?: string | null
+          target_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_engine_audit_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "report_engine_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_engine_proposals: {
+        Row: {
+          after_value: Json | null
+          applied_at: string | null
+          applied_by_user: string | null
+          before_value: Json | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          patch: Json | null
+          proposed_by_agent: boolean
+          proposed_by_user: string | null
+          rationale: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          status: string
+          target_id: string | null
+          target_kind: string
+          updated_at: string
+        }
+        Insert: {
+          after_value?: Json | null
+          applied_at?: string | null
+          applied_by_user?: string | null
+          before_value?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          patch?: Json | null
+          proposed_by_agent?: boolean
+          proposed_by_user?: string | null
+          rationale?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          target_id?: string | null
+          target_kind: string
+          updated_at?: string
+        }
+        Update: {
+          after_value?: Json | null
+          applied_at?: string | null
+          applied_by_user?: string | null
+          before_value?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          patch?: Json | null
+          proposed_by_agent?: boolean
+          proposed_by_user?: string | null
+          rationale?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          target_id?: string | null
+          target_kind?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_generation_chunks: {
+        Row: {
+          attached_packet_keys: string[]
+          attached_template_chunk_ids: Json
+          completion_tokens: number
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          latency_ms: number | null
+          model: string | null
+          ordinal: number
+          phase: string | null
+          prompt_tokens: number
+          response: string | null
+          response_size_bytes: number | null
+          retrieval_meta: Json | null
+          retry_count: number
+          run_id: string
+          section_key: string
+          section_label: string | null
+          started_at: string
+          status: string
+          system_prompt: string | null
+          tool_calls: Json | null
+          user_prompt: string | null
+          user_prompt_size_bytes: number | null
+        }
+        Insert: {
+          attached_packet_keys?: string[]
+          attached_template_chunk_ids?: Json
+          completion_tokens?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          ordinal?: number
+          phase?: string | null
+          prompt_tokens?: number
+          response?: string | null
+          response_size_bytes?: number | null
+          retrieval_meta?: Json | null
+          retry_count?: number
+          run_id: string
+          section_key: string
+          section_label?: string | null
+          started_at?: string
+          status?: string
+          system_prompt?: string | null
+          tool_calls?: Json | null
+          user_prompt?: string | null
+          user_prompt_size_bytes?: number | null
+        }
+        Update: {
+          attached_packet_keys?: string[]
+          attached_template_chunk_ids?: Json
+          completion_tokens?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          ordinal?: number
+          phase?: string | null
+          prompt_tokens?: number
+          response?: string | null
+          response_size_bytes?: number | null
+          retrieval_meta?: Json | null
+          retry_count?: number
+          run_id?: string
+          section_key?: string
+          section_label?: string | null
+          started_at?: string
+          status?: string
+          system_prompt?: string | null
+          tool_calls?: Json | null
+          user_prompt?: string | null
+          user_prompt_size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_generation_chunks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "report_generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_generation_preferences: {
         Row: {
           created_at: string
@@ -14757,6 +14956,81 @@ export type Database = {
           last_used_tier?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      report_generation_runs: {
+        Row: {
+          created_at: string
+          data_packet: Json | null
+          data_packet_hash: string | null
+          data_packet_size_bytes: number | null
+          engine_version: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          initiated_by: string | null
+          model: string | null
+          registry_snapshot: Json | null
+          report_id: string | null
+          scope: string | null
+          started_at: string
+          status: string
+          system_prompt: string | null
+          template_ids: Json
+          total_completion_tokens: number
+          total_cost_cents: number
+          total_prompt_tokens: number
+          trigger_source: string | null
+          variant: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_packet?: Json | null
+          data_packet_hash?: string | null
+          data_packet_size_bytes?: number | null
+          engine_version?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          initiated_by?: string | null
+          model?: string | null
+          registry_snapshot?: Json | null
+          report_id?: string | null
+          scope?: string | null
+          started_at?: string
+          status?: string
+          system_prompt?: string | null
+          template_ids?: Json
+          total_completion_tokens?: number
+          total_cost_cents?: number
+          total_prompt_tokens?: number
+          trigger_source?: string | null
+          variant?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_packet?: Json | null
+          data_packet_hash?: string | null
+          data_packet_size_bytes?: number | null
+          engine_version?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          initiated_by?: string | null
+          model?: string | null
+          registry_snapshot?: Json | null
+          report_id?: string | null
+          scope?: string | null
+          started_at?: string
+          status?: string
+          system_prompt?: string | null
+          template_ids?: Json
+          total_completion_tokens?: number
+          total_cost_cents?: number
+          total_prompt_tokens?: number
+          trigger_source?: string | null
+          variant?: string | null
         }
         Relationships: []
       }
