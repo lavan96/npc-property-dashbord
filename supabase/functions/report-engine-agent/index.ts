@@ -279,6 +279,164 @@ function toolDefs() {
         },
       },
     },
+
+    // ---------- Report-centric (resolves report_id → runs/chunks/overrides) ----------
+    {
+      type: 'function',
+      function: {
+        name: 'find_reports',
+        description: 'Search investment_reports by address substring (case-insensitive). Returns up to 20 most recent matches with id, address, scope, tier, variant, status.',
+        parameters: {
+          type: 'object',
+          properties: {
+            address_query: { type: 'string' },
+            scope: { type: 'string' },
+            variant: { type: 'string' },
+            limit: { type: 'number' },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'lookup_report',
+        description: 'Get one investment_reports row by id with summary metadata, latest run id, run counts, and override key list. Use this whenever the user gives a report_id.',
+        parameters: {
+          type: 'object',
+          properties: { report_id: { type: 'string' } },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_report_runs',
+        description: 'List all generation runs for a given report_id, newest first.',
+        parameters: {
+          type: 'object',
+          properties: { report_id: { type: 'string' }, limit: { type: 'number' } },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_report_overrides',
+        description: 'Return manual_overrides jsonb for a report plus its top-level key list. Use before propose_report_override_edit.',
+        parameters: {
+          type: 'object',
+          properties: { report_id: { type: 'string' } },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_report_override_edit',
+        description: 'Stage a patch to investment_reports.manual_overrides. patch is shallow-merged into the existing object; pass null for a key to delete it on apply.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            patch: { type: 'object', additionalProperties: true },
+            rationale: { type: 'string' },
+          },
+          required: ['report_id', 'patch', 'rationale'],
+        },
+      },
+    },
+
+    // ---------- Chunk / run drill-down + diff ----------
+    {
+      type: 'function',
+      function: {
+        name: 'get_chunk',
+        description: 'Get one report_generation_chunks row with full system_prompt, user_prompt, response, retrieval_meta, attached packet keys, and attached template chunk ids.',
+        parameters: {
+          type: 'object',
+          properties: { chunk_id: { type: 'string' } },
+          required: ['chunk_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'compare_runs',
+        description: 'Diff two runs: system_prompt change, data_packet key set, models, total tokens, and per-section presence/latency/status differences.',
+        parameters: {
+          type: 'object',
+          properties: { run_id_a: { type: 'string' }, run_id_b: { type: 'string' } },
+          required: ['run_id_a', 'run_id_b'],
+        },
+      },
+    },
+
+    // ---------- Template chunks (RAG embeddings) ----------
+    {
+      type: 'function',
+      function: {
+        name: 'list_template_chunks',
+        description: 'List embedding chunks in document_chunks attached to a given template (via metadata.template_id). Returns ids, chunk_index, text preview, length.',
+        parameters: {
+          type: 'object',
+          properties: {
+            template_id: { type: 'string' },
+            limit: { type: 'number' },
+          },
+          required: ['template_id'],
+        },
+      },
+    },
+
+    // ---------- Section→template pinning map ----------
+    {
+      type: 'function',
+      function: {
+        name: 'get_section_template_map',
+        description: 'Read the section→template pinning map for a scope. Stored in report_engine_config under config_key=section_template_map, scope=<scope>.',
+        parameters: {
+          type: 'object',
+          properties: { scope: { type: 'string' } },
+          required: ['scope'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'propose_section_template_map_edit',
+        description: 'Stage an update to the section→template pinning map for a scope. map is the full new {section_key: [template_id, ...]} object that will overwrite the current value.',
+        parameters: {
+          type: 'object',
+          properties: {
+            scope: { type: 'string' },
+            map: { type: 'object', additionalProperties: true },
+            rationale: { type: 'string' },
+          },
+          required: ['scope', 'map', 'rationale'],
+        },
+      },
+    },
+
+    // ---------- Audit ----------
+    {
+      type: 'function',
+      function: {
+        name: 'get_audit_log',
+        description: 'Recent applied engine changes from report_engine_audit (who, when, before/after, rationale).',
+        parameters: {
+          type: 'object',
+          properties: { limit: { type: 'number' }, target_kind: { type: 'string' } },
+          additionalProperties: false,
+        },
+      },
+    },
   ];
 }
 
