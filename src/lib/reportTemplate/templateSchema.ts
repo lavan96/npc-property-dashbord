@@ -143,6 +143,16 @@ export const ReportTemplateSchema = z.object({
    * applied wherever referenced.
    */
   slots: z.record(BlockSchema).default({}),
+  // Phase 2 — canvas preferences + saved selections
+  canvas: z.object({
+    gridSize: z.number().min(2).max(64).default(8),
+    showGrid: z.boolean().default(false),
+    showRulers: z.boolean().default(true),
+    snapToGrid: z.boolean().default(false),
+    showBleed: z.boolean().default(false),
+    showSafeArea: z.boolean().default(false),
+  }).default({}).optional(),
+  savedSelections: z.record(z.array(z.string())).optional(),
 });
 
 export type ReportTemplate = z.infer<typeof ReportTemplateSchema>;
