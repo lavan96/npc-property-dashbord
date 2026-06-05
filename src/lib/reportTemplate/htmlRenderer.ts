@@ -377,8 +377,10 @@ export function renderTemplateToHtml(
   options: HtmlRenderOptions = {},
 ): HtmlRenderResult {
   const template = parseTemplate(rawTemplate);
-  const tokens = mergeTokens(template.tokens, options.tokenOverrides);
-  const ctxBase: ResolveContext = { data: options.data ?? {}, tokens };
+  const themes = (template as any).themes as Record<string, any> | undefined;
+  const activeTheme = themes && (template as any).activeThemeId ? themes[(template as any).activeThemeId] : null;
+  const baseTokens = mergeTokens(template.tokens, activeTheme?.tokens, options.tokenOverrides);
+  const ctxBase: ResolveContext = { data: options.data ?? {}, tokens: baseTokens };
 
   const visiblePages = template.pages.filter((p) => evalConditional(p.conditional, ctxBase));
 
@@ -399,9 +401,18 @@ export function renderTemplateToHtml(
     }
   });
 
+  // Phase 10 — per-page theme delta CSS (only emitted when page.themeId set).
+  const perPageThemeCss: string[] = [];
   const pageHtml = visiblePages.map((page, idx) => {
+    const pageThemeId = (page as any).themeId as string | undefined;
+    const pageTheme = pageThemeId && themes ? themes[pageThemeId] : null;
+    const pageTokens = pageTheme ? mergeTokens(baseTokens, pageTheme.tokens) : baseTokens;
+    if (pageTheme) {
+      const css = themeOverrideCss(idx, baseTokens, pageTokens);
+      if (css) perPageThemeCss.push(css);
+    }
     const pageCtx: ResolveContext = {
-      ...ctxBase,
+      tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
     return renderPage(page, pageCtx, idx, template, visiblePages);
@@ -409,10 +420,11 @@ export function renderTemplateToHtml(
 
 
   const css = [
-    tokensToFontFaceCss(tokens),
-    tokensToCssVariables(tokens),
+    tokensToFontFaceCss(baseTokens),
+    tokensToCssVariables(baseTokens),
     baseCss(),
     pageCss(visiblePages, template, ctxBase).css,
+    perPageThemeCss.join('\n'),
     options.customCss ?? '',
   ].join('\n');
 
