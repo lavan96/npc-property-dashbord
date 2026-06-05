@@ -1050,6 +1050,43 @@ export default function TemplateBuilderEdit() {
           </div>
         </TabsContent>
 
+        {/* Outline — Phase 2 */}
+        <TabsContent value="outline" className="flex-1 min-h-0 mt-2">
+          <div className="grid h-full" style={{ gridTemplateColumns: '320px minmax(0, 1fr)' }}>
+            <div className="border-r bg-background min-h-0">
+              <OutlinePanel
+                template={template}
+                activePageId={activePageId}
+                selectedBlockId={selectedBlockId}
+                selectedOverlayId={selectedOverlayId}
+                onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
+                onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
+                onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
+                onChangeTemplate={setTemplate}
+              />
+            </div>
+            <div className="border-l bg-background min-h-0">
+              <PropertiesInspector
+                template={template}
+                templateId={id}
+                page={activePage}
+                overlay={selectedOverlay}
+                selectedBlockId={selectedBlockId}
+                onUpdateOverlay={updateOverlay}
+                onDeleteOverlay={deleteOverlay}
+                onDuplicateOverlay={duplicateOverlay}
+                onUpdatePage={updatePage}
+                onSelectBlock={setSelectedBlockId}
+                onUpdateBlock={updateBlock}
+                onDeleteBlock={deleteBlock}
+                onDuplicateBlock={duplicateBlock}
+                onMoveBlock={moveBlock}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+
         {/* Metadata */}
         <TabsContent value="settings" className="px-6 py-4 max-w-3xl space-y-4">
           <div className="grid grid-cols-2 gap-3">
