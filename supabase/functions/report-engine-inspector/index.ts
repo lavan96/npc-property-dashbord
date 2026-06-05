@@ -100,8 +100,6 @@ Deno.serve(async (req) => {
       }
 
       case 'apply_proposal': {
-        // Superadmin click-to-apply. Writes audit row and (best-effort) mutates
-        // the staged target. For safety, only known target_kinds are honored.
         const proposalId = String(body.proposal_id || '');
         const { data: prop, error: pErr } = await supabase
           .from('report_engine_proposals').select('*').eq('id', proposalId).maybeSingle();
@@ -112,6 +110,8 @@ Deno.serve(async (req) => {
 
         let appliedOk = false;
         let appliedErr: string | null = null;
+        let newTargetId: string | null = prop.target_id;
+
         try {
           if (prop.target_kind === 'report_structure_template' && prop.target_id) {
             const { error } = await supabase
@@ -120,11 +120,28 @@ Deno.serve(async (req) => {
               .eq('id', prop.target_id);
             if (error) throw error;
             appliedOk = true;
-          } else {
-            // Other target kinds (registry, retrieval_config) are file-based.
-            // We still mark the proposal applied + audit it so the change is
-            // tracked, but the file edit happens outside this fn.
+          } else if (prop.target_kind === 'report_structure_template_new') {
+            const row = { ...(prop.after_value || {}), is_active: prop.after_value?.is_active ?? true, created_by: userId };
+            const { data: ins, error } = await supabase
+              .from('report_structure_templates').insert(row).select('id').single();
+            if (error) throw error;
+            newTargetId = ins?.id ?? null;
             appliedOk = true;
+          } else if (prop.target_kind === 'engine_config') {
+            const payload = prop.after_value || {};
+            const config_key = payload.config_key;
+            const scope = payload.scope || 'global';
+            if (!config_key) throw new Error('engine_config proposal missing config_key');
+            const { error } = await supabase
+              .from('report_engine_config')
+              .upsert({
+                config_key, scope, value: payload.value ?? null,
+                description: payload.description ?? null, updated_by: userId,
+              }, { onConflict: 'config_key,scope' });
+            if (error) throw error;
+            appliedOk = true;
+          } else {
+            throw new Error(`unknown target_kind: ${prop.target_kind}`);
           }
         } catch (e: any) {
           appliedErr = e?.message || String(e);
@@ -135,13 +152,14 @@ Deno.serve(async (req) => {
           applied_by_user: userId,
           applied_at: new Date().toISOString(),
           rejection_reason: appliedErr,
+          target_id: newTargetId,
         }).eq('id', proposalId);
 
         if (appliedOk) {
           await supabase.from('report_engine_audit').insert({
             proposal_id: proposalId,
             target_kind: prop.target_kind,
-            target_id: prop.target_id,
+            target_id: newTargetId,
             before_value: prop.before_value,
             after_value: prop.after_value,
             performed_by: userId,
@@ -149,7 +167,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        return json({ ok: appliedOk, error: appliedErr }, corsHeaders);
+        return json({ ok: appliedOk, error: appliedErr, target_id: newTargetId }, corsHeaders);
       }
 
       case 'reject_proposal': {
@@ -160,6 +178,59 @@ Deno.serve(async (req) => {
           rejection_reason: body.reason ?? null,
         }).eq('id', proposalId);
         if (error) throw error;
+        return json({ ok: true }, corsHeaders);
+      }
+
+      case 'list_engine_config': {
+        const q = supabase.from('report_engine_config').select('*')
+          .order('config_key').order('scope');
+        if (body.config_key) q.eq('config_key', body.config_key);
+        if (body.scope) q.eq('scope', body.scope);
+        const { data, error } = await q;
+        if (error) throw error;
+        return json({ configs: data ?? [] }, corsHeaders);
+      }
+
+      case 'upsert_engine_config': {
+        // Direct superadmin edit (UI form), no proposal staging.
+        const { config_key, scope = 'global', value, description } = body;
+        if (!config_key) return json({ error: 'config_key required' }, corsHeaders, 400);
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', config_key).eq('scope', scope).maybeSingle();
+        const { error } = await supabase.from('report_engine_config').upsert({
+          config_key, scope, value: value ?? null, description: description ?? null, updated_by: userId,
+        }, { onConflict: 'config_key,scope' });
+        if (error) throw error;
+        await supabase.from('report_engine_audit').insert({
+          proposal_id: null,
+          target_kind: 'engine_config',
+          target_id: `${config_key}:${scope}`,
+          before_value: before ?? null,
+          after_value: { config_key, scope, value },
+          performed_by: userId,
+          rationale: body.rationale || 'direct edit',
+        });
+        return json({ ok: true }, corsHeaders);
+      }
+
+      case 'delete_engine_config': {
+        const { config_key, scope = 'global' } = body;
+        if (!config_key) return json({ error: 'config_key required' }, corsHeaders, 400);
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', config_key).eq('scope', scope).maybeSingle();
+        const { error } = await supabase.from('report_engine_config')
+          .delete().eq('config_key', config_key).eq('scope', scope);
+        if (error) throw error;
+        if (before) {
+          await supabase.from('report_engine_audit').insert({
+            proposal_id: null, target_kind: 'engine_config',
+            target_id: `${config_key}:${scope}`,
+            before_value: before, after_value: null,
+            performed_by: userId, rationale: body.rationale || 'direct delete',
+          });
+        }
         return json({ ok: true }, corsHeaders);
       }
 

@@ -138,59 +138,75 @@ export default function ReportEngineInspector() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* Left: run list */}
-        <Card className="col-span-3 p-2">
-          <ScrollArea className="h-[78vh]">
-            {loadingRuns && <div className="p-4 text-sm text-muted-foreground">Loading runs…</div>}
-            {!loadingRuns && runs.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground">
-                No runs yet. Generate a report once instrumentation is wired into the engine.
-              </div>
-            )}
-            <div className="space-y-1">
-              {runs.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedId(r.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors
-                    ${selectedId === r.id ? 'bg-primary/10 border border-primary/40' : 'hover:bg-muted/50 border border-transparent'}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium truncate">{r.scope || 'run'} · {r.variant || '—'}</span>
-                    <Badge variant={
-                      r.status === 'completed' ? 'default' :
-                      r.status === 'failed' ? 'destructive' :
-                      r.status === 'running' ? 'secondary' : 'outline'
-                    } className="h-4 px-1.5 text-[10px]">{r.status}</Badge>
-                  </div>
-                  <div className="text-muted-foreground mt-0.5 truncate">
-                    {new Date(r.started_at).toLocaleString()}
-                  </div>
-                  <div className="text-muted-foreground/80 mt-0.5">
-                    {r.model || '—'} · {(r.total_prompt_tokens + r.total_completion_tokens) || 0} tok
-                  </div>
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
-        </Card>
+      <Tabs defaultValue="runs">
+        <TabsList>
+          <TabsTrigger value="runs">Runs</TabsTrigger>
+          <TabsTrigger value="config">Engine Config</TabsTrigger>
+          <TabsTrigger value="audit">Audit Log</TabsTrigger>
+        </TabsList>
 
-        {/* Center: run detail */}
-        <Card className="col-span-6 p-4">
-          {loadingDetail && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
-          {!loadingDetail && !run && <div className="text-sm text-muted-foreground">Select a run.</div>}
-          {!loadingDetail && run && <RunDetail run={run} chunks={chunks} />}
-        </Card>
+        <TabsContent value="runs">
+          <div className="grid grid-cols-12 gap-4">
+            <Card className="col-span-3 p-2">
+              <ScrollArea className="h-[78vh]">
+                {loadingRuns && <div className="p-4 text-sm text-muted-foreground">Loading runs…</div>}
+                {!loadingRuns && runs.length === 0 && (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No runs yet. Generate a report once instrumentation is wired into the engine.
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {runs.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setSelectedId(r.id)}
+                      className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors
+                        ${selectedId === r.id ? 'bg-primary/10 border border-primary/40' : 'hover:bg-muted/50 border border-transparent'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{r.scope || 'run'} · {r.variant || '—'}</span>
+                        <Badge variant={
+                          r.status === 'completed' ? 'default' :
+                          r.status === 'failed' ? 'destructive' :
+                          r.status === 'running' ? 'secondary' : 'outline'
+                        } className="h-4 px-1.5 text-[10px]">{r.status}</Badge>
+                      </div>
+                      <div className="text-muted-foreground mt-0.5 truncate">
+                        {new Date(r.started_at).toLocaleString()}
+                      </div>
+                      <div className="text-muted-foreground/80 mt-0.5">
+                        {r.model || '—'} · {(r.total_prompt_tokens + r.total_completion_tokens) || 0} tok
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
 
-        {/* Right: agent */}
-        <Card className="col-span-3 p-0 overflow-hidden">
-          <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
-        </Card>
-      </div>
+            <Card className="col-span-6 p-4">
+              {loadingDetail && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+              {!loadingDetail && !run && <div className="text-sm text-muted-foreground">Select a run.</div>}
+              {!loadingDetail && run && <RunDetail run={run} chunks={chunks} />}
+            </Card>
+
+            <Card className="col-span-3 p-0 overflow-hidden">
+              <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="config">
+          <EngineConfigEditor />
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <AuditLog />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Run detail
@@ -494,5 +510,204 @@ function EngineAgentPanel({ currentRunId, onProposalApplied }: { currentRunId: s
         </Button>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Engine Config editor
+// ---------------------------------------------------------------------------
+
+interface EngineConfigRow {
+  id: string;
+  config_key: string;
+  scope: string;
+  value: any;
+  description: string | null;
+  updated_at: string;
+}
+
+function EngineConfigEditor() {
+  const [rows, setRows] = useState<EngineConfigRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<{ config_key: string; scope: string; valueText: string; description: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await invokeSecureFunction<{ configs: EngineConfigRow[] }>(
+      'report-engine-inspector', { op: 'list_engine_config' },
+    );
+    setLoading(false);
+    if (error) { toast({ title: 'Failed to load config', description: error.message, variant: 'destructive' }); return; }
+    setRows(data?.configs ?? []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const startNew = () => setEditing({ config_key: '', scope: 'default', valueText: '""', description: '' });
+  const startEdit = (r: EngineConfigRow) => setEditing({
+    config_key: r.config_key, scope: r.scope,
+    valueText: typeof r.value === 'string' ? JSON.stringify(r.value) : JSON.stringify(r.value, null, 2),
+    description: r.description || '',
+  });
+
+  const save = async () => {
+    if (!editing || !editing.config_key) {
+      toast({ title: 'config_key required', variant: 'destructive' }); return;
+    }
+    let parsed: any;
+    try { parsed = JSON.parse(editing.valueText); }
+    catch (e: any) { toast({ title: 'Invalid JSON value', description: e.message, variant: 'destructive' }); return; }
+    setSaving(true);
+    const { data, error } = await invokeSecureFunction<{ ok: boolean }>(
+      'report-engine-inspector',
+      { op: 'upsert_engine_config', config_key: editing.config_key, scope: editing.scope, value: parsed, description: editing.description, rationale: 'direct edit from inspector' },
+    );
+    setSaving(false);
+    if (error || !data?.ok) { toast({ title: 'Save failed', description: error?.message, variant: 'destructive' }); return; }
+    toast({ title: 'Saved' });
+    setEditing(null);
+    load();
+  };
+
+  const del = async (r: EngineConfigRow) => {
+    if (!confirm(`Delete ${r.config_key}:${r.scope}?`)) return;
+    const { error } = await invokeSecureFunction(
+      'report-engine-inspector',
+      { op: 'delete_engine_config', config_key: r.config_key, scope: r.scope, rationale: 'direct delete from inspector' },
+    );
+    if (error) { toast({ title: 'Delete failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Deleted' });
+    load();
+  };
+
+  return (
+    <div className="grid grid-cols-12 gap-4">
+      <Card className="col-span-5 p-3">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-sm font-medium">Engine Config</div>
+            <div className="text-[11px] text-muted-foreground">Runtime overrides honored by the generator on the next run.</div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button size="sm" onClick={startNew}>+ New</Button>
+          </div>
+        </div>
+        <ScrollArea className="h-[70vh]">
+          {rows.length === 0 && !loading && (
+            <div className="text-xs text-muted-foreground p-4">
+              No overrides set. The generator uses its in-code defaults. Click + New to override (e.g. <span className="font-mono">system_message</span> @ scope <span className="font-mono">default</span>).
+            </div>
+          )}
+          <div className="space-y-1">
+            {rows.map((r) => (
+              <button key={r.id}
+                onClick={() => startEdit(r)}
+                className={`w-full text-left px-3 py-2 rounded-md text-xs border transition-colors
+                  ${editing?.config_key === r.config_key && editing?.scope === r.scope ? 'bg-primary/10 border-primary/40' : 'hover:bg-muted/50 border-transparent'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono">{r.config_key}</span>
+                  <Badge variant="outline" className="text-[10px]">{r.scope}</Badge>
+                </div>
+                {r.description && <div className="text-muted-foreground mt-0.5 truncate">{r.description}</div>}
+                <div className="text-muted-foreground/70 text-[10px] mt-0.5">updated {new Date(r.updated_at).toLocaleString()}</div>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </Card>
+
+      <Card className="col-span-7 p-4">
+        {!editing && <div className="text-sm text-muted-foreground">Select a row to edit, or create a new override.</div>}
+        {editing && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium">config_key</label>
+                <Input value={editing.config_key} onChange={(e) => setEditing({ ...editing, config_key: e.target.value })} placeholder="system_message" />
+              </div>
+              <div>
+                <label className="text-xs font-medium">scope</label>
+                <Input value={editing.scope} onChange={(e) => setEditing({ ...editing, scope: e.target.value })} placeholder="default | compass | suburb | postcode | statewide | executive" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium">description</label>
+              <Input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium">value (JSON — use a quoted string for system_message)</label>
+              <Textarea
+                value={editing.valueText}
+                onChange={(e) => setEditing({ ...editing, valueText: e.target.value })}
+                className="font-mono text-xs h-[50vh]"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Tokens: <span className="font-mono">{'{{brand_name}}'}</span>, <span className="font-mono">{'{{scope}}'}</span> are substituted at runtime when value is a string.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              {rows.find((r) => r.config_key === editing.config_key && r.scope === editing.scope) && (
+                <Button size="sm" variant="destructive" className="ml-auto"
+                  onClick={() => del(rows.find((r) => r.config_key === editing.config_key && r.scope === editing.scope)!)}>
+                  Delete override
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+function AuditLog() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data } = await invokeSecureFunction<{ audit: any[] }>(
+        'report-engine-inspector', { op: 'list_audit' });
+      setRows(data?.audit ?? []);
+      setLoading(false);
+    })();
+  }, []);
+  return (
+    <Card className="p-4">
+      {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {!loading && rows.length === 0 && <div className="text-sm text-muted-foreground">No audit entries yet.</div>}
+      <ScrollArea className="h-[75vh]">
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.id} className="border rounded p-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{r.target_kind}</Badge>
+                  <span className="font-mono text-[10px]">{r.target_id || '—'}</span>
+                </div>
+                <span className="text-muted-foreground text-[10px]">{new Date(r.performed_at).toLocaleString()}</span>
+              </div>
+              {r.rationale && <div className="text-muted-foreground mt-1">{r.rationale}</div>}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[10px] text-muted-foreground">diff</summary>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <pre className="bg-muted/30 rounded p-2 text-[10px] overflow-auto max-h-60">{JSON.stringify(r.before_value, null, 2)}</pre>
+                  <pre className="bg-muted/30 rounded p-2 text-[10px] overflow-auto max-h-60">{JSON.stringify(r.after_value, null, 2)}</pre>
+                </div>
+              </details>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </Card>
   );
 }
