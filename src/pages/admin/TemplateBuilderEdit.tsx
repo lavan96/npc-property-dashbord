@@ -19,6 +19,7 @@ import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
 import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
+import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -1146,6 +1147,8 @@ export default function TemplateBuilderEdit() {
               <BindingPathsPopover template={template} sampleData={sampleData} />
               <ComputedFieldsDialog template={template} sampleData={sampleData} onChange={setTemplate} />
               <PageMastersDialog template={template} onChange={setTemplate} />
+              <ThemesDialog template={template} onChange={setTemplate} />
+
 
 
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
