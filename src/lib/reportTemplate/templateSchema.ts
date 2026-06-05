@@ -25,6 +25,13 @@ export const TokensSchema = z.object({
   colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
   fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
   spacing: z.record(z.number()).default({}),    // { gutter: 16, ... }
+  // Phase 1 extensions — optional, additive, backwards-compatible
+  radii: z.record(z.number()).optional(),       // { sm:4, md:8, lg:16 } px
+  shadows: z.record(z.string()).optional(),     // { card:"0 2px 8px rgba(0,0,0,.1)" }
+  gradients: z.record(z.string()).optional(),   // { hero:"linear-gradient(135deg,#bf9b50,#f0d78c)" }
+  typeScale: z.record(z.number()).optional(),   // { xs:11, sm:12, base:14, lg:18, xl:24 } pt
+  brandKitId: z.string().uuid().optional(),
+  activeTheme: z.enum(['light','dark','print','custom']).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
 
 export type Tokens = z.infer<typeof TokensSchema>;
