@@ -1286,8 +1286,12 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         data_sources: report.data_sources ?? null,
       };
 
+      // Apply packet_config filtering (whitelist/blacklist/truncation)
+      const packetCfg = await loadPacketConfig(supabase, scope);
+      const { filtered: filteredPacket, trace: packetTrace } = applyPacketConfig(packet, packetCfg, args.section_key);
+
       const sizes: Record<string, number> = {};
-      for (const [k, v] of Object.entries(packet)) {
+      for (const [k, v] of Object.entries(filteredPacket)) {
         sizes[k] = v == null ? 0 : JSON.stringify(v).length;
       }
       const totalBytes = Object.values(sizes).reduce((a, b) => a + b, 0);
