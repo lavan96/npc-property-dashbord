@@ -474,6 +474,9 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'color', key: 'accent', label: 'Page-number color' },
       { kind: 'select', key: 'dotLeader', label: 'Dot leader', options: ['true', 'false'] },
     ],
+  },
+
+
 
   signature: {
     type: 'signature',
