@@ -1065,6 +1065,47 @@ function StaticPlanTab() {
   const [savingMap, setSavingMap] = useState(false);
   const [overridesDraft, setOverridesDraft] = useState<string>('');
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [proposeMode, setProposeMode] = useState(false);
+  const [pendingMapProps, setPendingMapProps] = useState<any[]>([]);
+  const [lookup, setLookup] = useState<any | null>(null);
+  const [lookupId, setLookupId] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  const loadPendingMapProposals = async () => {
+    const { data } = await invokeSecureFunction<{ proposals: any[] }>(
+      'report-engine-inspector', { op: 'list_proposals', status: 'pending' },
+    );
+    const filtered = (data?.proposals ?? []).filter((p: any) =>
+      p.target_kind === 'engine_config' &&
+      String(p.after_value?.config_key || '').startsWith('section_template_map:')
+    );
+    setPendingMapProps(filtered);
+  };
+  useEffect(() => { loadPendingMapProposals(); }, []);
+
+  const doLookup = async (idArg?: string) => {
+    const id = (idArg ?? lookupId).trim();
+    if (!id) return;
+    setLookupLoading(true);
+    const { data, error } = await invokeSecureFunction<any>(
+      'report-engine-inspector', { op: 'lookup_report', report_id: id },
+    );
+    setLookupLoading(false);
+    if (error) { toast({ title: 'Lookup failed', description: error.message, variant: 'destructive' }); return; }
+    setLookup(data);
+  };
+
+  const applyProposal = async (id: string) => {
+    const { error } = await invokeSecureFunction('report-engine-inspector', { op: 'apply_proposal', proposal_id: id });
+    if (error) { toast({ title: 'Apply failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Applied', description: 'Proposal applied' });
+    await Promise.all([loadPendingMapProposals(), load()]);
+  };
+  const rejectProposal = async (id: string) => {
+    const { error } = await invokeSecureFunction('report-engine-inspector', { op: 'reject_proposal', proposal_id: id, rejection_reason: 'rejected from static plan' });
+    if (error) { toast({ title: 'Reject failed', description: error.message, variant: 'destructive' }); return; }
+    loadPendingMapProposals();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -1109,6 +1150,17 @@ function StaticPlanTab() {
     const current = plan.section_template_map?.[sectionId] ?? [];
     const next = checked ? Array.from(new Set([...current, templateId])) : current.filter((x) => x !== templateId);
     setSavingMap(true);
+    if (proposeMode) {
+      const { error } = await invokeSecureFunction(
+        'report-engine-inspector',
+        { op: 'propose_section_template_map', scope, section_id: sectionId, template_ids: next },
+      );
+      setSavingMap(false);
+      if (error) { toast({ title: 'Propose failed', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Proposed', description: `Pending: ${sectionId} → ${next.length} templates` });
+      loadPendingMapProposals();
+      return;
+    }
     const { error } = await invokeSecureFunction(
       'report-engine-inspector',
       { op: 'set_section_template_map', scope, section_id: sectionId, template_ids: next },
@@ -1185,6 +1237,115 @@ function StaticPlanTab() {
           <span className="ml-2 text-foreground/70">Click a section or template row to drill down and edit.</span>
         </p>
       </Card>
+
+      {/* Report ID lookup + drill-down */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold">Report Lookup</h3>
+            <p className="text-[10px] text-muted-foreground">Enter a report ID to see its summary, latest run, and override keys.</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Input
+              value={lookupId}
+              onChange={(e) => setLookupId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') doLookup(); }}
+              placeholder="investment_reports.id (uuid)"
+              className="text-xs h-8 font-mono w-[340px]"
+            />
+            <Button size="sm" onClick={() => doLookup()} disabled={lookupLoading}>
+              {lookupLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Lookup'}
+            </Button>
+            {lookup?.report?.id && (
+              <Button size="sm" variant="outline" onClick={() => { setReportId(lookup.report.id); load(); }}>
+                Load as overlay
+              </Button>
+            )}
+          </div>
+        </div>
+        {lookup?.report && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Summary</div>
+              <div className="text-xs font-medium">{lookup.report.property_address || '—'}</div>
+              <div className="text-[10px] text-muted-foreground">
+                {[lookup.report.suburb, lookup.report.state, lookup.report.postcode].filter(Boolean).join(', ') || '—'}
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                <Badge variant="outline" className="text-[10px]">{lookup.report.report_type || '—'}</Badge>
+                {lookup.report.report_variant && <Badge variant="secondary" className="text-[10px]">{lookup.report.report_variant}</Badge>}
+                <Badge variant={lookup.report.status === 'completed' ? 'success' : 'outline'} className="text-[10px]">{lookup.report.status}</Badge>
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{lookup.report.id}</div>
+            </div>
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Latest run ({lookup.runs?.length ?? 0} total)</div>
+              {lookup.latest_run ? (
+                <>
+                  <div className="text-[10px] font-mono truncate">{lookup.latest_run.id}</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <Badge variant="outline" className="text-[10px]">{lookup.latest_run.scope || '—'}</Badge>
+                    {lookup.latest_run.variant && <Badge variant="secondary" className="text-[10px]">{lookup.latest_run.variant}</Badge>}
+                    <Badge variant={lookup.latest_run.status === 'completed' ? 'success' : lookup.latest_run.status === 'failed' ? 'destructive' : 'outline'} className="text-[10px]">{lookup.latest_run.status}</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {lookup.latest_run.model || '—'} · {(lookup.latest_run.total_prompt_tokens ?? 0) + (lookup.latest_run.total_completion_tokens ?? 0)} tok
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{lookup.latest_run.started_at && new Date(lookup.latest_run.started_at).toLocaleString()}</div>
+                </>
+              ) : <div className="text-[10px] text-muted-foreground">No runs recorded.</div>}
+            </div>
+            <div className="border rounded p-2 bg-muted/20">
+              <div className="text-[10px] uppercase text-muted-foreground">Override keys ({lookup.override_count})</div>
+              {lookup.override_keys?.length ? (
+                <div className="flex flex-wrap gap-1 mt-1 max-h-28 overflow-auto">
+                  {lookup.override_keys.map((k: string) => (
+                    <Badge key={k} variant="warning" className="text-[10px] font-mono">★ {k}</Badge>
+                  ))}
+                </div>
+              ) : <div className="text-[10px] text-muted-foreground">No manual_overrides on this report.</div>}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Pending section_template_map proposals */}
+      {pendingMapProps.length > 0 && (
+        <Card className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Pending section_template_map proposals</h3>
+            <Badge variant="warning" className="text-[10px]">{pendingMapProps.length}</Badge>
+          </div>
+          <div className="space-y-1">
+            {pendingMapProps.map((p) => {
+              const cfgKey = String(p.after_value?.config_key || '');
+              const beforeMap = p.before_value?.value || {};
+              const afterMap = p.after_value?.value || {};
+              const changedKeys = Array.from(new Set([...Object.keys(beforeMap), ...Object.keys(afterMap)]))
+                .filter((k) => JSON.stringify(beforeMap[k]) !== JSON.stringify(afterMap[k]));
+              return (
+                <div key={p.id} className="border rounded p-2 text-[11px] flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono">{cfgKey}</div>
+                    {changedKeys.map((k) => (
+                      <div key={k} className="text-[10px] text-muted-foreground">
+                        <span className="font-mono">{k}</span>: {Array.isArray(beforeMap[k]) ? beforeMap[k].length : 0} → {Array.isArray(afterMap[k]) ? afterMap[k].length : 0} templates
+                      </div>
+                    ))}
+                    {p.rationale && <div className="text-[10px] text-muted-foreground italic mt-0.5">{p.rationale}</div>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => rejectProposal(p.id)}>Reject</Button>
+                    <Button size="sm" onClick={() => applyProposal(p.id)}>Apply</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+
 
       {!plan ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -1264,18 +1425,24 @@ function StaticPlanTab() {
 
           {/* Sections — clickable rows expand to show per-section template assignment + overrides */}
           <Card className="col-span-7 p-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <h3 className="text-sm font-semibold">Registry Sections ({plan.sections.length})</h3>
-              {plan.overrides && (
-                <div className="flex gap-2">
-                  <Badge variant="warning" className="text-[10px]">
-                    Pre-gen overrides: {plan.overrides.pre_gen_keys.length}
-                  </Badge>
-                  <Badge variant="info" className="text-[10px]">
-                    Post-gen edits: {plan.overrides.post_gen_edits.length}
-                  </Badge>
-                </div>
-              )}
+              <div className="flex gap-2 items-center flex-wrap">
+                <label className="flex items-center gap-1 text-[10px] cursor-pointer select-none px-2 py-1 rounded border bg-muted/30">
+                  <input type="checkbox" checked={proposeMode} onChange={(e) => setProposeMode(e.target.checked)} />
+                  Propose mode {proposeMode ? '(requires Apply)' : '(direct save)'}
+                </label>
+                {plan.overrides && (
+                  <>
+                    <Badge variant="warning" className="text-[10px]">
+                      Pre-gen overrides: {plan.overrides.pre_gen_keys.length}
+                    </Badge>
+                    <Badge variant="info" className="text-[10px]">
+                      Post-gen edits: {plan.overrides.post_gen_edits.length}
+                    </Badge>
+                  </>
+                )}
+              </div>
             </div>
             <ScrollArea className="h-[60vh]">
               <div className="space-y-1">

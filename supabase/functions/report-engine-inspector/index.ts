@@ -612,6 +612,59 @@ Deno.serve(async (req) => {
         return json({ ok: true }, corsHeaders);
       }
 
+      case 'lookup_report': {
+        const reportId = String(body.report_id || '').trim();
+        if (!/^[0-9a-f-]{36}$/i.test(reportId)) return json({ error: 'valid report_id required' }, corsHeaders, 400);
+        const { data: report, error: rErr } = await supabase
+          .from('investment_reports')
+          .select('id, report_type, status, property_address, suburb, state, postcode, created_at, updated_at, client_id, manual_overrides, report_variant, derived_from_report_id')
+          .eq('id', reportId).maybeSingle();
+        if (rErr) throw rErr;
+        if (!report) return json({ error: 'report not found' }, corsHeaders, 404);
+        const { data: runs } = await supabase
+          .from('report_generation_runs')
+          .select('id, scope, variant, status, model, started_at, finished_at, total_prompt_tokens, total_completion_tokens, total_cost_cents, error')
+          .eq('report_id', reportId)
+          .order('started_at', { ascending: false })
+          .limit(20);
+        const mo = (report.manual_overrides && typeof report.manual_overrides === 'object') ? report.manual_overrides : {};
+        const overrideKeys = Object.keys(mo);
+        return json({
+          report,
+          latest_run: runs?.[0] ?? null,
+          runs: runs ?? [],
+          override_keys: overrideKeys,
+          override_count: overrideKeys.length,
+        }, corsHeaders);
+      }
+
+      case 'propose_section_template_map': {
+        const scope = String(body.scope || 'compass').toLowerCase();
+        const section_id = String(body.section_id || '');
+        const template_ids: string[] = Array.isArray(body.template_ids)
+          ? body.template_ids.map((v: any) => String(v)).filter((v: string) => /^[0-9a-f-]{36}$/i.test(v))
+          : [];
+        if (!section_id) return json({ error: 'section_id required' }, corsHeaders, 400);
+        const config_key = `section_template_map:${scope}`;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('value')
+          .eq('config_key', config_key).eq('scope', 'default').maybeSingle();
+        const current = (before?.value && typeof before.value === 'object') ? before.value : {};
+        const next = { ...current, [section_id]: template_ids };
+        const { data: prop, error } = await supabase
+          .from('report_engine_proposals').insert({
+            target_kind: 'engine_config',
+            target_id: null,
+            before_value: { config_key, scope: 'default', value: current },
+            after_value: { config_key, scope: 'default', value: next },
+            rationale: body.rationale || `Pin ${template_ids.length} template(s) to ${scope}:${section_id}`,
+            proposed_by: userId,
+            status: 'pending',
+          }).select('*').single();
+        if (error) throw error;
+        return json({ ok: true, proposal: prop }, corsHeaders);
+      }
+
       default:
         console.warn('[report-engine-inspector] unknown op', { rawOp, op, bodyKeys: Object.keys(body ?? {}) });
         return json({
@@ -623,6 +676,7 @@ Deno.serve(async (req) => {
             'export_prompts', 'import_prompts', 'resolve_templates', 'get_report_overrides',
             'static_plan', 'list_template_chunks', 'get_section_template_map',
             'set_section_template_map', 'update_report_manual_overrides',
+            'lookup_report', 'propose_section_template_map',
           ],
         }, corsHeaders, 400);
     }
