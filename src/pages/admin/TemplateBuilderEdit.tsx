@@ -930,6 +930,9 @@ export default function TemplateBuilderEdit() {
               <Sparkles className="h-4 w-4 mr-1" /> Analytics
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
+            <Wand2 className="h-4 w-4 mr-1" /> AI Author
+          </Button>
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
