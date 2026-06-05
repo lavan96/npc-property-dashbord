@@ -14774,6 +14774,39 @@ export type Database = {
           },
         ]
       }
+      report_engine_config: {
+        Row: {
+          config_key: string
+          created_at: string
+          description: string | null
+          id: string
+          scope: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          config_key: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          scope?: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          config_key?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          scope?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       report_engine_proposals: {
         Row: {
           after_value: Json | null
