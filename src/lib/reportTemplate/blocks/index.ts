@@ -614,7 +614,366 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'list-strings', key: 'watch', label: 'Watch points' },
     ],
   },
+  // ─── Phase 3 — Block library expansion ─────────────────────────────────────
+  timeline: {
+    type: 'timeline',
+    label: 'Timeline (milestones)',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Project timeline',
+      items: [
+        { label: 'Discovery', date: 'Jan 2026', note: 'Stakeholder workshops.' },
+        { label: 'Design',    date: 'Mar 2026', note: 'Concept locked.' },
+        { label: 'Build',     date: 'Jun 2026', note: 'Sprints 1–4.' },
+        { label: 'Launch',    date: 'Sep 2026', note: 'Go-to-market.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Milestones' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  swot: {
+    type: 'swot',
+    label: 'SWOT 2×2',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'SWOT analysis',
+      strengths: ['Established demand', 'Strong yield', 'Quality build'],
+      weaknesses: ['Tight margins', 'Single tenant exposure'],
+      opportunities: ['Rezoning upside', 'Infra pipeline'],
+      threats: ['Rate-cycle risk', 'Climate exposure'],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-strings', key: 'strengths', label: 'Strengths' },
+      { kind: 'list-strings', key: 'weaknesses', label: 'Weaknesses' },
+      { kind: 'list-strings', key: 'opportunities', label: 'Opportunities' },
+      { kind: 'list-strings', key: 'threats', label: 'Threats' },
+    ],
+  },
+  gantt: {
+    type: 'gantt',
+    label: 'Mini Gantt',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Delivery plan',
+      startMonth: 1, endMonth: 12,
+      items: [
+        { label: 'Discovery', start: 1, end: 2 },
+        { label: 'Design',    start: 2, end: 4 },
+        { label: 'Build',     start: 4, end: 9 },
+        { label: 'Launch',    start: 9, end: 10 },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'startMonth', label: 'Start month' },
+      { kind: 'number', key: 'endMonth', label: 'End month' },
+      { kind: 'list-rows', key: 'items', label: 'Tasks' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  comparison: {
+    type: 'comparison',
+    label: 'Comparison table',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'How we compare',
+      columns: [{ label: 'Our pick' }, { label: 'Option A' }, { label: 'Option B' }],
+      rows: [
+        { label: 'Yield', values: ['5.8%', '4.2%', '4.0%'] },
+        { label: 'Growth outlook', values: ['Strong', 'Moderate', 'Moderate'] },
+        { label: 'Vacancy', values: ['1.8%', '2.4%', '2.9%'] },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'columns', label: 'Columns' },
+      { kind: 'list-rows', key: 'rows', label: 'Rows' },
+      { kind: 'color', key: 'accent', label: 'Highlight' },
+    ],
+  },
+  'stat-callout': {
+    type: 'stat-callout',
+    label: 'Stat callout',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 280,
+      value: '5.8%', label: 'Gross rental yield',
+      delta: '+0.4 pts YoY', deltaDir: 'up',
+      valueSize: 42,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'value', label: 'Value' },
+      { kind: 'bindable', key: 'label', label: 'Label' },
+      { kind: 'bindable', key: 'delta', label: 'Delta text' },
+      { kind: 'select', key: 'deltaDir', label: 'Delta direction', options: ['up', 'down'] },
+      { kind: 'number', key: 'valueSize', label: 'Value size' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'pull-quote': {
+    type: 'pull-quote',
+    label: 'Pull quote',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      quote: 'The market signals are aligned for a generational entry point.',
+      attribution: 'Jane Analyst',
+      role: 'Senior Investment Strategist',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'quote', label: 'Quote', multiline: true },
+      { kind: 'bindable', key: 'attribution', label: 'Attribution' },
+      { kind: 'bindable', key: 'role', label: 'Role' },
+      { kind: 'bindable', key: 'avatarUrl', label: 'Avatar URL' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  faq: {
+    type: 'faq',
+    label: 'FAQ list',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Frequently asked questions',
+      items: [
+        { q: 'What is the expected gross yield?', a: 'Based on current comparable rents, the gross yield is forecast at 5.6–6.1%.' },
+        { q: 'How long is the typical settlement?', a: '30–45 days is typical; finance pre-approval can shorten this.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Q & A' },
+    ],
+  },
+  'pricing-card': {
+    type: 'pricing-card',
+    label: 'Pricing card',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 240,
+      badge: 'Most popular',
+      tier: 'Concierge',
+      price: '$9,500',
+      period: '/ engagement',
+      description: 'End-to-end buyer-advocacy across search, negotiation and settlement.',
+      features: ['Dedicated buyer agent', 'Off-market access', 'Negotiation', 'Settlement support'],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'badge', label: 'Badge' },
+      { kind: 'bindable', key: 'tier', label: 'Tier' },
+      { kind: 'bindable', key: 'price', label: 'Price' },
+      { kind: 'bindable', key: 'period', label: 'Period' },
+      { kind: 'bindable', key: 'description', label: 'Description', multiline: true },
+      { kind: 'list-strings', key: 'features', label: 'Features' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'feature-list': {
+    type: 'feature-list',
+    label: 'Feature list',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, columns: 2,
+      title: 'Why this opportunity',
+      items: [
+        { icon: '★', title: 'Premium location', body: 'Walk to transport, retail and education hubs.' },
+        { icon: '◆', title: 'Strong tenant pool', body: 'Family demographic with low vacancy.' },
+        { icon: '✓', title: 'Future-proof', body: 'Aligned with 10-year infra pipeline.' },
+        { icon: '↗', title: 'Yield + growth', body: 'Balanced risk / reward profile.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'columns', label: 'Columns', min: 1, max: 4 },
+      { kind: 'list-rows', key: 'items', label: 'Features' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'process-steps': {
+    type: 'process-steps',
+    label: 'Process steps',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'How it works',
+      items: [
+        { title: 'Discovery call', body: 'We map your brief, budget and timeline.' },
+        { title: 'Shortlist & inspect', body: 'Curated properties matched to your strategy.' },
+        { title: 'Negotiate & secure', body: 'Strategic offers and contract management.' },
+        { title: 'Settlement support', body: 'Coordinated handover with your team.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Steps' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'progress-bars': {
+    type: 'progress-bars',
+    label: 'Progress bars',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Suburb scorecard',
+      items: [
+        { label: 'Capital growth (10y)', value: 82 },
+        { label: 'Rental demand', value: 74 },
+        { label: 'Infrastructure', value: 68 },
+        { label: 'Risk profile (inverse)', value: 55 },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Bars' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  map: {
+    type: 'map',
+    label: 'Map preview',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 240,
+      staticMapUrl: '',
+      caption: '{{property.address}}',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'staticMapUrl', label: 'Static map URL' },
+      { kind: 'bindable', key: 'caption', label: 'Caption' },
+    ],
+  },
+  'icon-grid': {
+    type: 'icon-grid',
+    label: 'Icon grid',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, columns: 4,
+      title: 'Local amenities',
+      items: [
+        { icon: '🏫', label: 'Schools', sub: '3 within 2km' },
+        { icon: '🚆', label: 'Transport', sub: 'Train + bus' },
+        { icon: '🛒', label: 'Retail', sub: 'Town centre' },
+        { icon: '🏥', label: 'Health', sub: 'GP + clinic' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'columns', label: 'Columns', min: 1, max: 6 },
+      { kind: 'list-rows', key: 'items', label: 'Items' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  testimonials: {
+    type: 'testimonials',
+    label: 'Testimonials',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, columns: 2,
+      title: 'What clients say',
+      items: [
+        { body: 'They unlocked an off-market deal in under three weeks.', name: 'A. Patel', role: 'Investor, Sydney' },
+        { body: 'Truly white-glove. Their analysis was bank-grade.',     name: 'M. Nguyen', role: 'Investor, Brisbane' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'columns', label: 'Columns', min: 1, max: 3 },
+      { kind: 'list-rows', key: 'items', label: 'Testimonials' },
+    ],
+  },
+  ribbon: {
+    type: 'ribbon',
+    label: 'Ribbon banner',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      label: 'Featured opportunity',
+      sub: 'Strategic Insight Report — Confidential',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'label', label: 'Label' },
+      { kind: 'bindable', key: 'sub', label: 'Sub label' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'metric-delta': {
+    type: 'metric-delta',
+    label: 'Metric cards (delta)',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, columns: 3,
+      title: 'Suburb performance',
+      items: [
+        { label: 'Median price', value: '$1.24M', delta: '+8.4%', dir: 'up' },
+        { label: 'Days on market', value: '24',  delta: '-6 days', dir: 'down' },
+        { label: 'Auction clearance', value: '74%', delta: '+3 pts', dir: 'up' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'columns', label: 'Columns', min: 1, max: 4 },
+      { kind: 'list-rows', key: 'items', label: 'Metrics' },
+    ],
+  },
+  'definition-list': {
+    type: 'definition-list',
+    label: 'Definition list',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Key terms',
+      items: [
+        { term: 'LVR',  definition: 'Loan to Value Ratio — loan size as a percentage of property value.' },
+        { term: 'LMI',  definition: 'Lenders Mortgage Insurance — protects the lender, not the borrower.' },
+        { term: 'CGT',  definition: 'Capital Gains Tax payable on profit when selling an investment.' },
+      ],
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'list-rows', key: 'items', label: 'Terms' },
+    ],
+  },
+  sparkline: {
+    type: 'sparkline',
+    label: 'Sparkline + KPI',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 240, height: 60,
+      title: 'Median price (10y)',
+      value: '$1.24M',
+      values: [620, 660, 705, 740, 790, 845, 910, 985, 1080, 1240],
+      caption: 'Source: Cotality',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'value', label: 'Headline value' },
+      { kind: 'list-strings', key: 'values', label: 'Series values' },
+      { kind: 'bindable', key: 'caption', label: 'Caption' },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'before-after': {
+    type: 'before-after',
+    label: 'Before / After',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547, height: 220,
+      beforeUrl: '', afterUrl: '',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'beforeUrl', label: 'Before image URL' },
+      { kind: 'bindable', key: 'afterUrl', label: 'After image URL' },
+    ],
+  },
+  'image-text': {
+    type: 'image-text',
+    label: 'Image + text',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      imageUrl: '{{property.imageUrl}}',
+      imageSide: 'left',
+      heading: 'Why this location',
+      body: 'A concise narrative paragraph sits beside the imagery. Use this for storytelling sections — neighbourhood, lifestyle, vision.',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'imageUrl', label: 'Image URL' },
+      { kind: 'select', key: 'imageSide', label: 'Image side', options: ['left', 'right'] },
+      { kind: 'bindable', key: 'heading', label: 'Heading' },
+      { kind: 'bindable', key: 'body', label: 'Body', multiline: true },
+    ],
+  },
   free: {
+
     type: 'free',
     label: 'Free / overlays',
     defaultProps: () => ({}),
