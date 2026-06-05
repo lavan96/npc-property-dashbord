@@ -1271,10 +1271,7 @@ function renderInlineSparkSvg(vals: number[]): string {
   const last = vals[vals.length - 1];
   const lastX = w - 2, lastY = h - 2 - ((last - lo) / span) * (h - 4);
   const trend = vals[vals.length - 1] >= vals[0] ? VIZ_GOOD : VIZ_RISK;
-  return `<svg class="spark-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="vertical-align:-2px;margin:0 2px;">
-    <polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="1.6" fill="${trend}"/>
-  </svg>`;
+  return `<svg class="spark-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="vertical-align:-2px;margin:0 2px;"><polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="1.6" fill="${trend}"/></svg>`;
 }
 
 /** Donut / ring chart — for tenure mix, demographic splits, allocation. */
