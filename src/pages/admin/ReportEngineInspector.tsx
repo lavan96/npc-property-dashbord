@@ -1269,10 +1269,10 @@ function StaticPlanTab() {
               <div className="text-[10px] uppercase text-muted-foreground">Summary</div>
               <div className="text-xs font-medium">{lookup.report.property_address || '—'}</div>
               <div className="text-[10px] text-muted-foreground">
-                {[lookup.report.suburb, lookup.report.state, lookup.report.postcode].filter(Boolean).join(', ') || '—'}
+                {lookup.report.report_tier ? `${lookup.report.report_tier} tier` : '—'}
               </div>
               <div className="flex flex-wrap gap-1 mt-1">
-                <Badge variant="outline" className="text-[10px]">{lookup.report.report_type || '—'}</Badge>
+                <Badge variant="outline" className="text-[10px]">{lookup.report.report_scope || '—'}</Badge>
                 {lookup.report.report_variant && <Badge variant="secondary" className="text-[10px]">{lookup.report.report_variant}</Badge>}
                 <Badge variant={lookup.report.status === 'completed' ? 'success' : 'outline'} className="text-[10px]">{lookup.report.status}</Badge>
               </div>

@@ -307,12 +307,13 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'find_reports',
-        description: 'Search investment_reports by address substring (case-insensitive). Returns up to 20 most recent matches with id, address, scope, tier, variant, status.',
+        description: 'Search investment_reports by address substring or list recent reports. Compass/briefing are report_tier filters, not report_scope. Handles minor suburb typos with fuzzy fallback.',
         parameters: {
           type: 'object',
           properties: {
             address_query: { type: 'string' },
-            scope: { type: 'string' },
+            scope: { type: 'string', description: 'address | suburb | postcode | statewide. If compass/briefing/snapshot is supplied it is treated as report_tier.' },
+            report_tier: { type: 'string', description: 'compass | briefing | snapshot' },
             variant: { type: 'string' },
             limit: { type: 'number' },
           },
@@ -466,7 +467,7 @@ function toolDefs() {
       type: 'function',
       function: {
         name: 'get_report_full',
-        description: 'Return the full data spine for a report: manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, plus key listings and byte sizes. Use to audit a report when no runs exist yet.',
+        description: 'Return the full data spine for a report: overrides, financials, demographics, economics, score, location intelligence, property specs, validation flags, data sources, plus key listings and byte sizes. Use when no runs exist.',
         parameters: {
           type: 'object',
           properties: {
@@ -518,7 +519,7 @@ function toolDefs() {
           type: 'object',
           properties: {
             report_id: { type: 'string' },
-            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data, raw_property_data, sales_history, comparable_sales, school_data, infrastructure_data, planning_overlays' },
+            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, property_specs, validation_flags, data_sources' },
           },
           required: ['report_id', 'column'],
         },
@@ -550,6 +551,27 @@ async function stageProposal(supabase: any, row: Record<string, any>) {
     .from('report_engine_proposals').insert(row).select('id, target_kind, target_id, status').single();
   if (error) throw error;
   return data;
+}
+
+const TIER_ALIASES = new Set(['compass', 'briefing', 'snapshot']);
+const REPORT_BASE_SELECT = 'id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at';
+const REPORT_JSON_FIELDS = ['manual_overrides','financial_calculations','demographics_data','economic_data','investment_score','location_intelligence','property_specs','validation_flags','data_sources'];
+
+function normaliseSearch(s: string): string {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function reportSearchScore(report: any, query: string): number {
+  const haystack = normaliseSearch(report?.property_address || '');
+  const tokens = normaliseSearch(query).split(' ').filter((t) => t.length >= 4 && !['property','report','compass','briefing','snapshot','recent','latest'].includes(t));
+  if (!tokens.length) return 0;
+  let score = 0;
+  for (const token of tokens) {
+    if (haystack.includes(token)) score += 4;
+    else if (haystack.includes(token.slice(0, 4))) score += 2;
+    else if (token.length >= 6 && haystack.includes(token.slice(0, 5))) score += 1;
+  }
+  return score;
 }
 
 async function runTool(supabase: any, name: string, args: any): Promise<any> {
@@ -730,16 +752,40 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
 
     // ----- Report-centric -----
     case 'find_reports': {
+      const requestedScope = args.scope ? String(args.scope).toLowerCase() : null;
+      const reportTier = args.report_tier || (requestedScope && TIER_ALIASES.has(requestedScope) ? requestedScope : null);
+      const reportScope = requestedScope && !TIER_ALIASES.has(requestedScope) ? requestedScope : null;
+      const limit = Math.min(args.limit ?? 20, 50);
       const q = supabase.from('investment_reports')
         .select('id, property_address, report_scope, report_tier, report_variant, status, created_at, updated_at')
         .order('updated_at', { ascending: false })
-        .limit(Math.min(args.limit ?? 20, 50));
+        .limit(limit);
       if (args.address_query) q.ilike('property_address', `%${args.address_query}%`);
-      if (args.scope) q.eq('report_scope', args.scope);
+      if (reportScope) q.eq('report_scope', reportScope);
+      if (reportTier) q.eq('report_tier', reportTier);
       if (args.variant) q.eq('report_variant', args.variant);
       const { data, error } = await q;
       if (error) throw error;
-      return { reports: data };
+      if ((data ?? []).length || !args.address_query) {
+        return { reports: data ?? [], filters_interpreted: { report_scope: reportScope, report_tier: reportTier, variant: args.variant ?? null } };
+      }
+
+      // Fuzzy fallback for common voice/transcription misspellings, e.g. Kalkollo → Kalkallo.
+      let fallback = supabase.from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, status, created_at, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(250);
+      if (reportScope) fallback = fallback.eq('report_scope', reportScope);
+      if (reportTier) fallback = fallback.eq('report_tier', reportTier);
+      if (args.variant) fallback = fallback.eq('report_variant', args.variant);
+      const { data: pool, error: fbErr } = await fallback;
+      if (fbErr) throw fbErr;
+      const scored = (pool ?? [])
+        .map((r: any) => ({ ...r, match_score: reportSearchScore(r, args.address_query) }))
+        .filter((r: any) => r.match_score > 0)
+        .sort((a: any, b: any) => b.match_score - a.match_score || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)))
+        .slice(0, limit);
+      return { reports: scored, fuzzy_fallback_used: true, filters_interpreted: { report_scope: reportScope, report_tier: reportTier, variant: args.variant ?? null } };
     }
     case 'lookup_report': {
       const { data: report, error } = await supabase
@@ -757,7 +803,13 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       const overrideKeys = report.manual_overrides && typeof report.manual_overrides === 'object'
         ? Object.keys(report.manual_overrides) : [];
       const summary = { ...report, manual_overrides: undefined, override_keys: overrideKeys, override_key_count: overrideKeys.length };
-      return { report: summary, latest_run: runs?.[0] ?? null, recent_runs: runs ?? [], run_count_recent: runs?.length ?? 0 };
+      const { data: relatedReports } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, created_at, updated_at')
+        .or(`derived_from_report_id.eq.${args.report_id},parent_report_id.eq.${args.report_id}`)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      return { report: summary, latest_run: runs?.[0] ?? null, recent_runs: runs ?? [], run_count_recent: runs?.length ?? 0, related_reports: relatedReports ?? [] };
     }
     case 'get_report_runs': {
       const { data, error } = await supabase
@@ -901,13 +953,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
 
     // ----- Static audit (works without runs) -----
     case 'get_report_full': {
-      const cols = [
-        'id','property_address','report_scope','report_tier','report_variant',
-        'status','generation_engine','current_version','total_sections','last_completed_section',
-        'created_at','updated_at','error_message',
-        'manual_overrides','financial_calculations','demographics_data','economic_data',
-        'investment_score','location_intelligence','scoring_breakdown','qualitative_data',
-      ].join(',');
+      const cols = `${REPORT_BASE_SELECT}, ${REPORT_JSON_FIELDS.join(',')}`;
       const { data, error } = await supabase
         .from('investment_reports').select(cols).eq('id', args.report_id).maybeSingle();
       if (error) throw error;
@@ -919,9 +965,8 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         if (typeof v === 'object') return { present: true, kind: 'object', keys: Object.keys(v), key_count: Object.keys(v).length, bytes };
         return { present: true, kind: typeof v, bytes };
       };
-      const jsonFields = ['manual_overrides','financial_calculations','demographics_data','economic_data','investment_score','location_intelligence','scoring_breakdown','qualitative_data'];
       const spine: any = {};
-      for (const f of jsonFields) spine[f] = summarize((data as any)[f]);
+      for (const f of REPORT_JSON_FIELDS) spine[f] = summarize((data as any)[f]);
       const out: any = {
         report: {
           id: data.id, property_address: data.property_address,
@@ -935,7 +980,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       };
       if (args.include_raw) {
         out.raw = {};
-        for (const f of jsonFields) out.raw[f] = (data as any)[f];
+        for (const f of REPORT_JSON_FIELDS) out.raw[f] = (data as any)[f];
       }
       return out;
     }
@@ -944,8 +989,7 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       const ALLOWED = new Set([
         'report_content','sources_content','manual_overrides','financial_calculations',
         'demographics_data','economic_data','investment_score','location_intelligence',
-        'scoring_breakdown','qualitative_data','raw_property_data','sales_history',
-        'comparable_sales','school_data','infrastructure_data','planning_overlays',
+        'property_specs','validation_flags','data_sources',
       ]);
       if (!ALLOWED.has(args.column)) return { error: `column not allowed: ${args.column}` };
       const { data, error } = await supabase
@@ -1021,10 +1065,10 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       // 1. lookup
       const { data: report } = await supabase
         .from('investment_reports')
-        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data')
+        .select(`${REPORT_BASE_SELECT}, ${REPORT_JSON_FIELDS.join(',')}`)
         .eq('id', reportId).maybeSingle();
       if (!report) return { error: 'report not found' };
-      const scope = String(args.scope || report.report_scope || 'compass').toLowerCase();
+      const scope = String(args.scope || report.report_tier || report.report_scope || 'compass').toLowerCase();
 
       // 2. runs (informational only — absence is OK)
       const { data: runs } = await supabase
@@ -1047,8 +1091,9 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         economic_data: summarize(report.economic_data),
         investment_score: summarize(report.investment_score),
         location_intelligence: summarize(report.location_intelligence),
-        scoring_breakdown: summarize(report.scoring_breakdown),
-        qualitative_data: summarize(report.qualitative_data),
+        property_specs: summarize(report.property_specs),
+        validation_flags: summarize(report.validation_flags),
+        data_sources: summarize(report.data_sources),
       };
 
       // 4. static plan
