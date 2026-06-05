@@ -1397,9 +1397,21 @@ export default function TemplateBuilderEdit() {
             setTemplate(restored);
             update.mutate(
               { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
-              { onSuccess: () => { toast.success(`Restored v${v.version}`); setShowHistoryDialog(false); } },
+              { onSuccess: () => {
+                toast.success(`Restored v${v.version}`);
+                setShowHistoryDialog(false);
+                logTemplateEvent({ templateId: id, eventType: 'edit_restore', metadata: { fromVersion: v.version } });
+              } },
             );
           }}
+        />
+      )}
+      {id && (
+        <TemplateAnalyticsDialog
+          open={showAnalyticsDialog}
+          onOpenChange={setShowAnalyticsDialog}
+          templateId={id}
+          template={template}
         />
       )}
       {id && showComments && (
