@@ -641,7 +641,7 @@ Format your response as valid JSON with this structure:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert property portfolio analyst and trusted advisor. Provide detailed, actionable, and consultative portfolio analysis. Your tone should be warm and professional, building client trust. CRITICAL: Always respond with ONLY valid JSON - no markdown, no code blocks. Return pure JSON starting with { and ending with }.',
+          content: (await (await import('../_shared/engine-prompts.ts')).resolvePrompt('portfolio_analysis.system')).text,
         },
         { role: 'user', content: prompt },
       ],

@@ -10,6 +10,7 @@ import {
   createUnauthorizedResponse,
   createForbiddenResponse,
 } from '../_shared/auth.ts';
+import { PROMPT_CATALOG, getPromptCatalogEntry } from '../_shared/engine-prompts.ts';
 
 async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
@@ -232,6 +233,132 @@ Deno.serve(async (req) => {
           });
         }
         return json({ ok: true }, corsHeaders);
+      }
+
+      case 'list_prompts': {
+        // Return the full catalog joined with any overrides currently in DB.
+        const keys = PROMPT_CATALOG.map((p) => `prompt:${p.key}`);
+        const { data: overrides } = await supabase
+          .from('report_engine_config')
+          .select('config_key, scope, value, description, updated_at, updated_by')
+          .in('config_key', keys);
+        const byKey = new Map<string, any>();
+        for (const o of overrides ?? []) {
+          if (o.scope === 'default') byKey.set(o.config_key, o);
+        }
+        const prompts = PROMPT_CATALOG.map((p) => {
+          const ov = byKey.get(`prompt:${p.key}`);
+          const overrideText = ov
+            ? (typeof ov.value === 'string' ? ov.value : ov.value?.text ?? ov.value?.value ?? null)
+            : null;
+          return {
+            key: p.key,
+            label: p.label,
+            family: p.family,
+            function: p.function,
+            description: p.description,
+            tokens: p.tokens ?? [],
+            default: p.default,
+            override: overrideText,
+            has_override: !!ov,
+            updated_at: ov?.updated_at ?? null,
+            override_description: ov?.description ?? null,
+          };
+        });
+        return json({ prompts }, corsHeaders);
+      }
+
+      case 'upsert_prompt': {
+        const key = String(body.key || '');
+        const entry = getPromptCatalogEntry(key);
+        if (!entry) return json({ error: `unknown prompt key: ${key}` }, corsHeaders, 400);
+        const text = body.text;
+        if (typeof text !== 'string' || !text.trim()) {
+          return json({ error: 'text required (non-empty string)' }, corsHeaders, 400);
+        }
+        const config_key = `prompt:${key}`;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', config_key).eq('scope', 'default').maybeSingle();
+        const { error } = await supabase.from('report_engine_config').upsert({
+          config_key,
+          scope: 'default',
+          value: text,
+          description: body.description ?? entry.label,
+          updated_by: userId,
+        }, { onConflict: 'config_key,scope' });
+        if (error) throw error;
+        await supabase.from('report_engine_audit').insert({
+          proposal_id: null,
+          target_kind: 'prompt_override',
+          target_id: key,
+          before_value: before ?? null,
+          after_value: { key, text, description: body.description ?? null },
+          performed_by: userId,
+          rationale: body.rationale || 'direct prompt edit',
+        });
+        return json({ ok: true }, corsHeaders);
+      }
+
+      case 'delete_prompt': {
+        const key = String(body.key || '');
+        const entry = getPromptCatalogEntry(key);
+        if (!entry) return json({ error: `unknown prompt key: ${key}` }, corsHeaders, 400);
+        const config_key = `prompt:${key}`;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('*')
+          .eq('config_key', config_key).eq('scope', 'default').maybeSingle();
+        const { error } = await supabase.from('report_engine_config').delete()
+          .eq('config_key', config_key).eq('scope', 'default');
+        if (error) throw error;
+        if (before) {
+          await supabase.from('report_engine_audit').insert({
+            proposal_id: null, target_kind: 'prompt_override', target_id: key,
+            before_value: before, after_value: null,
+            performed_by: userId, rationale: body.rationale || 'reverted to default',
+          });
+        }
+        return json({ ok: true }, corsHeaders);
+      }
+
+      case 'export_prompts': {
+        const keys = PROMPT_CATALOG.map((p) => `prompt:${p.key}`);
+        const { data: overrides } = await supabase
+          .from('report_engine_config')
+          .select('config_key, value, description, updated_at')
+          .in('config_key', keys);
+        const out: Record<string, any> = {};
+        for (const o of overrides ?? []) {
+          const k = (o.config_key as string).replace(/^prompt:/, '');
+          out[k] = { text: typeof o.value === 'string' ? o.value : o.value?.text ?? o.value?.value ?? null, description: o.description, updated_at: o.updated_at };
+        }
+        return json({ exported_at: new Date().toISOString(), prompts: out }, corsHeaders);
+      }
+
+      case 'import_prompts': {
+        const incoming = body.prompts;
+        if (!incoming || typeof incoming !== 'object') {
+          return json({ error: 'prompts object required' }, corsHeaders, 400);
+        }
+        const results: Array<{ key: string; ok: boolean; error?: string }> = [];
+        for (const [key, raw] of Object.entries(incoming)) {
+          const entry = getPromptCatalogEntry(key);
+          if (!entry) { results.push({ key, ok: false, error: 'unknown key' }); continue; }
+          const text = typeof raw === 'string' ? raw : (raw as any)?.text;
+          if (!text || typeof text !== 'string') { results.push({ key, ok: false, error: 'invalid text' }); continue; }
+          const { error } = await supabase.from('report_engine_config').upsert({
+            config_key: `prompt:${key}`, scope: 'default', value: text,
+            description: (raw as any)?.description ?? entry.label, updated_by: userId,
+          }, { onConflict: 'config_key,scope' });
+          if (error) { results.push({ key, ok: false, error: error.message }); continue; }
+          results.push({ key, ok: true });
+        }
+        await supabase.from('report_engine_audit').insert({
+          proposal_id: null, target_kind: 'prompt_import', target_id: null,
+          before_value: null, after_value: { count: results.filter((r) => r.ok).length, results },
+          performed_by: userId, rationale: body.rationale || 'bulk import',
+        });
+        return json({ results }, corsHeaders);
       }
 
       default:

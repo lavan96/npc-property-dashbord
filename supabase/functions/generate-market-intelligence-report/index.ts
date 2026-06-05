@@ -3,6 +3,7 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 import { callLLMRaw } from '../_shared/llmRouter.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
+import { resolvePrompt } from '../_shared/engine-prompts.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ async function queryPerplexity(
       messages: [
         {
           role: 'system',
-          content: `You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. ${BRAND_NAME} is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL RULES: (1) Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. (2) Never cite specific property addresses, street names, or individual sale prices — use only published median/aggregate suburb-level statistics. (3) The output is client-facing and must project authority and completeness. ${systemPrompt || ''}`
+          content: `${(await resolvePrompt('market_intelligence.perplexity_system', { brand_name: BRAND_NAME })).text} ${systemPrompt || ''}`
         },
         { role: 'user', content: prompt }
       ],
@@ -130,7 +131,7 @@ async function callGemini(prompt: string, _apiKey: string, maxTokens = 6000): Pr
     messages: [
       {
         role: 'system',
-        content: `You are a senior Australian property market analyst writing premium client reports for ${BRAND_NAME}, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or any language suggesting incomplete information. If specific data is unavailable, omit that subsection entirely. The output is client-facing and must project authority.`
+        content: (await resolvePrompt('market_intelligence.writer_system', { brand_name: BRAND_NAME })).text
       },
       { role: 'user', content: prompt },
     ],
@@ -190,7 +191,7 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
     messages: [
       {
         role: 'system',
-        content: `You are an Australian market analyst specializing in property investment. CRITICAL: Today's date is ${currentDateStr}. The current year is ${currentYear}. ALL dates you provide MUST be in ${currentYear} or ${currentYear - 1}. NEVER use dates from 2024 or earlier — this is a ${currentYear} report.`
+        content: (await resolvePrompt('market_intelligence.events_system', { current_date: currentDateStr, current_year: currentYear })).text
       },
       {
         role: 'user',

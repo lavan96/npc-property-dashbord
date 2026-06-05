@@ -452,35 +452,13 @@ Deno.serve(async (req) => {
 
     // Build the condensation prompt using the structure guide
     const _brandCondense = await getBrandConfig();
-    const systemPrompt = `You are an expert investment property analyst for ${_brandCondense.companyName}. Your task is to condense a comprehensive property investment report into a ${tierConfig.name} format.
-
-CRITICAL REQUIREMENTS:
-1. Follow the EXACT structure template provided below
-2. Use markdown heading styles (##, ###) consistently
-3. Preserve ALL numerical data, statistics, percentages, and key facts EXACTLY as they appear
-4. Keep all tables in proper markdown format with | pipes
-5. Remove verbose descriptions while keeping essential insights
-6. Focus on the most critical information for investors
-7. Target approximately ${tierConfig.targetPages} pages of content
-
-REQUIRED REPORT STRUCTURE:
-${tierConfig.structureGuide}
-
-FORMATTING RULES:
-- Use ## for main section headings
-- Use ### for subsections within a section
-- Use proper markdown tables with headers and alignment
-- Use bullet points for lists
-- Include source attributions where data is cited
-- Keep the same professional tone as the original
-
-OUTPUT REQUIREMENTS:
-- Start directly with the first section (no preamble or introduction)
-- Maintain all tables with proper markdown formatting
-- Keep investment scores and ratings EXACTLY as they appear in the original
-- Preserve all warnings, risks, red flags, and recommendations
-- Include source citations for all data points
-- End with the Market Data Sources section`;
+    const { resolvePrompt: _resolveCondensePrompt } = await import('../_shared/engine-prompts.ts');
+    const systemPrompt = (await _resolveCondensePrompt('condense.system_template', {
+      brand_name: _brandCondense.companyName,
+      tier_name: tierConfig.name,
+      target_pages: tierConfig.targetPages,
+      structure_guide: tierConfig.structureGuide,
+    })).text;
 
     const userPrompt = `Please condense the following comprehensive investment report into a ${tierConfig.name} format (~${tierConfig.targetPages} pages).
 
