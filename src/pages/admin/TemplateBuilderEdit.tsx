@@ -898,6 +898,31 @@ export default function TemplateBuilderEdit() {
           >
             <Upload className="h-4 w-4 mr-1" /> Export…
           </Button>
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
+              <Sparkles className="h-4 w-4 mr-1" /> Share
+            </Button>
+          )}
+          {id && (
+            <Button
+              variant={showComments ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowComments(s => !s)}
+              title="Toggle comments sidebar"
+            >
+              <Component className="h-4 w-4 mr-1" /> Comments
+            </Button>
+          )}
+          {id && (
+            <div className="ml-1 mr-1">
+              <TemplatePresenceBar
+                templateId={id}
+                currentUserId={user?.id ?? null}
+                currentUserName={user?.username ?? null}
+                activePageId={activePageId}
+              />
+            </div>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
