@@ -79,6 +79,7 @@ export default function TemplateBuilderEdit() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [reportType, setReportType] = useState('');
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const brand = useBrand();
