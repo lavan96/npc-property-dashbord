@@ -18,6 +18,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, RefreshCw, Send, CheckCircle2, XCircle, Wrench } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import PromptLibrary from '@/components/admin/PromptLibrary';
 
 interface Run {
   id: string;
@@ -141,6 +142,7 @@ export default function ReportEngineInspector() {
       <Tabs defaultValue="runs">
         <TabsList>
           <TabsTrigger value="runs">Runs</TabsTrigger>
+          <TabsTrigger value="prompts">Prompt Library</TabsTrigger>
           <TabsTrigger value="config">Engine Config</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
         </TabsList>
@@ -193,6 +195,10 @@ export default function ReportEngineInspector() {
               <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="prompts">
+          <PromptLibrary />
         </TabsContent>
 
         <TabsContent value="config">
