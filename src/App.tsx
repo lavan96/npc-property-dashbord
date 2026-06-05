@@ -63,6 +63,7 @@ import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmi
 import TemplateBuilder from "./pages/admin/TemplateBuilder";
 import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
 import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
+import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
