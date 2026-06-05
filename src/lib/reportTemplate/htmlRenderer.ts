@@ -258,7 +258,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     baselineEl = `<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to bottom, transparent 0, transparent ${size - 1}pt, ${color} ${size - 1}pt, ${color} ${size}pt);background-position:0 ${offset}pt;"></div>`;
   }
 
-  return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
+  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
 
 /** Compile a template + data into a print-ready HTML document. */
