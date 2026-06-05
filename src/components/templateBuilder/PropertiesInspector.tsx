@@ -142,6 +142,7 @@ function OverlayEditor({
   onChange,
   onDelete,
   onDuplicate,
+  onUpdateTemplate,
 }: {
   template: ReportTemplate;
   templateId?: string;
@@ -149,6 +150,7 @@ function OverlayEditor({
   onChange: (n: Overlay) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onUpdateTemplate?: (t: ReportTemplate) => void;
 }) {
   const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
   const [showDelete, setShowDelete] = useState(false);
