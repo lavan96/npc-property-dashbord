@@ -39,6 +39,8 @@ import {
 } from '@/lib/reportTemplate/bindingValidation';
 import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel } from './BlockStylePanels';
+
 
 interface Props {
   template: ReportTemplate;
