@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
+import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
+
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
 import { getSnippet } from '@/lib/reportTemplate/snippetLibrary';
