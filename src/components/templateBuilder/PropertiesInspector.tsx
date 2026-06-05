@@ -102,6 +102,7 @@ export function PropertiesInspector({
             onChange={onUpdateOverlay}
             onDelete={() => onDeleteOverlay(overlay.id)}
             onDuplicate={() => onDuplicateOverlay(overlay.id)}
+            onUpdateTemplate={onUpdateTemplate}
           />
         ) : selectedBlock ? (
           <BlockEditor
