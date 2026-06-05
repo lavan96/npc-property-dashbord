@@ -21,7 +21,7 @@ import {
 } from './bindingResolver';
 import { getHtmlBlockRenderer, renderUnsupportedHtml, type HtmlBlockContext } from './blocks/html';
 import { renderOverlay } from './blocks/_shared.html';
-import { tokensToCssVariables } from './cssTokens';
+import { tokensToCssVariables, tokensToFontFaceCss } from './cssTokens';
 
 export interface HtmlRenderOptions {
   data?: Record<string, any>;
