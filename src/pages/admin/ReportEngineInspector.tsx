@@ -138,59 +138,75 @@ export default function ReportEngineInspector() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* Left: run list */}
-        <Card className="col-span-3 p-2">
-          <ScrollArea className="h-[78vh]">
-            {loadingRuns && <div className="p-4 text-sm text-muted-foreground">Loading runs…</div>}
-            {!loadingRuns && runs.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground">
-                No runs yet. Generate a report once instrumentation is wired into the engine.
-              </div>
-            )}
-            <div className="space-y-1">
-              {runs.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedId(r.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors
-                    ${selectedId === r.id ? 'bg-primary/10 border border-primary/40' : 'hover:bg-muted/50 border border-transparent'}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium truncate">{r.scope || 'run'} · {r.variant || '—'}</span>
-                    <Badge variant={
-                      r.status === 'completed' ? 'default' :
-                      r.status === 'failed' ? 'destructive' :
-                      r.status === 'running' ? 'secondary' : 'outline'
-                    } className="h-4 px-1.5 text-[10px]">{r.status}</Badge>
-                  </div>
-                  <div className="text-muted-foreground mt-0.5 truncate">
-                    {new Date(r.started_at).toLocaleString()}
-                  </div>
-                  <div className="text-muted-foreground/80 mt-0.5">
-                    {r.model || '—'} · {(r.total_prompt_tokens + r.total_completion_tokens) || 0} tok
-                  </div>
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
-        </Card>
+      <Tabs defaultValue="runs">
+        <TabsList>
+          <TabsTrigger value="runs">Runs</TabsTrigger>
+          <TabsTrigger value="config">Engine Config</TabsTrigger>
+          <TabsTrigger value="audit">Audit Log</TabsTrigger>
+        </TabsList>
 
-        {/* Center: run detail */}
-        <Card className="col-span-6 p-4">
-          {loadingDetail && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
-          {!loadingDetail && !run && <div className="text-sm text-muted-foreground">Select a run.</div>}
-          {!loadingDetail && run && <RunDetail run={run} chunks={chunks} />}
-        </Card>
+        <TabsContent value="runs">
+          <div className="grid grid-cols-12 gap-4">
+            <Card className="col-span-3 p-2">
+              <ScrollArea className="h-[78vh]">
+                {loadingRuns && <div className="p-4 text-sm text-muted-foreground">Loading runs…</div>}
+                {!loadingRuns && runs.length === 0 && (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No runs yet. Generate a report once instrumentation is wired into the engine.
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {runs.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setSelectedId(r.id)}
+                      className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors
+                        ${selectedId === r.id ? 'bg-primary/10 border border-primary/40' : 'hover:bg-muted/50 border border-transparent'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{r.scope || 'run'} · {r.variant || '—'}</span>
+                        <Badge variant={
+                          r.status === 'completed' ? 'default' :
+                          r.status === 'failed' ? 'destructive' :
+                          r.status === 'running' ? 'secondary' : 'outline'
+                        } className="h-4 px-1.5 text-[10px]">{r.status}</Badge>
+                      </div>
+                      <div className="text-muted-foreground mt-0.5 truncate">
+                        {new Date(r.started_at).toLocaleString()}
+                      </div>
+                      <div className="text-muted-foreground/80 mt-0.5">
+                        {r.model || '—'} · {(r.total_prompt_tokens + r.total_completion_tokens) || 0} tok
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
 
-        {/* Right: agent */}
-        <Card className="col-span-3 p-0 overflow-hidden">
-          <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
-        </Card>
-      </div>
+            <Card className="col-span-6 p-4">
+              {loadingDetail && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+              {!loadingDetail && !run && <div className="text-sm text-muted-foreground">Select a run.</div>}
+              {!loadingDetail && run && <RunDetail run={run} chunks={chunks} />}
+            </Card>
+
+            <Card className="col-span-3 p-0 overflow-hidden">
+              <EngineAgentPanel currentRunId={selectedId} onProposalApplied={() => loadRuns()} />
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="config">
+          <EngineConfigEditor />
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <AuditLog />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Run detail
