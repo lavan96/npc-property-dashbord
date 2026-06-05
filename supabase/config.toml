@@ -3,6 +3,9 @@ project_id = "dduzbchuswwbefdunfct"
 [functions.finance-email-track-pixel]
 verify_jwt = false
 
+[functions.template-share]
+verify_jwt = false
+
 [functions.finance-portal-client-comms]
 verify_jwt = false
 
