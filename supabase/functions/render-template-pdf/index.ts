@@ -230,6 +230,19 @@ Deno.serve(async (req) => {
         })
         .eq('id', jobId);
     }
+    // Phase 14 — analytics event (failure)
+    try {
+      const failBody = await req.clone().json().catch(() => ({}));
+      const tplId = failBody?.templateId ? String(failBody.templateId) : null;
+      if (tplId) {
+        await supabase.from('template_events').insert({
+          template_id: tplId,
+          event_type: 'render_failed',
+          actor_id: requestedBy,
+          metadata: { error: msg.slice(0, 500), duration_ms: Date.now() - started },
+        });
+      }
+    } catch (_) {}
     return new Response(JSON.stringify({ error: msg, jobId }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
