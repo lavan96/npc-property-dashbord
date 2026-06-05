@@ -25,6 +25,7 @@ import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateComm
 import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
+import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
