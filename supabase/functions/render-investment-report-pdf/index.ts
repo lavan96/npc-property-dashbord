@@ -4788,6 +4788,32 @@ ${(() => {
       max-width: 100%;
       padding-right: 6mm;
     }
+
+    /* ── Defensive alignment reset ──
+       Some chapters were inheriting text-align:center from an upstream container
+       (an unbalanced figure / leaked inline style). Re-pin body content to its
+       intended alignment so a single leak can't cascade through the rest of the
+       document. */
+    section.body-page > h1, section.body-page > h2, section.body-page > h3,
+    section.body-page > h4, section.body-page > h5, section.body-page > h6,
+    section.body-page h2, section.body-page h3, section.body-page h4,
+    section.body-page h5, section.body-page h6 { text-align: left !important; }
+    section.body-page > p, section.body-page > ul, section.body-page > ol,
+    section.body-page > li, section.body-page p, section.body-page li {
+      text-align: justify !important;
+    }
+    section.body-page table, section.body-page td, section.body-page th {
+      text-align: left;
+    }
+    /* Keep intentionally-centred figures and callouts as-is. */
+    section.body-page figure, section.body-page figure *,
+    section.body-page .glance-strip, section.body-page .glance-strip *,
+    section.body-page .insight-box .insight-label,
+    section.body-page .section-divider, section.body-page .section-divider *,
+    section.body-page .quote-page, section.body-page .quote-page *,
+    section.body-page .stat-block, section.body-page .stat-block * {
+      text-align: revert !important;
+    }
   `;
 })()}</style>
 </head>
