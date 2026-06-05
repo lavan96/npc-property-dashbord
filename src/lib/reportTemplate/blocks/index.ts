@@ -37,6 +37,8 @@ import { drawPlanningTableBlock } from './planningTable';
 import { drawDDChecklistBlock } from './ddChecklist';
 import { drawDecisionBoxBlock } from './decisionBox';
 import { drawStrengthsWatchBlock } from './strengthsWatch';
+import { drawExtrasPlaceholder } from './extras';
+
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
@@ -81,6 +83,27 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   'dd-checklist': drawDDChecklistBlock,
   'decision-box': drawDecisionBoxBlock,
   'strengths-watch': drawStrengthsWatchBlock,
+  // Phase 3 — HTML-first blocks (jsPDF shows a placeholder)
+  timeline: drawExtrasPlaceholder,
+  swot: drawExtrasPlaceholder,
+  gantt: drawExtrasPlaceholder,
+  comparison: drawExtrasPlaceholder,
+  'stat-callout': drawExtrasPlaceholder,
+  'pull-quote': drawExtrasPlaceholder,
+  faq: drawExtrasPlaceholder,
+  'pricing-card': drawExtrasPlaceholder,
+  'feature-list': drawExtrasPlaceholder,
+  'process-steps': drawExtrasPlaceholder,
+  'progress-bars': drawExtrasPlaceholder,
+  map: drawExtrasPlaceholder,
+  'icon-grid': drawExtrasPlaceholder,
+  testimonials: drawExtrasPlaceholder,
+  ribbon: drawExtrasPlaceholder,
+  'metric-delta': drawExtrasPlaceholder,
+  'definition-list': drawExtrasPlaceholder,
+  sparkline: drawExtrasPlaceholder,
+  'before-after': drawExtrasPlaceholder,
+  'image-text': drawExtrasPlaceholder,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
