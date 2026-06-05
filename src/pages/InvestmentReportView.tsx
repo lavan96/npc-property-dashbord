@@ -279,7 +279,7 @@ export default function InvestmentReportView() {
               compositeReportId={report.derived_from_report_id || report.id}
               reportVariant={report.report_variant}
               derivedFromReportId={report.derived_from_report_id}
-              onNavigate={(rid) => navigate(`/investment-reports/${rid}`)}
+              onNavigate={(rid) => navigate(`/investment-report/${rid}`)}
             />
           )}
           {/* Send to Client */}
