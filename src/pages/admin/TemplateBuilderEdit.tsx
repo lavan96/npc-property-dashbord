@@ -21,6 +21,10 @@ import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedField
 import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
 import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
 import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelineDialog';
+import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateCommentsPanel';
+import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
+import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
+import { useAuth } from '@/hooks/useAuth';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
