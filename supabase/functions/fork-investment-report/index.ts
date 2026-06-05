@@ -20,6 +20,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import {
   routeCompositeSection,
   normaliseStructuralHeading,
@@ -37,11 +38,6 @@ import {
   type SplitRoute,
 } from '../_shared/reportSplitRegistry.ts';
 import { scoreFinancial, scorePropertyFundamentals } from '../_shared/investmentScoreEngine.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-portal-session-token, x-finance-session-token',
-};
 
 interface ParsedSection {
   rawHeading: string;
@@ -254,6 +250,8 @@ async function upsertFork(
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = createCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -264,6 +262,13 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json().catch(() => ({}));
+
+    const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[fork-investment-report] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+
     const compositeId = body.composite_report_id || body.compositeReportId || body.reportId;
     const force = body.force === true;
     if (!compositeId) {
@@ -272,6 +277,13 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('[fork-investment-report] Authenticated fork request', {
+      userId: userId?.substring?.(0, 8) || userId,
+      authMethod,
+      compositeId,
+      force,
+    });
 
     const parent = await loadComposite(supabase, compositeId);
 
