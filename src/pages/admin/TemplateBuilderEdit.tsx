@@ -930,18 +930,26 @@ export default function TemplateBuilderEdit() {
 
             <div className="relative bg-muted/30 min-h-0">
               {activePage ? (
-                <TemplateCanvas
-                  key={activePage.id}
-                  page={activePage}
-                  onOverlaysChange={setActivePageOverlays}
-                  onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
-                />
+                <>
+                  <TemplateCanvas
+                    key={activePage.id}
+                    page={activePage}
+                    onOverlaysChange={setActivePageOverlays}
+                    onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
+                  />
+                  <CanvasChrome
+                    page={activePage}
+                    canvas={template.canvas ?? { gridSize: 8, showGrid: false, showRulers: true, snapToGrid: false, showBleed: false, showSafeArea: false }}
+                    onChangeCanvas={(c) => setTemplate((t) => ({ ...t, canvas: c }))}
+                  />
+                </>
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   No page selected. Add one from the left rail.
                 </div>
               )}
             </div>
+
 
             <div className="border-l bg-background min-h-0">
               <PropertiesInspector
