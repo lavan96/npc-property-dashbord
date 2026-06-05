@@ -316,6 +316,24 @@ export const ReportTemplateSchema = z.object({
     suppressOnFirstPage: z.boolean().optional(),
   })).optional(),
   defaultPageMasterId: z.string().optional(),
+  // Phase 10 — Themes (named partial-token overlays applied atop base tokens).
+  themes: z.record(z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    kind: z.enum(['light','dark','print','brand','custom']).optional(),
+    swatch: z.array(z.string()).optional(),         // up to 4 hex chips for the picker
+    tokens: z.object({
+      colors: z.record(z.string()).optional(),
+      fonts: z.record(z.string()).optional(),
+      spacing: z.record(z.number()).optional(),
+      radii: z.record(z.number()).optional(),
+      shadows: z.record(z.string()).optional(),
+      gradients: z.record(z.string()).optional(),
+      typeScale: z.record(z.number()).optional(),
+    }).default({}),
+  })).optional(),
+  activeThemeId: z.string().optional(),             // template-level active theme
   // Phase 2 — canvas preferences + saved selections
   canvas: z.object({
     gridSize: z.number().min(2).max(64).default(8),
