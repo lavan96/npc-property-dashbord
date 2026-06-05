@@ -106,16 +106,19 @@ export function validateBindable(input: unknown, template?: ReportTemplate | nul
     }
     const [pathPart, ...filterParts] = expr.split('|').map((p) => p.trim());
 
-    if (!isKnownPath(pathPart)) {
+    // Skip path validation for inline expressions (=) and computed refs (@)
+    const isExpr = pathPart.startsWith('=') || pathPart.startsWith('@');
+    if (!isExpr && !isKnownPath(pathPart)) {
       issues.push({ raw, start, end, message: `Unknown path "${pathPart}"` });
     }
     for (const f of filterParts) {
       const [name] = f.split(':').map((p) => p.trim());
-      if (!KNOWN_FILTERS.includes(name)) {
+      if (!FILTER_NAMES.includes(name)) {
         issues.push({ raw, start, end, message: `Unknown filter "${name}"` });
       }
     }
   }
+
 
   // Detect orphan braces (`{{ ... ` without closing) — naive check
   const openCount = (s.match(/\{\{/g) || []).length;
