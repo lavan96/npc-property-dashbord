@@ -24,9 +24,10 @@ export const KNOWN_DATA_PATHS: string[] = [
   'pageCount',
 ];
 
-/** Filters supported by the binding resolver. Kept in sync with bindingResolver.ts. */
-export { FILTER_NAMES as KNOWN_FILTERS } from './bindingResolver';
 import { FILTER_NAMES } from './bindingResolver';
+/** Filters supported by the binding resolver. Kept in sync with bindingResolver.ts. */
+export const KNOWN_FILTERS = FILTER_NAMES;
+
 
 
 export interface BindingIssue {
