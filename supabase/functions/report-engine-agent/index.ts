@@ -1065,10 +1065,10 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       // 1. lookup
       const { data: report } = await supabase
         .from('investment_reports')
-        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, generation_engine, current_version, total_sections, last_completed_section, error_message, created_at, updated_at, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data')
+        .select(`${REPORT_BASE_SELECT}, ${REPORT_JSON_FIELDS.join(',')}`)
         .eq('id', reportId).maybeSingle();
       if (!report) return { error: 'report not found' };
-      const scope = String(args.scope || report.report_scope || 'compass').toLowerCase();
+      const scope = String(args.scope || report.report_tier || report.report_scope || 'compass').toLowerCase();
 
       // 2. runs (informational only — absence is OK)
       const { data: runs } = await supabase
@@ -1091,8 +1091,9 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
         economic_data: summarize(report.economic_data),
         investment_score: summarize(report.investment_score),
         location_intelligence: summarize(report.location_intelligence),
-        scoring_breakdown: summarize(report.scoring_breakdown),
-        qualitative_data: summarize(report.qualitative_data),
+        property_specs: summarize(report.property_specs),
+        validation_flags: summarize(report.validation_flags),
+        data_sources: summarize(report.data_sources),
       };
 
       // 4. static plan
