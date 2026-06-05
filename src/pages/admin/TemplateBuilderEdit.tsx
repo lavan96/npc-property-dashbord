@@ -1064,6 +1064,12 @@ export default function TemplateBuilderEdit() {
           <TokensEditor template={template} onChange={(tokens) => setTemplate((t) => ({ ...t, tokens }))} />
         </TabsContent>
 
+        {/* Brand kit (Phase 1 foundations) */}
+        <TabsContent value="brand" className="px-6 py-4 max-w-3xl space-y-6">
+          <BrandKitPanel template={template} onChange={setTemplate} />
+        </TabsContent>
+
+
         {/* Reusable component slots (Header / Footer / etc.) */}
         <TabsContent value="slots" className="px-6 py-4 max-w-3xl space-y-4">
           <SlotsEditor
