@@ -40,6 +40,15 @@ You can PROPOSE (everything is staged — a superadmin clicks Apply):
 - propose_section_template_map_edit: pin specific templates to specific section_keys for a scope.
 - propose_report_override_edit: shallow-merge a patch into a specific report's
   manual_overrides jsonb (pass null for a key to delete it).
+- propose_split_registry_edit / reset_split_registry_to_defaults: edit the
+  composite→fork routing rules (split_routes), titles/lens/footers (split_metadata),
+  and FIN/PLDD section orders. These drive fork-investment-report — edits affect
+  every future fork. Always read get_split_registry first so you can diff defaults
+  vs live before staging a change.
+- propose_packet_config_edit: control which keys/columns the data_packet inlines
+  per scope (whitelist inline_keys, blacklist exclude_keys, extra inline_columns,
+  per-section overrides, max_bytes_per_key truncation). simulate_data_packet
+  reflects this immediately so you can preview the effect.
 
 You CANNOT:
 - Touch any table other than the engine + report tables listed above.
