@@ -803,7 +803,13 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
       const overrideKeys = report.manual_overrides && typeof report.manual_overrides === 'object'
         ? Object.keys(report.manual_overrides) : [];
       const summary = { ...report, manual_overrides: undefined, override_keys: overrideKeys, override_key_count: overrideKeys.length };
-      return { report: summary, latest_run: runs?.[0] ?? null, recent_runs: runs ?? [], run_count_recent: runs?.length ?? 0 };
+      const { data: relatedReports } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, derived_from_report_id, parent_report_id, status, created_at, updated_at')
+        .or(`derived_from_report_id.eq.${args.report_id},parent_report_id.eq.${args.report_id}`)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      return { report: summary, latest_run: runs?.[0] ?? null, recent_runs: runs ?? [], run_count_recent: runs?.length ?? 0, related_reports: relatedReports ?? [] };
     }
     case 'get_report_runs': {
       const { data, error } = await supabase
