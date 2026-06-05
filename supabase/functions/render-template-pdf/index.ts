@@ -34,7 +34,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const PDF_BUCKET = 'generated-reports';
+const PDF_BUCKET = 'investment-reports';
 const MAX_HTML_BYTES = 25 * 1024 * 1024;
 const WEASYPRINT_TIMEOUT_MS = 600_000;
 
