@@ -1346,6 +1346,26 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={(tplRow as any)?.custom_css || undefined}
       />
+      {id && (
+        <ShareLinksDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          templateId={id}
+          template={template}
+          currentUserId={user?.id ?? null}
+        />
+      )}
+      {id && showComments && (
+        <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
+          <TemplateCommentsPanel
+            templateId={id}
+            activePage={activePage}
+            selectedOverlay={selectedOverlay}
+            currentUserId={user?.id ?? null}
+            currentUserName={user?.username ?? null}
+          />
+        </aside>
+      )}
     </div>
   );
 }
