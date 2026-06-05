@@ -1419,6 +1419,31 @@ export default function TemplateBuilderEdit() {
           template={template}
         />
       )}
+      <TemplateAIAuthorDialog
+        open={showAIAuthor}
+        onOpenChange={setShowAIAuthor}
+        template={template}
+        activePage={activePage ?? null}
+        tier={tier}
+        onAddPage={(page, rationale) => {
+          setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
+          setActivePageId(page.id);
+          toast.success(`Added "${page.name}"${rationale ? '' : ''}`);
+        }}
+        onUpdateOverlayText={(pageId, overlayId, nextText) => {
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => p.id !== pageId ? p : ({
+              ...p,
+              blocks: p.blocks.map((b) => ({
+                ...b,
+                overlays: b.overlays.map((o) => o.id === overlayId && o.type === 'text' ? ({ ...o, content: nextText } as any) : o),
+              })),
+            })),
+          }));
+        }}
+        onApplyName={(n, d) => { setName(n); setDescription(d); }}
+      />
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
           <TemplateCommentsPanel
