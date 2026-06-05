@@ -257,24 +257,29 @@ export const EDITORIAL_CSS = `
                 chapter-title attr(data-chapter-title);
   }
   .chapter-header {
-    margin-bottom: 18pt;
-    padding-bottom: 14pt;
+    margin-bottom: 22pt;
+    padding-bottom: 16pt;
     border-bottom: 0.6pt solid ${BRAND.rule};
   }
   .chapter-header .chapter-no {
+    display: block;
     font-family: ${TYPE.mono};
     font-size: 9pt;
     letter-spacing: .26em;
+    line-height: 1;
     color: ${BRAND.goldDeep};
-    margin-bottom: 8pt;
+    margin: 0 0 20pt 0;
   }
   .chapter-header h1 {
     font-size: ${SCALE.h1}pt;
+    line-height: 1.18;
     color: ${BRAND.navyDeep};
     max-width: 150mm;
+    margin: 0;
+    padding-top: 2pt;
   }
   .chapter-header .chapter-dek {
-    margin-top: 10pt;
+    margin-top: 14pt;
     font-family: ${TYPE.accent};
     font-style: italic;
     font-size: 14pt;
