@@ -1150,6 +1150,17 @@ function StaticPlanTab() {
     const current = plan.section_template_map?.[sectionId] ?? [];
     const next = checked ? Array.from(new Set([...current, templateId])) : current.filter((x) => x !== templateId);
     setSavingMap(true);
+    if (proposeMode) {
+      const { error } = await invokeSecureFunction(
+        'report-engine-inspector',
+        { op: 'propose_section_template_map', scope, section_id: sectionId, template_ids: next },
+      );
+      setSavingMap(false);
+      if (error) { toast({ title: 'Propose failed', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Proposed', description: `Pending: ${sectionId} → ${next.length} templates` });
+      loadPendingMapProposals();
+      return;
+    }
     const { error } = await invokeSecureFunction(
       'report-engine-inspector',
       { op: 'set_section_template_map', scope, section_id: sectionId, template_ids: next },
