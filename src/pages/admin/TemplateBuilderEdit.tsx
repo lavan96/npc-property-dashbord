@@ -58,6 +58,9 @@ import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
+import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
+import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
+
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
 
