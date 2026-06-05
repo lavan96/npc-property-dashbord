@@ -6,13 +6,15 @@
  *   "token:primary"                          → tokens.colors.primary or tokens.fonts.primary etc.
  *   "{{property.address}}"                   → data.property.address
  *   "{{financials.weeklyRent | currency}}"   → with filter
- *   "Hello {{name}}, you owe {{amt | currency}}" → mixed
+ *   "{{=netYield}}"                          → computed field (tokens.computed[name])
+ *   "{{= price * 0.052 | currency}}"         → inline expression
+ *   "Hello {{name}}, you owe {{amt | currency}}"
  *
  * Conditional expressions (`block.conditional`, `page.conditional`) are
  * evaluated via a tiny safe-ish expression evaluator: only a small allow-list
  * of operators is supported. NEVER pass user input to this function unsanitised.
  */
-import type { Tokens } from './templateSchema';
+import type { Tokens, ComputedField } from './templateSchema';
 
 export interface ResolveContext {
   data: Record<string, any>;
@@ -20,43 +22,171 @@ export interface ResolveContext {
 }
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
-type Filter = (value: any, ...args: string[]) => string;
+type Filter = (value: any, ...args: string[]) => any;
 
-const FILTERS: Record<string, Filter> = {
-  currency: (v) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return String(v ?? '');
-    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
+const num = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+};
+
+export const FILTERS: Record<string, Filter> = {
+  // Money / numeric formatting
+  currency: (v, decimals) => {
+    const n = num(v);
+    if (Number.isNaN(n)) return String(v ?? '');
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: decimals != null ? Number(decimals) : 0 }).format(n);
   },
-  number: (v) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return String(v ?? '');
-    return new Intl.NumberFormat('en-AU').format(n);
+  number: (v, decimals) => {
+    const n = num(v);
+    if (Number.isNaN(n)) return String(v ?? '');
+    return new Intl.NumberFormat('en-AU', { maximumFractionDigits: decimals != null ? Number(decimals) : 0 }).format(n);
   },
-  percent: (v) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return String(v ?? '');
-    return `${n.toFixed(2)}%`;
+  percent: (v, decimals) => {
+    const n = num(v);
+    if (Number.isNaN(n)) return String(v ?? '');
+    return `${n.toFixed(decimals != null ? Number(decimals) : 2)}%`;
   },
-  date: (v) => {
+  fixed: (v, decimals) => {
+    const n = num(v); return Number.isNaN(n) ? String(v ?? '') : n.toFixed(Number(decimals ?? 2));
+  },
+  round: (v) => { const n = num(v); return Number.isNaN(n) ? v : Math.round(n); },
+  abs: (v) => { const n = num(v); return Number.isNaN(n) ? v : Math.abs(n); },
+
+  // Arithmetic (chainable)
+  add: (v, x) => num(v) + num(x),
+  sub: (v, x) => num(v) - num(x),
+  mul: (v, x) => num(v) * num(x),
+  div: (v, x) => { const d = num(x); return d === 0 ? 0 : num(v) / d; },
+  mod: (v, x) => { const d = num(x); return d === 0 ? 0 : num(v) % d; },
+  min: (v, x) => Math.min(num(v), num(x)),
+  max: (v, x) => Math.max(num(v), num(x)),
+
+  // Dates
+  date: (v, fmt) => {
     if (!v) return '';
     const d = new Date(v as any);
     if (Number.isNaN(d.getTime())) return String(v);
+    if (fmt === 'iso') return d.toISOString().slice(0, 10);
+    if (fmt === 'short') return d.toLocaleDateString('en-AU');
+    if (fmt === 'long') return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
     return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
   },
+  dateRel: (v) => {
+    if (!v) return '';
+    const d = new Date(v as any);
+    if (Number.isNaN(d.getTime())) return String(v);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    const abs = Math.abs(diff);
+    const sign = diff >= 0 ? 'ago' : 'from now';
+    if (abs < 60) return `just now`;
+    if (abs < 3600) return `${Math.round(abs / 60)}m ${sign}`;
+    if (abs < 86400) return `${Math.round(abs / 3600)}h ${sign}`;
+    if (abs < 2592000) return `${Math.round(abs / 86400)}d ${sign}`;
+    return `${Math.round(abs / 2592000)}mo ${sign}`;
+  },
+
+  // Strings
   upper: (v) => String(v ?? '').toUpperCase(),
   lower: (v) => String(v ?? '').toLowerCase(),
-  default: (v, fallback) => (v === null || v === undefined || v === '' ? (fallback ?? '') : String(v)),
+  capitalize: (v) => { const s = String(v ?? ''); return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s; },
+  title: (v) => String(v ?? '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
+  trim: (v) => String(v ?? '').trim(),
+  truncate: (v, len, suffix) => {
+    const s = String(v ?? ''); const n = Number(len ?? 80);
+    return s.length > n ? s.slice(0, n) + (suffix ?? '…') : s;
+  },
+  replace: (v, find, repl) => String(v ?? '').split(String(find ?? '')).join(String(repl ?? '')),
+  slice: (v, start, end) => String(v ?? '').slice(Number(start ?? 0), end != null ? Number(end) : undefined),
+  pluralize: (v, singular, plural) => {
+    const n = num(v); const s = singular ?? ''; const p = plural ?? `${s}s`;
+    return `${n} ${n === 1 ? s : p}`;
+  },
+  join: (v, sep) => Array.isArray(v) ? v.join(sep ?? ', ') : String(v ?? ''),
+  first: (v) => Array.isArray(v) ? v[0] : v,
+  last: (v) => Array.isArray(v) ? v[v.length - 1] : v,
+  count: (v) => Array.isArray(v) ? v.length : (v == null ? 0 : 1),
+  sum: (v, path) => {
+    if (!Array.isArray(v)) return num(v) || 0;
+    return v.reduce((acc, item) => acc + num(path ? getByPath(item, path) : item) || 0, 0);
+  },
+  avg: (v, path) => {
+    if (!Array.isArray(v) || v.length === 0) return 0;
+    const total = v.reduce((acc, item) => acc + (num(path ? getByPath(item, path) : item) || 0), 0);
+    return total / v.length;
+  },
+
+  // Conditional / fallback
+  default: (v, fallback) => (v === null || v === undefined || v === '' ? (fallback ?? '') : v),
+  fallback: (v, fallback) => (v === null || v === undefined || v === '' ? (fallback ?? '') : v),
+  if: (v, truthy, falsy) => (v ? (truthy ?? '') : (falsy ?? '')),
+  eq: (v, x) => String(v) === String(x),
+  neq: (v, x) => String(v) !== String(x),
+  gt: (v, x) => num(v) > num(x),
+  lt: (v, x) => num(v) < num(x),
+  gte: (v, x) => num(v) >= num(x),
+  lte: (v, x) => num(v) <= num(x),
+
+  // Encoding
+  json: (v) => { try { return JSON.stringify(v); } catch { return String(v ?? ''); } },
+  urlencode: (v) => encodeURIComponent(String(v ?? '')),
 };
 
 // ─── Path access ──────────────────────────────────────────────────────────────
+// Supports dotted paths, with array index syntax: "properties[0].price" or "properties.0.price"
 function getByPath(obj: any, path: string): any {
-  if (!obj) return undefined;
-  return path.split('.').reduce((acc, key) => (acc == null ? acc : acc[key.trim()]), obj);
+  if (!obj || !path) return undefined;
+  const parts = path.replace(/\[(\w+)\]/g, '.$1').split('.');
+  return parts.reduce((acc, key) => (acc == null ? acc : acc[key.trim()]), obj);
+}
+
+// ─── Computed field evaluation ────────────────────────────────────────────────
+const SAFE_EXPR_RE = /^[\s\w.@$'"=!<>&|()+\-*/%?:,\[\]]*$/;
+
+function evalExpression(expr: string, ctx: ResolveContext): any {
+  if (!SAFE_EXPR_RE.test(expr)) {
+    console.warn('[binding] Rejected unsafe expression:', expr);
+    return '';
+  }
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('data', 'tokens', '$', `"use strict"; with (data) { return (${expr}); }`);
+    return fn(ctx.data, ctx.tokens, ctx.data);
+  } catch (e) {
+    console.warn('[binding] Expression eval failed:', expr, e);
+    return '';
+  }
+}
+
+function resolveComputed(name: string, ctx: ResolveContext): any {
+  const cf: ComputedField | undefined = (ctx.tokens.computed ?? []).find((c) => c.name === name);
+  if (!cf) return undefined;
+  const value = evalExpression(cf.expr, ctx);
+  // Apply default format if specified and no inline filter follows
+  if (cf.format && cf.format !== 'raw') {
+    const fn = FILTERS[cf.format];
+    if (fn) return fn(value);
+  }
+  return value;
 }
 
 // ─── Bindable string resolution ───────────────────────────────────────────────
 const BINDING_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
+
+function applyFilters(value: any, filterParts: string[]): any {
+  for (const f of filterParts) {
+    // Parse filter:arg1:arg2 with support for quoted args containing colons
+    const m = f.match(/^([a-zA-Z_]\w*)\s*(?::\s*(.*))?$/);
+    if (!m) continue;
+    const name = m[1];
+    const argsRaw = m[2] ?? '';
+    const args = argsRaw
+      ? argsRaw.match(/'[^']*'|"[^"]*"|[^:]+/g)?.map((a) => a.trim().replace(/^['"]|['"]$/g, '')) ?? []
+      : [];
+    const fn = FILTERS[name];
+    if (fn) value = fn(value, ...args);
+  }
+  return value;
+}
 
 export function resolveBindable(input: unknown, ctx: ResolveContext): string {
   if (input == null) return '';
@@ -72,17 +202,30 @@ export function resolveBindable(input: unknown, ctx: ResolveContext): string {
     );
   }
 
-  // Mustache-style interpolation
   if (!s.includes('{{')) return s;
 
   return s.replace(BINDING_RE, (_match, expr: string) => {
-    const [pathPart, ...filterParts] = expr.split('|').map((p) => p.trim());
-    let value: any = getByPath(ctx.data, pathPart);
-    for (const f of filterParts) {
-      const [name, ...args] = f.split(':').map((p) => p.trim());
-      const fn = FILTERS[name];
-      if (fn) value = fn(value, ...args);
+    const trimmed = expr.trim();
+    const [headRaw, ...filterParts] = trimmed.split('|').map((p) => p.trim());
+    let value: any;
+
+    if (headRaw.startsWith('=')) {
+      // Inline expression OR computed reference: "= name" or "= price * 0.06"
+      const body = headRaw.slice(1).trim();
+      // bare identifier → computed field lookup
+      if (/^[a-zA-Z_]\w*$/.test(body)) {
+        value = resolveComputed(body, ctx);
+        if (value === undefined) value = evalExpression(body, ctx);
+      } else {
+        value = evalExpression(body, ctx);
+      }
+    } else if (headRaw.startsWith('@')) {
+      value = resolveComputed(headRaw.slice(1).trim(), ctx);
+    } else {
+      value = getByPath(ctx.data, headRaw);
     }
+
+    value = applyFilters(value, filterParts);
     return value == null ? '' : String(value);
   });
 }
@@ -100,14 +243,11 @@ export function resolveBindableColor(input: unknown, ctx: ResolveContext, fallba
   const v = resolveBindable(input, ctx);
   if (!v) return fallback;
   if (v.startsWith('#')) return v;
-  // already token-resolved by resolveBindable; if it doesn't look like a colour, return fallback
   return /^#?[0-9a-fA-F]{3,8}$/.test(v) ? (v.startsWith('#') ? v : `#${v}`) : fallback;
 }
 
 // ─── Conditional expressions ──────────────────────────────────────────────────
-// VERY small evaluator. Allowed: identifiers, dot access, ===, !==, ==, !=, >, <, >=, <=, &&, ||, !, parens, numbers, strings.
-// No function calls, no template strings, no statements.
-const SAFE_EXPR = /^[\s\w.'"=!<>&|()+\-*/%?:,]*$/;
+const SAFE_EXPR = /^[\s\w.'"=!<>&|()+\-*/%?:,\[\]@]*$/;
 
 export function evalConditional(expr: string | undefined, ctx: ResolveContext): boolean {
   if (!expr) return true;
@@ -116,7 +256,6 @@ export function evalConditional(expr: string | undefined, ctx: ResolveContext): 
     return false;
   }
   try {
-    // Build a sandboxed function whose only scope is `data` + `tokens`.
     // eslint-disable-next-line no-new-func
     const fn = new Function('data', 'tokens', `"use strict"; with (data) { return (${expr}); }`);
     return Boolean(fn(ctx.data, ctx.tokens));
@@ -125,3 +264,6 @@ export function evalConditional(expr: string | undefined, ctx: ResolveContext): 
     return false;
   }
 }
+
+/** Exported list of filter names, kept in sync for validation. */
+export const FILTER_NAMES = Object.keys(FILTERS);

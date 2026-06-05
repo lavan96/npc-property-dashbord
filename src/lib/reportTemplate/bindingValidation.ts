@@ -24,16 +24,11 @@ export const KNOWN_DATA_PATHS: string[] = [
   'pageCount',
 ];
 
-/** Filters supported by the binding resolver. Keep in sync with bindingResolver.ts. */
-export const KNOWN_FILTERS = [
-  'currency',
-  'number',
-  'percent',
-  'date',
-  'upper',
-  'lower',
-  'default',
-];
+import { FILTER_NAMES } from './bindingResolver';
+/** Filters supported by the binding resolver. Kept in sync with bindingResolver.ts. */
+export const KNOWN_FILTERS = FILTER_NAMES;
+
+
 
 export interface BindingIssue {
   raw: string;        // e.g. "{{property.adres | currency}}"
@@ -111,16 +106,19 @@ export function validateBindable(input: unknown, template?: ReportTemplate | nul
     }
     const [pathPart, ...filterParts] = expr.split('|').map((p) => p.trim());
 
-    if (!isKnownPath(pathPart)) {
+    // Skip path validation for inline expressions (=) and computed refs (@)
+    const isExpr = pathPart.startsWith('=') || pathPart.startsWith('@');
+    if (!isExpr && !isKnownPath(pathPart)) {
       issues.push({ raw, start, end, message: `Unknown path "${pathPart}"` });
     }
     for (const f of filterParts) {
       const [name] = f.split(':').map((p) => p.trim());
-      if (!KNOWN_FILTERS.includes(name)) {
+      if (!FILTER_NAMES.includes(name)) {
         issues.push({ raw, start, end, message: `Unknown filter "${name}"` });
       }
     }
   }
+
 
   // Detect orphan braces (`{{ ... ` without closing) — naive check
   const openCount = (s.match(/\{\{/g) || []).length;

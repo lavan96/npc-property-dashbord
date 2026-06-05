@@ -33,6 +33,14 @@ export const FontFaceSchema = z.object({
 });
 export type FontFace = z.infer<typeof FontFaceSchema>;
 
+export const ComputedFieldSchema = z.object({
+  name: z.string().min(1),                 // exposed as data.@name or {{=name}}
+  expr: z.string().min(1),                 // JS-like expression evaluated against data + tokens
+  description: z.string().optional(),
+  format: z.enum(['raw','currency','number','percent','date']).optional(),
+});
+export type ComputedField = z.infer<typeof ComputedFieldSchema>;
+
 export const TokensSchema = z.object({
   colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
   fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
@@ -46,7 +54,10 @@ export const TokensSchema = z.object({
   activeTheme: z.enum(['light','dark','print','custom']).optional(),
   // Phase 5 — registered web fonts to inject via @font-face / @import
   fontFaces: z.array(FontFaceSchema).optional(),
+  // Phase 7 — computed/derived fields available in bindings as `{{=name}}`
+  computed: z.array(ComputedFieldSchema).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
+
 
 export type Tokens = z.infer<typeof TokensSchema>;
 
