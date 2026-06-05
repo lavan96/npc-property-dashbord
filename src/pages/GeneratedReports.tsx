@@ -71,6 +71,8 @@ interface InvestmentReport {
   current_version: number;
   report_scope?: string; // Track report generation scope
   report_tier?: 'compass' | 'briefing' | 'snapshot'; // Report tier
+  report_variant?: 'composite' | 'financial' | 'due_diligence' | null;
+  derived_from_report_id?: string | null;
   parent_report_id?: string | null;
   status?: string;
   is_archived?: boolean;
