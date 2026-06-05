@@ -88,7 +88,7 @@ export function renderPivotTableHtml(block: Block, ctx: HtmlBlockContext): strin
     if (Number.isFinite(v)) groups.get(k)!.push(v);
   }
 
-  const agged: Array<[string, number]> = [...groups.entries()].map(([k, arr]) => {
+  const agged: Array<[string, number]> = [...groups.entries()].map(([k, arr]): [string, number] => {
     if (agg === 'count') return [k, arr.length];
     if (!arr.length) return [k, 0];
     if (agg === 'avg') return [k, arr.reduce((a, b) => a + b, 0) / arr.length];
