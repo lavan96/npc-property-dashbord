@@ -418,6 +418,54 @@ function PageEditor({
 
       <Separator />
 
+      {/* Phase 5 — Baseline grid + print furniture */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Print & rhythm</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <NumField label="Bleed (pt)" value={page.bleed ?? 0} min={0} max={36} onChange={(v) => onChange({ ...page, bleed: v || undefined })} />
+          <NumField label="Safe area (pt)" value={page.safeArea ?? 0} min={0} max={72} onChange={(v) => onChange({ ...page, safeArea: v || undefined })} />
+        </div>
+        <div className="flex items-center justify-between rounded border border-border px-2 py-1">
+          <Label className="text-xs">Show baseline grid</Label>
+          <input
+            type="checkbox"
+            checked={!!page.baselineGrid?.show}
+            onChange={(e) => onChange({
+              ...page,
+              baselineGrid: { size: 12, color: 'rgba(191,155,80,0.20)', offset: 0, ...(page.baselineGrid || {}), show: e.target.checked },
+            })}
+          />
+        </div>
+        {page.baselineGrid?.show && (
+          <div className="grid grid-cols-3 gap-2">
+            <NumField
+              label="Size (pt)"
+              value={page.baselineGrid.size ?? 12}
+              min={4}
+              max={64}
+              onChange={(v) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), size: v } })}
+            />
+            <NumField
+              label="Offset (pt)"
+              value={page.baselineGrid.offset ?? 0}
+              min={0}
+              max={72}
+              onChange={(v) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), offset: v } })}
+            />
+            <div>
+              <Label className="text-xs">Color</Label>
+              <Input
+                value={page.baselineGrid.color ?? 'rgba(191,155,80,0.20)'}
+                className="text-xs font-mono"
+                onChange={(e) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), color: e.target.value } })}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
       {/* Blocks list with reorder / duplicate / delete / open editor */}
       <div>
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
