@@ -2482,6 +2482,13 @@ export async function buildHtml(
     "en-AU",
     { day: "numeric", month: "long", year: "numeric" },
   );
+  const reportVariant: "composite" | "financial" | "due_diligence" =
+    (report.report_variant as any) || "composite";
+  const variantLabel = reportVariant === "financial"
+    ? "Financial Analysis Report"
+    : reportVariant === "due_diligence"
+    ? "Property & Location Due Diligence"
+    : "Investment Report";
 
   const fin = report.financial_calculations || {};
   const km = fin.keyMetrics || fin.key_metrics || {};
@@ -2716,7 +2723,7 @@ export async function buildHtml(
         <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
         <div class="cover-masthead">${esc(String(brandName).toUpperCase())}</div>
         <div class="cover-copy">
-          <div class="cover-kicker">Investment Report · ${esc(generated)}</div>
+          <div class="cover-kicker">${esc(variantLabel)} · ${esc(generated)}</div>
           <h1>${esc(address)}</h1>
           <div class="cover-rule"></div>
           <div class="cover-meta">${esc(coverLocation)}</div>
@@ -5111,7 +5118,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     const { data: report, error } = await supabase
       .from("investment_reports")
       .select(
-        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence, demographics_data",
+        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence, demographics_data, report_variant, derived_from_report_id",
       )
       .eq("id", reportId)
       .maybeSingle();
