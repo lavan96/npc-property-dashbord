@@ -118,7 +118,9 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   heatmap: drawExtrasPlaceholder,
   'kpi-strip': drawExtrasPlaceholder,
   legend: drawExtrasPlaceholder,
+  'auto-toc': drawExtrasPlaceholder,
 };
+
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
   return BLOCK_RENDERERS[type] ?? null;
@@ -449,6 +451,33 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'color', key: 'indexColor', label: 'Index color' },
     ],
   },
+  'auto-toc': {
+    type: 'auto-toc',
+    label: 'Auto table of contents',
+    defaultProps: () => ({
+      x: 24, y: 80, width: 547,
+      title: 'Contents',
+      titleSize: 22,
+      size: 11,
+      lineHeight: 20,
+      indent: 12,
+      dotLeader: true,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'number', key: 'titleSize', label: 'Title size' },
+      { kind: 'number', key: 'size', label: 'Entry size' },
+      { kind: 'number', key: 'lineHeight', label: 'Line height' },
+      { kind: 'number', key: 'indent', label: 'Indent per level (pt)' },
+      { kind: 'number', key: 'maxLevel', label: 'Max level' },
+      { kind: 'color', key: 'color', label: 'Entry color' },
+      { kind: 'color', key: 'accent', label: 'Page-number color' },
+      { kind: 'select', key: 'dotLeader', label: 'Dot leader', options: ['true', 'false'] },
+    ],
+  },
+
+
+
   signature: {
     type: 'signature',
     label: 'Signature',

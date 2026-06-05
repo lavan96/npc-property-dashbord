@@ -68,6 +68,8 @@ import {
   renderLegendHtml,
   renderStackedBarChartHtml,
 } from './charts.html';
+import { renderAutoTocHtml } from './autoToc.html';
+
 
 
 
@@ -136,8 +138,10 @@ const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   heatmap: renderHeatmapHtml,
   'kpi-strip': renderKpiStripHtml,
   legend: renderLegendHtml,
+  'auto-toc': renderAutoTocHtml,
   // 'free' blocks have no body — only overlays — and render as nothing.
   free: () => '',
+
 };
 
 export function getHtmlBlockRenderer(type: string): HtmlBlockRenderer | undefined {

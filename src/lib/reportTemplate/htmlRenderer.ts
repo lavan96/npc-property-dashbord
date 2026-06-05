@@ -127,7 +127,37 @@ function decorationBackdrop(block: any, ctx: ResolveContext): string {
   return `<div aria-hidden="true" style="position:absolute;left:${x - pl}pt;top:${y - pt}pt;width:${w + pl + pr}pt;height:${h + pt + pb}pt;background:${bg};border:${bw}pt ${bs} ${borderCol};border-radius:${radius}pt;box-shadow:${shadow};pointer-events:none;"></div>`;
 }
 
-function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string {
+function resolveLinkHref(
+  link: any,
+  ctxBase: ResolveContext,
+  pages: Page[],
+): { href: string; target: string; title: string } | null {
+  if (!link?.href) return null;
+  const raw = resolveBindable(link.href, ctxBase).trim();
+  if (!raw) return null;
+  let href = raw;
+  if (raw.startsWith('page:')) {
+    const pid = raw.slice(5);
+    const idx = pages.findIndex((p) => p.id === pid);
+    href = idx >= 0 ? `#tpl-page-${idx}` : '#';
+  } else if (raw.startsWith('anchor:')) {
+    href = `#anc-${raw.slice(7).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  }
+  const target = link.target ?? (href.startsWith('#') ? '_self' : '_blank');
+  const title = link.title ? resolveBindable(link.title, ctxBase) : '';
+  return { href, target, title };
+}
+
+function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
+  if (!bm?.name) return '';
+  const anchorId = `anc-${String(bm.name).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const label = bm.label ? resolveBindable(bm.label, ctxBase) : bm.name;
+  const level = Number(bm.level ?? 2);
+  // WeasyPrint reads `bookmark-label` / `bookmark-level` for the PDF outline.
+  return ` id="${anchorId}" style="bookmark-label:'${String(label).replace(/'/g, "\\'")}';bookmark-level:${level};"`;
+}
+
+function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
   const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
@@ -136,20 +166,39 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   const opacity = s.opacity != null ? Number(s.opacity) : 1;
   const rotation = s.rotation != null ? Number(s.rotation) : 0;
   const z = s.zIndex != null ? `z-index:${Number(s.zIndex)};` : '';
+
+  // Phase 8 — bookmark + link wrapping
+  const bmAttrs = bookmarkAttrs(block.bookmark, ctxBase);
+  const link = resolveLinkHref(block.link, ctxBase, pages);
+  const wrap = (inner: string) => {
+    if (link) {
+      const titleAttr = link.title ? ` title="${escapeHtml(link.title)}"` : '';
+      return `<a href="${link.href}" target="${link.target}"${titleAttr} style="text-decoration:none;color:inherit;display:contents;">${inner}</a>`;
+    }
+    return inner;
+  };
+
+  let content: string;
   if (opacity === 1 && rotation === 0 && !z) {
-    return `${backdrop}${body}${overlays}`;
+    content = `${backdrop}${body}${overlays}`;
+  } else {
+    const p = (block.props ?? {}) as Record<string, unknown>;
+    const ox = Number(p.x ?? 0);
+    const oy = Number(p.y ?? 0);
+    content = `<div style="position:absolute;left:0;top:0;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:${ox}pt ${oy}pt;${z}">${backdrop}${body}${overlays}</div>`;
   }
-  // Transform group — wrap so opacity/rotation apply uniformly. We anchor at
-  // the top-left of the block's bounding box for predictable rotation.
-  const p = (block.props ?? {}) as Record<string, unknown>;
-  const ox = Number(p.x ?? 0);
-  const oy = Number(p.y ?? 0);
-  return `<div style="position:absolute;left:0;top:0;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:${ox}pt ${oy}pt;${z}">${backdrop}${body}${overlays}</div>`;
+
+  // If we have a bookmark, attach the id to a wrapping span so anchor jumps work
+  if (bmAttrs) {
+    content = `<span${bmAttrs}>${content}</span>`;
+  }
+  return wrap(content);
 }
 
-function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string[] {
+
+function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string[] {
   const r = block.repeat;
-  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx)];
+  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages)];
   const raw = r.path.split('.').reduce((acc: any, k: string) => (acc == null ? acc : acc[k.trim()]), ctxBase.data);
   const items = Array.isArray(raw) ? raw : [];
   const max = r.max ?? items.length;
@@ -166,10 +215,11 @@ function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: Ht
     };
     const itemCtx: ResolveContext = { ...ctxBase, data: { ...ctxBase.data, [alias]: items[i], [`${alias}Index`]: i } };
     const itemBlockCtx: HtmlBlockContext = { ...blockCtx, data: itemCtx.data };
-    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx));
+    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages));
   }
   return out;
 }
+
 
 function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[]): string {
   const blockCtx: HtmlBlockContext = {
@@ -195,7 +245,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
     if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
-    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx));
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages));
   }
 
   // Phase 5 — baseline grid (printed when page.baselineGrid.show is true).
@@ -208,7 +258,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     baselineEl = `<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to bottom, transparent 0, transparent ${size - 1}pt, ${color} ${size - 1}pt, ${color} ${size}pt);background-position:0 ${offset}pt;"></div>`;
   }
 
-  return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
+  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
 
 /** Compile a template + data into a print-ready HTML document. */
@@ -222,13 +272,31 @@ export function renderTemplateToHtml(
 
   const visiblePages = template.pages.filter((p) => evalConditional(p.conditional, ctxBase));
 
+  // Phase 8 — walk all bookmarks to build a TOC index that auto-toc blocks read.
+  const tocEntries: Array<{ label: string; level: number; pageIndex: number; anchor: string }> = [];
+  visiblePages.forEach((pg, pi) => {
+    for (const b of pg.blocks) {
+      const bm: any = (b as any).bookmark;
+      if (!bm?.name) continue;
+      if (bm.includeInToc === false) continue;
+      const label = bm.label ? resolveBindable(bm.label, ctxBase) : (b.name || bm.name);
+      tocEntries.push({
+        label: String(label),
+        level: Number(bm.level ?? 2),
+        pageIndex: pi,
+        anchor: `anc-${String(bm.name).replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      });
+    }
+  });
+
   const pageHtml = visiblePages.map((page, idx) => {
     const pageCtx: ResolveContext = {
       ...ctxBase,
-      data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length },
+      data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
     return renderPage(page, pageCtx, idx, template, visiblePages);
   }).join('\n');
+
 
   const css = [
     tokensToFontFaceCss(tokens),
@@ -238,17 +306,31 @@ export function renderTemplateToHtml(
     options.customCss ?? '',
   ].join('\n');
 
+  // Phase 8 — document metadata
+  const meta = (template as any).meta ?? {};
+  const lang = meta.lang || 'en';
+  const r = (v: unknown) => v ? escapeHtml(resolveBindable(v, ctxBase)) : '';
+  const metaTags = [
+    meta.author   && `<meta name="author" content="${r(meta.author)}"/>`,
+    meta.subject  && `<meta name="description" content="${r(meta.subject)}"/>`,
+    meta.keywords && `<meta name="keywords" content="${r(meta.keywords)}"/>`,
+    meta.creator  && `<meta name="generator" content="${r(meta.creator)}"/>`,
+  ].filter(Boolean).join('\n');
+  const docTitle = options.title ?? (meta.title ? resolveBindable(meta.title, ctxBase) : 'Report');
+
   const html = `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}">
 <head>
 <meta charset="utf-8"/>
-<title>${escapeHtml(options.title ?? 'Report')}</title>
+<title>${escapeHtml(docTitle)}</title>
+${metaTags}
 <style>${css}</style>
 </head>
 <body>
 ${pageHtml}
 </body>
 </html>`;
+
 
   return { html, css };
 }
