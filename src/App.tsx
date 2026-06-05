@@ -62,6 +62,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import TemplateBuilder from "./pages/admin/TemplateBuilder";
 import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
+import TemplateSharePreview from "./pages/TemplateSharePreview";
 import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
 import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import Integrations from "./pages/Integrations";
@@ -189,6 +190,8 @@ const App = () => (
                       <Routes>
                         {/* Public shareable answer link (no auth) */}
                         <Route path="/qa/shared/:token" element={<SharedQAAnswer />} />
+                        {/* Public template share preview (no auth) */}
+                        <Route path="/template-share/:token" element={<TemplateSharePreview />} />
                         {/* Client Portal Routes */}
                         <Route path="/client/login" element={
                           <PortalAuthProvider>

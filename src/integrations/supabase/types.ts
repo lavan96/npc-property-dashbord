@@ -16195,6 +16195,71 @@ export type Database = {
         }
         Relationships: []
       }
+      template_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          block_id: string | null
+          body: string
+          created_at: string
+          id: string
+          metadata: Json
+          overlay_id: string | null
+          page_id: string | null
+          parent_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          template_id: string
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          block_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          overlay_id?: string | null
+          page_id?: string | null
+          parent_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          template_id: string
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          block_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          overlay_id?: string | null
+          page_id?: string | null
+          parent_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          template_id?: string
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "template_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_render_jobs: {
         Row: {
           asset_count: number | null
@@ -16267,6 +16332,54 @@ export type Database = {
           template_name?: string | null
           theme_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      template_share_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          label: string | null
+          last_viewed_at: string | null
+          mode: string
+          revoked_at: string | null
+          template_id: string
+          theme_id: string | null
+          token: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          mode?: string
+          revoked_at?: string | null
+          template_id: string
+          theme_id?: string | null
+          token: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          mode?: string
+          revoked_at?: string | null
+          template_id?: string
+          theme_id?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
         }
         Relationships: []
       }
