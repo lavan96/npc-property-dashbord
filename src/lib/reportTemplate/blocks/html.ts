@@ -54,6 +54,20 @@ import {
   renderBeforeAfterHtml,
   renderImageTextHtml,
 } from './extras.html';
+import { renderDataGridHtml, renderPivotTableHtml } from './dataGrid.html';
+import {
+  renderBarChartHtml,
+  renderLineChartHtml,
+  renderAreaChartHtml,
+  renderPieChartHtml,
+  renderDonutChartHtml,
+  renderScatterChartHtml,
+  renderRadarChartHtml,
+  renderHeatmapHtml,
+  renderKpiStripHtml,
+  renderLegendHtml,
+  renderStackedBarChartHtml,
+} from './charts.html';
 
 
 
