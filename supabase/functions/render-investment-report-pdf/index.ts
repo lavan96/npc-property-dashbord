@@ -3520,39 +3520,47 @@ export async function buildHtml(
 
     /* ── Premium auto-injected charts ── */
     .chart-wrap {
-      margin: 16pt 0 20pt;
-      padding: 12pt 14pt 10pt;
-      background: #FFFDF8;
-      border: 0.4pt solid ${THEME.rule};
-      border-radius: 3pt;
-      box-shadow: 0 1pt 0 rgba(40,28,10,0.03);
+      margin: 20pt 0 24pt;
+      padding: 4pt 0 0;
+      background: transparent;
+      border: 0;
       page-break-inside: avoid;
     }
     .auto-chart { margin: 0; text-align: center; page-break-inside: avoid; }
-    .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .auto-chart img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      background: #FFFDF8;
+      border-radius: 2pt;
+    }
     .auto-chart figcaption {
-      margin-top: 6pt;
+      margin-top: 8pt;
       font-family: 'Inter', sans-serif;
       font-size: 7.6pt;
-      letter-spacing: .08em;
+      letter-spacing: .14em;
+      text-transform: uppercase;
       color: ${THEME.inkMuted};
       text-align: center;
     }
     .chart-wrap > table {
-      margin-top: 12pt; font-size: 8.2pt;
+      margin-top: 14pt;
+      font-size: 8.2pt;
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
     .financial-charts { page-break-after: auto; }
-    .financial-chart { margin-bottom: 14pt; }
+    .financial-chart { margin-bottom: 22pt; }
     .chart-title {
       font-family: 'Playfair Display', 'Georgia', serif;
-      font-size: 12.5pt;
+      font-size: 13pt;
       font-weight: 700;
       color: ${THEME.ink};
-      margin: 0 0 6pt;
-      padding-bottom: 4pt;
-      border-bottom: 0.4pt solid ${THEME.rule};
+      margin: 0 0 10pt;
+      padding-bottom: 6pt;
+      border-bottom: 0.6pt solid ${THEME.rule};
+      letter-spacing: -0.005em;
     }
 
     /* ── KPI sparklines ── */
