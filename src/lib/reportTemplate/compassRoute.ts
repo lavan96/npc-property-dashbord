@@ -63,7 +63,7 @@ export async function tryRouteThroughTemplateBuilder(
     // 3. Compile HTML
     const schema = parseTemplate(tplRow.schema);
     const data = (report as any).report_data || {};
-    await preloadImages(schema, data).catch(() => {});
+    await preloadImages(schema).catch(() => {});
     const { html } = renderTemplateToHtml(schema, {
       data,
       customCss: tplRow.custom_css ?? undefined,
