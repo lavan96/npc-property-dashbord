@@ -106,7 +106,7 @@ export function ExportPipelineDialog({
       // 1) Preload remote images to warm Cloudflare/CDN cache for WeasyPrint
       setPreloading(true);
       if (assetSummary.images.length) {
-        try { await preloadImages(assetSummary.images, { timeoutMs: 8000 }); } catch (_) { /* non-fatal */ }
+        try { await preloadImages(template); } catch (_) { /* non-fatal */ }
       }
       setPreloading(false);
 
