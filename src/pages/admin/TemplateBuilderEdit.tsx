@@ -58,6 +58,9 @@ import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
+import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
+import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
+
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
 
@@ -891,6 +894,7 @@ export default function TemplateBuilderEdit() {
       <Tabs defaultValue="visual" className="flex-1 flex flex-col min-h-0">
         <TabsList className="self-start mx-3 mt-2">
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
+          <TabsTrigger value="outline"><Component className="h-3.5 w-3.5 mr-1" /> Outline</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
           <TabsTrigger value="brand"><Palette className="h-3.5 w-3.5 mr-1" /> Brand kit</TabsTrigger>
@@ -927,18 +931,26 @@ export default function TemplateBuilderEdit() {
 
             <div className="relative bg-muted/30 min-h-0">
               {activePage ? (
-                <TemplateCanvas
-                  key={activePage.id}
-                  page={activePage}
-                  onOverlaysChange={setActivePageOverlays}
-                  onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
-                />
+                <>
+                  <TemplateCanvas
+                    key={activePage.id}
+                    page={activePage}
+                    onOverlaysChange={setActivePageOverlays}
+                    onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
+                  />
+                  <CanvasChrome
+                    page={activePage}
+                    canvas={template.canvas ?? { gridSize: 8, showGrid: false, showRulers: true, snapToGrid: false, showBleed: false, showSafeArea: false }}
+                    onChangeCanvas={(c) => setTemplate((t) => ({ ...t, canvas: c }))}
+                  />
+                </>
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   No page selected. Add one from the left rail.
                 </div>
               )}
             </div>
+
 
             <div className="border-l bg-background min-h-0">
               <PropertiesInspector
@@ -1037,6 +1049,43 @@ export default function TemplateBuilderEdit() {
             )}
           </div>
         </TabsContent>
+
+        {/* Outline — Phase 2 */}
+        <TabsContent value="outline" className="flex-1 min-h-0 mt-2">
+          <div className="grid h-full" style={{ gridTemplateColumns: '320px minmax(0, 1fr)' }}>
+            <div className="border-r bg-background min-h-0">
+              <OutlinePanel
+                template={template}
+                activePageId={activePageId}
+                selectedBlockId={selectedBlockId}
+                selectedOverlayId={selectedOverlayId}
+                onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
+                onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
+                onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
+                onChangeTemplate={setTemplate}
+              />
+            </div>
+            <div className="border-l bg-background min-h-0">
+              <PropertiesInspector
+                template={template}
+                templateId={id}
+                page={activePage}
+                overlay={selectedOverlay}
+                selectedBlockId={selectedBlockId}
+                onUpdateOverlay={updateOverlay}
+                onDeleteOverlay={deleteOverlay}
+                onDuplicateOverlay={duplicateOverlay}
+                onUpdatePage={updatePage}
+                onSelectBlock={setSelectedBlockId}
+                onUpdateBlock={updateBlock}
+                onDeleteBlock={deleteBlock}
+                onDuplicateBlock={duplicateBlock}
+                onMoveBlock={moveBlock}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
 
         {/* Metadata */}
         <TabsContent value="settings" className="px-6 py-4 max-w-3xl space-y-4">

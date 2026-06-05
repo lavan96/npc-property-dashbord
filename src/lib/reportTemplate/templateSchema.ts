@@ -122,6 +122,12 @@ export const PageSchema = z.object({
   }).default({}),
   blocks: z.array(BlockSchema).default([]),
   conditional: z.string().optional(),
+  // Phase 2 — canvas/print furniture (all optional, additive)
+  master: z.boolean().optional(),                   // true → reusable master/template page
+  masterPageId: z.string().optional(),              // resolve master backdrop at render
+  bleed: z.number().min(0).max(36).optional(),      // pt — print bleed
+  safeArea: z.number().min(0).max(72).optional(),   // pt — content safe-area margin
+  notes: z.string().optional(),                     // designer notes (not rendered)
 });
 
 export type Page = z.infer<typeof PageSchema>;
@@ -137,6 +143,16 @@ export const ReportTemplateSchema = z.object({
    * applied wherever referenced.
    */
   slots: z.record(BlockSchema).default({}),
+  // Phase 2 — canvas preferences + saved selections
+  canvas: z.object({
+    gridSize: z.number().min(2).max(64).default(8),
+    showGrid: z.boolean().default(false),
+    showRulers: z.boolean().default(true),
+    snapToGrid: z.boolean().default(false),
+    showBleed: z.boolean().default(false),
+    showSafeArea: z.boolean().default(false),
+  }).default({}).optional(),
+  savedSelections: z.record(z.array(z.string())).optional(),
 });
 
 export type ReportTemplate = z.infer<typeof ReportTemplateSchema>;
