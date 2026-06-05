@@ -189,6 +189,8 @@ const App = () => (
                       <Routes>
                         {/* Public shareable answer link (no auth) */}
                         <Route path="/qa/shared/:token" element={<SharedQAAnswer />} />
+                        {/* Public template share preview (no auth) */}
+                        <Route path="/template-share/:token" element={<TemplateSharePreview />} />
                         {/* Client Portal Routes */}
                         <Route path="/client/login" element={
                           <PortalAuthProvider>
