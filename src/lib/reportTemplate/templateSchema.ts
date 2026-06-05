@@ -214,7 +214,11 @@ export const BlockSchema = z.object({
   locked: z.boolean().optional(),                // editor-only: prevent selection/drag
   hidden: z.boolean().optional(),                // skip render entirely
   name: z.string().optional(),                   // designer label (Outline)
+  // Phase 8 — block-level interactions / outline
+  link: LinkSchema,
+  bookmark: BookmarkSchema,
 });
+
 
 export type Block = z.infer<typeof BlockSchema>;
 
