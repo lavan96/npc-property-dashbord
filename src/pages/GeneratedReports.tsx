@@ -223,7 +223,7 @@ export default function GeneratedReports() {
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       reportId,
       listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, report_variant, derived_from_report_id, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
       }
     });
 
@@ -462,7 +462,7 @@ export default function GeneratedReports() {
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Filter out client reports (is_client_report = true) - those are only accessible from clients page
       const listOptions: Record<string, unknown> = {
-        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score, generated_by',
+        select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, report_variant, derived_from_report_id, investment_score, generated_by',
         status: ['completed', 'pending', 'failed', 'processing'],
         isArchived: false,
         isClientReport: false,
@@ -511,7 +511,7 @@ export default function GeneratedReports() {
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
-          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score, generated_by',
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, report_variant, derived_from_report_id, investment_score, generated_by',
           status: ['completed', 'pending'],
           isArchived: true,
           limit: 2000
