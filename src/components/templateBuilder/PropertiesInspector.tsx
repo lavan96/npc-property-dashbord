@@ -76,6 +76,7 @@ export function PropertiesInspector({
   onDeleteBlock,
   onDuplicateBlock,
   onMoveBlock,
+  onUpdateTemplate,
 }: Props) {
   const selectedBlock =
     page && selectedBlockId
