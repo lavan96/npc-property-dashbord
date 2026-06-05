@@ -245,33 +245,63 @@ function substitute(text: string, tokens: Record<string, string | number | undef
   });
 }
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+
+let _cachedClient: any = null;
+function getServiceClient() {
+  if (_cachedClient) return _cachedClient;
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return null;
+  _cachedClient = createClient(url, key);
+  return _cachedClient;
+}
+
 /**
  * Resolve a prompt by catalog key. Looks up an override in
  * `report_engine_config` (config_key='prompt:<key>'), falls back to the
- * built-in default, then substitutes {{tokens}}.
+ * built-in default, then substitutes {{tokens}}. Pass an existing supabase
+ * client to avoid spinning up a new one — otherwise it auto-creates a
+ * service-role client.
  */
 export async function resolvePrompt(
-  supabase: any,
-  key: string,
-  tokens: Record<string, string | number | undefined | null> = {},
+  arg1: any,
+  arg2?: any,
+  arg3?: any,
 ): Promise<{ text: string; isOverride: boolean; source: 'override' | 'default' | 'fallback' }> {
+  // Support both: resolvePrompt(key, tokens?) and resolvePrompt(supabase, key, tokens?)
+  let supabase: any;
+  let key: string;
+  let tokens: Record<string, any>;
+  if (typeof arg1 === 'string') {
+    supabase = getServiceClient();
+    key = arg1;
+    tokens = arg2 ?? {};
+  } else {
+    supabase = arg1 ?? getServiceClient();
+    key = arg2;
+    tokens = arg3 ?? {};
+  }
+
   const entry = getPromptCatalogEntry(key);
   let template = entry?.default ?? '';
   let isOverride = false;
-  try {
-    const { data } = await supabase
-      .from('report_engine_config')
-      .select('value')
-      .eq('config_key', `prompt:${key}`)
-      .eq('scope', 'default')
-      .maybeSingle();
-    if (data?.value != null) {
-      const v = data.value;
-      template = typeof v === 'string' ? v : (v.text ?? v.value ?? template);
-      isOverride = true;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('report_engine_config')
+        .select('value')
+        .eq('config_key', `prompt:${key}`)
+        .eq('scope', 'default')
+        .maybeSingle();
+      if (data?.value != null) {
+        const v = data.value;
+        template = typeof v === 'string' ? v : (v.text ?? v.value ?? template);
+        isOverride = true;
+      }
+    } catch (e) {
+      console.warn(`[resolvePrompt] lookup failed for ${key}:`, (e as any)?.message);
     }
-  } catch (e) {
-    console.warn(`[resolvePrompt] lookup failed for ${key}:`, (e as any)?.message);
   }
   const text = substitute(template, tokens);
   const source: 'override' | 'default' | 'fallback' = isOverride
