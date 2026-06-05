@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { Input } from '@/components/ui/input';
-import { Grid3x3, Ruler as RulerIcon, Crop, Shield, Magnet } from 'lucide-react';
+import { Grid3x3, Ruler as RulerIcon, Crop, Shield, Magnet, AlignJustify } from 'lucide-react';
 import type { Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 
 interface Props {
