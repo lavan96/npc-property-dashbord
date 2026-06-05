@@ -5118,7 +5118,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     const { data: report, error } = await supabase
       .from("investment_reports")
       .select(
-        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence, demographics_data",
+        "id, property_address, report_content, sources_content, created_at, financial_calculations, investment_score, location_intelligence, demographics_data, report_variant, derived_from_report_id",
       )
       .eq("id", reportId)
       .maybeSingle();
