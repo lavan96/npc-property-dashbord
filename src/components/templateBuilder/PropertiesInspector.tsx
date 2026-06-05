@@ -58,6 +58,7 @@ interface Props {
   onDeleteBlock?: (blockId: string) => void;
   onDuplicateBlock?: (blockId: string) => void;
   onMoveBlock?: (blockId: string, dir: -1 | 1) => void;
+  onUpdateTemplate?: (next: ReportTemplate) => void;
 }
 
 export function PropertiesInspector({
