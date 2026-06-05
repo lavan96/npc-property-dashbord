@@ -142,6 +142,7 @@ export default function ReportEngineInspector() {
       <Tabs defaultValue="runs">
         <TabsList>
           <TabsTrigger value="runs">Runs</TabsTrigger>
+          <TabsTrigger value="static">Static Plan</TabsTrigger>
           <TabsTrigger value="prompts">Prompt Library</TabsTrigger>
           <TabsTrigger value="config">Engine Config</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
