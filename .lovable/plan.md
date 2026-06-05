@@ -1,161 +1,140 @@
-# Composite-First Report + Fork Strategy
 
-## Goal
+# Report Generation Engine — Observability & Agentic Control
 
-Keep generating **one composite Investment Report** as today (single source of truth), then **deterministically derive two client-facing reports** from it:
+Goal: surface exactly what the engine does on every run (system prompt, template structure, embeddings used, data packet, per-chunk inputs/outputs, token usage, timing), and let a dedicated AI agent safely modify the engine's config knobs on the fly.
 
-1. **Client Investment Feasibility & Financial Performance Report** (FIN)
-2. **Property & Location Due Diligence Report** (PLDD)
-
-The derivation is a **routing/transform pass** over the composite's existing content + data, not a second generation run. This guarantees the two child reports never disagree with each other or with the composite.
-
-The existing half-wired `FINANCIAL_ANALYSIS_SECTIONS` registry and `tier === 'financial-analysis'` generator branch are **superseded** by this plan and will be removed in Phase 1.
+This is a foundation pass — no changes to the actual generation logic, only instrumentation + a control surface. Figma integration comes after.
 
 ---
 
-## Architecture
+## 1. What we need to see (the "under the hood" view)
 
-```text
-                ┌──────────────────────────────────────┐
-                │  generate-investment-report          │
-                │  (composite, unchanged)              │
-                │  → investment_reports.report_content │
-                │  → investment_score / fin_calcs JSON │
-                └────────────────┬─────────────────────┘
-                                 │
-                                 ▼
-                ┌──────────────────────────────────────┐
-                │  fork-investment-report (NEW)         │
-                │  - parse composite markdown into      │
-                │    H2 sections                        │
-                │  - apply SPLIT_REGISTRY routing       │
-                │  - reframe / retitle each section     │
-                │  - rebuild exec summary + scorecard   │
-                │    per variant                        │
-                │  - write 2 child rows:                │
-                │      report_variant = 'financial'     │
-                │      report_variant = 'due_diligence' │
-                │      parent_report_id = composite.id  │
-                └────────────────┬─────────────────────┘
-                                 │
-                  ┌──────────────┴───────────────┐
-                  ▼                              ▼
-        render-investment-report-pdf   render-investment-report-pdf
-        (variant='financial')          (variant='due_diligence')
-        → FIN PDF                      → PLDD PDF
-```
+For every report generation run we capture and expose:
 
-**Key design choices:**
+1. **Run metadata** — report id, scope (compass / executive / suburb / comparison), variant (fork), model, started_at, finished_at, total tokens, cost.
+2. **Engine config snapshot** — which `report_structure_templates` row(s) were resolved (id, name, tier, category, version), which `reportSplitRegistry` entry was used, which Compass-40 banner/overlay, which manual overrides were merged.
+3. **System prompt (final)** — the exact `systemMessage` sent, including brand name, area system message, and any prepended banners.
+4. **Data packet** — the canonical bundle (financials, scoring, property facts, suburb stats, document/URL extract, overrides). Captured **once** with a hash, then per chunk we record which subset of keys was actually inlined into that chunk's prompt — so we can answer "is the entire packet going into every chunk?".
+5. **Embedding retrieval** — for every call to `retrieve-template-context`: the query, template filter (tier/category/type), threshold, top-k, and the chunk ids + similarity scores returned (already partially logged — needs persisting).
+6. **Per-chunk record** — section key, ordinal, model, prompt (system+user as sent), retrieved template chunks attached, data-packet keys attached, response text, tool calls, prompt/completion tokens, latency, retries, error.
+7. **Diff vs previous run** — for the same report, highlight what changed in template/system prompt/data packet between runs.
 
-- **One renderer, variant-aware.** No second PDF function. Renderer learns to read `report_variant` and apply variant cover/TOC/CSS-accent/footer wording. Composite stays renderable as today.
-- **Child rows, not blob columns.** Each fork is a real `investment_reports` row with its own `report_content`, `investment_score`, `pdf_url`, and `parent_report_id` pointing at the composite. This reuses every existing UI surface (viewer, hero studio, send-to-client, QA) for free.
-- **Deterministic routing**, no LLM in the fork step. Reframing is template-based string transforms + section header rewrites driven by the mapping table in the user's spec doc.
-- **Hero images cascade.** Forks inherit `report_hero_placements` from parent by default; user can override per-fork from Hero Studio.
-- **Scorecard split** is a pure function of the existing `investment_score` JSON — no new data sources required.
+### Storage
+
+Two new tables (additive, service_role-only RLS, GRANT to authenticated for read via secure edge):
+
+- `report_generation_runs` — one row per generate call. Columns: id, report_id, scope, variant, engine_version, template_ids jsonb, system_prompt text, data_packet jsonb, data_packet_hash, model, total_tokens, total_cost_cents, started_at, finished_at, status, error.
+- `report_generation_chunks` — one row per section/chunk. Columns: id, run_id, section_key, ordinal, model, system_prompt text, user_prompt text, attached_template_chunk_ids jsonb, attached_packet_keys text[], retrieval_meta jsonb (query, threshold, k, hits[]), response text, tool_calls jsonb, prompt_tokens, completion_tokens, latency_ms, retry_count, error.
+
+Both with `created_at`, indexed by `report_id` and `run_id`. Mirrored into `supabase_realtime` so the UI streams live.
+
+### Instrumentation hooks (no behavior change)
+
+A tiny `_shared/generation-trace.ts` helper exposes:
+- `startRun(report, ctx) -> runId`
+- `recordRetrieval(runId, sectionKey, meta)`
+- `recordChunk(runId, sectionKey, payload)`
+- `finishRun(runId, summary)`
+
+Wire it into:
+- `generate-investment-report/index.ts` (around the `messages: [{role:'system'...}]` calls at lines ~1478 and 1556, and around the chunked-section loop).
+- `retrieve-template-context/index.ts` (return the same `chunks[]` it already builds, but also persist via the helper when a `runId` header is forwarded).
+- `regenerate-report-qualitative`, `fork-investment-report`, `condense-investment-report` — same hook, so forks and regenerations are traceable too.
 
 ---
 
-## Phase Plan
+## 2. Front-end surface
 
-### Phase 0 — Decommission existing finance path
-- Delete `FINANCIAL_ANALYSIS_SECTIONS` from `_shared/compassSectionRegistry.ts` and its frontend mirror.
-- Remove `tier === 'financial-analysis'` branches from `generate-investment-report`, `compassPostProcessor`, `compassQAValidator`.
-- Remove `'financial-analysis'` from `normaliseGenerationTier`. Keep `'compass-40'` (composite) as the only path.
-- No DB enum drop yet — leave `report_tier` alone; we add a new orthogonal column instead.
+New superadmin-only page: **`/admin/report-engine-inspector`**.
 
-### Phase 1 — Schema additions (single migration)
-Add to `investment_reports`:
-- `report_variant text` — values: `'composite' | 'financial' | 'due_diligence'`, default `'composite'`
-- `derived_from_report_id uuid` — FK → `investment_reports.id` (the composite parent for forks)
-- `variant_generated_at timestamptz`
-- Index on `(derived_from_report_id, report_variant)` for fast lookup.
+Three panes:
 
-Add `report_split_registry` table (seeded, editable):
-- `id`, `composite_section_key text`, `composite_heading text`, `target_variant text` (`'financial' | 'due_diligence' | 'both'`), `new_heading_financial text`, `new_heading_due_diligence text`, `reframe_rule text` (enum: `verbatim | financial_lens | property_lens | summarise_only | drop`), `ordinal_financial int`, `ordinal_due_diligence int`, `notes text`
-- Seeded from the spec doc (~60 rows: §5–§9 mapping tables of `NPC_Report_Split_Strategy_and_Title_Mapping.docx`).
-- Editable so the rebuild is non-fragile when sections evolve.
+**A. Run list** — recent runs (filter by report, scope, status). Click → opens detail.
 
-`report_hero_placements`: no schema change. Resolver in renderer falls back to parent's placements when the fork has none.
+**B. Run detail**
+- Header: report address, scope, model, tokens, cost, duration, template ids (linked to Template Builder).
+- Tabs:
+  - *System Prompt* — full text, copy button, diff-vs-previous toggle.
+  - *Data Packet* — JSON tree viewer, hash, size, key count. Pills show which keys were attached to which chunks (matrix view answers "is the whole packet in every chunk?" at a glance — green = attached, grey = omitted).
+  - *Embeddings* — table per section: query, threshold, k, hits with similarity bar + chunk preview, source template name.
+  - *Chunks* — collapsible per section: system+user prompt (left), response (right), tokens/latency/retries, attached template chunk ids, attached packet keys.
+  - *Timeline* — gantt of chunk durations.
 
-### Phase 2 — Split registry shared module
-`supabase/functions/_shared/reportSplitRegistry.ts` (+ frontend mirror `src/lib/reports/reportSplitRegistry.ts`):
-- Loads rows from `report_split_registry` once per request (cached).
-- Exposes `routeCompositeSection(heading) → { variant, newHeadingFin, newHeadingPldd, rule }`.
-- Hard-codes a typed fallback (in-file constant) so it works before DB seed and survives outage.
-- Includes the structural correction noted in the spec (TOC `01 Executive Strengths` → body `01 Executive Summary` mismatch is normalised here, not carried forward).
+**C. Engine Editor (Agent chat)** — see §3.
 
-### Phase 3 — Fork edge function `fork-investment-report`
-Inputs: `{ composite_report_id, force?: boolean }`. Behaviour:
+Live updates via Supabase realtime on `report_generation_chunks` so an in-flight run streams in.
 
-1. Load composite row; assert `status='completed'`.
-2. Parse `report_content` into ordered H2 sections (reuse the existing marked-based splitter already used in `condense-investment-report`).
-3. For each section, call `routeCompositeSection` → bucket into `financialSections[]` and `dueDiligenceSections[]`. `'both'` sections are emitted to both buckets with their respective reframed heading and a lens-specific intro paragraph (template strings, not LLM).
-4. Rebuild per-variant front matter:
-   - **FIN**: new Exec Summary ("Client Investment Decision Summary"), new "Financial Strengths, Trade-Offs & Holding Capacity", new "Financial Recommendation & Portfolio Fit", **Financial Investment Scorecard** (see Phase 4).
-   - **PLDD**: new "Client Property & Location Snapshot", new "Property Strengths & Occupier Appeal", new "Property Due Diligence Recommendation", **Property Fundamentals Scorecard**.
-   - Both built deterministically by extracting bullets / metrics that already exist in the composite's exec summary, strengths, and recommendation sections.
-5. Append per-variant standard tone footer: financial uses "indicative / subject to verification / not financial advice"; PLDD uses "due diligence checklist, verification required".
-6. Upsert two child rows (`report_variant`, `derived_from_report_id`, fresh `id`, copy `property_address`, `financial_calculations`, `demographics_data`, etc.; new `report_content`; new `investment_score`).
-7. Idempotent: if children exist and `force=false`, refresh `report_content`/`investment_score` in place rather than duplicate.
-
-### Phase 4 — Variant-weighted scorecards
-Extract current scoring into `_shared/investmentScoreEngine.ts` (today it's duplicated in `backfill-investment-scores` and inline in `generate-investment-report`). Single source of truth, then expose:
-
-- `scoreComposite(input)` — current 15/40/25/15/5 weights, unchanged.
-- `scoreFinancial(input)` — Yield 30 / Cashflow 25 / Serviceability 20 / Risk 15 / Growth-on-capital 10.
-- `scorePropertyFundamentals(input)` — Location 30 / Demand 25 / Tenant/Occupier Fit 20 / Planning & Risk 15 / Liveability 10.
-
-Weight maps live in registry constants so they're tweakable without redeploying logic. Confidence-weighting/missing-dimension rebalancing rules (from existing memory) apply unchanged.
-
-Update `backfill-investment-scores` to call the shared engine and to also score forks when present.
-
-### Phase 5 — Renderer variant awareness (`render-investment-report-pdf`)
-Single change set, no fork:
-
-- Read `report_variant` from the row.
-- Variant-specific cover title, subtitle, footer wording, and accent label ("Financial Feasibility" vs "Due Diligence"). Same dark-gold palette and CSS — no second design system.
-- TOC builder uses the variant's section order; composite TOC unchanged.
-- Hero placement resolver: if `report_variant !== 'composite'` and no placements for this row, fall back to `derived_from_report_id`'s placements.
-- `autoInjectVisualShortcodes` runs unchanged on the variant's `report_content`.
-- Variant-specific final-page boilerplate ("Client interpretation / Adviser takeaway" framing replaces generic "What This Means" — per spec §10).
-
-No change to WeasyPrint/Api2PDF orchestration.
-
-### Phase 6 — UI surfaces
-Minimal, additive:
-
-- **Reports list** (`Reports.tsx`, `GeneratedReports.tsx`): add a "Variant" badge column showing Composite / FIN / PLDD; group children under parent composite row.
-- **Composite viewer** (`InvestmentReportView.tsx`): add a **"Generate Client Reports"** button that invokes `fork-investment-report`. Disabled until composite `status='completed'`. Shows progress + links to the two child rows on success.
-- **Variant viewer**: same component, reads variant content. Add a "Back to composite" link and a "Re-fork from composite" action (calls fork fn with `force=true`).
-- **`PremiumPdfButton`**: when viewing a fork, renders that variant's PDF. When viewing composite, optionally exposes a "Render all three" combo.
-- **Hero Studio**: scope toggle "Apply to: Composite / FIN / PLDD / All".
-- **`TierSwitcher`**: leave alone (orthogonal — that switches `report_tier` Premium/Standard, not variant).
-- **`SendToClientModal`**: variant picker — default sends both FIN + PLDD, allow one or the other.
-
-### Phase 7 — QA & migration
-- Backfill: for the latest ~5 composite reports per workspace, run `fork-investment-report` so users see immediate value.
-- QA path (`QualityAssurance.tsx`): add per-variant QA tabs reusing existing review machinery.
-- Add unit-style Deno tests for `reportSplitRegistry.routeCompositeSection` and `investmentScoreEngine` weight maps.
-- Visual QA: render one composite + both forks for `4 Thompson Street, Muswellbrook` (the spec's reference property), screenshot every page, fix overflows/centring/SVG-leakage regressions in the same renderer pass.
+Reuses existing patterns: `ToolInvocations` chip style for tool calls, `invokeSecureFunction` for reads, dark gold theme, semantic tokens only.
 
 ---
 
-## Why this stays clean in one pass
+## 3. Dedicated agentic editor
 
-- **Single generation pipeline**, no parallel prompt trees to keep in sync.
-- **Routing is data, not code** — the split registry table can be edited without redeploys when the spec evolves.
-- **Forks are pure derivations** — re-running the fork is safe and idempotent; if a section is renamed or reweighted later, one click re-derives both children.
-- **Renderer stays one file** — variant differences are localised to cover/TOC/footer/scorecard-block; everything else (shortcodes, hero pipeline, WeasyPrint chain, alignment fixes from prior turns) is reused.
-- **Existing UI surfaces light up automatically** because forks are real `investment_reports` rows.
-- **The half-built `FINANCIAL_ANALYSIS_SECTIONS` path is removed up front**, so we don't carry two conflicting financial-report concepts.
+A scoped chat agent whose **only** job is to inspect and modify the report generation engine. Lives in the inspector page (right rail) and as a standalone route `/admin/report-engine-agent`.
+
+### Scope (hard-coded — agent cannot escape)
+Allowed targets:
+- `report_structure_templates` rows (system prompts / structure / Compass-40 banner / area overlays)
+- `reportSplitRegistry` entries (variant section lists, weights)
+- Per-section model + temperature config
+- Retrieval knobs: similarity threshold, top-k, template type filters
+- Compass-40 hard-exclusion list
+
+Forbidden:
+- Any other table, any RLS/policy/grant, any secret, any code outside the registry/templates, any destructive op without preview.
+
+### Architecture
+
+Edge function `report-engine-agent` (new), based on the existing `report-qa` pattern + `_shared/agent-tools.ts` registry. Tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `list_runs(filter)` | Recent runs for inspection |
+| `get_run(run_id)` | Full run detail (prompt, packet, chunks, retrieval) |
+| `diff_runs(a, b)` | Diff system prompt / template / packet across runs |
+| `get_template(id)` | Read a `report_structure_templates` row |
+| `list_templates(filter)` | Browse active templates |
+| `propose_template_edit(id, patch, rationale)` | **Stages** a JSON-patch into `report_engine_proposals` table — does NOT write to live template |
+| `get_registry(variant)` | Read `reportSplitRegistry` snapshot |
+| `propose_registry_edit(variant, patch, rationale)` | Same staging pattern |
+| `propose_retrieval_config(patch, rationale)` | Stage threshold/k/filters change |
+| `simulate_run(report_id, proposal_ids[])` | Dry-run: render the system prompt + retrieval result the proposed change would produce, **without** calling the LLM |
+| `apply_proposal(proposal_id)` | Requires explicit user click in UI — agent never auto-applies |
+
+### Guardrails
+- Every mutation goes through `report_engine_proposals` (staged). UI shows the diff; superadmin clicks "Apply".
+- All applied changes write to a new `report_engine_audit` table (who / when / before / after / rationale).
+- Agent runs under a service_role-mediated edge function with a `verify_superadmin()` check.
+- Token-metered via existing `generateWithTokens` so cost shows up in Mission Control.
+
+### UX
+- Standard chat with `ToolInvocations` chips (tool name, status, duration, expandable I/O) — pattern already used in `src/components/report-qa/ToolInvocations.tsx`.
+- Streaming responses.
+- Side panel pinned to a selected run so the agent always has fresh context.
+- "Apply proposal" cards rendered inline with before/after diff.
 
 ---
 
-## Technical Details / Open Calls Before I Build
+## 4. Phases
 
-1. **Spec doc is the source of truth for the split registry seed.** I'll codify every row from the mapping tables in §5–§9 of `NPC_Report_Split_Strategy_and_Title_Mapping.docx` into the seed migration (~60 rows). Where the spec marks "Both - tailor lens", both `new_heading_financial` and `new_heading_due_diligence` get populated and `reframe_rule = financial_lens | property_lens` on the respective output.
-2. **Section numbering**: spec calls out the existing TOC vs body numbering bug ("01 Executive Strengths" mismatch). I'll normalise during the parse step so neither fork inherits the bug.
-3. **No new LLM calls in the fork step.** If you later want LLM-polished per-variant intros, that's a clean Phase 8 add-on (one prompt per variant, reads section list, returns intro string) without disturbing anything above.
-4. **Scorecard weight numbers** above are my proposed defaults from the spec's intent; they live in registry constants so you can tune them via a single PR or even via DB later if you want them editable.
+1. **Schema + helper** — migration for the 3 new tables (`report_generation_runs`, `report_generation_chunks`, `report_engine_proposals`, `report_engine_audit`) with grants + realtime; add `_shared/generation-trace.ts`.
+2. **Instrument generators** — wire trace helper into `generate-investment-report`, `retrieve-template-context`, `regenerate-report-qualitative`, `fork-investment-report`. Strictly observability — zero logic changes.
+3. **Inspector UI** — `/admin/report-engine-inspector` with the 3 panes, realtime streaming, diff viewer, packet matrix.
+4. **Agent edge function + tools** — `report-engine-agent` with the tool registry above, staging-only mutations, audit log.
+5. **Agent UI** — chat with tool chips, proposal diff cards, apply button.
+6. **Verification** — kick off a real report generation, confirm prompt + packet + per-chunk attachments + embeddings all stream into the inspector; ask the agent to "lower retrieval threshold to 0.65 for compass executive summary" → verify proposal stages, diff is correct, apply writes audit row.
 
-If this plan looks right I'll start with Phase 0 + Phase 1 (decommission + migration) in the first build pass so the rest is unblocked.
+After this lands, Figma integration plugs into Phase 3's template editor cleanly (templates are the integration seam).
+
+---
+
+## Technical notes
+
+- All new edge functions: CORS standard headers, `verifyAuth`, superadmin gate, service_role internally — per `Edge Function Auth Standards` memory.
+- All tables: service_role-only RLS with secure edge mediation (`invokeSecureFunction` + `ALLOWED_TABLES` whitelist update) — per `Secure RLS Mediation` memory.
+- Realtime: add new tables to `supabase_realtime` publication — per `Realtime Standards` memory.
+- Theme: dark gold tokens only, no hardcoded colors.
+- Token metering: agent calls go through `generateWithTokens` with a new MC report slug.
+- No changes to generation behavior in this phase — observability is read-only on the hot path; the only writes are the trace inserts.
+
+Confirm and I'll start with Phase 1 (schema + trace helper).
