@@ -2347,25 +2347,37 @@ async function injectTableCharts(html: string): Promise<string> {
   const tables = Array.from(html.matchAll(/<table[\s\S]*?<\/table>/gi));
   if (tables.length === 0) return html;
 
+  // Pre-compute the nearest preceding heading (h2 preferred, h3 fallback) for
+  // each table so chart selection can be section-aware.
+  const sectionTitles: string[] = tables.map((m) => {
+    const upto = html.slice(0, m.index ?? 0);
+    // Find last h2 or h3 before this table
+    const h2 = [...upto.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)].pop();
+    const h3 = [...upto.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)].pop();
+    // Prefer h3 if it appears AFTER the last h2 (more specific subsection).
+    const pick = (h3 && h2 && (h3.index ?? 0) > (h2.index ?? 0)) ? h3 : (h2 || h3);
+    return (pick?.[1] || "").replace(/<[^>]+>/g, "").trim();
+  });
+
   const replacements = new Array<string>(tables.length);
   let chartAttempts = 0;
-  const queue = tables.map((match, index) => ({ tbl: match[0], index }));
+  const queue = tables.map((match, index) => ({ tbl: match[0], index, sectionTitle: sectionTitles[index] }));
   const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
     while (queue.length) {
-      const { tbl, index } = queue.shift()!;
-    const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
-    const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
-    const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
-      .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+      const { tbl, index, sectionTitle } = queue.shift()!;
+      const theadMatch = tbl.match(/<thead[\s\S]*?<\/thead>/i);
+      const headerSource = theadMatch?.[0] || tbl.match(/<tr[\s\S]*?<\/tr>/i)?.[0] || "";
+      const headers = Array.from(headerSource.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+        .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
 
-    const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
-    const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
-      .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
-        .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
-    const dataRows = theadMatch ? allRows : allRows.slice(1);
+      const bodySource = tbl.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] || tbl;
+      const allRows = Array.from(bodySource.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi))
+        .map((rm) => Array.from(rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi))
+          .map((c) => c[1].replace(/<[^>]+>/g, "").trim()));
+      const dataRows = theadMatch ? allRows : allRows.slice(1);
 
       const canAddChart = chartAttempts < MAX_AUTO_TABLE_CHARTS;
-      const chart = canAddChart ? await tableToChartHtml(headers, dataRows) : null;
+      const chart = canAddChart ? await tableToChartHtml(headers, dataRows, { sectionTitle }) : null;
       if (chart) chartAttempts += 1;
       replacements[index] = chart ? `<div class="chart-wrap">${chart}${tbl}</div>` : tbl;
     }
