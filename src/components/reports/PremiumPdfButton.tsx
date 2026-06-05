@@ -4,6 +4,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
+import { tryRouteThroughTemplateBuilder } from "@/lib/reportTemplate/compassRoute";
 import type { PdfDesignOptions } from "./premiumPdfDesign";
 
 interface PremiumPdfButtonProps {
@@ -36,11 +37,18 @@ export function PremiumPdfButton({
     if (loading) return;
     setLoading(true);
     try {
-      const { data, error } = await invokeSecureFunction<{ fileUrl: string; fileName: string; renderer?: string }>(
-        "render-investment-report-pdf",
-        { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
-        { timeoutMs: 240_000 },
-      );
+      // Phase 5 pilot: route Compass reports through the Template Builder /
+      // WeasyPrint pipeline when an active template exists for this report
+      // type. Falls through to the legacy renderer on any mismatch / error.
+      const routed = await tryRouteThroughTemplateBuilder(reportId);
+      const result = routed
+        ? { data: { fileUrl: routed.fileUrl, fileName: routed.fileName, renderer: routed.renderer }, error: null as any }
+        : await invokeSecureFunction<{ fileUrl: string; fileName: string; renderer?: string }>(
+            "render-investment-report-pdf",
+            { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
+            { timeoutMs: 240_000 },
+          );
+      const { data, error } = result;
 
       if (error || !data?.fileUrl) {
         throw new Error(error?.message || "PDF generation failed");

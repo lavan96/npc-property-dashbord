@@ -1,7 +1,6 @@
 /**
  * HTML block-renderer registry — mirror of `blocks/index.ts` for the
- * WeasyPrint pipeline. One entry per block type; Phase 1 covers the
- * foundational set, Phase 2 will fill in the rest.
+ * WeasyPrint pipeline. One entry per block type.
  */
 import type { Block } from '../templateSchema';
 import type { HtmlBlockContext, HtmlBlockRenderer } from './_shared.html';
@@ -13,9 +12,30 @@ import { renderDividerHtml } from './divider.html';
 import { renderSpacerHtml } from './spacer.html';
 import { renderFooterHtml } from './footer.html';
 import { renderPageNumberHtml } from './pageNumber.html';
+import { renderHeroHtml } from './hero.html';
+import { renderChartHtml } from './chart.html';
+import { renderImageBlockHtml } from './image.html';
+import { renderGalleryHtml } from './gallery.html';
+import { renderCalloutHtml } from './callout.html';
+import { renderTwoColumnHtml } from './twoColumn.html';
+import { renderBadgeListHtml } from './badgeList.html';
+import { renderTocHtml } from './toc.html';
+import { renderSignatureHtml } from './signature.html';
+import { renderSlotHtml } from './slot.html';
+import { renderDisclaimerHtml } from './disclaimer.html';
+import { renderQrCodeHtml } from './qrCode.html';
+import { renderScorecardHtml } from './scorecard.html';
+import { renderStrengthsWatchHtml } from './strengthsWatch.html';
+import { renderRiskRegisterHtml } from './riskRegister.html';
+import { renderDecisionBoxHtml } from './decisionBox.html';
+import { renderDDChecklistHtml } from './ddChecklist.html';
+import { renderInfraTimelineHtml } from './infraTimeline.html';
+import { renderPlanningTableHtml } from './planningTable.html';
+import { renderAmenityMatrixHtml } from './amenityMatrix.html';
 
 const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   cover: renderCoverHtml,
+  'text-block': renderTextBlockHtml,
   text: renderTextBlockHtml,
   'kpi-grid': renderKpiGridHtml,
   'data-table': renderDataTableHtml,
@@ -23,6 +43,28 @@ const HTML_RENDERERS: Record<string, HtmlBlockRenderer> = {
   spacer: renderSpacerHtml,
   footer: renderFooterHtml,
   'page-number': renderPageNumberHtml,
+  hero: renderHeroHtml,
+  chart: renderChartHtml,
+  image: renderImageBlockHtml,
+  gallery: renderGalleryHtml,
+  callout: renderCalloutHtml,
+  'two-column': renderTwoColumnHtml,
+  'badge-list': renderBadgeListHtml,
+  toc: renderTocHtml,
+  signature: renderSignatureHtml,
+  slot: renderSlotHtml,
+  disclaimer: renderDisclaimerHtml,
+  qr: renderQrCodeHtml,
+  scorecard: renderScorecardHtml,
+  'strengths-watch': renderStrengthsWatchHtml,
+  'risk-register': renderRiskRegisterHtml,
+  'decision-box': renderDecisionBoxHtml,
+  'dd-checklist': renderDDChecklistHtml,
+  'infra-timeline': renderInfraTimelineHtml,
+  'planning-table': renderPlanningTableHtml,
+  'amenity-matrix': renderAmenityMatrixHtml,
+  // 'free' blocks have no body — only overlays — and render as nothing.
+  free: () => '',
 };
 
 export function getHtmlBlockRenderer(type: string): HtmlBlockRenderer | undefined {
@@ -35,10 +77,9 @@ export function htmlBlockTypes(): string[] {
 
 export type { HtmlBlockContext, HtmlBlockRenderer };
 
-/** Fallback for unsupported block types — emits a visible placeholder so
- * editors can see at a glance which blocks need an HTML renderer ported. */
+/** Fallback for unsupported block types. */
 export function renderUnsupportedHtml(block: Block, _ctx: HtmlBlockContext): string {
   return `<div style="position:absolute;left:24pt;top:24pt;padding:8pt 12pt;background:#FFF4D6;border:1pt dashed #BF9B50;color:#7A5B00;font-size:9pt;font-family:Helvetica;">
-    Block type "<strong>${block.type}</strong>" not yet supported by the WeasyPrint renderer (Phase 2).
+    Block type "<strong>${block.type}</strong>" has no HTML renderer.
   </div>`;
 }

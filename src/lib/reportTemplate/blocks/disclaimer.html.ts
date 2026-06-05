@@ -1,0 +1,45 @@
+import type { Block } from '../templateSchema';
+import { resolveBindable } from '../bindingResolver';
+import { esc, type HtmlBlockContext } from './_shared.html';
+
+function sanitise(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(
+      /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu,
+      '',
+    );
+}
+
+export function renderDisclaimerHtml(block: Block, ctx: HtmlBlockContext): string {
+  const p = block.props as Record<string, unknown>;
+  const companyName = resolveBindable(p.companyName ?? 'Property Consulting', ctx).toUpperCase();
+  const text = sanitise(resolveBindable(p.disclaimerText, ctx));
+  const fontSize = p.fontSize === 'medium' ? 10 : p.fontSize === 'large' ? 12 : 8.5;
+  const row = (label: string, raw: unknown) => {
+    const v = resolveBindable(raw, ctx);
+    if (!v) return '';
+    return `<div style="display:flex;font-size:9pt;margin-bottom:6pt;">
+      <div style="color:#BF9B50;font-weight:700;width:80pt;">${esc(label).toUpperCase()}:</div>
+      <div style="color:#F3EFE6;">${esc(v)}</div>
+    </div>`;
+  };
+  const parts = companyName.split(' ');
+  const heading = parts.length >= 2
+    ? `<div style="font-size:28pt;font-weight:700;line-height:1;">${esc(parts.slice(0, -1).join(' '))}</div>
+       <div style="font-size:16pt;font-weight:400;margin-top:2pt;">${esc(parts[parts.length - 1])}</div>`
+    : `<div style="font-size:28pt;font-weight:700;">${esc(parts[0])}</div>`;
+
+  return `<div style="position:absolute;inset:0;background:#141414;color:#BF9B50;padding:40pt 20pt;font-family:var(--font-body, Helvetica);">
+    ${heading}
+    <div style="margin-top:30pt;font-size:14pt;font-weight:700;color:#BF9B50;">CONTACT US</div>
+    <div style="margin-top:18pt;">
+      ${row('Website', p.website)}
+      ${row('Email', p.email)}
+      ${row('Phone', p.phone)}
+      ${row('Address', p.address)}
+      ${row('ABN', p.abn)}
+    </div>
+    ${text ? `<div style="position:absolute;left:15pt;right:15pt;bottom:20pt;color:#999;font-size:${fontSize}pt;line-height:1.4;white-space:pre-wrap;">${esc(text)}</div>` : ''}
+  </div>`;
+}
