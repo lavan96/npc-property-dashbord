@@ -127,7 +127,37 @@ function decorationBackdrop(block: any, ctx: ResolveContext): string {
   return `<div aria-hidden="true" style="position:absolute;left:${x - pl}pt;top:${y - pt}pt;width:${w + pl + pr}pt;height:${h + pt + pb}pt;background:${bg};border:${bw}pt ${bs} ${borderCol};border-radius:${radius}pt;box-shadow:${shadow};pointer-events:none;"></div>`;
 }
 
-function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string {
+function resolveLinkHref(
+  link: any,
+  ctxBase: ResolveContext,
+  pages: Page[],
+): { href: string; target: string; title: string } | null {
+  if (!link?.href) return null;
+  const raw = resolveBindable(link.href, ctxBase).trim();
+  if (!raw) return null;
+  let href = raw;
+  if (raw.startsWith('page:')) {
+    const pid = raw.slice(5);
+    const idx = pages.findIndex((p) => p.id === pid);
+    href = idx >= 0 ? `#tpl-page-${idx}` : '#';
+  } else if (raw.startsWith('anchor:')) {
+    href = `#anc-${raw.slice(7).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  }
+  const target = link.target ?? (href.startsWith('#') ? '_self' : '_blank');
+  const title = link.title ? resolveBindable(link.title, ctxBase) : '';
+  return { href, target, title };
+}
+
+function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
+  if (!bm?.name) return '';
+  const anchorId = `anc-${String(bm.name).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const label = bm.label ? resolveBindable(bm.label, ctxBase) : bm.name;
+  const level = Number(bm.level ?? 2);
+  // WeasyPrint reads `bookmark-label` / `bookmark-level` for the PDF outline.
+  return ` id="${anchorId}" style="bookmark-label:'${String(label).replace(/'/g, "\\'")}';bookmark-level:${level};"`;
+}
+
+function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
   const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
@@ -136,16 +166,35 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   const opacity = s.opacity != null ? Number(s.opacity) : 1;
   const rotation = s.rotation != null ? Number(s.rotation) : 0;
   const z = s.zIndex != null ? `z-index:${Number(s.zIndex)};` : '';
+
+  // Phase 8 — bookmark + link wrapping
+  const bmAttrs = bookmarkAttrs(block.bookmark, ctxBase);
+  const link = resolveLinkHref(block.link, ctxBase, pages);
+  const wrap = (inner: string) => {
+    if (link) {
+      const titleAttr = link.title ? ` title="${escapeHtml(link.title)}"` : '';
+      return `<a href="${link.href}" target="${link.target}"${titleAttr} style="text-decoration:none;color:inherit;display:contents;">${inner}</a>`;
+    }
+    return inner;
+  };
+
+  let content: string;
   if (opacity === 1 && rotation === 0 && !z) {
-    return `${backdrop}${body}${overlays}`;
+    content = `${backdrop}${body}${overlays}`;
+  } else {
+    const p = (block.props ?? {}) as Record<string, unknown>;
+    const ox = Number(p.x ?? 0);
+    const oy = Number(p.y ?? 0);
+    content = `<div style="position:absolute;left:0;top:0;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:${ox}pt ${oy}pt;${z}">${backdrop}${body}${overlays}</div>`;
   }
-  // Transform group — wrap so opacity/rotation apply uniformly. We anchor at
-  // the top-left of the block's bounding box for predictable rotation.
-  const p = (block.props ?? {}) as Record<string, unknown>;
-  const ox = Number(p.x ?? 0);
-  const oy = Number(p.y ?? 0);
-  return `<div style="position:absolute;left:0;top:0;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:${ox}pt ${oy}pt;${z}">${backdrop}${body}${overlays}</div>`;
+
+  // If we have a bookmark, attach the id to a wrapping span so anchor jumps work
+  if (bmAttrs) {
+    content = `<span${bmAttrs}>${content}</span>`;
+  }
+  return wrap(content);
 }
+
 
 function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext): string[] {
   const r = block.repeat;
