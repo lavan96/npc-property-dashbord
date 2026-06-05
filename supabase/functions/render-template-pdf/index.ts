@@ -189,6 +189,20 @@ Deno.serve(async (req) => {
         .eq('id', jobId);
     }
 
+    // Phase 14 — analytics event
+    if (templateId) {
+      supabase.from('template_events').insert({
+        template_id: templateId,
+        event_type: 'render_success',
+        actor_id: requestedBy,
+        metadata: {
+          mode, pdf_variant: variant, bytes: pdfBytes.length,
+          duration_ms: duration, theme_id: themeId, page_master_id: pageMasterId,
+          page_count: pageCount, asset_count: assetCount, file_name: fileName,
+        },
+      }).then(() => {}, () => {});
+    }
+
     return new Response(
       JSON.stringify({
         url: signed.signedUrl,
