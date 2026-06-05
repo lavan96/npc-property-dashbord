@@ -288,12 +288,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build deterministic per-variant markdown
-    const financialSections = assembleForVariant('financial', sections);
-    const dueDiligenceSections = assembleForVariant('due_diligence', sections);
+    // Load DB-overlaid split registry (falls back to in-code defaults)
+    const registry = await loadSplitRegistry(supabase);
+    console.log('[fork-investment-report] Split registry source:', registry.source);
 
-    const financialMd = renderVariantMarkdown('financial', parent.property_address, financialSections);
-    const dueDiligenceMd = renderVariantMarkdown('due_diligence', parent.property_address, dueDiligenceSections);
+    // Build deterministic per-variant markdown
+    const financialSections = assembleForVariant(registry, 'financial', sections);
+    const dueDiligenceSections = assembleForVariant(registry, 'due_diligence', sections);
+
+    const financialMd = renderVariantMarkdown(registry, 'financial', parent.property_address, financialSections);
+    const dueDiligenceMd = renderVariantMarkdown(registry, 'due_diligence', parent.property_address, dueDiligenceSections);
 
     // Build the scoring input raw from parent's stored JSON
     const scoreInputRaw = {
