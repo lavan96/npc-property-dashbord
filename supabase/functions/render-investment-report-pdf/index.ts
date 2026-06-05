@@ -288,14 +288,17 @@ function stripBareCitations(html: string): string {
 // Premium chart engine — Chart.js v4 via QuickChart's /chart endpoint
 // (editorial palette, soft shadows, rounded bars, premium typography)
 // ─────────────────────────────────────────────────────────────
+// Editorial infographic palette — high-contrast, magazine-grade colour story.
+// Anchored by the brand gold; supporting hues chosen for legibility on cream
+// paper and visual distinctness on small bars / slices.
 const CHART_PALETTE = [
   "#C9962B", // signature gold
-  "#3F6E8A", // deep slate-blue
+  "#1F3A5F", // deep navy
   "#6FA86E", // muted sage
   "#A23A28", // burnt sienna
-  "#B07A1F", // amber-bronze
+  "#8B6F4A", // walnut
   "#5B4A82", // aubergine
-  "#8A6F4A", // walnut
+  "#3F8FA8", // teal
 ];
 const FONT_STACK = "Inter, Helvetica, Arial, sans-serif";
 const SERIF_STACK = "Playfair Display, Georgia, serif";
@@ -353,19 +356,37 @@ function inferAxisMode(config: any): "money" | "percent" | "plain" {
  *   COMPACT       — small in-flow visualisations
  */
 const CHART_PRESETS = {
-  TREND_WIDE:  { width: 760, height: 320 },
-  BAR_WIDE:    { width: 760, height: 320 },
-  DONUT_WIDE:  { width: 720, height: 320 },
-  COMPACT:     { width: 480, height: 260 },
+  TREND_WIDE:  { width: 820, height: 360 },
+  BAR_WIDE:    { width: 820, height: 360 },
+  DONUT_WIDE:  { width: 780, height: 340 },
+  COMPACT:     { width: 520, height: 280 },
 } as const;
 
-/**
- * Render a path approximating a rectangle whose TOP two corners are rounded
- * and bottom corners are square. Editorial bar style.
- */
+/** Top-rounded bar path — editorial bar style. */
 function topRoundedBarPath(x: number, y: number, w: number, h: number, r: number): string {
   const rr = Math.max(0, Math.min(r, w / 2, h));
   return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+}
+
+/**
+ * Wilkinson-style "nice" axis ticks. Rounds to 1/2/2.5/5 × 10^n so gridlines
+ * land on memorable numbers rather than arbitrary fractions.
+ */
+function niceTicks(min: number, max: number, target = 5): { min: number; max: number; step: number; ticks: number[] } {
+  if (!isFinite(min) || !isFinite(max) || min === max) {
+    const v = isFinite(max) ? max : 1;
+    return { min: 0, max: v || 1, step: (v || 1) / 4, ticks: [0, v / 4, v / 2, (3 * v) / 4, v] };
+  }
+  const range = max - min;
+  const rough = range / Math.max(1, target - 1);
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = Math.ceil(max / step) * step;
+  const ticks: number[] = [];
+  for (let v = niceMin; v <= niceMax + step * 0.0001; v += step) ticks.push(Number(v.toFixed(10)));
+  return { min: niceMin, max: niceMax, step, ticks };
 }
 
 function renderSvgChart(config: Record<string, unknown>, width: number, height: number): string {
@@ -374,35 +395,34 @@ function renderSvgChart(config: Record<string, unknown>, width: number, height: 
   const labels = (cfg.data?.labels || []).map((l: unknown) => String(l ?? ""));
   const datasets = Array.isArray(cfg.data?.datasets) ? cfg.data.datasets : [];
   const axisMode = inferAxisMode(cfg);
-  // Editorial palette + thinner rules
-  const bg = "#FFFDF8";
-  const ink = "#2A2317";
-  const muted = "#6B604F";
-  const grid = "#CFC1A8";
-  const baseline = "#9C8C6A";
-  const title = String(cfg.options?.plugins?.title?.text || datasets[0]?.label || "");
-  // Reserve title strip + legend strip so plot never collides with labels.
-  const titleH  = title ? 26 : 8;
-  const legendH = datasets.length > 1 ? 24 : 8;
-  const plot = {
-    x: 62,
-    y: titleH + 8,
-    w: Math.max(160, width - 86),
-    h: Math.max(80, height - titleH - legendH - 36),
-  };
 
-  // Tabular figures + crisp Inter axis font.
-  const axisFontStyle  = `font-family="Inter,Arial,sans-serif" font-size="10.5" font-style="normal" letter-spacing="0.02em"`;
-  const tabular        = `style="font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;"`;
-  const titleFontStyle = `font-family="Playfair Display,Georgia,serif" font-size="14.5" font-weight="700"`;
-  const legendFontStyle = `font-family="Inter,Arial,sans-serif" font-size="10.5"`;
+  // Editorial palette
+  const bg = "#FFFDF8";
+  const ink = "#1A1612";
+  const inkSoft = "#3A2F22";
+  const muted = "#7A6E58";
+  const gridSolid = "#E4D9C0";
+  const gridSoft = "#EFE7D2";
+  const baseline = "#B8A678";
+
+  const title = String(cfg.options?.plugins?.title?.text || "");
+  const titleH  = title ? 30 : 12;
+  const legendH = datasets.length > 1 ? 28 : 10;
+  const xLabelH = 26;
+
+  // Typography
+  const axisFontStyle  = `font-family="Inter,Arial,sans-serif" font-size="10.5" font-weight="500"`;
+  const tabular        = `style="font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:0.01em;"`;
+  const titleFontStyle = `font-family="Playfair Display,Georgia,serif" font-size="15.5" font-weight="700"`;
+  const legendFontStyle = `font-family="Inter,Arial,sans-serif" font-size="10.5" font-weight="500"`;
+  const valueFontStyle = `font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700"`;
 
   const titleSvg = title
-    ? `<text x="${plot.x}" y="20" ${titleFontStyle} fill="${ink}">${svgEsc(title)}</text>`
+    ? `<text x="32" y="22" ${titleFontStyle} fill="${ink}">${svgEsc(title)}</text>`
     : "";
 
-  // Soft paper background only — no double border frame.
-  const frame = `<rect x="0" y="0" width="${width}" height="${height}" rx="6" fill="${bg}"/>`;
+  // Soft paper background, no border frame
+  const frame = `<rect x="0" y="0" width="${width}" height="${height}" fill="${bg}"/>`;
 
   // ── Sparkline ────────────────────────────────────────────────────────────
   if (type === "sparkline") {
@@ -415,42 +435,85 @@ function renderSvgChart(config: Record<string, unknown>, width: number, height: 
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
     const color = String(datasets[0]?.borderColor || THEME.gold);
-    const area = `${pts[0]} ${pts.slice(1).join(" ")} ${width - 8},${height - 7} 8,${height - 7}`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polygon points="${area}" fill="${withAlpha(color, 0.14)}"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const gradId = `sg-${Math.random().toString(36).slice(2, 8)}`;
+    const area = `${pts.join(" ")} ${width - 8},${height - 7} 8,${height - 7}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.32"/><stop offset="1" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs><polygon points="${area}" fill="url(#${gradId})"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
 
-  // ── Donut / Pie with side legend (value + %) ─────────────────────────────
+  // ── Donut / Pie with side legend ─────────────────────────────────────────
   if (type === "doughnut" || type === "pie") {
     const values = datasetValues(datasets[0]);
     const total = values.reduce((a, b) => a + Math.max(0, b), 0) || 1;
-    const ringCx = width * 0.30;
-    const ringCy = (titleH + height) / 2 + 4;
-    const r = Math.min(width * 0.22, (height - titleH) * 0.36);
-    const sw = type === "doughnut" ? Math.max(14, r * 0.42) : r;
-    let offset = 25;
-    const slices = values.map((v, i) => {
+    const ringCx = width * 0.28;
+    const ringCy = (titleH + height - 18) / 2 + 4;
+    const r = Math.min(width * 0.21, (height - titleH - 18) * 0.40);
+    const sw = type === "doughnut" ? Math.max(22, r * 0.46) : r;
+
+    let startA = -Math.PI / 2;
+    const slices: string[] = [];
+    const sliceLabels: string[] = [];
+    values.forEach((v, i) => {
       const pct = Math.max(0, v) / total;
-      const dash = `${(pct * 100).toFixed(4)} ${(100 - pct * 100).toFixed(4)}`;
+      if (pct <= 0) return;
+      const endA = startA + pct * Math.PI * 2;
       const color = CHART_PALETTE[i % CHART_PALETTE.length];
-      const c = `<circle cx="${ringCx}" cy="${ringCy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${dash}" stroke-dashoffset="${offset}" pathLength="100" transform="rotate(-90 ${ringCx} ${ringCy})"/>`;
-      offset -= pct * 100;
-      return c;
-    }).join("");
-    const legendX = ringCx + r + sw / 2 + 28;
-    const lineH = 20;
-    const startY = ringCy - (values.length - 1) * lineH / 2 - 6;
+      if (type === "doughnut") {
+        const rMid = r;
+        const x1 = ringCx + rMid * Math.cos(startA);
+        const y1 = ringCy + rMid * Math.sin(startA);
+        const x2 = ringCx + rMid * Math.cos(endA);
+        const y2 = ringCy + rMid * Math.sin(endA);
+        const large = pct > 0.5 ? 1 : 0;
+        if (pct >= 0.999) {
+          slices.push(`<circle cx="${ringCx}" cy="${ringCy}" r="${rMid}" fill="none" stroke="${color}" stroke-width="${sw}"/>`);
+        } else {
+          slices.push(`<path d="M${x1.toFixed(2)},${y1.toFixed(2)} A${rMid},${rMid} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="butt"/>`);
+        }
+      } else {
+        const x1 = ringCx + r * Math.cos(startA);
+        const y1 = ringCy + r * Math.sin(startA);
+        const x2 = ringCx + r * Math.cos(endA);
+        const y2 = ringCy + r * Math.sin(endA);
+        const large = pct > 0.5 ? 1 : 0;
+        slices.push(`<path d="M${ringCx},${ringCy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${color}"/>`);
+      }
+      // In-slice % label when slice ≥ 7%
+      if (pct >= 0.07) {
+        const midA = (startA + endA) / 2;
+        const labelR = type === "doughnut" ? r : r * 0.62;
+        const lx = ringCx + labelR * Math.cos(midA);
+        const ly = ringCy + labelR * Math.sin(midA);
+        sliceLabels.push(`<text x="${lx.toFixed(2)}" y="${(ly + 3.5).toFixed(2)}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="700" fill="#FFFDF8" ${tabular}>${(pct * 100).toFixed(0)}%</text>`);
+      }
+      startA = endA;
+    });
+
+    // Center label for donut: top slice %
+    let centerLabel = "";
+    if (type === "doughnut") {
+      const topIdx = values.indexOf(Math.max(...values));
+      const topPct = ((values[topIdx] || 0) / total * 100).toFixed(0);
+      centerLabel = `
+        <text x="${ringCx}" y="${ringCy - 4}" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-size="24" font-weight="800" fill="${ink}" ${tabular}>${topPct}%</text>
+        <text x="${ringCx}" y="${ringCy + 14}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8.5" font-weight="600" fill="${muted}" letter-spacing="1.6">${svgEsc((labels[topIdx] || "TOP").toUpperCase()).slice(0, 18)}</text>
+      `;
+    }
+
+    const legendX = ringCx + r + sw / 2 + 32;
+    const lineH = 22;
+    const startY = ringCy - (values.length - 1) * lineH / 2 - 4;
     const legend = values.map((v, i) => {
       const pct = ((Math.max(0, v) / total) * 100).toFixed(1);
       const y = startY + i * lineH;
       const valueLabel = `${formatAxisValue(v, axisMode)}  ·  ${pct}%`;
       return `<g transform="translate(${legendX},${y})">
-        <rect x="0" y="-8" width="10" height="10" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/>
-        <text x="18" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(labels[i] || "")}</text>
-        <text x="18" y="13" ${legendFontStyle} ${tabular} fill="${muted}">${svgEsc(valueLabel)}</text>
+        <rect x="0" y="-9" width="11" height="11" rx="2" fill="${CHART_PALETTE[i % CHART_PALETTE.length]}"/>
+        <text x="20" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(labels[i] || "")}</text>
+        <text x="20" y="14" font-family="Inter,Arial,sans-serif" font-size="9.5" font-weight="500" ${tabular} fill="${muted}">${svgEsc(valueLabel)}</text>
       </g>`;
     }).join("");
-    const inner = type === "doughnut" ? `<circle cx="${ringCx}" cy="${ringCy}" r="${r - sw / 2 - 1}" fill="${bg}"/>` : "";
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${titleSvg}${slices}${inner}${legend}</svg>`;
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${titleSvg}${slices.join("")}${centerLabel}${sliceLabels.join("")}${legend}</svg>`;
   }
 
   // ── Line / Bar ───────────────────────────────────────────────────────────
@@ -461,56 +524,112 @@ function renderSvgChart(config: Record<string, unknown>, width: number, height: 
   })).filter((d: any) => d.values.length);
   const all = series.flatMap((s: any) => s.values);
   if (!all.length || !labels.length) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}</svg>`;
-  const rawMin = Math.min(0, ...all), rawMax = Math.max(...all, 1);
-  const span = rawMax - rawMin || 1;
-  const yOf = (v: number) => plot.y + plot.h - ((v - rawMin) / span) * plot.h;
 
-  // 5 gridlines, hairline 0.5pt, soft alpha
-  const gridLines = Array.from({ length: 5 }, (_, i) => {
-    const t = i / 4;
-    const y = plot.y + t * plot.h;
-    const val = rawMax - t * span;
-    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y}" y2="${y}" stroke="${grid}" stroke-opacity="0.55" stroke-width="0.5"/>` +
-      `<text x="${plot.x - 10}" y="${y + 3.5}" text-anchor="end" ${axisFontStyle} ${tabular} fill="${muted}">${formatAxisValue(val, axisMode)}</text>`;
+  const rawMin = Math.min(0, ...all), rawMax = Math.max(...all, rawMin + 1);
+  const nice = niceTicks(rawMin, rawMax, 5);
+  const yMin = nice.min, yMax = nice.max;
+  const ySpan = yMax - yMin || 1;
+
+  const sampleLabels = nice.ticks.map((t) => formatAxisValue(t, axisMode));
+  const maxTickChars = Math.max(...sampleLabels.map((s) => s.length));
+  const padL = Math.max(56, 18 + maxTickChars * 6.2);
+  const padR = 28;
+  const plot = {
+    x: padL,
+    y: titleH + 10,
+    w: Math.max(160, width - padL - padR),
+    h: Math.max(80, height - titleH - 10 - xLabelH - (series.length > 1 ? legendH : 8) - 12),
+  };
+  const yOf = (v: number) => plot.y + plot.h - ((v - yMin) / ySpan) * plot.h;
+
+  const gridLines = nice.ticks.map((tv, i) => {
+    const y = yOf(tv);
+    const isZero = Math.abs(tv) < 1e-9;
+    const stroke = isZero ? baseline : (i % 2 === 0 ? gridSolid : gridSoft);
+    const sw2 = isZero ? 0.8 : 0.5;
+    return `<line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw2}"/>` +
+      `<text x="${plot.x - 12}" y="${y.toFixed(1)}" dy="3.4" text-anchor="end" ${axisFontStyle} ${tabular} fill="${muted}">${svgEsc(formatAxisValue(tv, axisMode))}</text>`;
   }).join("");
 
   let marks = "";
+  let valueLabels = "";
+  const defs: string[] = [];
+
   if (type === "line") {
-    marks = series.map((s: any) => {
+    marks = series.map((s: any, si: number) => {
+      const gradId = `lg-${si}-${Math.random().toString(36).slice(2, 6)}`;
+      defs.push(`<linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity="0.28"/><stop offset="1" stop-color="${s.color}" stop-opacity="0.02"/></linearGradient>`);
       const pts = s.values.map((v: number, i: number) => `${(plot.x + (i / Math.max(1, labels.length - 1)) * plot.w).toFixed(1)},${yOf(v).toFixed(1)}`);
-      const area = s.values.length > 1
-        ? `<polygon points="${pts[0]} ${pts.slice(1).join(" ")} ${plot.x + plot.w},${yOf(0)} ${plot.x},${yOf(0)}" fill="${withAlpha(s.color, 0.10)}"/>`
+      const fill = si === 0 && s.values.length > 1
+        ? `<polygon points="${pts.join(" ")} ${plot.x + plot.w},${yOf(yMin)} ${plot.x},${yOf(yMin)}" fill="url(#${gradId})"/>`
         : "";
-      const dots = pts.map((p: string) => `<circle cx="${p.split(",")[0]}" cy="${p.split(",")[1]}" r="2.6" fill="${bg}" stroke="${s.color}" stroke-width="1.6"/>`).join("");
-      return `${area}<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
+      const dots = pts.map((p: string) => {
+        const [px, py] = p.split(",");
+        return `<circle cx="${px}" cy="${py}" r="3" fill="${bg}" stroke="${s.color}" stroke-width="1.8"/>`;
+      }).join("");
+      return `${fill}<polyline points="${pts.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
     }).join("");
   } else {
     const groups = labels.length;
     const groupW = plot.w / groups;
-    const innerW = groupW * 0.7;
-    const barW = Math.max(6, Math.min(34, innerW / Math.max(1, series.length)));
-    const corner = Math.min(3, barW / 2.5);
-    marks = labels.map((_, i) => series.map((s: any, si: number) => {
-      const v = s.values[i] ?? 0;
-      const y = yOf(Math.max(v, 0));
-      const zero = yOf(0);
-      const x = plot.x + i * groupW + (groupW - barW * series.length) / 2 + si * barW;
-      const h = Math.max(1, Math.abs(zero - y));
-      return `<path d="${topRoundedBarPath(x, Math.min(y, zero), barW - 1.5, h, corner)}" fill="${s.color}" fill-opacity="0.94"/>`;
-    }).join("")).join("");
+    const innerW = groupW * 0.72;
+    const barW = Math.max(8, Math.min(46, innerW / Math.max(1, series.length)));
+    const corner = Math.min(4, barW / 3);
+    const allBarRects: string[] = [];
+    const allLabels: string[] = [];
+    labels.forEach((_, i) => {
+      series.forEach((s: any, si: number) => {
+        const v = s.values[i] ?? 0;
+        const y = yOf(Math.max(v, 0));
+        const zero = yOf(0);
+        const x = plot.x + i * groupW + (groupW - barW * series.length) / 2 + si * barW;
+        const h = Math.max(1.5, Math.abs(zero - y));
+        const isNeg = v < 0;
+        const path = isNeg
+          ? topRoundedBarPath(x, zero, barW - 2, h, corner)
+          : topRoundedBarPath(x, Math.min(y, zero), barW - 2, h, corner);
+        allBarRects.push(`<path d="${path}" fill="${s.color}" fill-opacity="0.95"/>`);
+        if (series.length === 1 && Math.abs(v) > 0 && h > 14) {
+          const lbl = formatAxisValue(v, axisMode);
+          const ly = isNeg ? y + h + 12 : y - 6;
+          allLabels.push(`<text x="${(x + (barW - 2) / 2).toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" ${valueFontStyle} ${tabular} fill="${inkSoft}">${svgEsc(lbl)}</text>`);
+        }
+      });
+    });
+    marks = allBarRects.join("");
+    valueLabels = allLabels.join("");
   }
+
+  // X-axis labels — auto-thin when crowded
+  const maxXLabels = Math.floor(plot.w / 56);
+  const xStep = labels.length > maxXLabels ? Math.ceil(labels.length / maxXLabels) : 1;
   const xLabels = labels.map((label, i) => {
+    if (i % xStep !== 0 && i !== labels.length - 1) return "";
     const x = type === "line"
       ? plot.x + (i / Math.max(1, labels.length - 1)) * plot.w
       : plot.x + (i + 0.5) * (plot.w / labels.length);
-    return `<text x="${x}" y="${plot.y + plot.h + 18}" text-anchor="middle" ${axisFontStyle} fill="${muted}">${svgEsc(label.length > 14 ? label.slice(0, 12) + "…" : label)}</text>`;
+    const txt = label.length > 16 ? label.slice(0, 14) + "…" : label;
+    return `<text x="${x.toFixed(1)}" y="${(plot.y + plot.h + 18).toFixed(1)}" text-anchor="middle" ${axisFontStyle} fill="${muted}">${svgEsc(txt)}</text>`;
   }).join("");
-  const legendY = height - 12;
+
+  // Centered legend (multi-series only)
+  const legendY = height - 14;
   const legend = series.length > 1
-    ? `<g transform="translate(${plot.x},${legendY})">${series.map((s: any, i: number) => `<g transform="translate(${i * 140},0)"><rect x="0" y="-8" width="10" height="10" rx="2" fill="${s.color}"/><text x="16" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(s.label)}</text></g>`).join("")}</g>`
+    ? (() => {
+        const itemWs = series.map((s: any) => 26 + s.label.length * 6.2);
+        const totalW = itemWs.reduce((a: number, b: number) => a + b + 18, -18);
+        let cursor = (width - totalW) / 2;
+        return `<g transform="translate(0,${legendY})">${series.map((s: any, i: number) => {
+          const x = cursor;
+          cursor += itemWs[i] + 18;
+          return `<g transform="translate(${x.toFixed(1)},0)"><circle cx="5" cy="-4" r="5" fill="${s.color}"/><text x="16" y="0" ${legendFontStyle} fill="${ink}">${svgEsc(s.label)}</text></g>`;
+        }).join("")}</g>`;
+      })()
     : "";
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${titleSvg}<g>${gridLines}</g><line x1="${plot.x}" x2="${plot.x + plot.w}" y1="${yOf(0)}" y2="${yOf(0)}" stroke="${baseline}" stroke-width="0.6"/>${marks}${xLabels}${legend}</svg>`;
+  const defsBlock = defs.length ? `<defs>${defs.join("")}</defs>` : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${frame}${defsBlock}${titleSvg}<g>${gridLines}</g>${marks}${valueLabels}${xLabels}${legend}</svg>`;
 }
 
 
@@ -637,25 +756,53 @@ function pickSeries(rows: any[], keys: string[]): number[] | null {
 }
 
 async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
-  if (rows.length < 2 || rows.length > 14) return null;
+  // Tightened heuristics: only chart tables that will actually read as a chart.
+  if (rows.length < 3 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
 
-  const labels = rows.map((r) => (r[0] || "").slice(0, 28));
-  const numericCols: Array<{ header: string; values: number[] }> = [];
+  // Drop summary rows (Total / Subtotal / Average / Sum / Mean) before charting —
+  // these are scale-distorting and produce nonsensical bars.
+  const SUMMARY_RX = /^\s*(total|subtotal|sum|average|avg|mean|grand\s*total|all\s*years?|overall)\b/i;
+  const filteredRows = rows.filter((r) => !SUMMARY_RX.test(r[0] || ""));
+  if (filteredRows.length < 3) return null;
+
+  const labels = filteredRows.map((r) => (r[0] || "").slice(0, 28));
+  // Reject if first-column labels look like placeholders ("Item 1", "Row 2", "—", blank)
+  const placeholderCount = labels.filter((l) => !l || /^(item|row|note|n\/?a|—|-)\s*\d*$/i.test(l)).length;
+  if (placeholderCount > labels.length / 3) return null;
+
+  const numericCols: Array<{ header: string; values: number[]; isPct: boolean; isMoney: boolean }> = [];
   for (let c = 1; c < headers.length; c++) {
-    const vals = rows.map((r) => parseLooseNumber(r[c] || ""));
-    if (vals.every((v) => v !== null) && vals.length === rows.length) {
-      numericCols.push({ header: headers[c], values: vals as number[] });
+    const vals = filteredRows.map((r) => parseLooseNumber(r[c] || ""));
+    if (vals.every((v) => v !== null) && vals.length === filteredRows.length) {
+      const colCells = filteredRows.map((r) => r[c] || "").join(" ");
+      numericCols.push({
+        header: headers[c],
+        values: vals as number[],
+        isPct: /%/.test(colCells) || isPctHeader(headers[c]),
+        isMoney: /\$/.test(colCells) || isMoneyHeader(headers[c]),
+      });
     }
   }
   if (numericCols.length === 0) return null;
 
-  const cellBlob = rows.map((r) => r.join(" ")).join(" ");
+  // Reject mixed-unit columns (e.g. some % and some $) — they don't share an axis.
+  const unitTypes = new Set(numericCols.map((c) => c.isPct ? "pct" : c.isMoney ? "money" : "plain"));
+  if (unitTypes.size > 1) return null;
+
+  // Reject columns with no variance (all same value) — flat bars are useless.
+  if (numericCols.every((c) => Math.max(...c.values) === Math.min(...c.values))) return null;
+
+  const cellBlob = filteredRows.map((r) => r.join(" ")).join(" ");
   const headerBlob = headers.join(" ");
   const looksPct = /%/.test(cellBlob) || isPctHeader(headerBlob);
   const looksMoney = /\$/.test(cellBlob) || isMoneyHeader(headerBlob);
   const singleSeries = numericCols.length === 1;
   const isTimeSeries = labels.every((l) => /^(19|20)\d{2}$|^yr\s*\d+$|^year\s*\d+$/i.test(l.trim()));
+
+  // Rebind rows to filtered set for downstream code
+  rows = filteredRows;
+
 
   const tickCallback = looksPct
     ? "function(v){return v.toFixed(1)+'%';}"
@@ -670,8 +817,10 @@ async function tableToChartHtml(headers: string[], rows: string[][]): Promise<st
 
   let config: Record<string, unknown>;
 
-  // ── Donut: single % series with ≤7 rows ──
-  if (singleSeries && rows.length <= 7 && looksPct) {
+  // ── Donut: only when single % series, ≤7 rows, AND values plausibly sum to ~100 (a real share-of-total). ──
+  const donutSum = numericCols[0].values.reduce((a, b) => a + Math.max(0, b), 0);
+  const donutIsShare = donutSum >= 80 && donutSum <= 120;
+  if (singleSeries && rows.length <= 7 && looksPct && donutIsShare) {
     config = {
       type: "doughnut",
       data: {
@@ -3371,39 +3520,47 @@ export async function buildHtml(
 
     /* ── Premium auto-injected charts ── */
     .chart-wrap {
-      margin: 16pt 0 20pt;
-      padding: 12pt 14pt 10pt;
-      background: #FFFDF8;
-      border: 0.4pt solid ${THEME.rule};
-      border-radius: 3pt;
-      box-shadow: 0 1pt 0 rgba(40,28,10,0.03);
+      margin: 20pt 0 24pt;
+      padding: 4pt 0 0;
+      background: transparent;
+      border: 0;
       page-break-inside: avoid;
     }
     .auto-chart { margin: 0; text-align: center; page-break-inside: avoid; }
-    .auto-chart img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .auto-chart img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      background: #FFFDF8;
+      border-radius: 2pt;
+    }
     .auto-chart figcaption {
-      margin-top: 6pt;
+      margin-top: 8pt;
       font-family: 'Inter', sans-serif;
       font-size: 7.6pt;
-      letter-spacing: .08em;
+      letter-spacing: .14em;
+      text-transform: uppercase;
       color: ${THEME.inkMuted};
       text-align: center;
     }
     .chart-wrap > table {
-      margin-top: 12pt; font-size: 8.2pt;
+      margin-top: 14pt;
+      font-size: 8.2pt;
       border-top: 0.5pt solid ${THEME.rule};
     }
     .chart-wrap > table th { background: transparent; color: ${THEME.inkMuted}; font-size: 7.5pt; letter-spacing: .12em; }
     .financial-charts { page-break-after: auto; }
-    .financial-chart { margin-bottom: 14pt; }
+    .financial-chart { margin-bottom: 22pt; }
     .chart-title {
       font-family: 'Playfair Display', 'Georgia', serif;
-      font-size: 12.5pt;
+      font-size: 13pt;
       font-weight: 700;
       color: ${THEME.ink};
-      margin: 0 0 6pt;
-      padding-bottom: 4pt;
-      border-bottom: 0.4pt solid ${THEME.rule};
+      margin: 0 0 10pt;
+      padding-bottom: 6pt;
+      border-bottom: 0.6pt solid ${THEME.rule};
+      letter-spacing: -0.005em;
     }
 
     /* ── KPI sparklines ── */
