@@ -1362,6 +1362,23 @@ export default function TemplateBuilderEdit() {
           currentUserId={user?.id ?? null}
         />
       )}
+      {id && (
+        <VersionHistoryDialog
+          open={showHistoryDialog}
+          onOpenChange={setShowHistoryDialog}
+          templateId={id}
+          currentTemplate={template}
+          onLoad={(schema) => setTemplate(schema)}
+          onRestore={(v) => {
+            const restored = parseTemplate(v.schema);
+            setTemplate(restored);
+            update.mutate(
+              { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
+              { onSuccess: () => { toast.success(`Restored v${v.version}`); setShowHistoryDialog(false); } },
+            );
+          }}
+        />
+      )}
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
           <TemplateCommentsPanel
