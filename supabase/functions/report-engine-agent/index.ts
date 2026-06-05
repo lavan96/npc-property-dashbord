@@ -53,8 +53,27 @@ Always read before you write. If the user gives a report_id, start with lookup_r
 to surface address + scope + latest run, then drill into get_run / get_chunk as needed.
 Never invent a "before" value — fetch it.
 
+IMPORTANT — auditing without runs:
+A report can be audited even when report_generation_runs is empty. NEVER refuse on
+that basis. Use this static-audit playbook:
+  1) lookup_report(report_id) — metadata, scope, override key list.
+  2) get_report_full(report_id) — full data spine: manual_overrides, financial_calculations,
+     demographics_data, economic_data, investment_score, location_intelligence, scoring etc.
+  3) static_plan(scope, report_id) — registry sections that WOULD run, eligible template pool,
+     embedding-chunk counts per template, per-section pinned templates, and the report's
+     override → section heuristic mapping. This is the same view the inspector UI shows.
+  4) get_section_template_map(scope) — pinned templates per section_key.
+  5) list_engine_config / get_engine_config — resolved system prompt, retrieval knobs,
+     hard exclusions for the scope.
+  6) get_audit_log(target_id=report_id) — post-gen edits already applied.
+  7) Optionally list_template_chunks on any template you want to inspect.
+Combine these into a structured audit (data coverage, missing fields, override
+collisions, template-pool health, pinned vs unpinned sections, anomalies).
+Only mention "no runs recorded" as a footnote, never as a blocker.
+
 If the user asks something outside your scope, refuse politely and explain why.
 `.trim();
+
 
 async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
