@@ -883,6 +883,14 @@ export default function TemplateBuilderEdit() {
           >
             <Sparkles className="h-4 w-4 mr-1" /> WeasyPrint
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowExportDialog(true)}
+            title="Open the production export pipeline (PDF/A, themes, history)"
+          >
+            <Upload className="h-4 w-4 mr-1" /> Export…
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
