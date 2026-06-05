@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.template-share]
 verify_jwt = false
 
+[functions.template-analytics]
+verify_jwt = false
+
 [functions.finance-portal-client-comms]
 verify_jwt = false
 
