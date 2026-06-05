@@ -68,6 +68,8 @@ import {
   renderLegendHtml,
   renderStackedBarChartHtml,
 } from './charts.html';
+import { renderAutoTocHtml } from './autoToc.html';
+
 
 
 
