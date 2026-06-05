@@ -62,18 +62,6 @@ const BaseOverlay = z.object({
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
 });
 
-export const TextOverlaySchema = BaseOverlay.extend({
-  type: z.literal('text'),
-  content: BindableStringSchema,
-  fontFamily: BindableStringSchema.default('Helvetica'),
-  fontSize: BindableNumberSchema.default(12),
-  fontWeight: z.enum(['normal', 'bold']).default('normal'),
-  fontStyle: z.enum(['normal', 'italic']).default('normal'),
-  color: BindableColorSchema.default('#000000'),
-  align: z.enum(['left', 'center', 'right']).default('left'),
-  lineHeight: z.number().default(1.3),
-  letterSpacing: z.number().default(0),
-});
 
 export const TextOverlaySchema = BaseOverlay.extend({
   type: z.literal('text'),
