@@ -198,8 +198,17 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx));
   }
 
+  // Phase 5 — baseline grid (printed when page.baselineGrid.show is true).
+  let baselineEl = '';
+  const bg = (page as any).baselineGrid;
+  if (bg?.show) {
+    const size = Number(bg.size ?? 12);
+    const color = String(bg.color ?? 'rgba(191,155,80,0.20)');
+    const offset = Number(bg.offset ?? 0);
+    baselineEl = `<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to bottom, transparent 0, transparent ${size - 1}pt, ${color} ${size - 1}pt, ${color} ${size}pt);background-position:0 ${offset}pt;"></div>`;
+  }
 
-  return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${blocks.join('\n')}</section>`;
+  return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
 
 /** Compile a template + data into a print-ready HTML document. */
