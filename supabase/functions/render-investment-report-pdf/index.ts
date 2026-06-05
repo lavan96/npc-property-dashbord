@@ -2723,7 +2723,7 @@ export async function buildHtml(
         <div class="cover-foil" style="background-image:url('${foilOverlaySvg}')"></div>
         <div class="cover-masthead">${esc(String(brandName).toUpperCase())}</div>
         <div class="cover-copy">
-          <div class="cover-kicker">Investment Report · ${esc(generated)}</div>
+          <div class="cover-kicker">${esc(variantLabel)} · ${esc(generated)}</div>
           <h1>${esc(address)}</h1>
           <div class="cover-rule"></div>
           <div class="cover-meta">${esc(coverLocation)}</div>
