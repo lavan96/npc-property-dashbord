@@ -20,6 +20,7 @@ import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPo
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
 import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
 import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
+import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelineDialog';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
