@@ -24,6 +24,8 @@ import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelin
 import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateCommentsPanel';
 import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
+import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
+import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -88,6 +90,7 @@ export default function TemplateBuilderEdit() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
@@ -587,7 +590,22 @@ export default function TemplateBuilderEdit() {
           schema: template,
         } as any,
       },
-      { onSuccess: () => toast.success(snapshot ? 'Saved as new version' : 'Saved') },
+      {
+        onSuccess: () => {
+          toast.success(snapshot ? 'Saved as new version' : 'Saved');
+          // Phase 14 — analytics
+          logTemplateEvent({
+            templateId: id,
+            eventType: snapshot ? 'edit_snapshot' : 'edit_save',
+            templateVersion: tplRow?.version,
+            pageId: activePage?.id,
+            metadata: {
+              pages: template.pages.length,
+              blocks: template.pages.reduce((n, p: any) => n + (p.blocks?.length || 0), 0),
+            },
+          });
+        },
+      },
     );
   };
 
@@ -903,6 +921,11 @@ export default function TemplateBuilderEdit() {
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)} title="Version history, compare and restore">
               <Sparkles className="h-4 w-4 mr-1" /> History
+            </Button>
+          )}
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowAnalyticsDialog(true)} title="Usage, edits and share-preview analytics">
+              <Sparkles className="h-4 w-4 mr-1" /> Analytics
             </Button>
           )}
           {id && (
@@ -1374,9 +1397,21 @@ export default function TemplateBuilderEdit() {
             setTemplate(restored);
             update.mutate(
               { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
-              { onSuccess: () => { toast.success(`Restored v${v.version}`); setShowHistoryDialog(false); } },
+              { onSuccess: () => {
+                toast.success(`Restored v${v.version}`);
+                setShowHistoryDialog(false);
+                logTemplateEvent({ templateId: id, eventType: 'edit_restore', metadata: { fromVersion: v.version } });
+              } },
             );
           }}
+        />
+      )}
+      {id && (
+        <TemplateAnalyticsDialog
+          open={showAnalyticsDialog}
+          onOpenChange={setShowAnalyticsDialog}
+          templateId={id}
+          template={template}
         />
       )}
       {id && showComments && (

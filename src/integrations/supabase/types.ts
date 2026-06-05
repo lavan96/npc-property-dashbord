@@ -16266,6 +16266,56 @@ export type Database = {
           },
         ]
       }
+      template_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          block_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          page_id: string | null
+          share_token: string | null
+          template_id: string
+          template_version: number | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          block_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          page_id?: string | null
+          share_token?: string | null
+          template_id: string
+          template_version?: number | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          block_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          page_id?: string | null
+          share_token?: string | null
+          template_id?: string
+          template_version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_events_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_render_jobs: {
         Row: {
           asset_count: number | null
