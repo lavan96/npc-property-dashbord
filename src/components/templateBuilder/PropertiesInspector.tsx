@@ -242,22 +242,37 @@ function OverlayEditor({
                   <SelectItem value="left">Left</SelectItem>
                   <SelectItem value="center">Center</SelectItem>
                   <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="justify">Justify</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Family</Label>
-              <Select
-                value={String(overlay.fontFamily || 'Helvetica')}
-                onValueChange={(v) => patch({ fontFamily: v } as any)}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Helvetica">Helvetica</SelectItem>
-                  <SelectItem value="Times">Times</SelectItem>
-                  <SelectItem value="Courier">Courier</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Select
+                  value={String(overlay.fontFamily || 'Helvetica')}
+                  onValueChange={(v) => patch({ fontFamily: v } as any)}
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Helvetica">Helvetica</SelectItem>
+                    <SelectItem value="Times">Times</SelectItem>
+                    <SelectItem value="Courier">Courier</SelectItem>
+                    <SelectItem value="Georgia">Georgia</SelectItem>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    {((template.tokens as any).fontFaces ?? []).map((f: any) => (
+                      <SelectItem key={f.family} value={f.family}>{f.family}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {onUpdateTemplate && (
+                  <FontLibraryPopover
+                    template={template}
+                    onTemplateChange={onUpdateTemplate}
+                    onPick={(family) => patch({ fontFamily: family } as any)}
+                  />
+                )}
+              </div>
             </div>
           </div>
           <ColorField
@@ -265,6 +280,12 @@ function OverlayEditor({
             value={String(overlay.color || '#000000')}
             template={template}
             onChange={(v) => patch({ color: v } as any)}
+          />
+          <TypographyPanel
+            overlay={overlay as any}
+            template={template}
+            onChange={(p) => patch(p as any)}
+            onTemplateChange={onUpdateTemplate}
           />
         </div>
       )}
