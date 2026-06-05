@@ -277,7 +277,17 @@ export const ReportTemplateSchema = z.object({
     showBaselineGrid: z.boolean().default(false),
   }).default({}).optional(),
   savedSelections: z.record(z.array(z.string())).optional(),
+  // Phase 8 — document metadata, embedded as PDF info dictionary.
+  meta: z.object({
+    title: BindableStringSchema.optional(),
+    author: BindableStringSchema.optional(),
+    subject: BindableStringSchema.optional(),
+    keywords: BindableStringSchema.optional(),
+    lang: z.string().optional(),                  // BCP 47, e.g. "en-AU"
+    creator: BindableStringSchema.optional(),
+  }).optional(),
 });
+
 
 export type ReportTemplate = z.infer<typeof ReportTemplateSchema>;
 
