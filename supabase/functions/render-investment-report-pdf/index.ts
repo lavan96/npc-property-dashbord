@@ -756,25 +756,53 @@ function pickSeries(rows: any[], keys: string[]): number[] | null {
 }
 
 async function tableToChartHtml(headers: string[], rows: string[][]): Promise<string | null> {
-  if (rows.length < 2 || rows.length > 14) return null;
+  // Tightened heuristics: only chart tables that will actually read as a chart.
+  if (rows.length < 3 || rows.length > 14) return null;
   if (headers.length < 2 || headers.length > 6) return null;
 
-  const labels = rows.map((r) => (r[0] || "").slice(0, 28));
-  const numericCols: Array<{ header: string; values: number[] }> = [];
+  // Drop summary rows (Total / Subtotal / Average / Sum / Mean) before charting —
+  // these are scale-distorting and produce nonsensical bars.
+  const SUMMARY_RX = /^\s*(total|subtotal|sum|average|avg|mean|grand\s*total|all\s*years?|overall)\b/i;
+  const filteredRows = rows.filter((r) => !SUMMARY_RX.test(r[0] || ""));
+  if (filteredRows.length < 3) return null;
+
+  const labels = filteredRows.map((r) => (r[0] || "").slice(0, 28));
+  // Reject if first-column labels look like placeholders ("Item 1", "Row 2", "—", blank)
+  const placeholderCount = labels.filter((l) => !l || /^(item|row|note|n\/?a|—|-)\s*\d*$/i.test(l)).length;
+  if (placeholderCount > labels.length / 3) return null;
+
+  const numericCols: Array<{ header: string; values: number[]; isPct: boolean; isMoney: boolean }> = [];
   for (let c = 1; c < headers.length; c++) {
-    const vals = rows.map((r) => parseLooseNumber(r[c] || ""));
-    if (vals.every((v) => v !== null) && vals.length === rows.length) {
-      numericCols.push({ header: headers[c], values: vals as number[] });
+    const vals = filteredRows.map((r) => parseLooseNumber(r[c] || ""));
+    if (vals.every((v) => v !== null) && vals.length === filteredRows.length) {
+      const colCells = filteredRows.map((r) => r[c] || "").join(" ");
+      numericCols.push({
+        header: headers[c],
+        values: vals as number[],
+        isPct: /%/.test(colCells) || isPctHeader(headers[c]),
+        isMoney: /\$/.test(colCells) || isMoneyHeader(headers[c]),
+      });
     }
   }
   if (numericCols.length === 0) return null;
 
-  const cellBlob = rows.map((r) => r.join(" ")).join(" ");
+  // Reject mixed-unit columns (e.g. some % and some $) — they don't share an axis.
+  const unitTypes = new Set(numericCols.map((c) => c.isPct ? "pct" : c.isMoney ? "money" : "plain"));
+  if (unitTypes.size > 1) return null;
+
+  // Reject columns with no variance (all same value) — flat bars are useless.
+  if (numericCols.every((c) => Math.max(...c.values) === Math.min(...c.values))) return null;
+
+  const cellBlob = filteredRows.map((r) => r.join(" ")).join(" ");
   const headerBlob = headers.join(" ");
   const looksPct = /%/.test(cellBlob) || isPctHeader(headerBlob);
   const looksMoney = /\$/.test(cellBlob) || isMoneyHeader(headerBlob);
   const singleSeries = numericCols.length === 1;
   const isTimeSeries = labels.every((l) => /^(19|20)\d{2}$|^yr\s*\d+$|^year\s*\d+$/i.test(l.trim()));
+
+  // Rebind rows to filtered set for downstream code
+  rows = filteredRows;
+
 
   const tickCallback = looksPct
     ? "function(v){return v.toFixed(1)+'%';}"
