@@ -40,6 +40,7 @@ import {
 import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel } from './BlockStylePanels';
+import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 
 
 interface Props {
@@ -57,6 +58,7 @@ interface Props {
   onDeleteBlock?: (blockId: string) => void;
   onDuplicateBlock?: (blockId: string) => void;
   onMoveBlock?: (blockId: string, dir: -1 | 1) => void;
+  onUpdateTemplate?: (next: ReportTemplate) => void;
 }
 
 export function PropertiesInspector({
@@ -74,6 +76,7 @@ export function PropertiesInspector({
   onDeleteBlock,
   onDuplicateBlock,
   onMoveBlock,
+  onUpdateTemplate,
 }: Props) {
   const selectedBlock =
     page && selectedBlockId
@@ -99,6 +102,7 @@ export function PropertiesInspector({
             onChange={onUpdateOverlay}
             onDelete={() => onDeleteOverlay(overlay.id)}
             onDuplicate={() => onDuplicateOverlay(overlay.id)}
+            onUpdateTemplate={onUpdateTemplate}
           />
         ) : selectedBlock ? (
           <BlockEditor
@@ -138,6 +142,7 @@ function OverlayEditor({
   onChange,
   onDelete,
   onDuplicate,
+  onUpdateTemplate,
 }: {
   template: ReportTemplate;
   templateId?: string;
@@ -145,6 +150,7 @@ function OverlayEditor({
   onChange: (n: Overlay) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onUpdateTemplate?: (t: ReportTemplate) => void;
 }) {
   const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
   const [showDelete, setShowDelete] = useState(false);
@@ -236,22 +242,37 @@ function OverlayEditor({
                   <SelectItem value="left">Left</SelectItem>
                   <SelectItem value="center">Center</SelectItem>
                   <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="justify">Justify</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Family</Label>
-              <Select
-                value={String(overlay.fontFamily || 'Helvetica')}
-                onValueChange={(v) => patch({ fontFamily: v } as any)}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Helvetica">Helvetica</SelectItem>
-                  <SelectItem value="Times">Times</SelectItem>
-                  <SelectItem value="Courier">Courier</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Select
+                  value={String(overlay.fontFamily || 'Helvetica')}
+                  onValueChange={(v) => patch({ fontFamily: v } as any)}
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Helvetica">Helvetica</SelectItem>
+                    <SelectItem value="Times">Times</SelectItem>
+                    <SelectItem value="Courier">Courier</SelectItem>
+                    <SelectItem value="Georgia">Georgia</SelectItem>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    {((template.tokens as any).fontFaces ?? []).map((f: any) => (
+                      <SelectItem key={f.family} value={f.family}>{f.family}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {onUpdateTemplate && (
+                  <FontLibraryPopover
+                    template={template}
+                    onTemplateChange={onUpdateTemplate}
+                    onPick={(family) => patch({ fontFamily: family } as any)}
+                  />
+                )}
+              </div>
             </div>
           </div>
           <ColorField
@@ -259,6 +280,12 @@ function OverlayEditor({
             value={String(overlay.color || '#000000')}
             template={template}
             onChange={(v) => patch({ color: v } as any)}
+          />
+          <TypographyPanel
+            overlay={overlay as any}
+            template={template}
+            onChange={(p) => patch(p as any)}
+            onTemplateChange={onUpdateTemplate}
           />
         </div>
       )}
@@ -387,6 +414,54 @@ function PageEditor({
           onChange={(e) => onChange({ ...page, conditional: e.target.value || undefined })}
           className="text-xs font-mono"
         />
+      </div>
+
+      <Separator />
+
+      {/* Phase 5 — Baseline grid + print furniture */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Print & rhythm</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <NumField label="Bleed (pt)" value={page.bleed ?? 0} min={0} max={36} onChange={(v) => onChange({ ...page, bleed: v || undefined })} />
+          <NumField label="Safe area (pt)" value={page.safeArea ?? 0} min={0} max={72} onChange={(v) => onChange({ ...page, safeArea: v || undefined })} />
+        </div>
+        <div className="flex items-center justify-between rounded border border-border px-2 py-1">
+          <Label className="text-xs">Show baseline grid</Label>
+          <input
+            type="checkbox"
+            checked={!!page.baselineGrid?.show}
+            onChange={(e) => onChange({
+              ...page,
+              baselineGrid: { size: 12, color: 'rgba(191,155,80,0.20)', offset: 0, ...(page.baselineGrid || {}), show: e.target.checked },
+            })}
+          />
+        </div>
+        {page.baselineGrid?.show && (
+          <div className="grid grid-cols-3 gap-2">
+            <NumField
+              label="Size (pt)"
+              value={page.baselineGrid.size ?? 12}
+              min={4}
+              max={64}
+              onChange={(v) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), size: v } })}
+            />
+            <NumField
+              label="Offset (pt)"
+              value={page.baselineGrid.offset ?? 0}
+              min={0}
+              max={72}
+              onChange={(v) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), offset: v } })}
+            />
+            <div>
+              <Label className="text-xs">Color</Label>
+              <Input
+                value={page.baselineGrid.color ?? 'rgba(191,155,80,0.20)'}
+                className="text-xs font-mono"
+                onChange={(e) => onChange({ ...page, baselineGrid: { ...(page.baselineGrid as any), color: e.target.value } })}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <Separator />

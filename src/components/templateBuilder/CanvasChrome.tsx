@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { Input } from '@/components/ui/input';
-import { Grid3x3, Ruler as RulerIcon, Crop, Shield, Magnet } from 'lucide-react';
+import { Grid3x3, Ruler as RulerIcon, Crop, Shield, Magnet, AlignJustify } from 'lucide-react';
 import type { Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 
 interface Props {
@@ -71,6 +71,18 @@ export function CanvasChrome({ page, canvas, onChangeCanvas }: Props) {
         />
       )}
 
+      {/* Baseline grid overlay (Phase 5) */}
+      {canvas.showBaselineGrid && page.baselineGrid?.size && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[6]"
+          style={{
+            backgroundImage:
+              `repeating-linear-gradient(to bottom, transparent 0, transparent ${(page.baselineGrid.size) - 1}px, ${page.baselineGrid.color || 'rgba(191,155,80,0.30)'} ${(page.baselineGrid.size) - 1}px, ${page.baselineGrid.color || 'rgba(191,155,80,0.30)'} ${page.baselineGrid.size}px)`,
+            backgroundPosition: `0 ${page.baselineGrid.offset ?? 0}px`,
+          }}
+        />
+      )}
+
       {/* Floating toolbar */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-md border border-border bg-background/95 backdrop-blur px-2 py-1 shadow-md">
         <span className="text-[10px] text-muted-foreground px-1 font-mono">{w}×{h}pt</span>
@@ -116,6 +128,14 @@ export function CanvasChrome({ page, canvas, onChangeCanvas }: Props) {
           title="Safe area"
         >
           <Shield className="h-3.5 w-3.5" />
+        </Toggle>
+        <Toggle
+          size="sm"
+          pressed={!!canvas.showBaselineGrid}
+          onPressedChange={(v) => onChangeCanvas({ ...canvas, showBaselineGrid: v })}
+          title="Baseline grid"
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
         </Toggle>
 
         <div className="border-l border-border mx-1 h-5" />

@@ -968,6 +968,7 @@ export default function TemplateBuilderEdit() {
                 onDeleteBlock={deleteBlock}
                 onDuplicateBlock={duplicateBlock}
                 onMoveBlock={moveBlock}
+                onUpdateTemplate={setTemplate}
               />
             </div>
 
@@ -1081,6 +1082,7 @@ export default function TemplateBuilderEdit() {
                 onDeleteBlock={deleteBlock}
                 onDuplicateBlock={duplicateBlock}
                 onMoveBlock={moveBlock}
+                onUpdateTemplate={setTemplate}
               />
             </div>
           </div>

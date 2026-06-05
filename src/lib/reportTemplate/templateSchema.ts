@@ -21,17 +21,31 @@ export const BindableColorSchema = z.string(); // "#hex" or "token:primary" or "
 export const BindableNumberSchema = z.union([z.number(), z.string()]);
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
+// Phase 5 — fontFaces entry. Supports either a remote stylesheet (Google Fonts
+// CSS URL) via `cssUrl`, or a direct font-file `src` for self-hosting.
+export const FontFaceSchema = z.object({
+  family: z.string(),                     // e.g. "Playfair Display"
+  cssUrl: z.string().url().optional(),    // https://fonts.googleapis.com/css2?...
+  src: z.string().url().optional(),       // direct .woff2 / .otf
+  weight: z.union([z.number(), z.string()]).optional(),
+  style: z.enum(['normal', 'italic']).optional(),
+  display: z.enum(['auto', 'swap', 'block', 'fallback', 'optional']).optional(),
+});
+export type FontFace = z.infer<typeof FontFaceSchema>;
+
 export const TokensSchema = z.object({
   colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
   fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
   spacing: z.record(z.number()).default({}),    // { gutter: 16, ... }
   // Phase 1 extensions — optional, additive, backwards-compatible
-  radii: z.record(z.number()).optional(),       // { sm:4, md:8, lg:16 } px
-  shadows: z.record(z.string()).optional(),     // { card:"0 2px 8px rgba(0,0,0,.1)" }
-  gradients: z.record(z.string()).optional(),   // { hero:"linear-gradient(135deg,#bf9b50,#f0d78c)" }
-  typeScale: z.record(z.number()).optional(),   // { xs:11, sm:12, base:14, lg:18, xl:24 } pt
+  radii: z.record(z.number()).optional(),
+  shadows: z.record(z.string()).optional(),
+  gradients: z.record(z.string()).optional(),
+  typeScale: z.record(z.number()).optional(),
   brandKitId: z.string().uuid().optional(),
   activeTheme: z.enum(['light','dark','print','custom']).optional(),
+  // Phase 5 — registered web fonts to inject via @font-face / @import
+  fontFaces: z.array(FontFaceSchema).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
 
 export type Tokens = z.infer<typeof TokensSchema>;
@@ -48,6 +62,7 @@ const BaseOverlay = z.object({
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
 });
 
+
 export const TextOverlaySchema = BaseOverlay.extend({
   type: z.literal('text'),
   content: BindableStringSchema,
@@ -56,9 +71,34 @@ export const TextOverlaySchema = BaseOverlay.extend({
   fontWeight: z.enum(['normal', 'bold']).default('normal'),
   fontStyle: z.enum(['normal', 'italic']).default('normal'),
   color: BindableColorSchema.default('#000000'),
-  align: z.enum(['left', 'center', 'right']).default('left'),
+  align: z.enum(['left', 'center', 'right', 'justify']).default('left'),
   lineHeight: z.number().default(1.3),
   letterSpacing: z.number().default(0),
+  // Phase 5 — advanced typography (all optional, additive)
+  rich: z.boolean().optional(),                                   // interpret content as HTML
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textShadow: z.string().optional(),                              // raw CSS
+  whiteSpace: z.enum(['normal','nowrap','pre','pre-wrap','pre-line']).optional(),
+  hyphens: z.enum(['none','manual','auto']).optional(),
+  columns: z.number().int().min(1).max(6).optional(),
+  columnGap: z.number().min(0).max(96).optional(),
+  paragraphIndent: z.number().min(0).max(96).optional(),          // pt — first-line indent
+  paragraphSpacing: z.number().min(0).max(96).optional(),         // pt — gap between <p>
+  verticalAlign: z.enum(['top','middle','bottom']).optional(),
+  maxLines: z.number().int().min(1).max(50).optional(),           // -webkit-line-clamp
+  paddingTop: z.number().min(0).max(96).optional(),
+  paddingRight: z.number().min(0).max(96).optional(),
+  paddingBottom: z.number().min(0).max(96).optional(),
+  paddingLeft: z.number().min(0).max(96).optional(),
+  // OpenType
+  kerning: z.boolean().optional(),                                // font-kerning
+  ligatures: z.enum(['none','common','discretionary','historical','contextual','all']).optional(),
+  fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
+  fontFeatureSettings: z.string().optional(),                     // raw, advanced override
+  fontVariationSettings: z.string().optional(),                   // variable axes
+  // Baseline alignment — snap top to baseline grid in pt
+  snapToBaseline: z.boolean().optional(),
 });
 
 export const ImageOverlaySchema = BaseOverlay.extend({
@@ -169,6 +209,13 @@ export const PageSchema = z.object({
   bleed: z.number().min(0).max(36).optional(),      // pt — print bleed
   safeArea: z.number().min(0).max(72).optional(),   // pt — content safe-area margin
   notes: z.string().optional(),                     // designer notes (not rendered)
+  // Phase 5 — baseline grid (typography rhythm)
+  baselineGrid: z.object({
+    size: z.number().min(4).max(64).default(12),    // pt between baselines
+    color: z.string().default('rgba(191,155,80,0.20)'),
+    show: z.boolean().default(false),
+    offset: z.number().min(0).max(72).default(0),
+  }).optional(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
@@ -192,6 +239,7 @@ export const ReportTemplateSchema = z.object({
     snapToGrid: z.boolean().default(false),
     showBleed: z.boolean().default(false),
     showSafeArea: z.boolean().default(false),
+    showBaselineGrid: z.boolean().default(false),
   }).default({}).optional(),
   savedSelections: z.record(z.array(z.string())).optional(),
 });

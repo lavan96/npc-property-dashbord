@@ -38,19 +38,98 @@ export function absBoxStyle(p: Record<string, unknown>, fallback: { x?: number; 
   return `position:absolute;left:${x}pt;top:${y}pt;${w}${h}`;
 }
 
+/** Compose font-feature-settings from individual options. */
+function buildFontFeatures(o: any): string {
+  const explicit = String(o.fontFeatureSettings ?? '').trim();
+  if (explicit) return explicit;
+  const parts: string[] = [];
+  if (o.ligatures && o.ligatures !== 'none') {
+    if (o.ligatures === 'common' || o.ligatures === 'all') parts.push(`"liga" 1`, `"clig" 1`);
+    if (o.ligatures === 'discretionary' || o.ligatures === 'all') parts.push(`"dlig" 1`);
+    if (o.ligatures === 'historical' || o.ligatures === 'all') parts.push(`"hlig" 1`);
+    if (o.ligatures === 'contextual' || o.ligatures === 'all') parts.push(`"calt" 1`);
+  } else if (o.ligatures === 'none') {
+    parts.push(`"liga" 0`, `"clig" 0`, `"dlig" 0`);
+  }
+  return parts.join(', ');
+}
+
 /** Render an overlay (text / image / shape) as an absolute-positioned HTML element. */
 export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
   if (!evalConditional(overlay.conditional, ctx)) return '';
   const base = `position:absolute;left:${overlay.x}pt;top:${overlay.y}pt;width:${overlay.width}pt;height:${overlay.height}pt;opacity:${overlay.opacity};transform:rotate(${overlay.rotation}deg);transform-origin:top left;`;
   switch (overlay.type) {
     case 'text': {
-      const text = resolveBindable(overlay.content, ctx);
-      if (!text) return '';
-      const size = resolveBindableNumber(overlay.fontSize, ctx, 12);
-      const color = resolveBindableColor(overlay.color, ctx, '#000000');
-      const family = resolveBindable(overlay.fontFamily, ctx) || 'Helvetica';
-      const style = `${base}color:${color};font-family:${esc(family)};font-size:${size}pt;font-weight:${overlay.fontWeight};font-style:${overlay.fontStyle};text-align:${overlay.align};line-height:${overlay.lineHeight};letter-spacing:${overlay.letterSpacing}pt;`;
-      return `<div style="${style}">${esc(text).replace(/\n/g, '<br/>')}</div>`;
+      const o = overlay as any;
+      const text = resolveBindable(o.content, ctx);
+      if (!text && !o.rich) return '';
+      const size = resolveBindableNumber(o.fontSize, ctx, 12);
+      const color = resolveBindableColor(o.color, ctx, '#000000');
+      const family = resolveBindable(o.fontFamily, ctx) || 'Helvetica';
+      const pt = Number(o.paddingTop ?? 0);
+      const pr = Number(o.paddingRight ?? 0);
+      const pb = Number(o.paddingBottom ?? 0);
+      const pl = Number(o.paddingLeft ?? 0);
+      const valign = o.verticalAlign === 'middle' ? 'center'
+        : o.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start';
+      const features = buildFontFeatures(o);
+      const decls: string[] = [
+        `color:${color}`,
+        `font-family:${esc(family)}`,
+        `font-size:${size}pt`,
+        `font-weight:${o.fontWeight}`,
+        `font-style:${o.fontStyle}`,
+        `text-align:${o.align}`,
+        `line-height:${o.lineHeight}`,
+        `letter-spacing:${o.letterSpacing}pt`,
+        `padding:${pt}pt ${pr}pt ${pb}pt ${pl}pt`,
+        `display:flex`,
+        `flex-direction:column`,
+        `justify-content:${valign}`,
+      ];
+      if (o.textDecoration) decls.push(`text-decoration:${o.textDecoration}`);
+      if (o.textTransform === 'small-caps') decls.push(`font-variant-caps:small-caps`);
+      else if (o.textTransform) decls.push(`text-transform:${o.textTransform}`);
+      if (o.textShadow) decls.push(`text-shadow:${o.textShadow}`);
+      if (o.whiteSpace) decls.push(`white-space:${o.whiteSpace}`);
+      if (o.hyphens) decls.push(`hyphens:${o.hyphens}`, `-webkit-hyphens:${o.hyphens}`);
+      if (o.columns && o.columns > 1) {
+        decls.push(`columns:${o.columns}`);
+        if (o.columnGap != null) decls.push(`column-gap:${o.columnGap}pt`);
+      }
+      if (o.kerning === false) decls.push(`font-kerning:none`);
+      else if (o.kerning === true) decls.push(`font-kerning:normal`);
+      if (o.fontVariantNumeric && o.fontVariantNumeric !== 'normal') decls.push(`font-variant-numeric:${o.fontVariantNumeric}`);
+      if (features) decls.push(`font-feature-settings:${features}`);
+      if (o.fontVariationSettings) decls.push(`font-variation-settings:${o.fontVariationSettings}`);
+      if (o.maxLines && !o.columns) {
+        decls.push(
+          `display:-webkit-box`,
+          `-webkit-line-clamp:${o.maxLines}`,
+          `-webkit-box-orient:vertical`,
+          `overflow:hidden`,
+        );
+      }
+      const style = `${base}${decls.join(';')};`;
+      // Rich text: render content raw (designer-authored HTML).
+      // Plain: escape, honour paragraph spacing + first-line indent if any text contains \n.
+      let inner: string;
+      if (o.rich) {
+        inner = String(text ?? '');
+      } else {
+        const paras = String(text).split(/\n{2,}/);
+        if (paras.length > 1 || o.paragraphIndent || o.paragraphSpacing) {
+          const gap = Number(o.paragraphSpacing ?? 0);
+          const indent = Number(o.paragraphIndent ?? 0);
+          inner = paras.map((p, i) => {
+            const mt = i === 0 ? 0 : gap;
+            return `<p style="margin:${mt}pt 0 0 0;text-indent:${indent}pt;">${esc(p).replace(/\n/g,'<br/>')}</p>`;
+          }).join('');
+        } else {
+          inner = esc(text).replace(/\n/g, '<br/>');
+        }
+      }
+      return `<div style="${style}">${inner}</div>`;
     }
     case 'image': {
       const src = resolveBindable(overlay.src, ctx);

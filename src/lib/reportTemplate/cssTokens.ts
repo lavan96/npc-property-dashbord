@@ -42,3 +42,34 @@ export function tokensToCssVariables(tokens: Tokens): string {
   lines.push('}');
   return lines.join('\n');
 }
+
+/**
+ * Phase 5 — emit @import / @font-face declarations from tokens.fontFaces so
+ * the renderer can use custom or Google Fonts without manual setup.
+ */
+export function tokensToFontFaceCss(tokens: Tokens): string {
+  const faces = (tokens as any).fontFaces as Array<any> | undefined;
+  if (!faces || !faces.length) return '';
+  const imports: string[] = [];
+  const declarations: string[] = [];
+  for (const f of faces) {
+    if (f?.cssUrl) {
+      imports.push(`@import url('${f.cssUrl}');`);
+      continue;
+    }
+    if (f?.src && f?.family) {
+      const fmt = /\.woff2(\?|$)/i.test(f.src) ? 'woff2'
+        : /\.woff(\?|$)/i.test(f.src) ? 'woff'
+        : /\.otf(\?|$)/i.test(f.src) ? 'opentype'
+        : /\.ttf(\?|$)/i.test(f.src) ? 'truetype' : '';
+      declarations.push(`@font-face {
+  font-family: '${f.family}';
+  src: url('${f.src}')${fmt ? ` format('${fmt}')` : ''};
+  font-weight: ${f.weight ?? 'normal'};
+  font-style: ${f.style ?? 'normal'};
+  font-display: ${f.display ?? 'swap'};
+}`);
+    }
+  }
+  return [imports.join('\n'), declarations.join('\n')].filter(Boolean).join('\n');
+}
