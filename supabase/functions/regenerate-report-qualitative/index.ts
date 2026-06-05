@@ -1264,7 +1264,8 @@ Generate the ${sectionDef.name} section now:`;
 
   // MUST match generate-investment-report, with regeneration note added
   // CRITICAL FIX: Removed hardcoded "$1,500 maintenance" instruction - use data-driven values from overrides
-  const systemMessage = `You are an expert Australian property investment analyst for ${_brandRq.companyName}. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the financial data context - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.\n\nThis is a REGENERATION request: keep the exact required structure, but use fresh wording and analysis.`;
+  const { resolvePrompt: _resolveRegenPrompt } = await import('../_shared/engine-prompts.ts');
+  const systemMessage = (await _resolveRegenPrompt('regenerate.qualitative_system', { brand_name: _brandRq.companyName })).text;
 
   // Retry loop - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
