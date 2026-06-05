@@ -752,16 +752,40 @@ async function runTool(supabase: any, name: string, args: any): Promise<any> {
 
     // ----- Report-centric -----
     case 'find_reports': {
+      const requestedScope = args.scope ? String(args.scope).toLowerCase() : null;
+      const reportTier = args.report_tier || (requestedScope && TIER_ALIASES.has(requestedScope) ? requestedScope : null);
+      const reportScope = requestedScope && !TIER_ALIASES.has(requestedScope) ? requestedScope : null;
+      const limit = Math.min(args.limit ?? 20, 50);
       const q = supabase.from('investment_reports')
         .select('id, property_address, report_scope, report_tier, report_variant, status, created_at, updated_at')
         .order('updated_at', { ascending: false })
-        .limit(Math.min(args.limit ?? 20, 50));
+        .limit(limit);
       if (args.address_query) q.ilike('property_address', `%${args.address_query}%`);
-      if (args.scope) q.eq('report_scope', args.scope);
+      if (reportScope) q.eq('report_scope', reportScope);
+      if (reportTier) q.eq('report_tier', reportTier);
       if (args.variant) q.eq('report_variant', args.variant);
       const { data, error } = await q;
       if (error) throw error;
-      return { reports: data };
+      if ((data ?? []).length || !args.address_query) {
+        return { reports: data ?? [], filters_interpreted: { report_scope: reportScope, report_tier: reportTier, variant: args.variant ?? null } };
+      }
+
+      // Fuzzy fallback for common voice/transcription misspellings, e.g. Kalkollo → Kalkallo.
+      let fallback = supabase.from('investment_reports')
+        .select('id, property_address, report_scope, report_tier, report_variant, status, created_at, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(250);
+      if (reportScope) fallback = fallback.eq('report_scope', reportScope);
+      if (reportTier) fallback = fallback.eq('report_tier', reportTier);
+      if (args.variant) fallback = fallback.eq('report_variant', args.variant);
+      const { data: pool, error: fbErr } = await fallback;
+      if (fbErr) throw fbErr;
+      const scored = (pool ?? [])
+        .map((r: any) => ({ ...r, match_score: reportSearchScore(r, args.address_query) }))
+        .filter((r: any) => r.match_score > 0)
+        .sort((a: any, b: any) => b.match_score - a.match_score || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)))
+        .slice(0, limit);
+      return { reports: scored, fuzzy_fallback_used: true, filters_interpreted: { report_scope: reportScope, report_tier: reportTier, variant: args.variant ?? null } };
     }
     case 'lookup_report': {
       const { data: report, error } = await supabase
