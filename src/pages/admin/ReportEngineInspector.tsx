@@ -218,19 +218,114 @@ export default function ReportEngineInspector() {
 // Run detail
 // ---------------------------------------------------------------------------
 
+// Heuristic: extract pre/post-gen manual override key names from a packet.
+function extractOverrideMeta(packet: any): {
+  preGenKeys: string[];
+  postGenKeys: string[];
+  preGenObj: Record<string, any> | null;
+  postGenObj: Record<string, any> | null;
+} {
+  if (!packet || typeof packet !== 'object') {
+    return { preGenKeys: [], postGenKeys: [], preGenObj: null, postGenObj: null };
+  }
+  const preGen =
+    packet.manualOverrides ?? packet.manual_overrides ?? packet.preGenerationOverrides ??
+    packet.pre_gen_overrides ?? null;
+  const postGen =
+    packet.postGenerationOverrides ?? packet.post_gen_overrides ?? packet.postEditedFields ?? null;
+  return {
+    preGenKeys: preGen && typeof preGen === 'object' ? Object.keys(preGen) : [],
+    postGenKeys: postGen && typeof postGen === 'object' ? Object.keys(postGen) : [],
+    preGenObj: preGen ?? null,
+    postGenObj: postGen ?? null,
+  };
+}
+
+// Pull every template-id reference (UUID) out of arbitrary jsonb shapes.
+function collectTemplateIds(value: any, acc: Set<string> = new Set()): Set<string> {
+  if (!value) return acc;
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (typeof value === 'string') {
+    const stripped = value.replace(/^template:/, '');
+    if (uuidRe.test(stripped)) acc.add(stripped);
+    return acc;
+  }
+  if (Array.isArray(value)) {
+    for (const v of value) collectTemplateIds(v, acc);
+    return acc;
+  }
+  if (typeof value === 'object') {
+    for (const k of ['template_id', 'templateId', 'document_name', 'id']) {
+      if (typeof value[k] === 'string') collectTemplateIds(value[k], acc);
+    }
+    for (const v of Object.values(value)) collectTemplateIds(v, acc);
+  }
+  return acc;
+}
+
+interface TemplateMeta {
+  id: string; name: string; template_type: string | null;
+  report_tier: string | null; report_category: string | null;
+  is_active: boolean; priority: number | null;
+}
+
 function RunDetail({ run, chunks }: { run: FullRun; chunks: Chunk[] }) {
   const packetKeys = useMemo(() => {
     if (!run.data_packet || typeof run.data_packet !== 'object') return [];
     return Object.keys(run.data_packet);
   }, [run.data_packet]);
 
+  const overrides = useMemo(() => extractOverrideMeta(run.data_packet), [run.data_packet]);
+  const overrideKeySet = useMemo(
+    () => new Set([...overrides.preGenKeys, ...overrides.postGenKeys]),
+    [overrides],
+  );
+
+  // Resolve all template IDs referenced anywhere in the run.
+  const referencedTemplateIds = useMemo(() => {
+    const acc = new Set<string>();
+    collectTemplateIds(run.template_ids, acc);
+    collectTemplateIds(run.registry_snapshot, acc);
+    for (const c of chunks) {
+      collectTemplateIds(c.attached_template_chunk_ids, acc);
+      collectTemplateIds(c.retrieval_meta, acc);
+    }
+    return Array.from(acc);
+  }, [run, chunks]);
+
+  const [templateMeta, setTemplateMeta] = useState<Record<string, TemplateMeta>>({});
+  useEffect(() => {
+    if (referencedTemplateIds.length === 0) { setTemplateMeta({}); return; }
+    (async () => {
+      const { data } = await invokeSecureFunction<{ templates: TemplateMeta[] }>(
+        'report-engine-inspector',
+        { op: 'resolve_templates', template_ids: referencedTemplateIds },
+      );
+      const map: Record<string, TemplateMeta> = {};
+      for (const t of data?.templates ?? []) map[t.id] = t;
+      setTemplateMeta(map);
+    })();
+  }, [referencedTemplateIds.join('|')]);
+
+  const totalPacketKeys = packetKeys.length;
+
   return (
     <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <h2 className="text-lg font-semibold">{run.scope || 'run'} · {run.variant || '—'}</h2>
           <Badge variant={run.status === 'completed' ? 'default' : run.status === 'failed' ? 'destructive' : 'secondary'}>{run.status}</Badge>
           {run.trigger_source && <Badge variant="outline" className="text-[10px]">{run.trigger_source}</Badge>}
+          {overrides.preGenKeys.length > 0 && (
+            <Badge variant="warning" className="text-[10px]">
+              Pre-gen overrides · {overrides.preGenKeys.length}
+            </Badge>
+          )}
+          {overrides.postGenKeys.length > 0 && (
+            <Badge variant="info" className="text-[10px]">
+              Post-gen edits · {overrides.postGenKeys.length}
+            </Badge>
+          )}
         </div>
         <div className="text-xs text-muted-foreground grid grid-cols-4 gap-x-4 gap-y-1">
           <div><span className="text-foreground/80">Model:</span> {run.model || '—'}</div>
@@ -238,7 +333,7 @@ function RunDetail({ run, chunks }: { run: FullRun; chunks: Chunk[] }) {
           <div><span className="text-foreground/80">Packet:</span> {fmtBytes(run.data_packet_size_bytes)}</div>
           <div><span className="text-foreground/80">Hash:</span> <span className="font-mono">{run.data_packet_hash?.slice(0, 10) || '—'}</span></div>
           <div><span className="text-foreground/80">Report:</span> <span className="font-mono">{run.report_id?.slice(0, 8) || '—'}</span></div>
-          <div><span className="text-foreground/80">Templates:</span> {Array.isArray(run.template_ids) ? run.template_ids.length : 0}</div>
+          <div><span className="text-foreground/80">Templates:</span> {referencedTemplateIds.length}</div>
           <div><span className="text-foreground/80">Chunks:</span> {chunks.length}</div>
           <div><span className="text-foreground/80">Duration:</span> {run.finished_at ? fmtMs(new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()) : 'running'}</div>
         </div>
@@ -251,6 +346,8 @@ function RunDetail({ run, chunks }: { run: FullRun; chunks: Chunk[] }) {
         <TabsList>
           <TabsTrigger value="prompt">System Prompt</TabsTrigger>
           <TabsTrigger value="packet">Data Packet</TabsTrigger>
+          <TabsTrigger value="overrides">Overrides ({overrides.preGenKeys.length + overrides.postGenKeys.length})</TabsTrigger>
+          <TabsTrigger value="templates">Templates ({referencedTemplateIds.length})</TabsTrigger>
           <TabsTrigger value="matrix">Packet Matrix</TabsTrigger>
           <TabsTrigger value="embeddings">Embeddings</TabsTrigger>
           <TabsTrigger value="chunks">Chunks ({chunks.length})</TabsTrigger>
@@ -268,70 +365,212 @@ function RunDetail({ run, chunks }: { run: FullRun; chunks: Chunk[] }) {
           </ScrollArea>
         </TabsContent>
 
+        <TabsContent value="overrides">
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="warning">Pre-generation</Badge>
+                <span className="text-xs text-muted-foreground">manualOverrides supplied at generation time</span>
+              </div>
+              {overrides.preGenKeys.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No pre-gen overrides captured in packet.</div>
+              ) : (
+                <ScrollArea className="h-[55vh]">
+                  <table className="w-full text-[11px]">
+                    <thead><tr className="text-muted-foreground"><th className="text-left p-1">Field</th><th className="text-left p-1">Value</th><th className="text-right p-1">Used in chunks</th></tr></thead>
+                    <tbody>
+                      {overrides.preGenKeys.map((k) => {
+                        const v = (overrides.preGenObj as any)?.[k];
+                        const usedIn = chunks.filter((c) =>
+                          c.attached_packet_keys?.includes('manualOverrides') ||
+                          c.attached_packet_keys?.includes('manual_overrides') ||
+                          c.attached_packet_keys?.includes(k) ||
+                          (c.user_prompt && c.user_prompt.toLowerCase().includes(k.toLowerCase()))
+                        ).length;
+                        return (
+                          <tr key={k} className="border-t border-border/30">
+                            <td className="p-1 font-mono">{k}</td>
+                            <td className="p-1 font-mono text-foreground/80 truncate max-w-[180px]">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td>
+                            <td className="p-1 text-right">
+                              <Badge variant={usedIn === chunks.length ? 'success' : usedIn === 0 ? 'destructive' : 'outline'} className="text-[10px]">
+                                {usedIn}/{chunks.length}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </ScrollArea>
+              )}
+            </Card>
+            <Card className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="info">Post-generation</Badge>
+                <span className="text-xs text-muted-foreground">edits applied after generation</span>
+              </div>
+              {overrides.postGenKeys.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No post-gen edits captured in packet.</div>
+              ) : (
+                <ScrollArea className="h-[55vh]">
+                  <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(overrides.postGenObj, null, 2)}</pre>
+                </ScrollArea>
+              )}
+            </Card>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            "Used in chunks" counts how many chunks have the override packet key attached or reference the field name in their prompt. <span className="text-warning">Anything &lt; total chunks</span> means the override is not flowing to every section.
+          </p>
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <ScrollArea className="h-[58vh]">
+            {referencedTemplateIds.length === 0 ? (
+              <div className="text-xs text-muted-foreground p-4">No template references captured. Generators may not have wired template retrieval into the trace yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {referencedTemplateIds.map((id) => {
+                  const meta = templateMeta[id];
+                  const usedIn = chunks.filter((c) =>
+                    JSON.stringify(c.attached_template_chunk_ids ?? '').includes(id) ||
+                    JSON.stringify(c.retrieval_meta ?? '').includes(id)
+                  );
+                  return (
+                    <div key={id} className="border rounded p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-medium truncate">{meta?.name || '(unresolved)'}</span>
+                          {meta?.template_type && <Badge variant="outline" className="text-[10px]">{meta.template_type}</Badge>}
+                          {meta?.report_tier && <Badge variant="secondary" className="text-[10px]">{meta.report_tier}</Badge>}
+                          {meta?.report_category && <Badge variant="outline" className="text-[10px]">{meta.report_category}</Badge>}
+                          {meta && !meta.is_active && <Badge variant="destructive" className="text-[10px]">inactive</Badge>}
+                        </div>
+                        <Badge variant={usedIn.length === 0 ? 'destructive' : 'success'} className="text-[10px] shrink-0">
+                          used in {usedIn.length}/{chunks.length}
+                        </Badge>
+                      </div>
+                      <div className="text-[10px] font-mono text-muted-foreground mt-1">{id}</div>
+                      {usedIn.length > 0 && (
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          sections: {usedIn.map((c) => c.section_key).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
         <TabsContent value="matrix">
-          {/* Matrix: rows = chunks, columns = packet keys. Green = key attached. */}
+          {/* rows = chunks, columns = packet keys. Override keys are highlighted. */}
           <ScrollArea className="h-[58vh] rounded border">
             <table className="w-full text-[10px]">
               <thead className="sticky top-0 bg-background">
                 <tr>
                   <th className="text-left p-2 font-medium">Section</th>
+                  <th className="p-1 font-medium text-left">Coverage</th>
                   {packetKeys.map((k) => (
-                    <th key={k} className="p-1 text-left font-mono text-muted-foreground" title={k}>
-                      <div className="rotate-[-45deg] origin-bottom-left translate-y-2 whitespace-nowrap">{k}</div>
+                    <th key={k} className={`p-1 text-left font-mono ${overrideKeySet.has(k) ? 'text-warning' : 'text-muted-foreground'}`} title={overrideKeySet.has(k) ? `${k} (override field)` : k}>
+                      <div className="rotate-[-45deg] origin-bottom-left translate-y-2 whitespace-nowrap">
+                        {overrideKeySet.has(k) ? '★ ' : ''}{k}
+                      </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {chunks.map((c) => (
-                  <tr key={c.id} className="border-t border-border/40">
-                    <td className="p-2 font-mono whitespace-nowrap">{c.section_key}</td>
-                    {packetKeys.map((k) => (
-                      <td key={k} className="p-1 text-center">
-                        {c.attached_packet_keys?.includes(k)
-                          ? <span className="inline-block w-2.5 h-2.5 rounded-sm bg-success" />
-                          : <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted" />}
+                {chunks.map((c) => {
+                  const attached = c.attached_packet_keys?.length ?? 0;
+                  const isFull = attached >= totalPacketKeys && totalPacketKeys > 0;
+                  return (
+                    <tr key={c.id} className="border-t border-border/40">
+                      <td className="p-2 font-mono whitespace-nowrap">{c.section_key}</td>
+                      <td className="p-1">
+                        <Badge variant={isFull ? 'success' : attached === 0 ? 'destructive' : 'outline'} className="text-[9px]">
+                          {isFull ? 'FULL' : `${attached}/${totalPacketKeys}`}
+                        </Badge>
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                      {packetKeys.map((k) => (
+                        <td key={k} className="p-1 text-center">
+                          {c.attached_packet_keys?.includes(k)
+                            ? <span className={`inline-block w-2.5 h-2.5 rounded-sm ${overrideKeySet.has(k) ? 'bg-warning' : 'bg-success'}`} />
+                            : <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted" />}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {chunks.length === 0 && <div className="p-4 text-xs text-muted-foreground">No chunks recorded yet.</div>}
           </ScrollArea>
           <p className="text-[11px] text-muted-foreground mt-2">
-            Green = packet key was inlined into that chunk's prompt. Empty rows reveal where the engine ships the entire packet vs slices it.
+            <span className="inline-block w-2 h-2 rounded-sm bg-success mr-1" /> regular key inlined ·
+            <span className="inline-block w-2 h-2 rounded-sm bg-warning mx-1" /> override key inlined (★ marked column) ·
+            <span className="inline-block w-2 h-2 rounded-sm bg-muted mx-1" /> not attached.
+            "FULL" = chunk ingested entire packet.
           </p>
         </TabsContent>
 
         <TabsContent value="embeddings">
           <ScrollArea className="h-[58vh] space-y-2">
-            {chunks.map((c) => (
-              <div key={c.id} className="border rounded p-2 mb-2">
-                <div className="text-xs font-medium mb-1">{c.section_key}</div>
-                {c.retrieval_meta ? (
-                  <div className="text-[11px] space-y-1">
-                    <div className="text-muted-foreground">
-                      query: <span className="font-mono">{String(c.retrieval_meta.query || '').slice(0, 120)}</span>
-                    </div>
-                    <div className="text-muted-foreground">
-                      threshold: {c.retrieval_meta.threshold ?? '—'} · k: {c.retrieval_meta.k ?? '—'} · hits: {c.retrieval_meta.hits?.length ?? 0}
-                    </div>
-                    {Array.isArray(c.retrieval_meta.hits) && c.retrieval_meta.hits.slice(0, 5).map((h: any, i: number) => (
-                      <div key={i} className="font-mono text-[10px] truncate text-foreground/70">
-                        {(h.similarity ?? 0).toFixed(3)} · {h.preview || h.chunk_id || ''}
-                      </div>
-                    ))}
+            {chunks.map((c) => {
+              const chunkTemplateIds = Array.from(collectTemplateIds(c.attached_template_chunk_ids));
+              const retrievalTemplateIds = Array.from(collectTemplateIds(c.retrieval_meta));
+              const allIds = Array.from(new Set([...chunkTemplateIds, ...retrievalTemplateIds]));
+              return (
+                <div key={c.id} className="border rounded p-2 mb-2">
+                  <div className="text-xs font-medium mb-1 flex items-center gap-2">
+                    {c.section_key}
+                    <Badge variant="outline" className="text-[9px]">{allIds.length} template{allIds.length === 1 ? '' : 's'}</Badge>
                   </div>
-                ) : <div className="text-[11px] text-muted-foreground">no retrieval captured</div>}
-              </div>
-            ))}
+                  {allIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {allIds.map((id) => (
+                        <span key={id} className="text-[10px] px-1.5 py-0.5 rounded border bg-muted/40">
+                          {templateMeta[id]?.name || id.slice(0, 8)}
+                          {templateMeta[id]?.report_tier && <span className="text-muted-foreground"> · {templateMeta[id]?.report_tier}</span>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {c.retrieval_meta ? (
+                    <div className="text-[11px] space-y-1">
+                      <div className="text-muted-foreground">
+                        query: <span className="font-mono">{String(c.retrieval_meta.query || '').slice(0, 120)}</span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        threshold: {c.retrieval_meta.threshold ?? '—'} · k: {c.retrieval_meta.k ?? '—'} · hits: {c.retrieval_meta.hits?.length ?? 0}
+                      </div>
+                      {Array.isArray(c.retrieval_meta.hits) && c.retrieval_meta.hits.slice(0, 5).map((h: any, i: number) => {
+                        const tid = String(h.document_name || h.template_id || '').replace(/^template:/, '');
+                        return (
+                          <div key={i} className="font-mono text-[10px] truncate text-foreground/70">
+                            {(h.similarity ?? 0).toFixed(3)} · {templateMeta[tid]?.name || tid.slice(0, 8) || ''} · {h.preview || h.chunk_id || ''}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : <div className="text-[11px] text-muted-foreground">no retrieval captured</div>}
+                </div>
+              );
+            })}
           </ScrollArea>
         </TabsContent>
 
         <TabsContent value="chunks">
           <ScrollArea className="h-[58vh] space-y-2">
-            {chunks.map((c) => <ChunkCard key={c.id} chunk={c} />)}
+            {chunks.map((c) => (
+              <ChunkCard
+                key={c.id}
+                chunk={c}
+                templateMeta={templateMeta}
+                totalPacketKeys={totalPacketKeys}
+                overrideKeys={overrides.preGenKeys}
+              />
+            ))}
           </ScrollArea>
         </TabsContent>
       </Tabs>
@@ -339,8 +578,26 @@ function RunDetail({ run, chunks }: { run: FullRun; chunks: Chunk[] }) {
   );
 }
 
-function ChunkCard({ chunk }: { chunk: Chunk }) {
+function ChunkCard({
+  chunk, templateMeta, totalPacketKeys, overrideKeys,
+}: {
+  chunk: Chunk;
+  templateMeta: Record<string, TemplateMeta>;
+  totalPacketKeys: number;
+  overrideKeys: string[];
+}) {
   const [open, setOpen] = useState(false);
+  const attached = chunk.attached_packet_keys?.length ?? 0;
+  const isFull = attached >= totalPacketKeys && totalPacketKeys > 0;
+  const overrideKeysAttached = overrideKeys.filter((k) =>
+    chunk.attached_packet_keys?.includes(k) ||
+    chunk.attached_packet_keys?.includes('manualOverrides') ||
+    chunk.attached_packet_keys?.includes('manual_overrides')
+  );
+  const overrideCoverage = overrideKeys.length === 0
+    ? 'n/a'
+    : `${overrideKeysAttached.length}/${overrideKeys.length}`;
+  const templateIds = Array.from(collectTemplateIds(chunk.attached_template_chunk_ids));
   return (
     <div className="border rounded mb-2">
       <button className="w-full text-left p-2 flex items-center justify-between gap-2" onClick={() => setOpen((o) => !o)}>
@@ -351,17 +608,50 @@ function ChunkCard({ chunk }: { chunk: Chunk }) {
           <span className="text-xs font-medium truncate">{chunk.section_key}</span>
           {chunk.section_label && <span className="text-[10px] text-muted-foreground truncate">{chunk.section_label}</span>}
         </div>
-        <div className="text-[10px] text-muted-foreground shrink-0">
-          {chunk.prompt_tokens + chunk.completion_tokens} tok · {fmtMs(chunk.latency_ms)}
+        <div className="flex items-center gap-1 shrink-0">
+          <Badge variant={isFull ? 'success' : attached === 0 ? 'destructive' : 'outline'} className="text-[9px]">
+            packet {isFull ? 'FULL' : `${attached}/${totalPacketKeys}`}
+          </Badge>
+          {overrideKeys.length > 0 && (
+            <Badge
+              variant={overrideKeysAttached.length === overrideKeys.length ? 'success' : overrideKeysAttached.length === 0 ? 'destructive' : 'warning'}
+              className="text-[9px]"
+            >
+              overrides {overrideCoverage}
+            </Badge>
+          )}
+          {templateIds.length > 0 && (
+            <Badge variant="outline" className="text-[9px]">
+              {templateIds.length} tmpl
+            </Badge>
+          )}
+          <span className="text-[10px] text-muted-foreground">
+            {chunk.prompt_tokens + chunk.completion_tokens} tok · {fmtMs(chunk.latency_ms)}
+          </span>
         </div>
       </button>
       {open && (
         <div className="p-2 border-t bg-muted/20 space-y-2">
+          {templateIds.length > 0 && (
+            <div>
+              <div className="text-[10px] font-medium text-muted-foreground mb-1">Embedding sources ({templateIds.length})</div>
+              <div className="flex flex-wrap gap-1">
+                {templateIds.map((id) => (
+                  <span key={id} className="text-[9px] px-1.5 py-0.5 rounded border bg-background">
+                    {templateMeta[id]?.name || id.slice(0, 8)}
+                    {templateMeta[id]?.report_tier && <span className="text-muted-foreground"> · {templateMeta[id]?.report_tier}</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <div className="text-[10px] font-medium text-muted-foreground mb-1">Attached packet keys ({chunk.attached_packet_keys?.length ?? 0})</div>
             <div className="flex flex-wrap gap-1">
               {(chunk.attached_packet_keys ?? []).map((k) => (
-                <span key={k} className="text-[9px] font-mono px-1.5 py-0.5 bg-primary/10 rounded">{k}</span>
+                <span key={k} className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${overrideKeys.includes(k) ? 'bg-warning/20 text-warning-foreground' : 'bg-primary/10'}`}>
+                  {overrideKeys.includes(k) ? '★ ' : ''}{k}
+                </span>
               ))}
             </div>
           </div>
