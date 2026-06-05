@@ -590,6 +590,10 @@ function BlockEditor({
       <BlockRepeatPanel block={block} onChange={onChange} />
 
       <Separator />
+      <BlockInteractionsPanel block={block} onChange={onChange} pages={template.pages.map(p => ({ id: p.id, name: p.name }))} />
+
+
+      <Separator />
       <div>
         <Label className="text-xs">Legacy conditional (compat)</Label>
         <Input
