@@ -20,6 +20,7 @@ import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPo
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
 import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
 import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
+import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelineDialog';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -78,6 +79,7 @@ export default function TemplateBuilderEdit() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [reportType, setReportType] = useState('');
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const brand = useBrand();
@@ -881,6 +883,14 @@ export default function TemplateBuilderEdit() {
           >
             <Sparkles className="h-4 w-4 mr-1" /> WeasyPrint
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowExportDialog(true)}
+            title="Open the production export pipeline (PDF/A, themes, history)"
+          >
+            <Upload className="h-4 w-4 mr-1" /> Export…
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
@@ -1295,6 +1305,15 @@ export default function TemplateBuilderEdit() {
           )}
         </TabsContent>
       </Tabs>
+      <ExportPipelineDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        template={template}
+        templateId={id}
+        templateName={name}
+        sampleData={sampleData}
+        customCss={(tplRow as any)?.custom_css || undefined}
+      />
     </div>
   );
 }
