@@ -234,25 +234,23 @@ function calculateTrend(values: number[]) {
   return { direction, strength };
 }
 
-// Generate chart-type specific system prompts
-function getSystemPrompt(chartType: string): string {
-  const basePrompt = 'You are an expert property market analyst with 15+ years of experience in real estate data interpretation and market trends. You provide professional, actionable insights for real estate professionals, investors, and agents.';
-  
+// Generate chart-type specific system prompts (overridable via engine-prompts catalog)
+async function getSystemPrompt(chartType: string): Promise<string> {
+  const { resolvePrompt } = await import('../_shared/engine-prompts.ts');
+  const base = (await resolvePrompt('chart_analysis.base')).text;
+  let specKey = 'chart_analysis.default';
   switch (chartType) {
     case 'bar':
     case 'column':
-      return `${basePrompt} You specialize in analyzing distribution data, market share analysis, comparative performance metrics, and identifying market leaders and underperformers in property markets.`;
-    
+      specKey = 'chart_analysis.bar'; break;
     case 'pie':
     case 'doughnut':
-      return `${basePrompt} You excel at interpreting market composition, property type distributions, price segment analysis, and identifying market dominance patterns and niche opportunities.`;
-    
+      specKey = 'chart_analysis.pie'; break;
     case 'line':
-      return `${basePrompt} You are skilled in temporal analysis, trend identification, seasonal patterns, market cycles, and forecasting based on historical property market data.`;
-    
-    default:
-      return `${basePrompt} You provide comprehensive analysis across all chart types with focus on actionable market insights.`;
+      specKey = 'chart_analysis.line'; break;
   }
+  const spec = (await resolvePrompt(specKey)).text;
+  return `${base} ${spec}`;
 }
 
 // Generate enhanced, context-aware analysis prompts
@@ -375,7 +373,7 @@ const __chartAnalysisHandler = async (req: Request): Promise<Response> => {
     const openAIResponse = await callLLMRaw({
       agentKey: 'chart_analysis',
       messages: [
-        { role: 'system', content: getSystemPrompt(chartData.type) },
+        { role: 'system', content: await getSystemPrompt(chartData.type) },
         { role: 'user', content: prompt },
       ],
       maxTokens: 300,
