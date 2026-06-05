@@ -2482,6 +2482,13 @@ export async function buildHtml(
     "en-AU",
     { day: "numeric", month: "long", year: "numeric" },
   );
+  const reportVariant: "composite" | "financial" | "due_diligence" =
+    (report.report_variant as any) || "composite";
+  const variantLabel = reportVariant === "financial"
+    ? "Financial Analysis Report"
+    : reportVariant === "due_diligence"
+    ? "Property & Location Due Diligence"
+    : "Investment Report";
 
   const fin = report.financial_calculations || {};
   const km = fin.keyMetrics || fin.key_metrics || {};
