@@ -64,27 +64,100 @@ h1, h2, h3, h4 { font-family: var(--font-heading, var(--font-body, 'Helvetica', 
 `;
 }
 
-function pageCss(pages: Page[]): string {
-  // Group pages by their size so we can emit one @page rule per unique format.
-  // WeasyPrint supports named pages: `@page name { size: w h }` + `.foo { page: name }`.
-  const sizes = new Map<string, { w: number; h: number; name: string }>();
-  pages.forEach((p, i) => {
-    const key = `${p.size.width}x${p.size.height}`;
-    if (!sizes.has(key)) {
-      sizes.set(key, { w: p.size.width, h: p.size.height, name: `pg${sizes.size}` });
-    }
-  });
+function escapeCssString(s: string): string {
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, ' ');
+}
+
+interface PageRuleInfo {
+  ruleName: string;       // unique @page name combining size + master + numbering tweaks
+  className: string;      // matching .tpl-page-N class
+}
+
+function pageCss(
+  pages: Page[],
+  template: ReportTemplate,
+  ctxBase: ResolveContext,
+): { css: string; pageInfo: PageRuleInfo[] } {
+  const masters = (template as any).pageMasters as Record<string, any> | undefined;
+  const defaultMasterId = (template as any).defaultPageMasterId as string | undefined;
   const rules: string[] = [];
-  for (const { w, h, name } of sizes.values()) {
-    rules.push(`@page ${name} { size: ${w}pt ${h}pt; margin: 0; }`);
-  }
-  // Per-page class assignments
+  const seen = new Set<string>();
+  const pageInfo: PageRuleInfo[] = [];
+
   pages.forEach((p, i) => {
-    const key = `${p.size.width}x${p.size.height}`;
-    const named = sizes.get(key)!.name;
-    rules.push(`.tpl-page-${i} { page: ${named}; width: ${p.size.width}pt; height: ${p.size.height}pt; }`);
+    const masterId = (p as any).pageMasterId || defaultMasterId;
+    const master = masterId && masters ? masters[masterId] : null;
+    const numbering = ((p as any).numbering ?? master?.numbering ?? {}) as any;
+    const fmt = numbering.format || 'decimal';
+    const suppressFirst = master?.suppressOnFirstPage && i === 0;
+    const isHidden = (p as any).numbering?.hide;
+
+    // Unique rule key so masters with different boxes get isolated @page rules.
+    const key = `${p.size.width}x${p.size.height}|${masterId ?? ''}|${fmt}|${i}`;
+    const ruleName = `pg${i}`;
+
+    // Build margin-box content (skip on suppressed first page).
+    const boxes = (!suppressFirst && master?.boxes) ? master.boxes : {};
+    const styleFs = master?.style?.fontSize ? `font-size:${Number(master.style.fontSize)}pt;` : 'font-size:9pt;';
+    const styleFf = master?.style?.fontFamily ? `font-family:${master.style.fontFamily};` : '';
+    const styleColor = master?.style?.color ? `color:${resolveBindableColor(master.style.color, ctxBase, '#666')};` : 'color:#666;';
+    const styleBorderColor = master?.style?.borderColor
+      ? resolveBindableColor(master.style.borderColor, ctxBase, '#ddd') : '#ddd';
+
+    const renderBox = (zone: string, raw: any): string => {
+      if (!raw) return '';
+      // Resolve bindings (pageNumber/pageCount already injected by caller).
+      // Replace {{pageCounter}} with CSS content counter(page, fmt).
+      let s = String(raw);
+      const hasCounter = s.includes('{{pageCounter}}');
+      // Resolve other bindings except pageCounter
+      s = s.replace(/\{\{\s*pageCounter\s*\}\}/g, '__PAGECOUNTER__');
+      const resolved = resolveBindable(s, ctxBase);
+      // Split around the counter placeholder so we can interleave with counter().
+      const parts = resolved.split('__PAGECOUNTER__');
+      const counterStr = `" counter(page, ${fmt}) "`;
+      const contentExpr = hasCounter
+        ? '"' + parts.map(escapeCssString).join(counterStr) + '"'
+        : `"${escapeCssString(resolved)}"`;
+      const borderRule =
+        (zone.startsWith('top') && master?.style?.borderBottom) ? `border-bottom:0.5pt solid ${styleBorderColor};padding-bottom:4pt;` :
+        (zone.startsWith('bottom') && master?.style?.borderTop) ? `border-top:0.5pt solid ${styleBorderColor};padding-top:4pt;` : '';
+      return `@${zone} { content: ${contentExpr}; ${styleFs}${styleFf}${styleColor}${borderRule} }`;
+    };
+
+    const margins = master?.margins ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const mb = isHidden ? {} : boxes;
+    const marginBoxRules = [
+      renderBox('top-left',     mb.topLeft),
+      renderBox('top-center',   mb.topCenter),
+      renderBox('top-right',    mb.topRight),
+      renderBox('bottom-left',  mb.bottomLeft),
+      renderBox('bottom-center',mb.bottomCenter),
+      renderBox('bottom-right', mb.bottomRight),
+    ].filter(Boolean).join(' ');
+
+    const marginCss = master
+      ? `margin: ${margins.top}pt ${margins.right}pt ${margins.bottom}pt ${margins.left}pt;`
+      : `margin: 0;`;
+
+    rules.push(
+      `@page ${ruleName} { size: ${p.size.width}pt ${p.size.height}pt; ${marginCss} ${marginBoxRules} }`,
+    );
+    rules.push(`.tpl-page-${i} { page: ${ruleName}; width: ${p.size.width}pt; height: ${p.size.height}pt; }`);
+
+    // Counter restart on this page if requested
+    const numStart = (p as any).numbering?.startAt ?? master?.numbering?.startAt;
+    const numRestart = (p as any).numbering?.restart;
+    if ((i === 0 && numStart) || numRestart) {
+      const start = Math.max(1, Number(numStart || 1)) - 1;
+      rules.push(`.tpl-page-${i} { counter-reset: page ${start}; }`);
+    }
+
+    pageInfo.push({ ruleName, className: `tpl-page-${i}` });
+    seen.add(key);
   });
-  return rules.join('\n');
+
+  return { css: rules.join('\n'), pageInfo };
 }
 
 const SHADOW_PRESETS: Record<string, string> = {
@@ -302,7 +375,7 @@ export function renderTemplateToHtml(
     tokensToFontFaceCss(tokens),
     tokensToCssVariables(tokens),
     baseCss(),
-    pageCss(visiblePages),
+    pageCss(visiblePages, template, ctxBase).css,
     options.customCss ?? '',
   ].join('\n');
 

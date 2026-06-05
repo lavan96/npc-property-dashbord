@@ -18,6 +18,7 @@ import {
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
+import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -1144,6 +1145,8 @@ export default function TemplateBuilderEdit() {
             <div className="flex items-center gap-2 flex-wrap">
               <BindingPathsPopover template={template} sampleData={sampleData} />
               <ComputedFieldsDialog template={template} sampleData={sampleData} onChange={setTemplate} />
+              <PageMastersDialog template={template} onChange={setTemplate} />
+
 
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}

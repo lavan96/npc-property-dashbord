@@ -251,6 +251,16 @@ export const PageSchema = z.object({
     show: z.boolean().default(false),
     offset: z.number().min(0).max(72).default(0),
   }).optional(),
+  // Phase 9 — page master + numbering overrides per page
+  pageMasterId: z.string().optional(),
+  numbering: z.object({
+    startAt: z.number().int().min(1).optional(),
+    restart: z.boolean().optional(),                  // restart counter on this page
+    format: z.enum(['decimal','lower-roman','upper-roman','lower-alpha','upper-alpha']).optional(),
+    prefix: BindableStringSchema.optional(),
+    suffix: BindableStringSchema.optional(),
+    hide: z.boolean().optional(),                     // suppress page number for this page
+  }).optional(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
@@ -266,6 +276,44 @@ export const ReportTemplateSchema = z.object({
    * applied wherever referenced.
    */
   slots: z.record(BlockSchema).default({}),
+  // Phase 9 — Page Masters (running headers/footers via @page margin boxes)
+  pageMasters: z.record(z.object({
+    id: z.string(),
+    name: z.string(),
+    margins: z.object({
+      top: z.number().min(0).max(200).default(36),
+      right: z.number().min(0).max(200).default(36),
+      bottom: z.number().min(0).max(200).default(36),
+      left: z.number().min(0).max(200).default(36),
+    }).default({ top: 36, right: 36, bottom: 36, left: 36 }),
+    // 6 margin boxes; content is a bindable string. Supports {{pageNumber}}, {{pageCount}}
+    // plus a tag {{pageCounter}} which uses the active numbering style.
+    boxes: z.object({
+      topLeft: BindableStringSchema.optional(),
+      topCenter: BindableStringSchema.optional(),
+      topRight: BindableStringSchema.optional(),
+      bottomLeft: BindableStringSchema.optional(),
+      bottomCenter: BindableStringSchema.optional(),
+      bottomRight: BindableStringSchema.optional(),
+    }).default({}),
+    style: z.object({
+      fontFamily: z.string().optional(),
+      fontSize: z.number().min(6).max(24).optional(),
+      color: BindableColorSchema.optional(),
+      borderTop: z.boolean().optional(),
+      borderBottom: z.boolean().optional(),
+      borderColor: BindableColorSchema.optional(),
+    }).optional(),
+    numbering: z.object({
+      format: z.enum(['decimal','lower-roman','upper-roman','lower-alpha','upper-alpha']).default('decimal'),
+      startAt: z.number().int().min(1).optional(),
+      prefix: BindableStringSchema.optional(),
+      suffix: BindableStringSchema.optional(),
+    }).optional(),
+    // Hide running header/footer on the very first page (e.g. cover)
+    suppressOnFirstPage: z.boolean().optional(),
+  })).optional(),
+  defaultPageMasterId: z.string().optional(),
   // Phase 2 — canvas preferences + saved selections
   canvas: z.object({
     gridSize: z.number().min(2).max(64).default(8),
