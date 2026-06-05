@@ -459,8 +459,73 @@ function toolDefs() {
         },
       },
     },
+
+    // ---------- Static audit (no runs required) ----------
+    {
+      type: 'function',
+      function: {
+        name: 'get_report_full',
+        description: 'Return the full data spine for a report: manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, plus key listings and byte sizes. Use to audit a report when no runs exist yet.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            include_raw: { type: 'boolean', description: 'Return full JSON blobs (default false — only key listings + sizes).' },
+          },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'static_plan',
+        description: 'Inspector-style static plan for a scope (no run required): registry sections, eligible template pool with embedding-chunk counts, per-section pinned templates, and (when report_id given) the report\'s override → section heuristic mapping. Equivalent to the inspector UI Static Plan tab.',
+        parameters: {
+          type: 'object',
+          properties: {
+            scope: { type: 'string', description: 'compass | financial | pldd (default compass)' },
+            report_id: { type: 'string' },
+            report_tier: { type: 'string' },
+            report_category: { type: 'string' },
+            template_type: { type: 'string', description: 'default ai_structure' },
+          },
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'audit_report',
+        description: 'One-shot static audit of a report by id. Bundles lookup_report + get_report_full + static_plan + section_template_map + recent audit log into a single structured report. Works even when no generation runs exist.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            scope: { type: 'string', description: 'override the scope used for static_plan (defaults to report.report_scope or compass)' },
+          },
+          required: ['report_id'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'read_report_column',
+        description: 'Read a specific column from investment_reports (read-only). Useful for inspecting large jsonb fields not surfaced by get_report_full. Allowed columns only.',
+        parameters: {
+          type: 'object',
+          properties: {
+            report_id: { type: 'string' },
+            column: { type: 'string', description: 'one of: report_content, sources_content, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, scoring_breakdown, qualitative_data, raw_property_data, sales_history, comparable_sales, school_data, infrastructure_data, planning_overlays' },
+          },
+          required: ['report_id', 'column'],
+        },
+      },
+    },
   ];
 }
+
 
 // ---------------------------------------------------------------------------
 // Tool runners
