@@ -46,6 +46,9 @@ import {
   makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
+import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { supabase } from '@/integrations/supabase/client';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
@@ -828,6 +831,47 @@ export default function TemplateBuilderEdit() {
             }}
           >
             <Download className="h-4 w-4 mr-1" /> Download PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const toastId = toast.loading('Rendering via WeasyPrint…');
+              try {
+                const { html } = renderTemplateToHtml(template, {
+                  data: sampleData,
+                  title: name || 'Template Preview',
+                  customCss: (tplRow as any)?.custom_css || undefined,
+                });
+                const { data: sess } = await supabase.auth.getSession();
+                const token = sess?.session?.access_token;
+                const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+                const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
+                const res = await fetch(url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                  },
+                  body: JSON.stringify({
+                    html,
+                    fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+                    templateId: id,
+                    mode: 'preview',
+                  }),
+                });
+                const json = await res.json();
+                if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+                window.open(json.url, '_blank', 'noopener');
+                toast.success('WeasyPrint render ready', { id: toastId });
+              } catch (e: any) {
+                toast.error(`WeasyPrint failed: ${e?.message ?? e}`, { id: toastId });
+              }
+            }}
+            title="Render production-grade PDF via WeasyPrint (opens in new tab)"
+          >
+            <Sparkles className="h-4 w-4 mr-1" /> WeasyPrint
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
