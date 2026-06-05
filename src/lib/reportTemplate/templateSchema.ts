@@ -209,6 +209,13 @@ export const PageSchema = z.object({
   bleed: z.number().min(0).max(36).optional(),      // pt — print bleed
   safeArea: z.number().min(0).max(72).optional(),   // pt — content safe-area margin
   notes: z.string().optional(),                     // designer notes (not rendered)
+  // Phase 5 — baseline grid (typography rhythm)
+  baselineGrid: z.object({
+    size: z.number().min(4).max(64).default(12),    // pt between baselines
+    color: z.string().default('rgba(191,155,80,0.20)'),
+    show: z.boolean().default(false),
+    offset: z.number().min(0).max(72).default(0),
+  }).optional(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
