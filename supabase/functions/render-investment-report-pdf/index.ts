@@ -935,13 +935,26 @@ function renderHeatmapSvg(grid: number[][], rowLabels: string[] = [], colLabels:
   const rows = grid.length, cols = grid[0].length;
   const flat = grid.flat();
   const lo = Math.min(...flat), hi = Math.max(...flat), span = (hi - lo) || 1;
-  const padL = 110, padT = title ? 50 : 30, padR = 18, padB = 26;
-  const cellW = 56, cellH = 36;
+
+  // Approximate text width @ 9pt Inter ≈ 5.2px / char; cap labels and grow cells.
+  const charPx = 5.4;
+  const maxRowLabelLen = rowLabels.reduce((m, l) => Math.max(m, String(l ?? "").length), 0);
+  const maxColLabelLen = colLabels.reduce((m, l) => Math.max(m, String(l ?? "").length), 0);
+  const maxCellValLen = Math.max(
+    ...flat.map((v) => (Number.isInteger(v) ? String(v) : v.toFixed(1)).length),
+    3,
+  );
+
+  const padL = Math.max(110, Math.ceil(maxRowLabelLen * charPx) + 24);
+  const padT = title ? 56 : 36;
+  const padR = 22, padB = 28;
+  // Cell must fit both its numeric value AND its column-label (with breathing room).
+  const cellW = Math.max(64, Math.ceil(maxColLabelLen * charPx) + 18, Math.ceil(maxCellValLen * charPx) + 22);
+  const cellH = 38;
   const w = padL + padR + cols * cellW;
   const h = padT + padB + rows * cellH;
   const colorFor = (v: number) => {
     const t = (v - lo) / span;
-    // Interpolate between cream and deep navy via gold midpoint.
     const a = Math.round(0.08 + t * 0.82 * 100) / 100;
     return `rgba(212,168,67,${a.toFixed(2)})`;
   };
@@ -950,17 +963,14 @@ function renderHeatmapSvg(grid: number[][], rowLabels: string[] = [], colLabels:
     for (let c = 0; c < cols; c++) {
       const v = grid[r][c];
       const x = padL + c * cellW, y = padT + r * cellH;
-      cells += `<rect x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="1.5" fill="${colorFor(v)}" stroke="${VIZ_PAPER}" stroke-width="1"/>
-        <text x="${x + cellW / 2}" y="${y + cellH / 2 + 3.5}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9.5" font-weight="600" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${svgEscape(Number.isInteger(v) ? String(v) : v.toFixed(1))}</text>`;
+      cells += `<rect x="${x}" y="${y}" width="${cellW - 2}" height="${cellH - 2}" rx="1.5" fill="${colorFor(v)}" stroke="${VIZ_PAPER}" stroke-width="1"/>`;
+      cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 3.5}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9.5" font-weight="600" fill="${VIZ_INK}" style="font-variant-numeric:tabular-nums;">${svgEscape(Number.isInteger(v) ? String(v) : v.toFixed(1))}</text>`;
     }
   }
-  const rowL = rowLabels.map((lbl, r) => `<text x="${padL - 8}" y="${padT + r * cellH + cellH / 2 + 3.5}" text-anchor="end" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}">${svgEscape(lbl)}</text>`).join("");
-  const colL = colLabels.map((lbl, c) => `<text x="${padL + c * cellW + cellW / 2}" y="${padT - 8}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.5">${svgEscape(lbl)}</text>`).join("");
+  const rowL = rowLabels.map((lbl, r) => `<text x="${padL - 10}" y="${padT + r * cellH + cellH / 2 + 3.5}" text-anchor="end" font-family="Inter,sans-serif" font-size="9.5" fill="${VIZ_INK_MUTED}">${svgEscape(lbl)}</text>`).join("");
+  const colL = colLabels.map((lbl, c) => `<text x="${padL + c * cellW + cellW / 2}" y="${padT - 10}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="${VIZ_INK_MUTED}" letter-spacing="0.3">${svgEscape(lbl)}</text>`).join("");
   const t = title ? `<text x="${padL}" y="22" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${VIZ_INK}">${svgEscape(title)}</text>` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
-    <rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>
-    ${t}${colL}${rowL}${cells}
-  </svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet"><rect width="${w}" height="${h}" rx="6" fill="${VIZ_PAPER}"/>${t}${colL}${rowL}${cells}</svg>`;
 }
 
 /** Score wheel — radar/polar for multi-dimensional scoring. */
