@@ -74,15 +74,39 @@ export default function PromptLibrary() {
   const [showDiff, setShowDiff] = useState(false);
 
   const load = async () => {
+    if (!hasActiveSession()) {
+      setLoading(false);
+      toast({
+        title: 'Sign in required',
+        description: 'Your session has expired. Please sign in again to load the prompt library.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     const { data, error } = await invokeSecureFunction<{ prompts: PromptRow[] }>(
       'report-engine-inspector', { op: 'list_prompts' },
     );
     setLoading(false);
-    if (error) { toast({ title: 'Failed to load prompts', description: error.message, variant: 'destructive' }); return; }
-    setPrompts(data?.prompts ?? []);
-    if (!selectedKey && data?.prompts?.length) {
-      selectPrompt(data.prompts[0], data.prompts);
+    if (error) {
+      const msg = error.message || 'Unknown error';
+      const friendly = /auth|session|401|403|forbidden/i.test(msg)
+        ? 'Your session expired or you lack superadmin access. Sign in again and retry.'
+        : msg;
+      toast({ title: 'Failed to load prompts', description: friendly, variant: 'destructive' });
+      return;
+    }
+    if (!Array.isArray(data?.prompts)) {
+      toast({
+        title: 'Failed to load prompts',
+        description: 'Unexpected response from report-engine-inspector.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setPrompts(data!.prompts);
+    if (!selectedKey && data!.prompts.length) {
+      selectPrompt(data!.prompts[0], data!.prompts);
     }
   };
 
