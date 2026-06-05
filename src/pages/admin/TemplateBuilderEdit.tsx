@@ -23,6 +23,7 @@ import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
 import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelineDialog';
 import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateCommentsPanel';
 import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
+import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -86,6 +87,7 @@ export default function TemplateBuilderEdit() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
@@ -898,6 +900,11 @@ export default function TemplateBuilderEdit() {
           >
             <Upload className="h-4 w-4 mr-1" /> Export…
           </Button>
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)} title="Version history, compare and restore">
+              <Sparkles className="h-4 w-4 mr-1" /> History
+            </Button>
+          )}
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
