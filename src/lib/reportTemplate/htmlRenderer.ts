@@ -108,13 +108,12 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
 
   const blocks: string[] = [];
   for (const block of page.blocks) {
+    if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
-    const renderer = getHtmlBlockRenderer(block.type);
-    blocks.push(renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx));
-    for (const overlay of block.overlays) {
-      blocks.push(renderOverlay(overlay, ctxBase));
-    }
+    if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx));
   }
+
 
   return `<section class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${blocks.join('\n')}</section>`;
 }
