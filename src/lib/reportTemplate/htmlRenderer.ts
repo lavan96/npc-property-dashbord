@@ -245,7 +245,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
     if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
-    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx));
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages));
   }
 
   // Phase 5 — baseline grid (printed when page.baselineGrid.show is true).
