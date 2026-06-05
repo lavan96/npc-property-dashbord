@@ -1706,6 +1706,57 @@ export type Database = {
           },
         ]
       }
+      brand_kits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_disclaimer: string | null
+          default_footer: string | null
+          description: string | null
+          font_pairing: Json
+          id: string
+          is_default: boolean
+          logo_mark_url: string | null
+          logo_primary_url: string | null
+          logo_secondary_url: string | null
+          name: string
+          palette: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_disclaimer?: string | null
+          default_footer?: string | null
+          description?: string | null
+          font_pairing?: Json
+          id?: string
+          is_default?: boolean
+          logo_mark_url?: string | null
+          logo_primary_url?: string | null
+          logo_secondary_url?: string | null
+          name: string
+          palette?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_disclaimer?: string | null
+          default_footer?: string | null
+          description?: string | null
+          font_pairing?: Json
+          id?: string
+          is_default?: boolean
+          logo_mark_url?: string | null
+          logo_primary_url?: string | null
+          logo_secondary_url?: string | null
+          name?: string
+          palette?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       build_progress_payments: {
         Row: {
           amount: number | null
@@ -5924,6 +5975,81 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      design_tokens: {
+        Row: {
+          brand_kit_id: string | null
+          colors: Json
+          created_at: string
+          created_by: string | null
+          fonts: Json
+          gradients: Json
+          id: string
+          is_default: boolean
+          name: string
+          radii: Json
+          scope: string
+          shadows: Json
+          spacing_scale: Json
+          template_id: string | null
+          theme: string
+          type_scale: Json
+          updated_at: string
+        }
+        Insert: {
+          brand_kit_id?: string | null
+          colors?: Json
+          created_at?: string
+          created_by?: string | null
+          fonts?: Json
+          gradients?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          radii?: Json
+          scope: string
+          shadows?: Json
+          spacing_scale?: Json
+          template_id?: string | null
+          theme?: string
+          type_scale?: Json
+          updated_at?: string
+        }
+        Update: {
+          brand_kit_id?: string | null
+          colors?: Json
+          created_at?: string
+          created_by?: string | null
+          fonts?: Json
+          gradients?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          radii?: Json
+          scope?: string
+          shadows?: Json
+          spacing_scale?: Json
+          template_id?: string | null
+          theme?: string
+          type_scale?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_tokens_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "design_tokens_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -15686,6 +15812,8 @@ export type Database = {
       }
       report_templates: {
         Row: {
+          active_theme: string
+          brand_kit_id: string | null
           config: Json
           created_at: string
           created_by: string | null
@@ -15704,6 +15832,8 @@ export type Database = {
           version: number
         }
         Insert: {
+          active_theme?: string
+          brand_kit_id?: string | null
           config: Json
           created_at?: string
           created_by?: string | null
@@ -15722,6 +15852,8 @@ export type Database = {
           version?: number
         }
         Update: {
+          active_theme?: string
+          brand_kit_id?: string | null
           config?: Json
           created_at?: string
           created_by?: string | null
@@ -15739,7 +15871,15 @@ export type Database = {
           updated_at?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_versions: {
         Row: {
