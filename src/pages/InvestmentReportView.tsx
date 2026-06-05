@@ -24,6 +24,7 @@ import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { HeroImageStudio } from '@/components/reports/HeroImageStudio';
 import { PremiumPdfDesignPanel } from '@/components/reports/PremiumPdfDesignPanel';
 import { DEFAULT_PDF_DESIGN_OPTIONS, type PdfDesignOptions } from '@/components/reports/premiumPdfDesign';
+import { ReportVariantControls } from '@/components/reports/ReportVariantControls';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
@@ -43,6 +44,8 @@ interface InvestmentReport {
   is_client_report?: boolean;
   client_property_id?: string | null;
   report_tier?: string | null;
+  report_variant?: string | null;
+  derived_from_report_id?: string | null;
   pdf_url?: string | null;
 }
 interface ClientInfo {
@@ -90,7 +93,7 @@ export default function InvestmentReportView() {
       const { data, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId: id,
         listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier, pdf_url'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier, report_variant, derived_from_report_id, pdf_url'
         }
       });
 
@@ -271,6 +274,14 @@ export default function InvestmentReportView() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {report && (
+            <ReportVariantControls
+              compositeReportId={report.derived_from_report_id || report.id}
+              reportVariant={report.report_variant}
+              derivedFromReportId={report.derived_from_report_id}
+              onNavigate={(rid) => navigate(`/investment-report/${rid}`)}
+            />
+          )}
           {/* Send to Client */}
           <Button
             variant="outline"

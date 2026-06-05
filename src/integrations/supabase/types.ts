@@ -10465,6 +10465,7 @@ export type Database = {
           current_version: number | null
           data_sources: Json | null
           demographics_data: Json | null
+          derived_from_report_id: string | null
           economic_data: Json | null
           error_message: string | null
           financial_calculations: Json | null
@@ -10485,11 +10486,13 @@ export type Database = {
           report_content: string
           report_scope: string | null
           report_tier: string
+          report_variant: string
           sources_content: string | null
           status: string
           total_sections: number | null
           updated_at: string
           validation_flags: Json | null
+          variant_generated_at: string | null
         }
         Insert: {
           bulk_job_id?: string | null
@@ -10499,6 +10502,7 @@ export type Database = {
           current_version?: number | null
           data_sources?: Json | null
           demographics_data?: Json | null
+          derived_from_report_id?: string | null
           economic_data?: Json | null
           error_message?: string | null
           financial_calculations?: Json | null
@@ -10519,11 +10523,13 @@ export type Database = {
           report_content: string
           report_scope?: string | null
           report_tier?: string
+          report_variant?: string
           sources_content?: string | null
           status?: string
           total_sections?: number | null
           updated_at?: string
           validation_flags?: Json | null
+          variant_generated_at?: string | null
         }
         Update: {
           bulk_job_id?: string | null
@@ -10533,6 +10539,7 @@ export type Database = {
           current_version?: number | null
           data_sources?: Json | null
           demographics_data?: Json | null
+          derived_from_report_id?: string | null
           economic_data?: Json | null
           error_message?: string | null
           financial_calculations?: Json | null
@@ -10553,11 +10560,13 @@ export type Database = {
           report_content?: string
           report_scope?: string | null
           report_tier?: string
+          report_variant?: string
           sources_content?: string | null
           status?: string
           total_sections?: number | null
           updated_at?: string
           validation_flags?: Json | null
+          variant_generated_at?: string | null
         }
         Relationships: [
           {
@@ -10565,6 +10574,13 @@ export type Database = {
             columns: ["client_property_id"]
             isOneToOne: false
             referencedRelation: "client_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investment_reports_derived_from_report_id_fkey"
+            columns: ["derived_from_report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
             referencedColumns: ["id"]
           },
           {
