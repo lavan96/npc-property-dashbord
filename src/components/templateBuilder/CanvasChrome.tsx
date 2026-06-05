@@ -71,6 +71,18 @@ export function CanvasChrome({ page, canvas, onChangeCanvas }: Props) {
         />
       )}
 
+      {/* Baseline grid overlay (Phase 5) */}
+      {canvas.showBaselineGrid && page.baselineGrid?.size && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[6]"
+          style={{
+            backgroundImage:
+              `repeating-linear-gradient(to bottom, transparent 0, transparent ${(page.baselineGrid.size) - 1}px, ${page.baselineGrid.color || 'rgba(191,155,80,0.30)'} ${(page.baselineGrid.size) - 1}px, ${page.baselineGrid.color || 'rgba(191,155,80,0.30)'} ${page.baselineGrid.size}px)`,
+            backgroundPosition: `0 ${page.baselineGrid.offset ?? 0}px`,
+          }}
+        />
+      )}
+
       {/* Floating toolbar */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-md border border-border bg-background/95 backdrop-blur px-2 py-1 shadow-md">
         <span className="text-[10px] text-muted-foreground px-1 font-mono">{w}×{h}pt</span>
