@@ -512,6 +512,82 @@ Deno.serve(async (req) => {
         }, corsHeaders);
       }
 
+      case 'list_template_chunks': {
+        const tplId = String(body.template_id || '').replace(/^template:/, '');
+        if (!/^[0-9a-f-]{36}$/i.test(tplId)) return json({ error: 'template_id required' }, corsHeaders, 400);
+        const limit = Math.min(Number(body.limit ?? 200), 500);
+        const { data, error } = await supabase
+          .from('document_chunks')
+          .select('id, chunk_index, content, token_count, metadata')
+          .eq('document_name', `template:${tplId}`)
+          .order('chunk_index', { ascending: true })
+          .limit(limit);
+        if (error) throw error;
+        return json({ template_id: tplId, chunks: data ?? [] }, corsHeaders);
+      }
+
+      case 'get_section_template_map': {
+        const scope = String(body.scope || 'compass').toLowerCase();
+        const { data } = await supabase
+          .from('report_engine_config')
+          .select('value, updated_at, updated_by')
+          .eq('config_key', `section_template_map:${scope}`)
+          .eq('scope', 'default')
+          .maybeSingle();
+        return json({ scope, map: data?.value ?? {}, updated_at: data?.updated_at ?? null }, corsHeaders);
+      }
+
+      case 'set_section_template_map': {
+        const scope = String(body.scope || 'compass').toLowerCase();
+        const section_id = String(body.section_id || '');
+        const template_ids: string[] = Array.isArray(body.template_ids)
+          ? body.template_ids.map((v: any) => String(v)).filter((v: string) => /^[0-9a-f-]{36}$/i.test(v))
+          : [];
+        if (!section_id) return json({ error: 'section_id required' }, corsHeaders, 400);
+        const config_key = `section_template_map:${scope}`;
+        const { data: before } = await supabase
+          .from('report_engine_config').select('value')
+          .eq('config_key', config_key).eq('scope', 'default').maybeSingle();
+        const current = (before?.value && typeof before.value === 'object') ? before.value : {};
+        const next = { ...current, [section_id]: template_ids };
+        const { error } = await supabase.from('report_engine_config').upsert({
+          config_key, scope: 'default', value: next,
+          description: `Per-section template assignment for ${scope}`,
+          updated_by: userId,
+        }, { onConflict: 'config_key,scope' });
+        if (error) throw error;
+        await supabase.from('report_engine_audit').insert({
+          proposal_id: null, target_kind: 'section_template_map',
+          target_id: `${scope}:${section_id}`,
+          before_value: current[section_id] ?? null,
+          after_value: template_ids,
+          performed_by: userId, rationale: body.rationale || 'static plan edit',
+        });
+        return json({ ok: true, map: next }, corsHeaders);
+      }
+
+      case 'update_report_manual_overrides': {
+        const reportId = String(body.report_id || '');
+        if (!reportId) return json({ error: 'report_id required' }, corsHeaders, 400);
+        const next = body.manual_overrides;
+        if (next !== null && (typeof next !== 'object' || Array.isArray(next))) {
+          return json({ error: 'manual_overrides must be object or null' }, corsHeaders, 400);
+        }
+        const { data: before } = await supabase
+          .from('investment_reports').select('manual_overrides').eq('id', reportId).maybeSingle();
+        const { error } = await supabase
+          .from('investment_reports').update({ manual_overrides: next }).eq('id', reportId);
+        if (error) throw error;
+        await supabase.from('report_engine_audit').insert({
+          proposal_id: null, target_kind: 'report_manual_overrides',
+          target_id: reportId,
+          before_value: before?.manual_overrides ?? null,
+          after_value: next,
+          performed_by: userId, rationale: body.rationale || 'static plan packet edit',
+        });
+        return json({ ok: true }, corsHeaders);
+      }
+
       default:
         console.warn('[report-engine-inspector] unknown op', { rawOp, op, bodyKeys: Object.keys(body ?? {}) });
         return json({
@@ -521,7 +597,8 @@ Deno.serve(async (req) => {
             'apply_proposal', 'reject_proposal', 'list_engine_config', 'upsert_engine_config',
             'delete_engine_config', 'list_prompts', 'upsert_prompt', 'delete_prompt',
             'export_prompts', 'import_prompts', 'resolve_templates', 'get_report_overrides',
-            'static_plan',
+            'static_plan', 'list_template_chunks', 'get_section_template_map',
+            'set_section_template_map', 'update_report_manual_overrides',
           ],
         }, corsHeaders, 400);
     }
