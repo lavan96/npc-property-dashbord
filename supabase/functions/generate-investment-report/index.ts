@@ -5051,7 +5051,7 @@ YOUR DEDICATED PROPERTY PARTNER
       variant: (body as any)?.variant ?? null,
       engine_version: 'composite-v1',
       trigger_source: isContinuation ? 'chunked-resume' : 'generate',
-      template_ids: (typeof activeTemplate !== 'undefined' && activeTemplate?.id) ? [activeTemplate.id] : [],
+      template_ids: [],
       system_prompt: systemMessage,
       data_packet: enhancedData ?? null,
       model: 'sonar-pro',
