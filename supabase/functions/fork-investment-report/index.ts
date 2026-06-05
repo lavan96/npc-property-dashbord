@@ -22,18 +22,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import {
-  routeCompositeSection,
   normaliseStructuralHeading,
-  FIN_LENS_PREAMBLE,
-  PLDD_LENS_PREAMBLE,
-  FIN_FOOTER_DISCLAIMER,
-  PLDD_FOOTER_DISCLAIMER,
-  FIN_REPORT_TITLE,
-  FIN_REPORT_SUBTITLE,
-  PLDD_REPORT_TITLE,
-  PLDD_REPORT_SUBTITLE,
-  FIN_SECTION_ORDER,
-  PLDD_SECTION_ORDER,
+  loadSplitRegistry,
+  type LoadedSplitRegistry,
   type ForkVariant,
   type SplitRoute,
 } from '../_shared/reportSplitRegistry.ts';
