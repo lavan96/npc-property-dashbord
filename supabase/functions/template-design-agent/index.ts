@@ -388,8 +388,13 @@ ACTIVE SELECTION:
           { type: 'image_url', image_url: { url: imageDataUrl } },
         ],
       });
-    } else if (messages[messages.length - 1]?.content !== userInstruction) {
-      messages.push({ role: 'user', content: userInstruction });
+    } else {
+      const finalText = userInstruction || (mode === 'auto_fill'
+        ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.'
+        : '');
+      if (finalText && messages[messages.length - 1]?.content !== finalText) {
+        messages.push({ role: 'user', content: finalText });
+      }
     }
 
     const aiResp = await fetch(GATEWAY_URL, {
