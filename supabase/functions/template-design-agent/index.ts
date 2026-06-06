@@ -513,7 +513,7 @@ The designer has explicitly enabled "Replace page contents" for page ${activePag
       : '';
 
     const context = `CURRENT TEMPLATE OUTLINE:
-${outline(schema)}
+${outline(schema, activePageId)}
 
 ACTIVE SELECTION:
   page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}${memoryBlock}`;
