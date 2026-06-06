@@ -635,7 +635,7 @@ export default function TemplateBuilderEdit() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBlockId, activePage]);
+  }, [selectedBlockId, activePage, selectedOverlay, selectedOverlayId, multiOverlayIds, hasStyleClipboard]);
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
