@@ -21,7 +21,7 @@ const DEFAULT_MODEL = 'openai/gpt-5.5';
 // Synthesis model — strong reasoning + tool calling. Vision lives in designBrief.ts.
 const SYNTHESIS_MODEL = 'openai/gpt-5';
 const VISION_MODEL = 'openai/gpt-5';
-const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-5-20250929';
+const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-5';
 
 
 const json = (b: unknown, status = 200) =>

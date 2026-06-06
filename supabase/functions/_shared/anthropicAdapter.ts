@@ -13,7 +13,7 @@
  */
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const DEFAULT_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-5-20250929';
+const DEFAULT_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-5';
 
 type Role = 'system' | 'user' | 'assistant';
 interface OAMessage {
