@@ -142,6 +142,8 @@ function OverlayEditor({
   template,
   templateId,
   overlay,
+  pageId,
+  selectedBlockId,
   onChange,
   onDelete,
   onDuplicate,
@@ -150,6 +152,8 @@ function OverlayEditor({
   template: ReportTemplate;
   templateId?: string;
   overlay: Overlay;
+  pageId: string | null;
+  selectedBlockId: string | null;
   onChange: (n: Overlay) => void;
   onDelete: () => void;
   onDuplicate: () => void;
