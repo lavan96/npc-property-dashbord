@@ -258,6 +258,23 @@ function applyOps(schema: any, ops: Op[]): { schema: any; summaries: string[]; w
           else summaries.push(`deleted overlay ${op.overlayId}`);
           break;
         }
+        case 'clear_page': {
+          const p = findPage(s, op.pageId);
+          if (!p) { warnings.push(`clear_page: ${op.pageId} not found`); break; }
+          const removed = (p.blocks || []).length;
+          p.blocks = [];
+          summaries.push(`cleared page ${op.pageId} (${removed} blocks removed)`);
+          break;
+        }
+        case 'clear_block_overlays': {
+          const p = findPage(s, op.pageId);
+          const b = p && findBlock(p, op.blockId);
+          if (!b) { warnings.push(`clear_block_overlays: target not found`); break; }
+          const removed = (b.overlays || []).length;
+          b.overlays = [];
+          summaries.push(`cleared ${removed} overlays in block ${op.blockId}`);
+          break;
+        }
         case 'apply_theme': {
           // quick built-in palettes
           const themes: Record<string, any> = {
