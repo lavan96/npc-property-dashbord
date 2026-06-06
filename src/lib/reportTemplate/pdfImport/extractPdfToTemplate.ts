@@ -182,9 +182,11 @@ export async function extractPdfToTemplate(
         }
       }
 
-      // Optional Track B raster
+      // Optional Track B raster (also used for OCR mode as the source image)
       let backgroundImageUrl: string | undefined;
-      if (mode === 'pixel' || mode === 'hybrid') {
+      const needRaster = mode === 'pixel' || mode === 'hybrid' || mode === 'ocr';
+      let rasterCanvas: HTMLCanvasElement | null = null;
+      if (needRaster) {
         onProgress({ phase: 'rasterizing', page: pageIndex, totalPages });
         const scale = dpi / 72;
         const vp = page.getViewport({ scale });
@@ -193,27 +195,79 @@ export async function extractPdfToTemplate(
         canvas.height = vp.height;
         const ctx = canvas.getContext('2d')!;
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
-        const blob: Blob = await new Promise((resolve) =>
-          canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
-        );
-        const b64 = await blobToBase64(blob);
-        onProgress({ phase: 'uploading', page: pageIndex, totalPages });
-        const up = await invokeImport({
-          operation: 'upload_asset',
-          import_id: importId,
-          kind: 'page',
-          page_index: pageIndex,
-          seq: 0,
-          content_type: 'image/jpeg',
-          data_base64: b64,
-        });
-        backgroundImageUrl = up.url;
-        rasterized++;
-        // free
-        canvas.width = 0;
-        canvas.height = 0;
+        rasterCanvas = canvas;
+
+        if (mode === 'pixel' || mode === 'hybrid') {
+          const blob: Blob = await new Promise((resolve) =>
+            canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+          );
+          const b64 = await blobToBase64(blob);
+          onProgress({ phase: 'uploading', page: pageIndex, totalPages });
+          const up = await invokeImport({
+            operation: 'upload_asset',
+            import_id: importId,
+            kind: 'page',
+            page_index: pageIndex,
+            seq: 0,
+            content_type: 'image/jpeg',
+            data_base64: b64,
+          });
+          backgroundImageUrl = up.url;
+          rasterized++;
+        } else {
+          semantic++;
+        }
       } else {
         semantic++;
+      }
+
+      // OCR pass — recognise text on the rasterised page and add as overlays
+      if (mode === 'ocr' && rasterCanvas) {
+        onProgress({ phase: 'ocr', page: pageIndex, totalPages, message: 'Running OCR…' });
+        try {
+          const tess: any = await import(/* @vite-ignore */ 'tesseract.js');
+          const worker = await tess.createWorker(options.ocrLang ?? 'eng');
+          const { data } = await worker.recognize(rasterCanvas);
+          await worker.terminate();
+          const ratio = pageWidth / rasterCanvas.width; // pt per px
+          const words: any[] = data?.words ?? [];
+          for (const w of words) {
+            if (!w?.text?.trim()) continue;
+            const bbox = w.bbox || {};
+            const x = (bbox.x0 ?? 0) * ratio;
+            const y = (bbox.y0 ?? 0) * ratio;
+            const ww = ((bbox.x1 ?? 0) - (bbox.x0 ?? 0)) * ratio;
+            const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
+            const fontSize = Math.max(8, hh * 0.85);
+            overlays.push({
+              id: crypto.randomUUID(),
+              type: 'text',
+              x, y,
+              width: Math.max(ww + 2, fontSize),
+              height: Math.max(hh, fontSize * 1.2),
+              rotation: 0,
+              opacity: 1,
+              content: w.text,
+              fontFamily: 'Helvetica',
+              fontSize,
+              fontWeight: 'normal',
+              fontStyle: 'normal',
+              color: '#111111',
+              align: 'left',
+              lineHeight: 1.2,
+              letterSpacing: 0,
+            } as Overlay);
+            textBlocks++;
+          }
+        } catch (err) {
+          console.warn('[ocr] failed on page', pageIndex, err);
+        }
+      }
+
+      if (rasterCanvas) {
+        rasterCanvas.width = 0;
+        rasterCanvas.height = 0;
+        rasterCanvas = null;
       }
 
       // Wrap overlays in a single 'free' block so they are positioned absolutely
