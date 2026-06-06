@@ -1295,6 +1295,8 @@ export default function TemplateBuilderEdit() {
                 onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
                 onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
                 onChangeTemplate={setTemplate}
+                multiOverlayIds={multiOverlayIds}
+                onToggleMultiOverlay={toggleMultiOverlay}
               />
             </div>
             <div className="border-l bg-background min-h-0">
