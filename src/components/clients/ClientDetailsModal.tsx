@@ -438,7 +438,7 @@ The Team`
             <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
             <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">Client Forms</TabsTrigger>
             <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity / Documents</TabsTrigger>
             <TabsTrigger value="borrowing" className="text-xs sm:text-sm">Borrowing Capacity</TabsTrigger>
             <TabsTrigger value="lenders" className="text-xs sm:text-sm">Lenders</TabsTrigger>
             <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>

@@ -291,11 +291,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     singular: 'Contact',
     description: 'Additional applicants, guarantors and authorised contacts.',
     primaryColumn: 'first_name',
-    secondaryColumn: 'role',
+    secondaryColumn: 'relationship',
     fields: [
       { key: 'first_name', label: 'First Name', type: 'text', required: true },
-      { key: 'last_name', label: 'Last Name', type: 'text' },
-      { key: 'role', label: 'Role', type: 'select', options: [
+      { key: 'surname', label: 'Last Name', type: 'text', required: true },
+      { key: 'relationship', label: 'Role', type: 'select', options: [
         { value: 'co_applicant', label: 'Co-applicant' },
         { value: 'guarantor', label: 'Guarantor' },
         { value: 'spouse', label: 'Spouse / Partner' },
@@ -304,8 +304,8 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'other', label: 'Other' },
       ]},
       { key: 'email', label: 'Email', type: 'text' },
-      { key: 'phone', label: 'Phone', type: 'text' },
-      { key: 'date_of_birth', label: 'Date of Birth', type: 'date' },
+      { key: 'mobile', label: 'Phone', type: 'text' },
+      { key: 'dob', label: 'Date of Birth', type: 'date' },
     ],
   },
 

@@ -241,6 +241,22 @@ Deno.serve(async (req) => {
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     console.log(`[bulk-sync] Done in ${elapsed}s: ${processed} clients, ${totalConversations} convos, ${totalMessages} msgs`);
 
+    // Surface a Command Center notification so the sync isn't silent.
+    try {
+      const errorSuffix = errors.length > 0 ? ` (${errors.length} client${errors.length === 1 ? '' : 's'} had errors)` : '';
+      const { error: notifyError } = await supabase
+        .from('notifications')
+        .insert({
+          type: 'bulk_conversation_sync_completed',
+          title: 'Conversation sync completed',
+          message: `Synced ${totalConversations} conversation${totalConversations === 1 ? '' : 's'} and ${totalMessages} message${totalMessages === 1 ? '' : 's'} across ${processed} client${processed === 1 ? '' : 's'} in ${elapsed}s${errorSuffix}.`,
+          read: false,
+        });
+      if (notifyError) console.error('[bulk-sync] Failed to insert completion notification:', notifyError.message);
+    } catch (notifyErr: any) {
+      console.error('[bulk-sync] Notification insert threw:', notifyErr?.message || notifyErr);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       offset,

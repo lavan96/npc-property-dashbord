@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   ArrowRight, X, Sparkles, CheckCircle2, LayoutDashboard, Briefcase, Layers, Users,
-  MessageSquare, Inbox, BookOpen, TrendingUp, Trophy, Smartphone,
+  MessageSquare, Inbox, BookOpen, Trophy, Smartphone,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'finance_tour_completed_v1';
@@ -29,7 +29,6 @@ const STEPS: TourStep[] = [
   { selector: '[data-tour="messages"]', title: 'Messages', description: 'Direct portal messaging — clients see everything you share here in real-time.', icon: MessageSquare },
   { selector: '[data-tour="client-inbox"]', title: 'Unified client inbox', description: 'Email, SMS, WhatsApp and portal messages stitched into one timeline per client.', icon: Inbox },
   { selector: '[data-tour="lender-intelligence"]', title: 'Lender intelligence', description: 'Personal turnaround stats and lender playbooks — your edge on every submission.', icon: BookOpen },
-  { selector: '[data-tour="forecasting"]', title: 'Forecasting & earnings', description: 'Revenue forecast, clawback radar and monthly goal tracking.', icon: TrendingUp },
   { selector: '[data-tour="insights"]', title: 'Pipeline insights', description: 'Lender leaderboard, stuck files and win/loss analytics.', icon: Trophy },
   { selector: '[data-tour="mobile"]', title: 'Mobile cockpit', description: 'On the road? Open the mobile cockpit for today\'s priorities, scan-to-upload and voice notes.', icon: Smartphone },
 ];
