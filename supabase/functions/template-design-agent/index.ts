@@ -478,7 +478,7 @@ ACTIVE SELECTION:
     const { schema: newSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
     return json({
       reply: parsed.reply || '',
-      schema: newSchema,
+      schema: normaliseSchemaForClient(newSchema),
       operations: summaries,
       warnings,
       raw_ops: parsed.operations,
