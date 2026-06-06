@@ -940,6 +940,12 @@ export default function TemplateBuilderEdit() {
           <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
             <Wand2 className="h-4 w-4 mr-1" /> AI Author
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPreviewQA(true)} title="Side-by-side preview, lint, binding & QA report">
+            <Eye className="h-4 w-4 mr-1" /> Preview & QA
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowComponentLib(true)} title="Save / reuse component snippets across templates">
+            <Component className="h-4 w-4 mr-1" /> Components
+          </Button>
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
@@ -1192,6 +1198,18 @@ export default function TemplateBuilderEdit() {
           <div>
             <Label className="text-xs">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+          </div>
+          <div>
+            <Label className="text-xs">Custom CSS (advanced)</Label>
+            <p className="text-[11px] text-muted-foreground mb-1">Layered on top of the rendered HTML/PDF. Scope to <code>.tpl-page</code> or block ids.</p>
+            <Textarea
+              value={customCss}
+              onChange={(e) => setCustomCss(e.target.value)}
+              rows={10}
+              spellCheck={false}
+              placeholder={`/* e.g. */\n.tpl-page-0 h1 { letter-spacing: -0.02em; }\n.tpl-page { font-feature-settings: "ss01"; }`}
+              className="font-mono text-xs"
+            />
           </div>
         </TabsContent>
 
