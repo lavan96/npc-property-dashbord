@@ -325,6 +325,7 @@ const TOOL = {
                   'add_page','duplicate_page','delete_page','reorder_pages','update_page',
                   'add_block','update_block','delete_block',
                   'add_overlay','update_overlay','delete_overlay',
+                  'clear_page','clear_block_overlays',
                   'apply_theme',
                 ],
               },
