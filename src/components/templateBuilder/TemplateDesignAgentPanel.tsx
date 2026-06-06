@@ -236,6 +236,8 @@ export function TemplateDesignAgentPanel({
         if (previewSchema && ops.length > 0) {
           setTemplate(previewSchema);
           toast.success(`Applied ${ops.length} change${ops.length === 1 ? '' : 's'} to preview`);
+        } else if (ops.length === 0) {
+          toast.warning('Agent returned no operations — see chat for details.');
         }
         setMessages((m) => [...m, { role: 'assistant', content: reply, ops, warnings, applied: ops.length > 0 }]);
       } else {
