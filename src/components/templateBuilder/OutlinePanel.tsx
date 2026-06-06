@@ -206,18 +206,20 @@ export function OutlinePanel({
   );
 }
 
-function OverlayRow({ overlay, active, onClick }: { overlay: Overlay; active: boolean; onClick: () => void }) {
+function OverlayRow({ overlay, active, multiActive, onClick }: { overlay: Overlay; active: boolean; multiActive?: boolean; onClick: (e: React.MouseEvent) => void }) {
   const Icon = overlay.type === 'text' ? Type : overlay.type === 'image' ? ImageIcon : Square;
   const label = overlay.type === 'text' ? (overlay as any).content?.slice(0, 24) ?? 'Text' : overlay.type;
   return (
     <button
       className={`w-full flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted/50 ${
-        active ? 'bg-primary/10 text-primary' : ''
+        active ? 'bg-primary/10 text-primary' : multiActive ? 'bg-accent/30 ring-1 ring-primary/30' : ''
       }`}
       onClick={onClick}
+      title="Shift/Cmd-click to multi-select"
     >
       <Icon className="h-3 w-3 ml-3" />
       <span className="truncate">{label}</span>
+      {multiActive && <span className="ml-auto text-[9px] text-primary">●</span>}
     </button>
   );
 }
