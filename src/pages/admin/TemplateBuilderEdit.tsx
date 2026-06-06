@@ -699,17 +699,6 @@ export default function TemplateBuilderEdit() {
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
-  const issuesByPage = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const issue of bindingIssues) {
-      const m = /^Page (\d+)/.exec(issue.where);
-      if (m) {
-        const idx = Number(m[1]) - 1;
-        map.set(idx, (map.get(idx) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [bindingIssues]);
   // ── Print-safety lint (live) ────────────────────────────────────────────────
   const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
 
