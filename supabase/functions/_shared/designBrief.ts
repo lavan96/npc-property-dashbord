@@ -10,9 +10,13 @@
  */
 
 import { hexToRgb, contrastRatioHex, pickContrastingFg, nearestHex } from './colorScience.ts';
+import { callAnthropic } from './anthropicAdapter.ts';
 
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
 const VISION_MODEL = 'openai/gpt-5';
+const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const USE_CLAUDE = !!ANTHROPIC_KEY;
+
 
 export type BriefPaletteRole = 'bg' | 'surface' | 'text' | 'accent' | 'muted';
 export interface BriefPaletteEntry { role: BriefPaletteRole; hex: string; label?: string }
