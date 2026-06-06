@@ -51,11 +51,18 @@ export function PreviewQADialog({ open, onOpenChange, template, sampleData, cust
     try {
       const { html } = renderTemplateToHtml(template, { data: sampleData ?? {}, customCss });
       setHtmlSrc(html);
-      const blob = await renderTemplateToBlob(template, { data: sampleData ?? {} });
+      // Production parity: render the PDF preview through WeasyPrint (same
+      // engine as the customer-facing export). This replaces the legacy jsPDF
+      // path, which could only ship Helvetica/Times/Courier.
+      const res = await renderTemplateViaWeasyPrint(template, {
+        data: sampleData ?? {},
+        customCss,
+        templateId: (template as any)?.id ?? null,
+        mode: 'preview',
+      });
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-      setPdfSize(blob.size);
+      setPdfUrl(res.url);
+      setPdfSize(res.bytes ?? 0);
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
