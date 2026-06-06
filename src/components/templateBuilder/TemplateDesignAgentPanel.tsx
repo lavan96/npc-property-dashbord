@@ -72,12 +72,36 @@ const memKey = (tid?: string) => `tpl-agent-mem::${tid || 'unbound'}`;
 const factKey = (tid?: string) => `tpl-agent-facts::${tid || 'unbound'}`;
 
 async function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
+  const raw: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
     r.onerror = reject;
     r.readAsDataURL(file);
   });
+  // Downscale to keep payloads small + guarantee JPEG so Gemini accepts it.
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = raw;
+    });
+    const MAX = 1600;
+    const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return raw;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', 0.85);
+    return out.length < raw.length ? out : raw;
+  } catch {
+    return raw;
+  }
 }
 
 // ── Voice-to-edit (Web Speech API) ──────────────────────────────────────────
