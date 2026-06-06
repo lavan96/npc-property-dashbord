@@ -1469,6 +1469,27 @@ export default function TemplateBuilderEdit() {
         }}
         onApplyName={(n, d) => { setName(n); setDescription(d); }}
       />
+      <PreviewQADialog
+        open={showPreviewQA}
+        onOpenChange={setShowPreviewQA}
+        template={template}
+        sampleData={sampleData}
+        customCss={customCss || undefined}
+      />
+      <ComponentLibraryDialog
+        open={showComponentLib}
+        onOpenChange={setShowComponentLib}
+        template={template}
+        activePage={activePage ?? null}
+        selectedBlockId={selectedBlockId}
+        onInsertBlocks={(blocks) => {
+          if (!activePage) return;
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => p.id !== activePage.id ? p : ({ ...p, blocks: [...p.blocks, ...blocks] })),
+          }));
+        }}
+      />
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
           <TemplateCommentsPanel
