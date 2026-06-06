@@ -26,6 +26,7 @@ import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog'
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
 import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
+import { TemplateDesignAgentPanel } from '@/components/templateBuilder/TemplateDesignAgentPanel';
 import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
@@ -96,6 +97,7 @@ export default function TemplateBuilderEdit() {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
   const [showAIAuthor, setShowAIAuthor] = useState(false);
+  const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [customCss, setCustomCss] = useState<string>('');
@@ -943,6 +945,9 @@ export default function TemplateBuilderEdit() {
           <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
             <Wand2 className="h-4 w-4 mr-1" /> AI Author
           </Button>
+          <Button variant="default" size="sm" onClick={() => setShowDesignAgent(true)} title="Conversational design agent — multi-step instructions, full template context">
+            <Sparkles className="h-4 w-4 mr-1" /> Design Agent
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowPreviewQA(true)} title="Side-by-side preview, lint, binding & QA report">
             <Eye className="h-4 w-4 mr-1" /> Preview & QA
           </Button>
@@ -1503,6 +1508,15 @@ export default function TemplateBuilderEdit() {
           }));
         }}
         onApplyName={(n, d) => { setName(n); setDescription(d); }}
+      />
+      <TemplateDesignAgentPanel
+        open={showDesignAgent}
+        onOpenChange={setShowDesignAgent}
+        template={template}
+        setTemplate={(next) => setTemplate(next)}
+        activePageId={activePageId}
+        selectedBlockId={selectedBlockId}
+        selectedOverlayId={selectedOverlayId}
       />
       <PreviewQADialog
         open={showPreviewQA}
