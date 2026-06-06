@@ -133,48 +133,53 @@ export async function extractPdfToTemplate(
 
       const overlays: Overlay[] = [];
 
-      // Track A: extract text runs
-      const content = await page.getTextContent({ includeMarkedContent: false } as any);
-      for (const item of content.items as any[]) {
-        if (!('str' in item) || !item.str || !item.transform) continue;
-        const str = item.str as string;
-        if (!str.trim()) continue;
-        const t = item.transform as number[]; // [a,b,c,d,e,f]
-        const fontSize = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 12;
-        const x = t[4];
-        // pdfjs y is text baseline from bottom-left
-        const yBaseline = t[5];
-        const yTop = pageHeight - yBaseline - fontSize;
-        const width = (item.width as number) || fontSize * str.length * 0.5;
-        const height = (item.height as number) || fontSize * 1.2;
+      if (mode === 'ocr') {
+        // Skip pdfjs text extraction — rely on Tesseract on the raster image.
+        // (Overlays populated in the rasterize block below.)
+      } else {
+        // Track A: extract text runs
+        const content = await page.getTextContent({ includeMarkedContent: false } as any);
+        for (const item of content.items as any[]) {
+          if (!('str' in item) || !item.str || !item.transform) continue;
+          const str = item.str as string;
+          if (!str.trim()) continue;
+          const t = item.transform as number[]; // [a,b,c,d,e,f]
+          const fontSize = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 12;
+          const x = t[4];
+          // pdfjs y is text baseline from bottom-left
+          const yBaseline = t[5];
+          const yTop = pageHeight - yBaseline - fontSize;
+          const width = (item.width as number) || fontSize * str.length * 0.5;
+          const height = (item.height as number) || fontSize * 1.2;
 
-        const styles = (content.styles as Record<string, any>) || {};
-        const styleEntry = styles[item.fontName] || {};
-        const psName = styleEntry.fontFamily || item.fontName || 'Helvetica';
-        const resolved = resolveFontFamily(psName);
-        fontsUsed.add(psName);
-        if (resolved.substituted) fontsSubstituted.add(psName);
+          const styles = (content.styles as Record<string, any>) || {};
+          const styleEntry = styles[item.fontName] || {};
+          const psName = styleEntry.fontFamily || item.fontName || 'Helvetica';
+          const resolved = resolveFontFamily(psName);
+          fontsUsed.add(psName);
+          if (resolved.substituted) fontsSubstituted.add(psName);
 
-        overlays.push({
-          id: crypto.randomUUID(),
-          type: 'text',
-          x,
-          y: yTop,
-          width: Math.max(width + 4, fontSize * 2),
-          height: Math.max(height, fontSize * 1.2),
-          rotation: 0,
-          opacity: 1,
-          content: str,
-          fontFamily: resolved.family,
-          fontSize,
-          fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
-          fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
-          color: '#111111',
-          align: 'left',
-          lineHeight: 1.2,
-          letterSpacing: 0,
-        } as Overlay);
-        textBlocks++;
+          overlays.push({
+            id: crypto.randomUUID(),
+            type: 'text',
+            x,
+            y: yTop,
+            width: Math.max(width + 4, fontSize * 2),
+            height: Math.max(height, fontSize * 1.2),
+            rotation: 0,
+            opacity: 1,
+            content: str,
+            fontFamily: resolved.family,
+            fontSize,
+            fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
+            fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
+            color: '#111111',
+            align: 'left',
+            lineHeight: 1.2,
+            letterSpacing: 0,
+          } as Overlay);
+          textBlocks++;
+        }
       }
 
       // Optional Track B raster
