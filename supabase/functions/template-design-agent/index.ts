@@ -258,6 +258,23 @@ function applyOps(schema: any, ops: Op[]): { schema: any; summaries: string[]; w
           else summaries.push(`deleted overlay ${op.overlayId}`);
           break;
         }
+        case 'clear_page': {
+          const p = findPage(s, op.pageId);
+          if (!p) { warnings.push(`clear_page: ${op.pageId} not found`); break; }
+          const removed = (p.blocks || []).length;
+          p.blocks = [];
+          summaries.push(`cleared page ${op.pageId} (${removed} blocks removed)`);
+          break;
+        }
+        case 'clear_block_overlays': {
+          const p = findPage(s, op.pageId);
+          const b = p && findBlock(p, op.blockId);
+          if (!b) { warnings.push(`clear_block_overlays: target not found`); break; }
+          const removed = (b.overlays || []).length;
+          b.overlays = [];
+          summaries.push(`cleared ${removed} overlays in block ${op.blockId}`);
+          break;
+        }
         case 'apply_theme': {
           // quick built-in palettes
           const themes: Record<string, any> = {
@@ -308,6 +325,7 @@ const TOOL = {
                   'add_page','duplicate_page','delete_page','reorder_pages','update_page',
                   'add_block','update_block','delete_block',
                   'add_overlay','update_overlay','delete_overlay',
+                  'clear_page','clear_block_overlays',
                   'apply_theme',
                 ],
               },
@@ -355,13 +373,19 @@ DESIGN STANDARDS — be opinionated and creative:
 - Prefer 36pt page margins; align overlays to a 12pt grid.
 - Use the token palette; only hard-code colours when the designer explicitly asks.
 - For new sections, compose: section title overlay + supporting copy + KPI/data block + accent shape.
-- When asked to "redesign" or "improve", make decisive structural changes — never just tweak one value.
+
+REPLACEMENT vs ADDITIVE — CRITICAL:
+- The default mistake is to keep stacking new blocks on top of existing ones. Don't.
+- If the user says "redesign", "redo", "rebuild", "replace", "start over", "clean up", "from scratch", "wipe", or describes the page as if it were empty, you MUST emit a 'clear_page' for the target page BEFORE any add_block/add_overlay ops. This wipes existing content so your new layout actually replaces it.
+- If the user asks to "tweak", "adjust", "tighten", "polish", "fix", or names a specific element, DO NOT clear — instead use update_block / update_overlay / delete_block on the precise targets.
+- Never duplicate an element that already exists on the page. Before adding a heading/title/KPI grid, scan the outline; if one is present, update it in place instead of adding a new one.
+- When unsure whether the user wants additive or replacement, prefer replacement for whole-page instructions and additive for element-level instructions.
 
 CONVERSATIONAL RULES:
 - Treat each user message as a possibly multi-step instruction. Break it down silently, then emit ALL operations in ONE \`apply_changes\` call.
 - Reference targets by the exact ids shown in the outline. Never invent ids.
 - When you ADD elements, do not include an "id" — the server generates one.
-- Reply in 1–3 short sentences for the designer; keep it concrete ("Added a Cover with hero title + gold accent line; switched primary token to #BF9B50").
+- Reply in 1–3 short sentences for the designer; keep it concrete ("Cleared the cover and rebuilt it with a gold hero title + accent rule + KPI strip").
 - If the request is ambiguous, make the most tasteful interpretation and proceed; ask only when you genuinely cannot proceed.`;
 
 Deno.serve(async (req) => {
@@ -380,6 +404,7 @@ Deno.serve(async (req) => {
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
+    const replaceMode: boolean = body.replaceMode === true;
 
     if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
 
@@ -388,11 +413,11 @@ Deno.serve(async (req) => {
     if (mode === 'art_director') {
       modeAddendum = `\n\n[ART DIRECTOR MODE]
 You are doing a DECISIVE polish pass on the active page (id=${activePageId}).
-Make bold structural improvements: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, add a tasteful accent shape or rule, ensure colour harmony via tokens, upgrade copywriting clarity. Emit 8–20 operations targeting only the active page unless tokens need updates. Do NOT ask the user — just execute.`;
+Improve in place: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, ensure colour harmony via tokens, upgrade copywriting clarity. PREFER update_block / update_overlay on existing elements. Only add new elements if a genuine gap exists (e.g. missing section title, missing accent rule). Do NOT duplicate elements that already exist. Cap at ~15 ops. Do NOT ask the user — just execute.`;
     } else if (mode === 'screenshot_to_block') {
       modeAddendum = `\n\n[SCREENSHOT-TO-BLOCK MODE]
 The user has attached an image showing a design they want recreated as native blocks/overlays on the active page (id=${activePageId}).
-Analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations on the active page. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
+FIRST emit a 'clear_page' op for page ${activePageId} to remove any existing blocks (the screenshot replaces them). THEN analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
     } else if (mode === 'inline_text') {
       modeAddendum = `\n\n[INLINE TEXT MODE]
 Modify ONLY the selected text overlay (overlay id=${selectedOverlayId}, block id=${selectedBlockId}, page id=${activePageId}). Emit exactly one update_overlay operation patching the "content" field. Do not change anything else. Preserve bindings ({{...}} tokens) unless the user explicitly asks to remove them.`;
@@ -404,6 +429,11 @@ Walk the entire template. For every text overlay whose content is empty, a place
 - Use update_overlay only. Do NOT add new blocks/pages. Cap at ~40 ops.
 SAMPLE DATA (JSON):
 ${JSON.stringify(sampleData ?? {}, null, 2).slice(0, 4000)}`;
+    }
+
+    if (replaceMode && activePageId) {
+      modeAddendum += `\n\n[REPLACE MODE — USER OPTED IN]
+The designer has explicitly enabled "Replace page contents" for page ${activePageId}. Your FIRST op MUST be { "op": "clear_page", "pageId": "${activePageId}" }. Then build the requested layout from scratch on that page. Never add on top of existing blocks in this mode.`;
     }
 
     // Persistent memory facts about this template (brand voice, do/don'ts, etc.)
