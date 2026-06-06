@@ -85,6 +85,7 @@ export function useReportTemplateMutations() {
           report_type: init.report_type ?? null,
           tier: init.tier ?? null,
           schema: init.schema ?? makeBlankTemplate(),
+          config: (init as any).config ?? {},
           version: 1,
           is_active: false,
           is_default: false,
