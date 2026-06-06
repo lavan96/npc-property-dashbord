@@ -1708,6 +1708,25 @@ export default function TemplateBuilderEdit() {
           />
         </aside>
       )}
+      {id && (
+        <ResyncPdfDialog
+          open={showResync}
+          onOpenChange={setShowResync}
+          templateId={id}
+          templateName={name}
+          onResynced={() => {
+            // Force the editor to reload the freshly resynced template.
+            window.location.reload();
+          }}
+        />
+      )}
+      <PdfFidelityDiffDialog
+        open={showDiff}
+        onOpenChange={setShowDiff}
+        template={template}
+        sampleData={sampleData}
+        customCss={customCss || undefined}
+      />
     </div>
   );
 }
