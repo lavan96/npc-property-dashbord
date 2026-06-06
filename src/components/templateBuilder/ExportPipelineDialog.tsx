@@ -77,6 +77,8 @@ export function ExportPipelineDialog({
   const [themeId, setThemeId] = useState<string>(template.activeThemeId || '__active__');
   const [preloading, setPreloading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [pageRange, setPageRange] = useState<string>('');           // e.g. "1-3,5"
+  const [includeBookmarks, setIncludeBookmarks] = useState<boolean>(true);
   const [jobs, setJobs] = useState<RenderJobRow[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
