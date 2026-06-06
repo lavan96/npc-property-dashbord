@@ -10,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil } from 'lucide-react';
+import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil, Lock, Share2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,10 +64,14 @@ async function fetchNotesSecure(clientId: string, page: number) {
 export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
+  // Notes are internal to the Command Center by default; staff opt in to share
+  // them outward to the client & finance portals.
+  const [shareNote, setShareNote] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editNoteType, setEditNoteType] = useState<NoteType>('general');
+  const [editShare, setEditShare] = useState(false);
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +95,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       const payload = {
         note_type: noteType,
         content: newNote.trim(),
+        visibility: shareNote ? 'shared' : 'internal_npc',
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -108,19 +115,23 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         actionType: 'client_note_added',
         entityType: 'client_note',
         entityId: clientId,
-        metadata: { note_type: noteType }
+        metadata: { note_type: noteType, visibility: shareNote ? 'shared' : 'internal_npc' }
       });
-      // Sync to GHL (non-blocking)
-      invokeSecureFunction('sync-notes-to-ghl', {
-        action: 'create',
-        clientId,
-        noteId: result?.id,
-        noteContent: newNote.trim(),
-        noteType,
-      }).catch(err => console.warn('GHL note sync failed:', err));
+      // Only push to the external GHL CRM when the note is shared — internal
+      // notes stay within the Command Center.
+      if (shareNote) {
+        invokeSecureFunction('sync-notes-to-ghl', {
+          action: 'create',
+          clientId,
+          noteId: result?.id,
+          noteContent: newNote.trim(),
+          noteType,
+        }).catch(err => console.warn('GHL note sync failed:', err));
+      }
       setNewNote('');
+      setShareNote(false);
       setIsAdding(false);
-      toast.success('Note added');
+      toast.success(shareNote ? 'Note added & shared to portals' : 'Internal note added');
     },
     onError: (error: any) => {
       toast.error('Failed to add note: ' + error.message);
@@ -153,18 +164,30 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const editNoteMutation = useMutation({
     mutationFn: async () => {
+      const noteId = editingId!;
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'update',
         table: 'client_notes',
         clientId,
-        recordId: editingId!,
+        recordId: noteId,
         data: {
           content: editContent.trim(),
           note_type: editNoteType,
+          visibility: editShare ? 'shared' : 'internal_npc',
         },
       });
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to update note');
+      // When a note is (re)shared, push the current content to the external GHL CRM.
+      if (editShare) {
+        invokeSecureFunction('sync-notes-to-ghl', {
+          action: 'create',
+          clientId,
+          noteId,
+          noteContent: editContent.trim(),
+          noteType: editNoteType,
+        }).catch(err => console.warn('GHL note sync failed:', err));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
@@ -180,6 +203,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
     setEditingId(note.id);
     setEditContent(note.content);
     setEditNoteType(note.note_type);
+    setEditShare(note.visibility === 'shared');
   };
 
   const getNoteIcon = (type: string) => {
@@ -231,6 +255,22 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
             onChange={(e) => setNewNote(e.target.value)}
             className="min-h-[80px]"
           />
+          <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+            <div className="flex items-center gap-2">
+              {shareNote ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+              <div className="space-y-0.5">
+                <Label htmlFor="note-share" className="text-sm cursor-pointer">
+                  {shareNote ? 'Shared with portals' : 'Internal only'}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {shareNote
+                    ? 'Visible in the client & finance portals.'
+                    : 'Kept within the Command Center. Toggle on to share.'}
+                </p>
+              </div>
+            </div>
+            <Switch id="note-share" checked={shareNote} onCheckedChange={setShareNote} />
+          </div>
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -315,6 +355,13 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       onChange={(e) => setEditContent(e.target.value)}
                       className="min-h-[60px]"
                     />
+                    <div className="flex items-center gap-2">
+                      {editShare ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+                      <Label htmlFor={`note-share-${note.id}`} className="text-xs cursor-pointer">
+                        {editShare ? 'Shared with portals' : 'Internal only'}
+                      </Label>
+                      <Switch id={`note-share-${note.id}`} checked={editShare} onCheckedChange={setEditShare} className="ml-auto" />
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -342,6 +389,15 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       </Badge>
                       <SyncStatusBadge status={note.sync_status} />
                       {note.source_surface && <Badge variant="outline" className="text-xs">{getSurfaceLabel(note.source_surface)}</Badge>}
+                      {note.visibility === 'shared' ? (
+                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">
+                          <Share2 className="h-3 w-3 mr-1" /> Shared
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          <Lock className="h-3 w-3 mr-1" /> Internal
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">

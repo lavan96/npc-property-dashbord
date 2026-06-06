@@ -154,6 +154,30 @@ Deno.serve(async (req) => {
       return json({ memos: data ?? [] });
     }
 
+    if (operation === 'voice_memo_save') {
+      // RLS on ai_voice_memos only allows the service role, so the memo must be
+      // persisted here (the browser cannot insert directly as a finance partner).
+      const transcript = String(body.transcript || '').trim();
+      if (!transcript) return json({ error: 'transcript required' }, 400);
+      const insert = {
+        finance_user_id: portalUser.id,
+        purchase_file_id: body.purchase_file_id || null,
+        client_id: body.client_id || null,
+        transcript,
+        summary: body.summary ? String(body.summary) : null,
+        duration_seconds: body.duration_seconds != null ? Number(body.duration_seconds) : null,
+        saved_as_note: body.saved_as_note === true,
+        model: body.model ? String(body.model) : 'whisper-1',
+      };
+      const { data, error } = await supabase
+        .from('ai_voice_memos')
+        .insert(insert)
+        .select()
+        .single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ memo: data });
+    }
+
     /* ───────────── Batch 10 ───────────── */
 
     if (operation === 'comments_list') {

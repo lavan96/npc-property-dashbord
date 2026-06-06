@@ -7,7 +7,6 @@ import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   purchaseFileId?: string | null;
@@ -16,7 +15,7 @@ interface Props {
 }
 
 export function VoiceMemoButton({ purchaseFileId = null, clientId = null, onSaved }: Props) {
-  const { user } = useFinancePortalAuth();
+  const { invokeFinanceFunction } = useFinancePortalAuth();
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const mediaRef = useRef<MediaRecorder | null>(null);
@@ -58,21 +57,26 @@ export function VoiceMemoButton({ purchaseFileId = null, clientId = null, onSave
         r.onerror = rej;
         r.readAsDataURL(blob);
       });
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: b64.split(',')[1], mimeType: 'audio/webm', fileName: 'memo.webm' },
+      // Transcribe via the finance-portal-authenticated path (voice-to-text is
+      // stateless transcription; the finance session is forwarded by the hook).
+      const { data: transcribeData, error: transcribeError } = await invokeFinanceFunction('voice-to-text', {
+        audio: b64.split(',')[1], mimeType: 'audio/webm', fileName: 'memo.webm',
       });
-      if (error) throw error;
-      const transcript = data?.text || data?.transcript || '';
+      if (transcribeError) throw new Error(transcribeError.message);
+      const transcript = (transcribeData?.text || transcribeData?.transcript || '').trim();
+      if (!transcript) throw new Error('Could not transcribe audio — please try again');
 
-      await supabase.from('ai_voice_memos').insert({
-        finance_user_id: user?.id ?? null,
+      // Persist through the service-role finance function (ai_voice_memos RLS
+      // blocks direct browser inserts).
+      const { error: saveError } = await invokeFinanceFunction('finance-portal-batch9-10', {
+        operation: 'voice_memo_save',
         purchase_file_id: purchaseFileId,
         client_id: clientId,
         transcript,
         duration_seconds: duration,
-        saved_as_note: false,
-        model: 'whisper',
+        model: 'whisper-1',
       });
+      if (saveError) throw new Error(saveError.message);
       toast.success('Voice memo saved');
       onSaved?.();
     } catch (e: any) {
