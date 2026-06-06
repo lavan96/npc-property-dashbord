@@ -481,6 +481,33 @@ export function TemplateDesignAgentPanel({
                         {m.warnings.map((w, k) => <div key={k}>⚠ {w}</div>)}
                       </div>
                     )}
+                    {m.brief && (
+                      <DesignBriefCard
+                        brief={m.brief}
+                        pairings={m.briefPairings}
+                        swaps={m.briefSwaps}
+                      />
+                    )}
+                    {m.brief && m.referenceImageUrl && activePageId && (
+                      <BeforeAfterDiff
+                        referenceImageUrl={m.referenceImageUrl}
+                        template={template}
+                        activePageId={activePageId}
+                      />
+                    )}
+                    {m.brief && m.applied !== false && (
+                      <div className="mt-2 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => rerollLayout(m.brief!)}
+                          disabled={busy}
+                          className="h-7 gap-1 text-[11px]"
+                        >
+                          <Shuffle className="h-3 w-3" /> Re-roll layout
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
