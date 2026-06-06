@@ -405,7 +405,7 @@ ACTIVE SELECTION:
         messages,
         tools: [TOOL],
         tool_choice: { type: 'function', function: { name: 'apply_changes' } },
-        ...(useVision ? {} : { reasoning_effort: mode === 'art_director' ? 'high' : 'medium' }),
+        // Note: gpt-5.5 rejects reasoning_effort when tools are provided in /v1/chat/completions.
       }),
     });
 
