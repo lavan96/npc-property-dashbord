@@ -117,6 +117,30 @@ export function lintTemplate(
         const tag = `Page ${pi + 1} → block ${bi + 1} → overlay ${oi + 1}`;
         const ctx = { pageId: page.id, blockId: block.id, overlayId: o.id };
 
+        // Unresolved bindings against sample data
+        if (sampleData) {
+          const candidateStrings: unknown[] = [
+            (o as any).text,
+            (o as any).value,
+            (o as any).label,
+            (o as any).href,
+            (o as any).src,
+          ];
+          const unresolved = new Set<string>();
+          for (const s of candidateStrings) {
+            for (const p of collectUnresolvedBindings(s, data)) unresolved.add(p);
+          }
+          unresolved.forEach((path) => {
+            issues.push({
+              severity: 'warning',
+              code: 'unresolved-binding',
+              message: `Binding "{{${path}}}" has no value in sample data`,
+              where: tag,
+              ...ctx,
+            });
+          });
+        }
+
         // Bleed: any side outside [0, pageSize]
         if (o.x < 0 || o.y < 0 || o.x + o.width > pageW || o.y + o.height > pageH) {
           issues.push({
