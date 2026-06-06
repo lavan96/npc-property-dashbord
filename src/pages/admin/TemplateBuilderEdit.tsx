@@ -1657,6 +1657,29 @@ export default function TemplateBuilderEdit() {
             These four fields decide which generated reports route through this template. The resolver picks the
             most-specific active match: <code>user &gt; agency &gt; global-variant &gt; global-any</code>, ordered by
             priority. Engine must be <code>weasyprint</code> for production routing.
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {reportType ? (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-medium">
+                    {reportType}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    variant: {variant || 'any'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    scope: {scope || 'global'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    priority: {priority}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-muted text-muted-foreground px-2 py-0.5 text-[10px]">
+                    will route: {variant ? `${reportType} (${variant})` : `any ${reportType}`}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] italic">Set a report type to see routing targets.</span>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
