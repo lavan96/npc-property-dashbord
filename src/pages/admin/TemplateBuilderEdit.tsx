@@ -177,6 +177,10 @@ export default function TemplateBuilderEdit() {
   // ── Style clipboard (overlay style copy/paste) ──────────────────────────────
   const styleClipboardRef = useRef<Partial<Overlay> | null>(null);
   const [hasStyleClipboard, setHasStyleClipboard] = useState(false);
+  // ── Overlay clipboard (cut/copy/paste of one or more overlays) ──────────────
+  const overlayClipboardRef = useRef<Overlay[] | null>(null);
+  // ── Shortcuts help dialog ───────────────────────────────────────────────────
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // ── Multi-select (overlay ids on active page) ───────────────────────────────
   const [multiOverlayIds, setMultiOverlayIds] = useState<Set<string>>(new Set());
   const toggleMultiOverlay = useCallback((oid: string) => {
