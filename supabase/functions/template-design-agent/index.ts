@@ -13,7 +13,8 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const MODEL = 'openai/gpt-5.5';
+const DEFAULT_MODEL = 'openai/gpt-5.5';
+const VISION_MODEL = 'google/gemini-2.5-pro';
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), {
