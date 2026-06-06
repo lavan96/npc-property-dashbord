@@ -196,11 +196,13 @@ export function TemplateDesignAgentPanel({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, busy, pending]);
 
-  const send = async (opts?: { text?: string; mode?: AgentMode; image?: { name: string; dataUrl: string } | null }) => {
+  const send = async (opts?: { text?: string; mode?: AgentMode; image?: { name: string; dataUrl: string } | null; brief?: DesignBriefView | null }) => {
     const instruction = (opts?.text ?? input).trim();
     const image = opts?.image ?? attachedImage;
-    const mode: AgentMode = opts?.mode ?? (image ? 'screenshot_to_block' : 'design');
-    if (!instruction && !image && mode !== 'auto_fill') return;
+    const cachedBrief = opts?.brief ?? null;
+    // Default to the structured brief pipeline whenever an image is attached.
+    const mode: AgentMode = opts?.mode ?? (image || cachedBrief ? 'brief' : 'design');
+    if (!instruction && !image && !cachedBrief && mode !== 'auto_fill') return;
     if (busy) return;
 
     setInput('');
@@ -209,9 +211,11 @@ export function TemplateDesignAgentPanel({
 
     const userMsg: Msg = {
       role: 'user',
-      content: instruction || (mode === 'auto_fill'
-        ? '🪄 Auto-fill placeholders from sample data'
-        : image ? 'Recreate this design on the active page.' : ''),
+      content: instruction || (
+        mode === 'auto_fill' ? '🪄 Auto-fill placeholders from sample data' :
+        cachedBrief ? '♻️ Re-roll layout from the existing brief' :
+        image ? 'Recreate this design on the active page.' : ''
+      ),
       attachmentLabel: image?.name,
     };
     const nextMsgs: Msg[] = [...messages, userMsg];
@@ -228,6 +232,7 @@ export function TemplateDesignAgentPanel({
           selectedOverlayId,
           mode,
           imageDataUrl: image?.dataUrl,
+          brief: cachedBrief,
           memoryFacts,
           sampleData: mode === 'auto_fill' ? sampleData : undefined,
           replaceMode: replaceMode && (mode === 'design' || mode === 'art_director'),
@@ -239,18 +244,37 @@ export function TemplateDesignAgentPanel({
       const ops: string[] = data.operations || [];
       const warnings: string[] = data.warnings || [];
       const previewSchema: ReportTemplate = data.schema;
+      const brief: DesignBriefView | undefined = data.brief || undefined;
+      const briefPairings: BriefPairing[] | undefined = data.briefPairings || undefined;
+      const briefSwaps: string[] | undefined = data.briefSwaps || undefined;
+      const pipeline: 'brief' | 'ops' = data.pipeline || 'ops';
+      // Reference image URL — only attach when we have one this turn so users
+      // can re-render the side-by-side after an apply.
+      const referenceImageUrl = image?.dataUrl;
+
+      const assistantMsg: Msg = {
+        role: 'assistant',
+        content: reply,
+        ops,
+        warnings,
+        brief,
+        briefPairings,
+        briefSwaps,
+        referenceImageUrl,
+        pipeline,
+      };
 
       if (autoApply || ops.length === 0) {
         if (previewSchema && ops.length > 0) {
           setTemplate(previewSchema);
           toast.success(`Applied ${ops.length} change${ops.length === 1 ? '' : 's'} to preview`);
-        } else if (ops.length === 0) {
+        } else if (ops.length === 0 && !brief) {
           toast.warning('Agent returned no operations — see chat for details.');
         }
-        setMessages((m) => [...m, { role: 'assistant', content: reply, ops, warnings, applied: ops.length > 0 }]);
+        setMessages((m) => [...m, { ...assistantMsg, applied: ops.length > 0 }]);
       } else {
         setPending({ reply, ops, warnings, previewSchema });
-        setMessages((m) => [...m, { role: 'assistant', content: reply, ops, warnings, applied: false }]);
+        setMessages((m) => [...m, { ...assistantMsg, applied: false }]);
       }
       if (warnings.length) toast.warning(`${warnings.length} warning${warnings.length === 1 ? '' : 's'} — see chat.`);
     } catch (e) {
@@ -260,6 +284,10 @@ export function TemplateDesignAgentPanel({
     } finally {
       setBusy(false);
     }
+  };
+
+  const rerollLayout = (brief: DesignBriefView) => {
+    send({ text: 'Re-roll the layout — keep the brief but propose a fresh arrangement.', brief, mode: 'brief' });
   };
 
   const applyPending = () => {
