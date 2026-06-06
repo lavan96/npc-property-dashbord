@@ -383,3 +383,93 @@ function layoutToPage(layout: GeneratedLayout, size?: { width: number; height: n
     blocks,
   } as Page;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Cover Designer tab
+// ────────────────────────────────────────────────────────────────────────────
+function CoverPanel({
+  tier,
+  pageSize,
+  onApply,
+}: {
+  tier?: string;
+  pageSize: { width: number; height: number };
+  onApply: (page: Page, rationale?: string) => void;
+}) {
+  const [brief, setBrief] = useState(
+    'A premium investment-grade cover for a NSW house & land report. Mood: confident, editorial, gold accents on near-black. Hero image of a modern Australian home at twilight.',
+  );
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const out = await aiAuthor.generateCover({ brief, tier, pageWidth: pageSize.width, pageHeight: pageSize.height });
+      setResult(out);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function applyCover() {
+    if (!result) return;
+    const blocks: Block[] = (result.blocks ?? []).map((b: any) => ({
+      id: crypto.randomUUID(),
+      type: b.type,
+      name: b.name,
+      props: (b.props ?? {}) as Record<string, unknown>,
+      overlays: (b.overlays ?? []).map((o: any) => ({ id: crypto.randomUUID(), ...o })) as Overlay[],
+    }));
+    const page: Page = {
+      id: crypto.randomUUID(),
+      name: result.pageName || 'AI Cover',
+      size: pageSize,
+      background: result.background ?? {},
+      blocks,
+    } as Page;
+    onApply(page, result.rationale);
+  }
+
+  return (
+    <div className="h-full flex flex-col gap-3 pt-3">
+      <Label>Describe the cover you want</Label>
+      <Textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={4} />
+      <div className="flex justify-end">
+        <Button onClick={run} disabled={loading || !brief.trim()}>
+          {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+          Generate Cover
+        </Button>
+      </div>
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {result && (
+        <ScrollArea className="flex-1 border rounded-md p-3">
+          <div className="space-y-2">
+            <div className="font-semibold">{result.pageName}</div>
+            {result.rationale && <div className="text-xs text-muted-foreground">{result.rationale}</div>}
+            {result.heroImagePrompt && (
+              <div className="text-xs"><span className="text-muted-foreground">Hero image prompt:</span> <em>{result.heroImagePrompt}</em></div>
+            )}
+            <div className="text-xs uppercase text-muted-foreground mt-2">Blocks ({result.blocks?.length ?? 0})</div>
+            <ul className="text-sm space-y-1">
+              {(result.blocks ?? []).map((b: any, i: number) => (
+                <li key={i} className="flex items-center gap-2">
+                  <Badge variant="outline">{b.type}</Badge>
+                  <span className="text-muted-foreground">{b.name ?? ''} {b.overlays?.length ? `· ${b.overlays.length} overlays` : ''}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end pt-3">
+              <Button size="sm" onClick={applyCover}>
+                <Check className="h-4 w-4 mr-1" /> Add cover page
+              </Button>
+            </div>
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
