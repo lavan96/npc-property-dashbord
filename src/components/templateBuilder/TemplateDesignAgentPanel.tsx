@@ -337,7 +337,7 @@ export function TemplateDesignAgentPanel({
         <SheetHeader className="px-5 py-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" /> Design Agent
-            <Badge variant="outline" className="ml-2 text-[10px]">GPT-5.5 · multi-step</Badge>
+            <Badge variant="outline" className="ml-2 text-[10px]">Vision GPT-5 · Layout GPT-5</Badge>
             {messages.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">turn {Math.ceil(messages.length / 2)}</Badge>
             )}
