@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
 
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
-      .select('id, role, is_active, revoked_at, session_expires_at')
+      .select('id, is_active, revoked_at, session_expires_at')
       .eq('session_token', token)
       .maybeSingle();
 
@@ -124,8 +124,6 @@ Deno.serve(async (req) => {
     ) {
       return json({ error: 'Session expired' }, 401);
     }
-
-    const isSuperadmin = portalUser.role === 'superadmin';
 
     // -----------------------------------------------------------------------
     if (operation === 'list_playbooks') {
@@ -167,9 +165,6 @@ Deno.serve(async (req) => {
     // -----------------------------------------------------------------------
     if (operation === 'upsert_playbook') {
       // Any active partner can update workspace lender knowledge.
-      void isSuperadmin;
-
-
 
       const payload = body?.payload || {};
       const lender_key = normalizeKey(payload.lender_key || payload.lender_label || '');

@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
-      .select('id, finance_contact_id, role, is_active, revoked_at, session_expires_at')
+      .select('id, finance_contact_id, is_active, revoked_at, session_expires_at')
       .eq('session_token', token)
       .maybeSingle();
 
