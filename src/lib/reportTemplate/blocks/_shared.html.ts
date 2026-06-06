@@ -8,6 +8,7 @@ import {
   resolveBindable,
   resolveBindableColor,
   resolveBindableNumber,
+  resolveTokenReference,
   evalConditional,
 } from '../bindingResolver';
 
@@ -65,7 +66,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       if (!text && !o.rich) return '';
       const size = resolveBindableNumber(o.fontSize, ctx, 12);
       const color = resolveBindableColor(o.color, ctx, '#000000');
-      const family = resolveBindable(o.fontFamily, ctx) || 'Helvetica';
+      const family = resolveTokenReference(o.fontFamily, ctx) || 'Helvetica';
       const pt = Number(o.paddingTop ?? 0);
       const pr = Number(o.paddingRight ?? 0);
       const pb = Number(o.paddingBottom ?? 0);

@@ -32,6 +32,52 @@ function ensureIds(node: any): any {
   }
   return node;
 }
+
+function normaliseSchemaForClient(schema: any): any {
+  const s = JSON.parse(JSON.stringify(schema || {}));
+  s.version = 1;
+  s.tokens = s.tokens && typeof s.tokens === 'object' ? s.tokens : { colors: {}, fonts: {}, spacing: {} };
+  s.tokens.colors = s.tokens.colors && typeof s.tokens.colors === 'object' ? s.tokens.colors : {};
+  s.tokens.fonts = s.tokens.fonts && typeof s.tokens.fonts === 'object' ? s.tokens.fonts : {};
+  s.tokens.spacing = s.tokens.spacing && typeof s.tokens.spacing === 'object' ? s.tokens.spacing : {};
+  s.slots = s.slots && typeof s.slots === 'object' ? s.slots : {};
+  s.pages = Array.isArray(s.pages) ? s.pages : [];
+  for (const page of s.pages) {
+    page.id = String(page.id || uid());
+    page.name = String(page.name || 'Page');
+    page.size = { width: Number(page.size?.width) || 595, height: Number(page.size?.height) || 842 };
+    page.background = page.background && typeof page.background === 'object' ? page.background : {};
+    page.blocks = Array.isArray(page.blocks) ? page.blocks : [];
+    for (const block of page.blocks) {
+      block.id = String(block.id || uid());
+      block.type = String(block.type || 'free');
+      block.props = block.props && typeof block.props === 'object' ? block.props : {};
+      block.overlays = Array.isArray(block.overlays) ? block.overlays : [];
+      for (const overlay of block.overlays) {
+        overlay.id = String(overlay.id || uid());
+        overlay.x = Number(overlay.x) || 0;
+        overlay.y = Number(overlay.y) || 0;
+        overlay.width = Math.max(1, Number(overlay.width) || 1);
+        overlay.height = Math.max(1, Number(overlay.height) || 1);
+        overlay.rotation = Number(overlay.rotation) || 0;
+        overlay.opacity = Math.min(1, Math.max(0, Number(overlay.opacity ?? 1)));
+        if (overlay.type === 'text') {
+          const weight = Number(overlay.fontWeight);
+          overlay.fontWeight = overlay.fontWeight === 'bold' || (Number.isFinite(weight) && weight >= 600) ? 'bold' : 'normal';
+          overlay.fontStyle = overlay.fontStyle === 'italic' ? 'italic' : 'normal';
+          overlay.align = ['left', 'center', 'right', 'justify'].includes(overlay.align) ? overlay.align : 'left';
+          overlay.content = String(overlay.content ?? '');
+          overlay.fontFamily = overlay.fontFamily ?? 'Helvetica';
+          overlay.fontSize = overlay.fontSize ?? 12;
+          overlay.color = overlay.color ?? '#000000';
+          overlay.lineHeight = Number(overlay.lineHeight) || 1.3;
+          overlay.letterSpacing = Number(overlay.letterSpacing) || 0;
+        }
+      }
+    }
+  }
+  return s;
+}
 function outline(schema: any): string {
   if (!schema?.pages) return '(empty template)';
   const lines: string[] = [];
@@ -296,9 +342,9 @@ You edit a ReportTemplate JSON document on behalf of a designer through a single
 Schema vocabulary you must respect:
 - Coordinates are PDF points (1pt = 1/72 inch). A4 portrait = 595 × 842.
 - Page = { id, name, size{width,height}, background{color,imageUrl}, blocks[] }.
-- Block = { id, type, props, overlays[] }. Block types include: free, hero, kpi-grid, callout, dataTable, gallery, divider, footer, disclaimer, signature, twoColumn, chart, image, textBlock, spacer, pageNumber, qrCode, slot, decisionBox, riskRegister, scorecard, badgeList, autoToc.
+- Block = { id, type, props, overlays[] }. Use exact block types: free, cover, hero, kpi-grid, data-table, chart, image, text-block, footer, disclaimer, divider, callout, two-column, gallery, page-number, spacer, qr, badge-list, toc, auto-toc, signature, slot, scorecard, risk-register, infra-timeline, amenity-matrix, planning-table, dd-checklist, decision-box, strengths-watch.
 - Overlay = text | image | shape, each with x,y (top-left origin), width, height, rotation, opacity.
-  - text: content, fontFamily, fontSize, fontWeight, fontStyle, color (#hex or "token:primary"), align, lineHeight.
+  - text: content, fontFamily, fontSize, fontWeight (ONLY "normal" or "bold"), fontStyle, color (#hex or "token:primary"), align, lineHeight.
   - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius.
   - image: src, fit='cover'|'contain'|'fill'.
 - Tokens: colors{}, fonts{}, spacing{}. Reference via "token:<key>" in any color or string.
