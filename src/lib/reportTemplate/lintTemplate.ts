@@ -163,20 +163,11 @@ export function lintTemplate(
         }
 
         if (o.type === 'text') {
-          // Missing font (jsPDF only bundles Helvetica/Times/Courier)
-          if (typeof o.fontFamily === 'string' && !looksLikeBinding(o.fontFamily)) {
-            const f = o.fontFamily.toLowerCase();
-            const mapped = f.includes('times') || f.includes('courier') || f.includes('mono') || f.includes('helvetica') || f.includes('arial') || f.includes('sans');
-            if (!mapped && !JSPDF_FONTS.has(f)) {
-              issues.push({
-                severity: 'warning',
-                code: 'missing-font',
-                message: `Font "${o.fontFamily}" is not bundled with jsPDF — will fall back to Helvetica`,
-                where: tag,
-                ...ctx,
-              });
-            }
-          }
+          // Note: font availability is no longer linted here. The production
+          // renderer (WeasyPrint) and the in-editor PDF preview both load
+          // arbitrary web fonts (Google Fonts, custom @font-face), so
+          // declaring "Playfair Display" or any other family is safe.
+
           // Tiny text
           if (typeof o.fontSize === 'number' && o.fontSize < 7) {
             issues.push({
