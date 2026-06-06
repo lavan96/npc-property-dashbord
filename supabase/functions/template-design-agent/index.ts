@@ -705,8 +705,13 @@ ACTIVE SELECTION:
       reply: parsed.reply || '',
       schema: normaliseSchemaForClient(cleanedSchema),
       operations: summaries,
-      warnings: [...warnings, ...fixes],
+      warnings: [...warnings, ...fixes, ...briefSwaps],
       raw_ops: parsed.operations,
+      brief: designBrief,
+      briefSwaps,
+      briefPairings,
+      briefTokenPatch,
+      pipeline: useBriefPipeline ? 'brief' : 'ops',
     });
   } catch (e) {
     console.error('template-design-agent error', e);
