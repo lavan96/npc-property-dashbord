@@ -10,11 +10,14 @@
 // operations in a single turn.
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, type DesignBrief } from '../_shared/designBrief.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
 const DEFAULT_MODEL = 'openai/gpt-5.5';
-const VISION_MODEL = 'google/gemini-2.5-pro';
+// Synthesis model — strong reasoning + tool calling. Vision lives in designBrief.ts.
+const SYNTHESIS_MODEL = 'openai/gpt-5';
+const VISION_MODEL = 'openai/gpt-5';
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), {
@@ -471,20 +474,32 @@ Deno.serve(async (req) => {
     const activePageId: string | undefined = body.activePageId;
     const selectedBlockId: string | undefined = body.selectedBlockId;
     const selectedOverlayId: string | undefined = body.selectedOverlayId;
-    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' = body.mode || 'design';
+    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' | 'brief' = body.mode || 'design';
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
     const replaceMode: boolean = body.replaceMode === true;
+    // Re-roll support: client can pass a cached brief to skip the vision stage.
+    const incomingBrief: DesignBrief | null = body.brief && typeof body.brief === 'object' ? body.brief : null;
+    const briefStage: 'analyze_only' | 'synthesize_only' | 'full' = body.briefStage || 'full';
+
+    // Decide whether to run the Design Brief pipeline.
+    // Default: any time an image is attached (unless caller explicitly picked another mode).
+    const useBriefPipeline =
+      mode === 'brief' || incomingBrief !== null ||
+      (!!imageDataUrl && (mode === 'design' || mode === 'screenshot_to_block'));
 
     // Diagnostic logging for image/vision flow.
     const imgKb = imageDataUrl ? Math.round(imageDataUrl.length / 1024) : 0;
     const imgValid = !!imageDataUrl && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(imageDataUrl);
-    console.log(`[design-agent] mode=${mode} instr="${(userInstruction||'').slice(0,80)}" image=${imageDataUrl ? `${imgKb}KB valid=${imgValid}` : 'no'} activePage=${activePageId || '-'}`);
+    console.log(`[design-agent] mode=${mode} pipeline=${useBriefPipeline ? 'brief' : 'ops'} stage=${briefStage} instr="${(userInstruction||'').slice(0,80)}" image=${imageDataUrl ? `${imgKb}KB valid=${imgValid}` : 'no'} activePage=${activePageId || '-'}`);
 
-    if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
+    if (!userInstruction?.trim() && !imageDataUrl && !incomingBrief && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
     if (imageDataUrl && !imgValid) {
       return json({ error: 'Attached image is not a valid data:image/* URL. Re-attach the screenshot.' }, 400);
+    }
+    if (useBriefPipeline && !activePageId) {
+      return json({ error: 'Brief pipeline needs an active page — select a page first.' }, 400);
     }
 
     // Mode-specific system addendum
@@ -515,6 +530,55 @@ ${JSON.stringify(sampleData ?? {}, null, 2).slice(0, 4000)}`;
 The designer has explicitly enabled "Replace page contents" for page ${activePageId}. Your FIRST op MUST be { "op": "clear_page", "pageId": "${activePageId}" }. Then build the requested layout from scratch on that page. Never add on top of existing blocks in this mode.`;
     }
 
+    // ─── Brief pipeline orchestration ───────────────────────────────────────
+    let designBrief: DesignBrief | null = incomingBrief;
+    let briefSwaps: string[] = [];
+    let briefPairings: { bg: string; text: string; ratio: number; swapped: boolean }[] = [];
+    let briefTokenPatch: Record<string, string> = {};
+
+    if (useBriefPipeline) {
+      // Stage 1 — Vision Analysis (skipped on re-roll when brief is supplied)
+      if (!designBrief && imageDataUrl) {
+        const visionResult = await analyzeReferenceImage(imageDataUrl, LOVABLE_API_KEY!, userInstruction);
+        if ('error' in visionResult) {
+          console.error('[design-agent] brief vision failed:', visionResult.error);
+          return json({ error: `Vision analysis failed: ${visionResult.error}` }, 500);
+        }
+        designBrief = visionResult.brief;
+        console.log(`[design-agent] brief: palette=${designBrief.palette.length} sections=${designBrief.layout.sections.length} vibe=${designBrief.typography.vibe}`);
+      }
+
+      if (!designBrief) {
+        return json({ error: 'Brief pipeline requires an image (first turn) or a cached brief (re-roll).' }, 400);
+      }
+
+      // Stage 2 — token integration + contrast guard
+      const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
+      briefTokenPatch = integrated.tokenPatch;
+      briefSwaps = integrated.swaps;
+      briefPairings = integrated.pairings;
+      console.log(`[design-agent] brief tokens=${Object.keys(briefTokenPatch).length} swaps=${briefSwaps.length}`);
+
+      if (briefStage === 'analyze_only') {
+        // Return the brief without any layout changes so the user can edit it.
+        return json({
+          reply: `Analysed the reference. Palette: ${designBrief.palette.map((p) => p.hex).join(' · ')}. Vibe: ${designBrief.typography.vibe}. ${designBrief.layout.sections.length} sections.`,
+          schema: normaliseSchemaForClient(schema),
+          operations: [],
+          warnings: briefSwaps,
+          brief: designBrief,
+          briefSwaps,
+          briefPairings,
+          briefTokenPatch,
+        });
+      }
+
+      // Stage 3 — synthesis: replace modeAddendum with brief-driven instructions
+      const targetPage = schema.pages.find((p: any) => p.id === activePageId);
+      const pageSize = targetPage?.size || { width: 595, height: 842 };
+      modeAddendum = synthesisSystemAddendum(designBrief, activePageId!, pageSize, briefTokenPatch);
+    }
+
     // Persistent memory facts about this template (brand voice, do/don'ts, etc.)
     const memoryBlock = memoryFacts.length
       ? `\n\nPERSISTENT MEMORY (apply to every turn):\n${memoryFacts.map((f, i) => `  ${i + 1}. ${f}`).join('\n')}`
@@ -526,7 +590,9 @@ ${outline(schema, activePageId)}
 ACTIVE SELECTION:
   page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}${memoryBlock}`;
 
-    const useVision = !!imageDataUrl;
+    // Brief pipeline runs synthesis on text-only context (image already digested
+    // into the brief). Other image-attached flows keep multimodal.
+    const useVision = !!imageDataUrl && !useBriefPipeline;
 
     const messages: any[] = [
       { role: 'system', content: SYSTEM + modeAddendum },
@@ -544,9 +610,11 @@ ACTIVE SELECTION:
         ],
       });
     } else {
-      const finalText = userInstruction || (mode === 'auto_fill'
-        ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.'
-        : '');
+      const finalText = userInstruction || (
+        useBriefPipeline ? 'Synthesise the page from the BRIEF-DRIVEN SYNTHESIS instructions above.' :
+        mode === 'auto_fill' ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.' :
+        ''
+      );
       if (finalText && messages[messages.length - 1]?.content !== finalText) {
         messages.push({ role: 'user', content: finalText });
       }
@@ -557,7 +625,7 @@ ACTIVE SELECTION:
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: modelOverride ?? (useVision ? VISION_MODEL : DEFAULT_MODEL),
+          model: modelOverride ?? (useBriefPipeline ? SYNTHESIS_MODEL : (useVision ? VISION_MODEL : DEFAULT_MODEL)),
           messages,
           tools: [TOOL],
           tool_choice: toolChoice,
@@ -566,9 +634,7 @@ ACTIVE SELECTION:
       return resp;
     };
 
-    // For vision/multimodal calls, Gemini reliably honours `required`; forcing
-    // a specific function name can result in an empty response. For text-only
-    // calls, GPT-5.5 honours the explicit function-name choice.
+    // Vision multimodal: 'required'. Brief synthesis + text: explicit function choice.
     let aiResp = await callGateway(
       useVision ? 'required' : { type: 'function', function: { name: 'apply_changes' } },
     );
@@ -639,8 +705,13 @@ ACTIVE SELECTION:
       reply: parsed.reply || '',
       schema: normaliseSchemaForClient(cleanedSchema),
       operations: summaries,
-      warnings: [...warnings, ...fixes],
+      warnings: [...warnings, ...fixes, ...briefSwaps],
       raw_ops: parsed.operations,
+      brief: designBrief,
+      briefSwaps,
+      briefPairings,
+      briefTokenPatch,
+      pipeline: useBriefPipeline ? 'brief' : 'ops',
     });
   } catch (e) {
     console.error('template-design-agent error', e);
