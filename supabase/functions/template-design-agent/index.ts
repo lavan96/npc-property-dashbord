@@ -404,6 +404,7 @@ Deno.serve(async (req) => {
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
+    const replaceMode: boolean = body.replaceMode === true;
 
     if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
 
@@ -412,11 +413,11 @@ Deno.serve(async (req) => {
     if (mode === 'art_director') {
       modeAddendum = `\n\n[ART DIRECTOR MODE]
 You are doing a DECISIVE polish pass on the active page (id=${activePageId}).
-Make bold structural improvements: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, add a tasteful accent shape or rule, ensure colour harmony via tokens, upgrade copywriting clarity. Emit 8–20 operations targeting only the active page unless tokens need updates. Do NOT ask the user — just execute.`;
+Improve in place: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, ensure colour harmony via tokens, upgrade copywriting clarity. PREFER update_block / update_overlay on existing elements. Only add new elements if a genuine gap exists (e.g. missing section title, missing accent rule). Do NOT duplicate elements that already exist. Cap at ~15 ops. Do NOT ask the user — just execute.`;
     } else if (mode === 'screenshot_to_block') {
       modeAddendum = `\n\n[SCREENSHOT-TO-BLOCK MODE]
 The user has attached an image showing a design they want recreated as native blocks/overlays on the active page (id=${activePageId}).
-Analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations on the active page. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
+FIRST emit a 'clear_page' op for page ${activePageId} to remove any existing blocks (the screenshot replaces them). THEN analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
     } else if (mode === 'inline_text') {
       modeAddendum = `\n\n[INLINE TEXT MODE]
 Modify ONLY the selected text overlay (overlay id=${selectedOverlayId}, block id=${selectedBlockId}, page id=${activePageId}). Emit exactly one update_overlay operation patching the "content" field. Do not change anything else. Preserve bindings ({{...}} tokens) unless the user explicitly asks to remove them.`;
@@ -428,6 +429,11 @@ Walk the entire template. For every text overlay whose content is empty, a place
 - Use update_overlay only. Do NOT add new blocks/pages. Cap at ~40 ops.
 SAMPLE DATA (JSON):
 ${JSON.stringify(sampleData ?? {}, null, 2).slice(0, 4000)}`;
+    }
+
+    if (replaceMode && activePageId) {
+      modeAddendum += `\n\n[REPLACE MODE — USER OPTED IN]
+The designer has explicitly enabled "Replace page contents" for page ${activePageId}. Your FIRST op MUST be { "op": "clear_page", "pageId": "${activePageId}" }. Then build the requested layout from scratch on that page. Never add on top of existing blocks in this mode.`;
     }
 
     // Persistent memory facts about this template (brand voice, do/don'ts, etc.)
