@@ -1026,6 +1026,31 @@ export default function TemplateBuilderEdit() {
               <Sparkles className="h-4 w-4 mr-1" /> Analytics
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setShowPageMarket(true)} title="Browse page layouts marketplace">
+            <LayoutTemplate className="h-4 w-4 mr-1" /> Page Templates
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => copyOverlayStyle(selectedOverlay)}
+            disabled={!selectedOverlay}
+            title="Copy style from selected overlay (⌘⌥C)"
+          >
+            <ClipboardCopy className="h-4 w-4 mr-1" /> Copy style
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => {
+              const ids = multiOverlayIds.size > 0
+                ? Array.from(multiOverlayIds)
+                : selectedOverlayId ? [selectedOverlayId] : [];
+              if (ids.length === 0) { toast.error('Select an overlay or multi-select first'); return; }
+              pasteOverlayStyleToIds(ids);
+            }}
+            disabled={!hasStyleClipboard}
+            title="Paste style to selected/multi-selected overlays (⌘⌥V)"
+          >
+            <ClipboardPaste className="h-4 w-4 mr-1" /> Paste style
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
             <Wand2 className="h-4 w-4 mr-1" /> AI Author
           </Button>
