@@ -510,8 +510,8 @@ export default function TemplateBuilderEdit() {
     try {
       const { buildTemplateBindingContext } = await import('@/lib/reportTemplate/buildBindingContext');
       const ctx = await buildTemplateBindingContext(reportId, {
-        tokens: brand?.tokens ?? {},
-        logoUrl: (brand as any)?.logoUrl ?? null,
+        tokens: (brand as any)?.tokens ?? (brand as any)?.theme?.tokens ?? {},
+        logoUrl: (brand as any)?.logoUrl ?? (brand as any)?.logo?.url ?? null,
       });
       if (!ctx) throw new Error('Report not found or inaccessible');
       setSampleDataText(JSON.stringify(ctx.data, null, 2));
