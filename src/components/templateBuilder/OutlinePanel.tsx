@@ -143,9 +143,14 @@ export function OutlinePanel({
                                   key={o.id}
                                   overlay={o}
                                   active={selectedOverlayId === o.id}
-                                  onClick={() => {
+                                  multiActive={!!multiOverlayIds?.has(o.id)}
+                                  onClick={(e) => {
                                     if (!isActivePage) onSelectPage(p.id);
-                                    onSelectOverlay(o.id);
+                                    if ((e.shiftKey || e.metaKey || e.ctrlKey) && onToggleMultiOverlay) {
+                                      onToggleMultiOverlay(o.id);
+                                    } else {
+                                      onSelectOverlay(o.id);
+                                    }
                                   }}
                                 />
                               ))}
