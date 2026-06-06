@@ -316,9 +316,9 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
 }
 
 
-function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string[] {
+function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string[] {
   const r = block.repeat;
-  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages)];
+  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages, editorMode)];
   const raw = r.path.split('.').reduce((acc: any, k: string) => (acc == null ? acc : acc[k.trim()]), ctxBase.data);
   const items = Array.isArray(raw) ? raw : [];
   const max = r.max ?? items.length;
@@ -335,13 +335,13 @@ function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: Ht
     };
     const itemCtx: ResolveContext = { ...ctxBase, data: { ...ctxBase.data, [alias]: items[i], [`${alias}Index`]: i } };
     const itemBlockCtx: HtmlBlockContext = { ...blockCtx, data: itemCtx.data };
-    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages));
+    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages, editorMode));
   }
   return out;
 }
 
 
-function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[]): string {
+function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[], editorMode = false): string {
   const blockCtx: HtmlBlockContext = {
     ...ctxBase,
     page: { width: page.size.width, height: page.size.height },
@@ -365,7 +365,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
     if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
-    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages));
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages, editorMode));
   }
 
   // Phase 5 — baseline grid (printed when page.baselineGrid.show is true).
@@ -378,7 +378,8 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     baselineEl = `<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to bottom, transparent 0, transparent ${size - 1}pt, ${color} ${size - 1}pt, ${color} ${size}pt);background-position:0 ${offset}pt;"></div>`;
   }
 
-  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
+  const dataAttrs = editorMode ? ` data-page-id="${escapeHtml(String(page.id))}" data-page-index="${pageIndex}"` : '';
+  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}"${dataAttrs} style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
 
 /** Compile a template + data into a print-ready HTML document. */
