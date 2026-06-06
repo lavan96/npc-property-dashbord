@@ -614,6 +614,19 @@ export default function TemplateBuilderEdit() {
       if (e.key === 's') { e.preventDefault(); handleSave(false); }
       else if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
       else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
+      else if (e.altKey && e.key.toLowerCase() === 'c' && !isField) {
+        e.preventDefault();
+        if (selectedOverlay) copyOverlayStyle(selectedOverlay);
+        else if (selectedBlockId) copyBlock(selectedBlockId);
+      }
+      else if (e.altKey && e.key.toLowerCase() === 'v' && !isField) {
+        e.preventDefault();
+        const ids = multiOverlayIds.size > 0
+          ? Array.from(multiOverlayIds)
+          : selectedOverlayId ? [selectedOverlayId] : [];
+        if (hasStyleClipboard && ids.length > 0) pasteOverlayStyleToIds(ids);
+        else pasteBlock();
+      }
       else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
       else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
       else if (e.key === 'd' && selectedBlockId && !isField) { e.preventDefault(); duplicateBlock(selectedBlockId); }
