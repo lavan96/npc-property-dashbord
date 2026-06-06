@@ -100,6 +100,8 @@ export function PropertiesInspector({
             template={template}
             templateId={templateId}
             overlay={overlay}
+            pageId={page?.id ?? null}
+            selectedBlockId={selectedBlockId ?? null}
             onChange={onUpdateOverlay}
             onDelete={() => onDeleteOverlay(overlay.id)}
             onDuplicate={() => onDuplicateOverlay(overlay.id)}
