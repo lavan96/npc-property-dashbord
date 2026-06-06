@@ -16,7 +16,7 @@ interface DocxOptions {
   title?: string;
 }
 
-function flattenPageText(page: any, ctx: ResolveContext): Array<{ y: number; x: number; text: string; size: number; bold: boolean; align: AlignmentType }> {
+function flattenPageText(page: any, ctx: ResolveContext): Array<{ y: number; x: number; text: string; size: number; bold: boolean; align: (typeof AlignmentType)[keyof typeof AlignmentType] }> {
   const items: any[] = [];
   for (const block of page.blocks ?? []) {
     for (const ov of block.overlays ?? []) {
