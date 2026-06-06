@@ -277,6 +277,7 @@ Deno.serve(async (req) => {
       case 'rewrite_copy':    return json(await rewriteCopy(body));
       case 'suggest_bindings':return json(await suggestBindings(body));
       case 'name_suggest':    return json(await nameSuggest(body));
+      case 'generate_cover':  return json(await generateCover(body));
       default: return json({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (e: any) {
