@@ -26,6 +26,8 @@ import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog'
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
 import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
+import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
+import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
@@ -93,6 +95,9 @@ export default function TemplateBuilderEdit() {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
   const [showAIAuthor, setShowAIAuthor] = useState(false);
+  const [showPreviewQA, setShowPreviewQA] = useState(false);
+  const [showComponentLib, setShowComponentLib] = useState(false);
+  const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
@@ -157,6 +162,7 @@ export default function TemplateBuilderEdit() {
     setDescription(tplRow.description || '');
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
+    setCustomCss(((tplRow as any).custom_css as string) || '');
     const parsed = parseTemplate(tplRow.schema);
     setTemplate(parsed);
     setActivePageId(parsed.pages[0]?.id ?? null);
@@ -589,6 +595,7 @@ export default function TemplateBuilderEdit() {
           description,
           report_type: reportType || null,
           tier: tier || null,
+          custom_css: customCss || null,
           schema: template,
         } as any,
       },
