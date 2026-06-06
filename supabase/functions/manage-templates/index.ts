@@ -67,6 +67,38 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   comparison_analysis_templates: '*',
 };
 
+function normaliseTemplateSchema(schema: any): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  const s = JSON.parse(JSON.stringify(schema));
+  s.version = 1;
+  s.tokens = s.tokens && typeof s.tokens === 'object' ? s.tokens : { colors: {}, fonts: {}, spacing: {} };
+  s.tokens.colors = s.tokens.colors && typeof s.tokens.colors === 'object' ? s.tokens.colors : {};
+  s.tokens.fonts = s.tokens.fonts && typeof s.tokens.fonts === 'object' ? s.tokens.fonts : {};
+  s.tokens.spacing = s.tokens.spacing && typeof s.tokens.spacing === 'object' ? s.tokens.spacing : {};
+  s.slots = s.slots && typeof s.slots === 'object' ? s.slots : {};
+  s.pages = Array.isArray(s.pages) ? s.pages : [];
+  for (const page of s.pages) {
+    page.blocks = Array.isArray(page.blocks) ? page.blocks : [];
+    for (const block of page.blocks) {
+      block.overlays = Array.isArray(block.overlays) ? block.overlays : [];
+      for (const overlay of block.overlays) {
+        if (overlay?.type !== 'text') continue;
+        const weight = Number(overlay.fontWeight);
+        overlay.fontWeight = overlay.fontWeight === 'bold' || (Number.isFinite(weight) && weight >= 600) ? 'bold' : 'normal';
+        overlay.fontStyle = overlay.fontStyle === 'italic' ? 'italic' : 'normal';
+        overlay.align = ['left', 'center', 'right', 'justify'].includes(overlay.align) ? overlay.align : 'left';
+      }
+    }
+  }
+  return s;
+}
+
+function normaliseTemplatePayload(table: TableName, payload: any): any {
+  if (!payload || (table !== 'report_templates' && table !== 'report_template_versions')) return payload;
+  const fix = (row: any) => row?.schema ? { ...row, schema: normaliseTemplateSchema(row.schema) } : row;
+  return Array.isArray(payload) ? payload.map(fix) : fix(payload);
+}
+
 Deno.serve(async (req) => {
   // IMPORTANT: Declare corsHeaders BEFORE try block so it's available in catch
   const origin = req.headers.get('origin') || '';
@@ -92,7 +124,8 @@ Deno.serve(async (req) => {
 
     console.log(`[manage-templates] Authenticated user ${userId}, operation: ${body.operation}, table: ${body.table}`);
 
-    const { operation, table, recordId, listOptions = {}, data, onConflict, rpcName, rpcParams } = body;
+    const { operation, table, recordId, listOptions = {}, onConflict, rpcName, rpcParams } = body;
+    const data = normaliseTemplatePayload(table, body.data);
 
     // Validate table
     const validTables: TableName[] = ['report_structure_templates', 'client_branding_profiles', 'integration_configs', 'depreciation_comps', 'depreciation_estimator_runs', 'charts', 'chart_analysis', 'chart_configurations', 'global_report_settings', 'finance_agent_contacts', 'bulk_generation_jobs', 'property_comparisons', 'portfolio_analysis_templates', 'checklist_templates', 'checklist_template_sections', 'checklist_template_items', 'checklist_instances', 'checklist_instance_items', 'game_plans', 'game_plan_phases', 'game_plan_milestones', 'game_plan_kpis', 'game_plan_notes', 'game_plan_actions', 'custom_users', 'cover_page_overlays', 'report_templates', 'report_template_versions', 'comparison_analysis_templates'];

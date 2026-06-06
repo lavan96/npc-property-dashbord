@@ -230,6 +230,18 @@ export function resolveBindable(input: unknown, ctx: ResolveContext): string {
   });
 }
 
+export function resolveTokenReference(input: unknown, ctx: ResolveContext): string {
+  if (input == null) return '';
+  const s = String(input);
+  if (!s.startsWith('token:')) return resolveBindable(input, ctx);
+  const key = s.slice(6);
+  return (
+    ctx.tokens.colors[key] ??
+    ctx.tokens.fonts[key] ??
+    (ctx.tokens.spacing[key] != null ? String(ctx.tokens.spacing[key]) : '')
+  );
+}
+
 /** Resolve a numeric bindable (font sizes, etc.). */
 export function resolveBindableNumber(input: unknown, ctx: ResolveContext, fallback = 0): number {
   if (typeof input === 'number') return input;

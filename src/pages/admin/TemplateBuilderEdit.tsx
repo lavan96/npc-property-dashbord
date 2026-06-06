@@ -11,10 +11,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
+  ArrowLeft, Save, Eye, Loader2, History, Code2, Layout,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
-  RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock,
+  RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
@@ -123,8 +123,7 @@ export default function TemplateBuilderEdit() {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(true);
-  const [previewMode, setPreviewMode] = useState<'live' | 'pdf'>('live');
+  const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('preview');
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
 
   // ── Undo / redo history ────────────────────────────────────────────────────
@@ -224,8 +223,20 @@ export default function TemplateBuilderEdit() {
     const parsed = parseTemplate(tplRow.schema);
     skipHistoryRef.current = true;
     setTemplate(parsed);
-    setActivePageId((prev) => prev ?? parsed.pages[0]?.id ?? null);
+    setActivePageId((prev) => parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null);
   }, [tplRow, setTemplate]);
+
+  useEffect(() => {
+    if (!template.pages.length) {
+      if (activePageId) setActivePageId(null);
+      return;
+    }
+    if (!activePageId || !template.pages.some((p) => p.id === activePageId)) {
+      setActivePageId(template.pages[0].id);
+      setSelectedOverlayId(null);
+      setSelectedBlockId(null);
+    }
+  }, [template.pages, activePageId]);
 
   const reloadTplMeta = useCallback(async () => {
     if (!id) return;
@@ -688,17 +699,6 @@ export default function TemplateBuilderEdit() {
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
-  const issuesByPage = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const issue of bindingIssues) {
-      const m = /^Page (\d+)/.exec(issue.where);
-      if (m) {
-        const idx = Number(m[1]) - 1;
-        map.set(idx, (map.get(idx) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [bindingIssues]);
   // ── Print-safety lint (live) ────────────────────────────────────────────────
   const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
 
@@ -709,7 +709,7 @@ export default function TemplateBuilderEdit() {
   const blobRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!showPreview || previewMode !== 'pdf') return;
+    if (workspaceMode !== 'pdf') return;
     setPreviewing(true);
     setPreviewError(null);
     let cancelled = false;
@@ -729,7 +729,7 @@ export default function TemplateBuilderEdit() {
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, showPreview, sampleData, previewMode]);
+  }, [template, sampleData, workspaceMode]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
@@ -804,7 +804,7 @@ export default function TemplateBuilderEdit() {
           save: () => handleSave(false),
           saveSnapshot: () => handleSave(true),
           undo, redo,
-          togglePreview: () => setShowPreview((s) => !s),
+          togglePreview: () => setWorkspaceMode((m) => (m === 'canvas' ? 'preview' : 'canvas')),
           exportJson: handleExport,
           importJson: () => fileInputRef.current?.click(),
           copyJson: async () => {
@@ -1185,10 +1185,17 @@ export default function TemplateBuilderEdit() {
               />
             </div>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
-            {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
-            Preview
-          </Button>
+          <div className="flex items-center rounded-md border bg-muted/30 p-0.5">
+            <Button variant={workspaceMode === 'preview' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('preview')}>
+              <Eye className="h-3.5 w-3.5 mr-1" /> Preview
+            </Button>
+            <Button variant={workspaceMode === 'canvas' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('canvas')}>
+              <Layout className="h-3.5 w-3.5 mr-1" /> Canvas
+            </Button>
+            <Button variant={workspaceMode === 'pdf' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('pdf')}>
+              <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
+          </div>
           <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={update.isPending}>
             <History className="h-4 w-4 mr-1" /> Save version
           </Button>
@@ -1217,9 +1224,7 @@ export default function TemplateBuilderEdit() {
           <div
             className="grid h-full gap-0"
             style={{
-              gridTemplateColumns: showPreview
-                ? '220px minmax(0, 1fr) 320px 360px'
-                : '220px minmax(0, 1fr) 320px',
+              gridTemplateColumns: '220px minmax(0, 1fr) 320px',
             }}
           >
             <PagesPanel
@@ -1238,7 +1243,45 @@ export default function TemplateBuilderEdit() {
             />
 
             <div className="relative bg-muted/30 min-h-0">
-              {activePage ? (
+              {workspaceMode === 'preview' ? (
+                <LiveHtmlPreview
+                  template={template}
+                  sampleData={sampleData}
+                  customCss={customCss || undefined}
+                  activePageId={activePageId}
+                  selectedBlockId={selectedBlockId}
+                  scope={previewScope}
+                  onScopeChange={setPreviewScope}
+                  onSelect={({ blockId, pageId }) => {
+                    if (pageId && pageId !== activePageId) setActivePageId(pageId);
+                    if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
+                  }}
+                />
+              ) : workspaceMode === 'pdf' ? (
+                <div className="absolute inset-0 flex flex-col bg-background">
+                  <div className="px-3 py-2 border-b flex items-center gap-2 text-xs">
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-medium">PDF preview</span>
+                    {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-h-0 p-3">
+                    {previewError ? (
+                      <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center">
+                        {previewError}
+                      </div>
+                    ) : previewUrl ? (
+                      <iframe
+                        key={previewUrl}
+                        src={previewUrl}
+                        title="PDF preview"
+                        className="w-full h-full rounded-md bg-white"
+                      />
+                    ) : (
+                      <Skeleton className="w-full h-full" />
+                    )}
+                  </div>
+                </div>
+              ) : activePage ? (
                 <>
                   <TemplateCanvas
                     key={activePage.id}
@@ -1293,114 +1336,6 @@ export default function TemplateBuilderEdit() {
               />
             </div>
 
-            {showPreview && (
-              <div className="border-l bg-background flex flex-col min-h-0">
-                <div className="px-3 py-1.5 border-b flex items-center gap-2 text-xs">
-                  <Eye className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-medium">Preview</span>
-                  <div className="ml-1 flex items-center rounded border bg-muted/40">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewMode('live')}
-                      className={`px-2 py-0.5 text-[10px] ${previewMode === 'live' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                      title="Live HTML — instant, click to select"
-                    >
-                      Live
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewMode('pdf')}
-                      className={`px-2 py-0.5 text-[10px] ${previewMode === 'pdf' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                      title="jsPDF rendering"
-                    >
-                      PDF
-                    </button>
-                  </div>
-                  {previewMode === 'pdf' && previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                </div>
-                {/* Page thumbnails strip */}
-                <ScrollArea className="border-b max-h-40 flex-shrink-0">
-                  <div className="flex gap-2 p-2">
-                    {template.pages.map((p, i) => {
-                      const errCount = issuesByPage.get(i) ?? 0;
-                      const isActive = p.id === activePageId;
-                      const ratio = (p.size?.width ?? 595) / (p.size?.height ?? 842);
-                      const W = 70;
-                      const H = Math.round(W / ratio);
-                      const bg = p.background?.color && typeof p.background.color === 'string' && p.background.color.startsWith('#') ? p.background.color : '#ffffff';
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => { setActivePageId(p.id); setSelectedOverlayId(null); setSelectedBlockId(null); }}
-                          className={`relative flex flex-col items-center gap-1 rounded border p-1 transition-colors ${
-                            isActive ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'
-                          }`}
-                          title={`${p.name}${errCount ? ` — ${errCount} binding issue${errCount === 1 ? '' : 's'}` : ''}`}
-                        >
-                          <svg
-                            width={W}
-                            height={H}
-                            viewBox={`0 0 ${p.size?.width ?? 595} ${p.size?.height ?? 842}`}
-                            className="rounded-sm"
-                            style={{ background: bg }}
-                          >
-                            {p.blocks.flatMap((b) =>
-                              b.overlays.map((o) => (
-                                <rect
-                                  key={o.id}
-                                  x={o.x}
-                                  y={o.y}
-                                  width={Math.max(o.width, 4)}
-                                  height={Math.max(o.height, 4)}
-                                  fill={o.type === 'text' ? '#94a3b8' : o.type === 'image' ? '#cbd5e1' : '#a78bfa'}
-                                  opacity={0.7}
-                                />
-                              )),
-                            )}
-                          </svg>
-                          <span className="text-[10px] text-muted-foreground leading-none">{i + 1}</span>
-                          {errCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] leading-none rounded-full min-w-[14px] h-[14px] px-1 flex items-center justify-center font-semibold">
-                              {errCount}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-                <div className="flex-1 min-h-0">
-                  {previewMode === 'live' ? (
-                    <LiveHtmlPreview
-                      template={template}
-                      sampleData={sampleData}
-                      customCss={customCss || undefined}
-                      activePageId={activePageId}
-                      selectedBlockId={selectedBlockId}
-                      scope={previewScope}
-                      onScopeChange={setPreviewScope}
-                      onSelect={({ blockId, pageId }) => {
-                        if (pageId && pageId !== activePageId) setActivePageId(pageId);
-                        if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
-                      }}
-                    />
-                  ) : previewError ? (
-                    <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center m-2">
-                      {previewError}
-                    </div>
-                  ) : previewUrl ? (
-                    <iframe
-                      key={previewUrl}
-                      src={previewUrl}
-                      title="PDF preview"
-                      className="w-full h-full rounded-md bg-white"
-                    />
-                  ) : (
-                    <Skeleton className="w-full h-full" />
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </TabsContent>
 

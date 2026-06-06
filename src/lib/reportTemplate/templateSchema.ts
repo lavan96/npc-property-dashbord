@@ -99,7 +99,12 @@ export const TextOverlaySchema = BaseOverlay.extend({
   content: BindableStringSchema,
   fontFamily: BindableStringSchema.default('Helvetica'),
   fontSize: BindableNumberSchema.default(12),
-  fontWeight: z.enum(['normal', 'bold']).default('normal'),
+  fontWeight: z.preprocess((value) => {
+    if (value === 'bold' || value === 'normal') return value;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric >= 600 ? 'bold' : 'normal';
+    return 'normal';
+  }, z.enum(['normal', 'bold'])).default('normal'),
   fontStyle: z.enum(['normal', 'italic']).default('normal'),
   color: BindableColorSchema.default('#000000'),
   align: z.enum(['left', 'center', 'right', 'justify']).default('left'),
@@ -402,7 +407,81 @@ export function parseTemplate(input: unknown): ReportTemplate {
   const result = ReportTemplateSchema.safeParse(input);
   if (!result.success) {
     console.warn('[templateSchema] Failed to parse template, using empty', result.error.flatten());
-    return EMPTY_TEMPLATE;
+    const fallback = salvageTemplate(input);
+    return fallback ?? EMPTY_TEMPLATE;
   }
   return result.data;
+}
+
+function normaliseFontWeight(value: unknown): 'normal' | 'bold' {
+  if (value === 'bold' || value === 'normal') return value;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 600 ? 'bold' : 'normal';
+}
+
+/** Best-effort recovery for older/AI-authored templates with minor schema drift. */
+function salvageTemplate(input: unknown): ReportTemplate | null {
+  if (!input || typeof input !== 'object') return null;
+  try {
+    const copy: any = JSON.parse(JSON.stringify(input));
+    copy.version = 1;
+    copy.tokens = copy.tokens && typeof copy.tokens === 'object' ? copy.tokens : DEFAULT_BRAND_TOKENS;
+    copy.tokens.colors = copy.tokens.colors && typeof copy.tokens.colors === 'object' ? copy.tokens.colors : {};
+    copy.tokens.fonts = copy.tokens.fonts && typeof copy.tokens.fonts === 'object' ? copy.tokens.fonts : {};
+    copy.tokens.spacing = copy.tokens.spacing && typeof copy.tokens.spacing === 'object' ? copy.tokens.spacing : {};
+    copy.slots = copy.slots && typeof copy.slots === 'object' ? copy.slots : {};
+    copy.pages = Array.isArray(copy.pages) ? copy.pages : [];
+    for (const page of copy.pages) {
+      page.id = String(page.id || crypto.randomUUID());
+      page.name = String(page.name || 'Page');
+      page.size = {
+        width: Number(page.size?.width) || 595,
+        height: Number(page.size?.height) || 842,
+      };
+      page.background = page.background && typeof page.background === 'object' ? page.background : {};
+      page.blocks = Array.isArray(page.blocks) ? page.blocks : [];
+      for (const block of page.blocks) {
+        block.id = String(block.id || crypto.randomUUID());
+        block.type = String(block.type || 'free');
+        block.props = block.props && typeof block.props === 'object' ? block.props : {};
+        block.overlays = Array.isArray(block.overlays) ? block.overlays : [];
+        for (const overlay of block.overlays) {
+          overlay.id = String(overlay.id || crypto.randomUUID());
+          overlay.x = Number(overlay.x) || 0;
+          overlay.y = Number(overlay.y) || 0;
+          overlay.width = Number(overlay.width) || 1;
+          overlay.height = Number(overlay.height) || 1;
+          overlay.rotation = Number(overlay.rotation) || 0;
+          overlay.opacity = Math.min(1, Math.max(0, Number(overlay.opacity ?? 1)));
+          if (overlay.type === 'text') {
+            overlay.content = String(overlay.content ?? '');
+            overlay.fontFamily = overlay.fontFamily ?? 'Helvetica';
+            overlay.fontSize = overlay.fontSize ?? 12;
+            overlay.fontWeight = normaliseFontWeight(overlay.fontWeight);
+            overlay.fontStyle = overlay.fontStyle === 'italic' ? 'italic' : 'normal';
+            overlay.color = overlay.color ?? '#000000';
+            overlay.align = ['left', 'center', 'right', 'justify'].includes(overlay.align) ? overlay.align : 'left';
+            overlay.lineHeight = Number(overlay.lineHeight) || 1.3;
+            overlay.letterSpacing = Number(overlay.letterSpacing) || 0;
+          } else if (overlay.type === 'shape') {
+            overlay.shape = ['rect', 'line', 'ellipse'].includes(overlay.shape) ? overlay.shape : 'rect';
+            overlay.strokeWidth = Number(overlay.strokeWidth) || 0;
+            overlay.borderRadius = Number(overlay.borderRadius) || 0;
+          } else if (overlay.type === 'image') {
+            overlay.src = String(overlay.src ?? '');
+            overlay.fit = ['cover', 'contain', 'fill'].includes(overlay.fit) ? overlay.fit : 'cover';
+          }
+        }
+      }
+    }
+    const retried = ReportTemplateSchema.safeParse(copy);
+    if (!retried.success) {
+      console.warn('[templateSchema] Salvage failed', retried.error.flatten());
+      return null;
+    }
+    return retried.data;
+  } catch (error) {
+    console.warn('[templateSchema] Salvage threw', error);
+    return null;
+  }
 }
