@@ -101,8 +101,8 @@ export function TemplateDesignAgentPanel({
         </SheetHeader>
 
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full" viewportRef={scrollRef as any}>
-            <div className="px-5 py-4 space-y-4">
+          <ScrollArea className="h-full">
+            <div className="px-5 py-4 space-y-4" ref={scrollRef}>
               {messages.length === 0 && (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">Try one of these:</p>
