@@ -913,7 +913,7 @@ export default function TemplateBuilderEdit() {
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
   // ── Print-safety lint (live) ────────────────────────────────────────────────
-  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
+  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template, sampleData), [template, sampleData]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -930,19 +930,42 @@ export default function TemplateBuilderEdit() {
       try {
         const prepared = await preloadImages(template);
         if (cancelled) return;
-        const blob = renderTemplateToBlob(prepared, { data: sampleData });
-        const url = URL.createObjectURL(blob);
-        if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-        blobRef.current = url;
-        setPreviewUrl(url);
+        // Production parity: render via WeasyPrint (same engine as final PDFs).
+        const { html } = renderTemplateToHtml(prepared, {
+          data: sampleData,
+          title: name || 'Template Preview',
+          customCss: customCss || undefined,
+        });
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess?.session?.access_token;
+        const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+        const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            html,
+            fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}-preview.pdf`,
+            templateId: id,
+            mode: 'preview',
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+        if (cancelled) return;
+        setPreviewUrl(json.url as string);
       } catch (e: any) {
         if (!cancelled) setPreviewError(e?.message ?? 'Render failed');
       } finally {
         if (!cancelled) setPreviewing(false);
       }
-    }, 500);
+    }, 1500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, sampleData, workspaceMode]);
+  }, [template, sampleData, workspaceMode, customCss, name, id]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
