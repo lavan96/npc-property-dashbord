@@ -30,6 +30,8 @@ interface Props {
   onSelectBlock: (blockId: string | null) => void;
   onSelectOverlay: (overlayId: string | null) => void;
   onChangeTemplate: (next: ReportTemplate) => void;
+  multiOverlayIds?: Set<string>;
+  onToggleMultiOverlay?: (overlayId: string) => void;
 }
 
 export function OutlinePanel({
