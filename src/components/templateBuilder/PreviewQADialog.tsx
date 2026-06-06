@@ -41,8 +41,8 @@ export function PreviewQADialog({ open, onOpenChange, template, sampleData, cust
   }, [template]);
 
   const bindingIssues = useMemo(() => {
-    try { return collectTemplateIssues(template, sampleData ?? {}); } catch { return []; }
-  }, [template, sampleData]);
+    try { return collectTemplateIssues(template); } catch { return []; }
+  }, [template]);
 
   const stats = useMemo(() => computeStats(template), [template]);
 
