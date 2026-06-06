@@ -161,8 +161,21 @@ export default function TemplateBuilderEdit() {
 
   // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
   const clipboardRef = useRef<Block | null>(null);
-
-  // Hydrate from server
+  // ── Style clipboard (overlay style copy/paste) ──────────────────────────────
+  const styleClipboardRef = useRef<Partial<Overlay> | null>(null);
+  const [hasStyleClipboard, setHasStyleClipboard] = useState(false);
+  // ── Multi-select (overlay ids on active page) ───────────────────────────────
+  const [multiOverlayIds, setMultiOverlayIds] = useState<Set<string>>(new Set());
+  const toggleMultiOverlay = useCallback((oid: string) => {
+    setMultiOverlayIds((prev) => {
+      const n = new Set(prev);
+      n.has(oid) ? n.delete(oid) : n.add(oid);
+      return n;
+    });
+  }, []);
+  const clearMultiSelect = useCallback(() => setMultiOverlayIds(new Set()), []);
+  // ── Page templates marketplace dialog ───────────────────────────────────────
+  const [showPageMarket, setShowPageMarket] = useState(false);
   useEffect(() => {
     if (!tplRow) return;
     setName(tplRow.name || '');
