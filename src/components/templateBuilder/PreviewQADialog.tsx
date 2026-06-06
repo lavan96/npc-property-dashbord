@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Download, RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, Eye } from 'lucide-react';
-import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { renderTemplateViaWeasyPrint } from '@/lib/reportTemplate/weasyPreview';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
@@ -51,11 +51,18 @@ export function PreviewQADialog({ open, onOpenChange, template, sampleData, cust
     try {
       const { html } = renderTemplateToHtml(template, { data: sampleData ?? {}, customCss });
       setHtmlSrc(html);
-      const blob = await renderTemplateToBlob(template, { data: sampleData ?? {} });
+      // Production parity: render the PDF preview through WeasyPrint (same
+      // engine as the customer-facing export). This replaces the legacy jsPDF
+      // path, which could only ship Helvetica/Times/Courier.
+      const res = await renderTemplateViaWeasyPrint(template, {
+        data: sampleData ?? {},
+        customCss,
+        templateId: (template as any)?.id ?? null,
+        mode: 'preview',
+      });
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-      setPdfSize(blob.size);
+      setPdfUrl(res.url);
+      setPdfSize(res.bytes ?? 0);
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
