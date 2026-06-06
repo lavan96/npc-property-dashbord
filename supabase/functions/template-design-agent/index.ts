@@ -330,10 +330,12 @@ Deno.serve(async (req) => {
     const activePageId: string | undefined = body.activePageId;
     const selectedBlockId: string | undefined = body.selectedBlockId;
     const selectedOverlayId: string | undefined = body.selectedOverlayId;
-    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' = body.mode || 'design';
+    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' = body.mode || 'design';
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
+    const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
+    const sampleData: any = body.sampleData ?? null;
 
-    if (!userInstruction?.trim() && !imageDataUrl) return json({ error: 'empty instruction' }, 400);
+    if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
 
     // Mode-specific system addendum
     let modeAddendum = '';
@@ -348,13 +350,26 @@ Analyse the image: identify sections, headings, body copy, KPI numbers, accent s
     } else if (mode === 'inline_text') {
       modeAddendum = `\n\n[INLINE TEXT MODE]
 Modify ONLY the selected text overlay (overlay id=${selectedOverlayId}, block id=${selectedBlockId}, page id=${activePageId}). Emit exactly one update_overlay operation patching the "content" field. Do not change anything else. Preserve bindings ({{...}} tokens) unless the user explicitly asks to remove them.`;
+    } else if (mode === 'auto_fill') {
+      modeAddendum = `\n\n[AUTO-FILL MODE]
+Walk the entire template. For every text overlay whose content is empty, a placeholder (Lorem ipsum / "Heading" / "Subtitle" / etc.), or an unresolvable binding, replace it with a concrete, well-written value drawn from SAMPLE DATA below.
+- Prefer keeping a {{binding}} when sample data has the value at that path. Only inline a literal when the path is missing or the placeholder is clearly generic.
+- For headings/eyebrows, write crisp 2–6 word lines. For body copy, 1–3 short sentences in the document's tone.
+- Use update_overlay only. Do NOT add new blocks/pages. Cap at ~40 ops.
+SAMPLE DATA (JSON):
+${JSON.stringify(sampleData ?? {}, null, 2).slice(0, 4000)}`;
     }
+
+    // Persistent memory facts about this template (brand voice, do/don'ts, etc.)
+    const memoryBlock = memoryFacts.length
+      ? `\n\nPERSISTENT MEMORY (apply to every turn):\n${memoryFacts.map((f, i) => `  ${i + 1}. ${f}`).join('\n')}`
+      : '';
 
     const context = `CURRENT TEMPLATE OUTLINE:
 ${outline(schema)}
 
 ACTIVE SELECTION:
-  page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}`;
+  page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}${memoryBlock}`;
 
     const useVision = !!imageDataUrl;
 
@@ -373,8 +388,13 @@ ACTIVE SELECTION:
           { type: 'image_url', image_url: { url: imageDataUrl } },
         ],
       });
-    } else if (messages[messages.length - 1]?.content !== userInstruction) {
-      messages.push({ role: 'user', content: userInstruction });
+    } else {
+      const finalText = userInstruction || (mode === 'auto_fill'
+        ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.'
+        : '');
+      if (finalText && messages[messages.length - 1]?.content !== finalText) {
+        messages.push({ role: 'user', content: finalText });
+      }
     }
 
     const aiResp = await fetch(GATEWAY_URL, {

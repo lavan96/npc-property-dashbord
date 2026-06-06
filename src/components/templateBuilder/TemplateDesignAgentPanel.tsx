@@ -1,16 +1,20 @@
 /**
  * Slide-over chat panel that drives the Template Design Agent.
  *
- * Adds (Tier 1):
- *  - Plan Preview: every turn returns a candidate schema + ops list, user
- *    clicks Apply or Discard. Toggle to auto-apply for fast iteration.
- *  - AI Art Director: one-click "polish this page" pass.
- *  - Screenshot-to-Block: attach an image, the agent recreates the design.
- *  - Multi-turn memory (already), now surfaces a turn counter.
+ * Tier 1 capabilities:
+ *  - Plan Preview (Apply / Discard or auto-apply toggle)
+ *  - AI Art Director ("Polish page")
+ *  - Screenshot-to-Block (image attachment)
+ *  - Voice-to-edit (hold-to-talk via Web Speech API)
+ *  - Auto-fill from sample data (one-click placeholder population)
+ *  - Multi-turn agent memory per template:
+ *      • chat history persisted in localStorage by templateId
+ *      • named "memory facts" persisted in localStorage and included in every prompt
  */
 import { useEffect, useRef, useState } from 'react';
 import {
-  Sparkles, Send, RotateCcw, Loader2, Wand2, ImagePlus, X, Check, Eye, Palette, Brush,
+  Sparkles, Send, RotateCcw, Loader2, Wand2, ImagePlus, X, Check, Eye, Brush,
+  Mic, MicOff, Database, Brain, Plus,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -18,13 +22,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import ReactMarkdown from 'react-markdown';
 
-type AgentMode = 'design' | 'art_director' | 'screenshot_to_block';
+type AgentMode = 'design' | 'art_director' | 'screenshot_to_block' | 'auto_fill';
 
 type Pending = {
   reply: string;
@@ -50,6 +56,8 @@ interface Props {
   activePageId: string | null;
   selectedBlockId: string | null;
   selectedOverlayId: string | null;
+  templateId?: string;
+  sampleData?: any;
 }
 
 const PRESETS = [
@@ -60,6 +68,9 @@ const PRESETS = [
   'Tighten the typography across every page: heading 32pt, body 11pt, line-height 1.4.',
 ];
 
+const memKey = (tid?: string) => `tpl-agent-mem::${tid || 'unbound'}`;
+const factKey = (tid?: string) => `tpl-agent-facts::${tid || 'unbound'}`;
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -67,6 +78,41 @@ async function fileToDataUrl(file: File): Promise<string> {
     r.onerror = reject;
     r.readAsDataURL(file);
   });
+}
+
+// ── Voice-to-edit (Web Speech API) ──────────────────────────────────────────
+function useSpeech(onResult: (text: string) => void) {
+  const recRef = useRef<any>(null);
+  const [listening, setListening] = useState(false);
+  const supported = typeof window !== 'undefined' &&
+    ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  const start = () => {
+    if (!supported) { toast.error('Voice input not supported in this browser'); return; }
+    const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const rec = new Ctor();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'en-AU';
+    let finalText = '';
+    rec.onresult = (e: any) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t + ' ';
+        else interim += t;
+      }
+      onResult((finalText + interim).trim());
+    };
+    rec.onerror = (e: any) => { toast.error(`Voice: ${e.error || 'error'}`); setListening(false); };
+    rec.onend = () => setListening(false);
+    rec.start();
+    recRef.current = rec;
+    setListening(true);
+  };
+  const stop = () => { try { recRef.current?.stop(); } catch {} setListening(false); };
+  useEffect(() => () => { try { recRef.current?.stop(); } catch {} }, []);
+  return { listening, start, stop, supported: !!supported };
 }
 
 export function TemplateDesignAgentPanel({
@@ -77,6 +123,8 @@ export function TemplateDesignAgentPanel({
   activePageId,
   selectedBlockId,
   selectedOverlayId,
+  templateId,
+  sampleData,
 }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -84,8 +132,32 @@ export function TemplateDesignAgentPanel({
   const [autoApply, setAutoApply] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
+  const [memoryFacts, setMemoryFacts] = useState<string[]>([]);
+  const [newFact, setNewFact] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const speech = useSpeech((t) => setInput(t));
+
+  // ── Hydrate chat memory + memory facts per template ───────────────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(memKey(templateId));
+      setMessages(raw ? JSON.parse(raw) : []);
+    } catch { setMessages([]); }
+    try {
+      const raw = localStorage.getItem(factKey(templateId));
+      setMemoryFacts(raw ? JSON.parse(raw) : []);
+    } catch { setMemoryFacts([]); }
+    setPending(null);
+  }, [templateId]);
+
+  // Persist on change (cap to ~50 messages)
+  useEffect(() => {
+    try { localStorage.setItem(memKey(templateId), JSON.stringify(messages.slice(-50))); } catch {}
+  }, [messages, templateId]);
+  useEffect(() => {
+    try { localStorage.setItem(factKey(templateId), JSON.stringify(memoryFacts)); } catch {}
+  }, [memoryFacts, templateId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -95,7 +167,7 @@ export function TemplateDesignAgentPanel({
     const instruction = (opts?.text ?? input).trim();
     const image = opts?.image ?? attachedImage;
     const mode: AgentMode = opts?.mode ?? (image ? 'screenshot_to_block' : 'design');
-    if (!instruction && !image) return;
+    if (!instruction && !image && mode !== 'auto_fill') return;
     if (busy) return;
 
     setInput('');
@@ -104,7 +176,9 @@ export function TemplateDesignAgentPanel({
 
     const userMsg: Msg = {
       role: 'user',
-      content: instruction || (image ? 'Recreate this design on the active page.' : ''),
+      content: instruction || (mode === 'auto_fill'
+        ? '🪄 Auto-fill placeholders from sample data'
+        : image ? 'Recreate this design on the active page.' : ''),
       attachmentLabel: image?.name,
     };
     const nextMsgs: Msg[] = [...messages, userMsg];
@@ -121,6 +195,8 @@ export function TemplateDesignAgentPanel({
           selectedOverlayId,
           mode,
           imageDataUrl: image?.dataUrl,
+          memoryFacts,
+          sampleData: mode === 'auto_fill' ? sampleData : undefined,
         },
       });
       if (error) throw new Error(error.message);
@@ -168,12 +244,25 @@ export function TemplateDesignAgentPanel({
     });
   };
 
+  const autoFillFromData = () => {
+    if (!sampleData) { toast.error('No sample data available'); return; }
+    send({ text: '', mode: 'auto_fill' });
+  };
+
   const handleImagePick = async (file: File) => {
     if (file.size > 6 * 1024 * 1024) { toast.error('Image too large (max 6MB)'); return; }
     const dataUrl = await fileToDataUrl(file);
     setAttachedImage({ name: file.name, dataUrl });
     toast.success(`Attached "${file.name}" — describe what you want, then Send.`);
   };
+
+  const addFact = () => {
+    const f = newFact.trim();
+    if (!f) return;
+    setMemoryFacts((arr) => [...arr, f]);
+    setNewFact('');
+  };
+  const removeFact = (i: number) => setMemoryFacts((arr) => arr.filter((_, k) => k !== i));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -185,24 +274,71 @@ export function TemplateDesignAgentPanel({
             {messages.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">turn {Math.ceil(messages.length / 2)}</Badge>
             )}
+            {memoryFacts.length > 0 && (
+              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                <Brain className="h-2.5 w-2.5 mr-0.5" /> {memoryFacts.length} memory
+              </Badge>
+            )}
           </SheetTitle>
           <SheetDescription>
-            Multi-step instructions, screenshot-to-block, AI Art Director — every change previews before it applies.
+            Multi-step instructions, screenshot-to-block, voice, auto-fill, AI Art Director. Memory persists per template.
           </SheetDescription>
-          <div className="flex items-center gap-4 pt-1">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
+            <div className="flex items-center gap-2 mr-auto">
               <Switch id="auto-apply" checked={autoApply} onCheckedChange={setAutoApply} />
               <Label htmlFor="auto-apply" className="text-[11px] text-muted-foreground cursor-pointer">
                 Auto-apply (skip preview)
               </Label>
             </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" title="Persistent memory facts">
+                  <Brain className="h-3 w-3" /> Memory
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-3 space-y-2">
+                <div className="text-[11px] font-semibold">Persistent memory for this template</div>
+                <p className="text-[10px] text-muted-foreground">
+                  Brand voice, do/don'ts, terminology. Included in every turn.
+                </p>
+                <div className="space-y-1 max-h-40 overflow-auto">
+                  {memoryFacts.length === 0 && (
+                    <div className="text-[10px] text-muted-foreground italic">No facts yet.</div>
+                  )}
+                  {memoryFacts.map((f, i) => (
+                    <div key={i} className="flex items-start gap-1 text-[11px] bg-muted/40 rounded px-2 py-1">
+                      <span className="flex-1 break-words">{f}</span>
+                      <button onClick={() => removeFact(i)} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <Input
+                    value={newFact}
+                    onChange={(e) => setNewFact(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFact(); } }}
+                    placeholder="e.g. Brand voice: editorial, never use exclamation marks."
+                    className="h-7 text-[11px]"
+                  />
+                  <Button size="sm" variant="outline" onClick={addFact} className="h-7 px-2">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
-              size="sm"
-              variant="outline"
-              className="ml-auto h-7 gap-1 text-[11px]"
-              onClick={polishActivePage}
-              disabled={busy || !activePageId}
-              title="Run an AI Art Director pass on the active page"
+              size="sm" variant="outline" className="h-7 gap-1 text-[11px]"
+              onClick={autoFillFromData} disabled={busy || !sampleData}
+              title="Populate empty placeholders from the sample data"
+            >
+              <Database className="h-3 w-3" /> Auto-fill
+            </Button>
+            <Button
+              size="sm" variant="outline" className="h-7 gap-1 text-[11px]"
+              onClick={polishActivePage} disabled={busy || !activePageId}
+              title="AI Art Director pass on the active page"
             >
               <Brush className="h-3 w-3" /> Polish page
             </Button>
@@ -320,7 +456,7 @@ export function TemplateDesignAgentPanel({
             }}
             placeholder={attachedImage
               ? 'Optionally describe what to keep/change in the screenshot… (Cmd/Ctrl + Enter to send)'
-              : 'Describe one or more changes… (Cmd/Ctrl + Enter to send)'}
+              : speech.listening ? '🎙 Listening… speak now.' : 'Describe one or more changes… (Cmd/Ctrl + Enter to send)'}
             className="min-h-[72px] resize-none"
             disabled={busy}
           />
@@ -336,6 +472,18 @@ export function TemplateDesignAgentPanel({
               <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()} disabled={busy} title="Attach a screenshot for the agent to recreate">
                 <ImagePlus className="h-4 w-4" />
               </Button>
+              {speech.supported && (
+                <Button
+                  variant={speech.listening ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => speech.listening ? speech.stop() : speech.start()}
+                  disabled={busy}
+                  title={speech.listening ? 'Stop voice input' : 'Voice-to-edit (Web Speech)'}
+                  className={speech.listening ? 'animate-pulse' : ''}
+                >
+                  {speech.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => { setMessages([]); setPending(null); }} disabled={busy || (!messages.length && !pending)}>
                 <RotateCcw className="h-3.5 w-3.5 mr-1" /> New chat
               </Button>

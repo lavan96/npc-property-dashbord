@@ -13,8 +13,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
-  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2,
+  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
 } from 'lucide-react';
+import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
+import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
@@ -159,8 +161,21 @@ export default function TemplateBuilderEdit() {
 
   // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
   const clipboardRef = useRef<Block | null>(null);
-
-  // Hydrate from server
+  // ── Style clipboard (overlay style copy/paste) ──────────────────────────────
+  const styleClipboardRef = useRef<Partial<Overlay> | null>(null);
+  const [hasStyleClipboard, setHasStyleClipboard] = useState(false);
+  // ── Multi-select (overlay ids on active page) ───────────────────────────────
+  const [multiOverlayIds, setMultiOverlayIds] = useState<Set<string>>(new Set());
+  const toggleMultiOverlay = useCallback((oid: string) => {
+    setMultiOverlayIds((prev) => {
+      const n = new Set(prev);
+      n.has(oid) ? n.delete(oid) : n.add(oid);
+      return n;
+    });
+  }, []);
+  const clearMultiSelect = useCallback(() => setMultiOverlayIds(new Set()), []);
+  // ── Page templates marketplace dialog ───────────────────────────────────────
+  const [showPageMarket, setShowPageMarket] = useState(false);
   useEffect(() => {
     if (!tplRow) return;
     setName(tplRow.name || '');
@@ -177,6 +192,7 @@ export default function TemplateBuilderEdit() {
     () => template.pages.find((p) => p.id === activePageId) ?? null,
     [template, activePageId],
   );
+  useEffect(() => { setMultiOverlayIds(new Set()); }, [activePageId]);
 
   const selectedOverlay = useMemo<Overlay | null>(() => {
     if (!activePage || !selectedOverlayId) return null;
@@ -469,7 +485,76 @@ export default function TemplateBuilderEdit() {
     toast.success(`Pasted "${copy.type}"`);
   };
 
-  // ── Import / export template JSON ───────────────────────────────────────────
+  // ── Style copy/paste (overlays) ─────────────────────────────────────────────
+  const STYLE_KEYS = [
+    'fontFamily','fontSize','fontWeight','fontStyle','color','align','lineHeight',
+    'opacity','rotation','fill','stroke','strokeWidth','borderRadius','letterSpacing','textTransform',
+  ] as const;
+  const extractStyle = (o: Overlay): Partial<Overlay> => {
+    const out: any = {};
+    for (const k of STYLE_KEYS) if ((o as any)[k] !== undefined) out[k] = (o as any)[k];
+    return out;
+  };
+  const copyOverlayStyle = (o: Overlay | null) => {
+    if (!o) { toast.error('Select an overlay first'); return; }
+    styleClipboardRef.current = extractStyle(o);
+    setHasStyleClipboard(true);
+    toast.success('Style copied');
+  };
+  const pasteOverlayStyleToIds = (ids: string[]) => {
+    if (!activePage) return;
+    const style = styleClipboardRef.current;
+    if (!style) { toast.error('Copy a style first'); return; }
+    const idSet = new Set(ids);
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.map((o) => (idSet.has(o.id) ? { ...o, ...style } as Overlay : o)),
+      })),
+    });
+    toast.success(`Pasted style to ${ids.length} overlay${ids.length === 1 ? '' : 's'}`);
+  };
+
+  // ── Bulk operations on multi-selected overlays ──────────────────────────────
+  const bulkPatchOverlays = (patch: Partial<Overlay>) => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.map((o) => (multiOverlayIds.has(o.id) ? { ...o, ...patch } as Overlay : o)),
+      })),
+    });
+  };
+  const bulkDeleteOverlays = () => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    const n = multiOverlayIds.size;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.filter((o) => !multiOverlayIds.has(o.id)),
+      })),
+    });
+    clearMultiSelect();
+    toast.success(`Deleted ${n} overlay${n === 1 ? '' : 's'}`);
+  };
+  const bulkCopyStyleFromFirst = () => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    for (const b of activePage.blocks) {
+      for (const o of b.overlays) {
+        if (multiOverlayIds.has(o.id)) {
+          styleClipboardRef.current = extractStyle(o);
+          setHasStyleClipboard(true);
+          toast.success('Style copied from first selected');
+          return;
+        }
+      }
+    }
+  };
+  const bulkPasteStyle = () => pasteOverlayStyleToIds(Array.from(multiOverlayIds));
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const handleExport = () => {
     const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
@@ -530,6 +615,19 @@ export default function TemplateBuilderEdit() {
       if (e.key === 's') { e.preventDefault(); handleSave(false); }
       else if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
       else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
+      else if (e.altKey && e.key.toLowerCase() === 'c' && !isField) {
+        e.preventDefault();
+        if (selectedOverlay) copyOverlayStyle(selectedOverlay);
+        else if (selectedBlockId) copyBlock(selectedBlockId);
+      }
+      else if (e.altKey && e.key.toLowerCase() === 'v' && !isField) {
+        e.preventDefault();
+        const ids = multiOverlayIds.size > 0
+          ? Array.from(multiOverlayIds)
+          : selectedOverlayId ? [selectedOverlayId] : [];
+        if (hasStyleClipboard && ids.length > 0) pasteOverlayStyleToIds(ids);
+        else pasteBlock();
+      }
       else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
       else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
       else if (e.key === 'd' && selectedBlockId && !isField) { e.preventDefault(); duplicateBlock(selectedBlockId); }
@@ -537,7 +635,7 @@ export default function TemplateBuilderEdit() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBlockId, activePage]);
+  }, [selectedBlockId, activePage, selectedOverlay, selectedOverlayId, multiOverlayIds, hasStyleClipboard]);
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
@@ -942,6 +1040,31 @@ export default function TemplateBuilderEdit() {
               <Sparkles className="h-4 w-4 mr-1" /> Analytics
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setShowPageMarket(true)} title="Browse page layouts marketplace">
+            <LayoutTemplate className="h-4 w-4 mr-1" /> Page Templates
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => copyOverlayStyle(selectedOverlay)}
+            disabled={!selectedOverlay}
+            title="Copy style from selected overlay (⌘⌥C)"
+          >
+            <ClipboardCopy className="h-4 w-4 mr-1" /> Copy style
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => {
+              const ids = multiOverlayIds.size > 0
+                ? Array.from(multiOverlayIds)
+                : selectedOverlayId ? [selectedOverlayId] : [];
+              if (ids.length === 0) { toast.error('Select an overlay or multi-select first'); return; }
+              pasteOverlayStyleToIds(ids);
+            }}
+            disabled={!hasStyleClipboard}
+            title="Paste style to selected/multi-selected overlays (⌘⌥V)"
+          >
+            <ClipboardPaste className="h-4 w-4 mr-1" /> Paste style
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
             <Wand2 className="h-4 w-4 mr-1" /> AI Author
           </Button>
@@ -1044,6 +1167,19 @@ export default function TemplateBuilderEdit() {
                     page={activePage}
                     canvas={template.canvas ?? { gridSize: 8, showGrid: false, showRulers: true, snapToGrid: false, showBleed: false, showSafeArea: false }}
                     onChangeCanvas={(c) => setTemplate((t) => ({ ...t, canvas: c }))}
+                  />
+                  <BulkEditBar
+                    count={multiOverlayIds.size}
+                    onClear={clearMultiSelect}
+                    onDelete={bulkDeleteOverlays}
+                    onAlign={(a) => bulkPatchOverlays({ align: a } as any)}
+                    onSetColor={(c) => bulkPatchOverlays({ color: c } as any)}
+                    onSetFontSize={(n) => bulkPatchOverlays({ fontSize: n } as any)}
+                    onSetFontFamily={(f) => bulkPatchOverlays({ fontFamily: f } as any)}
+                    onSetOpacity={(n) => bulkPatchOverlays({ opacity: n } as any)}
+                    onCopyStyle={bulkCopyStyleFromFirst}
+                    onPasteStyle={bulkPasteStyle}
+                    hasStyleClipboard={hasStyleClipboard}
                   />
                 </>
               ) : (
@@ -1198,6 +1334,8 @@ export default function TemplateBuilderEdit() {
                 onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
                 onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
                 onChangeTemplate={setTemplate}
+                multiOverlayIds={multiOverlayIds}
+                onToggleMultiOverlay={toggleMultiOverlay}
               />
             </div>
             <div className="border-l bg-background min-h-0">
@@ -1517,6 +1655,13 @@ export default function TemplateBuilderEdit() {
         activePageId={activePageId}
         selectedBlockId={selectedBlockId}
         selectedOverlayId={selectedOverlayId}
+        templateId={id}
+        sampleData={sampleData}
+      />
+      <PageTemplatesMarketplaceDialog
+        open={showPageMarket}
+        onOpenChange={setShowPageMarket}
+        onInsert={(presetId) => { addStarterPage(presetId); }}
       />
       <PreviewQADialog
         open={showPreviewQA}
