@@ -271,7 +271,23 @@ export function ExportPipelineDialog({
                     <span>Optimize images</span>
                     <Switch checked={optimizeImages} onCheckedChange={setOptimizeImages} />
                   </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>Include bookmarks / outline</span>
+                    <Switch checked={includeBookmarks} onCheckedChange={setIncludeBookmarks} />
+                  </label>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <Label className="text-xs">Page range (1-based) — leave blank for all</Label>
+                <Input
+                  value={pageRange}
+                  onChange={(e) => setPageRange(e.target.value)}
+                  placeholder={`e.g. 1-3,5,8-${visiblePages}`}
+                  className="font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Exports only the selected pages. Bookmark outline entries are kept for the included pages.
+                </p>
               </div>
             </section>
 
