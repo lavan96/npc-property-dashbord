@@ -552,30 +552,65 @@ ACTIVE SELECTION:
       }
     }
 
-    const aiResp = await fetch(GATEWAY_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: useVision ? VISION_MODEL : DEFAULT_MODEL,
-        messages,
-        tools: [TOOL],
-        tool_choice: { type: 'function', function: { name: 'apply_changes' } },
-        // Note: gpt-5.5 rejects reasoning_effort when tools are provided in /v1/chat/completions.
-      }),
-    });
+    const callGateway = async (toolChoice: any, modelOverride?: string) => {
+      const resp = await fetch(GATEWAY_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelOverride ?? (useVision ? VISION_MODEL : DEFAULT_MODEL),
+          messages,
+          tools: [TOOL],
+          tool_choice: toolChoice,
+        }),
+      });
+      return resp;
+    };
+
+    // For vision/multimodal calls, Gemini reliably honours `required`; forcing
+    // a specific function name can result in an empty response. For text-only
+    // calls, GPT-5.5 honours the explicit function-name choice.
+    let aiResp = await callGateway(
+      useVision ? 'required' : { type: 'function', function: { name: 'apply_changes' } },
+    );
 
     if (!aiResp.ok) {
       const text = await aiResp.text();
       if (aiResp.status === 429) return json({ error: 'Rate limited — try again shortly.' }, 429);
       if (aiResp.status === 402) return json({ error: 'AI credits exhausted. Add credits in Workspace settings.' }, 402);
       console.error('design agent gateway error', aiResp.status, text);
-      return json({ error: `AI gateway error (${aiResp.status})` }, 500);
+      return json({ error: `AI gateway error (${aiResp.status})`, detail: text.slice(0, 500) }, 500);
     }
-    const aiData = await aiResp.json();
-    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
+    let aiData = await aiResp.json();
+    let toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
+
+    // Vision retry: if the model replied with text only, retry once with an
+    // explicit nudge to call apply_changes.
+    if (!toolCall && useVision) {
+      console.warn('[design-agent] vision pass returned no tool_call — retrying with explicit nudge');
+      messages.push({
+        role: 'user',
+        content: 'You MUST respond by calling the apply_changes function with the operations needed to recreate the attached image. Do not reply with prose.',
+      });
+      aiResp = await callGateway('required');
+      if (aiResp.ok) {
+        aiData = await aiResp.json();
+        toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
+      } else {
+        console.error('[design-agent] vision retry failed', aiResp.status, await aiResp.text());
+      }
+    }
+
     if (!toolCall) {
       const reply = aiData?.choices?.[0]?.message?.content ?? 'No changes proposed.';
-      return json({ reply, schema, operations: [], warnings: ['Model did not call apply_changes.'] });
+      console.warn('[design-agent] no tool_call after retry, reply=', String(reply).slice(0, 200));
+      return json({
+        reply,
+        schema,
+        operations: [],
+        warnings: [useVision
+          ? 'Vision model returned text instead of operations. Try a clearer screenshot or a shorter prompt.'
+          : 'Model did not call apply_changes.'],
+      });
     }
     let parsed: { reply: string; operations: Op[] };
     try {
