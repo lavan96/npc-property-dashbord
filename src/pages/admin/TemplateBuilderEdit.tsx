@@ -560,7 +560,7 @@ export default function TemplateBuilderEdit() {
   const blobRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!showPreview) return;
+    if (!showPreview || previewMode !== 'pdf') return;
     setPreviewing(true);
     setPreviewError(null);
     let cancelled = false;
