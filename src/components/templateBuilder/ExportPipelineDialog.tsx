@@ -374,6 +374,9 @@ export function ExportPipelineDialog({
 
         <DialogFooter className="px-6 pb-6 pt-3 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={handleDownloadHtml} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> Download HTML
+          </Button>
           <Button onClick={handleExport} disabled={running}>
             {running ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {preloading ? 'Warming assets…' : 'Rendering…'}</>
