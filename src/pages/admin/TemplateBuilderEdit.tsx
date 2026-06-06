@@ -1071,10 +1071,28 @@ export default function TemplateBuilderEdit() {
 
             {showPreview && (
               <div className="border-l bg-background flex flex-col min-h-0">
-                <div className="px-3 py-2 border-b flex items-center gap-2 text-xs">
+                <div className="px-3 py-1.5 border-b flex items-center gap-2 text-xs">
                   <Eye className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-medium">PDF preview</span>
-                  {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  <span className="font-medium">Preview</span>
+                  <div className="ml-1 flex items-center rounded border bg-muted/40">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode('live')}
+                      className={`px-2 py-0.5 text-[10px] ${previewMode === 'live' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                      title="Live HTML — instant, click to select"
+                    >
+                      Live
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode('pdf')}
+                      className={`px-2 py-0.5 text-[10px] ${previewMode === 'pdf' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                      title="jsPDF rendering"
+                    >
+                      PDF
+                    </button>
+                  </div>
+                  {previewMode === 'pdf' && previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                 </div>
                 {/* Page thumbnails strip */}
                 <ScrollArea className="border-b max-h-40 flex-shrink-0">
@@ -1127,9 +1145,23 @@ export default function TemplateBuilderEdit() {
                     })}
                   </div>
                 </ScrollArea>
-                <div className="flex-1 p-2 min-h-0">
-                  {previewError ? (
-                    <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center">
+                <div className="flex-1 min-h-0">
+                  {previewMode === 'live' ? (
+                    <LiveHtmlPreview
+                      template={template}
+                      sampleData={sampleData}
+                      customCss={customCss || undefined}
+                      activePageId={activePageId}
+                      selectedBlockId={selectedBlockId}
+                      scope={previewScope}
+                      onScopeChange={setPreviewScope}
+                      onSelect={({ blockId, pageId }) => {
+                        if (pageId && pageId !== activePageId) setActivePageId(pageId);
+                        if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
+                      }}
+                    />
+                  ) : previewError ? (
+                    <div className="h-full flex items-center justify-center text-xs text-destructive border-2 border-dashed border-destructive/30 rounded-md p-3 text-center m-2">
                       {previewError}
                     </div>
                   ) : previewUrl ? (
