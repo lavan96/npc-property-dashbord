@@ -129,7 +129,7 @@ export function TemplateDesignAgentPanel({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [autoApply, setAutoApply] = useState(false);
+  const [autoApply, setAutoApply] = useState(true);
   const [pending, setPending] = useState<Pending | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
   const [memoryFacts, setMemoryFacts] = useState<string[]>([]);
@@ -207,7 +207,10 @@ export function TemplateDesignAgentPanel({
       const previewSchema: ReportTemplate = data.schema;
 
       if (autoApply || ops.length === 0) {
-        if (previewSchema && ops.length > 0) setTemplate(previewSchema);
+        if (previewSchema && ops.length > 0) {
+          setTemplate(previewSchema);
+          toast.success(`Applied ${ops.length} change${ops.length === 1 ? '' : 's'} to preview`);
+        }
         setMessages((m) => [...m, { role: 'assistant', content: reply, ops, warnings, applied: ops.length > 0 }]);
       } else {
         setPending({ reply, ops, warnings, previewSchema });
