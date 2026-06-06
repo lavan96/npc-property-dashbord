@@ -322,7 +322,7 @@ export async function extractPdfToTemplate(
 
     onProgress({ phase: 'done', totalPages });
     return {
-      template: { id: finRes.template.id, name: finRes.template.name },
+      template: { id: finRes.template.id, name: finRes.template.name ?? options.templateName ?? file.name },
       importId,
       pageCount: totalPages,
       fidelityReport: {
