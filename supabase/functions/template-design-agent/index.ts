@@ -619,7 +619,10 @@ ACTIVE SELECTION:
       return json({ error: 'AI returned malformed tool arguments', detail: String(e) }, 500);
     }
 
+    console.log(`[design-agent] tool_call ops=${(parsed.operations || []).length} reply="${String(parsed.reply || '').slice(0, 120)}" ops_preview=${JSON.stringify((parsed.operations || []).slice(0, 3)).slice(0, 400)}`);
+
     const { schema: appliedSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
+    console.log(`[design-agent] applied summaries=${summaries.length} warnings=${warnings.length} ${warnings.length ? JSON.stringify(warnings).slice(0,300) : ''}`);
 
     // Post-op cleanup: 6pt grid snap + canvas clamp + dedupe identical text overlays.
     // Only clamp pages we actually touched to avoid disturbing untouched layouts.
