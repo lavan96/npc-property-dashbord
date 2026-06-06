@@ -474,20 +474,32 @@ Deno.serve(async (req) => {
     const activePageId: string | undefined = body.activePageId;
     const selectedBlockId: string | undefined = body.selectedBlockId;
     const selectedOverlayId: string | undefined = body.selectedOverlayId;
-    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' = body.mode || 'design';
+    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' | 'brief' = body.mode || 'design';
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
     const replaceMode: boolean = body.replaceMode === true;
+    // Re-roll support: client can pass a cached brief to skip the vision stage.
+    const incomingBrief: DesignBrief | null = body.brief && typeof body.brief === 'object' ? body.brief : null;
+    const briefStage: 'analyze_only' | 'synthesize_only' | 'full' = body.briefStage || 'full';
+
+    // Decide whether to run the Design Brief pipeline.
+    // Default: any time an image is attached (unless caller explicitly picked another mode).
+    const useBriefPipeline =
+      mode === 'brief' || incomingBrief !== null ||
+      (!!imageDataUrl && (mode === 'design' || mode === 'screenshot_to_block'));
 
     // Diagnostic logging for image/vision flow.
     const imgKb = imageDataUrl ? Math.round(imageDataUrl.length / 1024) : 0;
     const imgValid = !!imageDataUrl && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(imageDataUrl);
-    console.log(`[design-agent] mode=${mode} instr="${(userInstruction||'').slice(0,80)}" image=${imageDataUrl ? `${imgKb}KB valid=${imgValid}` : 'no'} activePage=${activePageId || '-'}`);
+    console.log(`[design-agent] mode=${mode} pipeline=${useBriefPipeline ? 'brief' : 'ops'} stage=${briefStage} instr="${(userInstruction||'').slice(0,80)}" image=${imageDataUrl ? `${imgKb}KB valid=${imgValid}` : 'no'} activePage=${activePageId || '-'}`);
 
-    if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
+    if (!userInstruction?.trim() && !imageDataUrl && !incomingBrief && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
     if (imageDataUrl && !imgValid) {
       return json({ error: 'Attached image is not a valid data:image/* URL. Re-attach the screenshot.' }, 400);
+    }
+    if (useBriefPipeline && !activePageId) {
+      return json({ error: 'Brief pipeline needs an active page — select a page first.' }, 400);
     }
 
     // Mode-specific system addendum
