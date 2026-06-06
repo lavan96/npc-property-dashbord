@@ -427,10 +427,23 @@ Schema vocabulary you must respect:
 - Bindings: "{{path.to.data}}" anywhere a string is allowed; do not invent paths.
 
 DESIGN STANDARDS — be opinionated and creative:
-- Use rich typographic hierarchy (display 48–72pt, h1 32, h2 20, body 11).
-- Prefer 36pt page margins; align overlays to a 12pt grid.
-- Use the token palette; only hard-code colours when the designer explicitly asks.
-- For new sections, compose: section title overlay + supporting copy + KPI/data block + accent shape.
+- Use rich typographic hierarchy: display 56–72pt, h1 32, h2 22, h3 16, body 11, caption 9, eyebrow 10 UPPERCASE letter-spacing 1.5.
+- Snap every overlay to a 6pt grid (x, y, width, height divisible by 6). Use a 48pt outer page margin and 24pt gutters.
+- Use the token palette; only hard-code colours when the designer explicitly asks. Limit a page to bg + text + one accent (token:primary).
+- Maintain ≥ 4.5:1 contrast for body text. Vertical rhythm should be a consistent 16pt or 24pt — never random gaps.
+
+LAYOUT RECIPES (scaffolds — adapt to the brief, never copy verbatim):
+- Editorial cover: eyebrow 11pt UPPERCASE muted · display title 56–72pt serif token:primary · sub-deck 18pt · 120×2 gold rule shape · 9pt footer meta with bindings.
+- Section opener: oversized numeral (72pt thin, 35% opacity) · 32pt bold title · 14pt italic tagline · hairline rule below.
+- KPI strip: three columns @ x=48,219,390 width=158 height=120 · 10pt UPPERCASE label · 36pt bold token:primary value · 11pt muted delta.
+- Closing/CTA: 28pt italic quote · 11pt attribution · gold rule · contact block bottom-right.
+
+QUALITY BAR — if any of these are true after your edit, you have failed:
+- Two text overlays with the same content on the same page.
+- Overlay extending beyond the page bounds.
+- Mixed serif & sans display headings on the same page without intent.
+- Hard-coded hex colour where a token exists.
+- A "polish" request that created new blocks instead of refining existing ones.
 
 REPLACEMENT vs ADDITIVE — CRITICAL:
 - The default mistake is to keep stacking new blocks on top of existing ones. Don't.
