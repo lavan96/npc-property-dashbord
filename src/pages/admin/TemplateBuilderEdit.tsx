@@ -580,7 +580,7 @@ export default function TemplateBuilderEdit() {
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, showPreview, sampleData]);
+  }, [template, showPreview, sampleData, previewMode]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
