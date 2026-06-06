@@ -16266,6 +16266,42 @@ export type Database = {
           },
         ]
       }
+      template_components: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          payload: Json
+          tags: string[]
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          payload?: Json
+          tags?: string[]
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          payload?: Json
+          tags?: string[]
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       template_events: {
         Row: {
           actor_id: string | null

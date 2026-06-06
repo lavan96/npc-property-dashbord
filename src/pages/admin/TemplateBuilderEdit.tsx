@@ -26,6 +26,8 @@ import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog'
 import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
 import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
 import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
+import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
+import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
@@ -93,6 +95,9 @@ export default function TemplateBuilderEdit() {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
   const [showAIAuthor, setShowAIAuthor] = useState(false);
+  const [showPreviewQA, setShowPreviewQA] = useState(false);
+  const [showComponentLib, setShowComponentLib] = useState(false);
+  const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
@@ -157,6 +162,7 @@ export default function TemplateBuilderEdit() {
     setDescription(tplRow.description || '');
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
+    setCustomCss(((tplRow as any).custom_css as string) || '');
     const parsed = parseTemplate(tplRow.schema);
     setTemplate(parsed);
     setActivePageId(parsed.pages[0]?.id ?? null);
@@ -589,6 +595,7 @@ export default function TemplateBuilderEdit() {
           description,
           report_type: reportType || null,
           tier: tier || null,
+          custom_css: customCss || null,
           schema: template,
         } as any,
       },
@@ -880,7 +887,7 @@ export default function TemplateBuilderEdit() {
                 const { html } = renderTemplateToHtml(template, {
                   data: sampleData,
                   title: name || 'Template Preview',
-                  customCss: (tplRow as any)?.custom_css || undefined,
+                  customCss: customCss || undefined,
                 });
                 const { data: sess } = await supabase.auth.getSession();
                 const token = sess?.session?.access_token;
@@ -932,6 +939,12 @@ export default function TemplateBuilderEdit() {
           )}
           <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
             <Wand2 className="h-4 w-4 mr-1" /> AI Author
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPreviewQA(true)} title="Side-by-side preview, lint, binding & QA report">
+            <Eye className="h-4 w-4 mr-1" /> Preview & QA
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowComponentLib(true)} title="Save / reuse component snippets across templates">
+            <Component className="h-4 w-4 mr-1" /> Components
           </Button>
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
@@ -1186,6 +1199,18 @@ export default function TemplateBuilderEdit() {
             <Label className="text-xs">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
           </div>
+          <div>
+            <Label className="text-xs">Custom CSS (advanced)</Label>
+            <p className="text-[11px] text-muted-foreground mb-1">Layered on top of the rendered HTML/PDF. Scope to <code>.tpl-page</code> or block ids.</p>
+            <Textarea
+              value={customCss}
+              onChange={(e) => setCustomCss(e.target.value)}
+              rows={10}
+              spellCheck={false}
+              placeholder={`/* e.g. */\n.tpl-page-0 h1 { letter-spacing: -0.02em; }\n.tpl-page { font-feature-settings: "ss01"; }`}
+              className="font-mono text-xs"
+            />
+          </div>
         </TabsContent>
 
         {/* Brand tokens */}
@@ -1379,7 +1404,7 @@ export default function TemplateBuilderEdit() {
         templateId={id}
         templateName={name}
         sampleData={sampleData}
-        customCss={(tplRow as any)?.custom_css || undefined}
+        customCss={customCss || undefined}
       />
       {id && (
         <ShareLinksDialog
@@ -1443,6 +1468,27 @@ export default function TemplateBuilderEdit() {
           }));
         }}
         onApplyName={(n, d) => { setName(n); setDescription(d); }}
+      />
+      <PreviewQADialog
+        open={showPreviewQA}
+        onOpenChange={setShowPreviewQA}
+        template={template}
+        sampleData={sampleData}
+        customCss={customCss || undefined}
+      />
+      <ComponentLibraryDialog
+        open={showComponentLib}
+        onOpenChange={setShowComponentLib}
+        template={template}
+        activePage={activePage ?? null}
+        selectedBlockId={selectedBlockId}
+        onInsertBlocks={(blocks) => {
+          if (!activePage) return;
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => p.id !== activePage.id ? p : ({ ...p, blocks: [...p.blocks, ...blocks] })),
+          }));
+        }}
       />
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">

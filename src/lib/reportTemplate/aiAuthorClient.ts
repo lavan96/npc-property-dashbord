@@ -27,4 +27,6 @@ export const aiAuthor = {
     call<{ suggestions: Array<{ path: string; filter?: string; confidence: number; reason?: string }> }>('suggest_bindings', p),
   nameSuggest: (p: { summary: string }) =>
     call<{ name: string; description: string }>('name_suggest', p),
+  generateCover: (p: { brief: string; tier?: string; pageWidth?: number; pageHeight?: number; brand?: any }) =>
+    call<{ pageName: string; heroImagePrompt?: string; rationale?: string; background?: any; blocks: any[] }>('generate_cover', p),
 };
