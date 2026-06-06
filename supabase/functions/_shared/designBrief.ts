@@ -241,9 +241,18 @@ export function synthesisSystemAddendum(
     .join('\n');
   const labels = brief.content?.labels?.length ? brief.content.labels.join(' · ') : '—';
 
+  const W = pageSize.width;
+  const H = pageSize.height;
+  const margin = 48;
+  const innerW = W - margin * 2;
+  const headline = brief.content?.headline?.trim();
+  const deck = brief.content?.deck?.trim();
+  const body = brief.content?.body?.trim();
+  const contentThin = !headline && !deck && !body && !(brief.content?.labels?.length);
+
   return `
-[BRIEF-DRIVEN SYNTHESIS]
-Recreate the active page (id=${activePageId}, ${pageSize.width}×${pageSize.height}pt) from this DESIGN BRIEF.
+[BRIEF-DRIVEN SYNTHESIS — STRICT]
+Recreate the active page (id=${activePageId}, ${W}×${H}pt) from this DESIGN BRIEF.
 
 PALETTE (use ONLY these via "token:<key>" references — never hard-code these hexes):
 ${palette || '  (none)'}
@@ -253,25 +262,104 @@ TYPOGRAPHY:
   body vibe:    ${brief.typography.body}
   overall vibe: ${brief.typography.vibe}
 
-LAYOUT (top to bottom, 12-col grid, 48pt outer margin, 24pt gutters):
+LAYOUT (top to bottom, 12-col grid; outer margin ${margin}pt; inner width ${innerW}pt):
 ${sections || '  (single hero section)'}
 
-CONTENT TO PLACE:
-  headline: ${JSON.stringify(brief.content?.headline ?? '')}
-  deck:     ${JSON.stringify(brief.content?.deck ?? '')}
-  body:     ${JSON.stringify(brief.content?.body ?? '')}
+CONTENT TO PLACE${contentThin ? ' (BRIEF IS THIN — you MUST invent plausible report copy that matches the motifs & vibe)' : ''}:
+  headline: ${JSON.stringify(headline ?? '')}
+  deck:     ${JSON.stringify(deck ?? '')}
+  body:     ${JSON.stringify(body ?? '')}
   labels:   ${labels}
 
 MOTIFS to incorporate: ${brief.motifs?.join(', ') || '—'}
 DENSITY: ${brief.layout.density}
 
-MANDATORY OPS ORDER:
-  1. { "op": "clear_page", "pageId": "${activePageId}" }
-  2. For each palette colour above: { "op": "set_token", "path": "colors.<key without 'token:' prefix>", "value": "<hex>" }
-     (e.g. path "colors.brief.bg"). This makes the colours referenceable.
-  3. Build the layout with add_block / add_overlay, binding every colour to "token:brief.bg|surface|text|accent|muted" — NEVER raw hex.
+═══ HARD REQUIREMENTS — violating any one of these means FAILURE ═══
 
-CONTRAST: text overlays MUST use color "token:brief.text" on bg "token:brief.bg" or "token:brief.surface". Accents use "token:brief.accent" sparingly (rules, eyebrow text, single CTA).
+1. FIRST OP must be: { "op": "clear_page", "pageId": "${activePageId}" }
 
-Cap at ~25 ops. Emit the entire layout in ONE apply_changes call.`;
+2. THEN one set_token per palette entry, e.g.:
+   { "op": "set_token", "path": "colors.brief.bg", "value": "<hex>" }
+   { "op": "set_token", "path": "colors.brief.text", "value": "<hex>" }
+   …etc. (path is the full dotted key after "colors.")
+
+3. THEN update the page background:
+   { "op": "update_page", "pageId": "${activePageId}", "patch": { "background": { "color": "token:brief.bg" } } }
+
+4. THEN add ONE block per section in the LAYOUT list (use op=add_block, type="free", pageId="${activePageId}").
+   Each block must contain overlays placed inside its share of the page.
+
+5. ★ MINIMUM TEXT QUOTA ★ — The page MUST end up with AT LEAST 4 TEXT OVERLAYS, including:
+   • exactly 1 headline overlay  (fontSize 44–72, fontWeight "bold", color "token:brief.text")
+   • exactly 1 deck/sub-headline overlay (fontSize 16–22, color "token:brief.text", opacity 0.85)
+   • at least 1 eyebrow/label overlay (fontSize 10, UPPERCASE, letterSpacing 1.5, color "token:brief.accent")
+   • at least 1 body or caption overlay (fontSize 10–12, color "token:brief.text", opacity 0.75)
+
+6. ★ NO ORPHAN SHAPES ★ — A shape overlay wider OR taller than 120pt is BANNED unless a text overlay sits on top of it inside the same block. Decorative shapes ≤120pt are fine (rules, dots, badges).
+
+7. COORDINATES — every overlay must use ABSOLUTE PAGE coordinates:
+   • x in [${margin}, ${W - margin}]
+   • y in [${margin}, ${H - margin}]
+   • width + x ≤ ${W - margin}
+   • height + y ≤ ${H - margin}
+   • snap x/y/width/height to a 6pt grid
+
+8. COLOURS — every fill, stroke, and text color MUST be "token:brief.*" (never raw hex in this turn). Use:
+   • bg            → page background only
+   • surface       → card/panel backgrounds
+   • text          → body & headline text
+   • accent        → eyebrow text, rules, one CTA pill, single decorative shape
+   • muted         → secondary text, captions
+
+9. CONTRAST GUARD — text on bg uses token:brief.text. If you place text on a token:brief.accent surface, use token:brief.bg for the text (inverted).
+
+10. TYPOGRAPHY FAMILIES — set fontFamily on every text overlay:
+    • headings → "Playfair Display, Georgia, serif"  (or geometric sans if vibe says so)
+    • body/eyebrow → "Inter, Helvetica, sans-serif"
+
+11. Emit EVERYTHING in ONE apply_changes call (≤ 30 ops total). The "reply" string should be 1 sentence describing what you built.
+
+═══ EXAMPLE skeleton for inspiration (DO NOT copy verbatim — adapt to brief) ═══
+After clear_page + set_token ops + update_page background:
+  add_block (hero):
+    text overlay "EYEBROW LABEL"      x=48  y=80   w=400 h=14  size=10 accent UPPERCASE
+    text overlay "Headline goes here" x=48  y=110  w=500 h=90  size=56 bold text
+    text overlay "Deck/sub-headline"  x=48  y=210  w=460 h=60  size=18 text opacity=0.85
+    shape rect (gold rule)            x=48  y=290  w=120 h=2   fill=accent
+  add_block (body):
+    text overlay "Body paragraph…"    x=48  y=340  w=500 h=180 size=11 text opacity=0.8 lineHeight=1.5
+  add_block (footer):
+    text overlay "Footer meta"        x=48  y=${H - 80} w=500 h=20 size=9 muted
+
+If the BRIEF content is empty, invent crisp report-style copy that matches motifs (${brief.motifs?.join(', ') || 'editorial property report'}) and the ${brief.typography.vibe} vibe. NEVER ship a layout that is only shapes.`;
+}
+
+/**
+ * Validates a synthesised set of ops meets the minimum content quota
+ * (≥1 clear_page, ≥4 text overlays). Used by the orchestrator to retry
+ * if the model emits an empty layout.
+ */
+export function validateBriefSynthesis(ops: any[]): { ok: boolean; reason?: string; stats: { textOverlays: number; shapeOverlays: number; hasClearPage: boolean; hasBgUpdate: boolean } } {
+  let textOverlays = 0;
+  let shapeOverlays = 0;
+  let hasClearPage = false;
+  let hasBgUpdate = false;
+  for (const op of ops || []) {
+    if (op?.op === 'clear_page') hasClearPage = true;
+    if (op?.op === 'update_page' && op?.patch?.background) hasBgUpdate = true;
+    if (op?.op === 'add_overlay') {
+      if (op?.overlay?.type === 'text' && String(op?.overlay?.content || '').trim()) textOverlays++;
+      else if (op?.overlay?.type === 'shape') shapeOverlays++;
+    }
+    if (op?.op === 'add_block') {
+      for (const ov of op?.block?.overlays || []) {
+        if (ov?.type === 'text' && String(ov?.content || '').trim()) textOverlays++;
+        else if (ov?.type === 'shape') shapeOverlays++;
+      }
+    }
+  }
+  const stats = { textOverlays, shapeOverlays, hasClearPage, hasBgUpdate };
+  if (!hasClearPage) return { ok: false, reason: 'missing clear_page', stats };
+  if (textOverlays < 4) return { ok: false, reason: `only ${textOverlays} text overlays (need ≥4)`, stats };
+  return { ok: true, stats };
 }
