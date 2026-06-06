@@ -192,6 +192,7 @@ export default function TemplateBuilderEdit() {
     () => template.pages.find((p) => p.id === activePageId) ?? null,
     [template, activePageId],
   );
+  useEffect(() => { setMultiOverlayIds(new Set()); }, [activePageId]);
 
   const selectedOverlay = useMemo<Overlay | null>(() => {
     if (!activePage || !selectedOverlayId) return null;
