@@ -484,7 +484,76 @@ export default function TemplateBuilderEdit() {
     toast.success(`Pasted "${copy.type}"`);
   };
 
-  // ── Import / export template JSON ───────────────────────────────────────────
+  // ── Style copy/paste (overlays) ─────────────────────────────────────────────
+  const STYLE_KEYS = [
+    'fontFamily','fontSize','fontWeight','fontStyle','color','align','lineHeight',
+    'opacity','rotation','fill','stroke','strokeWidth','borderRadius','letterSpacing','textTransform',
+  ] as const;
+  const extractStyle = (o: Overlay): Partial<Overlay> => {
+    const out: any = {};
+    for (const k of STYLE_KEYS) if ((o as any)[k] !== undefined) out[k] = (o as any)[k];
+    return out;
+  };
+  const copyOverlayStyle = (o: Overlay | null) => {
+    if (!o) { toast.error('Select an overlay first'); return; }
+    styleClipboardRef.current = extractStyle(o);
+    setHasStyleClipboard(true);
+    toast.success('Style copied');
+  };
+  const pasteOverlayStyleToIds = (ids: string[]) => {
+    if (!activePage) return;
+    const style = styleClipboardRef.current;
+    if (!style) { toast.error('Copy a style first'); return; }
+    const idSet = new Set(ids);
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.map((o) => (idSet.has(o.id) ? { ...o, ...style } as Overlay : o)),
+      })),
+    });
+    toast.success(`Pasted style to ${ids.length} overlay${ids.length === 1 ? '' : 's'}`);
+  };
+
+  // ── Bulk operations on multi-selected overlays ──────────────────────────────
+  const bulkPatchOverlays = (patch: Partial<Overlay>) => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.map((o) => (multiOverlayIds.has(o.id) ? { ...o, ...patch } as Overlay : o)),
+      })),
+    });
+  };
+  const bulkDeleteOverlays = () => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    const n = multiOverlayIds.size;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.filter((o) => !multiOverlayIds.has(o.id)),
+      })),
+    });
+    clearMultiSelect();
+    toast.success(`Deleted ${n} overlay${n === 1 ? '' : 's'}`);
+  };
+  const bulkCopyStyleFromFirst = () => {
+    if (!activePage || multiOverlayIds.size === 0) return;
+    for (const b of activePage.blocks) {
+      for (const o of b.overlays) {
+        if (multiOverlayIds.has(o.id)) {
+          styleClipboardRef.current = extractStyle(o);
+          setHasStyleClipboard(true);
+          toast.success('Style copied from first selected');
+          return;
+        }
+      }
+    }
+  };
+  const bulkPasteStyle = () => pasteOverlayStyleToIds(Array.from(multiOverlayIds));
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const handleExport = () => {
     const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
