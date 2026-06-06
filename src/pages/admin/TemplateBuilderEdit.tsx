@@ -717,6 +717,10 @@ export default function TemplateBuilderEdit() {
   // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = (snapshot = false) => {
     if (!id) return;
+    if (tplMeta?.locked_for_review) {
+      toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
+      return;
+    }
     update.mutate(
       {
         id,
