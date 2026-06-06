@@ -273,7 +273,7 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
   return ` id="${anchorId}" style="bookmark-label:'${String(label).replace(/'/g, "\\'")}';bookmark-level:${level};"`;
 }
 
-function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string {
+function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
   const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
@@ -308,7 +308,11 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   if (bmAttrs) {
     content = `<span${bmAttrs}>${content}</span>`;
   }
-  return wrap(content);
+  let out = wrap(content);
+  if (editorMode && block.id) {
+    out = `<div data-block-id="${escapeHtml(String(block.id))}" data-block-type="${escapeHtml(String(block.type ?? ''))}" style="display:contents">${out}</div>`;
+  }
+  return out;
 }
 
 
