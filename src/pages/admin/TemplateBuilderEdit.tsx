@@ -124,7 +124,7 @@ export default function TemplateBuilderEdit() {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('preview');
+  const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('canvas');
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
 
   // ── Undo / redo history ────────────────────────────────────────────────────
