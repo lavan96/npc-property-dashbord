@@ -43,6 +43,8 @@ export function OutlinePanel({
   onSelectBlock,
   onSelectOverlay,
   onChangeTemplate,
+  multiOverlayIds,
+  onToggleMultiOverlay,
 }: Props) {
   const [openPages, setOpenPages] = useState<Set<string>>(new Set([activePageId ?? '']));
   const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
