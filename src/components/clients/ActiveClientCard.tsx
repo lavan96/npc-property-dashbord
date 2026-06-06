@@ -204,22 +204,16 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
         data: {
           client_id: client.id,
           note_type: newNoteType,
-          content: newNoteContent.trim()
+          content: newNoteContent.trim(),
+          // Quick notes are internal by default; use the client's Notes tab to share outward.
+          visibility: 'internal_npc'
         },
       });
       if (!fnError && data?.success) {
-        // Sync to GHL (non-blocking)
-        invokeSecureFunction('sync-notes-to-ghl', {
-          action: 'create',
-          clientId: client.id,
-          noteId: data.result?.id,
-          noteContent: newNoteContent.trim(),
-          noteType: newNoteType
-        }).catch(err => console.error('GHL note sync failed:', err));
         return data.result;
       }
       console.warn('Secure create failed, falling back to Edge Function');
-      
+
       // Fallback still uses secure function
       const fallbackResult = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
@@ -228,22 +222,14 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
         data: {
           client_id: client.id,
           note_type: newNoteType,
-          content: newNoteContent.trim()
+          content: newNoteContent.trim(),
+          visibility: 'internal_npc'
         },
       });
-      
+
       if (fallbackResult.error || !fallbackResult.data?.success) {
         throw new Error(fallbackResult.error?.message || 'Failed to create note');
       }
-
-      // Then sync to GHL (non-blocking)
-      invokeSecureFunction('sync-notes-to-ghl', {
-        action: 'create',
-        clientId: client.id,
-        noteId: fallbackResult.data.result?.id,
-        noteContent: newNoteContent.trim(),
-        noteType: newNoteType
-      }).catch(err => console.error('GHL note sync failed:', err));
 
       return fallbackResult.data.result;
     },

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Lock, TrendingUp, AlertTriangle, CheckCircle2, History, Info } from 'lucide-react';
+import { Loader2, Lock, TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useBrand } from '@/branding/useBrand';
@@ -84,7 +84,6 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
   }
 
   const latest = data?.latest;
-  const history = data?.history || [];
 
   if (!latest) {
     return (
@@ -203,38 +202,6 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* History */}
-      {history.length > 1 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <History className="h-4 w-4" /> Assessment history
-            </CardTitle>
-            <CardDescription className="text-xs">Last {history.length} assessments, newest first.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {history.map(h => {
-                const hBand = (h.serviceability_band || 'red').toLowerCase();
-                return (
-                  <div key={h.id} className="flex items-center justify-between gap-3 py-2 border-b border-border last:border-0">
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(h.created_at), 'd MMM yyyy, h:mm a')}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium">{fmtAUD(h.borrowing_capacity)}</span>
-                      <Badge variant="outline" className={cn('text-[10px] uppercase', bandStyles[hBand] || bandStyles.red)}>
-                        {hBand}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </CardContent>
         </Card>
       )}

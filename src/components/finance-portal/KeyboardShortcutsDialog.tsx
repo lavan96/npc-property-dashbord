@@ -14,7 +14,6 @@ const SHORTCUTS = [
   { keys: ['g', 'c'], desc: 'Go to Clients' },
   { keys: ['g', 'm'], desc: 'Go to Messages' },
   { keys: ['g', 'r'], desc: 'Go to Reports' },
-  { keys: ['g', 'f'], desc: 'Go to Forecasting' },
   { keys: ['c'], desc: 'Create new purchase file' },
   { keys: ['s'], desc: 'Smart Snooze current view' },
   { keys: ['/'], desc: 'Focus search input' },
@@ -66,7 +65,6 @@ export function KeyboardShortcutsDialog() {
           c: '/finance/clients',
           m: '/finance/messages',
           r: '/finance/reports',
-          f: '/finance/forecasting',
           e: '/finance/earnings',
           l: '/finance/lender-intelligence',
         };

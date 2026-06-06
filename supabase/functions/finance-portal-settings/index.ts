@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
-      .select('id, finance_contact_id, name, email, role, is_active, revoked_at, session_expires_at')
+      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at')
       .eq('session_token', token)
       .maybeSingle();
 
@@ -76,7 +76,9 @@ Deno.serve(async (req) => {
     }
 
     const partnerId = portalUser.finance_contact_id;
-    const isSuperadmin = portalUser.role === 'superadmin';
+    // finance_portal_users has no role column; superadmin override is unavailable
+    // here, so authors can manage their own items only.
+    const isSuperadmin = false;
 
     // ── COMMENTS ───────────────────────────────────────────────────────
     if (operation === 'list_comments') {

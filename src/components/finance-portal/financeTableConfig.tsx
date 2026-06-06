@@ -78,23 +78,41 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
 
   income: {
     key: 'income',
-    table: 'client_income',
+    // Unified with the Command Center: both apps now read/write client_income_sources.
+    table: 'client_income_sources',
     label: 'Income',
     singular: 'Income Source',
     description: 'Salary, bonuses, commissions, allowances and other taxable income.',
-    primaryColumn: 'contact_type',
+    primaryColumn: 'source_name',
+    secondaryColumn: 'contact_type',
     fields: [
       { key: 'contact_type', label: 'Applicant', type: 'select', required: true, options: [
         { value: 'primary', label: 'Primary Applicant' },
         { value: 'secondary', label: 'Secondary Applicant' },
       ]},
-      { key: 'gross_salary', label: 'Gross Salary', type: 'currency' },
-      { key: 'salary_frequency', label: 'Frequency', type: 'select', options: [
-        { value: 'annually', label: 'Annual' },
-        { value: 'monthly', label: 'Monthly' },
-        { value: 'fortnightly', label: 'Fortnightly' },
-        { value: 'weekly', label: 'Weekly' },
+      { key: 'source_category', label: 'Category', type: 'select', options: [
+        { value: 'employment', label: 'Employment' },
+        { value: 'passive', label: 'Passive Income' },
+        { value: 'government', label: 'Government Benefits' },
+        { value: 'investment', label: 'Investment Income' },
+        { value: 'other', label: 'Other' },
       ]},
+      { key: 'source_type', label: 'Type', type: 'select', options: [
+        { value: 'payg_fulltime', label: 'PAYG Full-time' },
+        { value: 'payg_parttime', label: 'PAYG Part-time' },
+        { value: 'casual', label: 'Casual' },
+        { value: 'self_employed', label: 'Self-Employed / ABN' },
+        { value: 'contract', label: 'Contract' },
+        { value: 'rental', label: 'Rental Income' },
+        { value: 'dividends', label: 'Dividends' },
+        { value: 'interest', label: 'Interest Income' },
+        { value: 'trust', label: 'Trust Distributions' },
+        { value: 'centrelink', label: 'Centrelink' },
+        { value: 'pension', label: 'Pension' },
+        { value: 'other', label: 'Other Income' },
+      ]},
+      { key: 'source_name', label: 'Source Name', type: 'text', helpText: 'e.g. employer or investment name' },
+      { key: 'gross_annual_amount', label: 'Gross Annual Amount', type: 'currency' },
       { key: 'bonus', label: 'Annual Bonus', type: 'currency' },
       { key: 'commission', label: 'Annual Commission', type: 'currency' },
       { key: 'allowance', label: 'Allowances', type: 'currency' },
@@ -104,7 +122,7 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     ],
     renderSummary: (r) => (
       <div className="text-xs text-muted-foreground">
-        {fmtCurrency(r.gross_salary)} {r.salary_frequency || 'annually'}
+        {fmtCurrency(r.gross_annual_amount)} p.a.{r.source_name ? ` · ${r.source_name}` : ''}
       </div>
     ),
   },
@@ -291,11 +309,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     singular: 'Contact',
     description: 'Additional applicants, guarantors and authorised contacts.',
     primaryColumn: 'first_name',
-    secondaryColumn: 'role',
+    secondaryColumn: 'relationship',
     fields: [
       { key: 'first_name', label: 'First Name', type: 'text', required: true },
-      { key: 'last_name', label: 'Last Name', type: 'text' },
-      { key: 'role', label: 'Role', type: 'select', options: [
+      { key: 'surname', label: 'Last Name', type: 'text', required: true },
+      { key: 'relationship', label: 'Role', type: 'select', options: [
         { value: 'co_applicant', label: 'Co-applicant' },
         { value: 'guarantor', label: 'Guarantor' },
         { value: 'spouse', label: 'Spouse / Partner' },
@@ -304,8 +322,8 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'other', label: 'Other' },
       ]},
       { key: 'email', label: 'Email', type: 'text' },
-      { key: 'phone', label: 'Phone', type: 'text' },
-      { key: 'date_of_birth', label: 'Date of Birth', type: 'date' },
+      { key: 'mobile', label: 'Phone', type: 'text' },
+      { key: 'dob', label: 'Date of Birth', type: 'date' },
     ],
   },
 

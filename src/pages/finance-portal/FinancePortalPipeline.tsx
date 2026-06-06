@@ -41,8 +41,13 @@ export default function FinancePortalPipeline() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
-    setLanes(data?.lanes || []);
+    const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
+    if (error) {
+      toast.error(error.message || 'Failed to load pipeline board');
+      setLanes([]);
+    } else {
+      setLanes(data?.lanes || []);
+    }
     setLoading(false);
   }, [invokeFinanceFunction]);
 
@@ -108,6 +113,19 @@ export default function FinancePortalPipeline() {
         <div className="flex gap-4 overflow-x-auto pb-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-96 w-72 shrink-0" />)}
         </div>
+      ) : lanes.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Layers className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
+            <p className="text-sm font-medium">No pipeline to show</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Once purchase files are assigned to you they'll appear here. Try Refresh if you expected files.
+            </p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={load}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <ScrollArea className="w-full">
           <div className="flex gap-4 pb-6">

@@ -67,7 +67,9 @@ export type NotificationType =
   | 'conversation_reply'
   // Portal messaging
   | 'portal_message_received'
-  | 'finance_portal_message_received';
+  | 'finance_portal_message_received'
+  // Conversation sync
+  | 'bulk_conversation_sync_completed';
 
 export interface Notification {
   id: string;
@@ -403,6 +405,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         } else {
           navigate('/clients');
         }
+        break;
+      case 'bulk_conversation_sync_completed':
+        navigate('/conversations');
         break;
       default:
         break;

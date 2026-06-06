@@ -375,6 +375,7 @@ Deno.serve(async (req) => {
         .from('client_portal_messages')
         .select('*')
         .eq('client_id', clientId)
+        .eq('is_internal', false) // never expose staff-only internal messages to the client
         .order('created_at', { ascending: true })
         .limit(200);
       result.messages = messages || [];

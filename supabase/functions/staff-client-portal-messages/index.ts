@@ -73,12 +73,12 @@ Deno.serve(async (req) => {
 
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, first_name, last_name, primary_email, assigned_team_user_id')
+        .select('id, primary_first_name, primary_surname, primary_email, assigned_team_user_id')
         .in('id', clientIds);
 
       const threads = (clients || []).map((c) => ({
         ...byClient.get(c.id),
-        client_name: [c.first_name, c.last_name].filter(Boolean).join(' ') || c.primary_email || 'Client',
+        client_name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ') || c.primary_email || 'Client',
         client_email: c.primary_email,
         assigned_team_user_id: c.assigned_team_user_id,
       })).sort((a, b) => {
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
       const { data, error } = await supabase
         .from('client_portal_messages')
-        .select('id, client_id, sender_type, sender_name, message, is_read, read_at, created_at')
+        .select('id, client_id, sender_type, sender_name, message, is_read, read_at, is_internal, created_at')
         .eq('client_id', client_id)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -120,8 +120,9 @@ Deno.serve(async (req) => {
     }
 
     // ── send staff reply ──
+    // is_internal=true stores a staff-only note (never shown to the client).
     if (operation === 'send_reply') {
-      const { client_id, message } = body;
+      const { client_id, message, is_internal } = body;
       const trimmed = (message || '').toString().trim();
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
       if (!trimmed) return jsonResponse({ error: 'message required' }, 400);
@@ -135,6 +136,7 @@ Deno.serve(async (req) => {
           sender_name: auth.username || 'Advisor',
           message: trimmed,
           is_read: false,
+          is_internal: is_internal === true,
         })
         .select()
         .single();

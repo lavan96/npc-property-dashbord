@@ -101,6 +101,21 @@ export function usePortalMessagesData() {
 }
 
 /**
+ * Fetch the client's unified inbox — portal + SMS/WhatsApp/email correspondence
+ * across every channel, newest first.
+ */
+export function usePortalUnifiedInbox() {
+  const { user } = usePortalAuth();
+
+  return useQuery({
+    queryKey: ['portal-unified-inbox', user?.client_id],
+    queryFn: () => invokePortalEdge('client-portal-comms', { operation: 'list' }),
+    enabled: !!user?.client_id,
+    staleTime: 30000,
+  });
+}
+
+/**
  * Fetch portal deal progress data
  */
 export function usePortalDealProgressData() {
@@ -202,6 +217,7 @@ export function usePortalUpdateData() {
       invokePortalEdge('manage-portal-client-data', params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal-client-data'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-unified-inbox'] });
     },
   });
 }
