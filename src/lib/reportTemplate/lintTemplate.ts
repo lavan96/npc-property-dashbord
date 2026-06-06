@@ -61,9 +61,36 @@ function contrastRatio(a: { r: number; g: number; b: number }, b: { r: number; g
   return (hi + 0.05) / (lo + 0.05);
 }
 
-export function lintTemplate(template: ReportTemplate): LintIssue[] {
+const BINDING_RE = /\{\{\s*([^}|]+?)\s*(?:\||\}\})/g;
+
+function getByPath(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+  const parts = path.replace(/\[(\w+)\]/g, '.$1').split('.');
+  return parts.reduce((acc, key) => (acc == null ? acc : acc[key.trim()]), obj);
+}
+
+function collectUnresolvedBindings(input: unknown, sampleData: Record<string, any>): string[] {
+  if (typeof input !== 'string' || !input.includes('{{')) return [];
+  const out: string[] = [];
+  const re = new RegExp(BINDING_RE.source, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(input))) {
+    const head = m[1].trim();
+    // skip computed (=foo) / token (@foo) / expressions
+    if (!head || head.startsWith('=') || head.startsWith('@')) continue;
+    if (/[^\w.\[\]\s]/.test(head)) continue;
+    if (getByPath(sampleData, head) === undefined) out.push(head);
+  }
+  return out;
+}
+
+export function lintTemplate(
+  template: ReportTemplate,
+  sampleData?: Record<string, any>,
+): LintIssue[] {
   const issues: LintIssue[] = [];
   const slotKeys = new Set(Object.keys(template.slots ?? {}));
+  const data = sampleData ?? {};
 
   template.pages.forEach((page, pi) => {
     const pageW = page.size?.width ?? 595;
