@@ -36,16 +36,16 @@ export async function buildTemplateBindingContext(
   reportId: string,
   brand?: { tokens?: any; logoUrl?: string | null } | null,
 ): Promise<TemplateBindingContext | null> {
-  // Pull via secure mediator (RLS-locked)
-  const { data: resp, error } = await invokeSecureFunction('secure-data-mediator', {
-    operation: 'get',
+  // Pull via the canonical secure reader (RLS-locked, returns full row)
+  const { data: resp, error } = await invokeSecureFunction('get-investment-reports', {
     table: 'investment_reports',
-    recordId: reportId,
+    reportId,
+    listOptions: { select: '*' },
   } as any);
 
-  let row: any = resp?.record ?? resp?.data ?? null;
+  let row: any = (resp as any)?.report ?? null;
   if ((error || !row) && supabase) {
-    // Fallback for callers without secure mediator wiring
+    // Last-resort fallback when secure invoke is unavailable
     const r = await supabase
       .from('investment_reports')
       .select('*')
