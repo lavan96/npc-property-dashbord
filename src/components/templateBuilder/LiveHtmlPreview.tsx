@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
-import { Eye, ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react';
+import { Eye, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface SelectPayload {
   blockId: string | null;
