@@ -39,6 +39,7 @@ import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
+import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 
