@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Sparkles, Send, RotateCcw, Loader2, Wand2, ImagePlus, X, Check, Eye, Brush,
-  Mic, MicOff, Database, Brain, Plus,
+  Mic, MicOff, Database, Brain, Plus, Shuffle,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import ReactMarkdown from 'react-markdown';
+import { DesignBriefCard, type DesignBriefView, type BriefPairing } from './DesignBriefCard';
+import { BeforeAfterDiff } from './BeforeAfterDiff';
 
-type AgentMode = 'design' | 'art_director' | 'screenshot_to_block' | 'auto_fill';
+type AgentMode = 'design' | 'art_director' | 'screenshot_to_block' | 'auto_fill' | 'brief';
 
 type Pending = {
   reply: string;
@@ -46,6 +48,12 @@ type Msg = {
   warnings?: string[];
   applied?: boolean;
   attachmentLabel?: string;
+  // Brief pipeline payload (assistant turn only)
+  brief?: DesignBriefView;
+  briefPairings?: BriefPairing[];
+  briefSwaps?: string[];
+  referenceImageUrl?: string;
+  pipeline?: 'brief' | 'ops';
 };
 
 interface Props {
