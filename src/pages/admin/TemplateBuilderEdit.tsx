@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
+import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
+import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
+import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
 import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
@@ -107,6 +110,10 @@ export default function TemplateBuilderEdit() {
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [showBranches, setShowBranches] = useState(false);
+  const [showApproval, setShowApproval] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
+  const [tplMeta, setTplMeta] = useState<{ parent_template_id: string | null; is_draft: boolean; approval_status: string | null; locked_for_review: boolean } | null>(null);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
