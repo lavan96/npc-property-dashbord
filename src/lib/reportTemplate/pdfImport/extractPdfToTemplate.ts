@@ -300,15 +300,25 @@ export async function extractPdfToTemplate(
       meta: { title: options.templateName ?? file.name.replace(/\.pdf$/i, '') },
     };
 
-    onProgress({ phase: 'finalizing', message: 'Creating template…' });
-    const finRes = await invokeImport({
-      operation: 'finalize',
-      import_id: importId,
-      name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-      schema: template,
-      page_count: totalPages,
-      source_filename: file.name,
-    });
+    onProgress({ phase: 'finalizing', message: options.targetTemplateId ? 'Re-syncing template…' : 'Creating template…' });
+    const finRes = options.targetTemplateId
+      ? await invokeImport({
+          operation: 'resync',
+          import_id: importId,
+          template_id: options.targetTemplateId,
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+          note: `Re-synced from ${file.name}`,
+        })
+      : await invokeImport({
+          operation: 'finalize',
+          import_id: importId,
+          name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+        });
 
     onProgress({ phase: 'done', totalPages });
     return {
