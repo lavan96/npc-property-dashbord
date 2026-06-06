@@ -1083,6 +1083,14 @@ export default function TemplateBuilderEdit() {
             <Component className="h-4 w-4 mr-1" /> Components
           </Button>
           {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowResync(true)} title="Re-import a revised PDF over this template (snapshots previous version)">
+              <RefreshCw className="h-4 w-4 mr-1" /> Re-sync PDF
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setShowDiff(true)} title="Side-by-side fidelity diff between a source PDF and the current template render">
+            <GitCompareArrows className="h-4 w-4 mr-1" /> Fidelity diff
+          </Button>
+          {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
             </Button>
