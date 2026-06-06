@@ -1509,6 +1509,15 @@ export default function TemplateBuilderEdit() {
         }}
         onApplyName={(n, d) => { setName(n); setDescription(d); }}
       />
+      <TemplateDesignAgentPanel
+        open={showDesignAgent}
+        onOpenChange={setShowDesignAgent}
+        template={template}
+        setTemplate={(next) => setTemplate(next)}
+        activePageId={activePageId}
+        selectedBlockId={selectedBlockId}
+        selectedOverlayId={selectedOverlayId}
+      />
       <PreviewQADialog
         open={showPreviewQA}
         onOpenChange={setShowPreviewQA}
