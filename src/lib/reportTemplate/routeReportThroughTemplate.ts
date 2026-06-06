@@ -32,15 +32,15 @@ export async function routeReportThroughTemplate(
   opts?: { agencyId?: string | null; userId?: string | null; brand?: any },
 ): Promise<TemplateBuilderRouteResult | null> {
   try {
-    // 1. Fetch the report (id + type + variant only — full data comes via binding context)
+    // 1. Fetch the report (just the routing fields — full data comes via binding context)
     const { data: report, error: rErr } = await supabase
       .from('investment_reports')
-      .select('id, report_type, report_variant, property_address')
+      .select('id, report_scope, report_tier, report_variant, property_address')
       .eq('id', reportId)
       .maybeSingle();
     if (rErr || !report) return null;
 
-    const reportType = String((report as any).report_type ?? '').toLowerCase();
+    const reportType = String((report as any).report_scope ?? '').toLowerCase();
     const variant = ((report as any).report_variant ?? null) as ReportVariant | null;
     if (!reportType) return null;
 
