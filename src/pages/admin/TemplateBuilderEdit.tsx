@@ -105,6 +105,8 @@ export default function TemplateBuilderEdit() {
   const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
+  const [showResync, setShowResync] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
