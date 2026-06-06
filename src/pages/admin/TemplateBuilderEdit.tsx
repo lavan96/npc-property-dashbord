@@ -71,7 +71,7 @@ import {
   type ReportTemplate,
   makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
-import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
+// jsPDF preview retired — PDF tab now renders via WeasyPrint for production parity.
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
