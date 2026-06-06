@@ -30,6 +30,12 @@ export interface HtmlRenderOptions {
   customCss?: string;
   /** Document title (PDF metadata). */
   title?: string;
+  /**
+   * Editor mode: wrap each block in a `data-block-id` element, tag pages
+   * with `data-page-id`, and inject a small runtime that posts click
+   * messages to the parent window and accepts selection highlighting.
+   */
+  editorMode?: boolean;
 }
 
 export interface HtmlRenderResult {
@@ -267,7 +273,7 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
   return ` id="${anchorId}" style="bookmark-label:'${String(label).replace(/'/g, "\\'")}';bookmark-level:${level};"`;
 }
 
-function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string {
+function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
   const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
@@ -302,13 +308,17 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   if (bmAttrs) {
     content = `<span${bmAttrs}>${content}</span>`;
   }
-  return wrap(content);
+  let out = wrap(content);
+  if (editorMode && block.id) {
+    out = `<div data-block-id="${escapeHtml(String(block.id))}" data-block-type="${escapeHtml(String(block.type ?? ''))}" style="display:contents">${out}</div>`;
+  }
+  return out;
 }
 
 
-function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[]): string[] {
+function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string[] {
   const r = block.repeat;
-  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages)];
+  if (!r || !r.path) return [renderBlockOnce(block, ctxBase, blockCtx, pages, editorMode)];
   const raw = r.path.split('.').reduce((acc: any, k: string) => (acc == null ? acc : acc[k.trim()]), ctxBase.data);
   const items = Array.isArray(raw) ? raw : [];
   const max = r.max ?? items.length;
@@ -325,13 +335,13 @@ function renderBlockWithRepeat(block: any, ctxBase: ResolveContext, blockCtx: Ht
     };
     const itemCtx: ResolveContext = { ...ctxBase, data: { ...ctxBase.data, [alias]: items[i], [`${alias}Index`]: i } };
     const itemBlockCtx: HtmlBlockContext = { ...blockCtx, data: itemCtx.data };
-    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages));
+    out.push(renderBlockOnce(itemBlock, itemCtx, itemBlockCtx, pages, editorMode));
   }
   return out;
 }
 
 
-function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[]): string {
+function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, template: ReportTemplate, pages: Page[], editorMode = false): string {
   const blockCtx: HtmlBlockContext = {
     ...ctxBase,
     page: { width: page.size.width, height: page.size.height },
@@ -355,7 +365,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
     if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
-    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages));
+    blocks.push(...renderBlockWithRepeat(block, ctxBase, blockCtx, pages, editorMode));
   }
 
   // Phase 5 — baseline grid (printed when page.baselineGrid.show is true).
@@ -368,7 +378,8 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     baselineEl = `<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to bottom, transparent 0, transparent ${size - 1}pt, ${color} ${size - 1}pt, ${color} ${size}pt);background-position:0 ${offset}pt;"></div>`;
   }
 
-  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}" style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
+  const dataAttrs = editorMode ? ` data-page-id="${escapeHtml(String(page.id))}" data-page-index="${pageIndex}"` : '';
+  return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}"${dataAttrs} style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
 
 /** Compile a template + data into a print-ready HTML document. */
@@ -415,9 +426,17 @@ export function renderTemplateToHtml(
       tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
-    return renderPage(page, pageCtx, idx, template, visiblePages);
+    return renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
   }).join('\n');
 
+
+  const editorCss = options.editorMode ? `
+/* Editor mode chrome */
+.tpl-page { box-shadow: 0 1pt 4pt rgba(0,0,0,0.08); margin: 0 auto 24px auto; outline: 1px solid rgba(0,0,0,0.08); }
+[data-block-id] > * { cursor: pointer; }
+[data-block-id].__tpl-hover { outline: 1.5pt dashed hsl(45 80% 50% / 0.7); outline-offset: 2pt; }
+[data-block-id].__tpl-selected { outline: 2pt solid hsl(45 95% 50%); outline-offset: 2pt; box-shadow: 0 0 0 4pt hsl(45 95% 50% / 0.18); }
+` : '';
 
   const css = [
     tokensToFontFaceCss(baseTokens),
@@ -425,6 +444,7 @@ export function renderTemplateToHtml(
     baseCss(),
     pageCss(visiblePages, template, ctxBase).css,
     perPageThemeCss.join('\n'),
+    editorCss,
     options.customCss ?? '',
   ].join('\n');
 
@@ -440,6 +460,46 @@ export function renderTemplateToHtml(
   ].filter(Boolean).join('\n');
   const docTitle = options.title ?? (meta.title ? resolveBindable(meta.title, ctxBase) : 'Report');
 
+  const editorRuntime = options.editorMode ? `
+<script>(function(){
+  function findBlock(el){ while(el && el!==document.body){ if(el.dataset && el.dataset.blockId) return el; el = el.parentElement; } return null; }
+  function findPage(el){ while(el && el!==document.body){ if(el.dataset && el.dataset.pageId) return el; el = el.parentElement; } return null; }
+  document.addEventListener('click', function(e){
+    var b = findBlock(e.target); var p = findPage(e.target);
+    if (b || p) {
+      e.preventDefault(); e.stopPropagation();
+      parent.postMessage({ source:'tpl-preview', type:'select',
+        blockId: b ? b.dataset.blockId : null,
+        blockType: b ? b.dataset.blockType : null,
+        pageId: p ? p.dataset.pageId : null,
+        pageIndex: p ? Number(p.dataset.pageIndex) : null,
+      }, '*');
+    }
+  }, true);
+  document.addEventListener('mouseover', function(e){
+    var b = findBlock(e.target); if (!b) return;
+    if (b.__hovered) return; b.__hovered = true; b.classList.add('__tpl-hover');
+  }, true);
+  document.addEventListener('mouseout', function(e){
+    var b = findBlock(e.target); if (!b) return;
+    b.__hovered = false; b.classList.remove('__tpl-hover');
+  }, true);
+  window.addEventListener('message', function(ev){
+    var m = ev.data; if (!m || m.source !== 'tpl-preview-host') return;
+    if (m.type === 'select') {
+      document.querySelectorAll('[data-block-id].__tpl-selected').forEach(function(n){ n.classList.remove('__tpl-selected'); });
+      if (m.blockId) {
+        var el = document.querySelector('[data-block-id="'+CSS.escape(m.blockId)+'"]');
+        if (el) { el.classList.add('__tpl-selected'); if (m.scroll !== false) el.scrollIntoView({ behavior:'smooth', block:'center' }); }
+      } else if (m.pageId) {
+        var pg = document.querySelector('[data-page-id="'+CSS.escape(m.pageId)+'"]');
+        if (pg && m.scroll !== false) pg.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    }
+  });
+  parent.postMessage({ source:'tpl-preview', type:'ready' }, '*');
+})();</script>` : '';
+
   const html = `<!doctype html>
 <html lang="${escapeHtml(lang)}">
 <head>
@@ -450,6 +510,7 @@ ${metaTags}
 </head>
 <body>
 ${pageHtml}
+${editorRuntime}
 </body>
 </html>`;
 
