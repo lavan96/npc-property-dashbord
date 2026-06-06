@@ -207,7 +207,10 @@ export function TemplateDesignAgentPanel({
       const previewSchema: ReportTemplate = data.schema;
 
       if (autoApply || ops.length === 0) {
-        if (previewSchema && ops.length > 0) setTemplate(previewSchema);
+        if (previewSchema && ops.length > 0) {
+          setTemplate(previewSchema);
+          toast.success(`Applied ${ops.length} change${ops.length === 1 ? '' : 's'} to preview`);
+        }
         setMessages((m) => [...m, { role: 'assistant', content: reply, ops, warnings, applied: ops.length > 0 }]);
       } else {
         setPending({ reply, ops, warnings, previewSchema });
