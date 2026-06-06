@@ -10,9 +10,13 @@
  */
 
 import { hexToRgb, contrastRatioHex, pickContrastingFg, nearestHex } from './colorScience.ts';
+import { callAnthropic } from './anthropicAdapter.ts';
 
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
 const VISION_MODEL = 'openai/gpt-5';
+const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const USE_CLAUDE = !!ANTHROPIC_KEY;
+
 
 export type BriefPaletteRole = 'bg' | 'surface' | 'text' | 'accent' | 'muted';
 export interface BriefPaletteEntry { role: BriefPaletteRole; hex: string; label?: string }
@@ -136,23 +140,36 @@ export async function analyzeReferenceImage(
     },
   ];
 
-  const resp = await fetch(GATEWAY_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: VISION_MODEL,
-      messages,
-      tools: [BRIEF_TOOL],
+  let data: any;
+  if (USE_CLAUDE) {
+    const r = await callAnthropic({
+      apiKey: ANTHROPIC_KEY!,
+      messages: messages as any,
+      tools: [BRIEF_TOOL as any],
       tool_choice: { type: 'function', function: { name: 'emit_design_brief' } },
-    }),
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    return { error: `vision gateway ${resp.status}: ${text.slice(0, 300)}` };
+      max_tokens: 4096,
+    });
+    if (!r.ok) return { error: `claude vision ${r.status}: ${(r.errorText || '').slice(0, 300)}` };
+    data = r.data;
+  } else {
+    const resp = await fetch(GATEWAY_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: VISION_MODEL,
+        messages,
+        tools: [BRIEF_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_design_brief' } },
+      }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      return { error: `vision gateway ${resp.status}: ${text.slice(0, 300)}` };
+    }
+    data = await resp.json();
   }
-  const data = await resp.json();
   const call = data?.choices?.[0]?.message?.tool_calls?.[0];
+
   if (!call?.function?.arguments) {
     return { error: 'no tool_call from vision model', raw: data };
   }
