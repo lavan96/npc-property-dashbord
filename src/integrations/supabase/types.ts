@@ -16352,6 +16352,51 @@ export type Database = {
           },
         ]
       }
+      template_imports: {
+        Row: {
+          created_at: string
+          created_template_id: string | null
+          error: string | null
+          fidelity_mode: string
+          id: string
+          meta: Json
+          page_count: number | null
+          source_filename: string | null
+          source_size_bytes: number | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_template_id?: string | null
+          error?: string | null
+          fidelity_mode?: string
+          id?: string
+          meta?: Json
+          page_count?: number | null
+          source_filename?: string | null
+          source_size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_template_id?: string | null
+          error?: string | null
+          fidelity_mode?: string
+          id?: string
+          meta?: Json
+          page_count?: number | null
+          source_filename?: string | null
+          source_size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       template_render_jobs: {
         Row: {
           asset_count: number | null
