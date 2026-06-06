@@ -13,8 +13,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
-  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2,
+  ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
 } from 'lucide-react';
+import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
+import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
