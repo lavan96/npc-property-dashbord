@@ -382,19 +382,19 @@ export function EditorialCanvas({
       <div className="px-3 py-1.5 border-b flex items-center gap-2 text-xs bg-background">
         <MousePointer2 className="h-3.5 w-3.5 text-primary" />
         <span className="font-medium">Editor</span>
-        <span className="text-muted-foreground">·</span>
-        <span className="text-muted-foreground">
-          Click to select · Shift-click multi · Double-click text to edit · Space-drag to pan · ⌘/Ctrl-wheel to zoom
+        <span className="text-muted-foreground hidden md:inline">·</span>
+        <span className="text-muted-foreground hidden md:inline truncate">
+          Click to select · Shift-click multi · Dbl-click text to edit
         </span>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))} title="Zoom out">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))} title="Zoom out (⌘/Ctrl-wheel)">
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
           <span className="text-[10px] tabular-nums w-12 text-center">{Math.round(zoom * 100)}%</span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))} title="Zoom in">
             <ZoomIn className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fitToViewport} title="Fit page">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fitToViewport} title="Fit page (space-drag to pan)">
             <Maximize2 className="h-3.5 w-3.5" />
           </Button>
         </div>
