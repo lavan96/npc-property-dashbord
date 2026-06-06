@@ -30,40 +30,36 @@ export function TemplateCanvas({ page, onOverlaysChange, onSelectOverlay }: Prop
   const lastPageIdRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<number | null>(null);
   const overlaysRef = useRef<Overlay[]>(page.blocks.flatMap((b) => b.overlays));
+  const lastSyncedSigRef = useRef<string>('');
 
-  // Recompute the flat overlay list when the page changes (block ordering preserved by index).
-  useEffect(() => {
-    overlaysRef.current = page.blocks.flatMap((b) => b.overlays);
-  }, [page]);
+  const sigOf = (ov: Overlay[]) => JSON.stringify(ov);
 
   const handleMount = useCallback(
     (editor: Editor) => {
       editorRef.current = editor;
-      // Initial sync
-      syncOverlaysToEditor(editor, overlaysRef.current, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
+      const initial = page.blocks.flatMap((b) => b.overlays);
+      overlaysRef.current = initial;
+      syncOverlaysToEditor(editor, initial, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
       lastPageIdRef.current = page.id;
-      // Centre the page on screen
-      try {
-        editor.zoomToFit({ animation: { duration: 0 } });
-      } catch { /* noop */ }
+      lastSyncedSigRef.current = sigOf(initial);
+      try { editor.zoomToFit({ animation: { duration: 0 } }); } catch { /* noop */ }
 
       // Selection listener
       editor.store.listen(
-        () => {
-          onSelectOverlay(getSelectedOverlayId(editor));
-        },
+        () => { onSelectOverlay(getSelectedOverlayId(editor)); },
         { source: 'user', scope: 'session' },
       );
 
-      // Document change listener (debounced write-back)
+      // Document change listener (debounced write-back, user-driven only)
       editor.store.listen(
         () => {
           if (pendingWriteRef.current) window.clearTimeout(pendingWriteRef.current);
           pendingWriteRef.current = window.setTimeout(() => {
             const next = readShapesBackToOverlays(editor, overlaysRef.current);
-            // Only emit if something actually changed
-            if (JSON.stringify(next) !== JSON.stringify(overlaysRef.current)) {
+            const nextSig = sigOf(next);
+            if (nextSig !== sigOf(overlaysRef.current)) {
               overlaysRef.current = next;
+              lastSyncedSigRef.current = nextSig;
               onOverlaysChange(next);
             }
           }, 250);
@@ -74,18 +70,25 @@ export function TemplateCanvas({ page, onOverlaysChange, onSelectOverlay }: Prop
     [onOverlaysChange, onSelectOverlay, page.id, page.size],
   );
 
-  // When the active page changes (different page id), re-sync.
+  // Re-sync the editor whenever the page or its overlays change externally
+  // (page swap OR setTemplate from Design Agent / AI Author / programmatic edits).
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    if (lastPageIdRef.current !== page.id) {
-      syncOverlaysToEditor(editor, overlaysRef.current, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
+    const overlays = page.blocks.flatMap((b) => b.overlays);
+    const pageChanged = lastPageIdRef.current !== page.id;
+    const sig = sigOf(overlays);
+    const overlaysChanged = sig !== lastSyncedSigRef.current;
+    if (!pageChanged && !overlaysChanged) return;
+
+    overlaysRef.current = overlays;
+    syncOverlaysToEditor(editor, overlays, { width: page.size.width ?? 595, height: page.size.height ?? 842 });
+    lastSyncedSigRef.current = sig;
+    if (pageChanged) {
       lastPageIdRef.current = page.id;
-      try {
-        editor.zoomToFit({ animation: { duration: 0 } });
-      } catch { /* noop */ }
+      try { editor.zoomToFit({ animation: { duration: 0 } }); } catch { /* noop */ }
     }
-  }, [page.id, page.size]);
+  }, [page]);
 
   return (
     <div className="absolute inset-0">
