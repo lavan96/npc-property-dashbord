@@ -11,13 +11,18 @@
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
+import { callAnthropic } from '../_shared/anthropicAdapter.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const USE_CLAUDE = !!ANTHROPIC_API_KEY;
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
 const DEFAULT_MODEL = 'openai/gpt-5.5';
 // Synthesis model — strong reasoning + tool calling. Vision lives in designBrief.ts.
 const SYNTHESIS_MODEL = 'openai/gpt-5';
 const VISION_MODEL = 'openai/gpt-5';
+const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-5-20250929';
+
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), {
