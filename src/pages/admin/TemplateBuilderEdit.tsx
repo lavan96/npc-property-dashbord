@@ -8,7 +8,7 @@
  * overlays (position, size, text content); blocks and bindings are edited in
  * the inspector / page panel. Live PDF regenerates on a 500ms debounce.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout,
@@ -42,6 +42,7 @@ import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -79,7 +80,7 @@ import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { useBrand } from '@/branding/BrandProvider';
-import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
+import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
@@ -91,6 +92,37 @@ import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
+
+type TemplateMeta = {
+  parent_template_id: string | null;
+  is_draft: boolean;
+  approval_status: string | null;
+  locked_for_review: boolean;
+  is_active: boolean;
+  is_default: boolean;
+};
+
+type TemplateEditSignatureInput = {
+  name: string;
+  description: string;
+  reportType: string;
+  tier: string;
+  variant: string;
+  scope: string;
+  priority: number;
+  customCss: string;
+  template: ReportTemplate;
+};
+
+function makeTemplateEditSignature(input: TemplateEditSignatureInput): string {
+  return JSON.stringify(input);
+}
+
+const RENDERER_ISSUE_CODES = new Set<LintIssue['code']>(['renderer-partial', 'renderer-unsupported']);
+
+function isRendererIssue(issue: LintIssue): boolean {
+  return RENDERER_ISSUE_CODES.has(issue.code);
+}
 
 export default function TemplateBuilderEdit() {
   const { id } = useParams<{ id: string }>();
@@ -116,9 +148,10 @@ export default function TemplateBuilderEdit() {
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
-  const [tplMeta, setTplMeta] = useState<{ parent_template_id: string | null; is_draft: boolean; approval_status: string | null; locked_for_review: boolean } | null>(null);
+  const [tplMeta, setTplMeta] = useState<TemplateMeta | null>(null);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
+  const { isSuperadmin } = usePermissions();
   const [tier, setTier] = useState('');
   const [variant, setVariant] = useState<string>(''); // '' = any
   const [scope, setScope] = useState<string>('global');
@@ -130,6 +163,9 @@ export default function TemplateBuilderEdit() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('canvas');
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
+  const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveConflict, setSaveConflict] = useState<{ message: string; currentVersion?: number | null } | null>(null);
 
   // ── Undo / redo history ────────────────────────────────────────────────────
   const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
@@ -169,12 +205,15 @@ export default function TemplateBuilderEdit() {
 
   // ── Sample data (editable in the Data tab, used for live preview) ───────────
   const [sampleDataText, setSampleDataText] = useState(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2));
-  const sampleData = useMemo(() => {
-    try { return JSON.parse(sampleDataText); } catch { return DEFAULT_SAMPLE_DATA; }
+  const parsedSampleData = useMemo(() => {
+    try { return { data: JSON.parse(sampleDataText), valid: true }; }
+    catch { return { data: DEFAULT_SAMPLE_DATA, valid: false }; }
   }, [sampleDataText]);
-  const sampleDataValid = useMemo(() => {
-    try { JSON.parse(sampleDataText); return true; } catch { return false; }
-  }, [sampleDataText]);
+  const sampleData = parsedSampleData.data;
+  const sampleDataValid = parsedSampleData.valid;
+  const deferredTemplate = useDeferredValue(template);
+  const deferredSampleData = useDeferredValue(sampleData);
+  const isAnalysisPending = deferredTemplate !== template || deferredSampleData !== sampleData;
 
   // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
   const clipboardRef = useRef<Block | null>(null);
@@ -214,6 +253,8 @@ export default function TemplateBuilderEdit() {
         is_draft: !!(tplRow as any).is_draft,
         approval_status: (tplRow as any).approval_status ?? 'draft',
         locked_for_review: !!(tplRow as any).locked_for_review,
+        is_active: !!(tplRow as any).is_active,
+        is_default: !!(tplRow as any).is_default,
       });
       return;
     }
@@ -231,10 +272,25 @@ export default function TemplateBuilderEdit() {
       is_draft: !!(tplRow as any).is_draft,
       approval_status: (tplRow as any).approval_status ?? 'draft',
       locked_for_review: !!(tplRow as any).locked_for_review,
+      is_active: !!(tplRow as any).is_active,
+      is_default: !!(tplRow as any).is_default,
     });
     const parsed = parseTemplate(tplRow.schema);
     skipHistoryRef.current = true;
     setTemplate(parsed);
+    setLastSavedSignature(makeTemplateEditSignature({
+      name: tplRow.name || '',
+      description: tplRow.description || '',
+      reportType: tplRow.report_type || '',
+      tier: tplRow.tier || '',
+      variant: ((tplRow as any).variant as string) || '',
+      scope: ((tplRow as any).scope as string) || 'global',
+      priority: Number((tplRow as any).priority ?? 0),
+      customCss: ((tplRow as any).custom_css as string) || '',
+      template: parsed,
+    }));
+    setLastSavedAt(new Date().toISOString());
+    setSaveConflict(null);
     setActivePageId((prev) => parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null);
   }, [tplRow, setTemplate]);
 
@@ -254,7 +310,7 @@ export default function TemplateBuilderEdit() {
     if (!id) return;
     const { data } = await supabase
       .from('report_templates' as any)
-      .select('parent_template_id,is_draft,approval_status,locked_for_review')
+      .select('parent_template_id,is_draft,approval_status,locked_for_review,is_active,is_default')
       .eq('id', id)
       .single();
     if (data) setTplMeta(data as any);
@@ -274,6 +330,29 @@ export default function TemplateBuilderEdit() {
     }
     return null;
   }, [activePage, selectedOverlayId]);
+
+  const currentSignature = useMemo(() => makeTemplateEditSignature({
+    name,
+    description,
+    reportType,
+    tier,
+    variant,
+    scope,
+    priority,
+    customCss,
+    template,
+  }), [name, description, reportType, tier, variant, scope, priority, customCss, template]);
+  const isDirty = !!lastSavedSignature && currentSignature !== lastSavedSignature;
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
 
   // ── Mutators ────────────────────────────────────────────────────────────────
   const updatePage = (next: Page) => {
@@ -536,19 +615,20 @@ export default function TemplateBuilderEdit() {
     addBlockToActivePage(newBlock);
     toast.success(`Inserted ${def.label}`);
   };
-  const jumpToFirstBindingIssue = () => {
-    const iss = bindingIssues[0];
-    if (!iss) return;
+  const jumpToIssue = useCallback((iss: { pageId?: string; blockId?: string; overlayId?: string }) => {
     if (iss.pageId) setActivePageId(iss.pageId);
     if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
     else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+  }, []);
+  const jumpToFirstBindingIssue = () => {
+    const iss = bindingIssues[0];
+    if (!iss) return;
+    jumpToIssue(iss);
   };
   const jumpToFirstLintIssue = () => {
     const iss = lintIssues[0];
     if (!iss) return;
-    if (iss.pageId) setActivePageId(iss.pageId);
-    if (iss.overlayId) { setSelectedOverlayId(iss.overlayId); setSelectedBlockId(null); }
-    else if (iss.blockId) { setSelectedBlockId(iss.blockId); setSelectedOverlayId(null); }
+    jumpToIssue(iss);
   };
   const syncTokensFromBrand = () => {
     const themeCfg = (brand as any)?.settings?.themeConfig;
@@ -933,10 +1013,67 @@ export default function TemplateBuilderEdit() {
     pasteOverlays, duplicateSelectedOverlays, toggleTextStyle, shiftZOrder, workspaceMode,
   ]);
 
-  // ── Binding validation (live) ───────────────────────────────────────────────
-  const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
-  // ── Print-safety lint (live) ────────────────────────────────────────────────
-  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template, sampleData), [template, sampleData]);
+  // ── Deferred template analysis keeps large templates responsive while typing/dragging.
+  const bindingIssues = useMemo(() => collectTemplateIssues(deferredTemplate), [deferredTemplate]);
+  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(deferredTemplate, deferredSampleData), [deferredTemplate, deferredSampleData]);
+  const rendererIssues = useMemo(() => lintIssues.filter(isRendererIssue), [lintIssues]);
+  const rendererIssueCount = rendererIssues.length;
+  const rendererErrorCount = useMemo(() => rendererIssues.filter((i) => i.severity === 'error').length, [rendererIssues]);
+  const rendererNoteCount = rendererIssueCount - rendererErrorCount;
+  const printErrorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error' && !isRendererIssue(i)).length, [lintIssues]);
+  const rendererIssuesByPage = useMemo(() => {
+    const issuesByPage = new Map<string, LintIssue[]>();
+    rendererIssues.forEach((issue) => {
+      if (!issue.pageId) return;
+      const existing = issuesByPage.get(issue.pageId) ?? [];
+      existing.push(issue);
+      issuesByPage.set(issue.pageId, existing);
+    });
+    return deferredTemplate.pages
+      .map((page, index) => ({ page, index, issues: issuesByPage.get(page.id) ?? [] }))
+      .filter((group) => group.issues.length > 0);
+  }, [rendererIssues, deferredTemplate.pages]);
+  const usedBlockCompatibility = useMemo(() => {
+    const counts = new Map<string, number>();
+    deferredTemplate.pages.forEach((page) => page.blocks.forEach((block) => counts.set(block.type, (counts.get(block.type) ?? 0) + 1)));
+    return Array.from(counts.entries())
+      .map(([type, count]) => ({
+        type,
+        count,
+        label: BLOCK_DEFS[type]?.label ?? type,
+        capabilities: getBlockRendererCapabilities(type),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [deferredTemplate.pages]);
+  const firstRendererBlocker = useMemo(() => rendererIssues.find((issue) => issue.severity === 'error') ?? null, [rendererIssues]);
+  const firstRendererNote = useMemo(() => rendererIssues.find((issue) => issue.severity !== 'error') ?? null, [rendererIssues]);
+  const activationBlockers = useMemo(() => {
+    const blockers: string[] = [];
+    if (!isSuperadmin) blockers.push('Superadmin access is required to activate templates.');
+    if ((tplMeta?.approval_status ?? 'draft') !== 'approved') blockers.push('Template must be approved.');
+    if (!reportType) blockers.push('Report type is required.');
+    if (isDirty) blockers.push('Save unsaved changes before activation.');
+    if (bindingIssues.length > 0) blockers.push(`Resolve ${bindingIssues.length} binding issue${bindingIssues.length === 1 ? '' : 's'}.`);
+    if (rendererErrorCount > 0) blockers.push(`Resolve ${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'}.`);
+    if (printErrorCount > 0) blockers.push(`Resolve ${printErrorCount} print-safety error${printErrorCount === 1 ? '' : 's'}.`);
+    return blockers;
+  }, [bindingIssues.length, isDirty, isSuperadmin, printErrorCount, rendererErrorCount, reportType, tplMeta?.approval_status]);
+  const canActivateTemplate = activationBlockers.length === 0;
+  const confirmRendererPreflight = useCallback((actionLabel: string): boolean => {
+    const currentRendererIssues = lintTemplate(template, sampleData).filter(isRendererIssue);
+    const currentRendererErrorCount = currentRendererIssues.filter((issue) => issue.severity === 'error').length;
+    const currentRendererNoteCount = currentRendererIssues.length - currentRendererErrorCount;
+    if (currentRendererErrorCount > 0) {
+      toast.error(`Resolve ${currentRendererErrorCount} production renderer blocker${currentRendererErrorCount === 1 ? '' : 's'} before ${actionLabel}.`);
+      return false;
+    }
+    if (currentRendererNoteCount > 0) {
+      return window.confirm(
+        `This template has ${currentRendererNoteCount} renderer compatibility note${currentRendererNoteCount === 1 ? '' : 's'} (for example legacy jsPDF placeholders). Production HTML/WeasyPrint output is still supported. Continue to ${actionLabel}?`,
+      );
+    }
+    return true;
+  }, [sampleData, template]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -1001,10 +1138,13 @@ export default function TemplateBuilderEdit() {
       toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
       return;
     }
+    const expectedVersion = Number(tplRow?.version ?? 1);
+    setSaveConflict(null);
     update.mutate(
       {
         id,
         snapshot,
+        expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
         patch: {
           name,
           description,
@@ -1019,6 +1159,9 @@ export default function TemplateBuilderEdit() {
       },
       {
         onSuccess: () => {
+          setLastSavedSignature(currentSignature);
+          setLastSavedAt(new Date().toISOString());
+          setSaveConflict(null);
           toast.success(snapshot ? 'Saved as new version' : 'Saved');
           // Phase 14 — analytics
           logTemplateEvent({
@@ -1032,6 +1175,47 @@ export default function TemplateBuilderEdit() {
             },
           });
           void logTemplateAudit(id, snapshot ? 'version_created' : 'schema_saved', snapshot ? 'Saved as new version' : 'Schema saved');
+        },
+        onError: (error: Error & { code?: string; currentVersion?: number | null }) => {
+          if (error.code === 'version_conflict') {
+            const message = 'Template changed on the server. Your local edits were kept; reload or branch before saving again.';
+            setSaveConflict({ message, currentVersion: error.currentVersion });
+            toast.error(message);
+          }
+        },
+      },
+    );
+  };
+
+  const handleActivationToggle = () => {
+    if (!id || !tplMeta) return;
+    const nextActive = !tplMeta.is_active;
+    if (nextActive && !canActivateTemplate) {
+      toast.error(activationBlockers[0] || 'Template is not ready to activate.');
+      return;
+    }
+    if (nextActive && !confirmRendererPreflight('activate this template')) return;
+    const expectedVersion = Number(tplRow?.version ?? 1);
+    update.mutate(
+      {
+        id,
+        expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
+        patch: nextActive ? { is_active: true } as any : { is_active: false, is_default: false } as any,
+      },
+      {
+        onSuccess: (record: any) => {
+          setTplMeta((prev) => prev ? {
+            ...prev,
+            is_active: !!record?.is_active,
+            is_default: !!record?.is_default,
+            approval_status: record?.approval_status ?? prev.approval_status,
+            locked_for_review: !!record?.locked_for_review,
+          } : prev);
+          toast.success(nextActive ? 'Template activated' : 'Template deactivated');
+          void logTemplateAudit(id, nextActive ? 'activated' : 'deactivated');
+        },
+        onError: (error: Error & { code?: string }) => {
+          toast.error(error.message || (nextActive ? 'Activation failed' : 'Deactivation failed'));
         },
       },
     );
@@ -1160,16 +1344,7 @@ export default function TemplateBuilderEdit() {
                       <li key={idx}>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (iss.pageId) setActivePageId(iss.pageId);
-                            if (iss.overlayId) {
-                              setSelectedOverlayId(iss.overlayId);
-                              setSelectedBlockId(null);
-                            } else if (iss.blockId) {
-                              setSelectedBlockId(iss.blockId);
-                              setSelectedOverlayId(null);
-                            }
-                          }}
+                          onClick={() => jumpToIssue(iss)}
                           className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
                         >
                           <div className="text-[11px] font-medium text-destructive truncate">{iss.message}</div>
@@ -1204,13 +1379,13 @@ export default function TemplateBuilderEdit() {
                 title="Print-safety lint"
               >
                 <ShieldAlert className="h-2.5 w-2.5" />
-                {lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
+                {isAnalysisPending ? 'Updating…' : lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-96 p-0">
               <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
                 <span>Print-safety issues ({lintIssues.length})</span>
-                <span className="text-[10px] text-muted-foreground font-normal">Click to jump</span>
+                <span className="text-[10px] text-muted-foreground font-normal">{isAnalysisPending ? 'Updating analysis…' : 'Click to jump'}</span>
               </div>
               {lintIssues.length === 0 ? (
                 <div className="px-3 py-6 text-xs text-muted-foreground text-center">
@@ -1223,16 +1398,7 @@ export default function TemplateBuilderEdit() {
                       <li key={idx}>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (iss.pageId) setActivePageId(iss.pageId);
-                            if (iss.overlayId) {
-                              setSelectedOverlayId(iss.overlayId);
-                              setSelectedBlockId(null);
-                            } else if (iss.blockId) {
-                              setSelectedBlockId(iss.blockId);
-                              setSelectedOverlayId(null);
-                            }
-                          }}
+                          onClick={() => jumpToIssue(iss)}
                           className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
                         >
                           <div className={`text-[11px] font-medium truncate ${iss.severity === 'error' ? 'text-destructive' : 'text-amber-600'}`}>
@@ -1301,6 +1467,7 @@ export default function TemplateBuilderEdit() {
             variant="outline"
             size="sm"
             onClick={async () => {
+              if (!confirmRendererPreflight('render with WeasyPrint')) return;
               const toastId = toast.loading('Rendering via WeasyPrint…');
               try {
                 const { html } = renderTemplateToHtml(template, {
@@ -1423,6 +1590,57 @@ export default function TemplateBuilderEdit() {
             </Button>
           )}
           {id && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={tplMeta?.is_active ? 'default' : canActivateTemplate ? 'outline' : 'destructive'}
+                  size="sm"
+                  title={tplMeta?.is_active ? 'Template is active in production' : 'Activation readiness'}
+                >
+                  {tplMeta?.is_active ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <ShieldAlert className="h-4 w-4 mr-1" />}
+                  {tplMeta?.is_active ? 'Active' : 'Activation'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-96 p-0">
+                <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
+                  <span>Activation readiness</span>
+                  <span className={tplMeta?.is_active ? 'text-success' : canActivateTemplate ? 'text-success' : 'text-destructive'}>
+                    {tplMeta?.is_active ? 'Active' : canActivateTemplate ? 'Ready' : `${activationBlockers.length} blocker${activationBlockers.length === 1 ? '' : 's'}`}
+                  </span>
+                </div>
+                <div className="p-3 space-y-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Status</div><div className="font-medium">{tplMeta?.approval_status ?? 'draft'}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Report type</div><div className="font-medium">{reportType || 'Missing'}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Lock</div><div className="font-medium">{tplMeta?.locked_for_review ? 'Locked' : 'Unlocked'}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Bindings</div><div className="font-medium">{bindingIssues.length === 0 ? 'OK' : `${bindingIssues.length} issue${bindingIssues.length === 1 ? '' : 's'}`}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Renderer</div><div className="font-medium">{rendererIssueCount === 0 ? 'OK' : rendererErrorCount > 0 ? `${rendererErrorCount} blocker${rendererErrorCount === 1 ? '' : 's'}` : `${rendererIssueCount} note${rendererIssueCount === 1 ? '' : 's'}`}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Print errors</div><div className="font-medium">{printErrorCount === 0 ? 'OK' : printErrorCount}</div></div>
+                  </div>
+                  {!tplMeta?.is_active && activationBlockers.length > 0 ? (
+                    <ul className="space-y-1 text-destructive">
+                      {activationBlockers.map((b) => <li key={b}>• {b}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      {tplMeta?.is_active ? 'This template is currently active for production routing.' : 'No activation blockers detected.'}
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={tplMeta?.is_active ? 'outline' : 'default'}
+                    className="w-full"
+                    disabled={update.isPending || (!tplMeta?.is_active && !canActivateTemplate)}
+                    onClick={handleActivationToggle}
+                  >
+                    {update.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {tplMeta?.is_active ? 'Deactivate template' : 'Activate template'}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          {id && (
             <Button variant="outline" size="sm" onClick={() => setShowAudit(true)} title="Full audit trail">
               <History className="h-4 w-4 mr-1" /> Audit
             </Button>
@@ -1458,6 +1676,12 @@ export default function TemplateBuilderEdit() {
               <FileText className="h-3.5 w-3.5 mr-1" /> PDF
             </Button>
           </div>
+          <div
+            className={`text-[11px] px-2 py-1 rounded border ${saveConflict ? 'border-destructive/30 bg-destructive/10 text-destructive' : isDirty ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-success/30 bg-success/10 text-success'}`}
+            title={saveConflict?.message || (lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : undefined)}
+          >
+            {saveConflict ? 'Save conflict' : update.isPending ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
+          </div>
           <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={update.isPending}>
             <History className="h-4 w-4 mr-1" /> Save version
           </Button>
@@ -1476,6 +1700,7 @@ export default function TemplateBuilderEdit() {
           <TabsTrigger value="tokens"><Palette className="h-3.5 w-3.5 mr-1" /> Tokens</TabsTrigger>
           <TabsTrigger value="brand"><Palette className="h-3.5 w-3.5 mr-1" /> Brand kit</TabsTrigger>
           <TabsTrigger value="slots"><Component className="h-3.5 w-3.5 mr-1" /> Slots ({Object.keys(template.slots ?? {}).length})</TabsTrigger>
+          <TabsTrigger value="compatibility"><ShieldAlert className="h-3.5 w-3.5 mr-1" /> Compatibility</TabsTrigger>
           <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
@@ -1782,7 +2007,162 @@ export default function TemplateBuilderEdit() {
         </TabsContent>
 
 
-        {/* Reusable component slots (Header / Footer / etc.) */}
+        {/* Renderer compatibility / pre-flight */}
+        <TabsContent value="compatibility" className="flex-1 min-h-0 px-6 py-4">
+          <div className="grid h-full gap-4" style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px' }}>
+            <div className="min-h-0 space-y-4">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-sm font-semibold flex items-center gap-2">
+                      <ShieldAlert className="h-4 w-4" /> Renderer compatibility
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
+                      Reviews every block against the supported renderer pipeline. Production output routes through HTML/WeasyPrint; jsPDF is treated as a legacy preview/export path and may show placeholders for HTML-first blocks.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {isAnalysisPending && (
+                      <span className="text-[11px] px-2 py-1 rounded border bg-muted text-muted-foreground">Updating analysis…</span>
+                    )}
+                    {firstRendererBlocker && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => jumpToIssue(firstRendererBlocker)}
+                        title="Jump to the first production renderer blocker"
+                      >
+                        First blocker
+                      </Button>
+                    )}
+                    {!firstRendererBlocker && firstRendererNote && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => jumpToIssue(firstRendererNote)}
+                        title="Jump to the first renderer note"
+                      >
+                        First note
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWorkspaceMode('preview')}
+                      title="Open the production-parity HTML preview"
+                    >
+                      <Eye className="h-4 w-4 mr-1" /> Preview output
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
+                  <div className="rounded-md border bg-background p-3">
+                    <div className="text-muted-foreground">Production blockers</div>
+                    <div className={`mt-1 text-lg font-semibold ${rendererErrorCount > 0 ? 'text-destructive' : 'text-success'}`}>{rendererErrorCount}</div>
+                  </div>
+                  <div className="rounded-md border bg-background p-3">
+                    <div className="text-muted-foreground">Renderer notes</div>
+                    <div className="mt-1 text-lg font-semibold text-amber-600">{rendererNoteCount}</div>
+                  </div>
+                  <div className="rounded-md border bg-background p-3">
+                    <div className="text-muted-foreground">Block types used</div>
+                    <div className="mt-1 text-lg font-semibold">{usedBlockCompatibility.length}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-background min-h-0">
+                <div className="px-4 py-3 border-b flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Issues by page</h3>
+                    <p className="text-xs text-muted-foreground">Click any issue to jump to the affected block or overlay.</p>
+                  </div>
+                  <span className={`text-[11px] px-2 py-1 rounded border ${rendererErrorCount > 0 ? 'bg-destructive/10 text-destructive border-destructive/30' : rendererIssueCount > 0 ? 'bg-amber-500/10 text-amber-700 border-amber-500/30' : 'bg-success/10 text-success border-success/30'}`}>
+                    {rendererIssueCount === 0 ? 'All renderers ready' : `${rendererIssueCount} renderer issue${rendererIssueCount === 1 ? '' : 's'}`}
+                  </span>
+                </div>
+                {rendererIssuesByPage.length === 0 ? (
+                  <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-success" />
+                    No renderer compatibility issues detected in this template.
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[44vh]">
+                    <div className="divide-y">
+                      {rendererIssuesByPage.map(({ page, index, issues }) => (
+                        <div key={page.id} className="p-4 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-semibold">Page {index + 1}: {page.name}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => { setActivePageId(page.id); setSelectedOverlayId(null); setSelectedBlockId(null); }}
+                            >
+                              Open page
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {issues.map((iss, idx) => (
+                              <button
+                                key={`${iss.blockId ?? 'page'}-${iss.overlayId ?? idx}-${iss.code}`}
+                                type="button"
+                                onClick={() => jumpToIssue(iss)}
+                                className={`w-full text-left rounded-md border px-3 py-2 transition-colors hover:bg-muted/60 ${iss.severity === 'error' ? 'border-destructive/30 bg-destructive/5' : 'border-amber-500/30 bg-amber-500/5'}`}
+                              >
+                                <div className="flex items-center gap-2 text-[11px] font-semibold">
+                                  <span className={`rounded px-1.5 py-0.5 uppercase tracking-wider ${iss.severity === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-700'}`}>{iss.severity}</span>
+                                  <span className="font-mono text-[10px] text-muted-foreground">{iss.code}</span>
+                                </div>
+                                <div className={`mt-1 text-xs ${iss.severity === 'error' ? 'text-destructive' : 'text-foreground'}`}>{iss.message}</div>
+                                <div className="mt-1 text-[10px] text-muted-foreground">{iss.where}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-background min-h-0 flex flex-col">
+              <div className="px-4 py-3 border-b">
+                <h3 className="text-sm font-semibold">Block capability matrix</h3>
+                <p className="text-xs text-muted-foreground">Support for block types currently used in this template.</p>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="divide-y">
+                  {usedBlockCompatibility.length === 0 ? (
+                    <div className="p-4 text-xs text-muted-foreground">No blocks in the template yet.</div>
+                  ) : usedBlockCompatibility.map(({ type, label, count, capabilities }) => (
+                    <div key={type} className="p-3 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{label}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{type} · {count} used</div>
+                        </div>
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] border ${capabilities.productionSafe ? 'bg-success/10 text-success border-success/30' : 'bg-destructive/10 text-destructive border-destructive/30'}`}>
+                          {capabilities.productionSafe ? 'Production safe' : 'Blocked'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 mt-2 text-[10px]">
+                        <div className="rounded border p-1.5"><div className="text-muted-foreground">HTML</div><div className="font-medium capitalize">{capabilities.html}</div></div>
+                        <div className="rounded border p-1.5"><div className="text-muted-foreground">Weasy</div><div className="font-medium capitalize">{capabilities.weasyprint}</div></div>
+                        <div className="rounded border p-1.5"><div className="text-muted-foreground">jsPDF</div><div className="font-medium capitalize">{capabilities.jspdf}</div></div>
+                      </div>
+                      {capabilities.notes && (
+                        <p className="mt-2 text-[10px] text-muted-foreground leading-relaxed">{capabilities.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="slots" className="px-6 py-4 max-w-3xl space-y-4">
           <SlotsEditor
             template={template}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -18,6 +18,7 @@ import { downloadTemplateAsDocx } from '@/lib/reportTemplate/docxExporter';
 import { downloadTemplateAsPptx } from '@/lib/reportTemplate/pptxExporter';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
+import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -88,7 +89,6 @@ export function ExportPipelineDialog({
   const assetSummary = useMemo(() => countAssets(template), [template]);
   const themes = useMemo(() => Object.entries(template.themes ?? {}), [template.themes]);
   const visiblePages = template.pages.length;
-
   const loadJobs = async () => {
     if (!templateId) return;
     setLoadingJobs(true);
@@ -107,7 +107,7 @@ export function ExportPipelineDialog({
   }, [open, templateId]);
 
   /** Parse a 1-based page range string ("1-3,5,7-9") against the template length. */
-  const resolvePageRange = (range: string, total: number): number[] => {
+  const resolvePageRange = useCallback((range: string, total: number): number[] => {
     const r = range.trim();
     if (!r) return Array.from({ length: total }, (_, i) => i);
     const out = new Set<number>();
@@ -119,9 +119,9 @@ export function ExportPipelineDialog({
       for (let i = a; i <= Math.min(b, total); i++) out.add(i - 1);
     }
     return Array.from(out).sort((a, b) => a - b);
-  };
+  }, []);
 
-  const buildTemplateForExport = (): ReportTemplate => {
+  const buildTemplateForExport = useCallback((): ReportTemplate => {
     const indices = resolvePageRange(pageRange, template.pages.length);
     let tpl: ReportTemplate = template;
     if (indices.length !== template.pages.length) {
@@ -131,9 +131,31 @@ export function ExportPipelineDialog({
       tpl = { ...tpl, activeThemeId: themeId };
     }
     return tpl;
+  }, [pageRange, resolvePageRange, template, themeId]);
+
+  const rendererIssueCodes = useMemo(() => new Set<LintIssue['code']>(['renderer-partial', 'renderer-unsupported']), []);
+  const rendererIssues = useMemo(
+    () => lintTemplate(buildTemplateForExport(), sampleData).filter((issue) => rendererIssueCodes.has(issue.code)),
+    [buildTemplateForExport, rendererIssueCodes, sampleData],
+  );
+  const rendererErrorCount = rendererIssues.filter((issue) => issue.severity === 'error').length;
+  const rendererNoteCount = rendererIssues.length - rendererErrorCount;
+
+  const confirmRendererPreflight = (actionLabel: string): boolean => {
+    if (rendererErrorCount > 0) {
+      toast.error(`Resolve ${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'} before ${actionLabel}.`);
+      return false;
+    }
+    if (rendererNoteCount > 0) {
+      return window.confirm(
+        `This export has ${rendererNoteCount} renderer compatibility note${rendererNoteCount === 1 ? '' : 's'} (for example legacy jsPDF placeholders). Production HTML/WeasyPrint output is still supported. Continue to ${actionLabel}?`,
+      );
+    }
+    return true;
   };
 
   const handleDownloadHtml = () => {
+    if (!confirmRendererPreflight('download HTML')) return;
     try {
       const tpl = buildTemplateForExport();
       downloadTemplateAsHtml(tpl, `${templateName || 'template'}.html`, {
@@ -149,6 +171,7 @@ export function ExportPipelineDialog({
   };
 
   const handleDownloadDocx = async () => {
+    if (!confirmRendererPreflight('download DOCX')) return;
     const id = toast.loading('Building DOCX…');
     try {
       await downloadTemplateAsDocx(buildTemplateForExport(), `${templateName || 'template'}.docx`, {
@@ -160,6 +183,7 @@ export function ExportPipelineDialog({
   };
 
   const handleDownloadPptx = async () => {
+    if (!confirmRendererPreflight('download PPTX')) return;
     const id = toast.loading('Building PPTX…');
     try {
       await downloadTemplateAsPptx(buildTemplateForExport(), `${templateName || 'template'}.pptx`, {
@@ -171,6 +195,7 @@ export function ExportPipelineDialog({
   };
 
   const handleExport = async () => {
+    if (!confirmRendererPreflight('run the production PDF export')) return;
     setRunning(true);
     const toastId = toast.loading('Preparing export…');
     try {
@@ -340,6 +365,30 @@ export function ExportPipelineDialog({
                   </div>
                 </div>
               </div>
+              <div className={`rounded border p-3 text-xs ${rendererErrorCount > 0 ? 'border-destructive/30 bg-destructive/5 text-destructive' : rendererNoteCount > 0 ? 'border-amber-500/30 bg-amber-500/5 text-amber-700' : 'border-success/30 bg-success/5 text-success'}`}>
+                <div className="font-semibold flex items-center gap-2">
+                  {rendererErrorCount > 0 ? <FileWarning className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                  Renderer pre-flight
+                </div>
+                <p className="mt-1">
+                  {rendererErrorCount > 0
+                    ? `${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'} must be resolved before export.`
+                    : rendererNoteCount > 0
+                      ? `${rendererNoteCount} renderer note${rendererNoteCount === 1 ? '' : 's'} detected; export can continue after confirmation.`
+                      : 'No renderer compatibility issues detected for the selected export range.'}
+                </p>
+              </div>
+              {rendererIssues.length > 0 && (
+                <ul className="space-y-1 text-xs">
+                  {rendererIssues.slice(0, 5).map((issue, idx) => (
+                    <li key={`${issue.blockId ?? idx}-${issue.code}`} className="rounded border px-2 py-1">
+                      <span className="font-mono text-[10px] uppercase mr-1">{issue.code}</span>
+                      {issue.message}
+                    </li>
+                  ))}
+                  {rendererIssues.length > 5 && <li className="text-muted-foreground">+{rendererIssues.length - 5} more renderer issue{rendererIssues.length - 5 === 1 ? '' : 's'}</li>}
+                </ul>
+              )}
               {assetSummary.total > 0 && (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileWarning className="h-3.5 w-3.5" />

@@ -1,11 +1,12 @@
 /**
  * Print-safety linter for ReportTemplate.
  *
- * Surfaces issues that would break the printed PDF:
+ * Surfaces print/export readiness issues for ReportTemplate:
  *   - bleed: overlay extends outside page bounds
  *   - low-contrast: text color vs page background luminance ratio < 4.5
  *   - missing-slot: slot block references a slotKey that doesn't exist
  *   - tiny-text / overlap-edge: print-safety hints
+ *   - renderer-partial / renderer-unsupported: export fidelity and activation readiness
  *
  * Font availability is intentionally NOT linted — both the production
  * renderer (WeasyPrint) and the in-editor PDF preview load arbitrary web
@@ -13,6 +14,7 @@
  *
  * This complements `bindingValidation.ts` (which catches data-binding typos).
  */
+import { getBlockRendererCapabilities } from './blocks';
 import type { ReportTemplate } from './templateSchema';
 
 export type LintSeverity = 'warning' | 'error' | 'info';
@@ -26,6 +28,8 @@ export interface LintIssue {
     | 'missing-slot'
     | 'tiny-text'
     | 'overlap-edge'
+    | 'renderer-partial'
+    | 'renderer-unsupported'
     | 'unresolved-binding';
   message: string;
   where: string;
@@ -101,6 +105,46 @@ export function lintTemplate(
     const pageBg = parseHex(page.background?.color) ?? { r: 255, g: 255, b: 255 };
 
     page.blocks.forEach((block, bi) => {
+      const blockWhere = `Page ${pi + 1} → block ${bi + 1}`;
+      const blockCtx = { pageId: page.id, blockId: block.id };
+      const capabilities = getBlockRendererCapabilities(block.type);
+
+      if (capabilities.weasyprint === 'unsupported' || !capabilities.productionSafe) {
+        issues.push({
+          severity: 'error',
+          code: 'renderer-unsupported',
+          message: `Block "${block.type}" has no production HTML/WeasyPrint renderer and cannot be activated`,
+          where: blockWhere,
+          ...blockCtx,
+        });
+      } else if (capabilities.weasyprint === 'partial') {
+        issues.push({
+          severity: 'warning',
+          code: 'renderer-partial',
+          message: `Block "${block.type}" has partial production renderer support: ${capabilities.notes ?? 'review output before activation'}`,
+          where: blockWhere,
+          ...blockCtx,
+        });
+      }
+
+      if (capabilities.productionSafe && capabilities.jspdf === 'partial') {
+        issues.push({
+          severity: 'info',
+          code: 'renderer-partial',
+          message: `Block "${block.type}" renders fully in production HTML/WeasyPrint but appears as a placeholder in legacy jsPDF previews`,
+          where: blockWhere,
+          ...blockCtx,
+        });
+      } else if (capabilities.productionSafe && capabilities.jspdf === 'unsupported') {
+        issues.push({
+          severity: 'info',
+          code: 'renderer-unsupported',
+          message: `Block "${block.type}" is not available in the legacy jsPDF renderer`,
+          where: blockWhere,
+          ...blockCtx,
+        });
+      }
+
       // Slot reference integrity
       if (block.type === 'slot') {
         const key = String(block.props?.slotKey ?? '');
@@ -109,9 +153,8 @@ export function lintTemplate(
             severity: 'error',
             code: 'missing-slot',
             message: `Slot "${key}" is not defined`,
-            where: `Page ${pi + 1} → block ${bi + 1}`,
-            pageId: page.id,
-            blockId: block.id,
+            where: blockWhere,
+            ...blockCtx,
           });
         }
       }

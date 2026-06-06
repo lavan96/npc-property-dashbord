@@ -25,6 +25,8 @@ export interface ReportTemplateRow {
   version: number;
   is_active: boolean;
   is_default: boolean;
+  approval_status?: string | null;
+  locked_for_review?: boolean;
   thumbnail_url: string | null;
   created_at: string;
   updated_at: string;
@@ -102,8 +104,10 @@ export function useReportTemplateMutations() {
   });
 
   const update = useMutation({
-    mutationFn: async (args: { id: string; patch: Partial<ReportTemplateRow>; snapshot?: boolean; note?: string }) => {
-      const { id, patch, snapshot, note } = args;
+    mutationFn: async (args: { id: string; patch: Partial<ReportTemplateRow>; snapshot?: boolean; note?: string; expectedVersion?: number }) => {
+      const { id, patch, snapshot, note, expectedVersion } = args;
+      const guardedVersion = Number(expectedVersion);
+      const hasExpectedVersion = Number.isFinite(guardedVersion);
       // Optionally snapshot current version first
       if (snapshot) {
         const current = await invokeSecureFunction('manage-templates', {
@@ -113,6 +117,17 @@ export function useReportTemplateMutations() {
         });
         const cur = current.data?.record;
         if (cur) {
+          if (cur.locked_for_review) {
+            const err = new Error('Template is locked for review. Unlock it before saving a version.') as Error & { code?: string };
+            err.code = 'template_locked_for_review';
+            throw err;
+          }
+          if (hasExpectedVersion && Number(cur.version ?? 0) !== guardedVersion) {
+            const err = new Error('Template changed on the server. Review the latest version before saving again.') as Error & { code?: string; current?: any };
+            err.code = 'version_conflict';
+            err.current = cur;
+            throw err;
+          }
           await invokeSecureFunction('manage-templates', {
             operation: 'insert',
             table: 'report_template_versions',
@@ -130,9 +145,17 @@ export function useReportTemplateMutations() {
         operation: 'update',
         table: 'report_templates',
         recordId: id,
+        expectedVersion: hasExpectedVersion ? guardedVersion : undefined,
         data: patch,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        const err = new Error(error.message) as Error & { code?: string; current?: any; currentVersion?: number | null };
+        const rawError = (data as any)?.error;
+        if (rawError?.code) err.code = rawError.code;
+        if (rawError?.current) err.current = rawError.current;
+        if (rawError?.currentVersion !== undefined) err.currentVersion = rawError.currentVersion;
+        throw err;
+      }
       return data?.record;
     },
     onSuccess: (_data, args) => {
@@ -140,7 +163,10 @@ export function useReportTemplateMutations() {
       qc.invalidateQueries({ queryKey: ONE_KEY(args.id) });
       qc.invalidateQueries({ queryKey: VERS_KEY(args.id) });
     },
-    onError: (e: Error) => toast.error(`Save failed: ${e.message}`),
+    onError: (e: Error & { code?: string }) => {
+      if (e.code === 'version_conflict') return;
+      toast.error(`Save failed: ${e.message}`);
+    },
   });
 
   const remove = useMutation({

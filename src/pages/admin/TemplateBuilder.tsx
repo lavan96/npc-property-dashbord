@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReportTemplates, useReportTemplateMutations } from '@/hooks/useReportTemplates';
+import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 
@@ -32,9 +33,13 @@ export default function TemplateBuilder() {
   const navigate = useNavigate();
   const { data: templates = [], isLoading } = useReportTemplates();
   const { create, remove } = useReportTemplateMutations();
+  const { canEdit, canDelete } = usePermissions();
+  const canEditTemplates = canEdit('templates');
+  const canDeleteTemplates = canDelete('templates');
   const [importOpen, setImportOpen] = useState(false);
 
   const handleCreate = () => {
+    if (!canEditTemplates) return;
     create.mutate(
       { name: 'Untitled template', schema: makeBlankTemplate() },
       {
@@ -59,14 +64,18 @@ export default function TemplateBuilder() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />
-            Import PDF
-          </Button>
-          <Button onClick={handleCreate} disabled={create.isPending}>
-            <Plus className="h-4 w-4 mr-1" />
-            New template
-          </Button>
+          {canEditTemplates && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" />
+              Import PDF
+            </Button>
+          )}
+          {canEditTemplates && (
+            <Button onClick={handleCreate} disabled={create.isPending}>
+              <Plus className="h-4 w-4 mr-1" />
+              New template
+            </Button>
+          )}
         </div>
       </div>
       <ImportPdfDialog open={importOpen} onOpenChange={setImportOpen} />
@@ -85,9 +94,11 @@ export default function TemplateBuilder() {
             <CardDescription className="mt-2 max-w-md mx-auto">
               Create your first template to start designing report layouts visually.
             </CardDescription>
-            <Button onClick={handleCreate} className="mt-6" disabled={create.isPending}>
-              <Plus className="h-4 w-4 mr-1" /> Create first template
-            </Button>
+            {canEditTemplates && (
+              <Button onClick={handleCreate} className="mt-6" disabled={create.isPending}>
+                <Plus className="h-4 w-4 mr-1" /> Create first template
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -129,22 +140,29 @@ export default function TemplateBuilder() {
                       size="sm"
                       variant="default"
                       className="flex-1"
+                      disabled={!canEditTemplates}
+                      title={canEditTemplates ? 'Open editor' : 'Edit permission required'}
                       onClick={() => navigate(`/admin/template-builder/${tpl.id}`)}
                     >
                       <Edit className="h-3.5 w-3.5 mr-1" /> Open editor
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => {
-                        if (confirm(`Delete "${tpl.name}"? This cannot be undone.`)) {
-                          remove.mutate(tpl.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canDeleteTemplates && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive"
+                        disabled={tpl.is_active || !!tpl.locked_for_review}
+                        title={tpl.is_active ? 'Deactivate before deleting' : tpl.locked_for_review ? 'Unlock review before deleting' : 'Delete template'}
+                        onClick={() => {
+                          if (tpl.is_active || tpl.locked_for_review) return;
+                          if (confirm(`Delete "${tpl.name}"? This cannot be undone.`)) {
+                            remove.mutate(tpl.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

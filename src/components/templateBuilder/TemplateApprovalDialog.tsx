@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface TemplateApprovalDialogProps {
   open: boolean;
@@ -74,6 +75,16 @@ export function TemplateApprovalDialog({
     return { id: u?.id ?? null, name: (u?.user_metadata as any)?.full_name || u?.email || 'Unknown' };
   };
 
+  const updateTemplateGovernance = async (data: Record<string, unknown>) => {
+    const { error } = await invokeSecureFunction('manage-templates', {
+      operation: 'update',
+      table: 'report_templates',
+      recordId: templateId,
+      data,
+    });
+    if (error) throw new Error(error.message);
+  };
+
   const requestReview = async () => {
     setBusy(true);
     try {
@@ -84,12 +95,12 @@ export function TemplateApprovalDialog({
         status: 'pending', note: note || null,
       });
       if (error) throw error;
-      await supabase.from('report_templates' as any).update({
+      await updateTemplateGovernance({
         approval_status: 'in_review',
         locked_for_review: true,
         locked_at: new Date().toISOString(),
         locked_by: me.id,
-      }).eq('id', templateId);
+      });
       await logTemplateAudit(templateId, 'approval_requested', 'Review requested', { note });
       toast.success('Review requested · template locked');
       onChanged?.(); await loadHistory();
@@ -110,10 +121,10 @@ export function TemplateApprovalDialog({
         decided_at: new Date().toISOString(),
       }).eq('id', pending.id);
       if (error) throw error;
-      await supabase.from('report_templates' as any).update({
+      await updateTemplateGovernance({
         approval_status: decision,
         locked_for_review: decision === 'approved', // keep locked when approved, unlock on changes_requested
-      }).eq('id', templateId);
+      });
       await logTemplateAudit(
         templateId,
         decision === 'approved' ? 'approval_approved' : 'approval_changes_requested',
@@ -131,11 +142,11 @@ export function TemplateApprovalDialog({
     try {
       const me = await currentUser();
       const next = !locked;
-      await supabase.from('report_templates' as any).update({
+      await updateTemplateGovernance({
         locked_for_review: next,
         locked_at: next ? new Date().toISOString() : null,
         locked_by: next ? me.id : null,
-      }).eq('id', templateId);
+      });
       await logTemplateAudit(templateId, next ? 'locked' : 'unlocked');
       toast.success(next ? 'Template locked' : 'Template unlocked');
       onChanged?.();
