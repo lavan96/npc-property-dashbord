@@ -1119,6 +1119,27 @@ export default function TemplateBuilderEdit() {
             </Button>
           )}
           {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowBranches(true)} title="Branch or merge drafts">
+              <GitBranch className="h-4 w-4 mr-1" /> Branches
+            </Button>
+          )}
+          {id && (
+            <Button
+              variant={tplMeta?.locked_for_review ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => setShowApproval(true)}
+              title="Request review / approve / lock"
+            >
+              {tplMeta?.locked_for_review ? <Lock className="h-4 w-4 mr-1" /> : <ClipboardCheck className="h-4 w-4 mr-1" />}
+              {tplMeta?.approval_status === 'approved' ? 'Approved' : tplMeta?.approval_status === 'in_review' ? 'In review' : 'Review'}
+            </Button>
+          )}
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowAudit(true)} title="Full audit trail">
+              <History className="h-4 w-4 mr-1" /> Audit
+            </Button>
+          )}
+          {id && (
             <Button
               variant={showComments ? 'default' : 'outline'}
               size="sm"
