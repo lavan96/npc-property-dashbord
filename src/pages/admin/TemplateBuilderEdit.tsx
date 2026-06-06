@@ -887,7 +887,7 @@ export default function TemplateBuilderEdit() {
                 const { html } = renderTemplateToHtml(template, {
                   data: sampleData,
                   title: name || 'Template Preview',
-                  customCss: (tplRow as any)?.custom_css || undefined,
+                  customCss: customCss || undefined,
                 });
                 const { data: sess } = await supabase.auth.getSession();
                 const token = sess?.session?.access_token;
@@ -1386,7 +1386,7 @@ export default function TemplateBuilderEdit() {
         templateId={id}
         templateName={name}
         sampleData={sampleData}
-        customCss={(tplRow as any)?.custom_css || undefined}
+        customCss={customCss || undefined}
       />
       {id && (
         <ShareLinksDialog
