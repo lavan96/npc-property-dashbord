@@ -1813,6 +1813,14 @@ export default function TemplateBuilderEdit() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={loadSampleFromRealReport}
+                title="Load binding context from a real investment_reports row — preview against actual data"
+              >
+                Load real report…
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setSampleDataText(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2))}
               >
                 Reset
