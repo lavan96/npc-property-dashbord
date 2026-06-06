@@ -1616,6 +1616,13 @@ export default function TemplateBuilderEdit() {
         activePageId={activePageId}
         selectedBlockId={selectedBlockId}
         selectedOverlayId={selectedOverlayId}
+        templateId={id}
+        sampleData={sampleData}
+      />
+      <PageTemplatesMarketplaceDialog
+        open={showPageMarket}
+        onOpenChange={setShowPageMarket}
+        onInsert={(presetId) => { addStarterPage(presetId); }}
       />
       <PreviewQADialog
         open={showPreviewQA}
