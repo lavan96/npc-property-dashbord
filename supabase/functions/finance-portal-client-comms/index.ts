@@ -75,6 +75,7 @@ async function listInbox(supabase: any, _partner: any, body: any) {
       .from('client_portal_messages')
       .select('id, client_id, sender_type, sender_name, message, is_read, read_at, created_at')
       .eq('client_id', clientId)
+      .eq('is_internal', false) // staff-only internal messages are not shown to finance partners
       .order('created_at', { ascending: false })
       .limit(limit),
     supabase
