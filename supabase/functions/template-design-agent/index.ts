@@ -626,6 +626,23 @@ ACTIVE SELECTION:
     }
 
     const callGateway = async (toolChoice: any, modelOverride?: string) => {
+      // Route through Claude for brief-synthesis & vision flows when the
+      // ANTHROPIC_API_KEY is configured. Other modes still use the Lovable AI Gateway.
+      const preferClaude = USE_CLAUDE && (useBriefPipeline || useVision);
+      if (preferClaude) {
+        const r = await callAnthropic({
+          apiKey: ANTHROPIC_API_KEY!,
+          model: CLAUDE_MODEL,
+          messages: messages as any,
+          tools: [TOOL as any],
+          tool_choice: toolChoice,
+          max_tokens: 8192,
+        });
+        if (!r.ok) {
+          return new Response(r.errorText || 'anthropic error', { status: r.status });
+        }
+        return new Response(JSON.stringify(r.data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
       const resp = await fetch(GATEWAY_URL, {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
@@ -638,6 +655,7 @@ ACTIVE SELECTION:
       });
       return resp;
     };
+
 
     // Vision multimodal: 'required'. Brief synthesis + text: explicit function choice.
     let aiResp = await callGateway(
