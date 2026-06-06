@@ -120,6 +120,57 @@ Deno.serve(async (req) => {
       return json({ template: tpl });
     }
 
+    if (operation === 'resync') {
+      // Replace an existing template's schema (re-import revised PDF).
+      // Bumps version and snapshots the previous schema.
+      const importId = body.import_id as string;
+      const templateId = body.template_id as string;
+      const schema = body.schema;
+      const note = (body.note as string) || 'Re-synced from PDF';
+      if (!templateId || !schema) return json({ error: 'template_id and schema required' }, 400);
+
+      const { data: existing, error: getErr } = await admin
+        .from('report_templates').select('id,version,schema,name').eq('id', templateId).single();
+      if (getErr) return json({ error: getErr.message }, 400);
+
+      const nextVersion = (existing?.version ?? 1) + 1;
+
+      // Snapshot the OLD schema first
+      try {
+        await admin.from('report_template_versions').insert({
+          template_id: templateId,
+          version: existing?.version ?? 1,
+          schema: existing?.schema,
+          notes: 'Pre-resync snapshot',
+        });
+      } catch (_) { /* ignore */ }
+
+      const { data: tpl, error: upErr } = await admin
+        .from('report_templates')
+        .update({ schema, version: nextVersion, updated_at: new Date().toISOString() })
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (upErr) return json({ error: upErr.message }, 400);
+
+      try {
+        await admin.from('report_template_versions').insert({
+          template_id: templateId,
+          version: nextVersion,
+          schema,
+          notes: note,
+        });
+      } catch (_) { /* ignore */ }
+
+      await admin.from('template_imports').update({
+        status: 'completed',
+        created_template_id: templateId,
+        page_count: body.page_count ?? null,
+      }).eq('id', importId);
+
+      return json({ template: tpl, version: nextVersion });
+    }
+
     if (operation === 'fail') {
       const importId = body.import_id as string;
       await admin.from('template_imports').update({

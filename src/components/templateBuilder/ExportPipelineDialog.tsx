@@ -8,10 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, ExternalLink, Loader2, RefreshCw, FileWarning, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, ExternalLink, Loader2, RefreshCw, FileWarning, CheckCircle2, Image as ImageIcon, FileCode } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { downloadTemplateAsHtml } from '@/lib/reportTemplate/htmlExporter';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -75,6 +77,8 @@ export function ExportPipelineDialog({
   const [themeId, setThemeId] = useState<string>(template.activeThemeId || '__active__');
   const [preloading, setPreloading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [pageRange, setPageRange] = useState<string>('');           // e.g. "1-3,5"
+  const [includeBookmarks, setIncludeBookmarks] = useState<boolean>(true);
   const [jobs, setJobs] = useState<RenderJobRow[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
@@ -99,6 +103,47 @@ export function ExportPipelineDialog({
     if (open) loadJobs();
   }, [open, templateId]);
 
+  /** Parse a 1-based page range string ("1-3,5,7-9") against the template length. */
+  const resolvePageRange = (range: string, total: number): number[] => {
+    const r = range.trim();
+    if (!r) return Array.from({ length: total }, (_, i) => i);
+    const out = new Set<number>();
+    for (const part of r.split(',')) {
+      const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+      if (!m) continue;
+      const a = Math.max(1, parseInt(m[1], 10));
+      const b = m[2] ? Math.max(a, parseInt(m[2], 10)) : a;
+      for (let i = a; i <= Math.min(b, total); i++) out.add(i - 1);
+    }
+    return Array.from(out).sort((a, b) => a - b);
+  };
+
+  const buildTemplateForExport = (): ReportTemplate => {
+    const indices = resolvePageRange(pageRange, template.pages.length);
+    let tpl: ReportTemplate = template;
+    if (indices.length !== template.pages.length) {
+      tpl = { ...tpl, pages: indices.map((i) => template.pages[i]).filter(Boolean) };
+    }
+    if (themeId && themeId !== '__active__') {
+      tpl = { ...tpl, activeThemeId: themeId };
+    }
+    return tpl;
+  };
+
+  const handleDownloadHtml = () => {
+    try {
+      const tpl = buildTemplateForExport();
+      downloadTemplateAsHtml(tpl, `${templateName || 'template'}.html`, {
+        data: sampleData,
+        customCss: customCss || undefined,
+        title: templateName,
+      });
+      toast.success('HTML downloaded');
+    } catch (e: any) {
+      toast.error(`HTML export failed: ${e?.message ?? e}`);
+    }
+  };
+
   const handleExport = async () => {
     setRunning(true);
     const toastId = toast.loading('Preparing export…');
@@ -110,10 +155,8 @@ export function ExportPipelineDialog({
       }
       setPreloading(false);
 
-      // 2) Compile HTML server-friendly (apply theme override if user picked one)
-      const tplForRender: ReportTemplate = themeId && themeId !== '__active__'
-        ? { ...template, activeThemeId: themeId }
-        : template;
+      // 2) Compile HTML server-friendly with page-range + theme applied
+      const tplForRender = buildTemplateForExport();
 
       toast.loading('Compiling HTML…', { id: toastId });
       const { html } = renderTemplateToHtml(tplForRender, {
@@ -146,8 +189,10 @@ export function ExportPipelineDialog({
           optimizeImages,
           themeId: themeId === '__active__' ? template.activeThemeId ?? null : themeId,
           pageMasterId: template.defaultPageMasterId ?? null,
-          pageCount: visiblePages,
+          pageCount: tplForRender.pages.length,
           assetCount: assetSummary.total,
+          pageRange: pageRange || null,
+          includeBookmarks,
         }),
       });
       const json = await res.json();
@@ -226,7 +271,23 @@ export function ExportPipelineDialog({
                     <span>Optimize images</span>
                     <Switch checked={optimizeImages} onCheckedChange={setOptimizeImages} />
                   </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>Include bookmarks / outline</span>
+                    <Switch checked={includeBookmarks} onCheckedChange={setIncludeBookmarks} />
+                  </label>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <Label className="text-xs">Page range (1-based) — leave blank for all</Label>
+                <Input
+                  value={pageRange}
+                  onChange={(e) => setPageRange(e.target.value)}
+                  placeholder={`e.g. 1-3,5,8-${visiblePages}`}
+                  className="font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Exports only the selected pages. Bookmark outline entries are kept for the included pages.
+                </p>
               </div>
             </section>
 
@@ -313,6 +374,9 @@ export function ExportPipelineDialog({
 
         <DialogFooter className="px-6 pb-6 pt-3 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={handleDownloadHtml} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> Download HTML
+          </Button>
           <Button onClick={handleExport} disabled={running}>
             {running ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {preloading ? 'Warming assets…' : 'Rendering…'}</>

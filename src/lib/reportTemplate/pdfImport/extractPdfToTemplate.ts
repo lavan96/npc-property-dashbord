@@ -21,10 +21,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export type FidelityMode = 'semantic' | 'pixel' | 'hybrid';
+export type FidelityMode = 'semantic' | 'pixel' | 'hybrid' | 'ocr';
 
 export interface ImportProgress {
-  phase: 'reading' | 'extracting' | 'rasterizing' | 'uploading' | 'finalizing' | 'done';
+  phase: 'reading' | 'extracting' | 'rasterizing' | 'ocr' | 'uploading' | 'finalizing' | 'done';
   page?: number;
   totalPages?: number;
   message?: string;
@@ -36,6 +36,10 @@ export interface ImportOptions {
   templateName?: string;
   onProgress?: (p: ImportProgress) => void;
   userId?: string | null;
+  /** When set, the existing template is updated (resync) instead of creating a new one. */
+  targetTemplateId?: string;
+  /** OCR language (Tesseract); default 'eng'. */
+  ocrLang?: string;
 }
 
 export interface ImportResult {
@@ -129,53 +133,60 @@ export async function extractPdfToTemplate(
 
       const overlays: Overlay[] = [];
 
-      // Track A: extract text runs
-      const content = await page.getTextContent({ includeMarkedContent: false } as any);
-      for (const item of content.items as any[]) {
-        if (!('str' in item) || !item.str || !item.transform) continue;
-        const str = item.str as string;
-        if (!str.trim()) continue;
-        const t = item.transform as number[]; // [a,b,c,d,e,f]
-        const fontSize = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 12;
-        const x = t[4];
-        // pdfjs y is text baseline from bottom-left
-        const yBaseline = t[5];
-        const yTop = pageHeight - yBaseline - fontSize;
-        const width = (item.width as number) || fontSize * str.length * 0.5;
-        const height = (item.height as number) || fontSize * 1.2;
+      if (mode === 'ocr') {
+        // Skip pdfjs text extraction — rely on Tesseract on the raster image.
+        // (Overlays populated in the rasterize block below.)
+      } else {
+        // Track A: extract text runs
+        const content = await page.getTextContent({ includeMarkedContent: false } as any);
+        for (const item of content.items as any[]) {
+          if (!('str' in item) || !item.str || !item.transform) continue;
+          const str = item.str as string;
+          if (!str.trim()) continue;
+          const t = item.transform as number[]; // [a,b,c,d,e,f]
+          const fontSize = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 12;
+          const x = t[4];
+          // pdfjs y is text baseline from bottom-left
+          const yBaseline = t[5];
+          const yTop = pageHeight - yBaseline - fontSize;
+          const width = (item.width as number) || fontSize * str.length * 0.5;
+          const height = (item.height as number) || fontSize * 1.2;
 
-        const styles = (content.styles as Record<string, any>) || {};
-        const styleEntry = styles[item.fontName] || {};
-        const psName = styleEntry.fontFamily || item.fontName || 'Helvetica';
-        const resolved = resolveFontFamily(psName);
-        fontsUsed.add(psName);
-        if (resolved.substituted) fontsSubstituted.add(psName);
+          const styles = (content.styles as Record<string, any>) || {};
+          const styleEntry = styles[item.fontName] || {};
+          const psName = styleEntry.fontFamily || item.fontName || 'Helvetica';
+          const resolved = resolveFontFamily(psName);
+          fontsUsed.add(psName);
+          if (resolved.substituted) fontsSubstituted.add(psName);
 
-        overlays.push({
-          id: crypto.randomUUID(),
-          type: 'text',
-          x,
-          y: yTop,
-          width: Math.max(width + 4, fontSize * 2),
-          height: Math.max(height, fontSize * 1.2),
-          rotation: 0,
-          opacity: 1,
-          content: str,
-          fontFamily: resolved.family,
-          fontSize,
-          fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
-          fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
-          color: '#111111',
-          align: 'left',
-          lineHeight: 1.2,
-          letterSpacing: 0,
-        } as Overlay);
-        textBlocks++;
+          overlays.push({
+            id: crypto.randomUUID(),
+            type: 'text',
+            x,
+            y: yTop,
+            width: Math.max(width + 4, fontSize * 2),
+            height: Math.max(height, fontSize * 1.2),
+            rotation: 0,
+            opacity: 1,
+            content: str,
+            fontFamily: resolved.family,
+            fontSize,
+            fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
+            fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
+            color: '#111111',
+            align: 'left',
+            lineHeight: 1.2,
+            letterSpacing: 0,
+          } as Overlay);
+          textBlocks++;
+        }
       }
 
-      // Optional Track B raster
+      // Optional Track B raster (also used for OCR mode as the source image)
       let backgroundImageUrl: string | undefined;
-      if (mode === 'pixel' || mode === 'hybrid') {
+      const needRaster = mode === 'pixel' || mode === 'hybrid' || mode === 'ocr';
+      let rasterCanvas: HTMLCanvasElement | null = null;
+      if (needRaster) {
         onProgress({ phase: 'rasterizing', page: pageIndex, totalPages });
         const scale = dpi / 72;
         const vp = page.getViewport({ scale });
@@ -184,27 +195,79 @@ export async function extractPdfToTemplate(
         canvas.height = vp.height;
         const ctx = canvas.getContext('2d')!;
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
-        const blob: Blob = await new Promise((resolve) =>
-          canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
-        );
-        const b64 = await blobToBase64(blob);
-        onProgress({ phase: 'uploading', page: pageIndex, totalPages });
-        const up = await invokeImport({
-          operation: 'upload_asset',
-          import_id: importId,
-          kind: 'page',
-          page_index: pageIndex,
-          seq: 0,
-          content_type: 'image/jpeg',
-          data_base64: b64,
-        });
-        backgroundImageUrl = up.url;
-        rasterized++;
-        // free
-        canvas.width = 0;
-        canvas.height = 0;
+        rasterCanvas = canvas;
+
+        if (mode === 'pixel' || mode === 'hybrid') {
+          const blob: Blob = await new Promise((resolve) =>
+            canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+          );
+          const b64 = await blobToBase64(blob);
+          onProgress({ phase: 'uploading', page: pageIndex, totalPages });
+          const up = await invokeImport({
+            operation: 'upload_asset',
+            import_id: importId,
+            kind: 'page',
+            page_index: pageIndex,
+            seq: 0,
+            content_type: 'image/jpeg',
+            data_base64: b64,
+          });
+          backgroundImageUrl = up.url;
+          rasterized++;
+        } else {
+          semantic++;
+        }
       } else {
         semantic++;
+      }
+
+      // OCR pass — recognise text on the rasterised page and add as overlays
+      if (mode === 'ocr' && rasterCanvas) {
+        onProgress({ phase: 'ocr', page: pageIndex, totalPages, message: 'Running OCR…' });
+        try {
+          const tess: any = await import(/* @vite-ignore */ 'tesseract.js');
+          const worker = await tess.createWorker(options.ocrLang ?? 'eng');
+          const { data } = await worker.recognize(rasterCanvas);
+          await worker.terminate();
+          const ratio = pageWidth / rasterCanvas.width; // pt per px
+          const words: any[] = data?.words ?? [];
+          for (const w of words) {
+            if (!w?.text?.trim()) continue;
+            const bbox = w.bbox || {};
+            const x = (bbox.x0 ?? 0) * ratio;
+            const y = (bbox.y0 ?? 0) * ratio;
+            const ww = ((bbox.x1 ?? 0) - (bbox.x0 ?? 0)) * ratio;
+            const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
+            const fontSize = Math.max(8, hh * 0.85);
+            overlays.push({
+              id: crypto.randomUUID(),
+              type: 'text',
+              x, y,
+              width: Math.max(ww + 2, fontSize),
+              height: Math.max(hh, fontSize * 1.2),
+              rotation: 0,
+              opacity: 1,
+              content: w.text,
+              fontFamily: 'Helvetica',
+              fontSize,
+              fontWeight: 'normal',
+              fontStyle: 'normal',
+              color: '#111111',
+              align: 'left',
+              lineHeight: 1.2,
+              letterSpacing: 0,
+            } as Overlay);
+            textBlocks++;
+          }
+        } catch (err) {
+          console.warn('[ocr] failed on page', pageIndex, err);
+        }
+      }
+
+      if (rasterCanvas) {
+        rasterCanvas.width = 0;
+        rasterCanvas.height = 0;
+        rasterCanvas = null;
       }
 
       // Wrap overlays in a single 'free' block so they are positioned absolutely
@@ -237,19 +300,29 @@ export async function extractPdfToTemplate(
       meta: { title: options.templateName ?? file.name.replace(/\.pdf$/i, '') },
     };
 
-    onProgress({ phase: 'finalizing', message: 'Creating template…' });
-    const finRes = await invokeImport({
-      operation: 'finalize',
-      import_id: importId,
-      name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-      schema: template,
-      page_count: totalPages,
-      source_filename: file.name,
-    });
+    onProgress({ phase: 'finalizing', message: options.targetTemplateId ? 'Re-syncing template…' : 'Creating template…' });
+    const finRes = options.targetTemplateId
+      ? await invokeImport({
+          operation: 'resync',
+          import_id: importId,
+          template_id: options.targetTemplateId,
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+          note: `Re-synced from ${file.name}`,
+        })
+      : await invokeImport({
+          operation: 'finalize',
+          import_id: importId,
+          name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+        });
 
     onProgress({ phase: 'done', totalPages });
     return {
-      template: { id: finRes.template.id, name: finRes.template.name },
+      template: { id: finRes.template.id, name: finRes.template.name ?? options.templateName ?? file.name },
       importId,
       pageCount: totalPages,
       fidelityReport: {

@@ -14,7 +14,10 @@ import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
+  RefreshCw, GitCompareArrows,
 } from 'lucide-react';
+import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
+import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
 import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
@@ -102,6 +105,8 @@ export default function TemplateBuilderEdit() {
   const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
+  const [showResync, setShowResync] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
@@ -1078,6 +1083,14 @@ export default function TemplateBuilderEdit() {
             <Component className="h-4 w-4 mr-1" /> Components
           </Button>
           {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowResync(true)} title="Re-import a revised PDF over this template (snapshots previous version)">
+              <RefreshCw className="h-4 w-4 mr-1" /> Re-sync PDF
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setShowDiff(true)} title="Side-by-side fidelity diff between a source PDF and the current template render">
+            <GitCompareArrows className="h-4 w-4 mr-1" /> Fidelity diff
+          </Button>
+          {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
             </Button>
@@ -1695,6 +1708,25 @@ export default function TemplateBuilderEdit() {
           />
         </aside>
       )}
+      {id && (
+        <ResyncPdfDialog
+          open={showResync}
+          onOpenChange={setShowResync}
+          templateId={id}
+          templateName={name}
+          onResynced={() => {
+            // Force the editor to reload the freshly resynced template.
+            window.location.reload();
+          }}
+        />
+      )}
+      <PdfFidelityDiffDialog
+        open={showDiff}
+        onOpenChange={setShowDiff}
+        template={template}
+        sampleData={sampleData}
+        customCss={customCss || undefined}
+      />
     </div>
   );
 }
