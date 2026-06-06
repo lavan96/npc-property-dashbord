@@ -212,6 +212,15 @@ function OverlayEditor({
       {/* Type-specific */}
       {overlay.type === 'text' && (
         <div className="space-y-3">
+          {page && (
+            <InlineAiTextActions
+              template={template}
+              overlay={overlay}
+              pageId={page.id}
+              blockId={selectedBlockId ?? null}
+              onPatchContent={(newContent) => patch({ content: newContent } as any)}
+            />
+          )}
           <BindableField
             label="Content"
             value={String(overlay.content ?? '')}
@@ -219,6 +228,7 @@ function OverlayEditor({
             template={template}
             multiline
           />
+
           <div className="grid grid-cols-2 gap-2">
             <NumField
               label="Size (pt)"
