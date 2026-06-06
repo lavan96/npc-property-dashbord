@@ -3,9 +3,13 @@
  *
  * Surfaces issues that would break the printed PDF:
  *   - bleed: overlay extends outside page bounds
- *   - missing-font: fontFamily not in jsPDF's bundled set
  *   - low-contrast: text color vs page background luminance ratio < 4.5
  *   - missing-slot: slot block references a slotKey that doesn't exist
+ *   - tiny-text / overlap-edge: print-safety hints
+ *
+ * Font availability is intentionally NOT linted — both the production
+ * renderer (WeasyPrint) and the in-editor PDF preview load arbitrary web
+ * fonts, so any font family declared in the template is valid.
  *
  * This complements `bindingValidation.ts` (which catches data-binding typos).
  */
@@ -30,11 +34,10 @@ export interface LintIssue {
   overlayId?: string;
 }
 
-const JSPDF_FONTS = new Set(['helvetica', 'times', 'courier']);
-
 function looksLikeBinding(s: unknown): boolean {
   return typeof s === 'string' && /\{\{|^token:/.test(s);
 }
+
 
 function parseHex(input: unknown): { r: number; g: number; b: number } | null {
   if (typeof input !== 'string') return null;
