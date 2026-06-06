@@ -63,6 +63,7 @@ export function TemplateAIAuthorDialog({
         <Tabs defaultValue="generate" className="flex-1 flex flex-col min-h-0">
           <TabsList className="self-start">
             <TabsTrigger value="generate">Generate Page</TabsTrigger>
+            <TabsTrigger value="cover">Cover Designer</TabsTrigger>
             <TabsTrigger value="rewrite">Rewrite Copy</TabsTrigger>
             <TabsTrigger value="name">Name & Describe</TabsTrigger>
           </TabsList>
@@ -75,6 +76,17 @@ export function TemplateAIAuthorDialog({
               onApply={(layout) => {
                 const page = layoutToPage(layout, { width: activePage?.size?.width ?? 595, height: activePage?.size?.height ?? 842 });
                 onAddPage(page, layout.rationale);
+                onOpenChange(false);
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="cover" className="flex-1 min-h-0">
+            <CoverPanel
+              tier={tier}
+              pageSize={{ width: activePage?.size?.width ?? 595, height: activePage?.size?.height ?? 842 }}
+              onApply={(page, rationale) => {
+                onAddPage(page, rationale);
                 onOpenChange(false);
               }}
             />
