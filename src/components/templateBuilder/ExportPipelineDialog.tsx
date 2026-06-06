@@ -398,10 +398,16 @@ export function ExportPipelineDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 pb-6 pt-3 border-t">
+        <DialogFooter className="px-6 pb-6 pt-3 border-t flex-wrap gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
           <Button variant="outline" onClick={handleDownloadHtml} disabled={running}>
-            <FileCode className="h-4 w-4 mr-2" /> Download HTML
+            <FileCode className="h-4 w-4 mr-2" /> HTML
+          </Button>
+          <Button variant="outline" onClick={handleDownloadDocx} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> DOCX
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPptx} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> PPTX
           </Button>
           <Button onClick={handleExport} disabled={running}>
             {running ? (
