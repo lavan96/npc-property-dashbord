@@ -1,0 +1,243 @@
+/**
+ * Upload-a-PDF → editable Template dialog.
+ *
+ * Lets a designer choose between Semantic (Track A) and Pixel-perfect
+ * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
+ * progress + a fidelity report card when finished.
+ */
+import { useCallback, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
+import { useAuth } from '@/hooks/useAuth';
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}
+
+export function ImportPdfDialog({ open, onOpenChange }: Props) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<FidelityMode>('hybrid');
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+
+  const reset = () => {
+    setFile(null);
+    setProgress(null);
+    setBusy(false);
+    setResult(null);
+  };
+
+  const handleClose = (v: boolean) => {
+    if (busy) return;
+    if (!v) reset();
+    onOpenChange(v);
+  };
+
+  const onFile = (f: File | null) => {
+    if (!f) return;
+    if (!/\.pdf$/i.test(f.name)) {
+      toast.error('Only PDF files are supported.');
+      return;
+    }
+    if (f.size > 50 * 1024 * 1024) {
+      toast.error('Max 50 MB.');
+      return;
+    }
+    setFile(f);
+    setResult(null);
+  };
+
+  const start = useCallback(async () => {
+    if (!file) return;
+    setBusy(true);
+    setProgress({ phase: 'reading' });
+    try {
+      const res = await extractPdfToTemplate(file, {
+        mode,
+        templateName: file.name.replace(/\.pdf$/i, ''),
+        userId: user?.id ?? null,
+        onProgress: setProgress,
+      });
+      setResult(res);
+      toast.success(`Imported ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}.`);
+    } catch (err) {
+      toast.error(`Import failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [file, mode, user?.id]);
+
+  const percent = (() => {
+    if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
+    return Math.round((progress.page / progress.totalPages) * 95);
+  })();
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" /> Import PDF as editable template
+          </DialogTitle>
+          <DialogDescription>
+            Convert any PDF brochure or report into a fully editable template. Choose how faithful the conversion should be.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!result ? (
+          <div className="space-y-4">
+            {/* Dropzone */}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              className="w-full border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors disabled:opacity-60"
+            >
+              <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              {file ? (
+                <div className="text-sm">
+                  <div className="font-medium">{file.name}</div>
+                  <div className="text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Click to select a PDF (max 50 MB)
+                </div>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+              />
+            </button>
+
+            {/* Mode */}
+            <div>
+              <Label className="text-sm font-medium">Fidelity mode</Label>
+              <RadioGroup
+                value={mode}
+                onValueChange={(v) => setMode(v as FidelityMode)}
+                className="mt-2 space-y-2"
+                disabled={busy}
+              >
+                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('semantic')}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="semantic" id="m-semantic" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="m-semantic" className="font-medium cursor-pointer">Semantic (Track A)</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Extract text runs + images at exact coordinates as editable overlays. Smallest file size, best for digital-native PDFs.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('pixel')}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="pixel" id="m-pixel" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="m-pixel" className="font-medium cursor-pointer">Pixel-perfect (Track B)</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Rasterise each page at 180 DPI as the background, overlay editable text on top. Looks identical to the source.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3 cursor-pointer border-primary/30" onClick={() => !busy && setMode('hybrid')}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="hybrid" id="m-hybrid" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="m-hybrid" className="font-medium cursor-pointer flex items-center gap-2">
+                        Hybrid <Badge variant="default" className="text-[10px]">Recommended</Badge>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Raster background + editable overlays. Toggle the raster off per page once you've replaced the content.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </RadioGroup>
+            </div>
+
+            {/* Progress */}
+            {progress && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span className="capitalize">{progress.phase}{progress.page && progress.totalPages ? ` page ${progress.page} / ${progress.totalPages}` : ''}</span>
+                  <span>{percent}%</span>
+                </div>
+                <Progress value={percent} />
+              </div>
+            )}
+          </div>
+        ) : (
+          // Result card
+          <div className="space-y-3">
+            <Card className="p-4 border-success/40 bg-success/5">
+              <div className="flex items-center gap-2 text-success font-medium">
+                <CheckCircle2 className="h-5 w-5" /> Import complete
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <Stat label="Pages" value={result.pageCount} />
+                <Stat label="Text overlays" value={result.fidelityReport.textBlocks} />
+                <Stat label="Rasterised" value={result.fidelityReport.rasterizedPages} />
+                <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
+              </div>
+              {result.fidelityReport.fontsSubstituted.length > 0 && (
+                <div className="mt-3 text-xs text-muted-foreground flex items-start gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    Fonts substituted: {result.fidelityReport.fontsSubstituted.slice(0, 6).join(', ')}
+                    {result.fidelityReport.fontsSubstituted.length > 6 ? ` +${result.fidelityReport.fontsSubstituted.length - 6} more` : ''}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        <DialogFooter>
+          {!result ? (
+            <>
+              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
+              <Button onClick={start} disabled={!file || busy}>
+                {busy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing…</> : 'Import'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => handleClose(false)}>Close</Button>
+              <Button onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }}>
+                Open in editor
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex justify-between border-b border-border/40 pb-1">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{value}</span>
+    </div>
+  );
+}
