@@ -11,11 +11,18 @@
  */
 import type { ReportTemplate } from './templateSchema';
 
-export type LintSeverity = 'warning' | 'error';
+export type LintSeverity = 'warning' | 'error' | 'info';
 
 export interface LintIssue {
   severity: LintSeverity;
-  code: 'bleed' | 'missing-font' | 'low-contrast' | 'missing-slot' | 'tiny-text' | 'overlap-edge';
+  code:
+    | 'bleed'
+    | 'missing-font'
+    | 'low-contrast'
+    | 'missing-slot'
+    | 'tiny-text'
+    | 'overlap-edge'
+    | 'unresolved-binding';
   message: string;
   where: string;
   pageId?: string;
@@ -54,9 +61,36 @@ function contrastRatio(a: { r: number; g: number; b: number }, b: { r: number; g
   return (hi + 0.05) / (lo + 0.05);
 }
 
-export function lintTemplate(template: ReportTemplate): LintIssue[] {
+const BINDING_RE = /\{\{\s*([^}|]+?)\s*(?:\||\}\})/g;
+
+function getByPath(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+  const parts = path.replace(/\[(\w+)\]/g, '.$1').split('.');
+  return parts.reduce((acc, key) => (acc == null ? acc : acc[key.trim()]), obj);
+}
+
+function collectUnresolvedBindings(input: unknown, sampleData: Record<string, any>): string[] {
+  if (typeof input !== 'string' || !input.includes('{{')) return [];
+  const out: string[] = [];
+  const re = new RegExp(BINDING_RE.source, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(input))) {
+    const head = m[1].trim();
+    // skip computed (=foo) / token (@foo) / expressions
+    if (!head || head.startsWith('=') || head.startsWith('@')) continue;
+    if (/[^\w.\[\]\s]/.test(head)) continue;
+    if (getByPath(sampleData, head) === undefined) out.push(head);
+  }
+  return out;
+}
+
+export function lintTemplate(
+  template: ReportTemplate,
+  sampleData?: Record<string, any>,
+): LintIssue[] {
   const issues: LintIssue[] = [];
   const slotKeys = new Set(Object.keys(template.slots ?? {}));
+  const data = sampleData ?? {};
 
   template.pages.forEach((page, pi) => {
     const pageW = page.size?.width ?? 595;
@@ -82,6 +116,30 @@ export function lintTemplate(template: ReportTemplate): LintIssue[] {
       block.overlays.forEach((o, oi) => {
         const tag = `Page ${pi + 1} → block ${bi + 1} → overlay ${oi + 1}`;
         const ctx = { pageId: page.id, blockId: block.id, overlayId: o.id };
+
+        // Unresolved bindings against sample data
+        if (sampleData) {
+          const candidateStrings: unknown[] = [
+            (o as any).text,
+            (o as any).value,
+            (o as any).label,
+            (o as any).href,
+            (o as any).src,
+          ];
+          const unresolved = new Set<string>();
+          for (const s of candidateStrings) {
+            for (const p of collectUnresolvedBindings(s, data)) unresolved.add(p);
+          }
+          unresolved.forEach((path) => {
+            issues.push({
+              severity: 'warning',
+              code: 'unresolved-binding',
+              message: `Binding "{{${path}}}" has no value in sample data`,
+              where: tag,
+              ...ctx,
+            });
+          });
+        }
 
         // Bleed: any side outside [0, pageSize]
         if (o.x < 0 || o.y < 0 || o.x + o.width > pageW || o.y + o.height > pageH) {

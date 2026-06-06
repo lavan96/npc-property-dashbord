@@ -71,7 +71,7 @@ import {
   type ReportTemplate,
   makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
-import { renderTemplateToBlob } from '@/lib/reportTemplate/pdfRenderer';
+// jsPDF preview retired — PDF tab now renders via WeasyPrint for production parity.
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
@@ -500,6 +500,29 @@ export default function TemplateBuilderEdit() {
     setSampleDataText(JSON.stringify(preset.data, null, 2));
     toast.success(`Sample data: ${preset.label}`);
   };
+  const loadSampleFromRealReport = async () => {
+    const input = window.prompt(
+      'Load binding context from a real investment_reports row.\n\nPaste a report ID (UUID):',
+    );
+    const reportId = (input ?? '').trim();
+    if (!reportId) return;
+    const toastId = toast.loading('Loading report binding context…');
+    try {
+      const { buildTemplateBindingContext } = await import('@/lib/reportTemplate/buildBindingContext');
+      const ctx = await buildTemplateBindingContext(reportId, {
+        tokens: (brand as any)?.tokens ?? (brand as any)?.theme?.tokens ?? {},
+        logoUrl: (brand as any)?.logoUrl ?? (brand as any)?.logo?.url ?? null,
+      });
+      if (!ctx) throw new Error('Report not found or inaccessible');
+      setSampleDataText(JSON.stringify(ctx.data, null, 2));
+      toast.success(
+        `Loaded ${ctx.meta.reportType}${ctx.meta.variant ? ` (${ctx.meta.variant})` : ''}`,
+        { id: toastId },
+      );
+    } catch (e: any) {
+      toast.error(`Load failed: ${e?.message ?? e}`, { id: toastId });
+    }
+  };
   const insertBlockType = (type: string) => {
     if (!activePage) { toast.error('No active page — add one first.'); return; }
     const def = BLOCK_DEFS[type];
@@ -913,7 +936,7 @@ export default function TemplateBuilderEdit() {
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
   // ── Print-safety lint (live) ────────────────────────────────────────────────
-  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template), [template]);
+  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(template, sampleData), [template, sampleData]);
 
   // ── Live PDF preview ────────────────────────────────────────────────────────
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -930,19 +953,42 @@ export default function TemplateBuilderEdit() {
       try {
         const prepared = await preloadImages(template);
         if (cancelled) return;
-        const blob = renderTemplateToBlob(prepared, { data: sampleData });
-        const url = URL.createObjectURL(blob);
-        if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-        blobRef.current = url;
-        setPreviewUrl(url);
+        // Production parity: render via WeasyPrint (same engine as final PDFs).
+        const { html } = renderTemplateToHtml(prepared, {
+          data: sampleData,
+          title: name || 'Template Preview',
+          customCss: customCss || undefined,
+        });
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess?.session?.access_token;
+        const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+        const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            html,
+            fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}-preview.pdf`,
+            templateId: id,
+            mode: 'preview',
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+        if (cancelled) return;
+        setPreviewUrl(json.url as string);
       } catch (e: any) {
         if (!cancelled) setPreviewError(e?.message ?? 'Render failed');
       } finally {
         if (!cancelled) setPreviewing(false);
       }
-    }, 500);
+    }, 1500);
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, sampleData, workspaceMode]);
+  }, [template, sampleData, workspaceMode, customCss, name, id]);
 
   useEffect(() => () => {
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
@@ -1634,6 +1680,29 @@ export default function TemplateBuilderEdit() {
             These four fields decide which generated reports route through this template. The resolver picks the
             most-specific active match: <code>user &gt; agency &gt; global-variant &gt; global-any</code>, ordered by
             priority. Engine must be <code>weasyprint</code> for production routing.
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {reportType ? (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-medium">
+                    {reportType}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    variant: {variant || 'any'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    scope: {scope || 'global'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-accent/40 text-foreground px-2 py-0.5 text-[10px] font-medium">
+                    priority: {priority}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-muted text-muted-foreground px-2 py-0.5 text-[10px]">
+                    will route: {variant ? `${reportType} (${variant})` : `any ${reportType}`}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] italic">Set a report type to see routing targets.</span>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1741,6 +1810,14 @@ export default function TemplateBuilderEdit() {
               <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
               </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadSampleFromRealReport}
+                title="Load binding context from a real investment_reports row — preview against actual data"
+              >
+                Load real report…
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
