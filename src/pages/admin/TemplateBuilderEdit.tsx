@@ -618,6 +618,141 @@ export default function TemplateBuilderEdit() {
       }
     }
   };
+
+  // ── Overlay selection helpers (used by Ctrl+A and clipboard) ────────────────
+  const getSelectedOverlayIds = useCallback((): string[] => {
+    if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
+    return selectedOverlayId ? [selectedOverlayId] : [];
+  }, [multiOverlayIds, selectedOverlayId]);
+  const getOverlayById = useCallback((id: string): Overlay | null => {
+    if (!activePage) return null;
+    for (const b of activePage.blocks) {
+      const f = b.overlays.find((o) => o.id === id);
+      if (f) return f;
+    }
+    return null;
+  }, [activePage]);
+
+  const selectAllOverlays = useCallback(() => {
+    if (!activePage) return;
+    const ids = activePage.blocks.flatMap((b) => b.overlays.map((o) => o.id));
+    if (ids.length === 0) return;
+    setMultiOverlayIds(new Set(ids));
+    setSelectedOverlayId(ids[0]);
+    toast(`Selected ${ids.length} element${ids.length === 1 ? '' : 's'}`);
+  }, [activePage]);
+
+  const copySelectedOverlays = useCallback(() => {
+    const ids = getSelectedOverlayIds();
+    if (ids.length === 0) return false;
+    const snaps: Overlay[] = [];
+    for (const id of ids) {
+      const o = getOverlayById(id);
+      if (o) snaps.push(JSON.parse(JSON.stringify(o)));
+    }
+    if (snaps.length === 0) return false;
+    overlayClipboardRef.current = snaps;
+    toast.success(`Copied ${snaps.length} element${snaps.length === 1 ? '' : 's'}`);
+    return true;
+  }, [getSelectedOverlayIds, getOverlayById]);
+
+  const cutSelectedOverlays = useCallback(() => {
+    if (!copySelectedOverlays()) return;
+    const ids = getSelectedOverlayIds();
+    if (!activePage) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.filter((o) => !ids.includes(o.id)),
+      })),
+    });
+    setSelectedOverlayId(null);
+    clearMultiSelect();
+  }, [copySelectedOverlays, getSelectedOverlayIds, activePage, clearMultiSelect]);
+
+  const pasteOverlays = useCallback(() => {
+    const buf = overlayClipboardRef.current;
+    if (!buf || buf.length === 0 || !activePage) return;
+    const newIds: string[] = [];
+    const clones: Overlay[] = buf.map((o) => {
+      const c = JSON.parse(JSON.stringify(o));
+      c.id = crypto.randomUUID();
+      c.x = (o.x || 0) + 16;
+      c.y = (o.y || 0) + 16;
+      newIds.push(c.id);
+      return c;
+    });
+    const blocks = [...activePage.blocks];
+    let target = blocks.find((b) => b.type === 'free');
+    if (!target) {
+      target = { id: crypto.randomUUID(), type: 'free', props: {}, overlays: [] };
+      blocks.push(target);
+    }
+    target.overlays = [...target.overlays, ...clones];
+    updatePage({ ...activePage, blocks });
+    setSelectedOverlayId(newIds[0] ?? null);
+    setMultiOverlayIds(new Set(newIds));
+    toast.success(`Pasted ${clones.length} element${clones.length === 1 ? '' : 's'}`);
+  }, [activePage]);
+
+  const duplicateSelectedOverlays = useCallback(() => {
+    const ids = getSelectedOverlayIds();
+    ids.forEach((id) => duplicateOverlay(id));
+  }, [getSelectedOverlayIds]);
+
+  // Toggle a text style property (bold / italic / underline) on every selected text overlay.
+  const toggleTextStyle = useCallback((prop: 'fontWeight' | 'fontStyle' | 'textDecoration') => {
+    const ids = getSelectedOverlayIds();
+    if (!activePage || ids.length === 0) return;
+    const targets = ids.map(getOverlayById).filter((o): o is Overlay => !!o && o.type === 'text');
+    if (targets.length === 0) return;
+    const first: any = targets[0];
+    const next: any = (() => {
+      if (prop === 'fontWeight') return first.fontWeight === 'bold' ? 'normal' : 'bold';
+      if (prop === 'fontStyle') return first.fontStyle === 'italic' ? 'normal' : 'italic';
+      return first.textDecoration === 'underline' ? 'none' : 'underline';
+    })();
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => ({
+        ...b,
+        overlays: b.overlays.map((o) =>
+          ids.includes(o.id) && o.type === 'text' ? ({ ...o, [prop]: next } as Overlay) : o,
+        ),
+      })),
+    });
+  }, [getSelectedOverlayIds, activePage, getOverlayById]);
+
+  // Z-order: shift each selected overlay one step within its block's overlay array.
+  const shiftZOrder = useCallback((dir: 'forward' | 'backward' | 'front' | 'back') => {
+    const ids = getSelectedOverlayIds();
+    if (!activePage || ids.length === 0) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => {
+        const sel = b.overlays.filter((o) => ids.includes(o.id));
+        if (sel.length === 0) return b;
+        const others = b.overlays.filter((o) => !ids.includes(o.id));
+        if (dir === 'front') return { ...b, overlays: [...others, ...sel] };
+        if (dir === 'back') return { ...b, overlays: [...sel, ...others] };
+        // forward / backward: step by one
+        const arr = [...b.overlays];
+        const step = dir === 'forward' ? 1 : -1;
+        const order = dir === 'forward'
+          ? [...arr].map((_, i) => arr.length - 1 - i)
+          : arr.map((_, i) => i);
+        for (const i of order) {
+          if (!ids.includes(arr[i].id)) continue;
+          const j = i + step;
+          if (j < 0 || j >= arr.length) continue;
+          if (ids.includes(arr[j].id)) continue;
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return { ...b, overlays: arr };
+      }),
+    });
+  }, [getSelectedOverlayIds, activePage]);
   const bulkPasteStyle = () => pasteOverlayStyleToIds(Array.from(multiOverlayIds));
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
