@@ -81,6 +81,7 @@ import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate'
 import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
+import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
@@ -1283,11 +1284,43 @@ export default function TemplateBuilderEdit() {
                 </div>
               ) : activePage ? (
                 <>
-                  <TemplateCanvas
+                  <EditorialCanvas
                     key={activePage.id}
+                    template={template}
                     page={activePage}
-                    onOverlaysChange={setActivePageOverlays}
-                    onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
+                    sampleData={sampleData}
+                    customCss={customCss || undefined}
+                    selectedOverlayId={selectedOverlayId}
+                    multiOverlayIds={multiOverlayIds}
+                    onSelectOverlay={(oid, additive) => {
+                      if (!oid) { setSelectedOverlayId(null); clearMultiSelect(); return; }
+                      if (additive) {
+                        toggleMultiOverlay(oid);
+                        setSelectedOverlayId(oid);
+                        setSelectedBlockId(null);
+                      } else {
+                        setSelectedOverlayId(oid);
+                        setSelectedBlockId(null);
+                        clearMultiSelect();
+                      }
+                    }}
+                    onUpdateOverlay={updateOverlay}
+                    onUpdateOverlaysBulk={(patches) => {
+                      if (!activePage) return;
+                      const map = new Map(patches.map((p) => [p.id, p.patch]));
+                      updatePage({
+                        ...activePage,
+                        blocks: activePage.blocks.map((b) => ({
+                          ...b,
+                          overlays: b.overlays.map((o) =>
+                            map.has(o.id) ? ({ ...o, ...map.get(o.id) } as Overlay) : o,
+                          ),
+                        })),
+                      });
+                    }}
+                    onDeleteOverlay={deleteOverlay}
+                    onDuplicateOverlay={duplicateOverlay}
+                    onSelectBlock={(bid) => { setSelectedBlockId(bid); }}
                   />
                   <CanvasChrome
                     page={activePage}
