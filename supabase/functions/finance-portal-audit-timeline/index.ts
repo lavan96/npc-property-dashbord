@@ -125,9 +125,9 @@ Deno.serve(async (req) => {
       if (partnerIds.size) {
         const { data: partners } = await supabase
           .from('finance_portal_users')
-          .select('id, email, full_name')
+          .select('id, email')
           .in('id', Array.from(partnerIds));
-        for (const p of partners || []) partnerMap.set(p.id, { email: p.email, name: p.full_name });
+        for (const p of partners || []) partnerMap.set(p.id, { email: p.email, name: p.email });
       }
 
       const events: any[] = [];

@@ -269,7 +269,13 @@ Deno.serve(async (req) => {
           assigned_by: null,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'finance_user_id,client_id' });
-      if (assignmentError) throw assignmentError;
+      if (assignmentError) {
+        // Roll back the just-created client so a failed assignment doesn't leave an
+        // orphaned client with no finance-portal assignment (invisible to the partner,
+        // and unusable as a target for new purchase files).
+        await supabase.from('clients').delete().eq('id', createdClient.id);
+        throw assignmentError;
+      }
 
       await logClientActivity(supabase, {
         clientId: createdClient.id,

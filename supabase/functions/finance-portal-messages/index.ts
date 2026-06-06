@@ -65,18 +65,22 @@ Deno.serve(async (req) => {
              | null = null;
 
     if (financeToken) {
-      const { data: portalUser } = await supabase
+      const { data: portalUser, error: portalUserErr } = await supabase
         .from('finance_portal_users')
-        .select('id, email, full_name, is_active, revoked_at, session_expires_at')
+        .select('id, email, is_active, revoked_at, session_expires_at')
         .eq('session_token', financeToken)
         .maybeSingle();
+      if (portalUserErr) {
+        console.error('[finance-portal-messages] session lookup failed', portalUserErr.message);
+        return jsonResponse({ error: 'Session lookup failed' }, 500, corsHeaders);
+      }
       if (!portalUser || !portalUser.is_active || portalUser.revoked_at) {
         return jsonResponse({ error: 'Invalid session' }, 401, corsHeaders);
       }
       if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) {
         return jsonResponse({ error: 'Session expired' }, 401, corsHeaders);
       }
-      actor = { type: 'partner', portalUserId: portalUser.id, email: portalUser.email, name: portalUser.full_name || portalUser.email };
+      actor = { type: 'partner', portalUserId: portalUser.id, email: portalUser.email, name: portalUser.email };
     } else {
       const auth = await verifyAuth(supabase, req.headers, body);
       if (auth.error || !auth.userId) {
@@ -124,7 +128,7 @@ Deno.serve(async (req) => {
           id, client_id, finance_user_id, subject, last_message_at, last_message_preview,
           unread_count_partner, unread_count_staff, is_archived, created_at,
           clients:client_id (id, primary_first_name, primary_surname, secondary_first_name, secondary_surname),
-          finance_portal_users:finance_user_id (id, email, full_name)
+          finance_portal_users:finance_user_id (id, email)
         `)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(200);

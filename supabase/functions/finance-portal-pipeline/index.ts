@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
           finance_status, status, risk_level, settlement_date,
           property_address, property_suburb, kanban_position,
           last_partner_action_at, archived_at,
-          clients:client_id(first_name, last_name)
+          clients:client_id(primary_first_name, primary_surname)
         `)
         .eq('assigned_finance_user_id', portalUserId)
         .is('archived_at', null)
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
 
       for (const pf of pfs || []) {
         const clientName = pf.clients
-          ? `${(pf.clients as any).first_name || ''} ${(pf.clients as any).last_name || ''}`.trim()
+          ? `${(pf.clients as any).primary_first_name || ''} ${(pf.clients as any).primary_surname || ''}`.trim()
           : null;
         const card = {
           id: pf.id,
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
 
       const { data: pfs } = await supabase
         .from('purchase_files')
-        .select('id, title, lender, loan_amount, purchase_price, settlement_date, finance_status, client_id, clients:client_id(first_name,last_name)')
+        .select('id, title, lender, loan_amount, purchase_price, settlement_date, finance_status, client_id, clients:client_id(primary_first_name,primary_surname)')
         .eq('assigned_finance_user_id', portalUserId)
         .not('settlement_date', 'is', null)
         .gte('settlement_date', today.toISOString().slice(0, 10))
@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
         const confidence = STATUS_CONFIDENCE[pf.finance_status as string] ?? 0.2;
         const weighted = Math.round(net * confidence);
         const cn = pf.clients
-          ? `${(pf.clients as any).first_name || ''} ${(pf.clients as any).last_name || ''}`.trim()
+          ? `${(pf.clients as any).primary_first_name || ''} ${(pf.clients as any).primary_surname || ''}`.trim()
           : null;
         monthBuckets[ms].events.push({
           purchase_file_id: pf.id,
@@ -339,7 +339,7 @@ Deno.serve(async (req) => {
 
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, first_name, last_name, email, phone')
+        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile')
         .in('id', clientIds);
       const clientMap = new Map((clients || []).map((c: any) => [c.id, c]));
 
@@ -359,9 +359,9 @@ Deno.serve(async (req) => {
         return {
           deal_id: d.id,
           client_id: d.client_id,
-          client_name: c ? `${c.first_name || ''} ${c.last_name || ''}`.trim() : 'Client',
-          client_email: c?.email,
-          client_phone: c?.phone,
+          client_name: c ? `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim() : 'Client',
+          client_email: c?.primary_email,
+          client_phone: c?.primary_mobile,
           lender: d.lender,
           loan_amount: Number(d.loan_amount || 0),
           amount_at_risk: Number(d.commission_estimate || 0),
@@ -475,7 +475,7 @@ Deno.serve(async (req) => {
 
       const { data: pfs } = await supabase
         .from('purchase_files')
-        .select('id, title, finance_status, status, lender, loan_amount, purchase_price, settlement_date, last_partner_action_at, client_id, clients:client_id(first_name,last_name), risk_level')
+        .select('id, title, finance_status, status, lender, loan_amount, purchase_price, settlement_date, last_partner_action_at, client_id, clients:client_id(primary_first_name,primary_surname), risk_level')
         .eq('assigned_finance_user_id', portalUserId)
         .is('archived_at', null)
         .or(`last_partner_action_at.is.null,last_partner_action_at.lte.${thresholdIso}`)
@@ -514,7 +514,7 @@ Deno.serve(async (req) => {
             break;
         }
         const cn = pf.clients
-          ? `${(pf.clients as any).first_name || ''} ${(pf.clients as any).last_name || ''}`.trim()
+          ? `${(pf.clients as any).primary_first_name || ''} ${(pf.clients as any).primary_surname || ''}`.trim()
           : null;
         return {
           purchase_file_id: pf.id,
