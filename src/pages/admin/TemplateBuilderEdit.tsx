@@ -1771,6 +1771,34 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={customCss || undefined}
       />
+      {id && (
+        <>
+          <TemplateBranchingDialog
+            open={showBranches}
+            onOpenChange={setShowBranches}
+            templateId={id}
+            templateName={name}
+            parentTemplateId={tplMeta?.parent_template_id ?? null}
+            isDraft={tplMeta?.is_draft ?? false}
+            onMerged={reloadTplMeta}
+          />
+          <TemplateApprovalDialog
+            open={showApproval}
+            onOpenChange={setShowApproval}
+            templateId={id}
+            templateName={name}
+            approvalStatus={tplMeta?.approval_status ?? null}
+            locked={tplMeta?.locked_for_review ?? false}
+            onChanged={reloadTplMeta}
+          />
+          <TemplateAuditLogDialog
+            open={showAudit}
+            onOpenChange={setShowAudit}
+            templateId={id}
+            templateName={name}
+          />
+        </>
+      )}
     </div>
   );
 }
