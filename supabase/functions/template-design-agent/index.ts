@@ -10,7 +10,7 @@
 // operations in a single turn.
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, type DesignBrief } from '../_shared/designBrief.ts';
+import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
@@ -686,6 +686,40 @@ ACTIVE SELECTION:
     }
 
     console.log(`[design-agent] tool_call ops=${(parsed.operations || []).length} reply="${String(parsed.reply || '').slice(0, 120)}" ops_preview=${JSON.stringify((parsed.operations || []).slice(0, 3)).slice(0, 400)}`);
+
+    // ─── Brief-pipeline content validator + auto-retry ──────────────────────
+    // The synthesis pass occasionally returns shape-only layouts. Detect and re-prompt.
+    if (useBriefPipeline) {
+      const v = validateBriefSynthesis(parsed.operations || []);
+      console.log(`[design-agent] brief validate: ok=${v.ok} reason=${v.reason || '-'} stats=${JSON.stringify(v.stats)}`);
+      if (!v.ok) {
+        messages.push({
+          role: 'assistant',
+          content: `(rejected — ${v.reason}; only ${v.stats.textOverlays} text overlays, ${v.stats.shapeOverlays} shapes)`,
+        });
+        messages.push({
+          role: 'user',
+          content: `Your previous attempt FAILED the content quota: ${v.reason}. RE-EMIT apply_changes with: (a) clear_page first, (b) set_token + update_page background, (c) AT LEAST 4 text overlays (eyebrow + headline + deck + body/caption) with real copy, (d) any decorative shape larger than 120pt MUST have a text overlay over it. Invent plausible report copy if the brief is thin. Do NOT just place shapes.`,
+        });
+        const retry = await callGateway({ type: 'function', function: { name: 'apply_changes' } });
+        if (retry.ok) {
+          const retryData = await retry.json();
+          const retryCall = retryData?.choices?.[0]?.message?.tool_calls?.[0];
+          if (retryCall) {
+            try {
+              const retryParsed = JSON.parse(retryCall.function.arguments);
+              const v2 = validateBriefSynthesis(retryParsed.operations || []);
+              console.log(`[design-agent] brief retry validate: ok=${v2.ok} text=${v2.stats.textOverlays}`);
+              if (v2.stats.textOverlays > (v.stats.textOverlays || 0)) {
+                parsed = retryParsed;
+              }
+            } catch (e) {
+              console.warn('[design-agent] retry parse failed', e);
+            }
+          }
+        }
+      }
+    }
 
     const { schema: appliedSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
     console.log(`[design-agent] applied summaries=${summaries.length} warnings=${warnings.length} ${warnings.length ? JSON.stringify(warnings).slice(0,300) : ''}`);
