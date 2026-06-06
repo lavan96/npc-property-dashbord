@@ -171,6 +171,19 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                 </Card>
+                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="m-ocr" className="font-medium cursor-pointer flex items-center gap-2">
+                        OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Tesseract</Badge>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        For scans and image-only PDFs. Rasterises each page and recognises text via Tesseract (English). Slower.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
               </RadioGroup>
             </div>
 
