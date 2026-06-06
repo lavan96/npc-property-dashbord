@@ -477,7 +477,15 @@ Deno.serve(async (req) => {
     const sampleData: any = body.sampleData ?? null;
     const replaceMode: boolean = body.replaceMode === true;
 
+    // Diagnostic logging for image/vision flow.
+    const imgKb = imageDataUrl ? Math.round(imageDataUrl.length / 1024) : 0;
+    const imgValid = !!imageDataUrl && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(imageDataUrl);
+    console.log(`[design-agent] mode=${mode} instr="${(userInstruction||'').slice(0,80)}" image=${imageDataUrl ? `${imgKb}KB valid=${imgValid}` : 'no'} activePage=${activePageId || '-'}`);
+
     if (!userInstruction?.trim() && !imageDataUrl && mode !== 'auto_fill') return json({ error: 'empty instruction' }, 400);
+    if (imageDataUrl && !imgValid) {
+      return json({ error: 'Attached image is not a valid data:image/* URL. Re-attach the screenshot.' }, 400);
+    }
 
     // Mode-specific system addendum
     let modeAddendum = '';
