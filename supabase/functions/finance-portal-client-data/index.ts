@@ -50,7 +50,7 @@ const corsHeaders = {
 
 const TABLE_MAP: Record<string, string> = {
   properties: 'client_properties',
-  income: 'client_income',
+  income: 'client_income_sources',
   expenses: 'client_expenses',
   assets: 'client_assets',
   liabilities: 'client_liabilities',
@@ -73,6 +73,21 @@ function jsonResponse(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+// client_income_sources stores annual amounts plus the raw input/frequency used
+// for UI conversion. The finance portal form captures the gross annual figure
+// directly, so default the conversion fields and required columns here.
+function normalizeIncomeSourceFields(input: Record<string, any>) {
+  const out = { ...input };
+  const gross = Number(out.gross_annual_amount || 0);
+  out.gross_annual_amount = gross;
+  if (out.input_frequency == null) out.input_frequency = 'annual';
+  if (out.input_amount == null) out.input_amount = gross;
+  if (out.source_category == null) out.source_category = 'employment';
+  if (out.source_type == null) out.source_type = 'payg_fulltime';
+  if (out.is_active == null) out.is_active = true;
+  return out;
 }
 
 async function prepareFinanceNotePayload(supabase: any, clientId: string, payload: Record<string, any>, portalUser: any) {
@@ -533,6 +548,7 @@ Deno.serve(async (req) => {
       if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
 
       let insert = { ...(payload || {}), client_id };
+      if (dbTable === 'client_income_sources') insert = normalizeIncomeSourceFields(insert);
       let syncMeta: any = null;
       if (dbTable === 'client_notes') {
         const prepared = await prepareFinanceNotePayload(supabase, client_id, insert, portalUser);
@@ -609,9 +625,14 @@ Deno.serve(async (req) => {
       if (!record_id) return jsonResponse({ error: 'record_id required' }, 400);
       if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
 
-      const updates = { ...(payload || {}) };
+      let updates = { ...(payload || {}) };
       delete updates.id;
       delete updates.client_id;
+
+      if (dbTable === 'client_income_sources' && 'gross_annual_amount' in updates) {
+        // Keep the raw input fields aligned with the edited annual figure.
+        updates = normalizeIncomeSourceFields(updates);
+      }
 
       if (dbTable === 'client_notes') {
         const provenance = buildProvenance({
