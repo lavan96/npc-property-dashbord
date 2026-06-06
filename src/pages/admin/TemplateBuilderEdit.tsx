@@ -1871,6 +1871,7 @@ export default function TemplateBuilderEdit() {
           }}
         />
       )}
+      <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       {id && (
         <TemplateAnalyticsDialog
           open={showAnalyticsDialog}
