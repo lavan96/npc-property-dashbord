@@ -11,11 +11,18 @@
  */
 import type { ReportTemplate } from './templateSchema';
 
-export type LintSeverity = 'warning' | 'error';
+export type LintSeverity = 'warning' | 'error' | 'info';
 
 export interface LintIssue {
   severity: LintSeverity;
-  code: 'bleed' | 'missing-font' | 'low-contrast' | 'missing-slot' | 'tiny-text' | 'overlap-edge';
+  code:
+    | 'bleed'
+    | 'missing-font'
+    | 'low-contrast'
+    | 'missing-slot'
+    | 'tiny-text'
+    | 'overlap-edge'
+    | 'unresolved-binding';
   message: string;
   where: string;
   pageId?: string;
