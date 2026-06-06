@@ -1129,6 +1129,19 @@ export default function TemplateBuilderEdit() {
                     canvas={template.canvas ?? { gridSize: 8, showGrid: false, showRulers: true, snapToGrid: false, showBleed: false, showSafeArea: false }}
                     onChangeCanvas={(c) => setTemplate((t) => ({ ...t, canvas: c }))}
                   />
+                  <BulkEditBar
+                    count={multiOverlayIds.size}
+                    onClear={clearMultiSelect}
+                    onDelete={bulkDeleteOverlays}
+                    onAlign={(a) => bulkPatchOverlays({ align: a } as any)}
+                    onSetColor={(c) => bulkPatchOverlays({ color: c } as any)}
+                    onSetFontSize={(n) => bulkPatchOverlays({ fontSize: n } as any)}
+                    onSetFontFamily={(f) => bulkPatchOverlays({ fontFamily: f } as any)}
+                    onSetOpacity={(n) => bulkPatchOverlays({ opacity: n } as any)}
+                    onCopyStyle={bulkCopyStyleFromFirst}
+                    onPasteStyle={bulkPasteStyle}
+                    hasStyleClipboard={hasStyleClipboard}
+                  />
                 </>
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
