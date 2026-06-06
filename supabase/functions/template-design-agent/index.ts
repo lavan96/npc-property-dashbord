@@ -78,25 +78,83 @@ function normaliseSchemaForClient(schema: any): any {
   }
   return s;
 }
-function outline(schema: any): string {
+function outline(schema: any, activePageId?: string): string {
   if (!schema?.pages) return '(empty template)';
   const lines: string[] = [];
   const tokens = schema.tokens || {};
   lines.push(`tokens.colors=${JSON.stringify(tokens.colors || {})}`);
   lines.push(`tokens.fonts=${JSON.stringify(tokens.fonts || {})}`);
   schema.pages.forEach((p: any, i: number) => {
-    lines.push(`page[${i}] id=${p.id} name=${JSON.stringify(p.name)} size=${p.size?.width}x${p.size?.height} bg=${p.background?.color || p.background?.imageUrl || '-'}`);
-    (p.blocks || []).forEach((b: any, bi: number) => {
+    const isActive = p.id === activePageId;
+    const focused = !activePageId || isActive;
+    lines.push(`${isActive ? '▶ ' : '  '}page[${i}] id=${p.id} name=${JSON.stringify(p.name)} size=${p.size?.width}x${p.size?.height} bg=${p.background?.color || p.background?.imageUrl || '-'}${isActive ? '  ← ACTIVE' : ''}`);
+    const blocks = p.blocks || [];
+    const overlayCap = focused ? 20 : 4;
+    const blockCap = focused ? 999 : 6;
+    blocks.slice(0, blockCap).forEach((b: any, bi: number) => {
       const ov = (b.overlays || []).length;
-      lines.push(`  block[${bi}] id=${b.id} type=${b.type} overlays=${ov}${b.name ? ` name="${b.name}"` : ''}`);
-      (b.overlays || []).slice(0, 12).forEach((o: any, oi: number) => {
-        const sample = o.type === 'text' ? ` "${String(o.content || '').slice(0, 40)}"` : '';
-        lines.push(`    ov[${oi}] id=${o.id} type=${o.type}${sample} @${Math.round(o.x)},${Math.round(o.y)} ${Math.round(o.width)}x${Math.round(o.height)}`);
+      lines.push(`    block[${bi}] id=${b.id} type=${b.type} overlays=${ov}${b.name ? ` name="${b.name}"` : ''}`);
+      (b.overlays || []).slice(0, overlayCap).forEach((o: any, oi: number) => {
+        const pos = `@${Math.round(o.x)},${Math.round(o.y)} ${Math.round(o.width)}x${Math.round(o.height)}`;
+        if (o.type === 'text') {
+          const c = String(o.content || '').replace(/\s+/g, ' ').slice(0, 60);
+          const style = `${o.fontSize ?? '?'}pt ${o.fontWeight || 'normal'} ${o.color || '-'} align=${o.align || 'left'}`;
+          lines.push(`      ov[${oi}] id=${o.id} text "${c}" ${pos} ${style}`);
+        } else if (o.type === 'shape') {
+          lines.push(`      ov[${oi}] id=${o.id} shape=${o.shape || 'rect'} fill=${o.fill || '-'} stroke=${o.stroke || '-'} ${pos}`);
+        } else if (o.type === 'image') {
+          lines.push(`      ov[${oi}] id=${o.id} image fit=${o.fit || 'cover'} ${pos}`);
+        } else {
+          lines.push(`      ov[${oi}] id=${o.id} ${o.type} ${pos}`);
+        }
       });
-      if ((b.overlays || []).length > 12) lines.push(`    … +${b.overlays.length - 12} more overlays`);
+      if ((b.overlays || []).length > overlayCap) lines.push(`      … +${b.overlays.length - overlayCap} more overlays`);
     });
+    if (blocks.length > blockCap) lines.push(`    … +${blocks.length - blockCap} more blocks`);
   });
   return lines.join('\n');
+}
+
+// ─── post-op cleanup: snap to grid, clamp to canvas, dedupe duplicates ────────
+function cleanupSchema(schema: any, opts: { grid?: number; clampPages?: Set<string> } = {}): { schema: any; fixes: string[] } {
+  const s = JSON.parse(JSON.stringify(schema));
+  const grid = Math.max(0, opts.grid ?? 0);
+  const fixes: string[] = [];
+  const snap = (n: number) => (grid > 0 ? Math.round(n / grid) * grid : n);
+
+  for (const page of s.pages || []) {
+    const shouldClamp = !opts.clampPages || opts.clampPages.has(page.id);
+    const W = Number(page.size?.width) || 595;
+    const H = Number(page.size?.height) || 842;
+    for (const block of page.blocks || []) {
+      // Dedupe text overlays with identical content + near-identical position
+      const seen = new Map<string, any>();
+      const survivors: any[] = [];
+      for (const o of block.overlays || []) {
+        if (shouldClamp) {
+          const w = Math.min(W, Math.max(1, Number(o.width) || 1));
+          const h = Math.min(H, Math.max(1, Number(o.height) || 1));
+          let x = Math.max(0, Math.min(W - w, Number(o.x) || 0));
+          let y = Math.max(0, Math.min(H - h, Number(o.y) || 0));
+          if (grid > 0) { x = snap(x); y = snap(y); }
+          if (x !== o.x || y !== o.y || w !== o.width || h !== o.height) {
+            o.x = x; o.y = y; o.width = w; o.height = h;
+          }
+        }
+        if (o.type === 'text') {
+          const key = `${String(o.content || '').trim().toLowerCase()}|${Math.round(o.x / 6)}|${Math.round(o.y / 6)}|${o.fontSize}`;
+          if (seen.has(key)) {
+            fixes.push(`deduped duplicate text "${String(o.content || '').slice(0, 30)}" on page ${page.id}`);
+            continue;
+          }
+          seen.set(key, o);
+        }
+        survivors.push(o);
+      }
+      block.overlays = survivors;
+    }
+  }
+  return { schema: s, fixes };
 }
 
 // ─── operation applier ────────────────────────────────────────────────────────
