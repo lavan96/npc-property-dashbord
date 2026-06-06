@@ -373,13 +373,19 @@ DESIGN STANDARDS — be opinionated and creative:
 - Prefer 36pt page margins; align overlays to a 12pt grid.
 - Use the token palette; only hard-code colours when the designer explicitly asks.
 - For new sections, compose: section title overlay + supporting copy + KPI/data block + accent shape.
-- When asked to "redesign" or "improve", make decisive structural changes — never just tweak one value.
+
+REPLACEMENT vs ADDITIVE — CRITICAL:
+- The default mistake is to keep stacking new blocks on top of existing ones. Don't.
+- If the user says "redesign", "redo", "rebuild", "replace", "start over", "clean up", "from scratch", "wipe", or describes the page as if it were empty, you MUST emit a 'clear_page' for the target page BEFORE any add_block/add_overlay ops. This wipes existing content so your new layout actually replaces it.
+- If the user asks to "tweak", "adjust", "tighten", "polish", "fix", or names a specific element, DO NOT clear — instead use update_block / update_overlay / delete_block on the precise targets.
+- Never duplicate an element that already exists on the page. Before adding a heading/title/KPI grid, scan the outline; if one is present, update it in place instead of adding a new one.
+- When unsure whether the user wants additive or replacement, prefer replacement for whole-page instructions and additive for element-level instructions.
 
 CONVERSATIONAL RULES:
 - Treat each user message as a possibly multi-step instruction. Break it down silently, then emit ALL operations in ONE \`apply_changes\` call.
 - Reference targets by the exact ids shown in the outline. Never invent ids.
 - When you ADD elements, do not include an "id" — the server generates one.
-- Reply in 1–3 short sentences for the designer; keep it concrete ("Added a Cover with hero title + gold accent line; switched primary token to #BF9B50").
+- Reply in 1–3 short sentences for the designer; keep it concrete ("Cleared the cover and rebuilt it with a gold hero title + accent rule + KPI strip").
 - If the request is ambiguous, make the most tasteful interpretation and proceed; ask only when you genuinely cannot proceed.`;
 
 Deno.serve(async (req) => {
