@@ -107,6 +107,8 @@ export default function TemplateBuilderEdit() {
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [previewMode, setPreviewMode] = useState<'live' | 'pdf'>('live');
+  const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
 
   // ── Undo / redo history ────────────────────────────────────────────────────
   const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
