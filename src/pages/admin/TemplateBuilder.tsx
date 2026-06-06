@@ -4,14 +4,16 @@
  * Lists report templates and lets superadmins create new ones.
  * The visual editor (tldraw canvas) lives at /admin/template-builder/:id (Phase 2).
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers } from 'lucide-react';
+import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers, Upload } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReportTemplates, useReportTemplateMutations } from '@/hooks/useReportTemplates';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
+import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
   investment: 'Investment Report',
@@ -30,6 +32,7 @@ export default function TemplateBuilder() {
   const navigate = useNavigate();
   const { data: templates = [], isLoading } = useReportTemplates();
   const { create, remove } = useReportTemplateMutations();
+  const [importOpen, setImportOpen] = useState(false);
 
   const handleCreate = () => {
     create.mutate(
@@ -55,11 +58,18 @@ export default function TemplateBuilder() {
             preview the actual generated PDF in real time.
           </p>
         </div>
-        <Button onClick={handleCreate} disabled={create.isPending}>
-          <Plus className="h-4 w-4 mr-1" />
-          New template
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" />
+            Import PDF
+          </Button>
+          <Button onClick={handleCreate} disabled={create.isPending}>
+            <Plus className="h-4 w-4 mr-1" />
+            New template
+          </Button>
+        </div>
       </div>
+      <ImportPdfDialog open={importOpen} onOpenChange={setImportOpen} />
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
