@@ -41,6 +41,7 @@ import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
+import { InlineAiTextActions } from './InlineAiTextActions';
 
 
 interface Props {
@@ -99,6 +100,8 @@ export function PropertiesInspector({
             template={template}
             templateId={templateId}
             overlay={overlay}
+            pageId={page?.id ?? null}
+            selectedBlockId={selectedBlockId ?? null}
             onChange={onUpdateOverlay}
             onDelete={() => onDeleteOverlay(overlay.id)}
             onDuplicate={() => onDuplicateOverlay(overlay.id)}
@@ -139,6 +142,8 @@ function OverlayEditor({
   template,
   templateId,
   overlay,
+  pageId,
+  selectedBlockId,
   onChange,
   onDelete,
   onDuplicate,
@@ -147,6 +152,8 @@ function OverlayEditor({
   template: ReportTemplate;
   templateId?: string;
   overlay: Overlay;
+  pageId: string | null;
+  selectedBlockId: string | null;
   onChange: (n: Overlay) => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -211,6 +218,15 @@ function OverlayEditor({
       {/* Type-specific */}
       {overlay.type === 'text' && (
         <div className="space-y-3">
+          {pageId && (
+            <InlineAiTextActions
+              template={template}
+              overlay={overlay}
+              pageId={pageId}
+              blockId={selectedBlockId}
+              onPatchContent={(newContent) => patch({ content: newContent } as any)}
+            />
+          )}
           <BindableField
             label="Content"
             value={String(overlay.content ?? '')}
@@ -218,6 +234,7 @@ function OverlayEditor({
             template={template}
             multiline
           />
+
           <div className="grid grid-cols-2 gap-2">
             <NumField
               label="Size (pt)"

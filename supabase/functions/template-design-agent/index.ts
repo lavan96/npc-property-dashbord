@@ -13,7 +13,8 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const MODEL = 'openai/gpt-5.5';
+const DEFAULT_MODEL = 'openai/gpt-5.5';
+const VISION_MODEL = 'google/gemini-2.5-pro';
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), {
@@ -329,8 +330,25 @@ Deno.serve(async (req) => {
     const activePageId: string | undefined = body.activePageId;
     const selectedBlockId: string | undefined = body.selectedBlockId;
     const selectedOverlayId: string | undefined = body.selectedOverlayId;
+    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' = body.mode || 'design';
+    const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
 
-    if (!userInstruction?.trim()) return json({ error: 'empty instruction' }, 400);
+    if (!userInstruction?.trim() && !imageDataUrl) return json({ error: 'empty instruction' }, 400);
+
+    // Mode-specific system addendum
+    let modeAddendum = '';
+    if (mode === 'art_director') {
+      modeAddendum = `\n\n[ART DIRECTOR MODE]
+You are doing a DECISIVE polish pass on the active page (id=${activePageId}).
+Make bold structural improvements: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, add a tasteful accent shape or rule, ensure colour harmony via tokens, upgrade copywriting clarity. Emit 8–20 operations targeting only the active page unless tokens need updates. Do NOT ask the user — just execute.`;
+    } else if (mode === 'screenshot_to_block') {
+      modeAddendum = `\n\n[SCREENSHOT-TO-BLOCK MODE]
+The user has attached an image showing a design they want recreated as native blocks/overlays on the active page (id=${activePageId}).
+Analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations on the active page. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
+    } else if (mode === 'inline_text') {
+      modeAddendum = `\n\n[INLINE TEXT MODE]
+Modify ONLY the selected text overlay (overlay id=${selectedOverlayId}, block id=${selectedBlockId}, page id=${activePageId}). Emit exactly one update_overlay operation patching the "content" field. Do not change anything else. Preserve bindings ({{...}} tokens) unless the user explicitly asks to remove them.`;
+    }
 
     const context = `CURRENT TEMPLATE OUTLINE:
 ${outline(schema)}
@@ -338,13 +356,24 @@ ${outline(schema)}
 ACTIVE SELECTION:
   page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}`;
 
+    const useVision = !!imageDataUrl;
+
     const messages: any[] = [
-      { role: 'system', content: SYSTEM },
+      { role: 'system', content: SYSTEM + modeAddendum },
       { role: 'system', content: context },
       ...history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
     ];
-    // Last user message may already be in history; ensure it is the final entry.
-    if (messages[messages.length - 1]?.content !== userInstruction) {
+
+    // Build final user turn — multimodal when image attached
+    if (useVision) {
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: userInstruction || 'Recreate this design as native template blocks on the active page.' },
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+        ],
+      });
+    } else if (messages[messages.length - 1]?.content !== userInstruction) {
       messages.push({ role: 'user', content: userInstruction });
     }
 
@@ -352,11 +381,11 @@ ACTIVE SELECTION:
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
+        model: useVision ? VISION_MODEL : DEFAULT_MODEL,
         messages,
         tools: [TOOL],
         tool_choice: { type: 'function', function: { name: 'apply_changes' } },
-        reasoning: { effort: 'medium' },
+        ...(useVision ? {} : { reasoning: { effort: mode === 'art_director' ? 'high' : 'medium' } }),
       }),
     });
 
