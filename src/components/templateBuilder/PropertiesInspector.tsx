@@ -218,12 +218,12 @@ function OverlayEditor({
       {/* Type-specific */}
       {overlay.type === 'text' && (
         <div className="space-y-3">
-          {page && (
+          {pageId && (
             <InlineAiTextActions
               template={template}
               overlay={overlay}
-              pageId={page.id}
-              blockId={selectedBlockId ?? null}
+              pageId={pageId}
+              blockId={selectedBlockId}
               onPatchContent={(newContent) => patch({ content: newContent } as any)}
             />
           )}
