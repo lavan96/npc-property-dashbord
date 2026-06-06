@@ -225,6 +225,7 @@ export function ExportPipelineDialog({
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
       toast.success(`Export ready (${(json.bytes / 1024).toFixed(0)} KB, ${json.durationMs}ms)`, { id: toastId });
+      if (templateId) void logTemplateAudit(templateId, 'exported_pdf', undefined, { variant, mode, bytes: json.bytes });
       window.open(json.url, '_blank', 'noopener');
       await loadJobs();
     } catch (e: any) {
