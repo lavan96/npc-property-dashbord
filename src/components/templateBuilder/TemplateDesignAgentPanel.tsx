@@ -289,11 +289,19 @@ export function TemplateDesignAgentPanel({
             Multi-step instructions, screenshot-to-block, voice, auto-fill, AI Art Director. Memory persists per template.
           </SheetDescription>
           <div className="flex items-center gap-2 pt-1 flex-wrap">
-            <div className="flex items-center gap-2 mr-auto">
-              <Switch id="auto-apply" checked={autoApply} onCheckedChange={setAutoApply} />
-              <Label htmlFor="auto-apply" className="text-[11px] text-muted-foreground cursor-pointer">
-                Auto-apply (skip preview)
-              </Label>
+            <div className="flex items-center gap-3 mr-auto">
+              <div className="flex items-center gap-1.5">
+                <Switch id="auto-apply" checked={autoApply} onCheckedChange={setAutoApply} />
+                <Label htmlFor="auto-apply" className="text-[11px] text-muted-foreground cursor-pointer">
+                  Auto-apply
+                </Label>
+              </div>
+              <div className="flex items-center gap-1.5" title="Wipes the active page before applying — use when you want a fresh redesign, not additions on top.">
+                <Switch id="replace-mode" checked={replaceMode} onCheckedChange={setReplaceMode} />
+                <Label htmlFor="replace-mode" className={`text-[11px] cursor-pointer ${replaceMode ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                  Replace page
+                </Label>
+              </div>
             </div>
             <Popover>
               <PopoverTrigger asChild>
