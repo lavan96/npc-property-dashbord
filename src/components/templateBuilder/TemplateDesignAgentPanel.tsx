@@ -198,6 +198,7 @@ export function TemplateDesignAgentPanel({
           imageDataUrl: image?.dataUrl,
           memoryFacts,
           sampleData: mode === 'auto_fill' ? sampleData : undefined,
+          replaceMode: replaceMode && (mode === 'design' || mode === 'art_director'),
         },
       });
       if (error) throw new Error(error.message);
