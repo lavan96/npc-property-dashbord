@@ -748,6 +748,7 @@ export default function TemplateBuilderEdit() {
               blocks: template.pages.reduce((n, p: any) => n + (p.blocks?.length || 0), 0),
             },
           });
+          void logTemplateAudit(id, snapshot ? 'version_created' : 'schema_saved', snapshot ? 'Saved as new version' : 'Schema saved');
         },
       },
     );
