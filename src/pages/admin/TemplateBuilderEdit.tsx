@@ -82,6 +82,7 @@ import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
+import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
