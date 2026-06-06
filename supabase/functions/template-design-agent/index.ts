@@ -530,6 +530,55 @@ ${JSON.stringify(sampleData ?? {}, null, 2).slice(0, 4000)}`;
 The designer has explicitly enabled "Replace page contents" for page ${activePageId}. Your FIRST op MUST be { "op": "clear_page", "pageId": "${activePageId}" }. Then build the requested layout from scratch on that page. Never add on top of existing blocks in this mode.`;
     }
 
+    // ─── Brief pipeline orchestration ───────────────────────────────────────
+    let designBrief: DesignBrief | null = incomingBrief;
+    let briefSwaps: string[] = [];
+    let briefPairings: { bg: string; text: string; ratio: number; swapped: boolean }[] = [];
+    let briefTokenPatch: Record<string, string> = {};
+
+    if (useBriefPipeline) {
+      // Stage 1 — Vision Analysis (skipped on re-roll when brief is supplied)
+      if (!designBrief && imageDataUrl) {
+        const visionResult = await analyzeReferenceImage(imageDataUrl, LOVABLE_API_KEY!, userInstruction);
+        if ('error' in visionResult) {
+          console.error('[design-agent] brief vision failed:', visionResult.error);
+          return json({ error: `Vision analysis failed: ${visionResult.error}` }, 500);
+        }
+        designBrief = visionResult.brief;
+        console.log(`[design-agent] brief: palette=${designBrief.palette.length} sections=${designBrief.layout.sections.length} vibe=${designBrief.typography.vibe}`);
+      }
+
+      if (!designBrief) {
+        return json({ error: 'Brief pipeline requires an image (first turn) or a cached brief (re-roll).' }, 400);
+      }
+
+      // Stage 2 — token integration + contrast guard
+      const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
+      briefTokenPatch = integrated.tokenPatch;
+      briefSwaps = integrated.swaps;
+      briefPairings = integrated.pairings;
+      console.log(`[design-agent] brief tokens=${Object.keys(briefTokenPatch).length} swaps=${briefSwaps.length}`);
+
+      if (briefStage === 'analyze_only') {
+        // Return the brief without any layout changes so the user can edit it.
+        return json({
+          reply: `Analysed the reference. Palette: ${designBrief.palette.map((p) => p.hex).join(' · ')}. Vibe: ${designBrief.typography.vibe}. ${designBrief.layout.sections.length} sections.`,
+          schema: normaliseSchemaForClient(schema),
+          operations: [],
+          warnings: briefSwaps,
+          brief: designBrief,
+          briefSwaps,
+          briefPairings,
+          briefTokenPatch,
+        });
+      }
+
+      // Stage 3 — synthesis: replace modeAddendum with brief-driven instructions
+      const targetPage = schema.pages.find((p: any) => p.id === activePageId);
+      const pageSize = targetPage?.size || { width: 595, height: 842 };
+      modeAddendum = synthesisSystemAddendum(designBrief, activePageId!, pageSize, briefTokenPatch);
+    }
+
     // Persistent memory facts about this template (brand voice, do/don'ts, etc.)
     const memoryBlock = memoryFacts.length
       ? `\n\nPERSISTENT MEMORY (apply to every turn):\n${memoryFacts.map((f, i) => `  ${i + 1}. ${f}`).join('\n')}`
@@ -541,7 +590,9 @@ ${outline(schema, activePageId)}
 ACTIVE SELECTION:
   page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}${memoryBlock}`;
 
-    const useVision = !!imageDataUrl;
+    // Brief pipeline runs synthesis on text-only context (image already digested
+    // into the brief). Other image-attached flows keep multimodal.
+    const useVision = !!imageDataUrl && !useBriefPipeline;
 
     const messages: any[] = [
       { role: 'system', content: SYSTEM + modeAddendum },
@@ -559,9 +610,11 @@ ACTIVE SELECTION:
         ],
       });
     } else {
-      const finalText = userInstruction || (mode === 'auto_fill'
-        ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.'
-        : '');
+      const finalText = userInstruction || (
+        useBriefPipeline ? 'Synthesise the page from the BRIEF-DRIVEN SYNTHESIS instructions above.' :
+        mode === 'auto_fill' ? 'Auto-fill every empty/placeholder text overlay with concrete values from the sample data above.' :
+        ''
+      );
       if (finalText && messages[messages.length - 1]?.content !== finalText) {
         messages.push({ role: 'user', content: finalText });
       }
@@ -572,7 +625,7 @@ ACTIVE SELECTION:
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: modelOverride ?? (useVision ? VISION_MODEL : DEFAULT_MODEL),
+          model: modelOverride ?? (useBriefPipeline ? SYNTHESIS_MODEL : (useVision ? VISION_MODEL : DEFAULT_MODEL)),
           messages,
           tools: [TOOL],
           tool_choice: toolChoice,
@@ -581,9 +634,7 @@ ACTIVE SELECTION:
       return resp;
     };
 
-    // For vision/multimodal calls, Gemini reliably honours `required`; forcing
-    // a specific function name can result in an empty response. For text-only
-    // calls, GPT-5.5 honours the explicit function-name choice.
+    // Vision multimodal: 'required'. Brief synthesis + text: explicit function choice.
     let aiResp = await callGateway(
       useVision ? 'required' : { type: 'function', function: { name: 'apply_changes' } },
     );
