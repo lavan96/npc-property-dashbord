@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
-import { usePortalMessagesData, usePortalUpdateData } from '@/hooks/usePortalData';
+import { usePortalUnifiedInbox, usePortalUpdateData } from '@/hooks/usePortalData';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  MessageSquare, Send, Loader2, User, Headphones,
-  MessageCircle
+  MessageSquare, Send, Loader2, Headphones,
+  MessageCircle, Phone, Mail
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
@@ -25,16 +26,32 @@ function getInitials(name?: string): string {
   return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
+const CHANNEL_LABELS: Record<string, string> = {
+  portal: 'Portal', sms: 'SMS', whatsapp: 'WhatsApp', email: 'Email',
+};
+
+function channelBadge(channel: string) {
+  const label = CHANNEL_LABELS[channel] || channel;
+  if (channel === 'portal') return null;
+  const Icon = channel === 'email' ? Mail : channel === 'whatsapp' ? MessageCircle : Phone;
+  return (
+    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-1">
+      <Icon className="h-2.5 w-2.5" /> {label}
+    </Badge>
+  );
+}
+
 export default function PortalMessages() {
   const { user } = usePortalAuth();
-  const { data, isLoading } = usePortalMessagesData();
+  const { data, isLoading } = usePortalUnifiedInbox();
   const updateMutation = usePortalUpdateData();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const messages = data?.messages || [];
+  // Unified inbox returns newest-first; render oldest-first as a chat timeline.
+  const messages = [...(data?.messages || [])].reverse();
   const displayName = smartCapitalize(user?.name);
 
   // Auto-scroll to bottom on new messages
@@ -92,7 +109,7 @@ export default function PortalMessages() {
           Messages
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Communicate directly with your advisor
+          All your messages — portal, SMS, WhatsApp and email — in one place
         </p>
       </div>
 
@@ -111,7 +128,7 @@ export default function PortalMessages() {
             </div>
           ) : (
             messages.map((msg: any) => {
-              const isClient = msg.sender_type === 'client';
+              const isClient = msg.direction === 'outbound';
               return (
                 <div
                   key={msg.id}
@@ -126,17 +143,21 @@ export default function PortalMessages() {
                       )}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={`max-w-[75%] ${isClient ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
                     <div className={`px-4 py-2.5 rounded-2xl text-sm ${
                       isClient
                         ? 'bg-primary text-primary-foreground rounded-br-md'
                         : 'border border-border/60 bg-card/90 text-foreground rounded-bl-md shadow-sm shadow-primary/5'
                     }`}>
-                      {msg.message}
+                      {msg.subject && <p className="font-semibold mb-1">{msg.subject}</p>}
+                      <p className="whitespace-pre-wrap">{msg.body}</p>
                     </div>
-                    <p className={`text-[10px] text-muted-foreground/50 mt-1 ${isClient ? 'text-right' : 'text-left'}`}>
-                      {formatMessageDate(new Date(msg.created_at))}
-                    </p>
+                    <div className={`flex items-center gap-1.5 mt-1 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <p className="text-[10px] text-muted-foreground/50">
+                        {formatMessageDate(new Date(msg.created_at))}
+                      </p>
+                      {channelBadge(msg.channel)}
+                    </div>
                   </div>
                 </div>
               );
