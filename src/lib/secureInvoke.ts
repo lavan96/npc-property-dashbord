@@ -145,9 +145,13 @@ export async function invokeSecureFunction<T = any>(
         }
       }
 
+      const errorMessage = typeof data?.error === 'object' && data.error?.message
+        ? data.error.message
+        : data?.error || data?.message || `HTTP ${response.status}`;
+
       return { 
         data: data as T, 
-        error: { message: data.error || `HTTP ${response.status}` } 
+        error: { message: String(errorMessage) }
       };
     }
     

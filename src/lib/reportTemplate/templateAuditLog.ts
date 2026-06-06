@@ -16,6 +16,8 @@ export type TemplateAuditAction =
   | 'approval_cancelled'
   | 'locked'
   | 'unlocked'
+  | 'activated'
+  | 'deactivated'
   | 'exported_pdf'
   | 'exported_docx'
   | 'exported_pptx'

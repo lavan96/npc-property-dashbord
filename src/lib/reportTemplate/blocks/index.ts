@@ -39,6 +39,81 @@ import { drawDecisionBoxBlock } from './decisionBox';
 import { drawStrengthsWatchBlock } from './strengthsWatch';
 import { drawExtrasPlaceholder } from './extras';
 
+export type RendererCapability = 'full' | 'partial' | 'unsupported';
+export type RendererEngine = 'html' | 'weasyprint' | 'jspdf';
+
+export interface BlockRendererCapabilities {
+  /** Browser/editor HTML renderer support. */
+  html: RendererCapability;
+  /** Production print renderer support. WeasyPrint consumes the HTML renderer. */
+  weasyprint: RendererCapability;
+  /** Legacy/in-editor jsPDF renderer support. */
+  jspdf: RendererCapability;
+  /** True when this block is safe to route through the production renderer. */
+  productionSafe: boolean;
+  /** Human-readable caveat surfaced by lint/readiness checks. */
+  notes?: string;
+}
+
+const FULL_RENDERER_CAPABILITIES: BlockRendererCapabilities = {
+  html: 'full',
+  weasyprint: 'full',
+  jspdf: 'full',
+  productionSafe: true,
+};
+
+const HTML_FIRST_RENDERER_CAPABILITIES: BlockRendererCapabilities = {
+  html: 'full',
+  weasyprint: 'full',
+  jspdf: 'partial',
+  productionSafe: true,
+  notes: 'Production HTML/WeasyPrint output is supported; legacy jsPDF preview/export renders a placeholder.',
+};
+
+const UNSUPPORTED_RENDERER_CAPABILITIES: BlockRendererCapabilities = {
+  html: 'unsupported',
+  weasyprint: 'unsupported',
+  jspdf: 'unsupported',
+  productionSafe: false,
+  notes: 'No renderer is registered for this block type.',
+};
+
+export const HTML_FIRST_BLOCK_TYPES = new Set<string>([
+  'timeline',
+  'swot',
+  'gantt',
+  'comparison',
+  'stat-callout',
+  'pull-quote',
+  'faq',
+  'pricing-card',
+  'feature-list',
+  'process-steps',
+  'progress-bars',
+  'map',
+  'icon-grid',
+  'testimonials',
+  'ribbon',
+  'metric-delta',
+  'definition-list',
+  'sparkline',
+  'before-after',
+  'image-text',
+  'data-grid',
+  'pivot-table',
+  'chart-bar',
+  'chart-stacked-bar',
+  'chart-line',
+  'chart-area',
+  'chart-pie',
+  'chart-donut',
+  'chart-scatter',
+  'chart-radar',
+  'heatmap',
+  'kpi-strip',
+  'legend',
+  'auto-toc',
+]);
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
@@ -126,6 +201,13 @@ export function getBlockRenderer(type: string): BlockRenderer | null {
   return BLOCK_RENDERERS[type] ?? null;
 }
 
+export function getBlockRendererCapabilities(type: string): BlockRendererCapabilities {
+  if (!type) return UNSUPPORTED_RENDERER_CAPABILITIES;
+  if (type === 'free') return FULL_RENDERER_CAPABILITIES;
+  if (HTML_FIRST_BLOCK_TYPES.has(type)) return HTML_FIRST_RENDERER_CAPABILITIES;
+  return BLOCK_RENDERERS[type] ? FULL_RENDERER_CAPABILITIES : UNSUPPORTED_RENDERER_CAPABILITIES;
+}
+
 // ─── Inspector schemas + defaults ────────────────────────────────────────────
 export type BlockField =
   | { kind: 'bindable'; key: string; label: string; multiline?: boolean; placeholder?: string }
@@ -140,6 +222,8 @@ export interface BlockDef {
   label: string;
   defaultProps: () => Record<string, unknown>;
   fields: BlockField[];
+  /** Optional override for renderer readiness; defaults to registry-derived capabilities. */
+  capabilities?: BlockRendererCapabilities;
 }
 
 export const BLOCK_DEFS: Record<string, BlockDef> = {

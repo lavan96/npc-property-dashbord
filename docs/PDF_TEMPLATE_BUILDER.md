@@ -4,7 +4,7 @@ A visual editor for all PDF reports. The same `ReportTemplate` JSON drives both 
 
 ## Quick start
 
-1. Visit `/admin/template-builder` (superadmin only).
+1. Visit `/admin/template-builder` with `templates` module access. Creating, editing, importing, and deleting templates require the matching `templates` edit/delete permissions; superadmins retain full access.
 2. Create a template, pick a report type and tier.
 3. Drop blocks from the Insert panel onto the active page.
 4. Bind any field to live data with `{{property.address}}` or to a brand token with `token:primary`.
@@ -28,7 +28,7 @@ Open the **bindings popover** in the header to see every unresolved binding and 
 
 Cover · Hero · KPI grid · Data table · Chart · Image · Text · Footer · Disclaimer · Divider · Callout · Two-column · Gallery · Page number · Spacer · QR code · Badge list · Contents (TOC) · Signature · Slot · Free overlays.
 
-Each block exposes its own inspector schema (`BLOCK_DEFS`) — extend the registry by adding a renderer + def in `src/lib/reportTemplate/blocks/`.
+Each block exposes its own inspector schema (`BLOCK_DEFS`) — extend the registry by adding a renderer + def in `src/lib/reportTemplate/blocks/`. The block registry also declares renderer capabilities for HTML, WeasyPrint, and jsPDF so the builder can warn when a block is production-safe only in the HTML/WeasyPrint pipeline or fully unsupported.
 
 ## Reusable slots (Phase 4)
 
@@ -48,8 +48,10 @@ The **Print safe / N lint** badge in the header surfaces issues that would break
 - `tiny-text` — font size below 7pt
 - `low-contrast` — text vs page background contrast under WCAG AA (4.5:1)
 - `missing-slot` — `slot` block references a key that isn't defined
+- `renderer-partial` — block is production-safe but has a renderer caveat, such as a jsPDF placeholder
+- `renderer-unsupported` — block has no production HTML/WeasyPrint renderer and blocks activation
 
-Click any issue to jump to the exact block / overlay.
+Click any issue to jump to the exact block / overlay. Activation readiness separates production renderer blockers from general print-safety errors so reviewers can distinguish export-fidelity caveats from hard activation failures. The **Compatibility** tab provides the same renderer findings grouped by page plus a block capability matrix for every block type currently used in the template. Activation and export actions run renderer pre-flight checks: unsupported production renderers block the action, while partial/legacy renderer caveats require confirmation before continuing. Heavy binding/lint/compatibility analysis is deferred during editing so large templates remain responsive, while activation/export pre-flight runs against the current template state. The secure template API repeats the production-renderer validation during activation so unsupported block types cannot be activated outside the editor UI.
 
 ## Versions
 
@@ -58,6 +60,10 @@ Every save can optionally **snapshot** the current schema into `report_template_
 - **Load** a version into the editor (no save)
 - **Restore** a version (snapshots the current schema first, then writes the restored one)
 - **Clone as new** (creates a new template from the version's schema)
+
+## Governance and activation safety
+
+Templates locked for review cannot be edited, snapshotted, or deleted until unlocked. Activating a template or marking it as the default requires superadmin access, an approved template status, and a report type. Active templates must be deactivated before deletion.
 
 ## Architecture
 

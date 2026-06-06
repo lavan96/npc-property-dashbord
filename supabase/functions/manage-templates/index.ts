@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createForbiddenResponse } from '../_shared/auth.ts';
 
 type TableName = 'report_structure_templates' | 'client_branding_profiles' | 'integration_configs' | 'depreciation_comps' | 'depreciation_estimator_runs' | 'charts' | 'chart_analysis' | 'chart_configurations' | 'global_report_settings' | 'finance_agent_contacts' | 'bulk_generation_jobs' | 'property_comparisons' | 'portfolio_analysis_templates' | 'checklist_templates' | 'checklist_template_sections' | 'checklist_template_items' | 'checklist_instances' | 'checklist_instance_items' | 'game_plans' | 'game_plan_phases' | 'game_plan_milestones' | 'game_plan_kpis' | 'game_plan_notes' | 'game_plan_actions' | 'custom_users' | 'cover_page_overlays' | 'report_templates' | 'report_template_versions' | 'comparison_analysis_templates';
 
@@ -12,6 +12,9 @@ interface RequestBody {
   
   // For get/update/delete operations
   recordId?: string;
+
+  // Optional optimistic-concurrency guard for report_templates updates.
+  expectedVersion?: number;
   
   // For list operations
   listOptions?: {
@@ -99,6 +102,309 @@ function normaliseTemplatePayload(table: TableName, payload: any): any {
   return Array.isArray(payload) ? payload.map(fix) : fix(payload);
 }
 
+function jsonResponse(body: unknown, status: number, corsHeaders: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+const PRODUCTION_SAFE_BLOCK_TYPES = new Set([
+  'free',
+  'disclaimer',
+  'hero',
+  'kpi-grid',
+  'data-table',
+  'chart',
+  'image',
+  'text-block',
+  'text',
+  'footer',
+  'cover',
+  'divider',
+  'callout',
+  'two-column',
+  'gallery',
+  'page-number',
+  'spacer',
+  'qr',
+  'badge-list',
+  'toc',
+  'signature',
+  'slot',
+  'scorecard',
+  'risk-register',
+  'infra-timeline',
+  'amenity-matrix',
+  'planning-table',
+  'dd-checklist',
+  'decision-box',
+  'strengths-watch',
+  'timeline',
+  'swot',
+  'gantt',
+  'comparison',
+  'stat-callout',
+  'pull-quote',
+  'faq',
+  'pricing-card',
+  'feature-list',
+  'process-steps',
+  'progress-bars',
+  'map',
+  'icon-grid',
+  'testimonials',
+  'ribbon',
+  'metric-delta',
+  'definition-list',
+  'sparkline',
+  'before-after',
+  'image-text',
+  'data-grid',
+  'pivot-table',
+  'chart-bar',
+  'chart-stacked-bar',
+  'chart-line',
+  'chart-area',
+  'chart-pie',
+  'chart-donut',
+  'chart-scatter',
+  'chart-radar',
+  'heatmap',
+  'kpi-strip',
+  'legend',
+  'auto-toc',
+]);
+
+function collectUnsupportedProductionBlocks(schema: any): Array<{ pageIndex: number; blockIndex: number; type: string }> {
+  const pages = Array.isArray(schema?.pages) ? schema.pages : [];
+  const issues: Array<{ pageIndex: number; blockIndex: number; type: string }> = [];
+  pages.forEach((page: any, pageIndex: number) => {
+    const blocks = Array.isArray(page?.blocks) ? page.blocks : [];
+    blocks.forEach((block: any, blockIndex: number) => {
+      const type = String(block?.type ?? '');
+      if (!type || !PRODUCTION_SAFE_BLOCK_TYPES.has(type)) issues.push({ pageIndex, blockIndex, type: type || '(missing)' });
+    });
+  });
+  return issues;
+}
+
+function validateProductionRendererSchema(schema: any, corsHeaders: Record<string, string>): Response | null {
+  const unsupported = collectUnsupportedProductionBlocks(schema);
+  if (unsupported.length === 0) return null;
+  return jsonResponse({
+    success: false,
+    error: {
+      code: 'template_renderer_blocked',
+      message: 'Template contains block types without production HTML/WeasyPrint renderer support.',
+      unsupportedBlocks: unsupported.slice(0, 20),
+    },
+  }, 422, corsHeaders);
+}
+
+async function getTemplatePermissionContext(supabase: any, userId: string) {
+  if (userId === 'service_role') {
+    return { isSuperadmin: true, canView: true, canEdit: true, canDelete: true };
+  }
+
+  const [{ data: user }, { data: roles }, { data: perms }] = await Promise.all([
+    supabase.from('custom_users').select('role').eq('id', userId).maybeSingle(),
+    supabase.from('user_roles').select('role').eq('user_id', userId),
+    supabase
+      .from('user_permissions')
+      .select('can_view, can_edit, can_delete, dashboard_modules(module_key)')
+      .eq('user_id', userId),
+  ]);
+
+  const roleNames = (roles ?? []).map((r: any) => String(r.role));
+  const userRole = String(user?.role ?? '');
+  const isSuperadmin = roleNames.includes('superadmin') || userRole === 'super_admin' || userRole === 'superadmin';
+  const templatePerm = (perms ?? []).find((p: any) => (p.dashboard_modules as any)?.module_key === 'templates') ?? null;
+
+  return {
+    isSuperadmin,
+    canView: isSuperadmin || !!templatePerm?.can_view,
+    canEdit: isSuperadmin || !!templatePerm?.can_edit,
+    canDelete: isSuperadmin || !!templatePerm?.can_delete,
+  };
+}
+
+async function assertTemplatePermission(
+  supabase: any,
+  userId: string | null,
+  table: TableName,
+  operation: RequestBody['operation'],
+  corsHeaders: Record<string, string>,
+): Promise<Response | null> {
+  if (!userId) return createUnauthorizedResponse('Authentication required', corsHeaders);
+  if (table !== 'report_templates' && table !== 'report_template_versions') return null;
+
+  const permissions = await getTemplatePermissionContext(supabase, userId);
+  const required = operation === 'delete'
+    ? 'delete'
+    : ['insert', 'update', 'upsert', 'rpc'].includes(operation)
+      ? 'edit'
+      : 'view';
+
+  const allowed = required === 'delete'
+    ? permissions.canDelete
+    : required === 'edit'
+      ? permissions.canEdit
+      : permissions.canView;
+
+  if (!allowed) {
+    return createForbiddenResponse(`templates:${required} permission required`, corsHeaders);
+  }
+  return null;
+}
+
+const LOCK_SAFE_TEMPLATE_UPDATE_KEYS = new Set([
+  'approval_status',
+  'locked_for_review',
+  'locked_at',
+  'locked_by',
+  'is_active',
+  'is_default',
+]);
+
+function isLockSafeTemplateUpdate(updateData: Record<string, any>): boolean {
+  return Object.keys(updateData).every((key) => LOCK_SAFE_TEMPLATE_UPDATE_KEYS.has(key));
+}
+
+function willActivateTemplate(current: any, updateData: Record<string, any>): boolean {
+  return updateData.is_active === true && current?.is_active !== true;
+}
+
+function willSetDefaultTemplate(current: any, updateData: Record<string, any>): boolean {
+  return updateData.is_default === true && current?.is_default !== true;
+}
+
+async function validateReportTemplateUpdate(
+  supabase: any,
+  recordId: string,
+  updateData: Record<string, any>,
+  userId: string | null,
+  corsHeaders: Record<string, string>,
+): Promise<{ current: any; response: Response | null }> {
+  const { data: current, error } = await supabase
+    .from('report_templates')
+    .select('id,name,report_type,approval_status,is_active,is_default,is_draft,locked_for_review,version,schema')
+    .eq('id', recordId)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      current: null,
+      response: jsonResponse({ error: error.message }, 500, corsHeaders),
+    };
+  }
+  if (!current) {
+    return {
+      current: null,
+      response: jsonResponse({ error: 'Template not found' }, 404, corsHeaders),
+    };
+  }
+
+  if (current.locked_for_review && !isLockSafeTemplateUpdate(updateData)) {
+    return {
+      current,
+      response: jsonResponse({
+        success: false,
+        error: {
+          code: 'template_locked_for_review',
+          message: 'Template is locked for review. Unlock it before editing content or metadata.',
+          currentVersion: current.version ?? null,
+        },
+      }, 423, corsHeaders),
+    };
+  }
+
+  const nextSchema = updateData.schema ?? current.schema;
+  if ((current.is_active || updateData.is_active === true || updateData.is_default === true) && updateData.schema !== undefined) {
+    const rendererValidation = validateProductionRendererSchema(nextSchema, corsHeaders);
+    if (rendererValidation) return { current, response: rendererValidation };
+  }
+
+  if (willActivateTemplate(current, updateData) || willSetDefaultTemplate(current, updateData)) {
+    const rendererValidation = validateProductionRendererSchema(nextSchema, corsHeaders);
+    if (rendererValidation) return { current, response: rendererValidation };
+
+    const permissions = userId ? await getTemplatePermissionContext(supabase, userId) : { isSuperadmin: false };
+    if (!permissions.isSuperadmin) {
+      return {
+        current,
+        response: createForbiddenResponse('superadmin required to activate or set default report templates', corsHeaders),
+      };
+    }
+
+    const nextApprovalStatus = String(updateData.approval_status ?? current.approval_status ?? 'draft');
+    if (nextApprovalStatus !== 'approved') {
+      return {
+        current,
+        response: jsonResponse({
+          success: false,
+          error: {
+            code: 'template_activation_blocked',
+            message: 'Template must be approved before it can be activated or set as default.',
+            approvalStatus: nextApprovalStatus,
+          },
+        }, 422, corsHeaders),
+      };
+    }
+
+    const nextReportType = updateData.report_type !== undefined ? updateData.report_type : current.report_type;
+    if (!nextReportType) {
+      return {
+        current,
+        response: jsonResponse({
+          success: false,
+          error: {
+            code: 'template_activation_blocked',
+            message: 'Template must have a report type before it can be activated or set as default.',
+          },
+        }, 422, corsHeaders),
+      };
+    }
+  }
+
+  return { current, response: null };
+}
+
+async function validateReportTemplateDelete(
+  supabase: any,
+  recordId: string,
+  corsHeaders: Record<string, string>,
+): Promise<Response | null> {
+  const { data: current, error } = await supabase
+    .from('report_templates')
+    .select('id,is_active,locked_for_review')
+    .eq('id', recordId)
+    .maybeSingle();
+
+  if (error) return jsonResponse({ error: error.message }, 500, corsHeaders);
+  if (!current) return jsonResponse({ error: 'Template not found' }, 404, corsHeaders);
+
+  if (current.is_active) {
+    return jsonResponse({
+      success: false,
+      error: {
+        code: 'template_delete_blocked',
+        message: 'Active templates cannot be deleted. Deactivate the template before deleting it.',
+      },
+    }, 409, corsHeaders);
+  }
+  if (current.locked_for_review) {
+    return jsonResponse({
+      success: false,
+      error: {
+        code: 'template_locked_for_review',
+        message: 'Template is locked for review. Unlock it before deleting it.',
+      },
+    }, 423, corsHeaders);
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   // IMPORTANT: Declare corsHeaders BEFORE try block so it's available in catch
   const origin = req.headers.get('origin') || '';
@@ -135,6 +441,9 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const permissionError = await assertTemplatePermission(supabase, userId, table, operation, corsHeaders);
+    if (permissionError) return permissionError;
 
     // Handle RPC calls
     if (operation === 'rpc' && rpcName) {
@@ -237,12 +546,31 @@ Deno.serve(async (req) => {
 
     // Handle update operation
     if (operation === 'update' && recordId && data) {
-      const { data: record, error } = await supabase
+      const expectedVersion = Number(body.expectedVersion);
+      const shouldGuardVersion = table === 'report_templates' && Number.isFinite(expectedVersion);
+      const updateData: any = { ...(data as any) };
+
+      if (table === 'report_templates') {
+        const validation = await validateReportTemplateUpdate(supabase, recordId, updateData, userId, corsHeaders);
+        if (validation.response) return validation.response;
+      }
+
+      if (shouldGuardVersion) {
+        updateData.version = Number.isFinite(Number(updateData.version))
+          ? Number(updateData.version)
+          : expectedVersion + 1;
+      }
+
+      let query = supabase
         .from(table)
-        .update(data)
-        .eq('id', recordId)
-        .select()
-        .single();
+        .update(updateData)
+        .eq('id', recordId);
+
+      if (shouldGuardVersion) {
+        query = query.eq('version', expectedVersion);
+      }
+
+      const { data: records, error } = await query.select();
       
       if (error) {
         console.error(`[manage-templates] Update error:`, error);
@@ -250,6 +578,25 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      const record = Array.isArray(records) ? records[0] : records;
+      if (shouldGuardVersion && !record) {
+        const { data: current } = await supabase
+          .from(table)
+          .select('*')
+          .eq('id', recordId)
+          .maybeSingle();
+        return jsonResponse({
+          success: false,
+          error: {
+            code: 'version_conflict',
+            message: 'Template changed on the server. Review the latest version before saving again.',
+            expectedVersion,
+            currentVersion: current?.version ?? null,
+            current,
+          },
+        }, 409, corsHeaders);
       }
       
       return new Response(
@@ -282,6 +629,11 @@ Deno.serve(async (req) => {
 
     // Handle delete operation
     if (operation === 'delete' && recordId) {
+      if (table === 'report_templates') {
+        const deleteValidation = await validateReportTemplateDelete(supabase, recordId, corsHeaders);
+        if (deleteValidation) return deleteValidation;
+      }
+
       const { error } = await supabase
         .from(table)
         .delete()
