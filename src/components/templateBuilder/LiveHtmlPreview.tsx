@@ -45,7 +45,6 @@ export function LiveHtmlPreview({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(1);
-  const [rendering, setRendering] = useState(false);
 
   // Optionally restrict render to active page only
   const visible = useMemo<ReportTemplate>(() => {
@@ -57,7 +56,6 @@ export function LiveHtmlPreview({
 
   // Build HTML — debounced via React's natural batching; render is cheap.
   const html = useMemo(() => {
-    setRendering(true);
     try {
       const { html } = renderTemplateToHtml(visible, {
         data: sampleData,
@@ -67,8 +65,6 @@ export function LiveHtmlPreview({
       return html;
     } catch (e) {
       return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#b91c1c">Preview error: ${String((e as any)?.message ?? e)}</body></html>`;
-    } finally {
-      setRendering(false);
     }
   }, [visible, sampleData, customCss]);
 
@@ -110,7 +106,6 @@ export function LiveHtmlPreview({
       <div className="px-3 py-2 border-b flex items-center gap-2 text-xs bg-background">
         <Eye className="h-3.5 w-3.5 text-primary" />
         <span className="font-medium">Live preview</span>
-        {rendering && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         <div className="ml-2 flex items-center rounded border bg-muted/40">
           <button
             type="button"
