@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { downloadTemplateAsHtml } from '@/lib/reportTemplate/htmlExporter';
+import { downloadTemplateAsDocx } from '@/lib/reportTemplate/docxExporter';
+import { downloadTemplateAsPptx } from '@/lib/reportTemplate/pptxExporter';
+import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -138,10 +141,33 @@ export function ExportPipelineDialog({
         customCss: customCss || undefined,
         title: templateName,
       });
+      if (templateId) void logTemplateAudit(templateId, 'exported_html');
       toast.success('HTML downloaded');
     } catch (e: any) {
       toast.error(`HTML export failed: ${e?.message ?? e}`);
     }
+  };
+
+  const handleDownloadDocx = async () => {
+    const id = toast.loading('Building DOCX…');
+    try {
+      await downloadTemplateAsDocx(buildTemplateForExport(), `${templateName || 'template'}.docx`, {
+        data: sampleData, title: templateName,
+      });
+      if (templateId) void logTemplateAudit(templateId, 'exported_docx');
+      toast.success('DOCX downloaded', { id });
+    } catch (e: any) { toast.error(`DOCX export failed: ${e?.message ?? e}`, { id }); }
+  };
+
+  const handleDownloadPptx = async () => {
+    const id = toast.loading('Building PPTX…');
+    try {
+      await downloadTemplateAsPptx(buildTemplateForExport(), `${templateName || 'template'}.pptx`, {
+        data: sampleData, title: templateName,
+      });
+      if (templateId) void logTemplateAudit(templateId, 'exported_pptx');
+      toast.success('PPTX downloaded', { id });
+    } catch (e: any) { toast.error(`PPTX export failed: ${e?.message ?? e}`, { id }); }
   };
 
   const handleExport = async () => {
