@@ -120,6 +120,9 @@ export default function TemplateBuilderEdit() {
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
+  const [variant, setVariant] = useState<string>(''); // '' = any
+  const [scope, setScope] = useState<string>('global');
+  const [priority, setPriority] = useState<number>(0);
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const brand = useBrand();
   const [activePageId, setActivePageId] = useState<string | null>(null);
