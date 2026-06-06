@@ -120,6 +120,9 @@ export default function TemplateBuilderEdit() {
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
+  const [variant, setVariant] = useState<string>(''); // '' = any
+  const [scope, setScope] = useState<string>('global');
+  const [priority, setPriority] = useState<number>(0);
   const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const brand = useBrand();
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -219,6 +222,9 @@ export default function TemplateBuilderEdit() {
     setDescription(tplRow.description || '');
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
+    setVariant(((tplRow as any).variant as string) || '');
+    setScope(((tplRow as any).scope as string) || 'global');
+    setPriority(Number((tplRow as any).priority ?? 0));
     setCustomCss(((tplRow as any).custom_css as string) || '');
     setTplMeta({
       parent_template_id: (tplRow as any).parent_template_id ?? null,
@@ -958,6 +964,9 @@ export default function TemplateBuilderEdit() {
           description,
           report_type: reportType || null,
           tier: tier || null,
+          variant: variant || null,
+          scope: scope || 'global',
+          priority: Number.isFinite(priority) ? priority : 0,
           custom_css: customCss || null,
           schema: template,
         } as any,
@@ -1620,16 +1629,57 @@ export default function TemplateBuilderEdit() {
 
         {/* Metadata */}
         <TabsContent value="settings" className="px-6 py-4 max-w-3xl space-y-4">
+          <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="font-medium text-foreground mb-1">Resolver routing</div>
+            These four fields decide which generated reports route through this template. The resolver picks the
+            most-specific active match: <code>user &gt; agency &gt; global-variant &gt; global-any</code>, ordered by
+            priority. Engine must be <code>weasyprint</code> for production routing.
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Report type</Label>
-              <Input value={reportType} onChange={(e) => setReportType(e.target.value)} placeholder="e.g. investment" />
+              <Input value={reportType} onChange={(e) => setReportType(e.target.value)} placeholder="e.g. investment_compass" />
             </div>
             <div>
-              <Label className="text-xs">Tier</Label>
+              <Label className="text-xs">Tier (legacy label)</Label>
               <Input value={tier} onChange={(e) => setTier(e.target.value)} placeholder="e.g. compass" />
             </div>
+            <div>
+              <Label className="text-xs">Variant</Label>
+              <select
+                value={variant}
+                onChange={(e) => setVariant(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">Any variant (catch-all)</option>
+                <option value="composite">Composite</option>
+                <option value="financial">Financial Feasibility (FIN)</option>
+                <option value="due_diligence">Property Due Diligence (PLDD)</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Scope</Label>
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="global">Global (all agencies)</option>
+                <option value="agency">Agency-specific</option>
+                <option value="user">User-specific</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Priority (tiebreaker)</Label>
+              <Input
+                type="number"
+                value={priority}
+                onChange={(e) => setPriority(Number(e.target.value) || 0)}
+                placeholder="0"
+              />
+            </div>
           </div>
+
           <div>
             <Label className="text-xs">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />

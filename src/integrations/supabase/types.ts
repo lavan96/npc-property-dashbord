@@ -15819,6 +15819,7 @@ export type Database = {
       report_templates: {
         Row: {
           active_theme: string
+          agency_id: string | null
           approval_status: string
           branch_label: string | null
           brand_kit_id: string | null
@@ -15836,16 +15837,21 @@ export type Database = {
           locked_by: string | null
           locked_for_review: boolean
           name: string
+          owner_user_id: string | null
           parent_template_id: string | null
+          priority: number
           report_type: string | null
           schema: Json
+          scope: string
           thumbnail_url: string | null
           tier: string | null
           updated_at: string
+          variant: string | null
           version: number
         }
         Insert: {
           active_theme?: string
+          agency_id?: string | null
           approval_status?: string
           branch_label?: string | null
           brand_kit_id?: string | null
@@ -15863,16 +15869,21 @@ export type Database = {
           locked_by?: string | null
           locked_for_review?: boolean
           name: string
+          owner_user_id?: string | null
           parent_template_id?: string | null
+          priority?: number
           report_type?: string | null
           schema?: Json
+          scope?: string
           thumbnail_url?: string | null
           tier?: string | null
           updated_at?: string
+          variant?: string | null
           version?: number
         }
         Update: {
           active_theme?: string
+          agency_id?: string | null
           approval_status?: string
           branch_label?: string | null
           brand_kit_id?: string | null
@@ -15890,12 +15901,16 @@ export type Database = {
           locked_by?: string | null
           locked_for_review?: boolean
           name?: string
+          owner_user_id?: string | null
           parent_template_id?: string | null
+          priority?: number
           report_type?: string | null
           schema?: Json
+          scope?: string
           thumbnail_url?: string | null
           tier?: string | null
           updated_at?: string
+          variant?: string | null
           version?: number
         }
         Relationships: [
