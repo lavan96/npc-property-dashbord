@@ -1490,6 +1490,9 @@ export default function TemplateBuilderEdit() {
         template={template}
         activePage={activePage ?? null}
         tier={tier}
+        template={template}
+        activePage={activePage ?? null}
+        tier={tier}
         onAddPage={(page, rationale) => {
           setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
           setActivePageId(page.id);
