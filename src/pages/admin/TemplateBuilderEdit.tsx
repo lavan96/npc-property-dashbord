@@ -14,10 +14,13 @@ import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
-  RefreshCw, GitCompareArrows,
+  RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
+import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
+import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
+import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
 import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
@@ -36,6 +39,7 @@ import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
+import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -107,6 +111,10 @@ export default function TemplateBuilderEdit() {
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [showBranches, setShowBranches] = useState(false);
+  const [showApproval, setShowApproval] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
+  const [tplMeta, setTplMeta] = useState<{ parent_template_id: string | null; is_draft: boolean; approval_status: string | null; locked_for_review: boolean } | null>(null);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
   const [tier, setTier] = useState('');
@@ -188,10 +196,26 @@ export default function TemplateBuilderEdit() {
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
     setCustomCss(((tplRow as any).custom_css as string) || '');
+    setTplMeta({
+      parent_template_id: (tplRow as any).parent_template_id ?? null,
+      is_draft: !!(tplRow as any).is_draft,
+      approval_status: (tplRow as any).approval_status ?? 'draft',
+      locked_for_review: !!(tplRow as any).locked_for_review,
+    });
     const parsed = parseTemplate(tplRow.schema);
     setTemplate(parsed);
     setActivePageId(parsed.pages[0]?.id ?? null);
   }, [tplRow]);
+
+  const reloadTplMeta = useCallback(async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('report_templates' as any)
+      .select('parent_template_id,is_draft,approval_status,locked_for_review')
+      .eq('id', id)
+      .single();
+    if (data) setTplMeta(data as any);
+  }, [id]);
 
   const activePage = useMemo<Page | null>(
     () => template.pages.find((p) => p.id === activePageId) ?? null,
@@ -694,6 +718,10 @@ export default function TemplateBuilderEdit() {
   // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = (snapshot = false) => {
     if (!id) return;
+    if (tplMeta?.locked_for_review) {
+      toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
+      return;
+    }
     update.mutate(
       {
         id,
@@ -721,6 +749,7 @@ export default function TemplateBuilderEdit() {
               blocks: template.pages.reduce((n, p: any) => n + (p.blocks?.length || 0), 0),
             },
           });
+          void logTemplateAudit(id, snapshot ? 'version_created' : 'schema_saved', snapshot ? 'Saved as new version' : 'Schema saved');
         },
       },
     );
@@ -1093,6 +1122,27 @@ export default function TemplateBuilderEdit() {
           {id && (
             <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
               <Sparkles className="h-4 w-4 mr-1" /> Share
+            </Button>
+          )}
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowBranches(true)} title="Branch or merge drafts">
+              <GitBranch className="h-4 w-4 mr-1" /> Branches
+            </Button>
+          )}
+          {id && (
+            <Button
+              variant={tplMeta?.locked_for_review ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => setShowApproval(true)}
+              title="Request review / approve / lock"
+            >
+              {tplMeta?.locked_for_review ? <Lock className="h-4 w-4 mr-1" /> : <ClipboardCheck className="h-4 w-4 mr-1" />}
+              {tplMeta?.approval_status === 'approved' ? 'Approved' : tplMeta?.approval_status === 'in_review' ? 'In review' : 'Review'}
+            </Button>
+          )}
+          {id && (
+            <Button variant="outline" size="sm" onClick={() => setShowAudit(true)} title="Full audit trail">
+              <History className="h-4 w-4 mr-1" /> Audit
             </Button>
           )}
           {id && (
@@ -1727,6 +1777,34 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={customCss || undefined}
       />
+      {id && (
+        <>
+          <TemplateBranchingDialog
+            open={showBranches}
+            onOpenChange={setShowBranches}
+            templateId={id}
+            templateName={name}
+            parentTemplateId={tplMeta?.parent_template_id ?? null}
+            isDraft={tplMeta?.is_draft ?? false}
+            onMerged={reloadTplMeta}
+          />
+          <TemplateApprovalDialog
+            open={showApproval}
+            onOpenChange={setShowApproval}
+            templateId={id}
+            templateName={name}
+            approvalStatus={tplMeta?.approval_status ?? null}
+            locked={tplMeta?.locked_for_review ?? false}
+            onChanged={reloadTplMeta}
+          />
+          <TemplateAuditLogDialog
+            open={showAudit}
+            onOpenChange={setShowAudit}
+            templateId={id}
+            templateName={name}
+          />
+        </>
+      )}
     </div>
   );
 }

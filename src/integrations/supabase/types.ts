@@ -15819,6 +15819,8 @@ export type Database = {
       report_templates: {
         Row: {
           active_theme: string
+          approval_status: string
+          branch_label: string | null
           brand_kit_id: string | null
           config: Json
           created_at: string
@@ -15829,7 +15831,12 @@ export type Database = {
           id: string
           is_active: boolean
           is_default: boolean | null
+          is_draft: boolean
+          locked_at: string | null
+          locked_by: string | null
+          locked_for_review: boolean
           name: string
+          parent_template_id: string | null
           report_type: string | null
           schema: Json
           thumbnail_url: string | null
@@ -15839,6 +15846,8 @@ export type Database = {
         }
         Insert: {
           active_theme?: string
+          approval_status?: string
+          branch_label?: string | null
           brand_kit_id?: string | null
           config: Json
           created_at?: string
@@ -15849,7 +15858,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean | null
+          is_draft?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_for_review?: boolean
           name: string
+          parent_template_id?: string | null
           report_type?: string | null
           schema?: Json
           thumbnail_url?: string | null
@@ -15859,6 +15873,8 @@ export type Database = {
         }
         Update: {
           active_theme?: string
+          approval_status?: string
+          branch_label?: string | null
           brand_kit_id?: string | null
           config?: Json
           created_at?: string
@@ -15869,7 +15885,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean | null
+          is_draft?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_for_review?: boolean
           name?: string
+          parent_template_id?: string | null
           report_type?: string | null
           schema?: Json
           thumbnail_url?: string | null
@@ -15883,6 +15904,13 @@ export type Database = {
             columns: ["brand_kit_id"]
             isOneToOne: false
             referencedRelation: "brand_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -16200,6 +16228,103 @@ export type Database = {
           severity?: string
         }
         Relationships: []
+      }
+      template_approvals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          id: string
+          note: string | null
+          requested_by: string | null
+          requested_by_name: string | null
+          reviewer_id: string | null
+          reviewer_name: string | null
+          status: string
+          template_id: string
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          requested_by_name?: string | null
+          reviewer_id?: string | null
+          reviewer_name?: string | null
+          status?: string
+          template_id: string
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          requested_by_name?: string | null
+          reviewer_id?: string | null
+          reviewer_name?: string | null
+          status?: string
+          template_id?: string
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_approvals_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          summary: string | null
+          template_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          summary?: string | null
+          template_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          summary?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_audit_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       template_comments: {
         Row: {

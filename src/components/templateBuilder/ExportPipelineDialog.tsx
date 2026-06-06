@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { downloadTemplateAsHtml } from '@/lib/reportTemplate/htmlExporter';
+import { downloadTemplateAsDocx } from '@/lib/reportTemplate/docxExporter';
+import { downloadTemplateAsPptx } from '@/lib/reportTemplate/pptxExporter';
+import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -138,10 +141,33 @@ export function ExportPipelineDialog({
         customCss: customCss || undefined,
         title: templateName,
       });
+      if (templateId) void logTemplateAudit(templateId, 'exported_html');
       toast.success('HTML downloaded');
     } catch (e: any) {
       toast.error(`HTML export failed: ${e?.message ?? e}`);
     }
+  };
+
+  const handleDownloadDocx = async () => {
+    const id = toast.loading('Building DOCX…');
+    try {
+      await downloadTemplateAsDocx(buildTemplateForExport(), `${templateName || 'template'}.docx`, {
+        data: sampleData, title: templateName,
+      });
+      if (templateId) void logTemplateAudit(templateId, 'exported_docx');
+      toast.success('DOCX downloaded', { id });
+    } catch (e: any) { toast.error(`DOCX export failed: ${e?.message ?? e}`, { id }); }
+  };
+
+  const handleDownloadPptx = async () => {
+    const id = toast.loading('Building PPTX…');
+    try {
+      await downloadTemplateAsPptx(buildTemplateForExport(), `${templateName || 'template'}.pptx`, {
+        data: sampleData, title: templateName,
+      });
+      if (templateId) void logTemplateAudit(templateId, 'exported_pptx');
+      toast.success('PPTX downloaded', { id });
+    } catch (e: any) { toast.error(`PPTX export failed: ${e?.message ?? e}`, { id }); }
   };
 
   const handleExport = async () => {
@@ -199,6 +225,7 @@ export function ExportPipelineDialog({
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
       toast.success(`Export ready (${(json.bytes / 1024).toFixed(0)} KB, ${json.durationMs}ms)`, { id: toastId });
+      if (templateId) void logTemplateAudit(templateId, 'exported_pdf', undefined, { variant, mode, bytes: json.bytes });
       window.open(json.url, '_blank', 'noopener');
       await loadJobs();
     } catch (e: any) {
@@ -372,10 +399,16 @@ export function ExportPipelineDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 pb-6 pt-3 border-t">
+        <DialogFooter className="px-6 pb-6 pt-3 border-t flex-wrap gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
           <Button variant="outline" onClick={handleDownloadHtml} disabled={running}>
-            <FileCode className="h-4 w-4 mr-2" /> Download HTML
+            <FileCode className="h-4 w-4 mr-2" /> HTML
+          </Button>
+          <Button variant="outline" onClick={handleDownloadDocx} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> DOCX
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPptx} disabled={running}>
+            <FileCode className="h-4 w-4 mr-2" /> PPTX
           </Button>
           <Button onClick={handleExport} disabled={running}>
             {running ? (
