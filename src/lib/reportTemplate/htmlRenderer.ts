@@ -426,9 +426,17 @@ export function renderTemplateToHtml(
       tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
-    return renderPage(page, pageCtx, idx, template, visiblePages);
+    return renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
   }).join('\n');
 
+
+  const editorCss = options.editorMode ? `
+/* Editor mode chrome */
+.tpl-page { box-shadow: 0 1pt 4pt rgba(0,0,0,0.08); margin: 0 auto 24px auto; outline: 1px solid rgba(0,0,0,0.08); }
+[data-block-id] > * { cursor: pointer; }
+[data-block-id].__tpl-hover { outline: 1.5pt dashed hsl(45 80% 50% / 0.7); outline-offset: 2pt; }
+[data-block-id].__tpl-selected { outline: 2pt solid hsl(45 95% 50%); outline-offset: 2pt; box-shadow: 0 0 0 4pt hsl(45 95% 50% / 0.18); }
+` : '';
 
   const css = [
     tokensToFontFaceCss(baseTokens),
@@ -436,6 +444,7 @@ export function renderTemplateToHtml(
     baseCss(),
     pageCss(visiblePages, template, ctxBase).css,
     perPageThemeCss.join('\n'),
+    editorCss,
     options.customCss ?? '',
   ].join('\n');
 
@@ -451,6 +460,46 @@ export function renderTemplateToHtml(
   ].filter(Boolean).join('\n');
   const docTitle = options.title ?? (meta.title ? resolveBindable(meta.title, ctxBase) : 'Report');
 
+  const editorRuntime = options.editorMode ? `
+<script>(function(){
+  function findBlock(el){ while(el && el!==document.body){ if(el.dataset && el.dataset.blockId) return el; el = el.parentElement; } return null; }
+  function findPage(el){ while(el && el!==document.body){ if(el.dataset && el.dataset.pageId) return el; el = el.parentElement; } return null; }
+  document.addEventListener('click', function(e){
+    var b = findBlock(e.target); var p = findPage(e.target);
+    if (b || p) {
+      e.preventDefault(); e.stopPropagation();
+      parent.postMessage({ source:'tpl-preview', type:'select',
+        blockId: b ? b.dataset.blockId : null,
+        blockType: b ? b.dataset.blockType : null,
+        pageId: p ? p.dataset.pageId : null,
+        pageIndex: p ? Number(p.dataset.pageIndex) : null,
+      }, '*');
+    }
+  }, true);
+  document.addEventListener('mouseover', function(e){
+    var b = findBlock(e.target); if (!b) return;
+    if (b.__hovered) return; b.__hovered = true; b.classList.add('__tpl-hover');
+  }, true);
+  document.addEventListener('mouseout', function(e){
+    var b = findBlock(e.target); if (!b) return;
+    b.__hovered = false; b.classList.remove('__tpl-hover');
+  }, true);
+  window.addEventListener('message', function(ev){
+    var m = ev.data; if (!m || m.source !== 'tpl-preview-host') return;
+    if (m.type === 'select') {
+      document.querySelectorAll('[data-block-id].__tpl-selected').forEach(function(n){ n.classList.remove('__tpl-selected'); });
+      if (m.blockId) {
+        var el = document.querySelector('[data-block-id="'+CSS.escape(m.blockId)+'"]');
+        if (el) { el.classList.add('__tpl-selected'); if (m.scroll !== false) el.scrollIntoView({ behavior:'smooth', block:'center' }); }
+      } else if (m.pageId) {
+        var pg = document.querySelector('[data-page-id="'+CSS.escape(m.pageId)+'"]');
+        if (pg && m.scroll !== false) pg.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    }
+  });
+  parent.postMessage({ source:'tpl-preview', type:'ready' }, '*');
+})();</script>` : '';
+
   const html = `<!doctype html>
 <html lang="${escapeHtml(lang)}">
 <head>
@@ -461,6 +510,7 @@ ${metaTags}
 </head>
 <body>
 ${pageHtml}
+${editorRuntime}
 </body>
 </html>`;
 
