@@ -28,6 +28,7 @@ import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAn
 import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
 import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
+import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
