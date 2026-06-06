@@ -576,12 +576,24 @@ ACTIVE SELECTION:
       return json({ error: 'AI returned malformed tool arguments', detail: String(e) }, 500);
     }
 
-    const { schema: newSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
+    const { schema: appliedSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
+
+    // Post-op cleanup: 6pt grid snap + canvas clamp + dedupe identical text overlays.
+    // Only clamp pages we actually touched to avoid disturbing untouched layouts.
+    const touchedPages = new Set<string>();
+    for (const op of parsed.operations || []) {
+      if (op.pageId) touchedPages.add(String(op.pageId));
+    }
+    const { schema: cleanedSchema, fixes } = cleanupSchema(appliedSchema, {
+      grid: 6,
+      clampPages: touchedPages.size ? touchedPages : undefined,
+    });
+
     return json({
       reply: parsed.reply || '',
-      schema: normaliseSchemaForClient(newSchema),
+      schema: normaliseSchemaForClient(cleanedSchema),
       operations: summaries,
-      warnings,
+      warnings: [...warnings, ...fixes],
       raw_ops: parsed.operations,
     });
   } catch (e) {
