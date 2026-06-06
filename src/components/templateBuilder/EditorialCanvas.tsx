@@ -100,10 +100,9 @@ export function EditorialCanvas({
       return r.html.replace(
         '</head>',
         `<style>
-          html,body{margin:0;padding:0;background:transparent}
-          .tpl-page{box-shadow:none!important;margin:0!important;outline:none!important}
-          /* Hide overlay-rendered HTML so we render only base blocks; overlays are
-             drawn by the canvas layer above for crisp manipulation. */
+          html,body{margin:0!important;padding:0!important;background:transparent!important}
+          .tpl-doc,.tpl-pages,.tpl-page-wrap{margin:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+          .tpl-page{box-shadow:none!important;margin:0!important;outline:none!important;border:0!important;background:transparent!important}
           .tpl-overlay{display:none!important}
           a{pointer-events:none}
         </style></head>`,
