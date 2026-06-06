@@ -809,33 +809,99 @@ export default function TemplateBuilderEdit() {
       const tag = (e.target as HTMLElement | null)?.tagName;
       const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
       const meta = e.metaKey || e.ctrlKey;
+      const k = e.key.toLowerCase();
+      const hasOverlaySel = !!selectedOverlayId || multiOverlayIds.size > 0;
+
       // ⌘K opens palette from anywhere (including fields)
-      if (meta && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
+      if (meta && k === 'k') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
+      // `?` shows shortcut cheat sheet (outside fields)
+      if (!meta && !isField && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+        e.preventDefault(); setShortcutsOpen(true); return;
+      }
       if (!meta) return;
-      if (e.key === 's') { e.preventDefault(); handleSave(false); }
-      else if (e.key === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); }
-      else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { if (isField) return; e.preventDefault(); redo(); }
-      else if (e.altKey && e.key.toLowerCase() === 'c' && !isField) {
+
+      // ── File / history ────────────────────────────────────────────────
+      if (k === 's') { e.preventDefault(); handleSave(false); return; }
+      if (k === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); return; }
+      if ((k === 'z' && e.shiftKey) || k === 'y') { if (isField) return; e.preventDefault(); redo(); return; }
+
+      // ── Selection ─────────────────────────────────────────────────────
+      if (k === 'a' && !isField) { e.preventDefault(); selectAllOverlays(); return; }
+
+      // ── Page management ───────────────────────────────────────────────
+      if (k === 'n' && !isField) { e.preventDefault(); addPage(); return; }
+
+      // ── Style clipboard (Alt+C / Alt+V) ───────────────────────────────
+      if (e.altKey && k === 'c' && !isField) {
         e.preventDefault();
         if (selectedOverlay) copyOverlayStyle(selectedOverlay);
         else if (selectedBlockId) copyBlock(selectedBlockId);
+        return;
       }
-      else if (e.altKey && e.key.toLowerCase() === 'v' && !isField) {
+      if (e.altKey && k === 'v' && !isField) {
         e.preventDefault();
         const ids = multiOverlayIds.size > 0
           ? Array.from(multiOverlayIds)
           : selectedOverlayId ? [selectedOverlayId] : [];
         if (hasStyleClipboard && ids.length > 0) pasteOverlayStyleToIds(ids);
         else pasteBlock();
+        return;
       }
-      else if (e.key === 'c' && selectedBlockId && !isField) { e.preventDefault(); copyBlock(selectedBlockId); }
-      else if (e.key === 'v' && !isField) { e.preventDefault(); pasteBlock(); }
-      else if (e.key === 'd' && selectedBlockId && !isField) { e.preventDefault(); duplicateBlock(selectedBlockId); }
+
+      // ── Overlay clipboard: Ctrl/⌘ + C / X / V ─────────────────────────
+      if (k === 'c' && !isField) {
+        if (hasOverlaySel) { e.preventDefault(); copySelectedOverlays(); return; }
+        if (selectedBlockId) { e.preventDefault(); copyBlock(selectedBlockId); return; }
+      }
+      if (k === 'x' && !isField) {
+        if (hasOverlaySel) { e.preventDefault(); cutSelectedOverlays(); return; }
+      }
+      if (k === 'v' && !isField) {
+        e.preventDefault();
+        if (overlayClipboardRef.current && overlayClipboardRef.current.length > 0) pasteOverlays();
+        else pasteBlock();
+        return;
+      }
+
+      // ── Duplicate ─────────────────────────────────────────────────────
+      if (k === 'd' && !isField) {
+        e.preventDefault();
+        if (hasOverlaySel) duplicateSelectedOverlays();
+        else if (selectedBlockId) duplicateBlock(selectedBlockId);
+        return;
+      }
+
+      // ── Text styling (only meaningful for text overlays) ──────────────
+      if (k === 'b' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('fontWeight'); return; }
+      if (k === 'i' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('fontStyle'); return; }
+      if (k === 'u' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('textDecoration'); return; }
+
+      // ── Z-order: Ctrl+] / Ctrl+[ (Shift = front/back) ─────────────────
+      if (e.key === ']' && hasOverlaySel && !isField) {
+        e.preventDefault(); shiftZOrder(e.shiftKey ? 'front' : 'forward'); return;
+      }
+      if (e.key === '[' && hasOverlaySel && !isField) {
+        e.preventDefault(); shiftZOrder(e.shiftKey ? 'back' : 'backward'); return;
+      }
+
+      // ── R: refresh / reload preview (don't fall through to browser reload) ─
+      if (k === 'r' && !isField) {
+        e.preventDefault();
+        // Re-render PDF preview if open; otherwise bounce active page id.
+        if (workspaceMode === 'pdf') setWorkspaceMode('preview');
+        setActivePageId((prev) => prev);
+        toast('Preview refreshed');
+        return;
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBlockId, activePage, selectedOverlay, selectedOverlayId, multiOverlayIds, hasStyleClipboard]);
+  }, [
+    selectedBlockId, activePage, selectedOverlay, selectedOverlayId, multiOverlayIds,
+    hasStyleClipboard, selectAllOverlays, copySelectedOverlays, cutSelectedOverlays,
+    pasteOverlays, duplicateSelectedOverlays, toggleTextStyle, shiftZOrder, workspaceMode,
+  ]);
 
   // ── Binding validation (live) ───────────────────────────────────────────────
   const bindingIssues = useMemo(() => collectTemplateIssues(template), [template]);
