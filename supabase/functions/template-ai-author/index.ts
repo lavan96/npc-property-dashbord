@@ -188,6 +188,84 @@ async function nameSuggest(p: any) {
   return await callAI({ system, user, tool });
 }
 
+// ─── Action: generate_cover ───────────────────────────────────────────────────
+// Generative Cover Designer — produces a fully composed cover page (blocks +
+// overlays with absolute positions) plus an optional AI hero-image prompt.
+async function generateCover(p: any) {
+  const brief = String(p?.brief ?? '').trim();
+  if (!brief) throw new Error('Missing brief');
+  const pageWidth = Number(p?.pageWidth ?? 595);
+  const pageHeight = Number(p?.pageHeight ?? 842);
+  const tier = String(p?.tier ?? 'pld');
+  const brand = p?.brand ?? {};
+
+  const system = `You design premium magazine-quality cover pages for NPC Property Services investment reports.
+Output a SINGLE cover page composed of blocks AND overlays placed in absolute coordinates.
+Page size: ${pageWidth} x ${pageHeight} pt.
+Layout rules:
+- Hero image fills the top 60–75% of the page.
+- Headline overlay (40–60pt, bold) sits at the lower-left, with a smaller subheadline beneath.
+- Reserve a 36pt safe margin on all sides.
+- Include a small footer-line overlay with tier + date placeholder using {{report.date | date:'MMM yyyy'}}.
+- Bindings are encouraged: {{property.address}}, {{property.suburb}}, {{client.name}}.
+Brand context: ${JSON.stringify(brand).slice(0, 400)}.
+Tier: ${tier}.`;
+
+  const user = `Brief for the cover:\n${brief}\n\nReturn the page name, an evocative hero-image prompt, and the block+overlay layout.`;
+
+  const tool = {
+    name: 'emit_cover_page',
+    description: 'Emit a fully composed cover page',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageName: { type: 'string' },
+        heroImagePrompt: { type: 'string', description: 'Prompt to feed into the hero image generator' },
+        rationale: { type: 'string' },
+        background: {
+          type: 'object',
+          properties: { color: { type: 'string' } },
+          additionalProperties: true,
+        },
+        blocks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['image', 'text', 'rect', 'cover'] },
+              name: { type: 'string' },
+              props: { type: 'object', additionalProperties: true },
+              overlays: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', enum: ['text', 'image', 'rect'] },
+                    x: { type: 'number' },
+                    y: { type: 'number' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                    content: { type: 'string' },
+                    fontSize: { type: 'number' },
+                    fontWeight: { type: 'string' },
+                    color: { type: 'string' },
+                    alt: { type: 'string' },
+                  },
+                  required: ['type', 'x', 'y', 'width', 'height'],
+                },
+              },
+            },
+            required: ['type'],
+          },
+        },
+      },
+      required: ['pageName', 'blocks'],
+    },
+  };
+
+  return await callAI({ system, user, tool });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
