@@ -405,7 +405,7 @@ ACTIVE SELECTION:
         messages,
         tools: [TOOL],
         tool_choice: { type: 'function', function: { name: 'apply_changes' } },
-        ...(useVision ? {} : { reasoning: { effort: mode === 'art_director' ? 'high' : 'medium' } }),
+        ...(useVision ? {} : { reasoning_effort: mode === 'art_director' ? 'high' : 'medium' }),
       }),
     });
 
