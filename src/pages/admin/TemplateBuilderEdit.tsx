@@ -500,6 +500,29 @@ export default function TemplateBuilderEdit() {
     setSampleDataText(JSON.stringify(preset.data, null, 2));
     toast.success(`Sample data: ${preset.label}`);
   };
+  const loadSampleFromRealReport = async () => {
+    const input = window.prompt(
+      'Load binding context from a real investment_reports row.\n\nPaste a report ID (UUID):',
+    );
+    const reportId = (input ?? '').trim();
+    if (!reportId) return;
+    const toastId = toast.loading('Loading report binding context…');
+    try {
+      const { buildTemplateBindingContext } = await import('@/lib/reportTemplate/buildBindingContext');
+      const ctx = await buildTemplateBindingContext(reportId, {
+        tokens: brand?.tokens ?? {},
+        logoUrl: (brand as any)?.logoUrl ?? null,
+      });
+      if (!ctx) throw new Error('Report not found or inaccessible');
+      setSampleDataText(JSON.stringify(ctx.data, null, 2));
+      toast.success(
+        `Loaded ${ctx.meta.reportType}${ctx.meta.variant ? ` (${ctx.meta.variant})` : ''}`,
+        { id: toastId },
+      );
+    } catch (e: any) {
+      toast.error(`Load failed: ${e?.message ?? e}`, { id: toastId });
+    }
+  };
   const insertBlockType = (type: string) => {
     if (!activePage) { toast.error('No active page — add one first.'); return; }
     const def = BLOCK_DEFS[type];
