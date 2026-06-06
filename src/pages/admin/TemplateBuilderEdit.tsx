@@ -189,8 +189,27 @@ export default function TemplateBuilderEdit() {
   const clearMultiSelect = useCallback(() => setMultiOverlayIds(new Set()), []);
   // ── Page templates marketplace dialog ───────────────────────────────────────
   const [showPageMarket, setShowPageMarket] = useState(false);
+  // Track which (id, version) we've already hydrated local state from so that
+  // background refetches (e.g. on window focus or post-save invalidation) do
+  // NOT silently overwrite the user's in-progress edits with the previously
+  // persisted schema. We only re-hydrate when the template id or its server
+  // version actually changes.
+  const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!tplRow) return;
+    const key = `${tplRow.id}:${tplRow.version ?? 0}`;
+    if (hydratedKeyRef.current === key) {
+      // Same id+version we already loaded — keep local edits intact, but still
+      // refresh lightweight metadata flags that don't risk clobbering work.
+      setTplMeta({
+        parent_template_id: (tplRow as any).parent_template_id ?? null,
+        is_draft: !!(tplRow as any).is_draft,
+        approval_status: (tplRow as any).approval_status ?? 'draft',
+        locked_for_review: !!(tplRow as any).locked_for_review,
+      });
+      return;
+    }
+    hydratedKeyRef.current = key;
     setName(tplRow.name || '');
     setDescription(tplRow.description || '');
     setReportType(tplRow.report_type || '');
@@ -203,9 +222,10 @@ export default function TemplateBuilderEdit() {
       locked_for_review: !!(tplRow as any).locked_for_review,
     });
     const parsed = parseTemplate(tplRow.schema);
+    skipHistoryRef.current = true;
     setTemplate(parsed);
-    setActivePageId(parsed.pages[0]?.id ?? null);
-  }, [tplRow]);
+    setActivePageId((prev) => prev ?? parsed.pages[0]?.id ?? null);
+  }, [tplRow, setTemplate]);
 
   const reloadTplMeta = useCallback(async () => {
     if (!id) return;
