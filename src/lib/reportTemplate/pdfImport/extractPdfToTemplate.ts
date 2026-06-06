@@ -21,10 +21,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export type FidelityMode = 'semantic' | 'pixel' | 'hybrid';
+export type FidelityMode = 'semantic' | 'pixel' | 'hybrid' | 'ocr';
 
 export interface ImportProgress {
-  phase: 'reading' | 'extracting' | 'rasterizing' | 'uploading' | 'finalizing' | 'done';
+  phase: 'reading' | 'extracting' | 'rasterizing' | 'ocr' | 'uploading' | 'finalizing' | 'done';
   page?: number;
   totalPages?: number;
   message?: string;
@@ -36,6 +36,10 @@ export interface ImportOptions {
   templateName?: string;
   onProgress?: (p: ImportProgress) => void;
   userId?: string | null;
+  /** When set, the existing template is updated (resync) instead of creating a new one. */
+  targetTemplateId?: string;
+  /** OCR language (Tesseract); default 'eng'. */
+  ocrLang?: string;
 }
 
 export interface ImportResult {
