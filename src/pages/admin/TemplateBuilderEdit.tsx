@@ -222,6 +222,9 @@ export default function TemplateBuilderEdit() {
     setDescription(tplRow.description || '');
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
+    setVariant(((tplRow as any).variant as string) || '');
+    setScope(((tplRow as any).scope as string) || 'global');
+    setPriority(Number((tplRow as any).priority ?? 0));
     setCustomCss(((tplRow as any).custom_css as string) || '');
     setTplMeta({
       parent_template_id: (tplRow as any).parent_template_id ?? null,
