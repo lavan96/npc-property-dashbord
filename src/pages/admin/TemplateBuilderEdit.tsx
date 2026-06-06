@@ -195,10 +195,26 @@ export default function TemplateBuilderEdit() {
     setReportType(tplRow.report_type || '');
     setTier(tplRow.tier || '');
     setCustomCss(((tplRow as any).custom_css as string) || '');
+    setTplMeta({
+      parent_template_id: (tplRow as any).parent_template_id ?? null,
+      is_draft: !!(tplRow as any).is_draft,
+      approval_status: (tplRow as any).approval_status ?? 'draft',
+      locked_for_review: !!(tplRow as any).locked_for_review,
+    });
     const parsed = parseTemplate(tplRow.schema);
     setTemplate(parsed);
     setActivePageId(parsed.pages[0]?.id ?? null);
   }, [tplRow]);
+
+  const reloadTplMeta = useCallback(async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('report_templates' as any)
+      .select('parent_template_id,is_draft,approval_status,locked_for_review')
+      .eq('id', id)
+      .single();
+    if (data) setTplMeta(data as any);
+  }, [id]);
 
   const activePage = useMemo<Page | null>(
     () => template.pages.find((p) => p.id === activePageId) ?? null,
