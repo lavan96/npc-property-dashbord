@@ -30,6 +30,12 @@ export interface HtmlRenderOptions {
   customCss?: string;
   /** Document title (PDF metadata). */
   title?: string;
+  /**
+   * Editor mode: wrap each block in a `data-block-id` element, tag pages
+   * with `data-page-id`, and inject a small runtime that posts click
+   * messages to the parent window and accepts selection highlighting.
+   */
+  editorMode?: boolean;
 }
 
 export interface HtmlRenderResult {
