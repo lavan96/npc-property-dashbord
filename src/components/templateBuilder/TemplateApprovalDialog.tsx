@@ -65,7 +65,7 @@ export function TemplateApprovalDialog({
       .eq('template_id', templateId)
       .order('created_at', { ascending: false })
       .limit(20);
-    setHistory((data ?? []) as ApprovalRow[]);
+    setHistory((data ?? []) as unknown as ApprovalRow[]);
   };
 
   const currentUser = async () => {

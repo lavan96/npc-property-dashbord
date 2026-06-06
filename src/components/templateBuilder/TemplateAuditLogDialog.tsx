@@ -57,7 +57,7 @@ export function TemplateAuditLogDialog({ open, onOpenChange, templateId, templat
       .eq('template_id', templateId)
       .order('created_at', { ascending: false })
       .limit(200);
-    setRows((data ?? []) as AuditRow[]);
+    setRows((data ?? []) as unknown as AuditRow[]);
     setLoading(false);
   };
 

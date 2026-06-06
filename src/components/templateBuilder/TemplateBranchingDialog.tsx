@@ -60,7 +60,7 @@ export function TemplateBranchingDialog({
       .select('id,name,branch_label,approval_status,is_draft,updated_at')
       .eq('parent_template_id', templateId)
       .order('updated_at', { ascending: false });
-    setBranches((data ?? []) as BranchRow[]);
+    setBranches((data ?? []) as unknown as BranchRow[]);
   };
 
   const handleCreateBranch = async () => {
