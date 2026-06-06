@@ -19,6 +19,16 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+function logDbError(operation: string, error: { message?: string; details?: string | null; hint?: string | null; code?: string | null } | null) {
+  if (!error) return;
+  console.error(`[template-import-pdf] ${operation} failed`, {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  });
+}
+
 async function ensureBucket(admin: ReturnType<typeof createClient>) {
   const { data } = await admin.storage.getBucket(BUCKET);
   if (data) return;
@@ -92,6 +102,7 @@ Deno.serve(async (req) => {
         .insert({
           name,
           description: `Imported from ${body.source_filename ?? 'PDF'}`,
+          config: {},
           schema,
           version: 1,
           is_active: false,
@@ -99,7 +110,10 @@ Deno.serve(async (req) => {
         })
         .select()
         .single();
-      if (tplErr) return json({ error: tplErr.message }, 400);
+      if (tplErr) {
+        logDbError('finalize.insert_report_templates', tplErr);
+        return json({ error: tplErr.message, details: tplErr.details, hint: tplErr.hint, code: tplErr.code }, 400);
+      }
 
       await admin.from('template_imports').update({
         status: 'completed',
@@ -109,12 +123,13 @@ Deno.serve(async (req) => {
 
       // Snapshot initial version if the versions table exists.
       try {
-        await admin.from('report_template_versions').insert({
+        const { error: versionErr } = await admin.from('report_template_versions').insert({
           template_id: tpl.id,
           version: 1,
           schema,
-          notes: 'Imported from PDF',
+          note: 'Imported from PDF',
         });
+        logDbError('finalize.insert_report_template_versions', versionErr);
       } catch (_) { /* ignore if table absent */ }
 
       return json({ template: tpl });
@@ -137,12 +152,13 @@ Deno.serve(async (req) => {
 
       // Snapshot the OLD schema first
       try {
-        await admin.from('report_template_versions').insert({
+        const { error: snapshotErr } = await admin.from('report_template_versions').insert({
           template_id: templateId,
           version: existing?.version ?? 1,
           schema: existing?.schema,
-          notes: 'Pre-resync snapshot',
+          note: 'Pre-resync snapshot',
         });
+        logDbError('resync.insert_pre_snapshot', snapshotErr);
       } catch (_) { /* ignore */ }
 
       const { data: tpl, error: upErr } = await admin
@@ -154,12 +170,13 @@ Deno.serve(async (req) => {
       if (upErr) return json({ error: upErr.message }, 400);
 
       try {
-        await admin.from('report_template_versions').insert({
+        const { error: versionErr } = await admin.from('report_template_versions').insert({
           template_id: templateId,
           version: nextVersion,
           schema,
-          notes: note,
+          note,
         });
+        logDbError('resync.insert_post_snapshot', versionErr);
       } catch (_) { /* ignore */ }
 
       await admin.from('template_imports').update({
