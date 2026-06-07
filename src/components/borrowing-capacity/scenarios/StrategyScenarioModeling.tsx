@@ -25,6 +25,7 @@ import {
   Save,
   FolderOpen,
   Trash2,
+  FileDown,
 } from 'lucide-react';
 import {
   Collapsible,
@@ -65,6 +66,8 @@ import { CapacityMathInspector } from './CapacityMathInspector';
 import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
 import { SolutionOptionCards } from './SolutionOptionCards';
 import type { SolutionApply } from '@/utils/scenarioDeltaEngine';
+import { fetchAndGenerateBorrowingCapacityPDF } from '../BorrowingCapacityPDFReport';
+import { toast } from 'sonner';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -1115,8 +1118,6 @@ export function StrategyScenarioModeling({
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
       acquisitionCapacity: acquisitionCapacity ?? null,
-      // Phase I (parity) — capture lender-aware context at save time so a
-      // future load reproduces the same shading + HEM floor decisions.
       incomeComponents,
       currentLenderProfileId,
       hemBenchmark,
@@ -1126,7 +1127,10 @@ export function StrategyScenarioModeling({
     onPresetsChange?.(updated);
     setScenarioName('');
     setShowSaveInput(false);
-  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark]);
+    // Also apply the scenario to the live calculator so it persists across
+    // tab switches and modal close/reopen (fix for "save reverts to base").
+    onApplyScenario?.(scenarioInputs, totalAccessibleEquity);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
@@ -1316,6 +1320,15 @@ export function StrategyScenarioModeling({
           const absK = Math.round(Math.abs(delta) / 1000);
           return `${sign}$${absK}K (engine)`;
         }}
+      />
+
+
+      {/* Audit-fix #1 — Suggested one-click solutions ranked by uplift
+         (positioned directly under Strategy Advisor per spec) */}
+      <SolutionOptionCards
+        context={scenarioContext}
+        onApply={handleApplySolution}
+        formatCurrency={formatCurrency}
       />
 
       {/* Header */}
@@ -2016,12 +2029,6 @@ export function StrategyScenarioModeling({
         </Collapsible>
       </Card>
 
-      {/* Audit-fix #1 — Suggested one-click solutions ranked by uplift */}
-      <SolutionOptionCards
-        context={scenarioContext}
-        onApply={handleApplySolution}
-        formatCurrency={formatCurrency}
-      />
 
       {/* ═══ LEVERS 5-10: Additional Strategy Levers ═══ */}
       <AdditionalStrategyLevers
@@ -2148,152 +2155,12 @@ export function StrategyScenarioModeling({
         </div>
       </div>
 
-      <Separator />
+      {/* Acquisition Capacity (Stamp Duty + LMI) card removed per spec —
+         What-If calculator no longer shows the stand-alone purchase-cost lever.
+         The underlying `acquisition` state and `acquisitionCapacity` memo
+         remain so PDF export + impact summary continue to work for any
+         previously-saved scenario that captured them. */}
 
-      {/* ═══ ACQUISITION CAPACITY (Phase C) ═══ */}
-      <Card>
-        <Collapsible open={openSections.acquisition} onOpenChange={() => toggleSection('acquisition')}>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  Acquisition Capacity (Stamp Duty + LMI)
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  {acquisition.enabled && acquisitionCapacity && (
-                    <Badge variant="secondary" className="text-xs">
-                      Max {formatCurrency(acquisitionCapacity.maxPurchasePrice)}
-                    </Badge>
-                  )}
-                  <ChevronDown className={`h-4 w-4 transition-transform ${openSections.acquisition ? 'rotate-180' : ''}`} />
-                </div>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0 space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Compute max purchase price</Label>
-                <Switch checked={acquisition.enabled} onCheckedChange={(v) => setAcquisition(p => ({ ...p, enabled: v }))} />
-              </div>
-              {acquisition.enabled && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">State</Label>
-                      <Select value={acquisition.state} onValueChange={(v) => setAcquisition(p => ({ ...p, state: v as AustralianState }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(['NSW','VIC','QLD','WA','SA','TAS','NT','ACT'] as const).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Intent</Label>
-                      <Select value={acquisition.intent} onValueChange={(v) => setAcquisition(p => ({ ...p, intent: v as PurchaseIntent }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="owner_occupier">Owner-Occupier</SelectItem>
-                          <SelectItem value="investor">Investor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Property Type</Label>
-                      <Select value={acquisition.category} onValueChange={(v) => setAcquisition(p => ({ ...p, category: v as PropertyCategory }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="established">Established</SelectItem>
-                          <SelectItem value="new">New Build</SelectItem>
-                          <SelectItem value="vacant_land">Vacant Land</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">LMI Mode</Label>
-                      <Select value={acquisition.lmiMode} onValueChange={(v) => setAcquisition(p => ({ ...p, lmiMode: v as AcquisitionState['lmiMode'] }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No LMI</SelectItem>
-                          <SelectItem value="display_deduction">Deduct from cash</SelectItem>
-                          <SelectItem value="debt_capitalised">Capitalise to loan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-2 rounded border">
-                      <Label className="text-xs">First Home Buyer</Label>
-                      <Switch checked={acquisition.isFirstHomeBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isFirstHomeBuyer: v, intent: v ? 'owner_occupier' : p.intent }))} />
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded border">
-                      <Label className="text-xs">Foreign Buyer</Label>
-                      <Switch checked={acquisition.isForeignBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isForeignBuyer: v }))} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
-                      <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                        Target Purchase Price
-                        <span className="text-[10px] text-muted-foreground/70">(optional)</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        value={acquisition.targetPurchasePrice || ''}
-                        onChange={(e) => setAcquisition(p => ({ ...p, targetPurchasePrice: Number(e.target.value) || 0 }))}
-                        placeholder="e.g. 700000"
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {acquisitionCapacity && (
-                    <div className="mt-3 p-3 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Max Purchase Price</span>
-                        <span className="text-lg font-bold text-primary">{formatCurrency(acquisitionCapacity.maxPurchasePrice)}</span>
-                      </div>
-                      <Separator />
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Loan available</span><span className="font-medium">{formatCurrency(acquisitionCapacity.loanAvailableForPurchase)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Cash available</span><span className="font-medium">{formatCurrency(acquisitionCapacity.cashAvailable)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Released equity</span><span className="font-medium">{formatCurrency(acquisitionCapacity.releasedCapital)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Stamp duty</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.stampDuty)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">LMI</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.lmi)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Other costs</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.otherAcquisitionCosts)}</span></div>
-                      </div>
-                      {acquisitionCapacity.notes.length > 0 && (
-                        <details className="text-xs text-muted-foreground pt-1">
-                          <summary className="cursor-pointer hover:text-foreground">Audit notes ({acquisitionCapacity.notes.length})</summary>
-                          <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                            {acquisitionCapacity.notes.map((n, i) => <li key={i}>{n}</li>)}
-                          </ul>
-                        </details>
-                      )}
-                    </div>
-                  )}
-
-                  {validationIssues && validationIssues.length > 0 && (
-                    <div className="mt-2 p-2 rounded border border-destructive/40 bg-destructive/5 text-xs space-y-1">
-                      <p className="font-medium text-destructive">Validation issues ({validationIssues.length})</p>
-                      <ul className="list-disc list-inside text-muted-foreground">
-                        {validationIssues.map((iss: any, i: number) => <li key={i}>{iss.message}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
-
-      <Separator />
 
       {/* ═══ IMPACT SUMMARY ═══ */}
 
@@ -2601,6 +2468,48 @@ export function StrategyScenarioModeling({
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
+                    </Button>
+                  )}
+                  {clientId && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={async () => {
+                        // Build a transient preset reflecting the current
+                        // strategy state so the PDF shows live what-if numbers
+                        // even before the user clicks Save.
+                        const transient: ScenarioPreset = {
+                          id: `transient-${Date.now()}`,
+                          name: scenarioName.trim() || 'Current What-If Scenario',
+                          isBase: false,
+                          createdAt: new Date().toISOString(),
+                          adjustedInputs: { ...scenarioInputs },
+                          result: scenarioResult,
+                          accessibleEquity: totalAccessibleEquity,
+                          acquisitionCapacity: acquisitionCapacity ?? null,
+                          incomeComponents,
+                          currentLenderProfileId,
+                          hemBenchmark,
+                        };
+                        const merged = [
+                          ...presets,
+                          ...(presets.some(p => p.id === transient.id) ? [] : [transient]),
+                        ];
+                        toast.info('Generating What-If PDF…');
+                        try {
+                          await fetchAndGenerateBorrowingCapacityPDF(
+                            clientId,
+                            clientName || 'Client',
+                            merged,
+                          );
+                        } catch (err: any) {
+                          toast.error(`PDF export failed: ${err?.message || 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                      Export PDF
                     </Button>
                   )}
                 </div>
