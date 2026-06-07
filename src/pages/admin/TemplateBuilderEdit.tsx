@@ -959,6 +959,8 @@ export default function TemplateBuilderEdit() {
   // ── Find & Replace (Cmd/Ctrl+F) + Asset Library (Shift+I) ─────────────────
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [textStylesOpen, setTextStylesOpen] = useState(false);
+  const [tableEditorOpen, setTableEditorOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
