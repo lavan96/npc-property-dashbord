@@ -1321,6 +1321,15 @@ export function StrategyScenarioModeling({
         }}
       />
 
+
+      {/* Audit-fix #1 — Suggested one-click solutions ranked by uplift
+         (positioned directly under Strategy Advisor per spec) */}
+      <SolutionOptionCards
+        context={scenarioContext}
+        onApply={handleApplySolution}
+        formatCurrency={formatCurrency}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
