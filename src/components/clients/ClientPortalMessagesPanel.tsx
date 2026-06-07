@@ -235,10 +235,11 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
       </ScrollArea>
 
       <div className="border-t border-border p-3 bg-card">
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Send to:</span>
           {TARGETS.map(t => {
             const Icon = t.icon;
-            const active = t.value === target;
+            const active = targets.has(t.value);
             return (
               <Button
                 key={t.value}
@@ -246,7 +247,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                 size="sm"
                 variant={active ? 'default' : 'outline'}
                 className="h-7 px-2.5 text-xs"
-                onClick={() => setTarget(t.value)}
+                onClick={() => toggleTarget(t.value)}
               >
                 <Icon className="h-3 w-3 mr-1" /> {t.label}
               </Button>
@@ -256,8 +257,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         <div className="flex gap-2 items-end">
           <Textarea
             placeholder={
-              target === 'internal' ? 'Add an internal staff-only note...'
-              : target === 'finance' ? 'Message the finance partner...'
+              targets.size > 1 ? `Compose once — fan out to ${targets.size} destinations…`
+              : targets.has('internal') ? 'Add an internal staff-only note...'
+              : targets.has('finance') ? 'Message the finance partner...'
               : 'Reply to the client...'
             }
             value={draft}
@@ -272,11 +274,13 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             className="min-h-[60px] resize-none flex-1"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()}>
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim() || targets.size === 0}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">Press ⌘/Ctrl+Enter to send · {activeTarget.hint}</p>
+        <p className="text-[10px] text-muted-foreground mt-1.5">
+          Press ⌘/Ctrl+Enter to send · Tap chips to fan out to multiple destinations.
+        </p>
       </div>
     </div>
   );
