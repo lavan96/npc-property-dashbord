@@ -1118,8 +1118,6 @@ export function StrategyScenarioModeling({
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
       acquisitionCapacity: acquisitionCapacity ?? null,
-      // Phase I (parity) — capture lender-aware context at save time so a
-      // future load reproduces the same shading + HEM floor decisions.
       incomeComponents,
       currentLenderProfileId,
       hemBenchmark,
@@ -1129,7 +1127,10 @@ export function StrategyScenarioModeling({
     onPresetsChange?.(updated);
     setScenarioName('');
     setShowSaveInput(false);
-  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark]);
+    // Also apply the scenario to the live calculator so it persists across
+    // tab switches and modal close/reopen (fix for "save reverts to base").
+    onApplyScenario?.(scenarioInputs, totalAccessibleEquity);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
