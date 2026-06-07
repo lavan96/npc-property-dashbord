@@ -2247,6 +2247,20 @@ export default function TemplateBuilderEdit() {
                     onPasteStyle={bulkPasteStyle}
                     hasStyleClipboard={hasStyleClipboard}
                   />
+                  <AlignDistributeBar
+                    count={multiOverlayIds.size}
+                    onAlign={bulkAlign}
+                    onDistribute={bulkDistribute}
+                    onAlignToPage={bulkAlignToPage}
+                    onGroup={bulkGroup}
+                    onUngroup={bulkUngroup}
+                    onZ={bulkZ}
+                    onLock={bulkLock}
+                    onHide={bulkHide}
+                    anyLocked={anyLocked}
+                    anyHidden={anyHidden}
+                    anyGrouped={anyGrouped}
+                  />
                 </>
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
