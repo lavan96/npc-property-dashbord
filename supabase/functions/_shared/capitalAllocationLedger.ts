@@ -107,6 +107,12 @@ export interface SinkAggregate {
 
 const DEFAULT_POOL_ID = 'pool-default';
 
+type SourceFundingPortion = Pick<CapitalSourceEntry, 'deltaId' | 'sourceType' | 'label'> & { amount: number };
+
+interface SourceBalance extends SourceFundingPortion {
+  remaining: number;
+}
+
 export function buildCapitalLedger(
   deltas: ScenarioDeltaShape[],
   ctx: LedgerContext,
@@ -139,9 +145,14 @@ export function buildCapitalLedger(
     notes: [],
   };
 
+  const sourceBalancesByPool: Record<string, SourceBalance[]> = {};
   for (const poolId of Object.keys(pools)) {
-    pools[poolId].totalIn = pools[poolId].sources.reduce((s, x) => s + x.amount, 0);
+    pools[poolId].totalIn = pools[poolId].sources.reduce((sum, source) => sum + source.amount, 0);
     pools[poolId].remainder = pools[poolId].totalIn;
+    sourceBalancesByPool[poolId] = pools[poolId].sources.map(source => ({
+      ...source,
+      remaining: source.amount,
+    }));
   }
 
   for (const d of deltas) {
@@ -169,7 +180,11 @@ export function buildCapitalLedger(
     }
     if (allocated <= 0) continue;
 
+    const fundingSources = consumeFunding(sourceBalancesByPool[poolId] ?? [], allocated);
+    const policyNotes = evaluateCapitalUsePolicy(sinkType, d, ctx, fundingSources, issues);
+    const fundingNotes = describeFundingSources(fundingSources);
     const sinkEntry = resolveSink(sinkType, d, allocated, ctx, issues);
+    const notes = [...fundingNotes, ...policyNotes, ...sinkEntry.notes];
     pool.sinks.push({
       deltaId: d.id,
       sinkType,
@@ -177,14 +192,14 @@ export function buildCapitalLedger(
       amount: allocated,
       monthlyServicingDelta: sinkEntry.monthlyServicingDelta,
       debtBalanceDelta: sinkEntry.debtBalanceDelta,
-      notes: sinkEntry.notes,
+      notes,
     });
     pool.remainder = Math.max(0, pool.remainder - allocated);
 
     sinkAggregate.monthlyServicingDelta += sinkEntry.monthlyServicingDelta;
     sinkAggregate.debtBalanceDelta += sinkEntry.debtBalanceDelta;
     sinkAggregate.depositContribution += sinkEntry.depositContribution;
-    if (sinkEntry.notes.length) sinkAggregate.notes.push(...sinkEntry.notes);
+    if (notes.length) sinkAggregate.notes.push(...notes);
   }
 
   for (const poolId of Object.keys(pools)) {
@@ -216,7 +231,7 @@ function resolveSink(
     case 'liability_payoff': {
       const liab = ctx.liabilities.find((l) => l.id === targetId);
       if (!liab) {
-        issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'warning', message: `liability_payoff sink: target "${targetId}" not found.` });
+        issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'error', message: `liability_payoff sink: target "${targetId}" not found — funded payoff cannot be applied without a valid liability target.` });
         return blankSink('Pay down (target missing)', allocated);
       }
       const usable = Math.min(allocated, Math.max(0, liab.balance));
@@ -331,6 +346,97 @@ function resolveSink(
       };
     }
   }
+}
+
+function consumeFunding(sourceBalances: SourceBalance[], amount: number): SourceFundingPortion[] {
+  let remaining = amount;
+  const portions: SourceFundingPortion[] = [];
+
+  for (const source of sourceBalances) {
+    if (remaining <= 0) break;
+    if (source.remaining <= 0) continue;
+    const used = Math.min(source.remaining, remaining);
+    source.remaining -= used;
+    remaining -= used;
+    portions.push({
+      deltaId: source.deltaId,
+      sourceType: source.sourceType,
+      label: source.label,
+      amount: used,
+    });
+  }
+
+  return portions;
+}
+
+function describeFundingSources(fundingSources: SourceFundingPortion[]): string[] {
+  if (fundingSources.length === 0) return [];
+  const detail = fundingSources
+    .map(source => `${source.label} (${source.sourceType.replace(/_/g, ' ')}): $${Math.round(source.amount).toLocaleString()}`)
+    .join('; ');
+  return [`Funding source trace: ${detail}.`];
+}
+
+function evaluateCapitalUsePolicy(
+  sinkType: CapitalSinkType,
+  delta: ScenarioDeltaShape,
+  ctx: LedgerContext,
+  fundingSources: SourceFundingPortion[],
+  issues: ValidationIssueShape[],
+): string[] {
+  const borrowedSources = fundingSources.filter(source =>
+    source.sourceType === 'equity_release' || source.sourceType === 'portfolio_lvr_release',
+  );
+  const hasBorrowedSources = borrowedSources.length > 0;
+  const borrowedAmount = borrowedSources.reduce((sum, source) => sum + source.amount, 0);
+  const borrowedLabel = `$${Math.round(borrowedAmount).toLocaleString()} borrowed/equity-release funding`;
+  const targetId = delta.meta?.sinkTargetId as string | undefined;
+  const targetProperty = ctx.properties.find(property => property.id === targetId);
+  const notes: string[] = [];
+
+  if (hasBorrowedSources && sinkType === 'liability_payoff') {
+    const message = `${borrowedLabel} is being used for a liability payoff. Confirm cash-out/debt-consolidation purpose, payout evidence, and closure of the repaid liability before relying on the servicing benefit.`;
+    issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'warning', message });
+    notes.push(`Policy check: ${message}`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'repayment_reduction') {
+    const message = `${borrowedLabel} is being used to reduce repayments. Most lenders only assess lower repayments after a formal restructure/variation, not from an informal cash buffer.`;
+    issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'warning', message });
+    notes.push(`Policy check: ${message}`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'rate_buydown') {
+    const message = `${borrowedLabel} is being used for a rate buy-down. Confirm the lender/product supports paid discount points or fee-for-rate trade-offs before applying the saving.`;
+    issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'warning', message });
+    notes.push(`Policy check: ${message}`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'debt_recycle') {
+    const borrowedMessage = `${borrowedLabel} cannot be treated as a clean debt-recycling source in this model. Debt recycling should start from own cash/sale proceeds paying down a non-deductible owner-occupied loan before redraw/split.`;
+    issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'error', message: borrowedMessage });
+    notes.push(`Policy block: ${borrowedMessage}`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'acquisition_deposit') {
+    notes.push(`Policy check: ${borrowedLabel} is counted as borrowed deposit funds. Confirm the acquisition lender accepts borrowed deposit/equity release and includes the new debt in serviceability.`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'holding_reserve') {
+    notes.push(`Policy check: ${borrowedLabel} is held as reserve. Confirm the lender treats it as verified liquidity rather than additional uncommitted borrowing.`);
+  }
+
+  if (hasBorrowedSources && sinkType === 'offset_deposit') {
+    notes.push(`Policy check: ${borrowedLabel} is placed in offset. Confirm assessment uses the net offset benefit and still includes the released debt.`);
+  }
+
+  if (sinkType === 'debt_recycle' && targetProperty?.propertyType !== 'owner_occupied') {
+    const message = `Debt recycling target must be an owner-occupied/non-deductible loan. Target "${targetId}" is ${targetProperty?.propertyType || 'missing/unknown'}.`;
+    issues.push({ deltaId: delta.id, deltaType: delta.type, severity: 'error', message });
+    notes.push(`Policy block: ${message}`);
+  }
+
+  return notes;
 }
 
 function ensurePool(pools: Record<string, CapitalPoolLedger>, poolId: string): CapitalPoolLedger {
