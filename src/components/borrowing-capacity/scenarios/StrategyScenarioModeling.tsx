@@ -63,6 +63,8 @@ import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 import { CapacityMathInspector } from './CapacityMathInspector';
 import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
+import { SolutionOptionCards } from './SolutionOptionCards';
+import type { SolutionApply } from '@/utils/scenarioDeltaEngine';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -423,7 +425,7 @@ export function StrategyScenarioModeling({
     [capitalAllocations],
   );
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
+  const { scenarioContext, scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -915,6 +917,7 @@ export function StrategyScenarioModeling({
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
+      scenarioContext: ctx,
       scenarioResult: effectiveResult as unknown as BorrowingCapacityResult,
       scenarioInputs: effectiveInputs,
       impactBreakdown: baselineMode ? [] : impacts,
@@ -1160,6 +1163,30 @@ export function StrategyScenarioModeling({
       additional: { ...prev.additional, ...updates },
     }));
   }, []);
+
+  // Audit-fix #1 — Apply a "Suggested Solution" card click into the existing
+  // strategy state. Maps each typed payload to the matching setter so we never
+  // duplicate state shape.
+  const handleApplySolution = useCallback((apply: SolutionApply) => {
+    if (apply.kind === 'expense') {
+      handleAdditionalChange({ expenseReductionPercent: apply.percent });
+    } else if (apply.kind === 'term') {
+      handleAdditionalChange({ loanTermAdjustment: apply.years });
+    } else if (apply.kind === 'equity') {
+      setStrategy(prev => {
+        const ids = new Set(prev.equityReleasePropertyIds);
+        ids.add(apply.propertyId);
+        const lvrs = new Map(prev.equityReleaseTargetLVRs);
+        lvrs.set(apply.propertyId, apply.targetLVR);
+        return {
+          ...prev,
+          equityReleaseEnabled: true,
+          equityReleasePropertyIds: ids,
+          equityReleaseTargetLVRs: lvrs,
+        };
+      });
+    }
+  }, [handleAdditionalChange]);
 
   const baseBand = getServiceabilityBandColor(baseResult.serviceabilityBand);
   const scenarioBand = getServiceabilityBandColor(scenarioResult.serviceabilityBand);
@@ -1988,6 +2015,13 @@ export function StrategyScenarioModeling({
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* Audit-fix #1 — Suggested one-click solutions ranked by uplift */}
+      <SolutionOptionCards
+        context={scenarioContext}
+        onApply={handleApplySolution}
+        formatCurrency={formatCurrency}
+      />
 
       {/* ═══ LEVERS 5-10: Additional Strategy Levers ═══ */}
       <AdditionalStrategyLevers
