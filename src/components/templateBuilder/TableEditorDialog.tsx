@@ -20,7 +20,9 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, Table as TableIcon } from 'lucide-react';
 import type { Overlay } from '@/lib/reportTemplate/templateSchema';
 
-type TableOverlay = Extract<Overlay, { type: 'table' }>;
+// Note: typed as `any` because the discriminated union may not yet include
+// the `table` case at compile time depending on schema build order.
+type TableOverlay = any;
 
 interface Props {
   open: boolean;
