@@ -231,10 +231,11 @@ export function computeScenarioDrift(
 }
 
 export function buildPersistedBcScenarioV2(input: BuildReplayAuditInput): PersistedBcScenarioV2 {
-  const validationIssues = input.validationIssues || [];
+  const validationIssues = Array.isArray(input.validationIssues) ? input.validationIssues : [];
+  const scenarioDeltas = Array.isArray(input.scenarioDeltas) ? input.scenarioDeltas : [];
   const warningCount = validationIssues.filter((issue) => issue.severity === 'warning').length;
   const errorCount = validationIssues.filter((issue) => issue.severity === 'error').length;
-  const hasDeltas = input.scenarioDeltas.length > 0;
+  const hasDeltas = scenarioDeltas.length > 0;
   const hasAcquisition = !!input.acquisition?.enabled;
   const evidenceCompleteness = errorCount > 0
     ? 'minimal'
@@ -256,7 +257,7 @@ export function buildPersistedBcScenarioV2(input: BuildReplayAuditInput): Persis
     },
     scenario: {
       name: input.scenarioName,
-      deltas: input.scenarioDeltas,
+      deltas: scenarioDeltas,
       adjustedInputs: normalizeBaseInputs(input.adjustedInputs),
       acquisition: input.acquisition,
       capitalAllocations: input.capitalAllocations,

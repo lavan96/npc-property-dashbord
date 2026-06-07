@@ -254,7 +254,7 @@ export function StrategyScenarioModeling({
   liabilities,
   properties,
   onApplyScenario,
-  savedPresets: externalPresets,
+  savedPresets: externalPresets = [],
   onPresetsChange,
   clientId,
   clientName,
@@ -312,12 +312,12 @@ export function StrategyScenarioModeling({
     });
   }, [strategy.additional.portfolioSellPropertyIds, properties]);
 
-  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
+  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
 
   useEffect(() => {
-    if (externalPresets) setPresets(externalPresets);
+    setPresets(externalPresets);
   }, [externalPresets]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
@@ -1312,7 +1312,7 @@ export function StrategyScenarioModeling({
     if (preset.acquisition) {
       setAcquisition(preset.acquisition);
     }
-    if (preset.capitalAllocations) {
+    if (Array.isArray(preset.capitalAllocations)) {
       setCapitalAllocations(preset.capitalAllocations);
       const payoffIds = new Set(
         preset.capitalAllocations
@@ -2520,9 +2520,9 @@ export function StrategyScenarioModeling({
                           <div><span className="text-muted-foreground">Net cash after settlement</span><p className={`font-medium ${(acquisitionCapacity.netCashAfterSettlement || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{formatCurrency(acquisitionCapacity.netCashAfterSettlement || 0)}</p></div>
                         </div>
                       )}
-                      {acquisitionCapacity.notes.length > 0 && (
+                      {(acquisitionCapacity.notes ?? []).length > 0 && (
                         <ul className="space-y-1 text-[11px] text-muted-foreground">
-                          {acquisitionCapacity.notes.slice(-3).map((note, idx) => <li key={idx}>• {note}</li>)}
+                          {(acquisitionCapacity.notes ?? []).slice(-3).map((note, idx) => <li key={idx}>• {note}</li>)}
                         </ul>
                       )}
                     </div>
@@ -2953,16 +2953,16 @@ export function StrategyScenarioModeling({
       </Card>
 
       {/* ═══ SAVED PRESETS ═══ */}
-      {presets.length > 0 && (
+      {(presets?.length ?? 0) > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FolderOpen className="h-4 w-4 text-primary" />
-              Saved Scenarios ({presets.length})
+              Saved Scenarios ({presets?.length ?? 0})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {presets.map(preset => {
+            {(presets ?? []).map(preset => {
               const drift = presetDriftById.get(preset.id);
               return (
               <div
