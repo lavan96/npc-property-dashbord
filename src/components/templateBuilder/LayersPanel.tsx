@@ -38,11 +38,12 @@ interface Props {
 const ICONS: Record<string, typeof Type> = { text: Type, image: ImageIcon, shape: Square };
 
 function overlayLabel(o: Overlay): string {
-  if (o.name) return o.name;
-  if (o.type === 'text') return String((o as any).content ?? 'Text').slice(0, 32) || 'Text';
-  if (o.type === 'image') return 'Image';
-  if (o.type === 'shape') return `Shape · ${(o as any).shape ?? 'rect'}`;
-  return o.type;
+  const anyO = o as any;
+  if (anyO.name) return anyO.name;
+  if (anyO.type === 'text') return String(anyO.content ?? 'Text').slice(0, 32) || 'Text';
+  if (anyO.type === 'image') return 'Image';
+  if (anyO.type === 'shape') return `Shape · ${anyO.shape ?? 'rect'}`;
+  return anyO.type;
 }
 
 export function LayersPanel({
