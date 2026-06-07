@@ -1441,34 +1441,42 @@ Deno.serve(async (req) => {
         ? shadedTotal + (overrides.additionalIncome * 0.8) 
         : shadedTotal;
 
+    // Calculate NEGATIVE property cash flows - these are layered ON TOP of the
+    // BASE living expenses below. Computed up-front (before the override branch)
+    // so an explicit UI override that ALREADY folds them in is not double counted.
+    const { totalMonthly: negativePropertyCashFlows, breakdown: negativeCashFlowBreakdown } =
+      calculateNegativePropertyCashFlows(properties);
+
     // Calculate living expenses (HEM or override) - use income-scaled HEM
     const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome, activePolicy.hem);
-    
+
     // CRITICAL: Use the HIGHER of HEM benchmark OR declared expenses from database
     // This is the "hybrid" approach that banks use - they take the greater value
     // Overrides take precedence if provided (for UI-driven calculations)
     let livingExpenses: number;
     if (overrides?.livingExpenses !== undefined && overrides?.livingExpenses !== null) {
-      // UI explicitly passed a value - use it
-      livingExpenses = overrides.livingExpenses;
+      // The UI override is the COMPLETE monthly living-expenses figure — it already
+      // folds in negative property cash flows (see BorrowingCapacityModal's
+      // `effectiveExpenses = baseExpenses + totalNegativeCashFlows`). Recover the
+      // BASE portion here so negative CF is layered back on EXACTLY ONCE below.
+      // Without this the server re-adds negCF and the what-if scenario capacity
+      // computed client-side (single negCF layer) never lands on this final calc.
+      livingExpenses = Math.max(0, overrides.livingExpenses - negativePropertyCashFlows);
     } else {
       // Default: use MAX(HEM, declared) - the "hybrid" approach
       livingExpenses = Math.max(hemBenchmark, totalDeclaredExpenses);
     }
-    
-    const expenseMethodUsed = overrides?.livingExpenses !== undefined && overrides?.livingExpenses !== null
-      ? 'declared' 
-      : (totalDeclaredExpenses > hemBenchmark ? 'declared_higher' : 'hem');
-    
-    console.log(`[calculate-borrowing-capacity] Expenses: HEM=$${hemBenchmark}, Declared=$${totalDeclaredExpenses}, Using=$${livingExpenses} (${expenseMethodUsed})`);
 
-    // Calculate NEGATIVE property cash flows - these are layered ON TOP of expenses
-    const { totalMonthly: negativePropertyCashFlows, breakdown: negativeCashFlowBreakdown } = 
-      calculateNegativePropertyCashFlows(properties);
-    
-    // Total living expenses = MAX(HEM, declared) + negative property cash flows
+    const expenseMethodUsed = overrides?.livingExpenses !== undefined && overrides?.livingExpenses !== null
+      ? 'declared'
+      : (totalDeclaredExpenses > hemBenchmark ? 'declared_higher' : 'hem');
+
+    console.log(`[calculate-borrowing-capacity] Expenses: HEM=$${hemBenchmark}, Declared=$${totalDeclaredExpenses}, Base=$${livingExpenses}, NegCF=$${negativePropertyCashFlows} (${expenseMethodUsed})`);
+
+    // Total living expenses = base living expenses + negative property cash flows
+    // (counted exactly ONCE, regardless of whether the override already had them).
     const totalLivingExpenses = livingExpenses + negativePropertyCashFlows;
-    
+
     console.log(`[calculate-borrowing-capacity] Negative property cash flows: $${negativePropertyCashFlows}/month from ${negativeCashFlowBreakdown.length} properties`);
     console.log(`[calculate-borrowing-capacity] Total living expenses (base + negative CF): $${totalLivingExpenses}/month`);
 
