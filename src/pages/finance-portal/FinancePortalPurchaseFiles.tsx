@@ -447,7 +447,7 @@ function NewPurchaseFileDialog({
         },
       });
       if (error) throw new Error(data?.error || error.message);
-      toast.success('Purchase file created');
+      toast.success(data?.linked_deal ? 'Purchase file created and mirrored to Command Centre' : 'Purchase file created');
       onCreated(data?.file?.id);
       onOpenChange(false);
       setClientId(''); setTitle(''); setPropertyAddress(''); setPurchasePrice('');
@@ -464,6 +464,9 @@ function NewPurchaseFileDialog({
         <DialogHeader>
           <DialogTitle>New Purchase File</DialogTitle>
         </DialogHeader>
+        <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+          Creating a finance purchase file also mirrors a linked deal into the Command Centre and raises an internal notification.
+        </div>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Client</Label>

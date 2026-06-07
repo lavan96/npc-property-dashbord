@@ -60,6 +60,111 @@ const TABLE_MAP: Record<string, string> = {
   address_history: 'client_address_history',
 };
 
+
+const TABLE_COLUMNS: Record<string, Set<string>> = {
+  client_properties: new Set([
+    'client_id','property_type','address','value','loan_remaining','interest_rate','ownership_percentage',
+    'monthly_interest_repayment','monthly_body_corporate','monthly_council_rates','monthly_water_rates',
+    'monthly_repairs_maintenance','monthly_property_management','monthly_landlord_insurance',
+    'monthly_building_insurance','monthly_rental_income','weekly_rental_income','total_monthly_expenditure',
+    'net_monthly_cashflow',
+  ]),
+  client_income_sources: new Set([
+    'client_id','contact_type','source_category','source_type','source_name','gross_annual_amount',
+    'input_frequency','input_amount','bonus','commission','overtime_essential','overtime_non_essential',
+    'allowance','other_taxable_income','default_shading_rate','custom_shading_rate','display_order',
+    'is_active','notes',
+  ]),
+  client_expenses: new Set([
+    'client_id','expense_category','expense_name','monthly_amount','frequency','is_essential','notes',
+  ]),
+  client_assets: new Set([
+    'client_id','asset_type','vehicle_type','make_model','institution_name','description','value',
+  ]),
+  client_liabilities: new Set([
+    'client_id','liability_type','provider_name','current_balance','credit_limit','interest_rate',
+    'monthly_repayment','repayment_type',
+  ]),
+  client_employment: new Set([
+    'client_id','contact_type','employer_name','employment_type','occupation_role','start_date','is_current',
+  ]),
+  client_notes: new Set([
+    'client_id','note_type','content','visibility','source_surface','source_actor_type','source_actor_name',
+    'source_reference','source_details','content_hash','dedupe_key','sync_status','last_synced_at',
+    'last_sync_error','version_group_id','version_number','supersedes_note_id',
+  ]),
+  client_additional_contacts: new Set([
+    'client_id','relationship','first_name','surname','middle_name','email','mobile','dob','gender',
+    'display_order','notes',
+  ]),
+  client_address_history: new Set([
+    'client_id','contact_type','additional_contact_id','address','country','living_situation','residential_status',
+    'start_date','end_date','is_current','months_at_address','notes',
+  ]),
+};
+
+function pickKnownColumns(dbTable: string, payload: Record<string, any>) {
+  const allowed = TABLE_COLUMNS[dbTable];
+  if (!allowed) return { ...payload };
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (allowed.has(key)) out[key] = value;
+  }
+  return out;
+}
+
+function normalizeRelationship(value: any) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Additional Contact';
+  const lower = raw.toLowerCase();
+  if (['co_applicant', 'co-applicant', 'co applicant'].includes(lower)) return 'Co-applicant';
+  if (lower === 'spouse') return 'Spouse / Partner';
+  if (lower === 'partner') return 'Spouse / Partner';
+  return raw;
+}
+
+async function syncClientRollups(supabase: any, clientId: string, dbTable: string, record: any) {
+  if (!record) return;
+
+  if (dbTable === 'client_address_history' && record.is_current !== false && record.contact_type !== 'secondary') {
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (record.address) patch.current_address = record.address;
+    if (record.country) patch.country = record.country;
+    if (record.living_situation) patch.living_situation = record.living_situation;
+    if (record.residential_status) patch.residential_status = record.residential_status;
+    await supabase.from('clients').update(patch).eq('id', clientId);
+  }
+
+  if (dbTable === 'client_additional_contacts') {
+    const relationship = String(record.relationship || '').toLowerCase();
+    if (relationship.includes('co-applicant') || relationship.includes('spouse') || relationship.includes('partner') || relationship === 'secondary') {
+      await supabase.from('clients').update({
+        secondary_first_name: record.first_name || null,
+        secondary_surname: record.surname || null,
+        secondary_email: record.email || null,
+        secondary_mobile: record.mobile || null,
+        secondary_dob: record.dob || null,
+        secondary_gender: record.gender || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', clientId);
+    }
+  }
+
+  if (dbTable === 'client_income_sources') {
+    const { data: incomeRows } = await supabase
+      .from('client_income_sources')
+      .select('gross_annual_amount, is_active')
+      .eq('client_id', clientId);
+    const annual = (incomeRows || [])
+      .filter((row: any) => row.is_active !== false)
+      .reduce((sum: number, row: any) => sum + Number(row.gross_annual_amount || 0), 0);
+    await supabase.from('clients').update({
+      total_monthly_income: Math.round((annual / 12) * 100) / 100,
+      updated_at: new Date().toISOString(),
+    }).eq('id', clientId);
+  }
+}
+
 function extractToken(headers: Headers, body?: any): string | null {
   return headers.get('x-finance-session-token')
     || body?.finance_session_token
@@ -73,6 +178,19 @@ function jsonResponse(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function notifyCommandCentreOfFinanceClient(supabase: any, input: { clientId: string; clientName: string; financeEmail: string | null }) {
+  try {
+    await supabase.from('notifications').insert({
+      type: 'info',
+      title: 'New finance portal client',
+      message: `${input.clientName} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
+      entity_id: input.clientId,
+    });
+  } catch (error) {
+    console.error('[finance-portal-client-data] command centre notification failed', error);
+  }
 }
 
 // client_income_sources stores annual amounts plus the raw input/frequency used
@@ -103,11 +221,8 @@ function normalizeIncomeSourceFields(input: Record<string, any>) {
 
 function normalizeAdditionalContactFields(input: Record<string, any>) {
   const out = { ...input };
-  if (out.relationship == null || String(out.relationship).trim() === '') {
-    out.relationship = 'Additional Contact';
-  }
+  out.relationship = normalizeRelationship(out.relationship);
   if (out.display_order == null || out.display_order === '') out.display_order = 1;
-  if (out.country == null || out.country === '') out.country = 'Australia';
   return out;
 }
 
@@ -318,6 +433,20 @@ Deno.serve(async (req) => {
         throw assignmentError;
       }
 
+      if (createdClient.current_address) {
+        const { error: addressSeedError } = await supabase.from('client_address_history').insert({
+          client_id: createdClient.id,
+          contact_type: 'primary',
+          address: createdClient.current_address,
+          country: createdClient.country || 'Australia',
+          is_current: true,
+          notes: 'Seeded from finance portal client intake',
+        });
+        if (addressSeedError) {
+          console.error('[finance-portal-client-data] address history seed failed', addressSeedError.message);
+        }
+      }
+
       await logClientActivity(supabase, {
         clientId: createdClient.id,
         activityType: 'client_created',
@@ -337,12 +466,19 @@ Deno.serve(async (req) => {
         },
       });
 
+      const createdClientName = extractPrimaryName(createdClient);
       await auditClientCreation(supabase, {
         portalUser,
         clientId: createdClient.id,
-        clientName: extractPrimaryName(createdClient),
+        clientName: createdClientName,
         intakeMethod: body?.intake_method || 'manual',
         ingestionFileName: body?.ingestion_file_name || null,
+      });
+
+      await notifyCommandCentreOfFinanceClient(supabase, {
+        clientId: createdClient.id,
+        clientName: createdClientName,
+        financeEmail: portalUser.email ?? null,
       });
 
       let ghlSync: { success: boolean; error?: string | null } = { success: false, error: null };
@@ -573,7 +709,7 @@ Deno.serve(async (req) => {
       if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
       if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
 
-      let insert = { ...(payload || {}), client_id };
+      let insert = pickKnownColumns(dbTable, { ...(payload || {}), client_id });
       if (dbTable === 'client_income_sources') insert = normalizeIncomeSourceFields(insert);
       if (dbTable === 'client_additional_contacts') insert = normalizeAdditionalContactFields(insert);
       let syncMeta: any = null;
@@ -584,6 +720,8 @@ Deno.serve(async (req) => {
       }
       const { data, error } = await supabase.from(dbTable).insert(insert).select().maybeSingle();
       if (error) throw error;
+
+      await syncClientRollups(supabase, client_id, dbTable, data);
 
       if (dbTable === 'client_notes' && data) {
         if (syncMeta?.shouldSupersedeExisting && syncMeta.existingId) {
@@ -652,7 +790,7 @@ Deno.serve(async (req) => {
       if (!record_id) return jsonResponse({ error: 'record_id required' }, 400);
       if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
 
-      let updates = { ...(payload || {}) };
+      let updates = pickKnownColumns(dbTable, { ...(payload || {}) });
       delete updates.id;
       delete updates.client_id;
 
@@ -688,6 +826,8 @@ Deno.serve(async (req) => {
         .select()
         .maybeSingle();
       if (error) throw error;
+
+      await syncClientRollups(supabase, client_id, dbTable, data);
 
       if (dbTable === 'client_notes' && data) {
         await logClientActivity(supabase, {

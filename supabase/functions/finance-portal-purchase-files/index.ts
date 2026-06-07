@@ -77,6 +77,24 @@ function emptyTodayBuckets() {
 }
 
 
+function mapPurchaseTypeToDealType(value: string | null | undefined) {
+  return value === 'house_and_land' ? 'house_and_land' : 'existing_property';
+}
+
+async function notifyCommandCentreOfPurchaseFile(supabase: any, input: { clientId: string; fileId: string; title: string; financeEmail: string | null }) {
+  try {
+    await supabase.from('notifications').insert({
+      type: 'info',
+      title: 'New finance portal purchase file',
+      message: `${input.title} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
+      entity_id: input.fileId,
+    });
+  } catch (error) {
+    console.error('[finance-portal-purchase-files] command centre notification failed', error);
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -92,7 +110,7 @@ Deno.serve(async (req) => {
 
     const { data: portalUser, error: puErr } = await supabase
       .from('finance_portal_users')
-      .select('id, email, is_active, revoked_at, session_expires_at, global_permissions')
+      .select('id, email, finance_contact_id, is_active, revoked_at, session_expires_at, global_permissions')
       .eq('session_token', sessionToken)
       .maybeSingle();
 
@@ -348,7 +366,53 @@ Deno.serve(async (req) => {
         .select()
         .single();
       if (error) return jsonResponse({ error: error.message }, 500);
-      return jsonResponse({ file: created });
+
+      let linkedDeal: any = null;
+      const { data: deal, error: dealError } = await supabase
+        .from('client_deals')
+        .insert({
+          client_id: clientId,
+          deal_type: mapPurchaseTypeToDealType(created.purchase_type),
+          current_stage: 'Finance Portal Purchase File Created',
+          current_stage_number: 1,
+          risk_status: created.risk_level === 'high' ? 'urgent' : created.risk_level === 'medium' ? 'needs_follow_up' : 'on_track',
+          total_contract_price: created.purchase_price || null,
+          loan_amount: created.purchase_price || null,
+          settlement_date: created.settlement_date || null,
+          finance_clause_expiry: created.finance_clause_date || null,
+          property_address: created.property_address || null,
+          finance_contact_id: portalUser.finance_contact_id || null,
+          purchase_file_id: created.id,
+          created_by: portalUser.id,
+          notes: `Created from Finance Portal purchase file: ${created.title}`,
+        })
+        .select()
+        .maybeSingle();
+
+      if (dealError) {
+        console.error('[finance-portal-purchase-files] command centre deal mirror failed', dealError.message);
+      } else if (deal) {
+        linkedDeal = deal;
+        await supabase.from('purchase_files').update({ client_deal_id: deal.id }).eq('id', created.id);
+        await supabase.from('purchase_file_deal_link_audit').insert({
+          purchase_file_id: created.id,
+          client_deal_id: deal.id,
+          client_id: clientId,
+          action: 'linked',
+          source: 'system',
+          actor_user_id: portalUser.id,
+          note: 'Automatically mirrored when finance partner created purchase file',
+        });
+      }
+
+      await notifyCommandCentreOfPurchaseFile(supabase, {
+        clientId,
+        fileId: created.id,
+        title: created.title,
+        financeEmail: portalUser.email ?? null,
+      });
+
+      return jsonResponse({ file: { ...created, client_deal_id: linkedDeal?.id || created.client_deal_id || null }, linked_deal: linkedDeal });
     }
 
     // ─── Update file ───

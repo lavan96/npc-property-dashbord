@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     if (!operation) return json({ error: 'operation required' }, 400);
 
     const token =
-      req.headers.get('x-finance-session-token') || body.finance_session_token || null;
+      req.headers.get('x-finance-session-token') || req.headers.get('x-session-token') || body.finance_session_token || body.session_token || null;
     if (!token) return json({ error: 'Finance session token required' }, 401);
 
     const { data: portalUser } = await supabase

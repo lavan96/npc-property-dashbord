@@ -49,17 +49,18 @@ export function GHLExportDialog({
   onExported,
 }: GHLExportDialogProps) {
   const [mapping, setMapping] = useState<GHLHeaderMapping>(() => createDefaultGHLMapping(fields));
-  const [includeUnmapped, setIncludeUnmapped] = useState(true);
+  const [includeUnmapped, setIncludeUnmapped] = useState(false);
 
   useEffect(() => {
     if (open) {
       setMapping(createDefaultGHLMapping(fields));
+      setIncludeUnmapped(false);
     }
   }, [fields, open]);
 
-  const mappedHeaders = useMemo(
-    () => GHL_HEADER_OPTIONS.filter((option) => mapping[option.key] !== UNMAPPED_FIELD).map((option) => option.label),
-    [mapping],
+  const previewHeaders = useMemo(
+    () => buildGHLExportRows({ fields, records: [], mapping, includeUnmapped }).headers,
+    [fields, includeUnmapped, mapping],
   );
 
   const handleExport = (format: 'csv' | 'xlsx') => {
@@ -86,7 +87,7 @@ export function GHLExportDialog({
 
         <div className="space-y-5">
           <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-            {records.length} row{records.length === 1 ? '' : 's'} will be exported with your selected GHL header mapping.
+            {records.length} client row{records.length === 1 ? '' : 's'} and {previewHeaders.length} column{previewHeaders.length === 1 ? '' : 's'} will be exported with your selected column mapping.
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -123,8 +124,8 @@ export function GHLExportDialog({
               onCheckedChange={(checked) => setIncludeUnmapped(checked === true)}
             />
             <div className="space-y-0.5">
-              <Label htmlFor="include-unmapped-fields">Include all other fields after the mapped GHL columns</Label>
-              <p className="text-sm text-muted-foreground">Useful when you want Excel review columns preserved for manual mapping during import.</p>
+              <Label htmlFor="include-unmapped-fields">Include all other fields after the mapped columns</Label>
+              <p className="text-sm text-muted-foreground">Turn this on only if you want additional source columns appended to the export.</p>
             </div>
           </div>
 
@@ -133,7 +134,7 @@ export function GHLExportDialog({
           <div className="space-y-2">
             <Label>Export preview headers</Label>
             <div className="flex flex-wrap gap-2">
-              {mappedHeaders.map((header) => (
+              {previewHeaders.map((header) => (
                 <span key={header} className="rounded-md border bg-background px-2 py-1 text-xs text-foreground">
                   {header}
                 </span>

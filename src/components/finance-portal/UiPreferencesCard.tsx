@@ -101,7 +101,6 @@ export function UiPreferencesCard() {
                     <SelectItem value="purchase-files">Active Purchase Files</SelectItem>
                     <SelectItem value="pipeline">Pipeline Kanban</SelectItem>
                     <SelectItem value="client-inbox">Client Inbox</SelectItem>
-                    <SelectItem value="mobile">Mobile cockpit</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -129,7 +128,7 @@ export function UiPreferencesCard() {
             <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <div>
                 <Label className="text-sm">Mobile-optimised UI</Label>
-                <p className="text-xs text-muted-foreground">Always start the mobile cockpit when opening on phone.</p>
+                <p className="text-xs text-muted-foreground">Use compact, touch-friendly spacing when opening on phone.</p>
               </div>
               <Switch checked={mobileFlag} onCheckedChange={setMobileFlag} />
             </div>
