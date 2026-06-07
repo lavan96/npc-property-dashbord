@@ -2016,6 +2016,13 @@ export function StrategyScenarioModeling({
         </Collapsible>
       </Card>
 
+      {/* Audit-fix #1 — Suggested one-click solutions ranked by uplift */}
+      <SolutionOptionCards
+        context={scenarioContext}
+        onApply={handleApplySolution}
+        formatCurrency={formatCurrency}
+      />
+
       {/* ═══ LEVERS 5-10: Additional Strategy Levers ═══ */}
       <AdditionalStrategyLevers
         strategy={strategy.additional}
