@@ -2921,6 +2921,7 @@ export default function TemplateBuilderEdit() {
         templateName={name}
         sampleData={sampleData}
         customCss={customCss || undefined}
+        onTemplateChange={(next) => setTemplate(next)}
       />
       {id && (
         <ShareLinksDialog
