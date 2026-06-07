@@ -498,6 +498,15 @@ export function BorrowingCapacityModal({
     0
   );
 
+  const totalDebtBalances = useMemo(() => {
+    const liabilityDebt = liabilitiesBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
+    const propertyDebt = (clientData?.properties || []).reduce(
+      (sum: number, prop: any) => sum + (Number(prop.loan_remaining) || 0),
+      0,
+    );
+    return liabilityDebt + propertyDebt;
+  }, [liabilitiesBreakdown, clientData?.properties]);
+
   // Calculate HEM benchmark with breakdown
   const isCouple = clientData?.client?.marital_status === 'married' || 
                    clientData?.client?.marital_status === 'de_facto' ||
@@ -723,11 +732,45 @@ export function BorrowingCapacityModal({
     }
   }, [pendingChanges, clientId, queryClient, refetchClientData]);
 
-  // When an active scenario is set, overlay its adjusted inputs
-  const effectiveGrossIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.grossAnnualIncome : totalGrossIncome;
-  const effectiveShadedIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.shadedAnnualIncome : totalShadedIncome;
-  const effectiveExpensesForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyLivingExpenses : effectiveExpenses;
-  const effectiveCommitmentsForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyCommitments : totalMonthlyCommitments;
+  const baseCalculatorInputs = useMemo<BorrowingCapacityInput>(() => ({
+    grossAnnualIncome: totalGrossIncome,
+    shadedAnnualIncome: totalShadedIncome,
+    monthlyLivingExpenses: effectiveExpenses,
+    monthlyCommitments: totalMonthlyCommitments,
+    interestRate,
+    bufferRate: effectiveBufferRate,
+    loanTermYears,
+    totalDebtBalances,
+    calculationMode,
+    dtiCapEnabled,
+    dtiCapLimit,
+  }), [
+    totalGrossIncome,
+    totalShadedIncome,
+    effectiveExpenses,
+    totalMonthlyCommitments,
+    interestRate,
+    effectiveBufferRate,
+    loanTermYears,
+    totalDebtBalances,
+    calculationMode,
+    dtiCapEnabled,
+    dtiCapLimit,
+  ]);
+
+  // When an active scenario is set, overlay the full adjusted input snapshot.
+  const activeCalculatorInputs = activeScenario?.adjustedInputs;
+  const effectiveGrossIncomeForCalc = activeCalculatorInputs?.grossAnnualIncome ?? baseCalculatorInputs.grossAnnualIncome;
+  const effectiveShadedIncomeForCalc = activeCalculatorInputs?.shadedAnnualIncome ?? baseCalculatorInputs.shadedAnnualIncome;
+  const effectiveExpensesForCalc = activeCalculatorInputs?.monthlyLivingExpenses ?? baseCalculatorInputs.monthlyLivingExpenses;
+  const effectiveCommitmentsForCalc = activeCalculatorInputs?.monthlyCommitments ?? baseCalculatorInputs.monthlyCommitments;
+  const effectiveInterestRateForCalc = activeCalculatorInputs?.interestRate ?? baseCalculatorInputs.interestRate;
+  const effectiveBufferRateForCalc = activeCalculatorInputs?.bufferRate ?? baseCalculatorInputs.bufferRate;
+  const effectiveLoanTermYearsForCalc = activeCalculatorInputs?.loanTermYears ?? baseCalculatorInputs.loanTermYears;
+  const effectiveTotalDebtBalancesForCalc = activeCalculatorInputs?.totalDebtBalances ?? baseCalculatorInputs.totalDebtBalances;
+  const effectiveCalculationModeForCalc = activeCalculatorInputs?.calculationMode ?? baseCalculatorInputs.calculationMode;
+  const effectiveDtiCapEnabledForCalc = activeCalculatorInputs?.dtiCapEnabled ?? baseCalculatorInputs.dtiCapEnabled;
+  const effectiveDtiCapLimitForCalc = activeCalculatorInputs?.dtiCapLimit ?? baseCalculatorInputs.dtiCapLimit;
 
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
@@ -746,13 +789,14 @@ export function BorrowingCapacityModal({
         shadedAnnualIncome: effectiveShadedIncomeForCalc,
         livingExpenses: effectiveExpensesForCalc,
         existingCommitments: effectiveCommitmentsForCalc,
-        interestRate,
-        bufferRate: effectiveBufferRate,
-        loanTermYears,
+        interestRate: effectiveInterestRateForCalc,
+        bufferRate: effectiveBufferRateForCalc,
+        loanTermYears: effectiveLoanTermYearsForCalc,
         proposedLoanAmount,
-        calculationMode,
-        dtiCapEnabled,
-        dtiCapLimit,
+        calculationMode: effectiveCalculationModeForCalc,
+        dtiCapEnabled: effectiveDtiCapEnabledForCalc,
+        dtiCapLimit: effectiveDtiCapLimitForCalc,
+        totalDebtBalances: effectiveTotalDebtBalancesForCalc,
         selectedLenderName: selectedLenderName || undefined,
         ...lmiOverrides,
       });
@@ -762,14 +806,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
+  }, [open, clientData, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveLoanTermYearsForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, selectedLenderName, effectiveBufferRateForCalc, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario, handleCalculate]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -798,17 +842,18 @@ export function BorrowingCapacityModal({
           variant="outline"
           onClick={() => {
             calculate({
-              grossAnnualIncome: totalGrossIncome,
-              shadedAnnualIncome: totalShadedIncome,
-              livingExpenses: effectiveExpenses,
-              existingCommitments: totalMonthlyCommitments,
-              interestRate,
-              bufferRate: effectiveBufferRate,
-              loanTermYears,
+              grossAnnualIncome: effectiveGrossIncomeForCalc,
+              shadedAnnualIncome: effectiveShadedIncomeForCalc,
+              livingExpenses: effectiveExpensesForCalc,
+              existingCommitments: effectiveCommitmentsForCalc,
+              interestRate: effectiveInterestRateForCalc,
+              bufferRate: effectiveBufferRateForCalc,
+              loanTermYears: effectiveLoanTermYearsForCalc,
               proposedLoanAmount,
-              calculationMode,
-              dtiCapEnabled,
-              dtiCapLimit,
+              calculationMode: effectiveCalculationModeForCalc,
+              dtiCapEnabled: effectiveDtiCapEnabledForCalc,
+              dtiCapLimit: effectiveDtiCapLimitForCalc,
+              totalDebtBalances: effectiveTotalDebtBalancesForCalc,
               selectedLenderName: selectedLenderName || undefined,
               ...(lmiMode !== 'none' && lmiEstimate ? {
                 lmiAmount: lmiEstimate.lmiAmount,
@@ -817,9 +862,9 @@ export function BorrowingCapacityModal({
                 lmiDepositAmount,
                 isFirstHomeBuyer,
               } : {}),
-              ...(proposedRentalIncome.inputAmount > 0 ? { proposedRentalIncome } : {}),
+              ...(proposedRentalIncome.inputAmount > 0 && !activeScenario ? { proposedRentalIncome } : {}),
             });
-            toast.success('Assessment saved');
+            toast.success(activeScenario ? `Scenario "${activeScenario.name}" saved as the current assessment` : 'Assessment saved');
           }}
           disabled={isLocalCalculating || isCalculating || !result}
           size="sm"
@@ -856,12 +901,16 @@ export function BorrowingCapacityModal({
         className="h-6 text-xs px-2"
         onClick={() => {
           setActiveScenario(null);
-          // Revert to base preset values if available
+          // Revert the full calculator control surface to the current base snapshot.
           const basePreset = scenarioPresets.find(p => p.isBase);
-          if (basePreset) {
-            setInterestRate(basePreset.adjustedInputs.interestRate);
-            setLoanTermYears(basePreset.adjustedInputs.loanTermYears);
-          }
+          const baseInputs = basePreset?.adjustedInputs ?? baseCalculatorInputs;
+          setInterestRate(baseInputs.interestRate);
+          setLoanTermYears(baseInputs.loanTermYears);
+          setBufferEnabled((baseInputs.bufferRate ?? 0) > 0);
+          setCalculationMode(baseInputs.calculationMode ?? 'bank');
+          setDtiCapEnabled(!!baseInputs.dtiCapEnabled);
+          setDtiCapLimit(baseInputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
+          if (basePreset) setResult(basePreset.result as FullAssessmentResult);
           toast.info('Reverted to base case');
         }}
       >
@@ -1161,15 +1210,7 @@ export function BorrowingCapacityModal({
               <StrategyScenarioModeling
                 clientId={clientId}
                 clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
-                baseInputs={{
-                  grossAnnualIncome: totalGrossIncome,
-                  shadedAnnualIncome: totalShadedIncome,
-                  monthlyLivingExpenses: effectiveExpenses,
-                  monthlyCommitments: totalMonthlyCommitments,
-                  interestRate,
-                  bufferRate: effectiveBufferRate,
-                  loanTermYears,
-                }}
+                baseInputs={baseCalculatorInputs}
                 baseResult={result}
                 liabilities={liabilitiesBreakdown.map(l => ({
                   id: l.id,
@@ -1213,9 +1254,14 @@ export function BorrowingCapacityModal({
                   };
                   setActiveScenario(scenarioPreset);
                   setResult(scenarioPreset.result as FullAssessmentResult);
-                  // Apply the scenario values to calculator state
+                  // Apply the full scenario control surface to calculator state;
+                  // income/expense/commitment/debt overlays come from activeScenario.adjustedInputs.
                   setInterestRate(inputs.interestRate);
                   setLoanTermYears(inputs.loanTermYears);
+                  setBufferEnabled((inputs.bufferRate ?? 0) > 0);
+                  setCalculationMode(inputs.calculationMode ?? 'bank');
+                  setDtiCapEnabled(!!inputs.dtiCapEnabled);
+                  setDtiCapLimit(inputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
                   // Switch to calculator tab to show the result
                   setActiveTab('calculator');
                   toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);

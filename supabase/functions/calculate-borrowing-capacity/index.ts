@@ -1510,6 +1510,10 @@ Deno.serve(async (req) => {
       return sum + (Number(p.loan_remaining) || 0);
     }, 0);
     let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0) + propertyDebtBalances;
+    if (overrides?.totalDebtBalances != null && Number.isFinite(Number(overrides.totalDebtBalances))) {
+      totalDebtBalances = Math.max(0, Number(overrides.totalDebtBalances));
+      console.log(`[calculate-borrowing-capacity] Total debt balances overridden for scenario: $${totalDebtBalances}`);
+    }
     console.log(`[calculate-borrowing-capacity] Total debt balances for DTI: $${totalDebtBalances}`);
 
     // Phase I11 — APS 220 denominator binding is ON by default in base path.

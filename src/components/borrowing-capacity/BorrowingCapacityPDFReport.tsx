@@ -67,6 +67,16 @@ const bandLabel = (band: string): string => {
 const formatLabel = (s: string): string =>
   s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+const formatScenarioDelta = (delta: any): string => {
+  const label = delta?.label || formatLabel(delta?.type || 'Scenario adjustment');
+  const value = Number(delta?.value);
+  const unit = delta?.unit === 'percent' ? '%' : delta?.unit === 'ratio' ? 'x' : '';
+  const valueText = Number.isFinite(value)
+    ? ` (${delta.unit === 'absolute' ? fmt(value) : `${value}${unit}`})`
+    : '';
+  return `${label}${valueText}`;
+};
+
 function setColor(doc: jsPDF, c: RGB) {
   doc.setTextColor(c.r, c.g, c.b);
 }
@@ -1141,6 +1151,43 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
           doc.text(`Adjustments: ${diffs.join(' · ')}`, MARGIN + 4, sy - 2);
           sy += 5;
         }
+      }
+
+      const scenarioDetails: string[] = [];
+      if (Array.isArray(sc.scenarioDeltas) && sc.scenarioDeltas.length > 0) {
+        scenarioDetails.push(`Strategy actions: ${sc.scenarioDeltas.slice(0, 5).map(formatScenarioDelta).join(' · ')}${sc.scenarioDeltas.length > 5 ? ' · …' : ''}`);
+      }
+      if (sc.acquisitionCapacity) {
+        const acq = sc.acquisitionCapacity;
+        scenarioDetails.push(`Purchase power: max ${fmt(acq.maxPurchasePrice || 0)}${acq.targetPurchasePrice ? `; target ${fmt(acq.targetPurchasePrice)} ${acq.meetsTarget ? 'met' : `short by ${fmt(acq.shortfallToTarget || 0)}`}` : ''}.`);
+      }
+      const pools = sc.capitalLedger?.pools ? Object.values(sc.capitalLedger.pools) as any[] : [];
+      const sourceTotal = pools.reduce((sum, pool) => sum + (Number(pool.totalIn) || 0), 0);
+      const sinkTotal = pools.reduce((sum, pool) => sum + (Number(pool.totalOut) || 0), 0);
+      if (sourceTotal > 0 || sinkTotal > 0) {
+        scenarioDetails.push(`Capital flow: ${fmt(sourceTotal)} sourced; ${fmt(sinkTotal)} allocated; ${fmt(Math.max(0, sourceTotal - sinkTotal))} remaining.`);
+        const sinkNotes = pools.flatMap(pool => (pool.sinks || []).flatMap((sink: any) => sink.notes || [])).slice(0, 3);
+        sinkNotes.forEach(note => scenarioDetails.push(`Capital note: ${note}`));
+      }
+      const policyIssues = Array.isArray(sc.validationIssues)
+        ? sc.validationIssues.filter((issue: any) => issue?.severity === 'warning' || issue?.severity === 'error').slice(0, 4)
+        : [];
+      policyIssues.forEach((issue: any) => {
+        scenarioDetails.push(`${String(issue.severity || 'note').toUpperCase()}: ${issue.message}`);
+      });
+
+      if (scenarioDetails.length > 0) {
+        sy = checkPageBreak(doc, sy, 8 + scenarioDetails.length * 5, pageNum);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        setColor(doc, BODY_TEXT);
+        scenarioDetails.forEach((line) => {
+          const wrapped = doc.splitTextToSize(`• ${line}`, CONTENT_W - 8);
+          sy = checkPageBreak(doc, sy, wrapped.length * 4 + 2, pageNum);
+          doc.text(wrapped, MARGIN + 4, sy);
+          sy += wrapped.length * 4 + 1;
+        });
+        sy += 2;
       }
     }
 

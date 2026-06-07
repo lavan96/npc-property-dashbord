@@ -227,7 +227,8 @@ export interface DeltaValidationIssue {
 
 /** Validate deltas against the available context. Surfaces unknown
  *  property/liability IDs (AI hallucination guard) and obviously broken
- *  numeric inputs. Engine still runs — these are informational. */
+ *  numeric inputs. Callers should block save/apply/export when any issue
+ *  has severity "error"; preview math still runs on safe deltas only. */
 export function validateDeltas(
   deltas: ScenarioDelta[],
   context: ScenarioContext,
@@ -251,7 +252,7 @@ export function validateDeltas(
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
-            severity: 'warning',
+            severity: 'error',
             message: `Property "${d.id}" not found in client portfolio — delta ignored`,
           });
         }
@@ -307,7 +308,7 @@ export function validateDeltas(
               issues.push({
                 deltaId: d.id,
                 deltaType: d.type,
-                severity: 'warning',
+                severity: 'error',
                 message: `Pool member "${pid}" not in portfolio — excluded from blended LVR`,
               });
             }
@@ -329,7 +330,7 @@ export function validateDeltas(
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
-            severity: 'warning',
+            severity: 'error',
             message: `Liability "${d.id}" not found — delta ignored`,
           });
         }
