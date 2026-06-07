@@ -188,7 +188,7 @@ interface StrategyScenarioModelingProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
+  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number, preset?: ScenarioPreset) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
   /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
@@ -243,7 +243,7 @@ export function StrategyScenarioModeling({
   hemBenchmark,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
-  const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
+  const [acquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
 
   // Audit-fix #5 — Auto-route net sale proceeds into the Capital Flow Canvas
@@ -295,6 +295,10 @@ export function StrategyScenarioModeling({
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+
+  useEffect(() => {
+    if (externalPresets) setPresets(externalPresets);
+  }, [externalPresets]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
     refinance: true,
