@@ -137,6 +137,7 @@ export function PropertiesInspector({
               onMoveBlock={onMoveBlock}
               onDeleteBlock={onDeleteBlock}
               onDuplicateBlock={onDuplicateBlock}
+              onUpdateTemplate={onUpdateTemplate}
             />
           )
         )}
@@ -404,6 +405,7 @@ function PageEditor({
   onMoveBlock,
   onDeleteBlock,
   onDuplicateBlock,
+  onUpdateTemplate,
 }: {
   template: ReportTemplate;
   page: Page;
@@ -412,6 +414,7 @@ function PageEditor({
   onMoveBlock?: (id: string, dir: -1 | 1) => void;
   onDeleteBlock?: (id: string) => void;
   onDuplicateBlock?: (id: string) => void;
+  onUpdateTemplate?: (t: ReportTemplate) => void;
 }) {
   const [bgImageUrl, setBgImageUrl] = useState(String(page.background?.imageUrl ?? ''));
   useEffect(() => { setBgImageUrl(String(page.background?.imageUrl ?? '')); }, [page.id]);
@@ -428,6 +431,21 @@ function PageEditor({
         height={page.size.height}
         onChange={(size) => onChange({ ...page, size: { ...page.size, ...size } })}
       />
+      {onUpdateTemplate && (
+        <>
+          <Separator />
+          <PalettePresets
+            colors={(template.tokens?.colors as Record<string, string>) || {}}
+            onChange={(nextColors) =>
+              onUpdateTemplate({
+                ...template,
+                tokens: { ...template.tokens, colors: nextColors },
+              })
+            }
+          />
+          <Separator />
+        </>
+      )}
       <EnhancedColorPicker
         label="Background color"
         template={template}
