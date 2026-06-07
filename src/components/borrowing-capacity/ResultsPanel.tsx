@@ -191,6 +191,12 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
     );
   }
 
+  const recommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
+  const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+  const stressTestedCapacity = typeof result.stressTestedCapacity === 'number'
+    ? result.stressTestedCapacity
+    : result.borrowingCapacity;
+
   const bandConfig = getBandConfig(result.serviceabilityBand);
   const BandIcon = bandConfig.icon;
   const capacityProgress = Math.min(100, (Math.max(0, result.borrowingCapacity) / 1500000) * 100);
@@ -320,7 +326,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             />
           </div>
           <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-            <span>Stress-tested: {formatCurrency(result.stressTestedCapacity)}</span>
+            <span>Stress-tested: {formatCurrency(stressTestedCapacity)}</span>
             {floorActive && (
               <span className="text-xs">Engine lendable: {formatCurrency(result.borrowingCapacity)}</span>
             )}
@@ -580,7 +586,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         <Separator />
 
         {/* Recommendations */}
-        {result.recommendations.length > 0 && (
+        {recommendations.length > 0 && (
           <Collapsible open={showRecommendations} onOpenChange={setShowRecommendations}>
             <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
               <div className="flex items-center gap-2">
@@ -590,7 +596,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               <ChevronDown className={`h-4 w-4 transition-transform ${showRecommendations ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 space-y-2">
-              {result.recommendations.map((rec, i) => (
+              {recommendations.map((rec, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
                   <CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />
                   <span>{rec}</span>
@@ -601,13 +607,13 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         )}
 
         {/* Warnings */}
-        {result.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <span className="text-sm font-medium">Warnings</span>
             </div>
-            {result.warnings.map((warning, i) => (
+            {warnings.map((warning, i) => (
               <div key={i} className="flex items-start gap-2 text-sm text-warning">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{warning}</span>

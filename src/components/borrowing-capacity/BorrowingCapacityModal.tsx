@@ -1252,8 +1252,32 @@ export function BorrowingCapacityModal({
                     result: result!,
                     accessibleEquity: accessibleEquity ?? 0,
                   };
-                  setActiveScenario(scenarioPreset);
-                  setResult(scenarioPreset.result as FullAssessmentResult);
+                  const scenarioResult = scenarioPreset.result;
+                  const appliedResult: FullAssessmentResult = {
+                    ...result!,
+                    ...scenarioResult,
+                    grossAnnualIncome: inputs.grossAnnualIncome,
+                    shadedAnnualIncome: inputs.shadedAnnualIncome,
+                    livingExpensesMonthly: inputs.monthlyLivingExpenses,
+                    existingCommitmentsMonthly: inputs.monthlyCommitments,
+                    interestRate: inputs.interestRate,
+                    bufferRate: inputs.bufferRate,
+                    loanTermYears: inputs.loanTermYears,
+                    recommendations: Array.isArray(scenarioResult.recommendations)
+                      ? scenarioResult.recommendations
+                      : (result?.recommendations ?? []),
+                    warnings: Array.isArray(scenarioResult.warnings)
+                      ? scenarioResult.warnings
+                      : (result?.warnings ?? []),
+                    stressTestedCapacity: typeof scenarioResult.stressTestedCapacity === 'number'
+                      ? scenarioResult.stressTestedCapacity
+                      : (result?.stressTestedCapacity ?? scenarioResult.borrowingCapacity),
+                  };
+                  setActiveScenario({
+                    ...scenarioPreset,
+                    result: appliedResult,
+                  });
+                  setResult(appliedResult);
                   // Apply the full scenario control surface to calculator state;
                   // income/expense/commitment/debt overlays come from activeScenario.adjustedInputs.
                   setInterestRate(inputs.interestRate);
