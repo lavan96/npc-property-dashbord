@@ -1,85 +1,65 @@
-## Template Design Agent — Full Upgrade
+# Finance Portal Audit — Execution Plan
 
-### The creative angle: "Design Brief" pipeline
+Decisions captured from your answers:
+- **Notes (#2)**: per-note visibility picker (Internal / Client / Finance / All), no default.
+- **Messages (#4 v2)**: multi-target composer (Client, Finance Partner, Both, Internal note).
+- **Client Inbox (#14)**: "cleanest + most optimized" — I'll build a unified per-client thread (chronological, channel chips for SMS/WhatsApp/Email/Portal/Note) **plus** a cross-client filterable list with unread/channel filters and a detail pane.
+- **Lender Intelligence (#15)**: pull live lender + rate data from CC's lenders/bank rates tables; **remove Playbooks**.
 
-Instead of asking one model to turn a screenshot into block-ops in a single shot (which is why everything except `replace_page` fails today), we split it into three visible stages the user can see, edit, and re-roll:
+---
 
-```text
-┌──────────────┐   ┌────────────────┐   ┌─────────────────┐   ┌──────────────┐
-│  Reference   │──▶│ 1. Vision      │──▶│ 2. Token Map +  │──▶│ 3. Layout    │
-│  image       │   │    Analysis    │   │   Contrast      │   │   Synthesis  │
-│              │   │  (GPT-5)       │   │   Guard         │   │  (GPT-5)     │
-└──────────────┘   └────────────────┘   └─────────────────┘   └──────────────┘
-                          │                                            │
-                          ▼                                            ▼
-                   Design Brief card                          Side-by-side diff
-                   in chat (editable)                         (ref ↔ rendered)
-                                                              + "Re-roll layout"
-```
+## Phase 1 — Quick removals & renames (low risk, fast wins)
+| # | Change |
+|---|---|
+| 3 | Remove **Assessment History** block from Finance Portal Borrowing Capacity tab. |
+| 6 | Rename CC client "Activity" tab → **"Activity / Documents"**. |
+| 15b | Delete **Playbooks** component + `LenderPlaybookCard` references. |
+| 16 | Delete **Forecasting** route, sidebar item, and `/finance/forecasting` page (keep edge fn for now — used by daily-engagement goals). |
+| 17 | Delete **Mobile Cockpit** route `/finance/mobile`, sidebar item, ScanToUpload/VoiceMemo standalone entries; keep voice memo invokable from QuickAddFab if you want — confirm during execution. |
 
-Why this works:
-- The hard parts (visual perception, palette extraction) are isolated in stage 1.
-- Stage 2 is deterministic code — no model gets to invent off-brand colors.
-- Stage 3 only has to do *layout*, with a clean brief instead of pixels.
-- The brief is reusable: "Re-roll layout" keeps the brief, regenerates page only.
+## Phase 2 — Bug fixes (broken interactions blocking workflow)
+| # | Fix |
+|---|---|
+| 8 / v2-8 | Secondary contact creation: capture & surface real error, then fix sync to `clients`/finance/client portals. |
+| 9 | Messages tab "invalid session" — finance portal token not being attached on the per-client messages route. |
+| 10 | New Purchase File creation failing — capture validation/edge errors, fix mandatory-field handling, surface destination in CC. |
+| 11 | Pipeline Kanban refresh → blank/black screen, DnD broken. Fix `finance-portal-pipeline kanban_board` empty-state + DnD handlers, link refresh button. |
+| 12 | New client creation (Finance Portal): fix internal error; on success notify CC + create matching `clients` row with `source = 'finance_portal'`. |
+| 5 / v2-5 | Income tab save error in Finance Portal + dropdown/UI parity with CC; bidirectional sync via `client_employment` (single source of truth). |
 
-### Stages in detail
+## Phase 3 — Tri-portal sync foundations
+| # | Change |
+|---|---|
+| 1 | Notifications: ensure all three portals subscribe to the same `notifications` channel(s); add missing trigger types (`message_sent`, `note_added`, `purchase_file_created`, etc.) to `notifications_type_check`; verify all relevant tables are in `supabase_realtime` publication. |
+| 7 / v2-7 | Address 3-way sync: `purchase_files.property_address` ↔ `clients.address_*` ↔ client portal personal tab; surface latest address on CC Personal tab + Finance Portal Pipeline Kanban cards. |
 
-**1. Vision Analysis (GPT-5, `openai/gpt-5`)**
-- Single tool-call → `DesignBrief` JSON:
-  - `palette`: 4–6 hex colors with role labels (`bg`, `surface`, `text`, `accent`, `muted`)
-  - `typography`: `{heading: 'serif|sans|display', body: 'sans|serif', vibe: 'editorial|brutalist|minimal|maximalist'}`
-  - `layout`: `{grid: '12col', density: 'sparse|balanced|dense', sections: [{type, role, span, notes}]}`
-  - `content`: extracted headlines, body copy, label text
-  - `motifs`: `['large_hero', 'pill_badges', 'gradient_panel', ...]`
-- Rendered in chat as a **Design Brief card** (palette swatches, type sample, section outline). User can tweak palette/vibe before stage 3.
+## Phase 4 — Notes & Messages overhaul
+| # | Change |
+|---|---|
+| 2 | CC notes get a **visibility picker** chip (Internal / Client / Finance / All). Default = unselected (forces choice). Backend: extend `client_notes.visibility` enum + RLS-style filtering in the read edge fns for client-portal and finance-portal. |
+| 4 / v2-4 | Unified message composer in CC: target chips (Client / Finance / Both / Internal). Single send fans out to `client_portal_messages` and/or `finance_portal_thread_messages`. Fix "invalid session" on Finance Portal side (token resolver). Fix client-portal compose UI not persisting (state reset on send). Wire notifications + bell icon for outbound. |
 
-**2. Token Map + Contrast Guard (pure TS, no model)**
-- For each brief color, find nearest token in `template.tokens.colors` using ΔE2000 (perceptual distance).
-- If user opts into "use exact palette", inject brief colors as ad-hoc tokens (`brief.bg`, etc.) instead.
-- **Contrast guard**: for every (fg, bg) pair the layout will use, compute WCAG contrast ratio. If < 4.5, auto-swap fg to nearest token that passes. Log every swap to the chat.
+## Phase 5 — Client Inbox revamp (#14)
+- **Per-client thread**: chronological merge of SMS / WhatsApp / Email / Portal / Internal-note rows with channel chips, unread badge, reply composer pre-selecting last channel.
+- **Cross-client `/finance/client-inbox`**: left rail = clients ordered by last activity, channel filters (All/SMS/WA/Email/Portal), unread toggle, search. Right pane = the per-client thread.
+- Data: aggregate from `finance_outbound_messages`, `client_portal_messages`, `finance_portal_thread_messages`, GHL conversation cache (already mirrored).
 
-**3. Layout Synthesis (GPT-5)**
-- Input: brief + tokens + page size + available block types.
-- Tool: `replace_page` only — emits a complete page with blocks bound to **token paths** (`{{tokens.colors.surface}}`), never raw hex.
-- Constrained system prompt: "You MUST reference colors via token paths. You MUST use a 12-col grid (60pt gutter). Block coordinates must respect page padding."
+## Phase 6 — Lender Intelligence rebuild (#15) + Export UX (#13)
+- **Lender Intelligence**: replace stub with a comparison table sourced from `lenders` + `bank_lending_rates` (already in CC). Inputs: loan amount, LVR, product type → ranked list with rate, comparison rate, fees, turnaround (from `lender_submissions` aggregate). Remove Playbooks card entirely.
+- **#13 Export UX**: rename "Export finance portal clients for GHL" → "Export Clients (CSV)". Replace per-field dropdowns with **fixed labelled checkboxes** (First name, Last name, Email, Phone, Tags, Source). Live row-count + column-count updates on toggle. CSV writer honours selected columns only.
 
-**4. Side-by-side diff**
-- After ops apply, render the new page to a 600px thumbnail (reuse `renderTemplateToDataUrl` on a 1-page extract).
-- Chat bubble shows: `[reference image] ↔ [rendered thumbnail]` with a **Re-roll layout** and **Edit brief** button.
+---
 
-### Other improvements bundled in
+## Technical scaffolding
+- Migrations: `client_notes.visibility` enum widen; `notifications_type_check` add types; `purchase_files.property_address` propagation trigger; ensure realtime publication coverage.
+- Edge fn touches: `finance-portal-messages`, `finance-portal-client-comms`, `client-portal-messages`, `manage-clients`, `manage-client-employment`, `finance-portal-pipeline`, `finance-portal-lender-intelligence`, `finance-portal-borrowing`, `finance-portal-batch6/7/9-10`, plus new `finance-portal-unified-inbox` aggregator.
+- Frontend touches (~25 files): sidebar/router, BorrowingCapacityTab, NotesPanel + composer, MessagesThread + composer, ClientInbox, LenderIntelligence page, ExportDialog, KanbanBoard, ClientCreateDialog, SecondaryContactDialog, IncomeTab, NewPurchaseFileDialog, ClientDetailsModal tab labels.
 
-- **Default mode change**: when a reference image is attached, default to the brief pipeline (replace page). Text-only edits keep the lightweight ops path.
-- **Streaming progress**: show `Analysing image…` → `Mapping palette…` → `Synthesising layout…` in chat as each stage completes.
-- **Brief persistence**: store last brief on the template (`metadata.last_design_brief`) so "Re-roll layout" doesn't re-call vision model.
-- **Model badge** in agent header: `Vision: GPT-5 · Layout: GPT-5`.
+## Out of scope (flagging now)
+- v2-7 mentions Kanban should populate **address**: I'll add it to the card render, but the data root is the existing `purchase_files.property_address`.
+- Voice memo persistence (#17 partial): being removed with Mobile Cockpit anyway.
 
-### Technical changes
+## Delivery order
+I'll commit per phase so each is reviewable. Phases 1–2 first (fastest visible wins + unblockers), then 3, then 4, then 5, then 6. After phase 1 lands, I'll proceed straight into phase 2 unless you stop me.
 
-**Edge function `template-design-agent`**
-- New op router: `mode: 'brief' | 'ops' | 'text'`.
-- New helpers (`_shared/designBrief.ts`):
-  - `analyzeReferenceImage(imageDataUrl) → DesignBrief` (calls `openai/gpt-5` via AI Gateway, tool-call enforced)
-  - `mapBriefToTokens(brief, templateTokens) → {tokens, swaps[]}` (ΔE2000 + WCAG)
-  - `synthesizePage(brief, tokens, pageSize) → ReplacePageOp` (calls `openai/gpt-5`, token-binding-only system prompt)
-- Replace current `tool_choice: 'required'` Gemini call with the staged pipeline when image is present.
-
-**Frontend `TemplateDesignAgentPanel`**
-- New `DesignBriefCard` component (palette swatches, typography sample, sections list, "Edit" toggles).
-- New `BeforeAfterDiff` component (reference ↔ rendered thumbnail).
-- "Re-roll layout" button calls edge fn with `mode: 'brief', stage: 'synthesize_only', brief: cachedBrief`.
-- Streamed status pills.
-
-**Utilities (`src/lib/reportTemplate/`)**
-- `colorScience.ts` — hex→Lab, ΔE2000, WCAG contrast ratio, `nearestToken`, `ensureContrast`.
-- `designBriefTypes.ts` — shared TS types mirrored in edge `_shared`.
-
-### Out of scope (this round)
-- Multi-page reference handling (one page per image).
-- Persisting the brief into the template schema permanently (kept in transient `metadata`).
-- Generating *new* block types from references (still restricted to existing block registry).
-
-### Validation
-- Manual: attach a reference image with strong color identity; verify (a) brief appears in chat, (b) all colors in output are token references, (c) contrast log shows no failed pairs, (d) side-by-side diff renders.
-- Smoke: text-only "make the heading bigger" still works via the cheap ops path.
+Approve to proceed.
