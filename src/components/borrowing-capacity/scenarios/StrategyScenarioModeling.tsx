@@ -402,7 +402,6 @@ export function StrategyScenarioModeling({
       String(a.expenseReductionPercent),
       String(a.loanTermAdjustment),
       a.dtiCapEnabled ? `dti:${a.dtiCapValue}` : 'dti:off',
-      String(a.stampDutyPurchasePrice),
       setSig(a.portfolioSellPropertyIds),
       a.portfolioSellReinvest ? '1' : '0',
       mapSig(a.valuationOverrides as Map<string, unknown>),
