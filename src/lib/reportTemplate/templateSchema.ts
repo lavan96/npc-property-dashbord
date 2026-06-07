@@ -202,8 +202,72 @@ export const TextOverlaySchema = BaseOverlay.extend({
   fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
   fontFeatureSettings: z.string().optional(),                     // raw, advanced override
   fontVariationSettings: z.string().optional(),                   // variable axes
+  // Section 3 — reference a paragraph style (overlay-level fields still win)
+  styleRef: z.string().optional(),
+  // Section 3 — drop cap (rendered as a floated span on the first character)
+  dropCap: z.object({
+    enabled: z.boolean().default(true),
+    lines: z.number().min(2).max(8).default(3),
+    color: z.string().optional(),
+    fontFamily: z.string().optional(),
+    fontWeight: z.union([z.number(), z.string()]).optional(),
+    marginRight: z.number().min(0).max(48).optional(),
+  }).optional(),
   // Baseline alignment — snap top to baseline grid in pt
   snapToBaseline: z.boolean().optional(),
+});
+
+export const TextOnPathOverlaySchema = BaseOverlay.extend({
+  type: z.literal('textOnPath'),
+  content: BindableStringSchema,
+  fontFamily: BindableStringSchema.default('Helvetica'),
+  fontSize: BindableNumberSchema.default(18),
+  fontWeight: z.enum(['normal','bold']).default('normal'),
+  color: BindableColorSchema.default('#000000'),
+  curve: z.enum(['arc-up','arc-down','wave','circle']).default('arc-up'),
+  curvature: z.number().min(-1).max(1).default(0.5),
+  letterSpacing: z.number().default(0),
+  startOffset: z.number().min(0).max(100).default(0),    // percent along path
+});
+
+export const TableColumnSchema = z.object({
+  key: z.string(),
+  label: z.string().optional(),
+  width: z.number().optional(),          // pt; omit for auto
+  align: z.enum(['left','center','right']).optional(),
+  format: z.enum(['raw','currency','number','percent','date']).optional(),
+});
+
+export const TableOverlaySchema = BaseOverlay.extend({
+  type: z.literal('table'),
+  // Bound data path (resolves to an array of objects). Falls back to `rows`.
+  data: z.string().optional(),
+  columns: z.array(TableColumnSchema).default([]),
+  rows: z.array(z.array(z.string())).optional(),       // static fallback when no `data`
+  showHeader: z.boolean().default(true),
+  headerHeight: z.number().default(22),
+  rowHeight: z.number().default(20),
+  fontFamily: BindableStringSchema.optional(),
+  fontSize: z.number().default(10),
+  headerBg: BindableColorSchema.optional(),
+  headerColor: BindableColorSchema.optional(),
+  headerFontWeight: z.enum(['normal','bold']).default('bold'),
+  rowBg: BindableColorSchema.optional(),
+  altRowBg: BindableColorSchema.optional(),
+  rowColor: BindableColorSchema.optional(),
+  borderColor: BindableColorSchema.optional(),
+  borderWidth: z.number().default(0.5),
+  cellPadding: z.number().default(6),
+  maxRows: z.number().int().min(1).max(500).optional(),
+  // Per-cell style overrides keyed by row (0-based, header is row -1) + col.
+  cellStyles: z.array(z.object({
+    row: z.number().int(),
+    col: z.number().int(),
+    bg: z.string().optional(),
+    color: z.string().optional(),
+    fontWeight: z.enum(['normal','bold']).optional(),
+    align: z.enum(['left','center','right']).optional(),
+  })).optional(),
 });
 
 export const ImageOverlaySchema = BaseOverlay.extend({
