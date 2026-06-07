@@ -222,13 +222,13 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         data: {
           content: editContent.trim(),
           note_type: editNoteType,
-          visibility: editShare ? 'shared' : 'internal_npc',
+          visibility: editVisibility,
         },
       });
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to update note');
-      // When a note is (re)shared, push the current content to the external GHL CRM.
-      if (editShare) {
+      // Push to external GHL only when fully shared (both portals + external).
+      if (editVisibility === 'shared') {
         invokeSecureFunction('sync-notes-to-ghl', {
           action: 'create',
           clientId,
