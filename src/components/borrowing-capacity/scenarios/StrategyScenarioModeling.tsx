@@ -1121,7 +1121,7 @@ export function StrategyScenarioModeling({
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
-      acquisitionCapacity: acquisitionCapacity ?? null,
+      acquisitionCapacity: null,
       incomeComponents,
       currentLenderProfileId,
       hemBenchmark,
@@ -1133,7 +1133,7 @@ export function StrategyScenarioModeling({
     setShowSaveInput(false);
     // Also apply the scenario to the live calculator so it persists across
     // tab switches and modal close/reopen (fix for "save reverts to base").
-    onApplyScenario?.(scenarioInputs, totalAccessibleEquity);
+    onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
   }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
@@ -1146,7 +1146,7 @@ export function StrategyScenarioModeling({
     // Reset all strategies and show the preset's result as the "base" comparison
     handleReset();
     // Apply the preset's inputs to the main calculator
-    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0);
+    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0, preset);
   }, [handleReset, onApplyScenario]);
 
   const toggleConsolidation = (id: string) => {
