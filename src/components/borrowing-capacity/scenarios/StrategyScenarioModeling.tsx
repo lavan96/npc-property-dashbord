@@ -1282,8 +1282,6 @@ export function StrategyScenarioModeling({
               };
             });
 
-          const acq = scenario.adjustments.acquisition;
-
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
