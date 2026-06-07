@@ -245,6 +245,9 @@ Deno.serve(async (req) => {
         },
       });
 
+      // NOTE: `clients` table has no source_surface/source_actor_* columns — provenance is
+      // recorded via lead_source + activity log instead. Spreading `provenance` here used to
+      // crash the insert with "column source_surface … does not exist" (Phase 2 #12 fix).
       const clientInsert = {
         primary_first_name,
         primary_surname,
@@ -263,8 +266,10 @@ Deno.serve(async (req) => {
         net_monthly_cash_flow: Number(payload.net_monthly_cash_flow || 0),
         finance_contact_id: portalUser.finance_contact_id || null,
         ghl_sync_status: 'pending',
-        ...provenance,
+        lead_source: 'finance_portal',
+        lead_source_detail: `finance_partner:${portalUser.email ?? portalUser.id}`,
       };
+
 
       const { data: createdClient, error: clientError } = await supabase
         .from('clients')
