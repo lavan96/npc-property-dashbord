@@ -197,7 +197,7 @@ export function TableEditorDialog({ open, onOpenChange, overlay, onChange }: Pro
                               type="color"
                               className="h-8 w-7 cursor-pointer rounded border"
                               title="Cell background"
-                              value={override?.bg ?? '#ffffff'}
+                              value={(override as any)?.bg ?? '#ffffff'}
                               onChange={(e) => upsertCellStyle(ri, ci, { bg: e.target.value })}
                             />
                           </div>
