@@ -17857,7 +17857,11 @@ export type Database = {
         | "manual"
         | "csv_import"
         | "backfill"
-      client_note_visibility: "shared" | "internal_npc"
+      client_note_visibility:
+        | "shared"
+        | "internal_npc"
+        | "client_only"
+        | "finance_only"
       commercial_asset_class:
         | "office"
         | "retail"
@@ -18408,7 +18412,12 @@ export const Constants = {
         "csv_import",
         "backfill",
       ],
-      client_note_visibility: ["shared", "internal_npc"],
+      client_note_visibility: [
+        "shared",
+        "internal_npc",
+        "client_only",
+        "finance_only",
+      ],
       commercial_asset_class: [
         "office",
         "retail",
