@@ -107,13 +107,44 @@ export const ContactAddressFields = memo(function ContactAddressFields({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs">Current Address</Label>
+            <Label className="text-xs">Street Address</Label>
             <Input
               value={data.current_address}
               onChange={(e) => onChange('current_address', e.target.value)}
-              placeholder="123 Main Street, Sydney NSW 2000"
+              placeholder="123 Main Street"
               disabled={isDisabled}
             />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Suburb</Label>
+              <Input
+                value={data.current_suburb || ''}
+                onChange={(e) => onChange('current_suburb', e.target.value)}
+                placeholder="Sydney"
+                disabled={isDisabled}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">State</Label>
+              <Input
+                value={data.current_state || ''}
+                onChange={(e) => onChange('current_state', e.target.value.toUpperCase())}
+                placeholder="NSW"
+                disabled={isDisabled}
+                maxLength={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Postcode</Label>
+              <Input
+                value={data.current_postcode || ''}
+                onChange={(e) => onChange('current_postcode', e.target.value)}
+                placeholder="2000"
+                disabled={isDisabled}
+                maxLength={4}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
