@@ -1,6 +1,6 @@
 # PDF Template Builder
 
-A visual editor for all PDF reports. The same `ReportTemplate` JSON drives both the live editor (tldraw canvas + inspector) and the production PDF renderer (`jsPDF` / `pdf-lib`) — no drift between preview and export.
+A visual editor for all PDF reports. The same `ReportTemplate` JSON drives the live editor (canvas + inspector) and the production renderer. Production PDFs are rendered through the **HTML → WeasyPrint** pipeline; the legacy `jsPDF` / `pdf-lib` renderer remains as a secondary/fallback path that does not support every block. Preview and export stay in sync **for the selected production engine** — blocks that are only `partial` or `unsupported` on that engine are flagged by the linter (`renderer-partial` / `renderer-unsupported`) and block activation. See [Print-safety lint](#print-safety-lint-phase-5) and [Governance and activation safety](#governance-and-activation-safety) below.
 
 ## Quick start
 

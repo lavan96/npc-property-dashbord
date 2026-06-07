@@ -19,6 +19,7 @@ import {
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
+import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
 import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
 import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
@@ -43,6 +44,8 @@ import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -130,6 +133,7 @@ export default function TemplateBuilderEdit() {
   const { data: tplRow, isLoading } = useReportTemplate(id);
   const { update, create } = useReportTemplateMutations();
   const { data: versions = [] } = useReportTemplateVersions(id);
+  const qc = useQueryClient();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -165,7 +169,8 @@ export default function TemplateBuilderEdit() {
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [saveConflict, setSaveConflict] = useState<{ message: string; currentVersion?: number | null } | null>(null);
+  const [saveConflict, setSaveConflict] = useState<{ message: string; serverVersion: number | null } | null>(null);
+  const [showConflict, setShowConflict] = useState(false);
 
   // ── Undo / redo history ────────────────────────────────────────────────────
   const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
@@ -344,15 +349,11 @@ export default function TemplateBuilderEdit() {
   }), [name, description, reportType, tier, variant, scope, priority, customCss, template]);
   const isDirty = !!lastSavedSignature && currentSignature !== lastSavedSignature;
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [isDirty]);
+  // Warn before losing unsaved edits: tab close / reload (beforeunload),
+  // in-app link navigation (capture-phase click), and imperative navigate()
+  // calls via confirmLeave(). React Router's useBlocker is unavailable here
+  // because the app uses <BrowserRouter> rather than a data router.
+  const { confirmLeave } = useUnsavedChangesGuard({ when: isDirty });
 
   // ── Mutators ────────────────────────────────────────────────────────────────
   const updatePage = (next: Page) => {
@@ -1132,36 +1133,40 @@ export default function TemplateBuilderEdit() {
   }, []);
 
   // ── Save ────────────────────────────────────────────────────────────────────
-  const handleSave = (snapshot = false) => {
+  const buildSavePatch = () => ({
+    name,
+    description,
+    report_type: reportType || null,
+    tier: tier || null,
+    variant: variant || null,
+    scope: scope || 'global',
+    priority: Number.isFinite(priority) ? priority : 0,
+    custom_css: customCss || null,
+    schema: template,
+  } as any);
+
+  const runSave = (opts: { snapshot?: boolean; expectedVersionOverride?: number } = {}) => {
     if (!id) return;
     if (tplMeta?.locked_for_review) {
       toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
       return;
     }
-    const expectedVersion = Number(tplRow?.version ?? 1);
+    const snapshot = !!opts.snapshot;
+    const expectedVersion = opts.expectedVersionOverride ?? Number(tplRow?.version ?? 1);
     setSaveConflict(null);
     update.mutate(
       {
         id,
         snapshot,
         expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
-        patch: {
-          name,
-          description,
-          report_type: reportType || null,
-          tier: tier || null,
-          variant: variant || null,
-          scope: scope || 'global',
-          priority: Number.isFinite(priority) ? priority : 0,
-          custom_css: customCss || null,
-          schema: template,
-        } as any,
+        patch: buildSavePatch(),
       },
       {
         onSuccess: () => {
           setLastSavedSignature(currentSignature);
           setLastSavedAt(new Date().toISOString());
           setSaveConflict(null);
+          setShowConflict(false);
           toast.success(snapshot ? 'Saved as new version' : 'Saved');
           // Phase 14 — analytics
           logTemplateEvent({
@@ -1178,13 +1183,41 @@ export default function TemplateBuilderEdit() {
         },
         onError: (error: Error & { code?: string; currentVersion?: number | null }) => {
           if (error.code === 'version_conflict') {
-            const message = 'Template changed on the server. Your local edits were kept; reload or branch before saving again.';
-            setSaveConflict({ message, currentVersion: error.currentVersion });
-            toast.error(message);
+            setSaveConflict({
+              message: 'Template changed on the server. Your local edits were kept — choose how to resolve the conflict.',
+              serverVersion: error.currentVersion ?? null,
+            });
+            setShowConflict(true);
           }
         },
       },
     );
+  };
+
+  const handleSave = (snapshot = false) => runSave({ snapshot });
+
+  // ── Save-conflict resolution ─────────────────────────────────────────────────
+  const handleConflictReviewLatest = () => {
+    setShowConflict(false);
+    setSaveConflict(null);
+    // Discard local edits and re-hydrate from the freshest server copy.
+    hydratedKeyRef.current = null;
+    if (id) qc.invalidateQueries({ queryKey: ['report-templates', id] });
+  };
+
+  const handleConflictOverwrite = () => {
+    const serverVersion = saveConflict?.serverVersion;
+    setShowConflict(false);
+    runSave(
+      typeof serverVersion === 'number' && Number.isFinite(serverVersion)
+        ? { expectedVersionOverride: serverVersion }
+        : {},
+    );
+  };
+
+  const handleConflictSaveAsBranch = () => {
+    setShowConflict(false);
+    setShowBranches(true);
   };
 
   const handleActivationToggle = () => {
@@ -1279,7 +1312,7 @@ export default function TemplateBuilderEdit() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b bg-background/95 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/template-builder')}>
+          <Button variant="ghost" size="icon" onClick={() => { if (confirmLeave()) navigate('/admin/template-builder'); }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <Input
@@ -2323,7 +2356,7 @@ export default function TemplateBuilderEdit() {
                           } as any,
                           {
                             onSuccess: (row: any) => {
-                              if (row?.id) navigate(`/admin/template-builder/${row.id}`);
+                              if (row?.id && confirmLeave()) navigate(`/admin/template-builder/${row.id}`);
                             },
                           },
                         );
@@ -2379,6 +2412,17 @@ export default function TemplateBuilderEdit() {
         />
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <SaveConflictDialog
+        open={showConflict}
+        onOpenChange={setShowConflict}
+        serverVersion={saveConflict?.serverVersion ?? null}
+        canOverwrite={isSuperadmin}
+        pending={update.isPending}
+        onReviewLatest={handleConflictReviewLatest}
+        onSaveAsBranch={handleConflictSaveAsBranch}
+        onOverwrite={handleConflictOverwrite}
+        onKeepDraft={() => setShowConflict(false)}
+      />
       {id && (
         <TemplateAnalyticsDialog
           open={showAnalyticsDialog}
