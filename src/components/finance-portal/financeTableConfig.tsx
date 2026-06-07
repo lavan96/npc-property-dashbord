@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { FREQUENCY_OPTIONS, SOURCE_CATEGORIES, SOURCE_TYPES } from '@/components/clients/income/incomeSourceTypes';
 
 export type FinanceTableKey =
   | 'properties' | 'income' | 'expenses' | 'assets'
@@ -90,29 +91,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'primary', label: 'Primary Applicant' },
         { value: 'secondary', label: 'Secondary Applicant' },
       ]},
-      { key: 'source_category', label: 'Category', type: 'select', options: [
-        { value: 'employment', label: 'Employment' },
-        { value: 'passive', label: 'Passive Income' },
-        { value: 'government', label: 'Government Benefits' },
-        { value: 'investment', label: 'Investment Income' },
-        { value: 'other', label: 'Other' },
-      ]},
-      { key: 'source_type', label: 'Type', type: 'select', options: [
-        { value: 'payg_fulltime', label: 'PAYG Full-time' },
-        { value: 'payg_parttime', label: 'PAYG Part-time' },
-        { value: 'casual', label: 'Casual' },
-        { value: 'self_employed', label: 'Self-Employed / ABN' },
-        { value: 'contract', label: 'Contract' },
-        { value: 'rental', label: 'Rental Income' },
-        { value: 'dividends', label: 'Dividends' },
-        { value: 'interest', label: 'Interest Income' },
-        { value: 'trust', label: 'Trust Distributions' },
-        { value: 'centrelink', label: 'Centrelink' },
-        { value: 'pension', label: 'Pension' },
-        { value: 'other', label: 'Other Income' },
-      ]},
+      { key: 'source_category', label: 'Category', type: 'select', options: [...SOURCE_CATEGORIES] },
+      { key: 'source_type', label: 'Type', type: 'select', options: Object.values(SOURCE_TYPES).flat().map(({ value, label }) => ({ value, label })) },
       { key: 'source_name', label: 'Source Name', type: 'text', helpText: 'e.g. employer or investment name' },
       { key: 'gross_annual_amount', label: 'Gross Annual Amount', type: 'currency' },
+      { key: 'input_frequency', label: 'Frequency', type: 'select', options: [...FREQUENCY_OPTIONS] },
       { key: 'bonus', label: 'Annual Bonus', type: 'currency' },
       { key: 'commission', label: 'Annual Commission', type: 'currency' },
       { key: 'allowance', label: 'Allowances', type: 'currency' },
@@ -313,7 +296,7 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     fields: [
       { key: 'first_name', label: 'First Name', type: 'text', required: true },
       { key: 'surname', label: 'Last Name', type: 'text', required: true },
-      { key: 'relationship', label: 'Role', type: 'select', options: [
+      { key: 'relationship', label: 'Role', type: 'select', required: true, options: [
         { value: 'co_applicant', label: 'Co-applicant' },
         { value: 'guarantor', label: 'Guarantor' },
         { value: 'spouse', label: 'Spouse / Partner' },

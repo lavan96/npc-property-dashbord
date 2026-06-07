@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBrand } from '@/branding/useBrand';
+import { toast } from 'sonner';
 import { smartCapitalize } from '@/lib/nameUtils';
 
 interface ThreadRow {
@@ -69,10 +70,19 @@ export default function FinancePortalMessages() {
   const [loading, setLoading] = useState(true);
   const [selectedThread, setSelectedThread] = useState<ThreadRow | null>(null);
   const [threadOpen, setThreadOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
-    const { data } = await invokeFinanceFunction('finance-portal-messages', { operation: 'list_threads' });
-    setThreads(data?.threads || []);
+    const { data, error } = await invokeFinanceFunction('finance-portal-messages', { operation: 'list_threads' });
+    if (error) {
+      const msg = error.message || data?.error || 'Failed to load messages';
+      setLoadError(msg);
+      setThreads([]);
+      toast.error(`Messages failed to load: ${msg}`);
+    } else {
+      setLoadError(null);
+      setThreads(data?.threads || []);
+    }
     setLoading(false);
   };
 
@@ -142,6 +152,17 @@ export default function FinancePortalMessages() {
             <ThreadSkeleton key={i} />
           ))}
         </div>
+      ) : loadError ? (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="py-10 text-center space-y-3">
+            <MessageCircle className="h-8 w-8 mx-auto text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Unable to load messages</p>
+              <p className="text-sm text-muted-foreground mt-1 break-words">{loadError}</p>
+            </div>
+            <Button variant="outline" onClick={load}>Try again</Button>
+          </CardContent>
+        </Card>
       ) : threads.length === 0 ? (
         <PortalEmptyState
           icon={<Inbox className="h-8 w-8" />}

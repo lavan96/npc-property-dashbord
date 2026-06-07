@@ -136,7 +136,7 @@ export default function FinancePortalPurchaseFiles() {
     queryKey: ['finance-portal-purchase-files'],
     queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', { operation: 'list_files' });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(data?.error || error.message);
       return data ?? { files: [] };
     },
   });
@@ -446,13 +446,13 @@ function NewPurchaseFileDialog({
           status: 'active',
         },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(data?.error || error.message);
       toast.success('Purchase file created');
       onCreated(data?.file?.id);
       onOpenChange(false);
       setClientId(''); setTitle(''); setPropertyAddress(''); setPurchasePrice('');
     } catch (e: any) {
-      toast.error(e.message || 'Failed to create');
+      toast.error(`Failed to create: ${e.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }

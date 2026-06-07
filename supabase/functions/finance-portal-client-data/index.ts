@@ -101,6 +101,16 @@ function normalizeIncomeSourceFields(input: Record<string, any>) {
 }
 
 
+function normalizeAdditionalContactFields(input: Record<string, any>) {
+  const out = { ...input };
+  if (out.relationship == null || String(out.relationship).trim() === '') {
+    out.relationship = 'Additional Contact';
+  }
+  if (out.display_order == null || out.display_order === '') out.display_order = 1;
+  if (out.country == null || out.country === '') out.country = 'Australia';
+  return out;
+}
+
 async function prepareFinanceNotePayload(supabase: any, clientId: string, payload: Record<string, any>, portalUser: any) {
   const now = new Date().toISOString();
   const content = String(payload.content || '');
@@ -565,6 +575,7 @@ Deno.serve(async (req) => {
 
       let insert = { ...(payload || {}), client_id };
       if (dbTable === 'client_income_sources') insert = normalizeIncomeSourceFields(insert);
+      if (dbTable === 'client_additional_contacts') insert = normalizeAdditionalContactFields(insert);
       let syncMeta: any = null;
       if (dbTable === 'client_notes') {
         const prepared = await prepareFinanceNotePayload(supabase, client_id, insert, portalUser);
@@ -649,6 +660,7 @@ Deno.serve(async (req) => {
         // Keep the raw input fields aligned with the edited annual figure.
         updates = normalizeIncomeSourceFields(updates);
       }
+      if (dbTable === 'client_additional_contacts') updates = normalizeAdditionalContactFields(updates);
 
       if (dbTable === 'client_notes') {
         const provenance = buildProvenance({
