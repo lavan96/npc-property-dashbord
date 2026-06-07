@@ -279,6 +279,23 @@ function willSetDefaultTemplate(current: any, updateData: Record<string, any>): 
   return updateData.is_default === true && current?.is_default !== true;
 }
 
+const PRODUCTION_REPORT_TEMPLATE_TYPES = new Set([
+  'investment',
+  'compass',
+  'investment_compass',
+  'investment_report',
+  'property_investment',
+]);
+
+function normaliseReportTemplateType(reportType: unknown): string {
+  return String(reportType ?? '').trim().toLowerCase();
+}
+
+function hasProductionReportTemplateAdapter(reportType: unknown): boolean {
+  const key = normaliseReportTemplateType(reportType);
+  return !!key && PRODUCTION_REPORT_TEMPLATE_TYPES.has(key);
+}
+
 async function validateReportTemplateUpdate(
   supabase: any,
   recordId: string,
@@ -361,6 +378,20 @@ async function validateReportTemplateUpdate(
           error: {
             code: 'template_activation_blocked',
             message: 'Template must have a report type before it can be activated or set as default.',
+          },
+        }, 422, corsHeaders),
+      };
+    }
+
+    if (!hasProductionReportTemplateAdapter(nextReportType)) {
+      return {
+        current,
+        response: jsonResponse({
+          success: false,
+          error: {
+            code: 'template_activation_blocked',
+            message: `Template report type "${nextReportType}" does not have a production Template Builder adapter yet.`,
+            reportType: nextReportType,
           },
         }, 422, corsHeaders),
       };
