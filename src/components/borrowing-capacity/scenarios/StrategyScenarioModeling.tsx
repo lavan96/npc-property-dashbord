@@ -915,6 +915,7 @@ export function StrategyScenarioModeling({
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
+      scenarioContext: ctx,
       scenarioResult: effectiveResult as unknown as BorrowingCapacityResult,
       scenarioInputs: effectiveInputs,
       impactBreakdown: baselineMode ? [] : impacts,
