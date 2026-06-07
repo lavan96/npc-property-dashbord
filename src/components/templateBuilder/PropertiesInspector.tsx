@@ -47,6 +47,10 @@ import { EnhancedColorPicker } from './EnhancedColorPicker';
 import { FontPicker } from './FontPicker';
 import { FontSizeControl } from './FontSizeControl';
 import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
+import { StyleClipboardButtons } from './StyleClipboardButtons';
+import { AlignmentGrid } from './AlignmentGrid';
+import { TextRhythmControl } from './TextRhythmControl';
+import { PalettePresets } from './PalettePresets';
 
 
 interface Props {
@@ -133,6 +137,7 @@ export function PropertiesInspector({
               onMoveBlock={onMoveBlock}
               onDeleteBlock={onDeleteBlock}
               onDuplicateBlock={onDuplicateBlock}
+              onUpdateTemplate={onUpdateTemplate}
             />
           )
         )}
@@ -175,6 +180,7 @@ function OverlayEditor({
           <p className="text-[11px] text-muted-foreground font-mono truncate">{overlay.id}</p>
         </div>
         <div className="flex items-center gap-1">
+          <StyleClipboardButtons overlay={overlay} onChange={onChange} />
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
             <Copy className="h-3.5 w-3.5" />
           </Button>
@@ -217,6 +223,21 @@ function OverlayEditor({
           onChange={(v) => patch({ opacity: v })}
         />
       </div>
+
+      {(() => {
+        const pg = template.pages.find((p) => p.id === pageId);
+        if (!pg) return null;
+        return (
+          <AlignmentGrid
+            pageWidth={pg.size.width ?? 595}
+            pageHeight={pg.size.height ?? 842}
+            overlayWidth={overlay.width}
+            overlayHeight={overlay.height}
+            safeArea={pg.safeArea ?? 0}
+            onAlign={({ x, y }) => patch({ x, y })}
+          />
+        );
+      })()}
 
       <Separator />
 
@@ -292,6 +313,19 @@ function OverlayEditor({
             template={template}
             onChange={(p) => patch(p as any)}
             onTemplateChange={onUpdateTemplate}
+          />
+          <Separator />
+          <TextRhythmControl
+            value={{
+              lineHeight: (overlay as any).lineHeight,
+              letterSpacing: (overlay as any).letterSpacing,
+              textTransform: (overlay as any).textTransform,
+              textDecoration: (overlay as any).textDecoration,
+            }}
+            fontFamily={String((overlay as any).fontFamily || '')}
+            fontSize={Number((overlay as any).fontSize) || 12}
+            color={String((overlay as any).color || '#000000')}
+            onChange={(p) => patch(p as any)}
           />
         </div>
       )}
@@ -371,6 +405,7 @@ function PageEditor({
   onMoveBlock,
   onDeleteBlock,
   onDuplicateBlock,
+  onUpdateTemplate,
 }: {
   template: ReportTemplate;
   page: Page;
@@ -379,6 +414,7 @@ function PageEditor({
   onMoveBlock?: (id: string, dir: -1 | 1) => void;
   onDeleteBlock?: (id: string) => void;
   onDuplicateBlock?: (id: string) => void;
+  onUpdateTemplate?: (t: ReportTemplate) => void;
 }) {
   const [bgImageUrl, setBgImageUrl] = useState(String(page.background?.imageUrl ?? ''));
   useEffect(() => { setBgImageUrl(String(page.background?.imageUrl ?? '')); }, [page.id]);
@@ -395,6 +431,21 @@ function PageEditor({
         height={page.size.height}
         onChange={(size) => onChange({ ...page, size: { ...page.size, ...size } })}
       />
+      {onUpdateTemplate && (
+        <>
+          <Separator />
+          <PalettePresets
+            colors={(template.tokens?.colors as Record<string, string>) || {}}
+            onChange={(nextColors) =>
+              onUpdateTemplate({
+                ...template,
+                tokens: { ...template.tokens, colors: nextColors },
+              })
+            }
+          />
+          <Separator />
+        </>
+      )}
       <EnhancedColorPicker
         label="Background color"
         template={template}
