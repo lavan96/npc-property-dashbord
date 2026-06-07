@@ -70,6 +70,9 @@ export const ContactAddressFields = memo(function ContactAddressFields({
     onChange('same_address_as_primary', checked);
     if (checked && primaryAddress) {
       onChange('current_address', primaryAddress.current_address);
+      onChange('current_suburb', primaryAddress.current_suburb || '');
+      onChange('current_state', primaryAddress.current_state || '');
+      onChange('current_postcode', primaryAddress.current_postcode || '');
       onChange('country', primaryAddress.country);
       onChange('living_situation', primaryAddress.living_situation);
       onChange('residential_status', primaryAddress.residential_status);
