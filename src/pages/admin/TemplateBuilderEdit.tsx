@@ -3114,6 +3114,21 @@ export default function TemplateBuilderEdit() {
         pageHeight={activePage?.size.height ?? 842}
         onInsert={insertImageFromLibrary}
       />
+      <TextStylesDialog
+        open={textStylesOpen}
+        onOpenChange={setTextStylesOpen}
+        template={template}
+        onChange={(next) => setTemplate(next)}
+      />
+      <TableEditorDialog
+        open={tableEditorOpen}
+        onOpenChange={setTableEditorOpen}
+        overlay={selectedOverlay?.type === 'table' ? (selectedOverlay as any) : null}
+        onChange={(next) => {
+          if (!activePage) return;
+          updatePage(editorActions.updateOverlay(activePage, next as Overlay));
+        }}
+      />
       {id && (
         <>
           <TemplateBranchingDialog
