@@ -1843,6 +1843,9 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setShowPreviewQA(true)}>
                 <Eye className="h-4 w-4 mr-2" /> Preview & QA
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowSpellCheck(true)}>
+                <ShieldAlert className="h-4 w-4 mr-2" /> Spell check
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setFixerOpen(true)}>
                 <ShieldAlert className="h-4 w-4 mr-2" /> Binding Fixer
               </DropdownMenuItem>
