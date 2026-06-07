@@ -40,7 +40,8 @@ export function TextRhythmControl({ value, fontFamily, fontSize, color, onChange
             fontSize: fontSize ? `${Math.min(28, Math.max(10, fontSize))}pt` : '14pt',
             lineHeight: lh,
             letterSpacing: `${ls}px`,
-            textTransform: tt,
+            textTransform: (tt === 'small-caps' ? 'none' : tt) as any,
+            fontVariant: tt === 'small-caps' ? 'small-caps' : undefined,
             textDecoration: td,
             color: /^#|^rgb|^hsl/.test(String(color || '')) ? color : undefined,
           }}
