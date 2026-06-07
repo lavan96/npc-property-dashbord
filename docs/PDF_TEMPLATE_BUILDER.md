@@ -61,6 +61,17 @@ Every save can optionally **snapshot** the current schema into `report_template_
 - **Restore** a version (snapshots the current schema first, then writes the restored one)
 - **Clone as new** (creates a new template from the version's schema)
 
+## Local drafts & recovery
+
+While you edit, the builder **autosaves a local draft to IndexedDB** (per template, debounced ~2s after the last change). This never touches the server — you still **Save** the server copy manually — so autosave can't cause version conflicts.
+
+- If you reload, crash, or navigate away and come back, and the local draft differs from the saved server version, a **recovery dialog** offers to **Restore draft**, **Discard draft**, **Compare JSON**, or **Save as branch**.
+- If the server moved on since the draft was taken (someone else saved), the dialog warns that the draft is based on an older version.
+- The local draft is cleared automatically after a successful **Save**, or when you explicitly discard it / choose **Review latest** in a save conflict.
+- The toolbar status shows `autosaved HH:MM` while there are unsaved changes; hover the status chip for last-saved, last-autosaved, and "unsaved since" times.
+
+Drafts are browser-local (IndexedDB) — they are not shared across devices or users, and degrade to a no-op where IndexedDB is unavailable.
+
 ## Governance and activation safety
 
 Templates locked for review cannot be edited, snapshotted, or deleted until unlocked. Activating a template or marking it as the default requires superadmin access, an approved template status, and a report type. Active templates must be deactivated before deletion.

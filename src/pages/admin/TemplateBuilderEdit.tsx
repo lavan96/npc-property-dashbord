@@ -20,6 +20,7 @@ import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
 import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
+import { DraftRecoveryDialog } from '@/components/templateBuilder/DraftRecoveryDialog';
 import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
 import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
@@ -45,6 +46,14 @@ import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresen
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { useTemplateDraftAutosave } from '@/hooks/templateBuilder/useTemplateDraftAutosave';
+import {
+  loadTemplateDraft,
+  deleteTemplateDraft,
+  makeDraftSignature,
+  evaluateDraftRecovery,
+  type TemplateDraft,
+} from '@/lib/reportTemplate/templateDraftStore';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
@@ -171,6 +180,11 @@ export default function TemplateBuilderEdit() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [saveConflict, setSaveConflict] = useState<{ message: string; serverVersion: number | null } | null>(null);
   const [showConflict, setShowConflict] = useState(false);
+  const [dirtySince, setDirtySince] = useState<string | null>(null);
+  // ── Local draft recovery (Phase 3B) ─────────────────────────────────────────
+  const [draftRecovery, setDraftRecovery] = useState<TemplateDraft | null>(null);
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [staleDraftBase, setStaleDraftBase] = useState(false);
 
   // ── Undo / redo history ────────────────────────────────────────────────────
   const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
@@ -247,6 +261,8 @@ export default function TemplateBuilderEdit() {
   // persisted schema. We only re-hydrate when the template id or its server
   // version actually changes.
   const hydratedKeyRef = useRef<string | null>(null);
+  // Ensures the local-draft recovery check runs once per (id, server version).
+  const draftCheckedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!tplRow) return;
     const key = `${tplRow.id}:${tplRow.version ?? 0}`;
@@ -354,6 +370,116 @@ export default function TemplateBuilderEdit() {
   // calls via confirmLeave(). React Router's useBlocker is unavailable here
   // because the app uses <BrowserRouter> rather than a data router.
   const { confirmLeave } = useUnsavedChangesGuard({ when: isDirty });
+
+  // Track when the editor first became dirty (for the "unsaved since" status).
+  useEffect(() => {
+    setDirtySince((prev) => (isDirty ? (prev ?? new Date().toISOString()) : null));
+  }, [isDirty]);
+
+  // ── Local draft autosave + recovery (Phase 3B) ──────────────────────────────
+  const buildDraftSnapshot = useCallback((): Omit<TemplateDraft, 'savedAt'> | null => {
+    if (!id) return null;
+    return {
+      templateId: id,
+      baseServerVersion: Number(tplRow?.version ?? 1),
+      name,
+      description,
+      reportType,
+      tier,
+      variant,
+      scope,
+      priority: Number.isFinite(priority) ? priority : 0,
+      customCss,
+      sampleDataText,
+      schema: template,
+    };
+  }, [id, tplRow?.version, name, description, reportType, tier, variant, scope, priority, customCss, sampleDataText, template]);
+
+  const { lastLocalSaveAt, setLastLocalSaveAt } = useTemplateDraftAutosave({
+    templateId: id,
+    enabled: isDirty && !isLoading && !showDraftRecovery,
+    changeKey: currentSignature,
+    getDraft: buildDraftSnapshot,
+  });
+
+  const applyDraftToEditor = useCallback((draft: TemplateDraft) => {
+    setName(draft.name || '');
+    setDescription(draft.description || '');
+    setReportType(draft.reportType || '');
+    setTier(draft.tier || '');
+    setVariant(draft.variant || '');
+    setScope(draft.scope || 'global');
+    setPriority(Number.isFinite(draft.priority) ? draft.priority : 0);
+    setCustomCss(draft.customCss || '');
+    if (typeof draft.sampleDataText === 'string') setSampleDataText(draft.sampleDataText);
+    const parsed = parseTemplate(draft.schema);
+    skipHistoryRef.current = true;
+    setTemplate(parsed);
+    setActivePageId((prev) => (parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null));
+    setLastLocalSaveAt(draft.savedAt);
+  }, [setTemplate, setLastLocalSaveAt]);
+
+  const handleRestoreDraft = useCallback(() => {
+    if (!draftRecovery) return;
+    applyDraftToEditor(draftRecovery);
+    setShowDraftRecovery(false);
+    setDraftRecovery(null);
+    toast.success('Draft restored — Save to persist it to the server');
+  }, [draftRecovery, applyDraftToEditor]);
+
+  const handleDiscardDraft = useCallback(() => {
+    if (id) void deleteTemplateDraft(id);
+    setShowDraftRecovery(false);
+    setDraftRecovery(null);
+    setLastLocalSaveAt(null);
+    toast('Local draft discarded');
+  }, [id, setLastLocalSaveAt]);
+
+  const handleDraftSaveAsBranch = useCallback(() => {
+    if (draftRecovery) applyDraftToEditor(draftRecovery);
+    setShowDraftRecovery(false);
+    setShowBranches(true);
+  }, [draftRecovery, applyDraftToEditor]);
+
+  // On load, surface a recoverable local draft if it differs from the server copy.
+  useEffect(() => {
+    if (!tplRow || !id) return;
+    const key = `${tplRow.id}:${tplRow.version ?? 0}`;
+    if (draftCheckedKeyRef.current === key) return;
+    draftCheckedKeyRef.current = key;
+    let cancelled = false;
+    void (async () => {
+      const draft = await loadTemplateDraft(id);
+      if (cancelled || !draft) return;
+      const serverSignature = makeDraftSignature({
+        name: tplRow.name || '',
+        description: tplRow.description || '',
+        reportType: tplRow.report_type || '',
+        tier: tplRow.tier || '',
+        variant: ((tplRow as any).variant as string) || '',
+        scope: ((tplRow as any).scope as string) || 'global',
+        priority: Number((tplRow as any).priority ?? 0),
+        customCss: ((tplRow as any).custom_css as string) || '',
+        schema: parseTemplate(tplRow.schema),
+      });
+      const decision = evaluateDraftRecovery({
+        draft,
+        serverSignature,
+        currentServerVersion: Number(tplRow.version ?? 1),
+      });
+      if (decision.recover) {
+        setDraftRecovery(draft);
+        setStaleDraftBase(decision.staleBase);
+        setShowDraftRecovery(true);
+      } else {
+        // Draft already matches the server — clean it up.
+        void deleteTemplateDraft(id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tplRow, id]);
 
   // ── Mutators ────────────────────────────────────────────────────────────────
   const updatePage = (next: Page) => {
@@ -1162,11 +1288,18 @@ export default function TemplateBuilderEdit() {
         patch: buildSavePatch(),
       },
       {
-        onSuccess: () => {
+        onSuccess: (record: any) => {
           setLastSavedSignature(currentSignature);
           setLastSavedAt(new Date().toISOString());
           setSaveConflict(null);
           setShowConflict(false);
+          setDirtySince(null);
+          // The server copy now matches the editor — drop the local autosave draft.
+          // Pre-mark the next version as checked so the post-save refetch doesn't
+          // momentarily re-offer recovery for content we just persisted.
+          draftCheckedKeyRef.current = `${id}:${record?.version ?? Number(tplRow?.version ?? 1) + 1}`;
+          void deleteTemplateDraft(id);
+          setLastLocalSaveAt(null);
           toast.success(snapshot ? 'Saved as new version' : 'Saved');
           // Phase 14 — analytics
           logTemplateEvent({
@@ -1200,9 +1333,15 @@ export default function TemplateBuilderEdit() {
   const handleConflictReviewLatest = () => {
     setShowConflict(false);
     setSaveConflict(null);
-    // Discard local edits and re-hydrate from the freshest server copy.
+    // Discard local edits (including the autosaved draft) and re-hydrate from the
+    // freshest server copy.
     hydratedKeyRef.current = null;
-    if (id) qc.invalidateQueries({ queryKey: ['report-templates', id] });
+    draftCheckedKeyRef.current = null;
+    if (id) {
+      void deleteTemplateDraft(id);
+      setLastLocalSaveAt(null);
+      qc.invalidateQueries({ queryKey: ['report-templates', id] });
+    }
   };
 
   const handleConflictOverwrite = () => {
@@ -1711,10 +1850,20 @@ export default function TemplateBuilderEdit() {
           </div>
           <div
             className={`text-[11px] px-2 py-1 rounded border ${saveConflict ? 'border-destructive/30 bg-destructive/10 text-destructive' : isDirty ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-success/30 bg-success/10 text-success'}`}
-            title={saveConflict?.message || (lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : undefined)}
+            title={[
+              saveConflict?.message,
+              lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : null,
+              lastLocalSaveAt ? `Autosaved locally ${new Date(lastLocalSaveAt).toLocaleString()}` : null,
+              isDirty && dirtySince ? `Unsaved since ${new Date(dirtySince).toLocaleString()}` : null,
+            ].filter(Boolean).join(' · ') || undefined}
           >
             {saveConflict ? 'Save conflict' : update.isPending ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
           </div>
+          {isDirty && lastLocalSaveAt && !saveConflict && (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap" title="Autosaved to this browser only — Save to persist to the server">
+              autosaved {new Date(lastLocalSaveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
           <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={update.isPending}>
             <History className="h-4 w-4 mr-1" /> Save version
           </Button>
@@ -2422,6 +2571,17 @@ export default function TemplateBuilderEdit() {
         onSaveAsBranch={handleConflictSaveAsBranch}
         onOverwrite={handleConflictOverwrite}
         onKeepDraft={() => setShowConflict(false)}
+      />
+      <DraftRecoveryDialog
+        open={showDraftRecovery}
+        onOpenChange={setShowDraftRecovery}
+        draft={draftRecovery}
+        serverSchema={showDraftRecovery && tplRow ? parseTemplate(tplRow.schema) : null}
+        currentServerVersion={Number(tplRow?.version ?? 1)}
+        staleBase={staleDraftBase}
+        onRestore={handleRestoreDraft}
+        onDiscard={handleDiscardDraft}
+        onSaveAsBranch={handleDraftSaveAsBranch}
       />
       {id && (
         <TemplateAnalyticsDialog
