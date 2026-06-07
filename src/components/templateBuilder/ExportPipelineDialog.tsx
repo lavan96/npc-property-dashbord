@@ -22,6 +22,8 @@ import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate'
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
 
+import { ExportPresetsBar, type ExportPresetState } from './ExportPresetsBar';
+
 interface ExportPipelineDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +32,8 @@ interface ExportPipelineDialogProps {
   templateName: string;
   sampleData: Record<string, any>;
   customCss?: string | null;
+  /** Optional — when provided, the Export Presets bar can save/load presets to the template. */
+  onTemplateChange?: (next: ReportTemplate) => void | Promise<void>;
 }
 
 type RenderJobRow = {
