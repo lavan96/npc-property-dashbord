@@ -488,20 +488,27 @@ export function EditorialCanvas({
               className="absolute inset-0 w-full h-full border-0 pointer-events-none"
             />
 
-            {/* Alignment guides */}
+            {/* Alignment guides — magenta lines with a coordinate pill so
+                designers see exactly where the snap landed (pt). */}
             {guides.v.map((v, i) => (
-              <div
-                key={`v${i}`}
-                className="absolute top-0 bottom-0 pointer-events-none"
-                style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}
-              />
+              <div key={`v${i}`} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}>
+                <span
+                  className="absolute -translate-x-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  style={{ left: 0, top: 4 }}
+                >
+                  x {Math.round(v)}
+                </span>
+              </div>
             ))}
             {guides.h.map((h, i) => (
-              <div
-                key={`h${i}`}
-                className="absolute left-0 right-0 pointer-events-none"
-                style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}
-              />
+              <div key={`h${i}`} className="absolute left-0 right-0 pointer-events-none" style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}>
+                <span
+                  className="absolute -translate-y-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  style={{ top: 0, left: 4 }}
+                >
+                  y {Math.round(h)}
+                </span>
+              </div>
             ))}
 
             {/* Marquee */}
