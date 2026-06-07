@@ -188,7 +188,7 @@ interface StrategyScenarioModelingProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
+  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number, preset?: ScenarioPreset) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
   /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
@@ -243,7 +243,7 @@ export function StrategyScenarioModeling({
   hemBenchmark,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
-  const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
+  const [acquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
 
   // Audit-fix #5 — Auto-route net sale proceeds into the Capital Flow Canvas
@@ -295,6 +295,10 @@ export function StrategyScenarioModeling({
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+
+  useEffect(() => {
+    if (externalPresets) setPresets(externalPresets);
+  }, [externalPresets]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
     refinance: true,
@@ -398,7 +402,6 @@ export function StrategyScenarioModeling({
       String(a.expenseReductionPercent),
       String(a.loanTermAdjustment),
       a.dtiCapEnabled ? `dti:${a.dtiCapValue}` : 'dti:off',
-      String(a.stampDutyPurchasePrice),
       setSig(a.portfolioSellPropertyIds),
       a.portfolioSellReinvest ? '1' : '0',
       mapSig(a.valuationOverrides as Map<string, unknown>),
@@ -1117,7 +1120,7 @@ export function StrategyScenarioModeling({
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
-      acquisitionCapacity: acquisitionCapacity ?? null,
+      acquisitionCapacity: null,
       incomeComponents,
       currentLenderProfileId,
       hemBenchmark,
@@ -1129,7 +1132,7 @@ export function StrategyScenarioModeling({
     setShowSaveInput(false);
     // Also apply the scenario to the live calculator so it persists across
     // tab switches and modal close/reopen (fix for "save reverts to base").
-    onApplyScenario?.(scenarioInputs, totalAccessibleEquity);
+    onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
   }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
@@ -1142,8 +1145,45 @@ export function StrategyScenarioModeling({
     // Reset all strategies and show the preset's result as the "base" comparison
     handleReset();
     // Apply the preset's inputs to the main calculator
-    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0);
+    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0, preset);
   }, [handleReset, onApplyScenario]);
+
+  const buildPdfOverrideAssessment = useCallback((inputs: BorrowingCapacityInput, result: BorrowingCapacityResult) => ({
+    created_at: new Date().toISOString(),
+    borrowing_capacity: result.borrowingCapacity,
+    monthly_surplus: result.monthlySurplus,
+    serviceability_band: result.serviceabilityBand,
+    stress_tested_capacity: result.stressTestedCapacity,
+    dti_ratio: result.dtiRatio,
+    assessment_rate: result.assessmentRate,
+    gross_annual_income: inputs.grossAnnualIncome,
+    shaded_annual_income: inputs.shadedAnnualIncome ?? inputs.grossAnnualIncome,
+    living_expenses_monthly: inputs.monthlyLivingExpenses,
+    existing_commitments_monthly: inputs.monthlyCommitments,
+    interest_rate_used: inputs.interestRate,
+    buffer_rate: inputs.bufferRate,
+    loan_term_years: inputs.loanTermYears,
+    proposed_loan_amount: 0,
+    expense_method: 'hybrid',
+    recommendations: result.recommendations ?? [],
+    warnings: result.warnings ?? [],
+    assumptions: {
+      selectedLenderName: currentLenderProfileId,
+      source: 'Current What-If Scenario',
+    },
+    income_breakdown: incomeComponents?.map((item) => ({
+      source_name: item.label,
+      gross_annual_amount: item.grossAnnual,
+      custom_shading_rate: item.currentShadingRate,
+      shaded_amount: item.grossAnnual * item.currentShadingRate,
+    })) ?? [],
+    liability_breakdown: liabilities.map((item) => ({
+      type: item.type,
+      label: item.label,
+      balance: item.balance,
+      monthlyServicing: item.monthlyServicing,
+    })),
+  }), [currentLenderProfileId, incomeComponents, liabilities]);
 
   const toggleConsolidation = (id: string) => {
     setStrategy(prev => {
@@ -1278,23 +1318,6 @@ export function StrategyScenarioModeling({
               };
             });
 
-          // Phase D + F2: also map AI acquisition block into the acquisition state
-          const acq = scenario.adjustments.acquisition;
-          if (acq) {
-            setAcquisition(prev => ({
-              ...prev,
-              enabled: true,
-              state: acq.state,
-              intent: acq.intent,
-              category: acq.category ?? prev.category,
-              isFirstHomeBuyer: acq.isFirstHomeBuyer ?? prev.isFirstHomeBuyer,
-              isForeignBuyer: prev.isForeignBuyer,
-              lmiMode: acq.lmiMode ?? prev.lmiMode,
-              cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
-              targetPurchasePrice: acq.targetPurchasePrice ?? prev.targetPurchasePrice,
-            }));
-          }
-
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
@@ -1307,7 +1330,7 @@ export function StrategyScenarioModeling({
             loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
             portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
             dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
-            acquisition: !!acq,
+            acquisition: false,
           }));
 
           // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
@@ -2464,7 +2487,19 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity)}
+                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity, {
+                        id: `applied-${Date.now()}`,
+                        name: scenarioName.trim() || 'Current What-If Scenario',
+                        isBase: false,
+                        createdAt: new Date().toISOString(),
+                        adjustedInputs: { ...scenarioInputs },
+                        result: scenarioResult,
+                        accessibleEquity: totalAccessibleEquity,
+                        acquisitionCapacity: null,
+                        incomeComponents,
+                        currentLenderProfileId,
+                        hemBenchmark,
+                      })}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
@@ -2487,7 +2522,7 @@ export function StrategyScenarioModeling({
                           adjustedInputs: { ...scenarioInputs },
                           result: scenarioResult,
                           accessibleEquity: totalAccessibleEquity,
-                          acquisitionCapacity: acquisitionCapacity ?? null,
+                          acquisitionCapacity: null,
                           incomeComponents,
                           currentLenderProfileId,
                           hemBenchmark,
@@ -2502,6 +2537,11 @@ export function StrategyScenarioModeling({
                             clientId,
                             clientName || 'Client',
                             merged,
+                            {
+                              assessment: buildPdfOverrideAssessment(scenarioInputs, scenarioResult),
+                              liabilities,
+                              properties,
+                            },
                           );
                         } catch (err: any) {
                           toast.error(`PDF export failed: ${err?.message || 'Unknown error'}`);

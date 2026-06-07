@@ -19,7 +19,6 @@ import {
   Wallet,
   Clock,
   ShieldCheck,
-  Receipt,
   Building,
   Layers,
   Network,
@@ -57,7 +56,6 @@ export interface AdditionalStrategyState {
   loanTermAdjustment: number; // years delta from base
   dtiCapEnabled: boolean;
   dtiCapValue: number;
-  stampDutyPurchasePrice: number;
   portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
   /** Phase G1 — valuation overrides keyed by property id */
@@ -72,7 +70,6 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   loanTermAdjustment: 0,
   dtiCapEnabled: false,
   dtiCapValue: 6,
-  stampDutyPurchasePrice: 0,
   portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
   valuationOverrides: new Map(),
@@ -101,24 +98,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-// Simple Australian stamp duty estimate (NSW-based as default)
-function estimateStampDuty(purchasePrice: number): number {
-  if (purchasePrice <= 0) return 0;
-  if (purchasePrice <= 14000) return purchasePrice * 0.0125;
-  if (purchasePrice <= 32000) return 175 + (purchasePrice - 14000) * 0.015;
-  if (purchasePrice <= 85000) return 445 + (purchasePrice - 32000) * 0.0175;
-  if (purchasePrice <= 319000) return 1372.5 + (purchasePrice - 85000) * 0.035;
-  if (purchasePrice <= 1064000) return 9562.5 + (purchasePrice - 319000) * 0.045;
-  if (purchasePrice <= 3194000) return 43007.5 + (purchasePrice - 1064000) * 0.055;
-  return 160187.5 + (purchasePrice - 3194000) * 0.07;
-}
-
-function estimateTransferFee(purchasePrice: number): number {
-  if (purchasePrice <= 500000) return 500;
-  if (purchasePrice <= 1000000) return 1000;
-  return 1500;
-}
-
 // ── Component ──────────────────────────────────────────
 
 interface AdditionalStrategyLeversProps {
@@ -140,11 +119,6 @@ export function AdditionalStrategyLevers({
   properties,
   baseGrossIncome,
 }: AdditionalStrategyLeversProps) {
-  const stampDuty = estimateStampDuty(strategy.stampDutyPurchasePrice);
-  const transferFee = estimateTransferFee(strategy.stampDutyPurchasePrice);
-  const legalFees = strategy.stampDutyPurchasePrice > 0 ? 2500 : 0;
-  const totalPurchaseCosts = stampDuty + transferFee + legalFees;
-
   const sellProperties = properties.filter(p => strategy.portfolioSellPropertyIds.has(p.id));
   const totalSellEquityFreed = sellProperties.reduce((sum, p) => 
     sum + Math.max(0, p.current_value - p.loan_remaining), 0);
@@ -420,77 +394,6 @@ export function AdditionalStrategyLevers({
                         {val}x
                       </button>
                     ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
-
-      {/* ═══ LEVER 9: Stamp Duty & Purchase Cost Estimator ═══ */}
-      <Card>
-        <Collapsible open={openSections.stampDuty} onOpenChange={() => onToggleSection('stampDuty')}>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-primary" />
-                  Stamp Duty & Purchase Costs
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  {totalPurchaseCosts > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {formatCurrency(totalPurchaseCosts)}
-                    </Badge>
-                  )}
-                  <ChevronDown className={`h-4 w-4 transition-transform ${openSections.stampDuty ? 'rotate-180' : ''}`} />
-                </div>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0 space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Estimate the total out-of-pocket costs for a proposed purchase (NSW rates as default estimate).
-              </p>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Purchase Price</Label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 650000"
-                  value={strategy.stampDutyPurchasePrice || ''}
-                  onChange={(e) => onStrategyChange({ stampDutyPurchasePrice: Number(e.target.value) || 0 })}
-                  className="text-sm"
-                />
-              </div>
-              {strategy.stampDutyPurchasePrice > 0 && (
-                <div className="p-4 rounded-lg border bg-card space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Estimated Purchase Costs
-                  </p>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Stamp Duty (est.)</span>
-                      <span>{formatCurrency(stampDuty)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transfer Fee (est.)</span>
-                      <span>{formatCurrency(transferFee)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Legal/Conveyancing (est.)</span>
-                      <span>{formatCurrency(legalFees)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-semibold">
-                      <span>Total Upfront Costs</span>
-                      <span className="text-destructive">{formatCurrency(totalPurchaseCosts)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                      <span>As % of Purchase Price</span>
-                      <span>{((totalPurchaseCosts / strategy.stampDutyPurchasePrice) * 100).toFixed(1)}%</span>
-                    </div>
                   </div>
                 </div>
               )}

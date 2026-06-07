@@ -1201,12 +1201,8 @@ export function BorrowingCapacityModal({
                 hemBenchmark={hemBenchmark}
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
-                onApplyScenario={(inputs, accessibleEquity) => {
-                  // Find matching preset or create an ad-hoc one
-                  const matchingPreset = scenarioPresets.find(
-                    p => !p.isBase && p.adjustedInputs === inputs
-                  );
-                  const scenarioPreset: ScenarioPreset = matchingPreset || {
+                onApplyScenario={(inputs, accessibleEquity, preset) => {
+                  const scenarioPreset: ScenarioPreset = preset || {
                     id: `applied-${Date.now()}`,
                     name: 'Applied Scenario',
                     isBase: false,
@@ -1216,6 +1212,7 @@ export function BorrowingCapacityModal({
                     accessibleEquity: accessibleEquity ?? 0,
                   };
                   setActiveScenario(scenarioPreset);
+                  setResult(scenarioPreset.result as FullAssessmentResult);
                   // Apply the scenario values to calculator state
                   setInterestRate(inputs.interestRate);
                   setLoanTermYears(inputs.loanTermYears);

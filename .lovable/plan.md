@@ -19,3 +19,9 @@
 - Vitest unit suite for `scenarioDeltaEngine` invariants — deferred (no test runner config in this repo path).
 - Capital Flow Canvas redesign (Phase K).
 - Server-side BC engine changes.
+
+## Follow-up hardening — 2026-06-07
+- ✅ Removed the Stamp Duty & Purchase Costs lever from `AdditionalStrategyLevers.tsx` completely, not just hidden by a comment.
+- ✅ Save/apply now passes the actual scenario preset/result into the parent so active scenario banners and calculator results do not revert to the baseline result object.
+- ✅ What-If PDF export now passes the live scenario result into the PDF generator instead of depending only on the latest saved assessment.
+- ✅ Scenario presets resync from persisted props after async save/reload so the scenario list stays consistent with database-backed scenarios.
