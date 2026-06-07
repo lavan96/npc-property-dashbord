@@ -19,7 +19,6 @@ import {
   Wallet,
   Clock,
   ShieldCheck,
-  Receipt,
   Building,
   Layers,
   Network,
@@ -101,24 +100,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-// Simple Australian stamp duty estimate (NSW-based as default)
-function estimateStampDuty(purchasePrice: number): number {
-  if (purchasePrice <= 0) return 0;
-  if (purchasePrice <= 14000) return purchasePrice * 0.0125;
-  if (purchasePrice <= 32000) return 175 + (purchasePrice - 14000) * 0.015;
-  if (purchasePrice <= 85000) return 445 + (purchasePrice - 32000) * 0.0175;
-  if (purchasePrice <= 319000) return 1372.5 + (purchasePrice - 85000) * 0.035;
-  if (purchasePrice <= 1064000) return 9562.5 + (purchasePrice - 319000) * 0.045;
-  if (purchasePrice <= 3194000) return 43007.5 + (purchasePrice - 1064000) * 0.055;
-  return 160187.5 + (purchasePrice - 3194000) * 0.07;
-}
-
-function estimateTransferFee(purchasePrice: number): number {
-  if (purchasePrice <= 500000) return 500;
-  if (purchasePrice <= 1000000) return 1000;
-  return 1500;
-}
-
 // ── Component ──────────────────────────────────────────
 
 interface AdditionalStrategyLeversProps {
@@ -140,11 +121,6 @@ export function AdditionalStrategyLevers({
   properties,
   baseGrossIncome,
 }: AdditionalStrategyLeversProps) {
-  const stampDuty = estimateStampDuty(strategy.stampDutyPurchasePrice);
-  const transferFee = estimateTransferFee(strategy.stampDutyPurchasePrice);
-  const legalFees = strategy.stampDutyPurchasePrice > 0 ? 2500 : 0;
-  const totalPurchaseCosts = stampDuty + transferFee + legalFees;
-
   const sellProperties = properties.filter(p => strategy.portfolioSellPropertyIds.has(p.id));
   const totalSellEquityFreed = sellProperties.reduce((sum, p) => 
     sum + Math.max(0, p.current_value - p.loan_remaining), 0);
