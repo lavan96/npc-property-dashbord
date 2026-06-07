@@ -59,7 +59,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
-  const [target, setTarget] = useState<MessageTarget>('client');
+  const [targets, setTargets] = useState<Set<MessageTarget>>(new Set(['client']));
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
 
