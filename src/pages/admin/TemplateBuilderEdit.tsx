@@ -954,21 +954,51 @@ export default function TemplateBuilderEdit() {
   const anyHidden = multiOverlaysSnap.some((o) => !!o.hidden);
   const anyGrouped = multiOverlaysSnap.some((o) => !!o.groupId);
 
-  // ── Find & Replace (Cmd/Ctrl+F) ────────────────────────────────────────────
+  // ── Find & Replace (Cmd/Ctrl+F) + Asset Library (Shift+I) ─────────────────
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable);
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
-        const t = e.target as HTMLElement | null;
-        const tag = t?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+        if (inEditable) return;
         e.preventDefault();
         setFindReplaceOpen(true);
+        return;
+      }
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'i') {
+        if (inEditable) return;
+        e.preventDefault();
+        setAssetLibraryOpen(true);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  const insertImageFromLibrary = useCallback((asset: { src: string; width: number; height: number }) => {
+    if (!activePage) { toast.error('Select a page first'); return; }
+    const pageW = activePage.size.width || 595;
+    const pageH = activePage.size.height || 842;
+    const overlay = {
+      id: crypto.randomUUID(),
+      type: 'image' as const,
+      src: asset.src,
+      fit: 'contain' as const,
+      x: Math.round((pageW - asset.width) / 2),
+      y: Math.round((pageH - asset.height) / 2),
+      width: asset.width,
+      height: asset.height,
+      rotation: 0,
+      opacity: 1,
+    };
+    updatePage(editorActions.addOverlay(activePage, overlay as Overlay));
+    setSelectedOverlayId(overlay.id);
+    toast.success('Image inserted');
+  }, [activePage]);
+
 
   const getSelectedOverlayIds = useCallback((): string[] => {
     if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
