@@ -299,6 +299,18 @@ export const TableOverlaySchema = BaseOverlay.extend({
     fontWeight: z.enum(['normal','bold']).optional(),
     align: z.enum(['left','center','right']).optional(),
   })).optional(),
+  // Phase 17 — conditional cell rules (data-driven highlighting).
+  // Evaluated per-cell against the bound row. First match wins.
+  cellRules: z.array(z.object({
+    column: z.string(),                                                // column key
+    op: z.enum(['>','>=','<','<=','==','!=','contains','empty','nonempty']),
+    value: z.union([z.number(), z.string()]).optional(),
+    scope: z.enum(['cell','row']).default('cell').optional(),
+    bg: z.string().optional(),
+    color: z.string().optional(),
+    fontWeight: z.enum(['normal','bold']).optional(),
+    icon: z.enum(['none','up','down','flag','star','dot']).optional(),
+  })).optional(),
 });
 
 export const ImageOverlaySchema = BaseOverlay.extend({
