@@ -261,6 +261,68 @@ function OverlayEditor({
             multiline
           />
 
+          {/* Section 3 — paragraph style reference */}
+          {(() => {
+            const styles = (template.tokens as any).paragraphStyles as Record<string, any> | undefined;
+            const keys = styles ? Object.keys(styles) : [];
+            if (keys.length === 0) return null;
+            const cur = String((overlay as any).styleRef ?? '__none__');
+            return (
+              <div>
+                <Label className="text-xs">Paragraph style</Label>
+                <Select value={cur} onValueChange={(v) => patch({ styleRef: v === '__none__' ? undefined : v } as any)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {keys.map((k) => (
+                      <SelectItem key={k} value={k}>{styles![k].name ?? k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })()}
+
+          {/* Section 3 — drop cap */}
+          <div className="rounded border p-2 space-y-2">
+            <label className="flex items-center justify-between text-xs">
+              <span>Drop cap</span>
+              <input
+                type="checkbox"
+                checked={!!(overlay as any).dropCap?.enabled}
+                onChange={(e) => patch({ dropCap: e.target.checked ? { enabled: true, lines: (overlay as any).dropCap?.lines ?? 3 } : undefined } as any)}
+              />
+            </label>
+            {(overlay as any).dropCap?.enabled && (
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Lines</Label>
+                  <input
+                    type="number" min={2} max={8} className="h-7 w-full text-xs rounded border bg-background px-1"
+                    value={(overlay as any).dropCap?.lines ?? 3}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, lines: Math.max(2, Math.min(8, Number(e.target.value) || 3)) } } as any)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Margin (pt)</Label>
+                  <input
+                    type="number" min={0} max={48} className="h-7 w-full text-xs rounded border bg-background px-1"
+                    value={(overlay as any).dropCap?.marginRight ?? 6}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, marginRight: Number(e.target.value) || 0 } } as any)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Color</Label>
+                  <input
+                    type="color" className="h-7 w-full rounded border bg-background"
+                    value={(overlay as any).dropCap?.color ?? '#000000'}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, color: e.target.value } } as any)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <FontSizeControl
             value={Number(overlay.fontSize) || 12}
             onChange={(v) => patch({ fontSize: v } as any)}
