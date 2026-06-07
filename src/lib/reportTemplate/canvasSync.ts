@@ -68,6 +68,28 @@ function overlayToShape(o: Overlay): TLShapePartial {
     };
   }
 
+  // textOnPath / table — represent as a placeholder rectangle on the tldraw canvas.
+  if (o.type === 'textOnPath' || o.type === 'table') {
+    return {
+      id,
+      type: 'geo',
+      x: o.x,
+      y: o.y,
+      rotation: ((o.rotation || 0) * Math.PI) / 180,
+      opacity: o.opacity ?? 1,
+      meta,
+      props: {
+        geo: 'rectangle',
+        w: o.width,
+        h: o.height,
+        color: 'grey',
+        fill: 'pattern',
+        dash: 'dotted',
+        text: o.type === 'table' ? '▦ table' : '✎ text on path',
+      } as any,
+    };
+  }
+
   // shape
   return {
     id,
