@@ -15,7 +15,7 @@ import {
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
-  ChevronDown, MoreHorizontal, CheckSquare, Settings2,
+  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
@@ -120,6 +120,7 @@ import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
 import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
+import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
@@ -953,21 +954,51 @@ export default function TemplateBuilderEdit() {
   const anyHidden = multiOverlaysSnap.some((o) => !!o.hidden);
   const anyGrouped = multiOverlaysSnap.some((o) => !!o.groupId);
 
-  // ── Find & Replace (Cmd/Ctrl+F) ────────────────────────────────────────────
+  // ── Find & Replace (Cmd/Ctrl+F) + Asset Library (Shift+I) ─────────────────
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable);
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
-        const t = e.target as HTMLElement | null;
-        const tag = t?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+        if (inEditable) return;
         e.preventDefault();
         setFindReplaceOpen(true);
+        return;
+      }
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'i') {
+        if (inEditable) return;
+        e.preventDefault();
+        setAssetLibraryOpen(true);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  const insertImageFromLibrary = useCallback((asset: { src: string; width: number; height: number }) => {
+    if (!activePage) { toast.error('Select a page first'); return; }
+    const pageW = activePage.size.width || 595;
+    const pageH = activePage.size.height || 842;
+    const overlay = {
+      id: crypto.randomUUID(),
+      type: 'image' as const,
+      src: asset.src,
+      fit: 'contain' as const,
+      x: Math.round((pageW - asset.width) / 2),
+      y: Math.round((pageH - asset.height) / 2),
+      width: asset.width,
+      height: asset.height,
+      rotation: 0,
+      opacity: 1,
+    };
+    updatePage(editorActions.addOverlay(activePage, overlay as Overlay));
+    setSelectedOverlayId(overlay.id);
+    toast.success('Image inserted');
+  }, [activePage]);
+
 
   const getSelectedOverlayIds = useCallback((): string[] => {
     if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
@@ -1983,6 +2014,9 @@ export default function TemplateBuilderEdit() {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setActiveMainTab('settings')}>
                 <Settings2 className="h-4 w-4 mr-2" /> Custom CSS / settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAssetLibraryOpen(true)} disabled={!activePage}>
+                <ImageIcon className="h-4 w-4 mr-2" /> Asset library… <span className="ml-auto text-[10px] text-muted-foreground">Shift+I</span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
                 <CommandIcon className="h-4 w-4 mr-2" /> Command palette
@@ -3057,6 +3091,14 @@ export default function TemplateBuilderEdit() {
           setSelectedBlockId(null);
           clearMultiSelect();
         }}
+      />
+      <AssetLibraryDialog
+        open={assetLibraryOpen}
+        onOpenChange={setAssetLibraryOpen}
+        templateId={id}
+        pageWidth={activePage?.size.width ?? 595}
+        pageHeight={activePage?.size.height ?? 842}
+        onInsert={insertImageFromLibrary}
       />
       {id && (
         <>
