@@ -17,7 +17,7 @@ const fmtMoney = (n: number) =>
       ? `$${(n / 1000).toFixed(0)}k`
       : `$${Math.round(n).toLocaleString('en-AU')}`;
 
-interface Card {
+interface PfCard {
   id: string;
   client_id: string;
   title: string;
@@ -32,7 +32,7 @@ interface Card {
   kanban_position: number | null;
   last_partner_action_at: string | null;
 }
-interface Lane { status: string; label: string; cards: Card[]; total_loan: number; }
+interface Lane { status: string; label: string; cards: PfCard[]; total_loan: number; }
 
 export default function FinancePortalPipeline() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
@@ -42,50 +42,56 @@ export default function FinancePortalPipeline() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
-    if (error) {
-      toast.error(error.message || 'Failed to load pipeline board');
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
+      if (error) {
+        toast.error(error.message || 'Failed to load pipeline board');
+        setLanes([]);
+      } else {
+        setLanes(Array.isArray(data?.lanes) ? data.lanes : []);
+      }
+    } catch (e: any) {
+      console.error('[Pipeline] load failed', e);
+      toast.error(e?.message || 'Failed to load pipeline board');
       setLanes([]);
-    } else {
-      setLanes(data?.lanes || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [invokeFinanceFunction]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleDrop = async (targetStatus: string, targetIndex: number) => {
-    if (!dragId) return;
-    const sourceLane = lanes.find(l => l.cards.some(c => c.id === dragId));
+  // Move a card via either DnD (desktop) or the "Move to…" menu (mobile/touch).
+  // Phase 2 #11 — native HTML5 drag-drop does not fire on touch devices, so we expose
+  // an explicit menu fallback on every card.
+  const moveCard = useCallback(async (cardId: string, targetStatus: string, targetIndex?: number) => {
+    const sourceLane = lanes.find(l => l.cards.some(c => c.id === cardId));
     if (!sourceLane) return;
-    const card = sourceLane.cards.find(c => c.id === dragId)!;
+    const card = sourceLane.cards.find(c => c.id === cardId)!;
     const targetLane = lanes.find(l => l.status === targetStatus);
     if (!targetLane) return;
 
-    // Compute new position between neighbours
-    const filtered = targetLane.cards.filter(c => c.id !== dragId);
-    const before = filtered[targetIndex - 1]?.kanban_position;
-    const after = filtered[targetIndex]?.kanban_position;
+    const idx = targetIndex == null ? targetLane.cards.length : targetIndex;
+    const filtered = targetLane.cards.filter(c => c.id !== cardId);
+    const before = filtered[idx - 1]?.kanban_position;
+    const after = filtered[idx]?.kanban_position;
     let pos: number;
     if (before != null && after != null) pos = (Number(before) + Number(after)) / 2;
     else if (before != null) pos = Number(before) + 1000;
     else if (after != null) pos = Number(after) - 1000;
     else pos = Date.now();
 
-    // Optimistic update
     setLanes(prev => {
-      const next = prev.map(l => ({ ...l, cards: l.cards.filter(c => c.id !== dragId) }));
+      const next = prev.map(l => ({ ...l, cards: l.cards.filter(c => c.id !== cardId) }));
       const moved = { ...card, finance_status: targetStatus, kanban_position: pos };
       const lane = next.find(l => l.status === targetStatus)!;
-      const insertAt = Math.min(targetIndex, lane.cards.length);
-      lane.cards.splice(insertAt, 0, moved);
+      lane.cards.splice(Math.min(idx, lane.cards.length), 0, moved);
       return next;
     });
-    setDragId(null);
 
     const { error } = await invokeFinanceFunction('finance-portal-pipeline', {
       operation: 'kanban_move',
-      purchase_file_id: dragId,
+      purchase_file_id: cardId,
       target_status: targetStatus,
       target_position: pos,
     });
@@ -95,6 +101,13 @@ export default function FinancePortalPipeline() {
     } else {
       toast.success(`Moved to ${targetStatus.replace(/_/g, ' ')}`);
     }
+  }, [lanes, invokeFinanceFunction, load]);
+
+  const handleDrop = (targetStatus: string, targetIndex: number) => {
+    if (!dragId) return;
+    const id = dragId;
+    setDragId(null);
+    void moveCard(id, targetStatus, targetIndex);
   };
 
   return (
