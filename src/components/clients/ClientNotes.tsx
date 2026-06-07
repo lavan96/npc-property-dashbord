@@ -252,7 +252,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
     setEditingId(note.id);
     setEditContent(note.content);
     setEditNoteType(note.note_type);
-    setEditShare(note.visibility === 'shared');
+    setEditVisibility((note.visibility as Visibility) || 'internal_npc');
   };
 
   const getNoteIcon = (type: string) => {
