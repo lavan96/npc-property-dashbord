@@ -168,12 +168,42 @@ export default function FinancePortalPipeline() {
                       className={`rounded-lg border border-border bg-background p-3 hover:border-primary/60 cursor-grab active:cursor-grabbing transition-all ${dragId === card.id ? 'opacity-40' : ''}`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-medium leading-tight line-clamp-2">{card.title}</p>
-                        <Link to={`/finance/purchase-files/${card.id}`} className="shrink-0 text-muted-foreground hover:text-primary">
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
+                        <p className="text-sm font-medium leading-tight line-clamp-2 flex-1">{card.title}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Link to={`/finance/purchase-files/${card.id}`} className="text-muted-foreground hover:text-primary p-1 -m-1" aria-label="Open file">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-primary p-1 -m-1 touch-manipulation"
+                                aria-label="Move file"
+                                onClick={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 max-h-[60vh] overflow-y-auto">
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">Move to…</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {lanes.filter(l => l.status !== card.finance_status).map(l => (
+                                <DropdownMenuItem key={l.status} onClick={() => moveCard(card.id, l.status)}>
+                                  <ArrowRight className="h-3 w-3 mr-2 text-muted-foreground" /> {l.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                       {card.client_name && <p className="text-xs text-muted-foreground line-clamp-1">{card.client_name}</p>}
+                      {(card.property_address || card.property_suburb) && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{card.property_address || card.property_suburb}</span>
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         {card.lender && <Badge variant="outline" className="text-[10px]">{card.lender}</Badge>}
                         {card.loan_amount > 0 && <span className="text-xs font-medium text-success">{fmtMoney(card.loan_amount)}</span>}
