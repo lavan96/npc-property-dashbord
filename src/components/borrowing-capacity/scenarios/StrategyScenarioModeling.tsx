@@ -2453,7 +2453,19 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity)}
+                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity, {
+                        id: `applied-${Date.now()}`,
+                        name: scenarioName.trim() || 'Current What-If Scenario',
+                        isBase: false,
+                        createdAt: new Date().toISOString(),
+                        adjustedInputs: { ...scenarioInputs },
+                        result: scenarioResult,
+                        accessibleEquity: totalAccessibleEquity,
+                        acquisitionCapacity: null,
+                        incomeComponents,
+                        currentLenderProfileId,
+                        hemBenchmark,
+                      })}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
@@ -2476,7 +2488,7 @@ export function StrategyScenarioModeling({
                           adjustedInputs: { ...scenarioInputs },
                           result: scenarioResult,
                           accessibleEquity: totalAccessibleEquity,
-                          acquisitionCapacity: acquisitionCapacity ?? null,
+                          acquisitionCapacity: null,
                           incomeComponents,
                           currentLenderProfileId,
                           hemBenchmark,
