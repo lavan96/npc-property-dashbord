@@ -121,6 +121,8 @@ import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
 import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
 import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
+import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
+import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
