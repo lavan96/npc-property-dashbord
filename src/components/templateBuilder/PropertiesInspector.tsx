@@ -42,6 +42,11 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 import { InlineAiTextActions } from './InlineAiTextActions';
+import { PaperSizePicker } from './PaperSizePicker';
+import { EnhancedColorPicker } from './EnhancedColorPicker';
+import { FontPicker } from './FontPicker';
+import { FontSizeControl } from './FontSizeControl';
+import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
 
 
 interface Props {
