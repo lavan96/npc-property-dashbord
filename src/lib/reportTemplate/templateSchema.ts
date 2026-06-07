@@ -297,6 +297,8 @@ export const OverlaySchema = z.discriminatedUnion('type', [
   TextOverlaySchema,
   ImageOverlaySchema,
   ShapeOverlaySchema,
+  TextOnPathOverlaySchema,
+  TableOverlaySchema,
 ]);
 
 export type Overlay = z.infer<typeof OverlaySchema>;
