@@ -791,27 +791,16 @@ function NumField({
 function ColorField({
   label, value, onChange, allowEmpty, template,
 }: { label: string; value: string; onChange: (v: string) => void; allowEmpty?: boolean; template: ReportTemplate }) {
-  const isHex = value?.startsWith('#');
   const issues = validateBindable(value, template);
   return (
     <div>
-      <Label className="text-xs">{label}</Label>
-      <div className="flex gap-2">
-        {isHex && (
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-8 w-10 rounded cursor-pointer bg-transparent border"
-          />
-        )}
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex or token:primary'}
-          className={`h-8 text-xs font-mono ${issues.length ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-        />
-      </div>
+      <EnhancedColorPicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        template={template}
+        allowEmpty={allowEmpty}
+      />
       <BindingIssues issues={issues} />
     </div>
   );
