@@ -76,7 +76,7 @@ function countAssets(template: ReportTemplate): { images: string[]; total: numbe
 }
 
 export function ExportPipelineDialog({
-  open, onOpenChange, template, templateId, templateName, sampleData, customCss,
+  open, onOpenChange, template, templateId, templateName, sampleData, customCss, onTemplateChange,
 }: ExportPipelineDialogProps) {
   const [variant, setVariant] = useState<string>('pdf/a-2b');
   const [tagged, setTagged] = useState(true);
