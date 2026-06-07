@@ -276,7 +276,7 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
-  const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
+  const overlays = (block.overlays ?? []).filter((o: any) => !o?.hidden).map((o: any) => renderOverlay(o, ctxBase)).join('');
   const backdrop = decorationBackdrop(block, ctxBase);
   const s = block.style ?? {};
   const opacity = s.opacity != null ? Number(s.opacity) : 1;

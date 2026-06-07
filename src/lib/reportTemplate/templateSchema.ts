@@ -90,6 +90,22 @@ const BaseOverlay = z.object({
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
   link: LinkSchema,
   bookmark: BookmarkSchema,
+  // Layout & Structure (Sections 1+2) — editor-only flags, additive/optional
+  locked: z.boolean().optional(),         // selectable but immovable
+  hidden: z.boolean().optional(),         // skip render + hide in canvas
+  groupId: z.string().optional(),         // overlays sharing groupId move together
+  zIndex: z.number().int().optional(),    // overlay stacking within its block
+  name: z.string().optional(),            // designer label (Layers panel)
+  constraints: z.object({                 // pinning for responsive paper-size changes
+    left: z.boolean().optional(),
+    right: z.boolean().optional(),
+    top: z.boolean().optional(),
+    bottom: z.boolean().optional(),
+    centerH: z.boolean().optional(),
+    centerV: z.boolean().optional(),
+    width: z.enum(['fixed', 'scale']).optional(),
+    height: z.enum(['fixed', 'scale']).optional(),
+  }).optional(),
 });
 
 

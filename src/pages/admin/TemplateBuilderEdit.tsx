@@ -118,6 +118,9 @@ import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInsp
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
 import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
+import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
+import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
+import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
@@ -909,7 +912,63 @@ export default function TemplateBuilderEdit() {
     }
   };
 
-  // ── Overlay selection helpers (used by Ctrl+A and clipboard) ────────────────
+  // ── Layout & Structure (Sections 1+2) — multi-select align/distribute/etc.
+  const runOnActivePage = useCallback((mutator: (p: Page) => Page) => {
+    if (!activePage) return;
+    const next = mutator(activePage);
+    if (next !== activePage) updatePage(next);
+  }, [activePage]);
+  const bulkAlign = (op: layoutActions.AlignOp) =>
+    runOnActivePage((p) => layoutActions.alignOverlays(p, Array.from(multiOverlayIds), op));
+  const bulkDistribute = (op: layoutActions.DistributeOp) =>
+    runOnActivePage((p) => layoutActions.distributeSpacing(p, Array.from(multiOverlayIds), op));
+  const bulkAlignToPage = (op: layoutActions.PageAlignOp) =>
+    runOnActivePage((p) => layoutActions.alignToPage(p, Array.from(multiOverlayIds), op));
+  const bulkGroup = () =>
+    runOnActivePage((p) => layoutActions.groupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkUngroup = () =>
+    runOnActivePage((p) => layoutActions.ungroupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkZ = (op: 'forward' | 'backward' | 'front' | 'back') =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.reorderOverlayZ(acc, id, op),
+      p,
+    ));
+  const bulkLock = (locked: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayLocked(acc, id, locked),
+      p,
+    ));
+  const bulkHide = (hidden: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayHidden(acc, id, hidden),
+      p,
+    ));
+  const multiOverlaysSnap = useMemo(() => {
+    if (!activePage) return [] as Overlay[];
+    const out: Overlay[] = [];
+    for (const b of activePage.blocks) for (const o of b.overlays) if (multiOverlayIds.has(o.id)) out.push(o);
+    return out;
+  }, [activePage, multiOverlayIds]);
+  const anyLocked = multiOverlaysSnap.some((o) => !!o.locked);
+  const anyHidden = multiOverlaysSnap.some((o) => !!o.hidden);
+  const anyGrouped = multiOverlaysSnap.some((o) => !!o.groupId);
+
+  // ── Find & Replace (Cmd/Ctrl+F) ────────────────────────────────────────────
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        const t = e.target as HTMLElement | null;
+        const tag = t?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const getSelectedOverlayIds = useCallback((): string[] => {
     if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
     return selectedOverlayId ? [selectedOverlayId] : [];
@@ -2188,6 +2247,20 @@ export default function TemplateBuilderEdit() {
                     onPasteStyle={bulkPasteStyle}
                     hasStyleClipboard={hasStyleClipboard}
                   />
+                  <AlignDistributeBar
+                    count={multiOverlayIds.size}
+                    onAlign={bulkAlign}
+                    onDistribute={bulkDistribute}
+                    onAlignToPage={bulkAlignToPage}
+                    onGroup={bulkGroup}
+                    onUngroup={bulkUngroup}
+                    onZ={bulkZ}
+                    onLock={bulkLock}
+                    onHide={bulkHide}
+                    anyLocked={anyLocked}
+                    anyHidden={anyHidden}
+                    anyGrouped={anyGrouped}
+                  />
                 </>
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -2971,6 +3044,19 @@ export default function TemplateBuilderEdit() {
         template={template}
         sampleData={sampleData}
         customCss={customCss || undefined}
+      />
+      <FindReplaceDialog
+        open={findReplaceOpen}
+        onOpenChange={setFindReplaceOpen}
+        template={template}
+        activePageId={activePageId}
+        onApplyTemplate={(next) => setTemplate(next)}
+        onGoTo={(pid, oid) => {
+          setActivePageId(pid);
+          setSelectedOverlayId(oid);
+          setSelectedBlockId(null);
+          clearMultiSelect();
+        }}
       />
       {id && (
         <>
