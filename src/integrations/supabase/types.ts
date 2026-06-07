@@ -4487,7 +4487,10 @@ export type Database = {
           created_by: string | null
           current_address: string | null
           current_pipeline_id: string | null
+          current_postcode: string | null
           current_stage_id: string | null
+          current_state: string | null
+          current_suburb: string | null
           deal_status: string
           dependents_count: number | null
           equity_release: number | null
@@ -4527,6 +4530,9 @@ export type Database = {
           review_frequency: string | null
           secondary_country: string | null
           secondary_current_address: string | null
+          secondary_current_postcode: string | null
+          secondary_current_state: string | null
+          secondary_current_suburb: string | null
           secondary_dob: string | null
           secondary_email: string | null
           secondary_first_name: string | null
@@ -4552,7 +4558,10 @@ export type Database = {
           created_by?: string | null
           current_address?: string | null
           current_pipeline_id?: string | null
+          current_postcode?: string | null
           current_stage_id?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
@@ -4592,6 +4601,9 @@ export type Database = {
           review_frequency?: string | null
           secondary_country?: string | null
           secondary_current_address?: string | null
+          secondary_current_postcode?: string | null
+          secondary_current_state?: string | null
+          secondary_current_suburb?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null
@@ -4617,7 +4629,10 @@ export type Database = {
           created_by?: string | null
           current_address?: string | null
           current_pipeline_id?: string | null
+          current_postcode?: string | null
           current_stage_id?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
@@ -4657,6 +4672,9 @@ export type Database = {
           review_frequency?: string | null
           secondary_country?: string | null
           secondary_current_address?: string | null
+          secondary_current_postcode?: string | null
+          secondary_current_state?: string | null
+          secondary_current_suburb?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null

@@ -32,6 +32,9 @@ export { livingSituationOptions, residentialStatusOptions };
 
 export interface ContactAddressData {
   current_address: string;
+  current_suburb?: string;
+  current_state?: string;
+  current_postcode?: string;
   country: string;
   living_situation: string;
   residential_status: string;
