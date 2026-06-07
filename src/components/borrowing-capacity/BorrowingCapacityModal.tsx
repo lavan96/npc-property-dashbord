@@ -150,6 +150,11 @@ export function BorrowingCapacityModal({
   const [loanTermYears, setLoanTermYears] = useState(30);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [result, setResult] = useState<FullAssessmentResult | null>(null);
+  // Preserve the last true base-case calculation separately from any applied
+  // what-if result. The scenario modeller must always compare selected levers
+  // against this base snapshot, even after a scenario is applied to the
+  // calculator panel.
+  const [baseScenarioResult, setBaseScenarioResult] = useState<FullAssessmentResult | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
   const [showRateComparison, setShowRateComparison] = useState(false);
   // New mode states
@@ -801,12 +806,15 @@ export function BorrowingCapacityModal({
         ...lmiOverrides,
       });
       setResult(calcResult);
+      if (!activeScenario) {
+        setBaseScenarioResult(calcResult);
+      }
     } catch (error) {
       console.error('Calculation failed:', error);
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer, activeScenario]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
@@ -910,7 +918,11 @@ export function BorrowingCapacityModal({
           setCalculationMode(baseInputs.calculationMode ?? 'bank');
           setDtiCapEnabled(!!baseInputs.dtiCapEnabled);
           setDtiCapLimit(baseInputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
-          if (basePreset) setResult(basePreset.result as FullAssessmentResult);
+          if (basePreset) {
+            const baseResult = basePreset.result as FullAssessmentResult;
+            setResult(baseResult);
+            setBaseScenarioResult(baseResult);
+          }
           toast.info('Reverted to base case');
         }}
       >
@@ -1211,7 +1223,7 @@ export function BorrowingCapacityModal({
                 clientId={clientId}
                 clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
                 baseInputs={baseCalculatorInputs}
-                baseResult={result}
+                baseResult={baseScenarioResult ?? result}
                 liabilities={liabilitiesBreakdown.map(l => ({
                   id: l.id,
                   type: l.type,
