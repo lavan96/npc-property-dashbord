@@ -80,15 +80,26 @@ function jsonResponse(data: any, status = 200) {
 // directly, so default the conversion fields and required columns here.
 function normalizeIncomeSourceFields(input: Record<string, any>) {
   const out = { ...input };
-  const gross = Number(out.gross_annual_amount || 0);
+  // Coerce empty strings → null/0 so NOT NULL columns get a usable value.
+  const grossRaw = out.gross_annual_amount;
+  const gross = grossRaw === '' || grossRaw == null ? 0 : Number(grossRaw) || 0;
   out.gross_annual_amount = gross;
-  if (out.input_frequency == null) out.input_frequency = 'annual';
-  if (out.input_amount == null) out.input_amount = gross;
-  if (out.source_category == null) out.source_category = 'employment';
-  if (out.source_type == null) out.source_type = 'payg_fulltime';
+  if (out.input_frequency == null || out.input_frequency === '') out.input_frequency = 'annual';
+  if (out.input_amount == null || out.input_amount === '') out.input_amount = gross;
+  if (out.source_category == null || out.source_category === '') out.source_category = 'employment';
+  if (out.source_type == null || out.source_type === '') out.source_type = 'payg_fulltime';
+  if (out.contact_type == null || out.contact_type === '') out.contact_type = 'primary';
   if (out.is_active == null) out.is_active = true;
+  if (out.default_shading_rate == null) out.default_shading_rate = 1.0;
+  if (out.display_order == null) out.display_order = 0;
+  // Coerce optional numeric fields from '' → null so PG numeric cast doesn't fail.
+  for (const k of ['bonus','commission','overtime_essential','overtime_non_essential','allowance','other_taxable_income','custom_shading_rate']) {
+    if (out[k] === '') out[k] = null;
+    else if (out[k] != null) out[k] = Number(out[k]) || 0;
+  }
   return out;
 }
+
 
 async function prepareFinanceNotePayload(supabase: any, clientId: string, payload: Record<string, any>, portalUser: any) {
   const now = new Date().toISOString();
@@ -245,6 +256,9 @@ Deno.serve(async (req) => {
         },
       });
 
+      // NOTE: `clients` table has no source_surface/source_actor_* columns — provenance is
+      // recorded via lead_source + activity log instead. Spreading `provenance` here used to
+      // crash the insert with "column source_surface … does not exist" (Phase 2 #12 fix).
       const clientInsert = {
         primary_first_name,
         primary_surname,
@@ -263,8 +277,10 @@ Deno.serve(async (req) => {
         net_monthly_cash_flow: Number(payload.net_monthly_cash_flow || 0),
         finance_contact_id: portalUser.finance_contact_id || null,
         ghl_sync_status: 'pending',
-        ...provenance,
+        lead_source: 'finance_portal',
+        lead_source_detail: `finance_partner:${portalUser.email ?? portalUser.id}`,
       };
+
 
       const { data: createdClient, error: clientError } = await supabase
         .from('clients')

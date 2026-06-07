@@ -1,13 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ArrowRight, ExternalLink, Layers, RefreshCw } from 'lucide-react';
+import { ArrowRight, ExternalLink, Layers, RefreshCw, MoreVertical, MapPin } from 'lucide-react';
 
 const fmtMoney = (n: number) =>
   n >= 1_000_000
@@ -16,7 +17,7 @@ const fmtMoney = (n: number) =>
       ? `$${(n / 1000).toFixed(0)}k`
       : `$${Math.round(n).toLocaleString('en-AU')}`;
 
-interface Card {
+interface PfCard {
   id: string;
   client_id: string;
   title: string;
@@ -31,7 +32,7 @@ interface Card {
   kanban_position: number | null;
   last_partner_action_at: string | null;
 }
-interface Lane { status: string; label: string; cards: Card[]; total_loan: number; }
+interface Lane { status: string; label: string; cards: PfCard[]; total_loan: number; }
 
 export default function FinancePortalPipeline() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
@@ -41,50 +42,56 @@ export default function FinancePortalPipeline() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
-    if (error) {
-      toast.error(error.message || 'Failed to load pipeline board');
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
+      if (error) {
+        toast.error(error.message || 'Failed to load pipeline board');
+        setLanes([]);
+      } else {
+        setLanes(Array.isArray(data?.lanes) ? data.lanes : []);
+      }
+    } catch (e: any) {
+      console.error('[Pipeline] load failed', e);
+      toast.error(e?.message || 'Failed to load pipeline board');
       setLanes([]);
-    } else {
-      setLanes(data?.lanes || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [invokeFinanceFunction]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleDrop = async (targetStatus: string, targetIndex: number) => {
-    if (!dragId) return;
-    const sourceLane = lanes.find(l => l.cards.some(c => c.id === dragId));
+  // Move a card via either DnD (desktop) or the "Move to…" menu (mobile/touch).
+  // Phase 2 #11 — native HTML5 drag-drop does not fire on touch devices, so we expose
+  // an explicit menu fallback on every card.
+  const moveCard = useCallback(async (cardId: string, targetStatus: string, targetIndex?: number) => {
+    const sourceLane = lanes.find(l => l.cards.some(c => c.id === cardId));
     if (!sourceLane) return;
-    const card = sourceLane.cards.find(c => c.id === dragId)!;
+    const card = sourceLane.cards.find(c => c.id === cardId)!;
     const targetLane = lanes.find(l => l.status === targetStatus);
     if (!targetLane) return;
 
-    // Compute new position between neighbours
-    const filtered = targetLane.cards.filter(c => c.id !== dragId);
-    const before = filtered[targetIndex - 1]?.kanban_position;
-    const after = filtered[targetIndex]?.kanban_position;
+    const idx = targetIndex == null ? targetLane.cards.length : targetIndex;
+    const filtered = targetLane.cards.filter(c => c.id !== cardId);
+    const before = filtered[idx - 1]?.kanban_position;
+    const after = filtered[idx]?.kanban_position;
     let pos: number;
     if (before != null && after != null) pos = (Number(before) + Number(after)) / 2;
     else if (before != null) pos = Number(before) + 1000;
     else if (after != null) pos = Number(after) - 1000;
     else pos = Date.now();
 
-    // Optimistic update
     setLanes(prev => {
-      const next = prev.map(l => ({ ...l, cards: l.cards.filter(c => c.id !== dragId) }));
+      const next = prev.map(l => ({ ...l, cards: l.cards.filter(c => c.id !== cardId) }));
       const moved = { ...card, finance_status: targetStatus, kanban_position: pos };
       const lane = next.find(l => l.status === targetStatus)!;
-      const insertAt = Math.min(targetIndex, lane.cards.length);
-      lane.cards.splice(insertAt, 0, moved);
+      lane.cards.splice(Math.min(idx, lane.cards.length), 0, moved);
       return next;
     });
-    setDragId(null);
 
     const { error } = await invokeFinanceFunction('finance-portal-pipeline', {
       operation: 'kanban_move',
-      purchase_file_id: dragId,
+      purchase_file_id: cardId,
       target_status: targetStatus,
       target_position: pos,
     });
@@ -94,6 +101,13 @@ export default function FinancePortalPipeline() {
     } else {
       toast.success(`Moved to ${targetStatus.replace(/_/g, ' ')}`);
     }
+  }, [lanes, invokeFinanceFunction, load]);
+
+  const handleDrop = (targetStatus: string, targetIndex: number) => {
+    if (!dragId) return;
+    const id = dragId;
+    setDragId(null);
+    void moveCard(id, targetStatus, targetIndex);
   };
 
   return (
@@ -101,7 +115,7 @@ export default function FinancePortalPipeline() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Pipeline Kanban</h1>
-          <p className="text-sm text-muted-foreground">Drag &amp; drop purchase files to update their finance status.</p>
+          <p className="text-sm text-muted-foreground">Drag &amp; drop on desktop, or tap the <span className="inline-flex items-center px-1 py-px rounded border border-border align-middle"><MoreVertical className="h-3 w-3" /></span> menu on a card to move it.</p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -154,12 +168,42 @@ export default function FinancePortalPipeline() {
                       className={`rounded-lg border border-border bg-background p-3 hover:border-primary/60 cursor-grab active:cursor-grabbing transition-all ${dragId === card.id ? 'opacity-40' : ''}`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-medium leading-tight line-clamp-2">{card.title}</p>
-                        <Link to={`/finance/purchase-files/${card.id}`} className="shrink-0 text-muted-foreground hover:text-primary">
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
+                        <p className="text-sm font-medium leading-tight line-clamp-2 flex-1">{card.title}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Link to={`/finance/purchase-files/${card.id}`} className="text-muted-foreground hover:text-primary p-1 -m-1" aria-label="Open file">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-primary p-1 -m-1 touch-manipulation"
+                                aria-label="Move file"
+                                onClick={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 max-h-[60vh] overflow-y-auto">
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">Move to…</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {lanes.filter(l => l.status !== card.finance_status).map(l => (
+                                <DropdownMenuItem key={l.status} onClick={() => moveCard(card.id, l.status)}>
+                                  <ArrowRight className="h-3 w-3 mr-2 text-muted-foreground" /> {l.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                       {card.client_name && <p className="text-xs text-muted-foreground line-clamp-1">{card.client_name}</p>}
+                      {(card.property_address || card.property_suburb) && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{card.property_address || card.property_suburb}</span>
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         {card.lender && <Badge variant="outline" className="text-[10px]">{card.lender}</Badge>}
                         {card.loan_amount > 0 && <span className="text-xs font-medium text-success">{fmtMoney(card.loan_amount)}</span>}
