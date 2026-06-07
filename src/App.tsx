@@ -264,7 +264,7 @@ const App = () => (
                                 <Route path="insights" element={<FinancePortalInsights />} />
                                 <Route path="reports" element={<FinancePortalReports />} />
                                 <Route path="settings" element={<FinancePortalSettings />} />
-                                <Route path="mobile" element={<FinancePortalMobile />} />
+                                
 
 
 
