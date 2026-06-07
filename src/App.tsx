@@ -133,7 +133,7 @@ import FinancePortalPurchaseFileDetail from "./pages/finance-portal/FinancePorta
 import FinancePortalClientInbox from "./pages/finance-portal/FinancePortalClientInbox";
 import FinancePortalPipeline from "./pages/finance-portal/FinancePortalPipeline";
 import FinancePortalInsights from "./pages/finance-portal/FinancePortalInsights";
-import FinancePortalMobile from "./pages/finance-portal/FinancePortalMobile";
+
 
 const queryClient = new QueryClient();
 
