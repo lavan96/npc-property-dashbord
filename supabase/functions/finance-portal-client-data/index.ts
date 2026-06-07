@@ -548,8 +548,8 @@ Deno.serve(async (req) => {
         .from(dbTable)
         .select('*')
         .eq('client_id', client_id);
-      // Finance portal must never see internal-only notes
-      if (dbTable === 'client_notes') listQuery = listQuery.eq('visibility', 'shared');
+      // Finance portal sees notes targeted to finance or shared with both portals
+      if (dbTable === 'client_notes') listQuery = listQuery.in('visibility', ['shared', 'finance_only']);
       const { data, error } = await listQuery.order('created_at', { ascending: false });
       if (error) throw error;
       await audit('list_records', table_key, null, { count: data?.length || 0 });
