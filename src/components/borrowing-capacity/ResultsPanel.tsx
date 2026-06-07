@@ -196,6 +196,15 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
   const stressTestedCapacity = typeof result.stressTestedCapacity === 'number'
     ? result.stressTestedCapacity
     : result.borrowingCapacity;
+  // Guard numerics used with `.toFixed()` — a scenario/preset result applied to
+  // the calculator may omit these, and an undefined `.toFixed()` would crash the
+  // whole panel render.
+  const safeDtiRatio = typeof result.dtiRatio === 'number' && Number.isFinite(result.dtiRatio)
+    ? result.dtiRatio
+    : 0;
+  const safeAssessmentRate = typeof result.assessmentRate === 'number' && Number.isFinite(result.assessmentRate)
+    ? result.assessmentRate
+    : (interestRate ?? 6.5) + (bufferRate ?? 3);
 
   const bandConfig = getBandConfig(result.serviceabilityBand);
   const BandIcon = bandConfig.icon;
@@ -391,15 +400,15 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground mb-1">DTI</p>
-            <p className={`text-lg font-bold ${result.dtiRatio < 6 ? 'text-success' : result.dtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
-              {result.dtiRatio.toFixed(1)}x
+            <p className={`text-lg font-bold ${safeDtiRatio < 6 ? 'text-success' : safeDtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
+              {safeDtiRatio.toFixed(1)}x
             </p>
             <p className="text-xs text-muted-foreground">ratio</p>
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground mb-1">Assessment</p>
             <p className="text-lg font-bold text-foreground">
-              {result.assessmentRate.toFixed(2)}%
+              {safeAssessmentRate.toFixed(2)}%
             </p>
             <p className="text-xs text-muted-foreground">rate</p>
           </div>
@@ -643,11 +652,11 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Interest Rate:</span>
-                <span className="font-medium">{(result.assessmentRate - 3).toFixed(2)}%</span>
+                <span className="font-medium">{(safeAssessmentRate - 3).toFixed(2)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Assessment Rate:</span>
-                <span className="font-medium">{result.assessmentRate.toFixed(2)}%</span>
+                <span className="font-medium">{safeAssessmentRate.toFixed(2)}%</span>
               </div>
             </div>
           </CollapsibleContent>

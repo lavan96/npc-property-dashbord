@@ -1243,52 +1243,83 @@ export function BorrowingCapacityModal({
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
                 onApplyScenario={(inputs, accessibleEquity, preset) => {
-                  const scenarioPreset: ScenarioPreset = preset || {
-                    id: `applied-${Date.now()}`,
-                    name: 'Applied Scenario',
-                    isBase: false,
-                    createdAt: new Date().toISOString(),
-                    adjustedInputs: { ...inputs },
-                    result: result!,
-                    accessibleEquity: accessibleEquity ?? 0,
-                  };
-                  const scenarioResult = scenarioPreset.result;
-                  const appliedResult: FullAssessmentResult = {
-                    ...result!,
-                    ...scenarioResult,
-                    grossAnnualIncome: inputs.grossAnnualIncome,
-                    shadedAnnualIncome: inputs.shadedAnnualIncome,
-                    livingExpensesMonthly: inputs.monthlyLivingExpenses,
-                    existingCommitmentsMonthly: inputs.monthlyCommitments,
-                    interestRate: inputs.interestRate,
-                    bufferRate: inputs.bufferRate,
-                    loanTermYears: inputs.loanTermYears,
-                    recommendations: Array.isArray(scenarioResult.recommendations)
-                      ? scenarioResult.recommendations
-                      : (result?.recommendations ?? []),
-                    warnings: Array.isArray(scenarioResult.warnings)
-                      ? scenarioResult.warnings
-                      : (result?.warnings ?? []),
-                    stressTestedCapacity: typeof scenarioResult.stressTestedCapacity === 'number'
-                      ? scenarioResult.stressTestedCapacity
-                      : (result?.stressTestedCapacity ?? scenarioResult.borrowingCapacity),
-                  };
-                  setActiveScenario({
-                    ...scenarioPreset,
-                    result: appliedResult,
-                  });
-                  setResult(appliedResult);
-                  // Apply the full scenario control surface to calculator state;
-                  // income/expense/commitment/debt overlays come from activeScenario.adjustedInputs.
-                  setInterestRate(inputs.interestRate);
-                  setLoanTermYears(inputs.loanTermYears);
-                  setBufferEnabled((inputs.bufferRate ?? 0) > 0);
-                  setCalculationMode(inputs.calculationMode ?? 'bank');
-                  setDtiCapEnabled(!!inputs.dtiCapEnabled);
-                  setDtiCapLimit(inputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
-                  // Switch to calculator tab to show the result
-                  setActiveTab('calculator');
-                  toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
+                  // Hardened apply path. Both the "Apply to Calculator" and "Save
+                  // Scenario" buttons route through here; a thrown error or a
+                  // partially-shaped result used to crash the calculator render
+                  // ("jumps straight to error"). We now guard the whole flow and
+                  // coerce every numeric the results UI reads with `.toFixed()` /
+                  // arithmetic so the applied result is always a valid shape.
+                  try {
+                    if (!result) {
+                      toast.error('Calculate borrowing capacity before applying a scenario.');
+                      return;
+                    }
+                    if (!inputs) {
+                      toast.error('Scenario inputs are unavailable — rebuild the scenario and try again.');
+                      return;
+                    }
+                    const baseResultSnapshot = result;
+                    const scenarioPreset: ScenarioPreset = preset || {
+                      id: `applied-${Date.now()}`,
+                      name: 'Applied Scenario',
+                      isBase: false,
+                      createdAt: new Date().toISOString(),
+                      adjustedInputs: { ...inputs },
+                      result: baseResultSnapshot,
+                      accessibleEquity: accessibleEquity ?? 0,
+                    };
+                    const scenarioResult = (scenarioPreset.result ?? baseResultSnapshot) as Partial<FullAssessmentResult>;
+                    const num = (value: unknown, fallback: number): number =>
+                      typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+                    const appliedResult: FullAssessmentResult = {
+                      ...baseResultSnapshot,
+                      ...scenarioResult,
+                      borrowingCapacity: num(scenarioResult.borrowingCapacity, num(baseResultSnapshot.borrowingCapacity, 0)),
+                      monthlySurplus: num(scenarioResult.monthlySurplus, num(baseResultSnapshot.monthlySurplus, 0)),
+                      dtiRatio: num(scenarioResult.dtiRatio, num(baseResultSnapshot.dtiRatio, 0)),
+                      assessmentRate: num(
+                        scenarioResult.assessmentRate,
+                        num(baseResultSnapshot.assessmentRate, (inputs.interestRate ?? 6.5) + (inputs.bufferRate ?? 3)),
+                      ),
+                      serviceabilityBand: scenarioResult.serviceabilityBand ?? baseResultSnapshot.serviceabilityBand ?? 'red',
+                      grossAnnualIncome: inputs.grossAnnualIncome,
+                      shadedAnnualIncome: inputs.shadedAnnualIncome,
+                      livingExpensesMonthly: inputs.monthlyLivingExpenses,
+                      existingCommitmentsMonthly: inputs.monthlyCommitments,
+                      interestRate: inputs.interestRate,
+                      bufferRate: inputs.bufferRate,
+                      loanTermYears: inputs.loanTermYears,
+                      recommendations: Array.isArray(scenarioResult.recommendations)
+                        ? scenarioResult.recommendations
+                        : (baseResultSnapshot.recommendations ?? []),
+                      warnings: Array.isArray(scenarioResult.warnings)
+                        ? scenarioResult.warnings
+                        : (baseResultSnapshot.warnings ?? []),
+                      stressTestedCapacity: num(
+                        scenarioResult.stressTestedCapacity,
+                        num(baseResultSnapshot.stressTestedCapacity, num(scenarioResult.borrowingCapacity, 0)),
+                      ),
+                    };
+                    setActiveScenario({
+                      ...scenarioPreset,
+                      result: appliedResult,
+                    });
+                    setResult(appliedResult);
+                    // Apply the full scenario control surface to calculator state;
+                    // income/expense/commitment/debt overlays come from activeScenario.adjustedInputs.
+                    setInterestRate(inputs.interestRate);
+                    setLoanTermYears(inputs.loanTermYears);
+                    setBufferEnabled((inputs.bufferRate ?? 0) > 0);
+                    setCalculationMode(inputs.calculationMode ?? 'bank');
+                    setDtiCapEnabled(!!inputs.dtiCapEnabled);
+                    setDtiCapLimit(inputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
+                    // Switch to calculator tab to show the result
+                    setActiveTab('calculator');
+                    toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
+                  } catch (err: any) {
+                    console.error('[BorrowingCapacityModal] Failed to apply scenario:', err);
+                    toast.error(`Couldn't apply scenario: ${err?.message || 'unexpected error'}`);
+                  }
                 }}
               />
             ) : (

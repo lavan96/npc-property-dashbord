@@ -1268,36 +1268,41 @@ export function StrategyScenarioModeling({
       toast.error('Resolve blocking scenario validation errors before saving.');
       return;
     }
-    const name = scenarioName.trim() || `Scenario ${presets.length}`;
-    const createdAt = new Date().toISOString();
-    const replayAudit = buildReplayAudit(name, createdAt);
-    const newPreset: ScenarioPreset = {
-      id: `preset-${Date.now()}`,
-      name,
-      isBase: false,
-      createdAt,
-      adjustedInputs: { ...scenarioInputs },
-      result: scenarioResult,
-      accessibleEquity: totalAccessibleEquity,
-      acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
-      scenarioDeltas: appliedDeltas,
-      validationIssues,
-      capitalLedger,
-      capitalAllocations: [...capitalAllocations],
-      acquisition,
-      replayAudit,
-      incomeComponents,
-      currentLenderProfileId,
-      hemBenchmark,
-    };
-    const updated = [...presets, newPreset];
-    setPresets(updated);
-    onPresetsChange?.(updated);
-    setScenarioName('');
-    setShowSaveInput(false);
-    // Also apply the scenario to the live calculator so it persists across
-    // tab switches and modal close/reopen (fix for "save reverts to base").
-    onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
+    try {
+      const name = scenarioName.trim() || `Scenario ${presets.length}`;
+      const createdAt = new Date().toISOString();
+      const replayAudit = buildReplayAudit(name, createdAt);
+      const newPreset: ScenarioPreset = {
+        id: `preset-${Date.now()}`,
+        name,
+        isBase: false,
+        createdAt,
+        adjustedInputs: { ...scenarioInputs },
+        result: scenarioResult,
+        accessibleEquity: totalAccessibleEquity,
+        acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+        scenarioDeltas: appliedDeltas,
+        validationIssues,
+        capitalLedger,
+        capitalAllocations: [...capitalAllocations],
+        acquisition,
+        replayAudit,
+        incomeComponents,
+        currentLenderProfileId,
+        hemBenchmark,
+      };
+      const updated = [...presets, newPreset];
+      setPresets(updated);
+      onPresetsChange?.(updated);
+      setScenarioName('');
+      setShowSaveInput(false);
+      // Also apply the scenario to the live calculator so it persists across
+      // tab switches and modal close/reopen (fix for "save reverts to base").
+      onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
+    } catch (err: any) {
+      console.error('[StrategyScenarioModeling] Save scenario failed:', err);
+      toast.error(`Couldn't save scenario: ${err?.message || 'unexpected error'}`);
+    }
   }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
@@ -2858,27 +2863,32 @@ export function StrategyScenarioModeling({
                           toast.error('Resolve blocking scenario validation errors before applying.');
                           return;
                         }
-                        const name = scenarioName.trim() || 'Current What-If Scenario';
-                        const createdAt = new Date().toISOString();
-                        onApplyScenario(scenarioInputs, totalAccessibleEquity, {
-                          id: `applied-${Date.now()}`,
-                          name,
-                          isBase: false,
-                          createdAt,
-                          adjustedInputs: { ...scenarioInputs },
-                          result: scenarioResult,
-                          accessibleEquity: totalAccessibleEquity,
-                          acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
-                          scenarioDeltas: appliedDeltas,
-                          validationIssues,
-                          capitalLedger,
-                          capitalAllocations: [...capitalAllocations],
-                          acquisition,
-                          replayAudit: buildReplayAudit(name, createdAt),
-                          incomeComponents,
-                          currentLenderProfileId,
-                          hemBenchmark,
-                        });
+                        try {
+                          const name = scenarioName.trim() || 'Current What-If Scenario';
+                          const createdAt = new Date().toISOString();
+                          onApplyScenario(scenarioInputs, totalAccessibleEquity, {
+                            id: `applied-${Date.now()}`,
+                            name,
+                            isBase: false,
+                            createdAt,
+                            adjustedInputs: { ...scenarioInputs },
+                            result: scenarioResult,
+                            accessibleEquity: totalAccessibleEquity,
+                            acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+                            scenarioDeltas: appliedDeltas,
+                            validationIssues,
+                            capitalLedger,
+                            capitalAllocations: [...capitalAllocations],
+                            acquisition,
+                            replayAudit: buildReplayAudit(name, createdAt),
+                            incomeComponents,
+                            currentLenderProfileId,
+                            hemBenchmark,
+                          });
+                        } catch (err: any) {
+                          console.error('[StrategyScenarioModeling] Apply to calculator failed:', err);
+                          toast.error(`Couldn't apply scenario: ${err?.message || 'unexpected error'}`);
+                        }
                       }}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
