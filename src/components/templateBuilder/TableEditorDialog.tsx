@@ -214,6 +214,16 @@ export function TableEditorDialog({ open, onOpenChange, overlay, onChange }: Pro
               </div>
             </ScrollArea>
           </TabsContent>
+
+          <TabsContent value="rules" className="flex-1 min-h-0">
+            <ScrollArea className="h-full pr-3">
+              <ConditionalRulesEditor
+                columns={columns}
+                rules={(local as any).cellRules ?? []}
+                onChange={(rules) => commit({ cellRules: rules } as any)}
+              />
+            </ScrollArea>
+          </TabsContent>
         </Tabs>
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)}>Done</Button>
