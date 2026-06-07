@@ -3092,6 +3092,14 @@ export default function TemplateBuilderEdit() {
           clearMultiSelect();
         }}
       />
+      <AssetLibraryDialog
+        open={assetLibraryOpen}
+        onOpenChange={setAssetLibraryOpen}
+        templateId={id}
+        pageWidth={activePage?.size.width ?? 595}
+        pageHeight={activePage?.size.height ?? 842}
+        onInsert={insertImageFromLibrary}
+      />
       {id && (
         <>
           <TemplateBranchingDialog
