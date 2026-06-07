@@ -19,7 +19,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-portal-session-token',
+    'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-session-id, x-portal-session-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -33,6 +33,7 @@ function extractToken(req: Request, body: any): string | null {
   return (
     req.headers.get('x-finance-session-token') ||
     req.headers.get('x-session-token') ||
+    req.headers.get('x-session-id') ||
     body?.finance_session_token ||
     body?.session_token ||
     null

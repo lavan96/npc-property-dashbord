@@ -251,6 +251,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'document', label: 'Document Request' },
       ]},
       { key: 'content', label: 'Note', type: 'textarea', required: true },
+      { key: 'visibility', label: 'Visibility', type: 'select', required: true, options: [
+        { value: 'finance_only', label: 'Finance Portal + Command Center' },
+        { value: 'shared', label: 'Share with Client Portal too' },
+        { value: 'internal_npc', label: 'Command Center only' },
+      ], helpText: 'Defaults to finance/internal only; choose shared only when the client should see it.' },
     ],
     renderSummary: (r) => (
       <div className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line">

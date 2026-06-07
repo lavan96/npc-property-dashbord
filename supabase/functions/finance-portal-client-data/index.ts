@@ -44,7 +44,7 @@ function extractPrimaryName(payload: Record<string, any>) {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-session-id',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -169,6 +169,7 @@ function extractToken(headers: Headers, body?: any): string | null {
   return headers.get('x-finance-session-token')
     || body?.finance_session_token
     || headers.get('x-session-token')
+    || headers.get('x-session-id')
     || body?.session_token
     || null;
 }
@@ -268,7 +269,7 @@ async function prepareFinanceNotePayload(supabase: any, clientId: string, payloa
     payload: {
       ...payload,
       ...provenance,
-      visibility: 'shared',
+      visibility: payload.visibility || 'finance_only',
       content_hash: contentHash,
       dedupe_key: dedupeKey,
       sync_status: resolution.status,
@@ -770,7 +771,11 @@ Deno.serve(async (req) => {
           syncStatus: syncMeta?.syncStatus || data.sync_status || 'synced',
           dedupeKey: syncMeta?.dedupeKey || data.dedupe_key || null,
           contentHash: syncMeta?.contentHash || data.content_hash || null,
-          propagatedTo: ['internal_dashboard', 'client_portal'],
+          propagatedTo: data.visibility === 'shared'
+            ? ['internal_dashboard', 'client_portal', 'finance_portal']
+            : data.visibility === 'finance_only'
+              ? ['internal_dashboard', 'finance_portal']
+              : ['internal_dashboard'],
           versionGroupId: syncMeta?.versionGroupId || data.version_group_id || null,
           versionNumber: syncMeta?.versionNumber || data.version_number || 1,
           supersedesEntityId: syncMeta?.supersedesEntityId || data.supersedes_note_id || null,
@@ -809,7 +814,7 @@ Deno.serve(async (req) => {
           sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null, updated_via: 'finance-portal-client-data' },
         });
         Object.assign(updates, provenance, {
-          visibility: 'shared',
+          visibility: updates.visibility || 'finance_only',
           content_hash: await sha256Text(`${String(updates.note_type || 'general')}:${String(updates.content || '')}`),
           dedupe_key: buildNoteDedupeKey({ clientId: client_id, noteType: String(updates.note_type || 'general'), content: String(updates.content || '') }),
           sync_status: 'synced',
@@ -862,7 +867,11 @@ Deno.serve(async (req) => {
           syncStatus: data.sync_status || 'synced',
           dedupeKey: data.dedupe_key || null,
           contentHash: data.content_hash || null,
-          propagatedTo: ['internal_dashboard', 'client_portal'],
+          propagatedTo: data.visibility === 'shared'
+            ? ['internal_dashboard', 'client_portal', 'finance_portal']
+            : data.visibility === 'finance_only'
+              ? ['internal_dashboard', 'finance_portal']
+              : ['internal_dashboard'],
           versionGroupId: data.version_group_id || null,
           versionNumber: data.version_number || 1,
           supersedesEntityId: data.supersedes_note_id || null,

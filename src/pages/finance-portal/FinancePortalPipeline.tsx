@@ -39,20 +39,26 @@ export default function FinancePortalPipeline() {
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
       if (error) {
-        toast.error(error.message || 'Failed to load pipeline board');
+        const msg = error.message || 'Failed to load pipeline board';
+        setLoadError(msg);
+        toast.error(msg);
         setLanes([]);
       } else {
+        setLoadError(null);
         setLanes(Array.isArray(data?.lanes) ? data.lanes : []);
       }
     } catch (e: any) {
       console.error('[Pipeline] load failed', e);
-      toast.error(e?.message || 'Failed to load pipeline board');
+      const msg = e?.message || 'Failed to load pipeline board';
+      setLoadError(msg);
+      toast.error(msg);
       setLanes([]);
     } finally {
       setLoading(false);
@@ -127,6 +133,17 @@ export default function FinancePortalPipeline() {
         <div className="flex gap-4 overflow-x-auto pb-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-96 w-72 shrink-0" />)}
         </div>
+      ) : loadError ? (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="py-16 text-center">
+            <Layers className="h-10 w-10 mx-auto text-destructive opacity-60 mb-3" />
+            <p className="text-sm font-medium text-destructive">Pipeline board could not load</p>
+            <p className="text-xs text-muted-foreground mt-1 break-words">{loadError}</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={load}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
       ) : lanes.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">

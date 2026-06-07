@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, BookOpen, RefreshCw, Trophy, Scale } from 'lucide-react';
+import { AlertCircle, Loader2, BookOpen, RefreshCw, Trophy, Scale } from 'lucide-react';
 
 type LiveRate = {
   lender_id: string;
@@ -44,6 +44,7 @@ export default function FinancePortalLenderIntelligence() {
   const [rateType, setRateType] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -59,7 +60,12 @@ export default function FinancePortalLenderIntelligence() {
         limit: 200,
       },
     );
-    if (!error) {
+    if (error) {
+      setLoadError(error.message || 'Unable to load lender intelligence');
+      setRates([]);
+      setLenderSummary([]);
+    } else {
+      setLoadError(null);
       setRates(data?.rates || []);
       setLenderSummary(data?.lenders || []);
     }
@@ -240,6 +246,15 @@ export default function FinancePortalLenderIntelligence() {
                 </Card>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {loadError && !loading && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="py-6 text-sm text-destructive flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{loadError}. This usually means the lender-intelligence edge function has not been deployed or the Command Centre rate cache is unavailable.</span>
           </CardContent>
         </Card>
       )}
