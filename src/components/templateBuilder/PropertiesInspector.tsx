@@ -48,6 +48,7 @@ import { FontPicker } from './FontPicker';
 import { FontSizeControl } from './FontSizeControl';
 import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
 import { StyleClipboardButtons } from './StyleClipboardButtons';
+import { EffectsPanel } from './EffectsPanel';
 import { AlignmentGrid } from './AlignmentGrid';
 import { TextRhythmControl } from './TextRhythmControl';
 import { PalettePresets } from './PalettePresets';
