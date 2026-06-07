@@ -2538,6 +2538,11 @@ export function StrategyScenarioModeling({
                             clientId,
                             clientName || 'Client',
                             merged,
+                            {
+                              assessment: buildPdfOverrideAssessment(scenarioInputs, scenarioResult),
+                              liabilities,
+                              properties,
+                            },
                           );
                         } catch (err: any) {
                           toast.error(`PDF export failed: ${err?.message || 'Unknown error'}`);
