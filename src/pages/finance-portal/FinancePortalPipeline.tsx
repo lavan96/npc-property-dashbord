@@ -1,13 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ArrowRight, ExternalLink, Layers, RefreshCw } from 'lucide-react';
+import { ArrowRight, ExternalLink, Layers, RefreshCw, MoreVertical, MapPin } from 'lucide-react';
 
 const fmtMoney = (n: number) =>
   n >= 1_000_000
