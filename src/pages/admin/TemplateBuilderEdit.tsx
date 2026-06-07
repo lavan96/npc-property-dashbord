@@ -118,6 +118,9 @@ import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInsp
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
 import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
+import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
+import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
+import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
