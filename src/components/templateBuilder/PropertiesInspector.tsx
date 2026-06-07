@@ -42,6 +42,11 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 import { InlineAiTextActions } from './InlineAiTextActions';
+import { PaperSizePicker } from './PaperSizePicker';
+import { EnhancedColorPicker } from './EnhancedColorPicker';
+import { FontPicker } from './FontPicker';
+import { FontSizeControl } from './FontSizeControl';
+import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
 
 
 interface Props {
@@ -235,22 +240,24 @@ function OverlayEditor({
             multiline
           />
 
-          <div className="grid grid-cols-2 gap-2">
-            <NumField
-              label="Size (pt)"
-              value={Number(overlay.fontSize) || 12}
-              onChange={(v) => patch({ fontSize: v } as any)}
+          <FontSizeControl
+            value={Number(overlay.fontSize) || 12}
+            onChange={(v) => patch({ fontSize: v } as any)}
+          />
+
+          <div>
+            <Label className="text-xs">Font family</Label>
+            <FontPicker
+              value={String(overlay.fontFamily || 'Helvetica')}
+              weight={overlay.fontWeight}
+              template={template}
+              onChange={(family) => patch({ fontFamily: family } as any)}
+              onWeightChange={(w) => patch({ fontWeight: w } as any)}
+              onTemplateChange={onUpdateTemplate}
             />
-            <div>
-              <Label className="text-xs">Weight</Label>
-              <Select value={overlay.fontWeight} onValueChange={(v) => patch({ fontWeight: v as any })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="bold">Bold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Align</Label>
               <Select value={overlay.align} onValueChange={(v) => patch({ align: v as any })}>
@@ -264,35 +271,17 @@ function OverlayEditor({
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Family</Label>
-              <div className="flex items-center gap-1">
-                <Select
-                  value={String(overlay.fontFamily || 'Helvetica')}
-                  onValueChange={(v) => patch({ fontFamily: v } as any)}
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Helvetica">Helvetica</SelectItem>
-                    <SelectItem value="Times">Times</SelectItem>
-                    <SelectItem value="Courier">Courier</SelectItem>
-                    <SelectItem value="Georgia">Georgia</SelectItem>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    {((template.tokens as any).fontFaces ?? []).map((f: any) => (
-                      <SelectItem key={f.family} value={f.family}>{f.family}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {onUpdateTemplate && (
-                  <FontLibraryPopover
-                    template={template}
-                    onTemplateChange={onUpdateTemplate}
-                    onPick={(family) => patch({ fontFamily: family } as any)}
-                  />
-                )}
-              </div>
+              <Label className="text-xs">Style</Label>
+              <Select value={overlay.fontStyle ?? 'normal'} onValueChange={(v) => patch({ fontStyle: v as any })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="italic">Italic</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <ColorField
+          <EnhancedColorPicker
             label="Color"
             value={String(overlay.color || '#000000')}
             template={template}
@@ -401,16 +390,21 @@ function PageEditor({
         <Label className="text-xs">Name</Label>
         <Input value={page.name} onChange={(e) => onChange({ ...page, name: e.target.value })} className="text-xs" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumField label="Width" value={page.size.width} onChange={(v) => onChange({ ...page, size: { ...page.size, width: v } })} />
-        <NumField label="Height" value={page.size.height} onChange={(v) => onChange({ ...page, size: { ...page.size, height: v } })} />
-      </div>
-      <ColorField
-        label="Background"
+      <PaperSizePicker
+        width={page.size.width}
+        height={page.size.height}
+        onChange={(size) => onChange({ ...page, size: { ...page.size, ...size } })}
+      />
+      <EnhancedColorPicker
+        label="Background color"
         template={template}
         value={page.background?.color || ''}
         allowEmpty
         onChange={(v) => onChange({ ...page, background: { ...(page.background || {}), color: v || undefined } })}
+      />
+      <BackgroundGradientEditor
+        value={(page.background as any)?.gradient as GradientValue | undefined}
+        onChange={(g) => onChange({ ...page, background: { ...(page.background || {}), gradient: g } as any })}
       />
       <div>
         <Label className="text-xs">Background image URL</Label>
@@ -797,27 +791,16 @@ function NumField({
 function ColorField({
   label, value, onChange, allowEmpty, template,
 }: { label: string; value: string; onChange: (v: string) => void; allowEmpty?: boolean; template: ReportTemplate }) {
-  const isHex = value?.startsWith('#');
   const issues = validateBindable(value, template);
   return (
     <div>
-      <Label className="text-xs">{label}</Label>
-      <div className="flex gap-2">
-        {isHex && (
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-8 w-10 rounded cursor-pointer bg-transparent border"
-          />
-        )}
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex or token:primary'}
-          className={`h-8 text-xs font-mono ${issues.length ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-        />
-      </div>
+      <EnhancedColorPicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        template={template}
+        allowEmpty={allowEmpty}
+      />
       <BindingIssues issues={issues} />
     </div>
   );

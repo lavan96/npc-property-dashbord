@@ -240,6 +240,17 @@ export const PageSchema = z.object({
   background: z.object({
     color: BindableColorSchema.optional(),
     imageUrl: BindableStringSchema.optional(),
+    // Phase 11 — optional gradient overlay/fill. When present and stops.length>0
+    // the HTML renderer composites it above any solid color / image.
+    gradient: z.object({
+      type: z.enum(['linear', 'radial']).default('linear'),
+      angle: z.number().min(0).max(360).default(180),  // deg — linear only
+      stops: z.array(z.object({
+        color: z.string(),                              // hex (8-digit allowed)
+        position: z.number().min(0).max(100),
+      })).default([]),
+    }).optional(),
+    opacity: z.number().min(0).max(1).optional(),       // page bg opacity
   }).default({}),
   blocks: z.array(BlockSchema).default([]),
   conditional: z.string().optional(),
