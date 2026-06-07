@@ -574,6 +574,30 @@ request_timeout = 60
 verify_jwt = false
 request_timeout = 60
 
+[functions.finance-portal-pipeline]
+verify_jwt = false
+request_timeout = 60
+
+[functions.finance-portal-purchase-files]
+verify_jwt = false
+request_timeout = 60
+
+[functions.finance-portal-lender-intelligence]
+verify_jwt = false
+request_timeout = 60
+
+[functions.finance-portal-ai-copilot]
+verify_jwt = false
+request_timeout = 120
+
+[functions.staff-client-portal-messages]
+verify_jwt = true
+request_timeout = 60
+
+[functions.client-portal-comms]
+verify_jwt = false
+request_timeout = 60
+
 [functions.finance-portal-handoff-create]
 verify_jwt = false
 request_timeout = 30

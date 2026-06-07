@@ -29,6 +29,7 @@ const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'application/msword'
 function extractFinanceToken(headers: Headers, body?: any): string | null {
   return headers.get('x-finance-session-token')
     || headers.get('x-session-token')
+    || headers.get('x-session-id')
     || body?.finance_session_token
     || body?.session_token
     || null;
@@ -163,8 +164,18 @@ Deno.serve(async (req) => {
       const { client_id, finance_user_id, subject } = body;
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400, corsHeaders);
 
-      const fuId = actor.type === 'partner' ? actor.portalUserId : finance_user_id;
-      if (!fuId) return jsonResponse({ error: 'finance_user_id required for staff' }, 400, corsHeaders);
+      let fuId = actor.type === 'partner' ? actor.portalUserId : finance_user_id;
+      if (!fuId && actor.type === 'staff') {
+        const { data: assignment } = await supabase
+          .from('finance_portal_client_assignments')
+          .select('finance_user_id, assigned_at')
+          .eq('client_id', client_id)
+          .order('assigned_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        fuId = assignment?.finance_user_id || null;
+      }
+      if (!fuId) return jsonResponse({ error: 'No finance partner assigned to this client yet' }, 404, corsHeaders);
 
       const denied = await assertPartnerAssigned(client_id);
       if (denied) return denied;

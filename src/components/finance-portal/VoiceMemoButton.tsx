@@ -57,26 +57,18 @@ export function VoiceMemoButton({ purchaseFileId = null, clientId = null, onSave
         r.onerror = rej;
         r.readAsDataURL(blob);
       });
-      // Transcribe via the finance-portal-authenticated path (voice-to-text is
-      // stateless transcription; the finance session is forwarded by the hook).
-      const { data: transcribeData, error: transcribeError } = await invokeFinanceFunction('voice-to-text', {
-        audio: b64.split(',')[1], mimeType: 'audio/webm', fileName: 'memo.webm',
-      });
-      if (transcribeError) throw new Error(transcribeError.message);
-      const transcript = (transcribeData?.text || transcribeData?.transcript || '').trim();
-      if (!transcript) throw new Error('Could not transcribe audio — please try again');
-
-      // Persist through the service-role finance function (ai_voice_memos RLS
-      // blocks direct browser inserts).
-      const { error: saveError } = await invokeFinanceFunction('finance-portal-batch9-10', {
-        operation: 'voice_memo_save',
+      // Transcribe and persist through the finance-portal authenticated AI
+      // copilot endpoint. This keeps the memo tied to the current finance user,
+      // purchase file and/or client instead of posting to the generic voice API.
+      const { data: memoData, error: memoError } = await invokeFinanceFunction('finance-portal-ai-copilot', {
+        action: 'transcribe_voice',
+        audio_base64: b64.split(',')[1],
+        duration_seconds: duration,
         purchase_file_id: purchaseFileId,
         client_id: clientId,
-        transcript,
-        duration_seconds: duration,
-        model: 'whisper-1',
       });
-      if (saveError) throw new Error(saveError.message);
+      if (memoError) throw new Error(memoError.message);
+      if (!memoData?.memo?.id) throw new Error('Voice memo was transcribed but not saved');
       toast.success('Voice memo saved');
       onSaved?.();
     } catch (e: any) {
