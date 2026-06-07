@@ -417,15 +417,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       </Badge>
                       <SyncStatusBadge status={note.sync_status} />
                       {note.source_surface && <Badge variant="outline" className="text-xs">{getSurfaceLabel(note.source_surface)}</Badge>}
-                      {note.visibility === 'shared' ? (
-                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">
-                          <Share2 className="h-3 w-3 mr-1" /> Shared
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          <Lock className="h-3 w-3 mr-1" /> Internal
-                        </Badge>
-                      )}
+                      {getVisibilityBadge(note.visibility)}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
