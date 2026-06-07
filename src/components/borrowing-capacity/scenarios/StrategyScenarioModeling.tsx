@@ -827,21 +827,27 @@ export function StrategyScenarioModeling({
     const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
     const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
-    const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioAssessmentRate = safeAssessmentRate(result, inputs);
-    const scenarioRawSurplus = rawSurplusFrom(result, inputs);
+    const scenarioTerm = effectiveInputs.loanTermYears ?? baseTerm;
+    const scenarioAssessmentRate = safeAssessmentRate(effectiveResult, effectiveInputs);
+    const scenarioRawSurplus = rawSurplusFrom(effectiveResult, effectiveInputs);
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
-    const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
+    const scenarioTheoreticalCapacity = baselineMode
+      ? baseTheoreticalCapacity
+      : Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
     const baseAfterTaxIncome = resolveMonthlyAfterTaxIncome(baseResult, baseInputs);
     const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
     const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
-    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(result, inputs);
-    const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
-    const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
+    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(effectiveResult, effectiveInputs);
+    const scenarioLivingExpenses = (effectiveInputs as any)?.monthlyLivingExpenses ?? (effectiveResult as any)?.totalLivingExpenses ?? 0;
+    const scenarioCommitments = (effectiveInputs as any)?.monthlyCommitments ?? (effectiveResult as any)?.existingCommitmentsMonthly ?? 0;
 
-    const leverAttribution: LeverAttribution[] = deltas.map(d => {
+    // Audit-fix #4 — Lever attribution invariants. Every isolated delta is
+    // re-run on the same base context and its impact is normalised against
+    // baseResult.borrowingCapacity. When baseline (no deltas) the array is
+    // empty so the waterfall hides itself instead of rendering phantom rows.
+    const leverAttribution: LeverAttribution[] = baselineMode ? [] : deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
       const isoAssessRate = safeAssessmentRate(isolated.result, isolated.inputs);
@@ -856,19 +862,19 @@ export function StrategyScenarioModeling({
       };
     });
 
-    const floorActive =
+    const floorActive = !baselineMode &&
       (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
-      scenarioResult: result as unknown as BorrowingCapacityResult,
-      scenarioInputs: inputs,
-      impactBreakdown: impacts,
+      scenarioResult: effectiveResult as unknown as BorrowingCapacityResult,
+      scenarioInputs: effectiveInputs,
+      impactBreakdown: baselineMode ? [] : impacts,
       acquisitionCapacity,
       validationIssues,
       leverAttribution,
-      appliedDeltas: deltas,
+      appliedDeltas: baselineMode ? [] : deltas,
       capitalLedger,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
