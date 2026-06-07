@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, BarChart3, Settings as SettingsIcon, Inbox, Layers, Trophy, Smartphone,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, BarChart3, Settings as SettingsIcon, Inbox, Layers, Trophy,
 } from 'lucide-react';
 
 import {
