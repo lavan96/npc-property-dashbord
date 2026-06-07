@@ -1296,14 +1296,16 @@ export function StrategyScenarioModeling({
       onPresetsChange?.(updated);
       setScenarioName('');
       setShowSaveInput(false);
-      // Also apply the scenario to the live calculator so it persists across
-      // tab switches and modal close/reopen (fix for "save reverts to base").
-      onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
+      // Save-only: persist to the Saved Scenarios list and STAY on the What-If
+      // tab. The scenario is intentionally NOT auto-applied to the calculator —
+      // use "Load" on the saved entry, or "Apply to Calculator", to push it into
+      // the live calc. The base snapshot the modeller compares against is held
+      // separately (baseScenarioResult), so not applying never reverts the view.
     } catch (err: any) {
       console.error('[StrategyScenarioModeling] Save scenario failed:', err);
       toast.error(err?.message || 'Failed to save scenario');
     }
-  }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
+  }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
