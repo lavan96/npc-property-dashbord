@@ -47,6 +47,9 @@ interface ContactAddressFieldsProps {
   /** Primary contact's address to copy when toggle is on */
   primaryAddress?: {
     current_address: string;
+    current_suburb?: string;
+    current_state?: string;
+    current_postcode?: string;
     country: string;
     living_situation: string;
     residential_status: string;
