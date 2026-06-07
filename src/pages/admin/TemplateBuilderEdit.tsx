@@ -198,6 +198,7 @@ export default function TemplateBuilderEdit() {
   const [showAIAuthor, setShowAIAuthor] = useState(false);
   const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
+  const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
