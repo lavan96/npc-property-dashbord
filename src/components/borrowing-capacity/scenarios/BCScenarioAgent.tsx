@@ -13,6 +13,8 @@ import ReactMarkdown from 'react-markdown';
 import type { BorrowingCapacityInput, BorrowingCapacityResult } from '@/utils/borrowingCapacityCalculations';
 import type { LiabilityItem, PropertyItem } from './StrategyScenarioModeling';
 import { toast } from 'sonner';
+import { runScenarioWithInputs, type ScenarioContext } from '@/utils/scenarioDeltaEngine';
+import type { ScenarioDelta } from '@/utils/borrowingCapacityTypes';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -25,7 +27,8 @@ interface ScenarioAdjustments {
   equityRelease?: { propertyId: string; targetLVR: number } | null;
   loanTermAdjustment?: number;
   portfolioSellPropertyIds?: string[];
-  dtiCapOverride?: { enabled: boolean; value: number } | null;
+  dtiCapOverride?: { enabled: boolean; value: number; lenderProfile?: string } | null;
+  lenderProfile?: 'bank_standard' | 'anz' | 'macquarie' | 'westpac' | 'non_bank' | null;
   /** Phase F1 — per-property rate repricing for partial portfolio refinances. */
   propertyRateChanges?: Array<{ propertyId: string; newRate: number }>;
   /** Phase G1 — Valuation overrides (manual/AVM/desktop/comp sales) */
@@ -146,6 +149,56 @@ function loadPersistedState(clientId?: string): PersistedChatState | null {
   } catch {
     return null;
   }
+}
+
+function aiAdjustmentsToDeltas(adj: ScenarioAdjustments): ScenarioDelta[] {
+  const deltas: ScenarioDelta[] = [];
+
+  for (const id of adj.consolidatedLiabilityIds || []) {
+    deltas.push({ id, label: `Pay off liability ${id}`, type: 'liability_payoff', value: 0, unit: 'absolute' });
+  }
+  for (const id of adj.refinancedToIOPropertyIds || []) {
+    deltas.push({ id, label: `Refinance ${id} to IO`, type: 'property_refinance', value: 0, unit: 'absolute' });
+  }
+  for (const id of adj.portfolioSellPropertyIds || []) {
+    deltas.push({ id, label: `Sell ${id}`, type: 'property_sell', value: 0, unit: 'absolute' });
+  }
+  if (adj.incomeGrowthPercent && Math.abs(adj.incomeGrowthPercent) > 0.001) {
+    deltas.push({ id: `income-${adj.incomeGrowthPercent}`, label: `Income ${adj.incomeGrowthPercent > 0 ? '+' : ''}${adj.incomeGrowthPercent}%`, type: 'income_change', value: adj.incomeGrowthPercent, unit: 'percent' });
+  }
+  if (adj.expenseReductionPercent && adj.expenseReductionPercent > 0.001) {
+    deltas.push({ id: `expense-${adj.expenseReductionPercent}`, label: `Reduce expenses ${adj.expenseReductionPercent}%`, type: 'expense_change', value: -adj.expenseReductionPercent, unit: 'percent' });
+  }
+  if (adj.loanTermAdjustment && Math.abs(adj.loanTermAdjustment) > 0) {
+    deltas.push({ id: `loan-term-${adj.loanTermAdjustment}`, label: `Loan term ${adj.loanTermAdjustment > 0 ? '+' : ''}${adj.loanTermAdjustment}yr`, type: 'loan_term_change', value: adj.loanTermAdjustment, unit: 'years' });
+  }
+  if (adj.rateAdjustment && Math.abs(adj.rateAdjustment) > 0.001) {
+    deltas.push({ id: `rate-${adj.rateAdjustment}`, label: `Rates ${adj.rateAdjustment >= 0 ? '+' : ''}${adj.rateAdjustment}%`, type: 'rate_change', value: adj.rateAdjustment, unit: 'rate_points' });
+  }
+  for (const change of adj.propertyRateChanges || []) {
+    if (change.propertyId && Number.isFinite(change.newRate) && change.newRate > 0) {
+      deltas.push({ id: change.propertyId, label: `Reprice ${change.propertyId} → ${change.newRate}%`, type: 'property_rate_change', value: change.newRate, unit: 'rate_points' });
+    }
+  }
+  for (const vo of adj.valuationOverrides || []) {
+    if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
+      deltas.push({ id: vo.propertyId, label: `Revalue ${vo.propertyId} → ${vo.newValue}`, type: 'property_value_change', value: vo.newValue, unit: 'absolute', meta: { basis: vo.basis, source: vo.source || '' } });
+    }
+  }
+  if (adj.equityRelease?.propertyId && Number.isFinite(adj.equityRelease.targetLVR)) {
+    deltas.push({ id: adj.equityRelease.propertyId, label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`, type: 'equity_release', value: adj.equityRelease.targetLVR, unit: 'percent', meta: { targetLVR: adj.equityRelease.targetLVR } });
+  }
+  if (adj.crossCollatPool?.enabled && adj.crossCollatPool.propertyIds?.length) {
+    deltas.push({ id: 'pool-default', label: `Cross-collat pool → ${(adj.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`, type: 'portfolio_lvr_release', value: adj.crossCollatPool.blendedTargetLVR, unit: 'ratio', meta: { propertyIds: adj.crossCollatPool.propertyIds, lenderMaxLVR: adj.crossCollatPool.lenderMaxLVR ?? null, allocationStrategy: adj.crossCollatPool.allocationStrategy ?? 'highest_equity_first' } });
+  }
+  const lenderProfile = adj.lenderProfile ?? adj.dtiCapOverride?.lenderProfile;
+  if (adj.dtiCapOverride?.enabled && Number.isFinite(adj.dtiCapOverride.value)) {
+    deltas.push({ id: 'dti-cap', label: `DTI cap ${adj.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`, type: 'dti_cap_change', value: adj.dtiCapOverride.value, unit: 'ratio', meta: lenderProfile ? { enabled: true, lenderProfile } : { enabled: true } });
+  } else if (lenderProfile) {
+    deltas.push({ id: 'dti-cap', label: `Lender flip → ${lenderProfile}`, type: 'dti_cap_change', value: 99, unit: 'ratio', meta: { enabled: false, lenderProfile } });
+  }
+
+  return deltas;
 }
 
 function savePersistedState(clientId: string | undefined, state: PersistedChatState) {
@@ -322,7 +375,80 @@ export function BCScenarioAgent({
         try {
           const parsed = JSON.parse(toolCallArgs);
           if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
-            setScenarios(parsed.scenarios);
+            const ctx: ScenarioContext = {
+              baseInputs,
+              baseResult,
+              properties: properties.map(p => ({
+                id: p.id,
+                address: p.address,
+                propertyType: p.property_type,
+                currentValue: p.current_value || 0,
+                loanRemaining: p.loan_remaining || 0,
+                monthlyRepayment: p.monthly_interest_repayment || 0,
+                loanRepaymentAmount: p.loan_repayment_amount ?? p.monthly_interest_repayment ?? 0,
+                netMonthlyCashflow: p.net_monthly_cashflow ?? 0,
+                interestRate: p.interest_rate,
+              })),
+              liabilities: liabilities.map(l => ({
+                id: l.id,
+                type: l.type,
+                label: l.label,
+                balance: l.balance,
+                limit: l.limit,
+                monthlyServicing: l.monthlyServicing,
+              })),
+              incomeComponents,
+              currentLenderProfileId,
+              hemBenchmark,
+            };
+            const locallyValidated = (parsed.scenarios as AIScenario[]).map((scenario) => {
+              try {
+                const acq = scenario.adjustments?.acquisition;
+                const runCtx: ScenarioContext = acq
+                  ? {
+                      ...ctx,
+                      acquisition: {
+                        state: acq.state,
+                        intent: acq.intent,
+                        category: acq.category,
+                        isFirstHomeBuyer: acq.isFirstHomeBuyer,
+                        isForeignBuyer: acq.isForeignBuyer,
+                        lmiMode: acq.lmiMode,
+                        cashOnHand: acq.cashOnHand,
+                        targetPurchasePrice: acq.targetPurchasePrice,
+                      },
+                    }
+                  : ctx;
+                const preview = runScenarioWithInputs(scenario.name, aiAdjustmentsToDeltas(scenario.adjustments), runCtx);
+                const acqCapacity = preview.result.acquisitionCapacity;
+                return {
+                  ...scenario,
+                  engineValidation: {
+                    ...scenario.engineValidation,
+                    borrowingCapacity: Math.round(preview.result.borrowingCapacity),
+                    capacityChange: Math.round(preview.result.borrowingCapacity - baseResult.borrowingCapacity),
+                    monthlySurplus: Math.round(preview.result.monthlySurplus),
+                    serviceabilityBand: preview.result.serviceabilityBand,
+                    dtiRatio: Number(preview.result.dtiRatio?.toFixed(2) ?? 0),
+                    meetsTarget: acqCapacity?.meetsTarget,
+                    shortfallToTarget: acqCapacity?.shortfallToTarget,
+                    maxPurchasePrice: acqCapacity?.maxPurchasePrice,
+                    loanRequiredForPurchase: acqCapacity?.loanRequiredForPurchase,
+                    netCashAfterSettlement: acqCapacity?.netCashAfterSettlement,
+                    releasedCapital: acqCapacity?.releasedCapital,
+                    targetPurchasePrice: acqCapacity?.targetPurchasePrice,
+                    validationIssues: [
+                      ...(scenario.engineValidation?.validationIssues ?? []),
+                      ...(preview.result.validationIssues ?? []),
+                    ],
+                  },
+                } satisfies AIScenario;
+              } catch (e) {
+                console.warn('[BCScenarioAgent] Local scenario preview failed; using server validation', e);
+                return scenario;
+              }
+            });
+            setScenarios(locallyValidated);
             setAppliedIndex(null);
             // Phase H: only emit the generic fallback when the model returned
             // ZERO prose AND the user message wasn't a clarifying question.
