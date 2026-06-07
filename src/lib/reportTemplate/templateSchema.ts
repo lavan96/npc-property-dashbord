@@ -131,6 +131,36 @@ export const BookmarkSchema = z.object({
   includeInToc: z.boolean().optional(),
 }).optional();
 
+// Phase 17 — overlay-level visual effects (shadow, blur, blend, outline).
+// Renderer applies these as CSS box-shadow / filter / mix-blend-mode / outline.
+export const OverlayEffectsSchema = z.object({
+  shadow: z.object({
+    x: z.number().default(0),
+    y: z.number().default(2),
+    blur: z.number().min(0).max(96).default(8),
+    spread: z.number().default(0),
+    color: z.string().default('rgba(0,0,0,0.25)'),
+    inset: z.boolean().optional(),
+  }).optional(),
+  blur: z.number().min(0).max(48).optional(),                   // px
+  brightness: z.number().min(0).max(3).optional(),              // 1 = normal
+  contrast: z.number().min(0).max(3).optional(),
+  saturate: z.number().min(0).max(3).optional(),
+  grayscale: z.number().min(0).max(1).optional(),
+  blendMode: z.enum([
+    'normal','multiply','screen','overlay','darken','lighten',
+    'color-dodge','color-burn','hard-light','soft-light','difference',
+    'exclusion','hue','saturation','color','luminosity',
+  ]).optional(),
+  outline: z.object({
+    color: z.string().default('#BF9B50'),
+    width: z.number().min(0).max(24).default(2),
+    style: z.enum(['solid','dashed','dotted','double']).default('solid'),
+    offset: z.number().min(-12).max(24).default(0),
+  }).optional(),
+}).optional();
+export type OverlayEffects = z.infer<typeof OverlayEffectsSchema>;
+
 // ─── Overlays (free-floating shapes inside a page) ────────────────────────────
 const BaseOverlay = z.object({
   id: z.string(),
@@ -149,6 +179,7 @@ const BaseOverlay = z.object({
   groupId: z.string().optional(),         // overlays sharing groupId move together
   zIndex: z.number().int().optional(),    // overlay stacking within its block
   name: z.string().optional(),            // designer label (Layers panel)
+  effects: OverlayEffectsSchema,
   constraints: z.object({                 // pinning for responsive paper-size changes
     left: z.boolean().optional(),
     right: z.boolean().optional(),
