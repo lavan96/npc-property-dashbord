@@ -42,6 +42,7 @@ function extractToken(req: Request, body: any): string | null {
 // Pipeline lane order — only "active" lanes shown on kanban by default.
 // terminal states (`settled`, `withdrawn`, declined) are surfaced separately.
 const KANBAN_LANES: string[] = [
+  'at_risk',
   'not_started',
   'docs_requested',
   'docs_received',
@@ -59,6 +60,33 @@ const KANBAN_LANES: string[] = [
   'loan_docs_issued',
   'ready_for_settlement',
 ];
+
+
+function mergePermissions(global: any, perClient: any) {
+  const out: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {};
+  const keys = new Set<string>([
+    ...Object.keys(global && typeof global === 'object' ? global : {}),
+    ...Object.keys(perClient && typeof perClient === 'object' ? perClient : {}),
+  ]);
+  for (const key of keys) {
+    const g = (global && global[key]) || {};
+    const p = (perClient && perClient[key]) || {};
+    out[key] = {
+      view: !!(g.view || p.view),
+      edit: !!(g.edit || p.edit),
+      delete: !!(g.delete || p.delete),
+    };
+  }
+  return out;
+}
+
+function hasPurchaseFilePermission(global: any, perClient: any, action: 'view' | 'edit') {
+  const merged = mergePermissions(global, perClient);
+  const globalHas = global && typeof global === 'object' && global.purchase_files;
+  const clientHas = perClient && typeof perClient === 'object' && perClient.purchase_files;
+  if (!globalHas && !clientHas) return true;
+  return !!merged.purchase_files?.[action];
+}
 
 // Confidence weighting per status — used by revenue calendar.
 const STATUS_CONFIDENCE: Record<string, number> = {
@@ -108,7 +136,7 @@ Deno.serve(async (req) => {
 
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
-      .select('id, finance_contact_id, is_active, revoked_at, session_expires_at')
+      .select('id, finance_contact_id, is_active, revoked_at, session_expires_at, global_permissions')
       .eq('session_token', token)
       .maybeSingle();
 
@@ -128,20 +156,35 @@ Deno.serve(async (req) => {
     // ─────────────────────────────────────────────────────────────────────
     // 27. Kanban board
     if (operation === 'kanban_board') {
-      const { data: pfs, error } = await supabase
-        .from('purchase_files')
-        .select(`
-          id, client_id, title, lender, purchase_price, loan_amount,
-          finance_status, status, risk_level, settlement_date,
-          property_address, property_suburb, kanban_position,
-          last_partner_action_at, archived_at,
-          clients:client_id(primary_first_name, primary_surname)
-        `)
-        .eq('assigned_finance_user_id', portalUserId)
-        .is('archived_at', null)
-        .limit(500);
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id, permissions')
+        .eq('finance_user_id', portalUserId);
 
-      if (error) return json({ error: error.message }, 500);
+      if (assignmentsError) return json({ error: assignmentsError.message }, 500);
+
+      const allowedClientIds = (assignments || [])
+        .filter((assignment: any) => hasPurchaseFilePermission(portalUser.global_permissions, assignment.permissions, 'view'))
+        .map((assignment: any) => assignment.client_id);
+
+      let pfs: any[] = [];
+      if (allowedClientIds.length > 0) {
+        const { data, error } = await supabase
+          .from('purchase_files')
+          .select(`
+            id, client_id, title, lender, purchase_price, loan_amount,
+            finance_status, status, risk_level, settlement_date,
+            property_address, property_suburb, kanban_position,
+            last_partner_action_at, archived_at, assigned_finance_user_id,
+            clients:client_id(primary_first_name, primary_surname)
+          `)
+          .in('client_id', allowedClientIds)
+          .is('archived_at', null)
+          .limit(500);
+
+        if (error) return json({ error: error.message }, 500);
+        pfs = data || [];
+      }
 
       const lanes = KANBAN_LANES.map((status) => ({
         status,
@@ -150,8 +193,8 @@ Deno.serve(async (req) => {
         total_loan: 0,
       }));
       const terminalLane = {
-        status: 'closed',
-        label: 'closed (settled / archived)',
+        status: 'settled',
+        label: 'settled',
         cards: [] as any[],
         total_loan: 0,
       };
@@ -175,6 +218,7 @@ Deno.serve(async (req) => {
           property_suburb: pf.property_suburb,
           kanban_position: pf.kanban_position,
           last_partner_action_at: pf.last_partner_action_at,
+          is_mine: pf.assigned_finance_user_id === portalUserId,
         };
         const lane =
           lanes.find((l) => l.status === pf.finance_status) ||
@@ -194,7 +238,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      return json({ lanes, terminal_lane: terminalLane });
+      return json({ lanes: terminalLane.cards.length ? [...lanes, terminalLane] : lanes, terminal_lane: terminalLane });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -206,10 +250,18 @@ Deno.serve(async (req) => {
       // Ensure assignment
       const { data: pf } = await supabase
         .from('purchase_files')
-        .select('id, assigned_finance_user_id, finance_status')
+        .select('id, client_id, assigned_finance_user_id, finance_status')
         .eq('id', purchase_file_id)
         .maybeSingle();
-      if (!pf || pf.assigned_finance_user_id !== portalUserId) {
+      if (!pf) return json({ error: 'Purchase file not found' }, 404);
+
+      const { data: assignment } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('permissions')
+        .eq('finance_user_id', portalUserId)
+        .eq('client_id', pf.client_id)
+        .maybeSingle();
+      if (!assignment || !hasPurchaseFilePermission(portalUser.global_permissions, assignment.permissions, 'edit')) {
         return json({ error: 'Not authorised' }, 403);
       }
 
