@@ -47,6 +47,10 @@ import { EnhancedColorPicker } from './EnhancedColorPicker';
 import { FontPicker } from './FontPicker';
 import { FontSizeControl } from './FontSizeControl';
 import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
+import { StyleClipboardButtons } from './StyleClipboardButtons';
+import { AlignmentGrid } from './AlignmentGrid';
+import { TextRhythmControl } from './TextRhythmControl';
+import { PalettePresets } from './PalettePresets';
 
 
 interface Props {
@@ -175,6 +179,7 @@ function OverlayEditor({
           <p className="text-[11px] text-muted-foreground font-mono truncate">{overlay.id}</p>
         </div>
         <div className="flex items-center gap-1">
+          <StyleClipboardButtons overlay={overlay} onChange={onChange} />
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
             <Copy className="h-3.5 w-3.5" />
           </Button>
