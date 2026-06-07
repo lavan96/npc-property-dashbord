@@ -1,265 +1,284 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
 } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Plus, BookOpen, Trophy } from 'lucide-react';
-import { LenderPlaybookEditorDialog } from '@/components/finance-portal/LenderPlaybookEditorDialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Loader2, BookOpen, RefreshCw, Trophy } from 'lucide-react';
 
-const normalizeKey = (s: string) =>
-  String(s || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+type LiveRate = {
+  lender_id: string;
+  lender_name: string;
+  product_name: string | null;
+  rate: number | null;
+  comparison_rate: number | null;
+  rate_type: string | null;
+  loan_purpose: string | null;
+  repayment_type: string | null;
+  lvr_min: number | null;
+  lvr_max: number | null;
+  features?: string[];
+  last_updated?: string | null;
+};
 
+const fmtPct = (n?: number | null, d = 2) =>
+  n == null ? '—' : `${Number(n).toFixed(d)}%`;
 const fmtAUD = (n?: number | null) =>
-  n == null ? '—' : `$${n.toLocaleString('en-AU')}`;
+  n == null ? '—' : `$${Math.round(Number(n)).toLocaleString('en-AU')}`;
 
 export default function FinancePortalLenderIntelligence() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [loading, setLoading] = useState(true);
-  const [playbooks, setPlaybooks] = useState<any[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loanAmount, setLoanAmount] = useState<number>(700000);
-  const [comparing, setComparing] = useState(false);
-  const [comparison, setComparison] = useState<any[]>([]);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorTarget, setEditorTarget] = useState<{ key: string; label: string; initial: any } | null>(null);
-  const [newLenderLabel, setNewLenderLabel] = useState('');
+  const [rates, setRates] = useState<LiveRate[]>([]);
+  const [lenderSummary, setLenderSummary] = useState<{ lender_id: string; lender_name: string; lowest: number | null; count: number }[]>([]);
+  const [loanAmount, setLoanAmount] = useState<number>(700_000);
+  const [lvr, setLvr] = useState<number>(80);
+  const [purpose, setPurpose] = useState<string>('OWNER_OCCUPIED');
+  const [repayment, setRepayment] = useState<string>('PRINCIPAL_AND_INTEREST');
+  const [rateType, setRateType] = useState<string>('all');
+  const [search, setSearch] = useState<string>('');
 
   const load = async () => {
     setLoading(true);
-    const { data } = await invokeFinanceFunction(
+    const { data, error } = await invokeFinanceFunction(
       'finance-portal-lender-intelligence',
-      { operation: 'list_playbooks' },
+      {
+        operation: 'live_rates',
+        loan_purpose: purpose,
+        repayment_type: repayment,
+        rate_type: rateType === 'all' ? '' : rateType,
+        lvr,
+        loan_amount: loanAmount,
+        limit: 200,
+      },
     );
-    setPlaybooks(data?.playbooks || []);
+    if (!error) {
+      setRates(data?.rates || []);
+      setLenderSummary(data?.lenders || []);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [purpose, repayment, rateType, lvr, loanAmount]);
 
-  const toggleSel = (key: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else if (next.size < 5) next.add(key);
-      return next;
-    });
-  };
-
-  const runCompare = async () => {
-    if (selected.size < 2) return;
-    setComparing(true);
-    const { data } = await invokeFinanceFunction(
-      'finance-portal-lender-intelligence',
-      {
-        operation: 'compare_lenders',
-        lender_keys: Array.from(selected),
-        loan_amount: loanAmount,
-      },
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rates;
+    return rates.filter(
+      (r) =>
+        r.lender_name?.toLowerCase().includes(q) ||
+        r.product_name?.toLowerCase().includes(q),
     );
-    setComparison(data?.comparison || []);
-    setComparing(false);
+  }, [rates, search]);
+
+  const monthly = (rate: number | null) => {
+    if (!rate || !loanAmount) return null;
+    const r = rate / 100 / 12;
+    const n = 30 * 12;
+    return Math.round((loanAmount * r) / (1 - Math.pow(1 + r, -n)));
   };
 
-  const openEditor = (pb: any | null, label?: string) => {
-    const key = pb?.lender_key || normalizeKey(label || '');
-    if (!key) return;
-    setEditorTarget({ key, label: pb?.lender_label || label || key, initial: pb });
-    setEditorOpen(true);
-  };
-
-  const winner = useMemo(
-    () => comparison.length ? comparison[0]?.lender_key : null,
-    [comparison],
-  );
+  const best = filtered[0];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" /> Lender Intelligence
           </h1>
           <p className="text-sm text-muted-foreground">
-            Workspace playbooks, turnaround stats, and side-by-side comparison.
+            Live lender & rate data sourced from the Command Centre. Filter, compare,
+            and find the lowest rate for your scenario.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Add lender (e.g. Macquarie)"
-            value={newLenderLabel}
-            onChange={(e) => setNewLenderLabel(e.target.value)}
-            className="w-56"
-          />
-          <Button
-            disabled={!newLenderLabel.trim()}
-            onClick={() => {
-              openEditor(null, newLenderLabel.trim());
-              setNewLenderLabel('');
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" /> New
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        </Button>
       </div>
 
+      {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Playbooks</CardTitle>
+          <CardTitle className="text-base">Your scenario</CardTitle>
+          <CardDescription>Adjust to filter live rates to your client's deal.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Field label="Loan amount">
+              <Input
+                type="number"
+                value={loanAmount}
+                onChange={(e) => setLoanAmount(Number(e.target.value) || 0)}
+              />
+            </Field>
+            <Field label="LVR %">
+              <Input
+                type="number"
+                value={lvr}
+                onChange={(e) => setLvr(Number(e.target.value) || 0)}
+              />
+            </Field>
+            <Field label="Purpose">
+              <Select value={purpose} onValueChange={setPurpose}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OWNER_OCCUPIED">Owner-occupied</SelectItem>
+                  <SelectItem value="INVESTMENT">Investment</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Repayment">
+              <Select value={repayment} onValueChange={setRepayment}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PRINCIPAL_AND_INTEREST">P&amp;I</SelectItem>
+                  <SelectItem value="INTEREST_ONLY">Interest only</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Rate type">
+              <Select value={rateType} onValueChange={setRateType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="VARIABLE">Variable</SelectItem>
+                  <SelectItem value="FIXED">Fixed</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Search lender / product">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="e.g. Macquarie, Basic Variable"
+              />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lender summary chips */}
+      {lenderSummary.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {lenderSummary.slice(0, 18).map((l) => (
+            <Badge key={l.lender_id} variant="outline" className="text-xs">
+              {l.lender_name} · from {fmtPct(l.lowest)} · {l.count} products
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Best-fit hero */}
+      {best && !loading && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-primary" /> Best fit for your scenario
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Stat label="Lender" value={best.lender_name} />
+              <Stat label="Product" value={best.product_name || '—'} />
+              <Stat label="Rate p.a." value={fmtPct(best.rate)} />
+              <Stat label="Comparison" value={fmtPct(best.comparison_rate)} />
+              <Stat label="Est. monthly" value={fmtAUD(monthly(best.rate))} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Rates table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">All matching rates ({filtered.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-10 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading live rates…
             </div>
-          ) : playbooks.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No lender playbooks yet. Add your first one above.
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">
+              No products match these filters. Try widening LVR, switching rate type,
+              or ask an admin to refresh the bank rate cache in the Command Centre.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Lender</TableHead>
-                  <TableHead className="text-right">Rate p.a.</TableHead>
-                  <TableHead className="text-right">Turnaround</TableHead>
-                  <TableHead className="text-right">Approval rate</TableHead>
-                  <TableHead className="text-right">Samples</TableHead>
-                  <TableHead>BDM</TableHead>
-                  <TableHead className="text-right"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {playbooks.map((p) => {
-                  const turnaround = p.typical_turnaround_days_override ?? p.stats?.median_days_to_approval;
-                  return (
-                    <TableRow key={p.id}>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Lender</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Rate p.a.</TableHead>
+                    <TableHead className="text-right">Comparison</TableHead>
+                    <TableHead className="text-right">LVR</TableHead>
+                    <TableHead className="text-right">Est. monthly</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((r, i) => (
+                    <TableRow key={`${r.lender_id}-${r.product_name}-${i}`}>
+                      <TableCell className="font-medium">{r.lender_name}</TableCell>
+                      <TableCell className="text-sm">{r.product_name || '—'}</TableCell>
                       <TableCell>
-                        <Checkbox
-                          checked={selected.has(p.lender_key)}
-                          onCheckedChange={() => toggleSel(p.lender_key)}
-                        />
+                        <Badge variant="outline" className="text-[10px]">
+                          {r.rate_type || '—'}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{p.lender_label}</TableCell>
-                      <TableCell className="text-right">
-                        {p.rate_band_pa != null ? `${Number(p.rate_band_pa).toFixed(2)}%` : '—'}
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {fmtPct(r.rate)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {turnaround != null ? `${turnaround}d` : '—'}
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {fmtPct(r.comparison_rate)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {p.stats?.approval_rate_pct != null ? `${p.stats.approval_rate_pct}%` : '—'}
+                      <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+                        {r.lvr_min != null || r.lvr_max != null
+                          ? `${r.lvr_min ?? 0}–${r.lvr_max ?? 95}%`
+                          : '—'}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {p.stats?.sample_size || 0}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {p.bdm_name || '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => openEditor(p)}>Edit</Button>
+                      <TableCell className="text-right tabular-nums">
+                        {fmtAUD(monthly(r.rate))}
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Side-by-side comparison</CardTitle>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={loanAmount}
-              onChange={(e) => setLoanAmount(Number(e.target.value) || 0)}
-              className="w-36"
-              placeholder="Loan amount"
-            />
-            <Button
-              onClick={runCompare}
-              disabled={selected.size < 2 || comparing}
-            >
-              {comparing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Compare {selected.size > 0 ? `(${selected.size})` : ''}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {comparison.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              Tick 2–5 lenders, enter a loan amount, and click Compare.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {comparison.map((c) => (
-                <Card
-                  key={c.lender_key}
-                  className={c.lender_key === winner ? 'border-primary/60 bg-primary/5' : ''}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">{c.lender_label}</h4>
-                      {c.lender_key === winner && (
-                        <Badge className="bg-primary/20 text-primary border-primary/40">
-                          <Trophy className="h-3 w-3 mr-1" /> Best fit
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-3xl font-bold">{c.composite_score}<span className="text-sm text-muted-foreground">/100</span></div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Rate p.a.</p>
-                        <p className="font-medium">
-                          {c.rate_band_pa != null ? `${Number(c.rate_band_pa).toFixed(2)}%` : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Turnaround</p>
-                        <p className="font-medium">
-                          {c.effective_turnaround_days != null ? `${c.effective_turnaround_days}d` : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Approval rate</p>
-                        <p className="font-medium">
-                          {c.stats?.approval_rate_pct != null ? `${c.stats.approval_rate_pct}%` : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Est. monthly</p>
-                        <p className="font-medium">{fmtAUD(c.estimated_monthly_repayment)}</p>
-                      </div>
-                    </div>
-                    {c.rate_notes && (
-                      <p className="text-[11px] text-muted-foreground italic">{c.rate_notes}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {editorTarget && (
-        <LenderPlaybookEditorDialog
-          open={editorOpen}
-          onOpenChange={setEditorOpen}
-          lenderKey={editorTarget.key}
-          lenderLabel={editorTarget.label}
-          initial={editorTarget.initial}
-          onSaved={() => { setEditorOpen(false); void load(); }}
-        />
-      )}
+      <p className="text-xs text-muted-foreground">
+        Rates are sourced from the Command Centre's bank rate cache (CDR + manual lenders).
+        Use the Refresh button in the Command Centre's Lenders page to update the cache.
+      </p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold mt-0.5">{value}</p>
     </div>
   );
 }
