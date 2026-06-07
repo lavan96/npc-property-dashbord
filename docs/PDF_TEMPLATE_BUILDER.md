@@ -1,6 +1,6 @@
 # PDF Template Builder
 
-A visual editor for all PDF reports. The same `ReportTemplate` JSON drives both the live editor (tldraw canvas + inspector) and the production PDF renderer (`jsPDF` / `pdf-lib`) — no drift between preview and export.
+A visual editor for all PDF reports. The same `ReportTemplate` JSON drives the live editor (canvas + inspector) and the production renderer. Production PDFs are rendered through the **HTML → WeasyPrint** pipeline; the legacy `jsPDF` / `pdf-lib` renderer remains as a secondary/fallback path that does not support every block. Preview and export stay in sync **for the selected production engine** — blocks that are only `partial` or `unsupported` on that engine are flagged by the linter (`renderer-partial` / `renderer-unsupported`) and block activation. See [Print-safety lint](#print-safety-lint-phase-5) and [Governance and activation safety](#governance-and-activation-safety) below.
 
 ## Quick start
 
@@ -60,6 +60,17 @@ Every save can optionally **snapshot** the current schema into `report_template_
 - **Load** a version into the editor (no save)
 - **Restore** a version (snapshots the current schema first, then writes the restored one)
 - **Clone as new** (creates a new template from the version's schema)
+
+## Local drafts & recovery
+
+While you edit, the builder **autosaves a local draft to IndexedDB** (per template, debounced ~2s after the last change). This never touches the server — you still **Save** the server copy manually — so autosave can't cause version conflicts.
+
+- If you reload, crash, or navigate away and come back, and the local draft differs from the saved server version, a **recovery dialog** offers to **Restore draft**, **Discard draft**, **Compare JSON**, or **Save as branch**.
+- If the server moved on since the draft was taken (someone else saved), the dialog warns that the draft is based on an older version.
+- The local draft is cleared automatically after a successful **Save**, or when you explicitly discard it / choose **Review latest** in a save conflict.
+- The toolbar status shows `autosaved HH:MM` while there are unsaved changes; hover the status chip for last-saved, last-autosaved, and "unsaved since" times.
+
+Drafts are browser-local (IndexedDB) — they are not shared across devices or users, and degrade to a no-op where IndexedDB is unavailable.
 
 ## Governance and activation safety
 

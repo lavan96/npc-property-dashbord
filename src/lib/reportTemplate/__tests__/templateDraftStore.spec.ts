@@ -1,0 +1,95 @@
+import { describe, it, expect } from 'vitest';
+import {
+  makeDraftSignature,
+  evaluateDraftRecovery,
+  type DraftComparableFields,
+  type TemplateDraft,
+} from '../templateDraftStore';
+import { makeBlankTemplate, type ReportTemplate } from '../templateSchema';
+
+function fields(overrides: Partial<DraftComparableFields> = {}): DraftComparableFields {
+  return {
+    name: 'My template',
+    description: '',
+    reportType: 'investment',
+    tier: 'premium',
+    variant: '',
+    scope: 'global',
+    priority: 0,
+    customCss: '',
+    schema: makeBlankTemplate(),
+    ...overrides,
+  };
+}
+
+function draftFrom(f: DraftComparableFields, overrides: Partial<TemplateDraft> = {}): TemplateDraft {
+  return {
+    templateId: 't1',
+    baseServerVersion: 3,
+    savedAt: '2026-06-07T00:00:00.000Z',
+    sampleDataText: '{}',
+    ...f,
+    ...overrides,
+  };
+}
+
+describe('makeDraftSignature', () => {
+  it('is stable for identical content', () => {
+    expect(makeDraftSignature(fields())).toBe(makeDraftSignature(fields()));
+  });
+
+  it('ignores non-content fields (savedAt / templateId / baseServerVersion)', () => {
+    const f = fields();
+    const a = draftFrom(f, { savedAt: '2026-01-01T00:00:00.000Z', baseServerVersion: 1, templateId: 'x' });
+    const b = draftFrom(f, { savedAt: '2030-12-31T00:00:00.000Z', baseServerVersion: 99, templateId: 'y' });
+    expect(makeDraftSignature(a)).toBe(makeDraftSignature(b));
+  });
+
+  it('changes when a content field changes', () => {
+    expect(makeDraftSignature(fields())).not.toBe(makeDraftSignature(fields({ name: 'Renamed' })));
+    expect(makeDraftSignature(fields())).not.toBe(makeDraftSignature(fields({ customCss: '.x{}' })));
+  });
+
+  it('changes when the schema changes', () => {
+    const changed: ReportTemplate = { ...makeBlankTemplate(), pages: [{ id: 'p1', blocks: [] } as any] };
+    expect(makeDraftSignature(fields())).not.toBe(makeDraftSignature(fields({ schema: changed })));
+  });
+
+  it('normalizes missing/NaN priority to 0', () => {
+    expect(makeDraftSignature(fields({ priority: NaN }))).toBe(makeDraftSignature(fields({ priority: 0 })));
+  });
+});
+
+describe('evaluateDraftRecovery', () => {
+  const server = fields();
+  const serverSignature = makeDraftSignature(server);
+
+  it('does not recover when there is no draft', () => {
+    expect(evaluateDraftRecovery({ draft: null, serverSignature, currentServerVersion: 3 })).toEqual({
+      recover: false,
+      staleBase: false,
+    });
+  });
+
+  it('does not recover when the draft matches the server', () => {
+    const draft = draftFrom(server, { baseServerVersion: 3 });
+    expect(evaluateDraftRecovery({ draft, serverSignature, currentServerVersion: 3 })).toEqual({
+      recover: false,
+      staleBase: false,
+    });
+  });
+
+  it('recovers when the draft differs from the server', () => {
+    const draft = draftFrom(fields({ name: 'Local edit' }), { baseServerVersion: 3 });
+    const decision = evaluateDraftRecovery({ draft, serverSignature, currentServerVersion: 3 });
+    expect(decision.recover).toBe(true);
+    expect(decision.staleBase).toBe(false);
+  });
+
+  it('flags a stale base when the server moved on', () => {
+    const draft = draftFrom(fields({ name: 'Local edit' }), { baseServerVersion: 3 });
+    const decision = evaluateDraftRecovery({ draft, serverSignature, currentServerVersion: 5 });
+    expect(decision.recover).toBe(true);
+    expect(decision.staleBase).toBe(true);
+  });
+});

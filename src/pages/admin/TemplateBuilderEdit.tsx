@@ -19,6 +19,8 @@ import {
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
+import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
+import { DraftRecoveryDialog } from '@/components/templateBuilder/DraftRecoveryDialog';
 import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
 import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
 import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
@@ -43,6 +45,17 @@ import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { useTemplateDraftAutosave } from '@/hooks/templateBuilder/useTemplateDraftAutosave';
+import {
+  loadTemplateDraft,
+  deleteTemplateDraft,
+  makeDraftSignature,
+  evaluateDraftRecovery,
+  type TemplateDraft,
+} from '@/lib/reportTemplate/templateDraftStore';
+import * as editorActions from '@/lib/reportTemplate/editorActions';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
@@ -130,6 +143,7 @@ export default function TemplateBuilderEdit() {
   const { data: tplRow, isLoading } = useReportTemplate(id);
   const { update, create } = useReportTemplateMutations();
   const { data: versions = [] } = useReportTemplateVersions(id);
+  const qc = useQueryClient();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -165,7 +179,13 @@ export default function TemplateBuilderEdit() {
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [saveConflict, setSaveConflict] = useState<{ message: string; currentVersion?: number | null } | null>(null);
+  const [saveConflict, setSaveConflict] = useState<{ message: string; serverVersion: number | null } | null>(null);
+  const [showConflict, setShowConflict] = useState(false);
+  const [dirtySince, setDirtySince] = useState<string | null>(null);
+  // ── Local draft recovery (Phase 3B) ─────────────────────────────────────────
+  const [draftRecovery, setDraftRecovery] = useState<TemplateDraft | null>(null);
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [staleDraftBase, setStaleDraftBase] = useState(false);
 
   // ── Undo / redo history ────────────────────────────────────────────────────
   const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
@@ -242,6 +262,8 @@ export default function TemplateBuilderEdit() {
   // persisted schema. We only re-hydrate when the template id or its server
   // version actually changes.
   const hydratedKeyRef = useRef<string | null>(null);
+  // Ensures the local-draft recovery check runs once per (id, server version).
+  const draftCheckedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!tplRow) return;
     const key = `${tplRow.id}:${tplRow.version ?? 0}`;
@@ -344,53 +366,141 @@ export default function TemplateBuilderEdit() {
   }), [name, description, reportType, tier, variant, scope, priority, customCss, template]);
   const isDirty = !!lastSavedSignature && currentSignature !== lastSavedSignature;
 
+  // Warn before losing unsaved edits: tab close / reload (beforeunload),
+  // in-app link navigation (capture-phase click), and imperative navigate()
+  // calls via confirmLeave(). React Router's useBlocker is unavailable here
+  // because the app uses <BrowserRouter> rather than a data router.
+  const { confirmLeave } = useUnsavedChangesGuard({ when: isDirty });
+
+  // Track when the editor first became dirty (for the "unsaved since" status).
   useEffect(() => {
-    if (!isDirty) return;
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    setDirtySince((prev) => (isDirty ? (prev ?? new Date().toISOString()) : null));
   }, [isDirty]);
 
+  // ── Local draft autosave + recovery (Phase 3B) ──────────────────────────────
+  const buildDraftSnapshot = useCallback((): Omit<TemplateDraft, 'savedAt'> | null => {
+    if (!id) return null;
+    return {
+      templateId: id,
+      baseServerVersion: Number(tplRow?.version ?? 1),
+      name,
+      description,
+      reportType,
+      tier,
+      variant,
+      scope,
+      priority: Number.isFinite(priority) ? priority : 0,
+      customCss,
+      sampleDataText,
+      schema: template,
+    };
+  }, [id, tplRow?.version, name, description, reportType, tier, variant, scope, priority, customCss, sampleDataText, template]);
+
+  const { lastLocalSaveAt, setLastLocalSaveAt } = useTemplateDraftAutosave({
+    templateId: id,
+    enabled: isDirty && !isLoading && !showDraftRecovery,
+    changeKey: currentSignature,
+    getDraft: buildDraftSnapshot,
+  });
+
+  const applyDraftToEditor = useCallback((draft: TemplateDraft) => {
+    setName(draft.name || '');
+    setDescription(draft.description || '');
+    setReportType(draft.reportType || '');
+    setTier(draft.tier || '');
+    setVariant(draft.variant || '');
+    setScope(draft.scope || 'global');
+    setPriority(Number.isFinite(draft.priority) ? draft.priority : 0);
+    setCustomCss(draft.customCss || '');
+    if (typeof draft.sampleDataText === 'string') setSampleDataText(draft.sampleDataText);
+    const parsed = parseTemplate(draft.schema);
+    skipHistoryRef.current = true;
+    setTemplate(parsed);
+    setActivePageId((prev) => (parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null));
+    setLastLocalSaveAt(draft.savedAt);
+  }, [setTemplate, setLastLocalSaveAt]);
+
+  const handleRestoreDraft = useCallback(() => {
+    if (!draftRecovery) return;
+    applyDraftToEditor(draftRecovery);
+    setShowDraftRecovery(false);
+    setDraftRecovery(null);
+    toast.success('Draft restored — Save to persist it to the server');
+  }, [draftRecovery, applyDraftToEditor]);
+
+  const handleDiscardDraft = useCallback(() => {
+    if (id) void deleteTemplateDraft(id);
+    setShowDraftRecovery(false);
+    setDraftRecovery(null);
+    setLastLocalSaveAt(null);
+    toast('Local draft discarded');
+  }, [id, setLastLocalSaveAt]);
+
+  const handleDraftSaveAsBranch = useCallback(() => {
+    if (draftRecovery) applyDraftToEditor(draftRecovery);
+    setShowDraftRecovery(false);
+    setShowBranches(true);
+  }, [draftRecovery, applyDraftToEditor]);
+
+  // On load, surface a recoverable local draft if it differs from the server copy.
+  useEffect(() => {
+    if (!tplRow || !id) return;
+    const key = `${tplRow.id}:${tplRow.version ?? 0}`;
+    if (draftCheckedKeyRef.current === key) return;
+    draftCheckedKeyRef.current = key;
+    let cancelled = false;
+    void (async () => {
+      const draft = await loadTemplateDraft(id);
+      if (cancelled || !draft) return;
+      const serverSignature = makeDraftSignature({
+        name: tplRow.name || '',
+        description: tplRow.description || '',
+        reportType: tplRow.report_type || '',
+        tier: tplRow.tier || '',
+        variant: ((tplRow as any).variant as string) || '',
+        scope: ((tplRow as any).scope as string) || 'global',
+        priority: Number((tplRow as any).priority ?? 0),
+        customCss: ((tplRow as any).custom_css as string) || '',
+        schema: parseTemplate(tplRow.schema),
+      });
+      const decision = evaluateDraftRecovery({
+        draft,
+        serverSignature,
+        currentServerVersion: Number(tplRow.version ?? 1),
+      });
+      if (decision.recover) {
+        setDraftRecovery(draft);
+        setStaleDraftBase(decision.staleBase);
+        setShowDraftRecovery(true);
+      } else {
+        // Draft already matches the server — clean it up.
+        void deleteTemplateDraft(id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tplRow, id]);
+
   // ── Mutators ────────────────────────────────────────────────────────────────
+  // Handlers below own React state / selection / toasts; the schema transforms
+  // are delegated to the pure, unit-tested `editorActions` module (Phase 4.2).
   const updatePage = (next: Page) => {
-    setTemplate((t) => ({ ...t, pages: t.pages.map((p) => (p.id === next.id ? next : p)) }));
+    setTemplate((t) => editorActions.replacePage(t, next));
   };
   const setActivePageOverlays = (overlays: Overlay[]) => {
     if (!activePage) return;
-    // Distribute back into blocks by index, keeping per-block ordering.
-    let cursor = 0;
-    const nextBlocks = activePage.blocks.map((b) => {
-      const slice = overlays.slice(cursor, cursor + b.overlays.length);
-      cursor += b.overlays.length;
-      return { ...b, overlays: slice };
-    });
-    updatePage({ ...activePage, blocks: nextBlocks });
+    updatePage(editorActions.distributeOverlays(activePage, overlays));
   };
   const updateOverlay = (next: Overlay) => {
     if (!activePage) return;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => ({
-        ...b,
-        overlays: b.overlays.map((o) => (o.id === next.id ? next : o)),
-      })),
-    });
+    updatePage(editorActions.updateOverlay(activePage, next));
   };
   const deleteOverlay = (oid: string) => {
     if (!activePage) return;
     // Snapshot the page so the user can undo within a few seconds.
     const pageSnapshot: Page = JSON.parse(JSON.stringify(activePage));
-    const pageId = activePage.id;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => ({
-        ...b,
-        overlays: b.overlays.filter((o) => o.id !== oid),
-      })),
-    });
+    updatePage(editorActions.removeOverlay(activePage, oid));
     setSelectedOverlayId(null);
     toast('Overlay deleted', {
       description: 'You can restore it within 8 seconds.',
@@ -398,10 +508,7 @@ export default function TemplateBuilderEdit() {
       action: {
         label: 'Undo',
         onClick: () => {
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => (p.id === pageId ? pageSnapshot : p)),
-          }));
+          setTemplate((t) => editorActions.replacePage(t, pageSnapshot));
           setSelectedOverlayId(oid);
           toast.success('Overlay restored');
         },
@@ -410,53 +517,29 @@ export default function TemplateBuilderEdit() {
   };
   const duplicateOverlay = (oid: string) => {
     if (!activePage) return;
-    let newId: string | null = null;
-    const blocks = activePage.blocks.map((b) => {
-      const idx = b.overlays.findIndex((o) => o.id === oid);
-      if (idx < 0) return b;
-      const original = b.overlays[idx];
-      const copy = JSON.parse(JSON.stringify(original));
-      copy.id = crypto.randomUUID();
-      copy.x = (original.x || 0) + 16;
-      copy.y = (original.y || 0) + 16;
-      newId = copy.id;
-      const next = [...b.overlays];
-      next.splice(idx + 1, 0, copy);
-      return { ...b, overlays: next };
-    });
-    updatePage({ ...activePage, blocks });
-    if (newId) setSelectedOverlayId(newId);
+    const { page, newOverlayId } = editorActions.duplicateOverlay(activePage, oid);
+    updatePage(page);
+    if (newOverlayId) setSelectedOverlayId(newOverlayId);
   };
   const addOverlayToActivePage = (overlay: Overlay) => {
     if (!activePage) return;
-    const blocks = [...activePage.blocks];
-    let target = blocks.find((b) => b.type === 'free');
-    if (!target) {
-      target = { id: crypto.randomUUID(), type: 'free', props: {}, overlays: [] };
-      blocks.push(target);
-    }
-    target.overlays = [...target.overlays, overlay];
-    updatePage({ ...activePage, blocks });
+    updatePage(editorActions.addOverlay(activePage, overlay));
     setSelectedOverlayId(overlay.id);
   };
   const addBlockToActivePage = (block: Block) => {
     if (!activePage) return;
-    updatePage({ ...activePage, blocks: [...activePage.blocks, block] });
+    updatePage(editorActions.appendBlock(activePage, block));
     setSelectedBlockId(block.id);
     setSelectedOverlayId(null);
   };
   const updateBlock = (next: Block) => {
     if (!activePage) return;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => (b.id === next.id ? next : b)),
-    });
+    updatePage(editorActions.updateBlock(activePage, next));
   };
   const deleteBlock = (bid: string) => {
     if (!activePage) return;
     const snapshot: Page = JSON.parse(JSON.stringify(activePage));
-    const pageId = activePage.id;
-    updatePage({ ...activePage, blocks: activePage.blocks.filter((b) => b.id !== bid) });
+    updatePage(editorActions.removeBlock(activePage, bid));
     if (selectedBlockId === bid) setSelectedBlockId(null);
     toast('Block deleted', {
       description: 'You can restore it within 8 seconds.',
@@ -464,10 +547,7 @@ export default function TemplateBuilderEdit() {
       action: {
         label: 'Undo',
         onClick: () => {
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => (p.id === pageId ? snapshot : p)),
-          }));
+          setTemplate((t) => editorActions.replacePage(t, snapshot));
           toast.success('Block restored');
         },
       },
@@ -475,78 +555,42 @@ export default function TemplateBuilderEdit() {
   };
   const duplicateBlock = (bid: string) => {
     if (!activePage) return;
-    const idx = activePage.blocks.findIndex((b) => b.id === bid);
-    if (idx < 0) return;
-    const original = activePage.blocks[idx];
-    const copy: Block = JSON.parse(JSON.stringify(original));
-    copy.id = crypto.randomUUID();
-    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
-    const next = [...activePage.blocks];
-    next.splice(idx + 1, 0, copy);
-    updatePage({ ...activePage, blocks: next });
-    setSelectedBlockId(copy.id);
+    const result = editorActions.duplicateBlock(activePage, bid);
+    if (!result) return;
+    updatePage(result.page);
+    setSelectedBlockId(result.newBlockId);
   };
   const moveBlock = (bid: string, dir: -1 | 1) => {
     if (!activePage) return;
-    const idx = activePage.blocks.findIndex((b) => b.id === bid);
-    const j = idx + dir;
-    if (idx < 0 || j < 0 || j >= activePage.blocks.length) return;
-    const next = [...activePage.blocks];
-    [next[idx], next[j]] = [next[j], next[idx]];
-    updatePage({ ...activePage, blocks: next });
+    const next = editorActions.moveBlock(activePage, bid, dir);
+    if (next !== activePage) updatePage(next);
   };
   const reorderBlocks = (from: number, to: number) => {
     if (!activePage) return;
-    if (from === to || from < 0 || to < 0) return;
-    const next = [...activePage.blocks];
-    if (from >= next.length || to >= next.length) return;
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    updatePage({ ...activePage, blocks: next });
+    const next = editorActions.reorderBlocks(activePage, from, to);
+    if (next !== activePage) updatePage(next);
   };
 
   const addPage = () => {
-    const p: Page = {
-      id: crypto.randomUUID(),
-      name: `Page ${template.pages.length + 1}`,
-      size: { width: 595, height: 842 },
-      background: {},
-      blocks: [],
-    };
-    setTemplate((t) => ({ ...t, pages: [...t.pages, p] }));
-    setActivePageId(p.id);
+    const page = editorActions.makeNewPage(template.pages.length);
+    setTemplate((t) => editorActions.appendPage(t, page));
+    setActivePageId(page.id);
   };
   const duplicatePage = (pid: string) => {
-    const idx = template.pages.findIndex((p) => p.id === pid);
-    if (idx < 0) return;
-    const original = template.pages[idx];
-    const copy: Page = JSON.parse(JSON.stringify(original));
-    copy.id = crypto.randomUUID();
-    copy.name = `${original.name} copy`;
-    copy.blocks = copy.blocks.map((b) => ({
-      ...b,
-      id: crypto.randomUUID(),
-      overlays: b.overlays.map((o) => ({ ...o, id: crypto.randomUUID() })),
-    }));
-    const next = [...template.pages];
-    next.splice(idx + 1, 0, copy);
-    setTemplate((t) => ({ ...t, pages: next }));
-    setActivePageId(copy.id);
+    const result = editorActions.duplicatePage(template, pid);
+    if (!result) return;
+    setTemplate((t) => ({ ...t, pages: result.pages }));
+    setActivePageId(result.newPageId);
   };
   const deletePage = (pid: string) => {
-    setTemplate((t) => ({ ...t, pages: t.pages.filter((p) => p.id !== pid) }));
+    setTemplate((t) => editorActions.removePage(t, pid));
     if (activePageId === pid) {
       const remaining = template.pages.filter((p) => p.id !== pid);
       setActivePageId(remaining[0]?.id ?? null);
     }
   };
   const movePage = (pid: string, dir: -1 | 1) => {
-    const idx = template.pages.findIndex((p) => p.id === pid);
-    const j = idx + dir;
-    if (idx < 0 || j < 0 || j >= template.pages.length) return;
-    const next = [...template.pages];
-    [next[idx], next[j]] = [next[j], next[idx]];
-    setTemplate((t) => ({ ...t, pages: next }));
+    setTemplate((t) => editorActions.movePage(t, pid, dir));
   };
 
   // ── Starter page presets / theme presets / sample-data presets ──────────────
@@ -655,7 +699,7 @@ export default function TemplateBuilderEdit() {
     const copy: Block = JSON.parse(JSON.stringify(clipboardRef.current));
     copy.id = crypto.randomUUID();
     copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
-    updatePage({ ...activePage, blocks: [...activePage.blocks, copy] });
+    updatePage(editorActions.appendBlock(activePage, copy));
     setSelectedBlockId(copy.id);
     toast.success(`Pasted "${copy.type}"`);
   };
@@ -1132,36 +1176,47 @@ export default function TemplateBuilderEdit() {
   }, []);
 
   // ── Save ────────────────────────────────────────────────────────────────────
-  const handleSave = (snapshot = false) => {
+  const buildSavePatch = () => ({
+    name,
+    description,
+    report_type: reportType || null,
+    tier: tier || null,
+    variant: variant || null,
+    scope: scope || 'global',
+    priority: Number.isFinite(priority) ? priority : 0,
+    custom_css: customCss || null,
+    schema: template,
+  } as any);
+
+  const runSave = (opts: { snapshot?: boolean; expectedVersionOverride?: number } = {}) => {
     if (!id) return;
     if (tplMeta?.locked_for_review) {
       toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
       return;
     }
-    const expectedVersion = Number(tplRow?.version ?? 1);
+    const snapshot = !!opts.snapshot;
+    const expectedVersion = opts.expectedVersionOverride ?? Number(tplRow?.version ?? 1);
     setSaveConflict(null);
     update.mutate(
       {
         id,
         snapshot,
         expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
-        patch: {
-          name,
-          description,
-          report_type: reportType || null,
-          tier: tier || null,
-          variant: variant || null,
-          scope: scope || 'global',
-          priority: Number.isFinite(priority) ? priority : 0,
-          custom_css: customCss || null,
-          schema: template,
-        } as any,
+        patch: buildSavePatch(),
       },
       {
-        onSuccess: () => {
+        onSuccess: (record: any) => {
           setLastSavedSignature(currentSignature);
           setLastSavedAt(new Date().toISOString());
           setSaveConflict(null);
+          setShowConflict(false);
+          setDirtySince(null);
+          // The server copy now matches the editor — drop the local autosave draft.
+          // Pre-mark the next version as checked so the post-save refetch doesn't
+          // momentarily re-offer recovery for content we just persisted.
+          draftCheckedKeyRef.current = `${id}:${record?.version ?? Number(tplRow?.version ?? 1) + 1}`;
+          void deleteTemplateDraft(id);
+          setLastLocalSaveAt(null);
           toast.success(snapshot ? 'Saved as new version' : 'Saved');
           // Phase 14 — analytics
           logTemplateEvent({
@@ -1178,13 +1233,47 @@ export default function TemplateBuilderEdit() {
         },
         onError: (error: Error & { code?: string; currentVersion?: number | null }) => {
           if (error.code === 'version_conflict') {
-            const message = 'Template changed on the server. Your local edits were kept; reload or branch before saving again.';
-            setSaveConflict({ message, currentVersion: error.currentVersion });
-            toast.error(message);
+            setSaveConflict({
+              message: 'Template changed on the server. Your local edits were kept — choose how to resolve the conflict.',
+              serverVersion: error.currentVersion ?? null,
+            });
+            setShowConflict(true);
           }
         },
       },
     );
+  };
+
+  const handleSave = (snapshot = false) => runSave({ snapshot });
+
+  // ── Save-conflict resolution ─────────────────────────────────────────────────
+  const handleConflictReviewLatest = () => {
+    setShowConflict(false);
+    setSaveConflict(null);
+    // Discard local edits (including the autosaved draft) and re-hydrate from the
+    // freshest server copy.
+    hydratedKeyRef.current = null;
+    draftCheckedKeyRef.current = null;
+    if (id) {
+      void deleteTemplateDraft(id);
+      setLastLocalSaveAt(null);
+      qc.invalidateQueries({ queryKey: ['report-templates', id] });
+    }
+  };
+
+  const handleConflictOverwrite = () => {
+    const serverVersion = saveConflict?.serverVersion;
+    setShowConflict(false);
+    runSave(
+      typeof serverVersion === 'number' && Number.isFinite(serverVersion)
+        ? { expectedVersionOverride: serverVersion }
+        : {},
+    );
+  };
+
+  const handleConflictSaveAsBranch = () => {
+    setShowConflict(false);
+    setShowBranches(true);
   };
 
   const handleActivationToggle = () => {
@@ -1279,7 +1368,7 @@ export default function TemplateBuilderEdit() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b bg-background/95 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/template-builder')}>
+          <Button variant="ghost" size="icon" onClick={() => { if (confirmLeave()) navigate('/admin/template-builder'); }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <Input
@@ -1678,10 +1767,20 @@ export default function TemplateBuilderEdit() {
           </div>
           <div
             className={`text-[11px] px-2 py-1 rounded border ${saveConflict ? 'border-destructive/30 bg-destructive/10 text-destructive' : isDirty ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-success/30 bg-success/10 text-success'}`}
-            title={saveConflict?.message || (lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : undefined)}
+            title={[
+              saveConflict?.message,
+              lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : null,
+              lastLocalSaveAt ? `Autosaved locally ${new Date(lastLocalSaveAt).toLocaleString()}` : null,
+              isDirty && dirtySince ? `Unsaved since ${new Date(dirtySince).toLocaleString()}` : null,
+            ].filter(Boolean).join(' · ') || undefined}
           >
             {saveConflict ? 'Save conflict' : update.isPending ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
           </div>
+          {isDirty && lastLocalSaveAt && !saveConflict && (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap" title="Autosaved to this browser only — Save to persist to the server">
+              autosaved {new Date(lastLocalSaveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
           <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={update.isPending}>
             <History className="h-4 w-4 mr-1" /> Save version
           </Button>
@@ -2323,7 +2422,7 @@ export default function TemplateBuilderEdit() {
                           } as any,
                           {
                             onSuccess: (row: any) => {
-                              if (row?.id) navigate(`/admin/template-builder/${row.id}`);
+                              if (row?.id && confirmLeave()) navigate(`/admin/template-builder/${row.id}`);
                             },
                           },
                         );
@@ -2379,6 +2478,28 @@ export default function TemplateBuilderEdit() {
         />
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <SaveConflictDialog
+        open={showConflict}
+        onOpenChange={setShowConflict}
+        serverVersion={saveConflict?.serverVersion ?? null}
+        canOverwrite={isSuperadmin}
+        pending={update.isPending}
+        onReviewLatest={handleConflictReviewLatest}
+        onSaveAsBranch={handleConflictSaveAsBranch}
+        onOverwrite={handleConflictOverwrite}
+        onKeepDraft={() => setShowConflict(false)}
+      />
+      <DraftRecoveryDialog
+        open={showDraftRecovery}
+        onOpenChange={setShowDraftRecovery}
+        draft={draftRecovery}
+        serverSchema={showDraftRecovery && tplRow ? parseTemplate(tplRow.schema) : null}
+        currentServerVersion={Number(tplRow?.version ?? 1)}
+        staleBase={staleDraftBase}
+        onRestore={handleRestoreDraft}
+        onDiscard={handleDiscardDraft}
+        onSaveAsBranch={handleDraftSaveAsBranch}
+      />
       {id && (
         <TemplateAnalyticsDialog
           open={showAnalyticsDialog}
