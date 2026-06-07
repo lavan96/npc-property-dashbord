@@ -1164,6 +1164,30 @@ export function StrategyScenarioModeling({
     }));
   }, []);
 
+  // Audit-fix #1 — Apply a "Suggested Solution" card click into the existing
+  // strategy state. Maps each typed payload to the matching setter so we never
+  // duplicate state shape.
+  const handleApplySolution = useCallback((apply: SolutionApply) => {
+    if (apply.kind === 'expense') {
+      handleAdditionalChange({ expenseReductionPercent: apply.percent });
+    } else if (apply.kind === 'term') {
+      handleAdditionalChange({ loanTermAdjustment: apply.years });
+    } else if (apply.kind === 'equity') {
+      setStrategy(prev => {
+        const ids = new Set(prev.equityReleasePropertyIds);
+        ids.add(apply.propertyId);
+        const lvrs = new Map(prev.equityReleaseTargetLVRs);
+        lvrs.set(apply.propertyId, apply.targetLVR);
+        return {
+          ...prev,
+          equityReleaseEnabled: true,
+          equityReleasePropertyIds: ids,
+          equityReleaseTargetLVRs: lvrs,
+        };
+      });
+    }
+  }, [handleAdditionalChange]);
+
   const baseBand = getServiceabilityBandColor(baseResult.serviceabilityBand);
   const scenarioBand = getServiceabilityBandColor(scenarioResult.serviceabilityBand);
 
