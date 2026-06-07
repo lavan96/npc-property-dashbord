@@ -54,6 +54,7 @@ import {
   evaluateDraftRecovery,
   type TemplateDraft,
 } from '@/lib/reportTemplate/templateDraftStore';
+import * as editorActions from '@/lib/reportTemplate/editorActions';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
@@ -482,42 +483,24 @@ export default function TemplateBuilderEdit() {
   }, [tplRow, id]);
 
   // ── Mutators ────────────────────────────────────────────────────────────────
+  // Handlers below own React state / selection / toasts; the schema transforms
+  // are delegated to the pure, unit-tested `editorActions` module (Phase 4.2).
   const updatePage = (next: Page) => {
-    setTemplate((t) => ({ ...t, pages: t.pages.map((p) => (p.id === next.id ? next : p)) }));
+    setTemplate((t) => editorActions.replacePage(t, next));
   };
   const setActivePageOverlays = (overlays: Overlay[]) => {
     if (!activePage) return;
-    // Distribute back into blocks by index, keeping per-block ordering.
-    let cursor = 0;
-    const nextBlocks = activePage.blocks.map((b) => {
-      const slice = overlays.slice(cursor, cursor + b.overlays.length);
-      cursor += b.overlays.length;
-      return { ...b, overlays: slice };
-    });
-    updatePage({ ...activePage, blocks: nextBlocks });
+    updatePage(editorActions.distributeOverlays(activePage, overlays));
   };
   const updateOverlay = (next: Overlay) => {
     if (!activePage) return;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => ({
-        ...b,
-        overlays: b.overlays.map((o) => (o.id === next.id ? next : o)),
-      })),
-    });
+    updatePage(editorActions.updateOverlay(activePage, next));
   };
   const deleteOverlay = (oid: string) => {
     if (!activePage) return;
     // Snapshot the page so the user can undo within a few seconds.
     const pageSnapshot: Page = JSON.parse(JSON.stringify(activePage));
-    const pageId = activePage.id;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => ({
-        ...b,
-        overlays: b.overlays.filter((o) => o.id !== oid),
-      })),
-    });
+    updatePage(editorActions.removeOverlay(activePage, oid));
     setSelectedOverlayId(null);
     toast('Overlay deleted', {
       description: 'You can restore it within 8 seconds.',
@@ -525,10 +508,7 @@ export default function TemplateBuilderEdit() {
       action: {
         label: 'Undo',
         onClick: () => {
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => (p.id === pageId ? pageSnapshot : p)),
-          }));
+          setTemplate((t) => editorActions.replacePage(t, pageSnapshot));
           setSelectedOverlayId(oid);
           toast.success('Overlay restored');
         },
@@ -537,53 +517,29 @@ export default function TemplateBuilderEdit() {
   };
   const duplicateOverlay = (oid: string) => {
     if (!activePage) return;
-    let newId: string | null = null;
-    const blocks = activePage.blocks.map((b) => {
-      const idx = b.overlays.findIndex((o) => o.id === oid);
-      if (idx < 0) return b;
-      const original = b.overlays[idx];
-      const copy = JSON.parse(JSON.stringify(original));
-      copy.id = crypto.randomUUID();
-      copy.x = (original.x || 0) + 16;
-      copy.y = (original.y || 0) + 16;
-      newId = copy.id;
-      const next = [...b.overlays];
-      next.splice(idx + 1, 0, copy);
-      return { ...b, overlays: next };
-    });
-    updatePage({ ...activePage, blocks });
-    if (newId) setSelectedOverlayId(newId);
+    const { page, newOverlayId } = editorActions.duplicateOverlay(activePage, oid);
+    updatePage(page);
+    if (newOverlayId) setSelectedOverlayId(newOverlayId);
   };
   const addOverlayToActivePage = (overlay: Overlay) => {
     if (!activePage) return;
-    const blocks = [...activePage.blocks];
-    let target = blocks.find((b) => b.type === 'free');
-    if (!target) {
-      target = { id: crypto.randomUUID(), type: 'free', props: {}, overlays: [] };
-      blocks.push(target);
-    }
-    target.overlays = [...target.overlays, overlay];
-    updatePage({ ...activePage, blocks });
+    updatePage(editorActions.addOverlay(activePage, overlay));
     setSelectedOverlayId(overlay.id);
   };
   const addBlockToActivePage = (block: Block) => {
     if (!activePage) return;
-    updatePage({ ...activePage, blocks: [...activePage.blocks, block] });
+    updatePage(editorActions.appendBlock(activePage, block));
     setSelectedBlockId(block.id);
     setSelectedOverlayId(null);
   };
   const updateBlock = (next: Block) => {
     if (!activePage) return;
-    updatePage({
-      ...activePage,
-      blocks: activePage.blocks.map((b) => (b.id === next.id ? next : b)),
-    });
+    updatePage(editorActions.updateBlock(activePage, next));
   };
   const deleteBlock = (bid: string) => {
     if (!activePage) return;
     const snapshot: Page = JSON.parse(JSON.stringify(activePage));
-    const pageId = activePage.id;
-    updatePage({ ...activePage, blocks: activePage.blocks.filter((b) => b.id !== bid) });
+    updatePage(editorActions.removeBlock(activePage, bid));
     if (selectedBlockId === bid) setSelectedBlockId(null);
     toast('Block deleted', {
       description: 'You can restore it within 8 seconds.',
@@ -591,10 +547,7 @@ export default function TemplateBuilderEdit() {
       action: {
         label: 'Undo',
         onClick: () => {
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => (p.id === pageId ? snapshot : p)),
-          }));
+          setTemplate((t) => editorActions.replacePage(t, snapshot));
           toast.success('Block restored');
         },
       },
@@ -602,78 +555,42 @@ export default function TemplateBuilderEdit() {
   };
   const duplicateBlock = (bid: string) => {
     if (!activePage) return;
-    const idx = activePage.blocks.findIndex((b) => b.id === bid);
-    if (idx < 0) return;
-    const original = activePage.blocks[idx];
-    const copy: Block = JSON.parse(JSON.stringify(original));
-    copy.id = crypto.randomUUID();
-    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
-    const next = [...activePage.blocks];
-    next.splice(idx + 1, 0, copy);
-    updatePage({ ...activePage, blocks: next });
-    setSelectedBlockId(copy.id);
+    const result = editorActions.duplicateBlock(activePage, bid);
+    if (!result) return;
+    updatePage(result.page);
+    setSelectedBlockId(result.newBlockId);
   };
   const moveBlock = (bid: string, dir: -1 | 1) => {
     if (!activePage) return;
-    const idx = activePage.blocks.findIndex((b) => b.id === bid);
-    const j = idx + dir;
-    if (idx < 0 || j < 0 || j >= activePage.blocks.length) return;
-    const next = [...activePage.blocks];
-    [next[idx], next[j]] = [next[j], next[idx]];
-    updatePage({ ...activePage, blocks: next });
+    const next = editorActions.moveBlock(activePage, bid, dir);
+    if (next !== activePage) updatePage(next);
   };
   const reorderBlocks = (from: number, to: number) => {
     if (!activePage) return;
-    if (from === to || from < 0 || to < 0) return;
-    const next = [...activePage.blocks];
-    if (from >= next.length || to >= next.length) return;
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    updatePage({ ...activePage, blocks: next });
+    const next = editorActions.reorderBlocks(activePage, from, to);
+    if (next !== activePage) updatePage(next);
   };
 
   const addPage = () => {
-    const p: Page = {
-      id: crypto.randomUUID(),
-      name: `Page ${template.pages.length + 1}`,
-      size: { width: 595, height: 842 },
-      background: {},
-      blocks: [],
-    };
-    setTemplate((t) => ({ ...t, pages: [...t.pages, p] }));
-    setActivePageId(p.id);
+    const page = editorActions.makeNewPage(template.pages.length);
+    setTemplate((t) => editorActions.appendPage(t, page));
+    setActivePageId(page.id);
   };
   const duplicatePage = (pid: string) => {
-    const idx = template.pages.findIndex((p) => p.id === pid);
-    if (idx < 0) return;
-    const original = template.pages[idx];
-    const copy: Page = JSON.parse(JSON.stringify(original));
-    copy.id = crypto.randomUUID();
-    copy.name = `${original.name} copy`;
-    copy.blocks = copy.blocks.map((b) => ({
-      ...b,
-      id: crypto.randomUUID(),
-      overlays: b.overlays.map((o) => ({ ...o, id: crypto.randomUUID() })),
-    }));
-    const next = [...template.pages];
-    next.splice(idx + 1, 0, copy);
-    setTemplate((t) => ({ ...t, pages: next }));
-    setActivePageId(copy.id);
+    const result = editorActions.duplicatePage(template, pid);
+    if (!result) return;
+    setTemplate((t) => ({ ...t, pages: result.pages }));
+    setActivePageId(result.newPageId);
   };
   const deletePage = (pid: string) => {
-    setTemplate((t) => ({ ...t, pages: t.pages.filter((p) => p.id !== pid) }));
+    setTemplate((t) => editorActions.removePage(t, pid));
     if (activePageId === pid) {
       const remaining = template.pages.filter((p) => p.id !== pid);
       setActivePageId(remaining[0]?.id ?? null);
     }
   };
   const movePage = (pid: string, dir: -1 | 1) => {
-    const idx = template.pages.findIndex((p) => p.id === pid);
-    const j = idx + dir;
-    if (idx < 0 || j < 0 || j >= template.pages.length) return;
-    const next = [...template.pages];
-    [next[idx], next[j]] = [next[j], next[idx]];
-    setTemplate((t) => ({ ...t, pages: next }));
+    setTemplate((t) => editorActions.movePage(t, pid, dir));
   };
 
   // ── Starter page presets / theme presets / sample-data presets ──────────────
@@ -782,7 +699,7 @@ export default function TemplateBuilderEdit() {
     const copy: Block = JSON.parse(JSON.stringify(clipboardRef.current));
     copy.id = crypto.randomUUID();
     copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
-    updatePage({ ...activePage, blocks: [...activePage.blocks, copy] });
+    updatePage(editorActions.appendBlock(activePage, copy));
     setSelectedBlockId(copy.id);
     toast.success(`Pasted "${copy.type}"`);
   };
