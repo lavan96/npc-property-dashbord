@@ -115,7 +115,7 @@ export default function FinancePortalPipeline() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Pipeline Kanban</h1>
-          <p className="text-sm text-muted-foreground">Drag &amp; drop purchase files to update their finance status.</p>
+          <p className="text-sm text-muted-foreground">Drag &amp; drop on desktop, or tap the <span className="inline-flex items-center px-1 py-px rounded border border-border align-middle"><MoreVertical className="h-3 w-3" /></span> menu on a card to move it.</p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
