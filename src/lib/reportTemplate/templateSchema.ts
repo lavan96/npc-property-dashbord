@@ -616,6 +616,25 @@ function salvageTemplate(input: unknown): ReportTemplate | null {
           } else if (overlay.type === 'image') {
             overlay.src = String(overlay.src ?? '');
             overlay.fit = ['cover', 'contain', 'fill'].includes(overlay.fit) ? overlay.fit : 'cover';
+          } else if (overlay.type === 'textOnPath') {
+            overlay.content = String(overlay.content ?? '');
+            overlay.fontFamily = overlay.fontFamily ?? 'Helvetica';
+            overlay.fontSize = Number(overlay.fontSize) || 18;
+            overlay.color = overlay.color ?? '#000000';
+            overlay.curve = ['arc-up','arc-down','wave','circle'].includes(overlay.curve) ? overlay.curve : 'arc-up';
+            overlay.curvature = Number(overlay.curvature ?? 0.5);
+            overlay.letterSpacing = Number(overlay.letterSpacing) || 0;
+            overlay.startOffset = Number(overlay.startOffset) || 0;
+            overlay.fontWeight = normaliseFontWeight(overlay.fontWeight);
+          } else if (overlay.type === 'table') {
+            overlay.columns = Array.isArray(overlay.columns) ? overlay.columns : [];
+            overlay.showHeader = overlay.showHeader !== false;
+            overlay.fontSize = Number(overlay.fontSize) || 10;
+            overlay.borderWidth = Number(overlay.borderWidth ?? 0.5);
+            overlay.cellPadding = Number(overlay.cellPadding ?? 6);
+            overlay.headerHeight = Number(overlay.headerHeight ?? 22);
+            overlay.rowHeight = Number(overlay.rowHeight ?? 20);
+            overlay.headerFontWeight = overlay.headerFontWeight === 'normal' ? 'normal' : 'bold';
           }
         }
       }
