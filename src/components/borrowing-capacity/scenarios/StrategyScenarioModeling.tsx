@@ -1528,12 +1528,19 @@ export function StrategyScenarioModeling({
             acquisition: !!scenario.adjustments.acquisition,
           }));
 
-          // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
-          // computed delta. The result string is sent back to the agent so users see
-          // engine-verified numbers in the scenario badge instead of LLM free-text.
-          const baseCap = baseResult.borrowingCapacity || 0;
-          const newCap = scenarioResult?.borrowingCapacity ?? baseCap;
-          const delta = newCap - baseCap;
+          setScenarioName(scenario.name);
+
+          // Phase E (L1): Reconcile AI's estimatedImpact against engine truth.
+          // React state updates above are asynchronous, so reading the local
+          // `scenarioResult` immediately after applying a card can still return
+          // the pre-apply/base result — this was surfacing as `+$0K (engine)`
+          // while the card's Engine Truth panel showed a real uplift. Prefer the
+          // pre-Apply engine validation already attached to the selected card,
+          // then fall back to the current live result only if no validation was
+          // available.
+          const delta = typeof scenario.engineValidation?.capacityChange === 'number'
+            ? scenario.engineValidation.capacityChange
+            : ((scenarioResult?.borrowingCapacity ?? baseResult.borrowingCapacity ?? 0) - (baseResult.borrowingCapacity || 0));
           const sign = delta >= 0 ? '+' : '−';
           const absK = Math.round(Math.abs(delta) / 1000);
           return `${sign}$${absK}K (engine)`;
