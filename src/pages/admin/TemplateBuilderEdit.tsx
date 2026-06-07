@@ -40,6 +40,7 @@ import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIA
 import { TemplateDesignAgentPanel } from '@/components/templateBuilder/TemplateDesignAgentPanel';
 import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
+import { SpellCheckDialog } from '@/components/templateBuilder/SpellCheckDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
