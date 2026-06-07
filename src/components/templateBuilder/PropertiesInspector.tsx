@@ -242,7 +242,13 @@ function OverlayEditor({
 
       <Separator />
 
-      {/* Type-specific */}
+      {/* Phase 17 — visual effects (shared across all overlay types) */}
+      <EffectsPanel
+        value={(overlay as any).effects}
+        onChange={(v) => patch({ effects: v } as any)}
+      />
+
+      <Separator />
       {overlay.type === 'text' && (
         <div className="space-y-3">
           {pageId && (
