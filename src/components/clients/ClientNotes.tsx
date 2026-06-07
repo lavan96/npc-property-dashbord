@@ -113,14 +113,13 @@ async function fetchNotesSecure(clientId: string, page: number) {
 export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
-  // Notes are internal to the Command Center by default; staff opt in to share
-  // them outward to the client & finance portals.
-  const [shareNote, setShareNote] = useState(false);
+  // Per-note visibility picker — no default; user must choose before saving.
+  const [visibility, setVisibility] = useState<Visibility | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editNoteType, setEditNoteType] = useState<NoteType>('general');
-  const [editShare, setEditShare] = useState(false);
+  const [editVisibility, setEditVisibility] = useState<Visibility>('internal_npc');
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
