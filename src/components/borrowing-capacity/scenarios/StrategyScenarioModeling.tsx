@@ -732,6 +732,16 @@ export function StrategyScenarioModeling({
     const validationIssues = result.validationIssues ?? [];
     const capitalLedger = (result as any).capitalLedger ?? null;
 
+    // Audit-fix #3 — Baseline guard. When no levers are active the scenario
+    // MUST equal the base. Some upstream context (e.g. an acquisition target
+    // re-evaluating LMI) was producing a non-zero scenario delta even with
+    // `deltas.length === 0`, which surfaced a phantom "Scenario Borrowing
+    // Capacity = base + base" in the headline. Force-collapse to the base
+    // result so the user sees a true zero-delta baseline.
+    const baselineMode = deltas.length === 0;
+    const effectiveResult = baselineMode ? (baseResult as any) : result;
+    const effectiveInputs = baselineMode ? baseInputs : inputs;
+
     // ── F4 — Per-lever attribution ──────────────────────────────────────
     // Replay each delta IN ISOLATION against the same base context to
     // measure the capacity uplift attributable to that lever alone.
