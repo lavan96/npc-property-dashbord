@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, BookOpen, RefreshCw, Trophy } from 'lucide-react';
+import { Loader2, BookOpen, RefreshCw, Trophy, Scale } from 'lucide-react';
 
 type LiveRate = {
   lender_id: string;
@@ -43,6 +43,7 @@ export default function FinancePortalLenderIntelligence() {
   const [repayment, setRepayment] = useState<string>('PRINCIPAL_AND_INTEREST');
   const [rateType, setRateType] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -85,6 +86,24 @@ export default function FinancePortalLenderIntelligence() {
   };
 
   const best = filtered[0];
+
+  const getRateKey = (rate: LiveRate) =>
+    `${rate.lender_id}:${rate.product_name || rate.rate}:${rate.rate_type || ''}`;
+
+  const selectedRates = selectedKeys
+    .map((key) => rates.find((rate) => getRateKey(rate) === key))
+    .filter((rate): rate is LiveRate => !!rate);
+
+  const toggleSelected = (rate: LiveRate) => {
+    const key = getRateKey(rate);
+    setSelectedKeys((prev) => {
+      if (prev.includes(key)) return prev.filter((item) => item !== key);
+      if (prev.length >= 3) return prev;
+      return [...prev, key];
+    });
+  };
+
+  const isSelected = (rate: LiveRate) => selectedKeys.includes(getRateKey(rate));
 
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
@@ -195,6 +214,36 @@ export default function FinancePortalLenderIntelligence() {
         </Card>
       )}
 
+      {selectedRates.length > 0 && (
+        <Card className="border-primary/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Scale className="h-4 w-4 text-primary" /> Selected lender comparison
+            </CardTitle>
+            <CardDescription>Compare up to three products side-by-side for this scenario.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-3">
+              {selectedRates.map((r) => (
+                <Card key={`${r.lender_id}-${r.product_name}`} className="bg-muted/20">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="font-semibold">{r.lender_name}</div>
+                    <div className="text-sm text-muted-foreground line-clamp-2">{r.product_name || '—'}</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <Stat label="Rate" value={fmtPct(r.rate)} />
+                      <Stat label="Comparison" value={fmtPct(r.comparison_rate)} />
+                      <Stat label="Monthly" value={fmtAUD(monthly(r.rate))} />
+                      <Stat label="LVR" value={`${r.lvr_min ?? 0}-${r.lvr_max ?? 100}%`} />
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => toggleSelected(r)} className="w-full">Remove</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rates table */}
       <Card>
         <CardHeader className="pb-3">
@@ -227,7 +276,18 @@ export default function FinancePortalLenderIntelligence() {
                 <TableBody>
                   {filtered.map((r, i) => (
                     <TableRow key={`${r.lender_id}-${r.product_name}-${i}`}>
-                      <TableCell className="font-medium">{r.lender_name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>{r.lender_name}</div>
+                        <Button
+                          size="sm"
+                          variant={isSelected(r) ? 'default' : 'outline'}
+                          className="mt-1 h-7 text-[11px]"
+                          onClick={() => toggleSelected(r)}
+                          disabled={!isSelected(r) && selectedRates.length >= 3}
+                        >
+                          {isSelected(r) ? 'Selected' : 'Compare'}
+                        </Button>
+                      </TableCell>
                       <TableCell className="text-sm">{r.product_name || '—'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]">

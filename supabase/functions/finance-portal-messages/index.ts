@@ -28,7 +28,9 @@ const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'application/msword'
 
 function extractFinanceToken(headers: Headers, body?: any): string | null {
   return headers.get('x-finance-session-token')
+    || headers.get('x-session-token')
     || body?.finance_session_token
+    || body?.session_token
     || null;
 }
 

@@ -44,7 +44,7 @@ export function AiLenderRecommenderCard({ purchaseFileId }: { purchaseFileId: st
       </CardHeader>
       <CardContent className="space-y-3">
         {!recs ? (
-          <p className="text-sm text-muted-foreground">Compare top-fit lenders based on the borrower profile and live playbooks.</p>
+          <p className="text-sm text-muted-foreground">Compare top-fit lenders based on the borrower profile and live lender data.</p>
         ) : recs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No lender matched the criteria with sufficient confidence.</p>
         ) : (

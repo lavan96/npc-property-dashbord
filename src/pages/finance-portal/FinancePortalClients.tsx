@@ -249,9 +249,9 @@ function CreateClientDialog({
       }
 
       if (data.ghl_sync?.success) {
-        toast.success('Client created and synced to GoHighLevel');
+        toast.success('Client created and Command Centre notified');
       } else if (data.ghl_sync?.error) {
-        toast.warning('Client created, but GHL sync needs attention', {
+        toast.warning('Client created, but CRM sync needs attention', {
           description: data.ghl_sync.error,
         });
       } else {
@@ -276,7 +276,7 @@ function CreateClientDialog({
             Add new client
           </DialogTitle>
           <DialogDescription>
-            Create a finance-partner-originated client record, sync the contact into GoHighLevel, and keep the client available for downstream portal-access setup from the internal dashboard.
+            Create a finance-partner-originated client record, notify the Command Centre, and keep the client available for downstream portal-access setup from the internal dashboard.
           </DialogDescription>
         </DialogHeader>
 
@@ -296,7 +296,7 @@ function CreateClientDialog({
             <TabsContent value="manual" className="space-y-4">
               <Card className="border-dashed bg-muted/20">
                 <CardContent className="pt-6 text-sm text-muted-foreground">
-                  Enter the client details directly. This creates the client in the shared data model, marks finance-portal provenance, assigns it back to your finance account, and syncs a GHL contact only.
+                  Enter the client details directly. This creates the client in the shared data model, marks finance-portal provenance, assigns it back to your finance account, and notifies the Command Centre.
                 </CardContent>
               </Card>
             </TabsContent>
@@ -417,7 +417,7 @@ function CreateClientDialog({
             <CardContent className="flex flex-col gap-2 pt-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="font-medium text-foreground">What happens next</p>
-                <p>The client is created in the shared dashboard data model, linked to your finance account, and synced to GoHighLevel as a contact only.</p>
+                <p>The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.</p>
               </div>
               <Badge variant="outline">No pipeline opportunity is created</Badge>
             </CardContent>
@@ -608,8 +608,8 @@ export default function FinancePortalClients() {
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
-        title="Export Clients (CSV)"
-        description="Pick the columns you need and download a clean CSV of your assigned finance-portal clients."
+        title="Export finance portal clients"
+        description="Pick exactly the columns you need. Unticked or unmapped fields are excluded from the downloaded CSV/XLSX."
         fields={ghlExportFields}
         records={ghlExportRecords}
         fileBaseName={`finance-portal-clients-${new Date().toISOString().split('T')[0]}`}

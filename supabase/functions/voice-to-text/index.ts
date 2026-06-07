@@ -4,7 +4,7 @@ import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-finance-session-token',
 };
 
 /**

@@ -49,28 +49,17 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'rental', label: 'Rental (not owned)' },
         { value: 'smsf', label: 'SMSF' },
       ]},
-      { key: 'purchase_price', label: 'Purchase Price', type: 'currency' },
-      { key: 'purchase_date', label: 'Purchase Date', type: 'date' },
+      { key: 'value', label: 'Estimated Value', type: 'currency' },
       { key: 'loan_remaining', label: 'Loan Remaining', type: 'currency' },
-      { key: 'lender_name', label: 'Lender', type: 'text' },
       { key: 'interest_rate', label: 'Interest Rate (%)', type: 'percent' },
-      { key: 'repayment_type', label: 'Repayment Type', type: 'select', options: [
-        { value: 'principal_and_interest', label: 'P&I' },
-        { value: 'interest_only', label: 'Interest Only' },
-      ]},
-      { key: 'loan_repayment_amount', label: 'Repayment Amount', type: 'currency' },
-      { key: 'loan_repayment_frequency', label: 'Repayment Frequency', type: 'select', options: [
-        { value: 'monthly', label: 'Monthly' },
-        { value: 'fortnightly', label: 'Fortnightly' },
-        { value: 'weekly', label: 'Weekly' },
-      ]},
+      { key: 'monthly_interest_repayment', label: 'Monthly Interest Repayment', type: 'currency' },
       { key: 'monthly_rental_income', label: 'Monthly Rental Income', type: 'currency' },
       { key: 'ownership_percentage', label: 'Ownership %', type: 'percent' },
     ],
     renderSummary: (r) => (
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         <Badge variant="outline">{r.property_type?.replace('_', ' ') || 'unspecified'}</Badge>
-        {r.purchase_price && <span>Purchase {fmtCurrency(r.purchase_price)}</span>}
+        {r.value && <span>Value {fmtCurrency(r.value)}</span>}
         {r.loan_remaining && <span>· Loan {fmtCurrency(r.loan_remaining)}</span>}
         {r.monthly_rental_income && <span>· Rent {fmtCurrency(r.monthly_rental_income)}/mo</span>}
       </div>
@@ -237,26 +226,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
       ]},
       { key: 'start_date', label: 'Start Date', type: 'date' },
       { key: 'is_current', label: 'Currently employed here', type: 'boolean' },
-      { key: 'gross_annual_salary', label: 'Gross Annual Salary', type: 'currency' },
-      { key: 'salary_amount', label: 'Salary Amount', type: 'currency' },
-      { key: 'salary_frequency', label: 'Salary Frequency', type: 'select', options: [
-        { value: 'annually', label: 'Annual' },
-        { value: 'monthly', label: 'Monthly' },
-        { value: 'fortnightly', label: 'Fortnightly' },
-        { value: 'weekly', label: 'Weekly' },
-        { value: 'hourly', label: 'Hourly' },
-      ]},
-      { key: 'bonus', label: 'Bonus', type: 'currency' },
-      { key: 'commission', label: 'Commission', type: 'currency' },
-      { key: 'allowance', label: 'Allowances', type: 'currency' },
-      { key: 'overtime_essential', label: 'Overtime (Essential)', type: 'currency' },
-      { key: 'overtime_non_essential', label: 'Overtime (Non-essential)', type: 'currency' },
-      { key: 'other_taxable_income', label: 'Other Taxable Income', type: 'currency' },
     ],
     renderSummary: (r) => (
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         <Badge variant="outline">{r.employment_type?.replace('_', ' ') || 'role'}</Badge>
-        {r.gross_annual_salary && <span>{fmtCurrency(r.gross_annual_salary)} / yr</span>}
+        {r.start_date && <span>Since {r.start_date}</span>}
         {r.is_current && <Badge variant="secondary" className="text-xs">current</Badge>}
       </div>
     ),
