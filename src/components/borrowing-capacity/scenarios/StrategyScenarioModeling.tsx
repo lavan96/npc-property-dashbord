@@ -1296,15 +1296,14 @@ export function StrategyScenarioModeling({
       onPresetsChange?.(updated);
       setScenarioName('');
       setShowSaveInput(false);
-      // Save-only: persist to the Saved Scenarios list and STAY on the What-If
-      // tab. The scenario is intentionally NOT auto-applied to the calculator —
-      // use "Load" on the saved entry, or "Apply to Calculator", to push it into
-      // the live calc. (The persistence layer surfaces its own success toast.)
+      // Also apply the scenario to the live calculator so it persists across
+      // tab switches and modal close/reopen (fix for "save reverts to base").
+      onApplyScenario?.(scenarioInputs, totalAccessibleEquity, newPreset);
     } catch (err: any) {
       console.error('[StrategyScenarioModeling] Save scenario failed:', err);
-      toast.error(`Couldn't save scenario: ${err?.message || 'unexpected error'}`);
+      toast.error(err?.message || 'Failed to save scenario');
     }
-  }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark]);
+  }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark, onApplyScenario]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
@@ -1433,8 +1432,23 @@ export function StrategyScenarioModeling({
         currentLenderProfileId={currentLenderProfileId}
         hemBenchmark={hemBenchmark}
         onApplyScenario={(scenario: AIScenario) => {
-          // Map AI scenario adjustments to strategy state
-          const aiAcquisition = scenario.adjustments.acquisition;
+          // Map AI scenario adjustments to strategy state. Be defensive here:
+          // AI-generated/persisted cards can omit optional arrays or carry old
+          // payload shapes, and this callback is invoked directly by the three
+          // card action buttons. Normalising prevents a bad card from throwing
+          // before the selected scenario can surface in the builder.
+          const adjustments = {
+            consolidatedLiabilityIds: [],
+            refinancedToIOPropertyIds: [],
+            rateAdjustment: 0,
+            incomeGrowthPercent: 0,
+            expenseReductionPercent: 0,
+            portfolioSellPropertyIds: [],
+            propertyRateChanges: [],
+            valuationOverrides: [],
+            ...(scenario.adjustments ?? {}),
+          };
+          const aiAcquisition = adjustments.acquisition;
           if (aiAcquisition) {
             setAcquisition({
               enabled: true,
@@ -1449,20 +1463,20 @@ export function StrategyScenarioModeling({
             });
           }
           setStrategy(prev => {
-              const eqRelease = scenario.adjustments.equityRelease;
+              const eqRelease = adjustments.equityRelease;
               const newPropertyIds = new Set<string>(eqRelease ? [eqRelease.propertyId] : []);
               const newTargetLVRs = new Map<string, number>();
               if (eqRelease) newTargetLVRs.set(eqRelease.propertyId, eqRelease.targetLVR || DEFAULT_EQUITY_LVR);
 
               // Map portfolio sell property IDs
-              const sellIds = new Set<string>(scenario.adjustments.portfolioSellPropertyIds || []);
+              const sellIds = new Set<string>(adjustments.portfolioSellPropertyIds || []);
 
               // Map DTI cap override
-              const dtiOverride = scenario.adjustments.dtiCapOverride;
+              const dtiOverride = adjustments.dtiCapOverride;
 
               // Phase F1 — map per-property rate changes
               const rateOverrides = new Map<string, number>();
-              (scenario.adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
+              (adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
                 if (propertyId && Number.isFinite(newRate) && newRate > 0) {
                   rateOverrides.set(propertyId, newRate);
                 }
@@ -1470,7 +1484,7 @@ export function StrategyScenarioModeling({
 
               // Phase G1 — map valuation overrides
               const valOverrides = new Map<string, import('./AdditionalStrategyLevers').ValuationOverride>();
-              (scenario.adjustments.valuationOverrides || []).forEach((vo) => {
+              (adjustments.valuationOverrides || []).forEach((vo) => {
                 if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
                   valOverrides.set(vo.propertyId, {
                     propertyId: vo.propertyId,
@@ -1482,7 +1496,7 @@ export function StrategyScenarioModeling({
               });
 
               // Phase G2 — map cross-collateralised pool
-              const aiPool = scenario.adjustments.crossCollatPool;
+              const aiPool = adjustments.crossCollatPool;
               const poolState = aiPool && aiPool.enabled
                 ? {
                     enabled: true,
@@ -1495,18 +1509,18 @@ export function StrategyScenarioModeling({
 
               return {
                 ...prev,
-                consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
-                refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
-                rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                consolidatedLiabilities: new Set(adjustments.consolidatedLiabilityIds || []),
+                refinancedToIO: new Set(adjustments.refinancedToIOPropertyIds || []),
+                rateAdjustment: adjustments.rateAdjustment || 0,
                 propertyRateOverrides: rateOverrides,
                 equityReleaseEnabled: !!eqRelease,
                 equityReleasePropertyIds: newPropertyIds,
                 equityReleaseTargetLVRs: newTargetLVRs,
                 additional: {
                   ...prev.additional,
-                  incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
-                  expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
-                  loanTermAdjustment: scenario.adjustments.loanTermAdjustment || 0,
+                  incomeGrowthPercent: adjustments.incomeGrowthPercent || 0,
+                  expenseReductionPercent: adjustments.expenseReductionPercent || 0,
+                  loanTermAdjustment: adjustments.loanTermAdjustment || 0,
                   portfolioSellPropertyIds: sellIds,
                   portfolioSellReinvest: false,
                   dtiCapEnabled: dtiOverride?.enabled || false,
@@ -1520,26 +1534,33 @@ export function StrategyScenarioModeling({
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
-            consolidation: (scenario.adjustments.consolidatedLiabilityIds?.length || 0) > 0,
-            refinance: (scenario.adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
-            equity: !!scenario.adjustments.equityRelease,
-            rates: (scenario.adjustments.rateAdjustment || 0) !== 0,
-            incomeGrowth: (scenario.adjustments.incomeGrowthPercent || 0) !== 0,
-            expenseReduction: (scenario.adjustments.expenseReductionPercent || 0) > 0,
-            loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
-            portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
-            dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
-            valuationUplift: (scenario.adjustments.valuationOverrides?.length || 0) > 0,
-            crossCollatPool: !!scenario.adjustments.crossCollatPool?.enabled,
-            acquisition: !!scenario.adjustments.acquisition,
+            consolidation: (adjustments.consolidatedLiabilityIds?.length || 0) > 0,
+            refinance: (adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
+            equity: !!adjustments.equityRelease,
+            rates: (adjustments.rateAdjustment || 0) !== 0,
+            incomeGrowth: (adjustments.incomeGrowthPercent || 0) !== 0,
+            expenseReduction: (adjustments.expenseReductionPercent || 0) > 0,
+            loanTerm: (adjustments.loanTermAdjustment || 0) !== 0,
+            portfolioPlay: (adjustments.portfolioSellPropertyIds?.length || 0) > 0,
+            dtiCap: !!adjustments.dtiCapOverride?.enabled,
+            valuationUplift: (adjustments.valuationOverrides?.length || 0) > 0,
+            crossCollatPool: !!adjustments.crossCollatPool?.enabled,
+            acquisition: !!adjustments.acquisition,
           }));
 
-          // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
-          // computed delta. The result string is sent back to the agent so users see
-          // engine-verified numbers in the scenario badge instead of LLM free-text.
-          const baseCap = baseResult.borrowingCapacity || 0;
-          const newCap = scenarioResult?.borrowingCapacity ?? baseCap;
-          const delta = newCap - baseCap;
+          setScenarioName(scenario.name || 'Suggested Scenario');
+
+          // Phase E (L1): Reconcile AI's estimatedImpact against engine truth.
+          // React state updates above are asynchronous, so reading the local
+          // `scenarioResult` immediately after applying a card can still return
+          // the pre-apply/base result — this was surfacing as `+$0K (engine)`
+          // while the card's Engine Truth panel showed a real uplift. Prefer the
+          // pre-Apply engine validation already attached to the selected card,
+          // then fall back to the current live result only if no validation was
+          // available.
+          const delta = typeof scenario.engineValidation?.capacityChange === 'number'
+            ? scenario.engineValidation.capacityChange
+            : ((scenarioResult?.borrowingCapacity ?? baseResult.borrowingCapacity ?? 0) - (baseResult.borrowingCapacity || 0));
           const sign = delta >= 0 ? '+' : '−';
           const absK = Math.round(Math.abs(delta) / 1000);
           return `${sign}$${absK}K (engine)`;
@@ -2887,8 +2908,8 @@ export function StrategyScenarioModeling({
                             hemBenchmark,
                           });
                         } catch (err: any) {
-                          console.error('[StrategyScenarioModeling] Apply to calculator failed:', err);
-                          toast.error(`Couldn't apply scenario: ${err?.message || 'unexpected error'}`);
+                          console.error('[StrategyScenarioModeling] Apply scenario failed:', err);
+                          toast.error(err?.message || 'Failed to apply scenario');
                         }
                       }}
                     >
@@ -2907,36 +2928,36 @@ export function StrategyScenarioModeling({
                           toast.error('Resolve blocking scenario validation errors before exporting.');
                           return;
                         }
-                        // Build a transient preset reflecting the current
-                        // strategy state so the PDF shows live what-if numbers
-                        // even before the user clicks Save.
-                        const transientName = scenarioName.trim() || 'Current What-If Scenario';
-                        const transientCreatedAt = new Date().toISOString();
-                        const transient: ScenarioPreset = {
-                          id: `transient-${Date.now()}`,
-                          name: transientName,
-                          isBase: false,
-                          createdAt: transientCreatedAt,
-                          adjustedInputs: { ...scenarioInputs },
-                          result: scenarioResult,
-                          accessibleEquity: totalAccessibleEquity,
-                          acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
-                          scenarioDeltas: appliedDeltas,
-                          validationIssues,
-                          capitalLedger,
-                          capitalAllocations: [...capitalAllocations],
-                          acquisition,
-                          replayAudit: buildReplayAudit(transientName, transientCreatedAt),
-                          incomeComponents,
-                          currentLenderProfileId,
-                          hemBenchmark,
-                        };
-                        const merged = [
-                          ...presets,
-                          ...(presets.some(p => p.id === transient.id) ? [] : [transient]),
-                        ];
-                        toast.info('Generating What-If PDF…');
                         try {
+                          // Build a transient preset reflecting the current
+                          // strategy state so the PDF shows live what-if numbers
+                          // even before the user clicks Save.
+                          const transientName = scenarioName.trim() || 'Current What-If Scenario';
+                          const transientCreatedAt = new Date().toISOString();
+                          const transient: ScenarioPreset = {
+                            id: `transient-${Date.now()}`,
+                            name: transientName,
+                            isBase: false,
+                            createdAt: transientCreatedAt,
+                            adjustedInputs: { ...scenarioInputs },
+                            result: scenarioResult,
+                            accessibleEquity: totalAccessibleEquity,
+                            acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+                            scenarioDeltas: appliedDeltas,
+                            validationIssues,
+                            capitalLedger,
+                            capitalAllocations: [...capitalAllocations],
+                            acquisition,
+                            replayAudit: buildReplayAudit(transientName, transientCreatedAt),
+                            incomeComponents,
+                            currentLenderProfileId,
+                            hemBenchmark,
+                          };
+                          const merged = [
+                            ...presets,
+                            ...(presets.some(p => p.id === transient.id) ? [] : [transient]),
+                          ];
+                          toast.info('Generating What-If PDF…');
                           await fetchAndGenerateBorrowingCapacityPDF(
                             clientId,
                             clientName || 'Client',
