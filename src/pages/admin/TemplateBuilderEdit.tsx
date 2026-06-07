@@ -912,7 +912,63 @@ export default function TemplateBuilderEdit() {
     }
   };
 
-  // ── Overlay selection helpers (used by Ctrl+A and clipboard) ────────────────
+  // ── Layout & Structure (Sections 1+2) — multi-select align/distribute/etc.
+  const runOnActivePage = useCallback((mutator: (p: Page) => Page) => {
+    if (!activePage) return;
+    const next = mutator(activePage);
+    if (next !== activePage) updatePage(next);
+  }, [activePage]);
+  const bulkAlign = (op: layoutActions.AlignOp) =>
+    runOnActivePage((p) => layoutActions.alignOverlays(p, Array.from(multiOverlayIds), op));
+  const bulkDistribute = (op: layoutActions.DistributeOp) =>
+    runOnActivePage((p) => layoutActions.distributeSpacing(p, Array.from(multiOverlayIds), op));
+  const bulkAlignToPage = (op: layoutActions.PageAlignOp) =>
+    runOnActivePage((p) => layoutActions.alignToPage(p, Array.from(multiOverlayIds), op));
+  const bulkGroup = () =>
+    runOnActivePage((p) => layoutActions.groupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkUngroup = () =>
+    runOnActivePage((p) => layoutActions.ungroupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkZ = (op: 'forward' | 'backward' | 'front' | 'back') =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.reorderOverlayZ(acc, id, op),
+      p,
+    ));
+  const bulkLock = (locked: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayLocked(acc, id, locked),
+      p,
+    ));
+  const bulkHide = (hidden: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayHidden(acc, id, hidden),
+      p,
+    ));
+  const multiOverlaysSnap = useMemo(() => {
+    if (!activePage) return [] as Overlay[];
+    const out: Overlay[] = [];
+    for (const b of activePage.blocks) for (const o of b.overlays) if (multiOverlayIds.has(o.id)) out.push(o);
+    return out;
+  }, [activePage, multiOverlayIds]);
+  const anyLocked = multiOverlaysSnap.some((o) => !!o.locked);
+  const anyHidden = multiOverlaysSnap.some((o) => !!o.hidden);
+  const anyGrouped = multiOverlaysSnap.some((o) => !!o.groupId);
+
+  // ── Find & Replace (Cmd/Ctrl+F) ────────────────────────────────────────────
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        const t = e.target as HTMLElement | null;
+        const tag = t?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const getSelectedOverlayIds = useCallback((): string[] => {
     if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
     return selectedOverlayId ? [selectedOverlayId] : [];
