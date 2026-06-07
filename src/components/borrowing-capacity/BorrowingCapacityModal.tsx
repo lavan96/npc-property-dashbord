@@ -1201,12 +1201,8 @@ export function BorrowingCapacityModal({
                 hemBenchmark={hemBenchmark}
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
-                onApplyScenario={(inputs, accessibleEquity) => {
-                  // Find matching preset or create an ad-hoc one
-                  const matchingPreset = scenarioPresets.find(
-                    p => !p.isBase && p.adjustedInputs === inputs
-                  );
-                  const scenarioPreset: ScenarioPreset = matchingPreset || {
+                onApplyScenario={(inputs, accessibleEquity, preset) => {
+                  const scenarioPreset: ScenarioPreset = preset || {
                     id: `applied-${Date.now()}`,
                     name: 'Applied Scenario',
                     isBase: false,
