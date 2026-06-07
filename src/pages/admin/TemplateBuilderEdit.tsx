@@ -40,6 +40,7 @@ import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIA
 import { TemplateDesignAgentPanel } from '@/components/templateBuilder/TemplateDesignAgentPanel';
 import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
+import { SpellCheckDialog } from '@/components/templateBuilder/SpellCheckDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
@@ -197,6 +198,7 @@ export default function TemplateBuilderEdit() {
   const [showAIAuthor, setShowAIAuthor] = useState(false);
   const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
+  const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -1841,6 +1843,9 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setShowPreviewQA(true)}>
                 <Eye className="h-4 w-4 mr-2" /> Preview & QA
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowSpellCheck(true)}>
+                <ShieldAlert className="h-4 w-4 mr-2" /> Spell check
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setFixerOpen(true)}>
                 <ShieldAlert className="h-4 w-4 mr-2" /> Binding Fixer
               </DropdownMenuItem>
@@ -3040,6 +3045,16 @@ export default function TemplateBuilderEdit() {
         template={template}
         sampleData={sampleData}
         customCss={customCss || undefined}
+      />
+      <SpellCheckDialog
+        open={showSpellCheck}
+        onOpenChange={setShowSpellCheck}
+        template={template}
+        onJumpTo={(pageId, blockId, overlayId) => {
+          setActivePageId(pageId);
+          setSelectedBlockId(blockId);
+          setSelectedOverlayId(overlayId);
+        }}
       />
       <ComponentLibraryDialog
         open={showComponentLib}

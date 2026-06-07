@@ -48,6 +48,7 @@ import { FontPicker } from './FontPicker';
 import { FontSizeControl } from './FontSizeControl';
 import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
 import { StyleClipboardButtons } from './StyleClipboardButtons';
+import { EffectsPanel } from './EffectsPanel';
 import { AlignmentGrid } from './AlignmentGrid';
 import { TextRhythmControl } from './TextRhythmControl';
 import { PalettePresets } from './PalettePresets';
@@ -241,7 +242,13 @@ function OverlayEditor({
 
       <Separator />
 
-      {/* Type-specific */}
+      {/* Phase 17 — visual effects (shared across all overlay types) */}
+      <EffectsPanel
+        value={(overlay as any).effects}
+        onChange={(v) => patch({ effects: v } as any)}
+      />
+
+      <Separator />
       {overlay.type === 'text' && (
         <div className="space-y-3">
           {pageId && (
