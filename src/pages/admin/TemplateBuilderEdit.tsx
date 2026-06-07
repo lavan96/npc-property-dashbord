@@ -426,7 +426,7 @@ export default function TemplateBuilderEdit() {
         .from('template_comments' as any)
         .select('id,page_id,block_id,overlay_id,resolved')
         .eq('template_id', id);
-      if (!cancelled) setCommentRows((data ?? []) as TemplateCommentAnchorRow[]);
+      if (!cancelled) setCommentRows(((data ?? []) as unknown) as TemplateCommentAnchorRow[]);
     };
     void loadCommentAnchors();
     const channel = supabase
