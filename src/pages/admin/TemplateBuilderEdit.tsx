@@ -3046,6 +3046,16 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={customCss || undefined}
       />
+      <SpellCheckDialog
+        open={showSpellCheck}
+        onOpenChange={setShowSpellCheck}
+        template={template}
+        onJumpTo={(pageId, blockId, overlayId) => {
+          setActivePageId(pageId);
+          setSelectedBlockId(blockId);
+          setSelectedOverlayId(overlayId);
+        }}
+      />
       <ComponentLibraryDialog
         open={showComponentLib}
         onOpenChange={setShowComponentLib}
