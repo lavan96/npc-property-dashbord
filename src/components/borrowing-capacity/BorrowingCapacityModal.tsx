@@ -1212,6 +1212,7 @@ export function BorrowingCapacityModal({
                     accessibleEquity: accessibleEquity ?? 0,
                   };
                   setActiveScenario(scenarioPreset);
+                  setResult(scenarioPreset.result as FullAssessmentResult);
                   // Apply the scenario values to calculator state
                   setInterestRate(inputs.interestRate);
                   setLoanTermYears(inputs.loanTermYears);
