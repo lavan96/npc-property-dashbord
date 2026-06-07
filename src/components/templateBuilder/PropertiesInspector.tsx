@@ -390,16 +390,21 @@ function PageEditor({
         <Label className="text-xs">Name</Label>
         <Input value={page.name} onChange={(e) => onChange({ ...page, name: e.target.value })} className="text-xs" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumField label="Width" value={page.size.width} onChange={(v) => onChange({ ...page, size: { ...page.size, width: v } })} />
-        <NumField label="Height" value={page.size.height} onChange={(v) => onChange({ ...page, size: { ...page.size, height: v } })} />
-      </div>
-      <ColorField
-        label="Background"
+      <PaperSizePicker
+        width={page.size.width}
+        height={page.size.height}
+        onChange={(size) => onChange({ ...page, size: { ...page.size, ...size } })}
+      />
+      <EnhancedColorPicker
+        label="Background color"
         template={template}
         value={page.background?.color || ''}
         allowEmpty
         onChange={(v) => onChange({ ...page, background: { ...(page.background || {}), color: v || undefined } })}
+      />
+      <BackgroundGradientEditor
+        value={(page.background as any)?.gradient as GradientValue | undefined}
+        onChange={(g) => onChange({ ...page, background: { ...(page.background || {}), gradient: g } as any })}
       />
       <div>
         <Label className="text-xs">Background image URL</Label>
