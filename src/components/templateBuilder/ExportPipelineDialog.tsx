@@ -282,6 +282,22 @@ export function ExportPipelineDialog({
             {/* Options */}
             <section className="space-y-4 rounded-lg border bg-card p-4">
               <h3 className="text-sm font-semibold">Output Options</h3>
+              {onTemplateChange && (
+                <ExportPresetsBar
+                  template={template}
+                  current={{ variant, tagged, optimizeImages, mode, themeId: themeId === '__active__' ? undefined : themeId, pageRange, includeBookmarks }}
+                  onLoadPreset={(p) => {
+                    setVariant(p.variant);
+                    if (p.tagged != null) setTagged(p.tagged);
+                    if (p.optimizeImages != null) setOptimizeImages(p.optimizeImages);
+                    if (p.mode) setMode(p.mode);
+                    setThemeId(p.themeId || '__active__');
+                    if (p.pageRange != null) setPageRange(p.pageRange);
+                    if (p.includeBookmarks != null) setIncludeBookmarks(p.includeBookmarks);
+                  }}
+                  onPersist={async (next) => { await onTemplateChange(next); }}
+                />
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>PDF variant</Label>
