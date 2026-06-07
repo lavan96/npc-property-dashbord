@@ -445,6 +445,109 @@ function OverlayEditor({
         </div>
       )}
 
+      {(overlay as any).type === 'textOnPath' && (
+        <div className="space-y-3">
+          <BindableField
+            label="Content"
+            value={String((overlay as any).content ?? '')}
+            onChange={(v) => patch({ content: v } as any)}
+            template={template}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Curve</Label>
+              <Select value={(overlay as any).curve ?? 'arc-up'} onValueChange={(v) => patch({ curve: v as any } as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="arc-up">Arc up</SelectItem>
+                  <SelectItem value="arc-down">Arc down</SelectItem>
+                  <SelectItem value="wave">Wave</SelectItem>
+                  <SelectItem value="circle">Circle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Curvature</Label>
+              <Input
+                type="number" step="0.05" min={-1} max={1}
+                className="h-8 text-xs"
+                value={(overlay as any).curvature ?? 0.5}
+                onChange={(e) => patch({ curvature: Math.max(-1, Math.min(1, Number(e.target.value) || 0)) } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Font size (pt)</Label>
+              <Input
+                type="number" className="h-8 text-xs"
+                value={Number((overlay as any).fontSize) || 18}
+                onChange={(e) => patch({ fontSize: Number(e.target.value) || 18 } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Letter spacing</Label>
+              <Input
+                type="number" step="0.1" className="h-8 text-xs"
+                value={(overlay as any).letterSpacing ?? 0}
+                onChange={(e) => patch({ letterSpacing: Number(e.target.value) || 0 } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Start offset (%)</Label>
+              <Input
+                type="number" min={0} max={100} className="h-8 text-xs"
+                value={(overlay as any).startOffset ?? 0}
+                onChange={(e) => patch({ startOffset: Math.max(0, Math.min(100, Number(e.target.value) || 0)) } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Weight</Label>
+              <Select value={String((overlay as any).fontWeight ?? 'normal')} onValueChange={(v) => patch({ fontWeight: v as any } as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <EnhancedColorPicker
+            label="Color"
+            value={String((overlay as any).color || '#000000')}
+            template={template}
+            onChange={(v) => patch({ color: v } as any)}
+          />
+        </div>
+      )}
+
+      {(overlay as any).type === 'table' && (
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Open the dedicated table editor from <strong>Advanced ▸ Edit table…</strong> for columns, data binding & per-cell styles.
+          </p>
+          <div>
+            <Label className="text-xs">Data binding (array of objects)</Label>
+            <Input
+              className="h-8 text-xs font-mono"
+              placeholder="e.g. property.comparables"
+              value={String((overlay as any).data ?? '')}
+              onChange={(e) => patch({ data: e.target.value || undefined } as any)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Font size (pt)</Label>
+              <Input type="number" className="h-8 text-xs" value={(overlay as any).fontSize ?? 10} onChange={(e) => patch({ fontSize: Number(e.target.value) || 10 } as any)} />
+            </div>
+            <div>
+              <Label className="text-xs">Row height (pt)</Label>
+              <Input type="number" className="h-8 text-xs" value={(overlay as any).rowHeight ?? 20} onChange={(e) => patch({ rowHeight: Number(e.target.value) || 20 } as any)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       <Separator />
       <div>
         <Label className="text-xs">Conditional (e.g. <code>tier === 'compass'</code>)</Label>
