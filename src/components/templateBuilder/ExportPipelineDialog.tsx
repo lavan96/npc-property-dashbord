@@ -22,6 +22,8 @@ import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate'
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
 
+import { ExportPresetsBar, type ExportPresetState } from './ExportPresetsBar';
+
 interface ExportPipelineDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +32,8 @@ interface ExportPipelineDialogProps {
   templateName: string;
   sampleData: Record<string, any>;
   customCss?: string | null;
+  /** Optional — when provided, the Export Presets bar can save/load presets to the template. */
+  onTemplateChange?: (next: ReportTemplate) => void | Promise<void>;
 }
 
 type RenderJobRow = {
@@ -72,7 +76,7 @@ function countAssets(template: ReportTemplate): { images: string[]; total: numbe
 }
 
 export function ExportPipelineDialog({
-  open, onOpenChange, template, templateId, templateName, sampleData, customCss,
+  open, onOpenChange, template, templateId, templateName, sampleData, customCss, onTemplateChange,
 }: ExportPipelineDialogProps) {
   const [variant, setVariant] = useState<string>('pdf/a-2b');
   const [tagged, setTagged] = useState(true);
@@ -278,6 +282,22 @@ export function ExportPipelineDialog({
             {/* Options */}
             <section className="space-y-4 rounded-lg border bg-card p-4">
               <h3 className="text-sm font-semibold">Output Options</h3>
+              {onTemplateChange && (
+                <ExportPresetsBar
+                  template={template}
+                  current={{ variant, tagged, optimizeImages, mode, themeId: themeId === '__active__' ? undefined : themeId, pageRange, includeBookmarks }}
+                  onLoadPreset={(p) => {
+                    setVariant(p.variant);
+                    if (p.tagged != null) setTagged(p.tagged);
+                    if (p.optimizeImages != null) setOptimizeImages(p.optimizeImages);
+                    if (p.mode) setMode(p.mode);
+                    setThemeId(p.themeId || '__active__');
+                    if (p.pageRange != null) setPageRange(p.pageRange);
+                    if (p.includeBookmarks != null) setIncludeBookmarks(p.includeBookmarks);
+                  }}
+                  onPersist={async (next) => { await onTemplateChange(next); }}
+                />
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>PDF variant</Label>

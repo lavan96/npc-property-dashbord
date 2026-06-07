@@ -15,7 +15,7 @@ import {
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
-  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon,
+  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
@@ -121,6 +121,8 @@ import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
 import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
 import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
+import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
+import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
@@ -957,6 +959,8 @@ export default function TemplateBuilderEdit() {
   // ── Find & Replace (Cmd/Ctrl+F) + Asset Library (Shift+I) ─────────────────
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [textStylesOpen, setTextStylesOpen] = useState(false);
+  const [tableEditorOpen, setTableEditorOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -2018,6 +2022,15 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setAssetLibraryOpen(true)} disabled={!activePage}>
                 <ImageIcon className="h-4 w-4 mr-2" /> Asset library… <span className="ml-auto text-[10px] text-muted-foreground">Shift+I</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setTextStylesOpen(true)}>
+                <Type className="h-4 w-4 mr-2" /> Text styles…
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setTableEditorOpen(true)}
+                disabled={selectedOverlay?.type !== 'table'}
+              >
+                <TableIcon className="h-4 w-4 mr-2" /> Edit table…
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
                 <CommandIcon className="h-4 w-4 mr-2" /> Command palette
               </DropdownMenuItem>
@@ -2917,6 +2930,7 @@ export default function TemplateBuilderEdit() {
         templateName={name}
         sampleData={sampleData}
         customCss={customCss || undefined}
+        onTemplateChange={(next) => setTemplate(next)}
       />
       {id && (
         <ShareLinksDialog
@@ -3099,6 +3113,21 @@ export default function TemplateBuilderEdit() {
         pageWidth={activePage?.size.width ?? 595}
         pageHeight={activePage?.size.height ?? 842}
         onInsert={insertImageFromLibrary}
+      />
+      <TextStylesDialog
+        open={textStylesOpen}
+        onOpenChange={setTextStylesOpen}
+        template={template}
+        onChange={(next) => setTemplate(next)}
+      />
+      <TableEditorDialog
+        open={tableEditorOpen}
+        onOpenChange={setTableEditorOpen}
+        overlay={selectedOverlay?.type === 'table' ? (selectedOverlay as any) : null}
+        onChange={(next) => {
+          if (!activePage) return;
+          updatePage(editorActions.updateOverlay(activePage, next as Overlay));
+        }}
       />
       {id && (
         <>
