@@ -2022,6 +2022,15 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setAssetLibraryOpen(true)} disabled={!activePage}>
                 <ImageIcon className="h-4 w-4 mr-2" /> Asset library… <span className="ml-auto text-[10px] text-muted-foreground">Shift+I</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setTextStylesOpen(true)}>
+                <Type className="h-4 w-4 mr-2" /> Text styles…
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setTableEditorOpen(true)}
+                disabled={selectedOverlay?.type !== 'table'}
+              >
+                <TableIcon className="h-4 w-4 mr-2" /> Edit table…
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
                 <CommandIcon className="h-4 w-4 mr-2" /> Command palette
               </DropdownMenuItem>
