@@ -140,10 +140,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
+      if (!visibility) throw new Error('Choose a visibility');
       const payload = {
         note_type: noteType,
         content: newNote.trim(),
-        visibility: shareNote ? 'shared' : 'internal_npc',
+        visibility,
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -163,11 +164,10 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         actionType: 'client_note_added',
         entityType: 'client_note',
         entityId: clientId,
-        metadata: { note_type: noteType, visibility: shareNote ? 'shared' : 'internal_npc' }
+        metadata: { note_type: noteType, visibility }
       });
-      // Only push to the external GHL CRM when the note is shared — internal
-      // notes stay within the Command Center.
-      if (shareNote) {
+      // Push to external GHL only when fully shared (both portals + external).
+      if (visibility === 'shared') {
         invokeSecureFunction('sync-notes-to-ghl', {
           action: 'create',
           clientId,
@@ -176,10 +176,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
           noteType,
         }).catch(err => console.warn('GHL note sync failed:', err));
       }
+      const label = visibilityOptions.find(o => o.value === visibility)?.label || 'Note';
       setNewNote('');
-      setShareNote(false);
+      setVisibility(null);
       setIsAdding(false);
-      toast.success(shareNote ? 'Note added & shared to portals' : 'Internal note added');
+      toast.success(`${label} note saved`);
     },
     onError: (error: any) => {
       toast.error('Failed to add note: ' + error.message);
