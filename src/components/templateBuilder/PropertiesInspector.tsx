@@ -223,6 +223,21 @@ function OverlayEditor({
         />
       </div>
 
+      {(() => {
+        const pg = template.pages.find((p) => p.id === pageId);
+        if (!pg) return null;
+        return (
+          <AlignmentGrid
+            pageWidth={pg.size.width ?? 595}
+            pageHeight={pg.size.height ?? 842}
+            overlayWidth={overlay.width}
+            overlayHeight={overlay.height}
+            safeArea={pg.safeArea ?? 0}
+            onAlign={({ x, y }) => patch({ x, y })}
+          />
+        );
+      })()}
+
       <Separator />
 
       {/* Type-specific */}
