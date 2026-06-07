@@ -63,6 +63,8 @@ import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 import { CapacityMathInspector } from './CapacityMathInspector';
 import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
+import { SolutionOptionCards } from './SolutionOptionCards';
+import type { SolutionApply } from '@/utils/scenarioDeltaEngine';
 
 // ── Types ──────────────────────────────────────────────
 
