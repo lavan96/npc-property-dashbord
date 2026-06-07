@@ -56,7 +56,6 @@ export interface AdditionalStrategyState {
   loanTermAdjustment: number; // years delta from base
   dtiCapEnabled: boolean;
   dtiCapValue: number;
-  stampDutyPurchasePrice: number;
   portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
   /** Phase G1 — valuation overrides keyed by property id */
@@ -71,7 +70,6 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   loanTermAdjustment: 0,
   dtiCapEnabled: false,
   dtiCapValue: 6,
-  stampDutyPurchasePrice: 0,
   portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
   valuationOverrides: new Map(),
