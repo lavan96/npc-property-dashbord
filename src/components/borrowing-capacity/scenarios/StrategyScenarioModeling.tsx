@@ -25,6 +25,7 @@ import {
   Save,
   FolderOpen,
   Trash2,
+  FileDown,
 } from 'lucide-react';
 import {
   Collapsible,
