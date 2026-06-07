@@ -240,22 +240,24 @@ function OverlayEditor({
             multiline
           />
 
-          <div className="grid grid-cols-2 gap-2">
-            <NumField
-              label="Size (pt)"
-              value={Number(overlay.fontSize) || 12}
-              onChange={(v) => patch({ fontSize: v } as any)}
+          <FontSizeControl
+            value={Number(overlay.fontSize) || 12}
+            onChange={(v) => patch({ fontSize: v } as any)}
+          />
+
+          <div>
+            <Label className="text-xs">Font family</Label>
+            <FontPicker
+              value={String(overlay.fontFamily || 'Helvetica')}
+              weight={overlay.fontWeight}
+              template={template}
+              onChange={(family) => patch({ fontFamily: family } as any)}
+              onWeightChange={(w) => patch({ fontWeight: w } as any)}
+              onTemplateChange={onUpdateTemplate}
             />
-            <div>
-              <Label className="text-xs">Weight</Label>
-              <Select value={overlay.fontWeight} onValueChange={(v) => patch({ fontWeight: v as any })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="bold">Bold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Align</Label>
               <Select value={overlay.align} onValueChange={(v) => patch({ align: v as any })}>
@@ -269,35 +271,17 @@ function OverlayEditor({
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Family</Label>
-              <div className="flex items-center gap-1">
-                <Select
-                  value={String(overlay.fontFamily || 'Helvetica')}
-                  onValueChange={(v) => patch({ fontFamily: v } as any)}
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Helvetica">Helvetica</SelectItem>
-                    <SelectItem value="Times">Times</SelectItem>
-                    <SelectItem value="Courier">Courier</SelectItem>
-                    <SelectItem value="Georgia">Georgia</SelectItem>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    {((template.tokens as any).fontFaces ?? []).map((f: any) => (
-                      <SelectItem key={f.family} value={f.family}>{f.family}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {onUpdateTemplate && (
-                  <FontLibraryPopover
-                    template={template}
-                    onTemplateChange={onUpdateTemplate}
-                    onPick={(family) => patch({ fontFamily: family } as any)}
-                  />
-                )}
-              </div>
+              <Label className="text-xs">Style</Label>
+              <Select value={overlay.fontStyle ?? 'normal'} onValueChange={(v) => patch({ fontStyle: v as any })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="italic">Italic</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <ColorField
+          <EnhancedColorPicker
             label="Color"
             value={String(overlay.color || '#000000')}
             template={template}
