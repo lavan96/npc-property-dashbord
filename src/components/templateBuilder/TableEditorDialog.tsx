@@ -100,6 +100,7 @@ export function TableEditorDialog({ open, onOpenChange, overlay, onChange }: Pro
             <TabsTrigger value="data">Data & columns</TabsTrigger>
             <TabsTrigger value="style">Style</TabsTrigger>
             <TabsTrigger value="rows">Static rows / cells</TabsTrigger>
+            <TabsTrigger value="rules">Conditional rules</TabsTrigger>
           </TabsList>
 
           <TabsContent value="data" className="flex-1 min-h-0">
