@@ -423,7 +423,7 @@ export function StrategyScenarioModeling({
     [capitalAllocations],
   );
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
+  const { scenarioContext, scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
