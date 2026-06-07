@@ -10,8 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil, Lock, Share2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil, Lock, Share2, Users, Briefcase, Globe } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -35,6 +34,56 @@ const noteTypes = [
 ] as const;
 
 type NoteType = typeof noteTypes[number]['value'];
+
+type Visibility = 'internal_npc' | 'client_only' | 'finance_only' | 'shared';
+
+const visibilityOptions: { value: Visibility; label: string; icon: any; desc: string }[] = [
+  { value: 'internal_npc', label: 'Internal', icon: Lock, desc: 'Command Center only' },
+  { value: 'client_only', label: 'Client', icon: Users, desc: 'Visible in client portal' },
+  { value: 'finance_only', label: 'Finance', icon: Briefcase, desc: 'Visible in finance portal' },
+  { value: 'shared', label: 'All', icon: Globe, desc: 'Both portals + GHL' },
+];
+
+function VisibilityPicker({ value, onChange }: { value: Visibility | null; onChange: (v: Visibility) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">Visibility (required)</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {visibilityOptions.map(opt => {
+          const Icon = opt.icon;
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={
+                'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ' +
+                (active
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:border-primary/40')
+              }
+              title={opt.desc}
+            >
+              <Icon className="h-3 w-3" />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getVisibilityBadge(v?: string | null) {
+  const opt = visibilityOptions.find(o => o.value === v) || visibilityOptions[0];
+  const Icon = opt.icon;
+  return (
+    <Badge variant="outline" className="text-xs">
+      <Icon className="h-3 w-3 mr-1" /> {opt.label}
+    </Badge>
+  );
+}
 
 const PAGE_SIZE = 10;
 
