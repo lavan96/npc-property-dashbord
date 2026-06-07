@@ -8,14 +8,18 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, MessageSquare, Send, Check, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import type { Page, Overlay } from '@/lib/reportTemplate/templateSchema';
+import type { Block, Page, Overlay } from '@/lib/reportTemplate/templateSchema';
 
 interface TemplateCommentsPanelProps {
   templateId: string;
   activePage: Page | null;
+  selectedBlock: Block | null;
   selectedOverlay: Overlay | null;
+  selectedOverlayBlockId?: string | null;
   currentUserId?: string | null;
   currentUserName?: string | null;
+  onRowsChange?: (rows: Row[]) => void;
+  onJumpToAnchor?: (anchor: { pageId?: string | null; blockId?: string | null; overlayId?: string | null }) => void;
 }
 
 type Row = {
@@ -35,7 +39,15 @@ type Row = {
 };
 
 export function TemplateCommentsPanel({
-  templateId, activePage, selectedOverlay, currentUserId, currentUserName,
+  templateId,
+  activePage,
+  selectedBlock,
+  selectedOverlay,
+  selectedOverlayBlockId,
+  currentUserId,
+  currentUserName,
+  onRowsChange,
+  onJumpToAnchor,
 }: TemplateCommentsPanelProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +65,11 @@ export function TemplateCommentsPanel({
       .select('*')
       .eq('template_id', templateId)
       .order('created_at', { ascending: true });
-    if (!error && data) setRows(data as Row[]);
+    if (!error && data) {
+      const nextRows = data as Row[];
+      setRows(nextRows);
+      onRowsChange?.(nextRows);
+    }
     setLoading(false);
   };
 
@@ -88,14 +104,20 @@ export function TemplateCommentsPanel({
       const threadId = parent?.thread_id ?? crypto.randomUUID();
       const anchor = anchorToSelection && !parent ? {
         page_id: activePage?.id ?? null,
+        block_id: selectedOverlay ? (selectedOverlayBlockId ?? selectedBlock?.id ?? null) : (selectedBlock?.id ?? null),
         overlay_id: selectedOverlay?.id ?? null,
-      } : { page_id: parent?.page_id ?? null, overlay_id: parent?.overlay_id ?? null };
+      } : {
+        page_id: parent?.page_id ?? null,
+        block_id: parent?.block_id ?? null,
+        overlay_id: parent?.overlay_id ?? null,
+      };
 
       const { error } = await supabase.from('template_comments').insert({
         template_id: templateId,
         thread_id: threadId,
         parent_id: parent?.id ?? null,
         page_id: anchor.page_id,
+        block_id: anchor.block_id,
         overlay_id: anchor.overlay_id,
         author_id: currentUserId ?? null,
         author_name: currentUserName ?? null,
@@ -156,12 +178,21 @@ export function TemplateCommentsPanel({
               return (
                 <li key={root.id} className={`rounded-lg border p-2 text-xs ${root.resolved ? 'opacity-60' : ''}`}>
                   <CommentItem row={root} onDelete={() => remove(root.id)} canDelete={root.author_id === currentUserId} />
-                  {(root.page_id || root.overlay_id) && (
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+                  {(root.page_id || root.block_id || root.overlay_id) && (
+                    <button
+                      type="button"
+                      onClick={() => onJumpToAnchor?.({ pageId: root.page_id, blockId: root.block_id, overlayId: root.overlay_id })}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 hover:text-primary"
+                    >
                       <MapPin className="h-3 w-3" />
-                      {root.page_id ? `Page ${root.page_id.slice(0, 6)}` : ''}
-                      {root.overlay_id ? ` · Block ${root.overlay_id.slice(0, 6)}` : ''}
-                    </div>
+                      {root.overlay_id
+                        ? `Overlay ${root.overlay_id.slice(0, 6)}`
+                        : root.block_id
+                        ? `Block ${root.block_id.slice(0, 6)}`
+                        : root.page_id
+                        ? `Page ${root.page_id.slice(0, 6)}`
+                        : 'Template'}
+                    </button>
                   )}
                   {replies.length > 0 && (
                     <ul className="mt-2 ml-3 pl-2 border-l space-y-2">
@@ -189,6 +220,7 @@ export function TemplateCommentsPanel({
                         thread_id: root.thread_id,
                         parent_id: root.id,
                         page_id: root.page_id,
+                        block_id: root.block_id,
                         overlay_id: root.overlay_id,
                         author_id: currentUserId ?? null,
                         author_name: currentUserName ?? null,
@@ -208,7 +240,7 @@ export function TemplateCommentsPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={anchorToSelection
-            ? `Comment on ${selectedOverlay ? 'selected block' : activePage ? 'this page' : 'template'}…`
+            ? `Comment on ${selectedOverlay ? 'selected overlay' : selectedBlock ? 'selected block' : activePage ? 'this page' : 'template'}…`
             : 'New comment on template…'}
           rows={3}
           className="text-xs"
