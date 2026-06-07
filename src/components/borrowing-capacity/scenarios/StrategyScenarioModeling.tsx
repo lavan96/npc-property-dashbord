@@ -1149,6 +1149,43 @@ export function StrategyScenarioModeling({
     onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0, preset);
   }, [handleReset, onApplyScenario]);
 
+  const buildPdfOverrideAssessment = useCallback((inputs: BorrowingCapacityInput, result: BorrowingCapacityResult) => ({
+    created_at: new Date().toISOString(),
+    borrowing_capacity: result.borrowingCapacity,
+    monthly_surplus: result.monthlySurplus,
+    serviceability_band: result.serviceabilityBand,
+    stress_tested_capacity: result.stressTestedCapacity,
+    dti_ratio: result.dtiRatio,
+    assessment_rate: result.assessmentRate,
+    gross_annual_income: inputs.grossAnnualIncome,
+    shaded_annual_income: inputs.shadedAnnualIncome ?? inputs.grossAnnualIncome,
+    living_expenses_monthly: inputs.monthlyLivingExpenses,
+    existing_commitments_monthly: inputs.monthlyCommitments,
+    interest_rate_used: inputs.interestRate,
+    buffer_rate: inputs.bufferRate,
+    loan_term_years: inputs.loanTermYears,
+    proposed_loan_amount: 0,
+    expense_method: 'hybrid',
+    recommendations: result.recommendations ?? [],
+    warnings: result.warnings ?? [],
+    assumptions: {
+      selectedLenderName: currentLenderProfileId,
+      source: 'Current What-If Scenario',
+    },
+    income_breakdown: incomeComponents?.map((item) => ({
+      source_name: item.label,
+      gross_annual_amount: item.grossAnnual,
+      custom_shading_rate: item.currentShadingRate,
+      shaded_amount: item.grossAnnual * item.currentShadingRate,
+    })) ?? [],
+    liability_breakdown: liabilities.map((item) => ({
+      type: item.type,
+      label: item.label,
+      balance: item.balance,
+      monthlyServicing: item.monthlyServicing,
+    })),
+  }), [currentLenderProfileId, incomeComponents, liabilities]);
+
   const toggleConsolidation = (id: string) => {
     setStrategy(prev => {
       const next = new Set(prev.consolidatedLiabilities);
