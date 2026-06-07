@@ -241,3 +241,87 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+// ── Conditional rules editor ─────────────────────────────────────────────────
+const OPS = ['>','>=','<','<=','==','!=','contains','empty','nonempty'] as const;
+const ICONS = ['none','up','down','flag','star','dot'] as const;
+
+interface RuleEditorProps {
+  columns: Array<{ key: string; label?: string }>;
+  rules: Array<any>;
+  onChange: (rules: Array<any>) => void;
+}
+
+function ConditionalRulesEditor({ columns, rules, onChange }: RuleEditorProps) {
+  const addRule = () => {
+    if (columns.length === 0) return;
+    onChange([
+      ...rules,
+      { column: columns[0].key, op: '>', value: 0, scope: 'cell', bg: '#FEF3C7', color: '#92400E', fontWeight: 'bold', icon: 'none' },
+    ]);
+  };
+  const updateRule = (i: number, patch: any) => onChange(rules.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+  const removeRule = (i: number) => onChange(rules.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2 p-1">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-semibold">Rules ({rules.length})</Label>
+          <p className="text-[11px] text-muted-foreground">First match wins per cell. Scope "row" styles every cell in the matched row.</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={addRule} disabled={columns.length === 0}>
+          <Plus className="h-3 w-3 mr-1" /> Add rule
+        </Button>
+      </div>
+      <div className="space-y-1.5">
+        {rules.map((r, i) => (
+          <div key={i} className="rounded border bg-card p-2 space-y-1.5">
+            <div className="grid grid-cols-[1.2fr_0.9fr_1fr_0.9fr_28px] gap-1.5 items-center">
+              <Select value={r.column} onValueChange={(v) => updateRule(i, { column: v })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>{columns.map((c) => <SelectItem key={c.key} value={c.key}>{c.label || c.key}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={r.op} onValueChange={(v) => updateRule(i, { op: v })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>{OPS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input
+                className="h-8"
+                placeholder="value"
+                value={r.value ?? ''}
+                disabled={r.op === 'empty' || r.op === 'nonempty'}
+                onChange={(e) => updateRule(i, { value: e.target.value })}
+              />
+              <Select value={r.scope ?? 'cell'} onValueChange={(v) => updateRule(i, { scope: v })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cell">Style cell</SelectItem>
+                  <SelectItem value="row">Style row</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeRule(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-[60px_60px_1fr_1fr] gap-1.5 items-center">
+              <input type="color" className="h-8 w-full rounded border" title="Background" value={r.bg ?? '#FEF3C7'} onChange={(e) => updateRule(i, { bg: e.target.value })} />
+              <input type="color" className="h-8 w-full rounded border" title="Text color" value={r.color ?? '#92400E'} onChange={(e) => updateRule(i, { color: e.target.value })} />
+              <Select value={r.fontWeight ?? 'normal'} onValueChange={(v) => updateRule(i, { fontWeight: v })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="normal">normal</SelectItem><SelectItem value="bold">bold</SelectItem></SelectContent>
+              </Select>
+              <Select value={r.icon ?? 'none'} onValueChange={(v) => updateRule(i, { icon: v })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>{ICONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        ))}
+        {rules.length === 0 && (
+          <p className="text-xs text-muted-foreground py-6 text-center border border-dashed rounded">
+            No conditional rules. Add one to highlight cells based on bound values.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
