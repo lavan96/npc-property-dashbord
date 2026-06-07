@@ -298,6 +298,19 @@ function OverlayEditor({
             onChange={(p) => patch(p as any)}
             onTemplateChange={onUpdateTemplate}
           />
+          <Separator />
+          <TextRhythmControl
+            value={{
+              lineHeight: (overlay as any).lineHeight,
+              letterSpacing: (overlay as any).letterSpacing,
+              textTransform: (overlay as any).textTransform,
+              textDecoration: (overlay as any).textDecoration,
+            }}
+            fontFamily={String((overlay as any).fontFamily || '')}
+            fontSize={Number((overlay as any).fontSize) || 12}
+            color={String((overlay as any).color || '#000000')}
+            onChange={(p) => patch(p as any)}
+          />
         </div>
       )}
 
