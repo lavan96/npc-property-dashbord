@@ -41,21 +41,74 @@ export const ComputedFieldSchema = z.object({
 });
 export type ComputedField = z.infer<typeof ComputedFieldSchema>;
 
+// ─── Reusable text styles (Section 3) ─────────────────────────────────────────
+export const ParagraphStyleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  basedOn: z.string().optional(),
+  fontFamily: z.string().optional(),
+  fontSize: z.number().optional(),
+  fontWeight: z.union([z.number(), z.enum(['normal','bold'])]).optional(),
+  fontStyle: z.enum(['normal','italic']).optional(),
+  color: z.string().optional(),
+  align: z.enum(['left','center','right','justify']).optional(),
+  lineHeight: z.number().optional(),
+  letterSpacing: z.number().optional(),
+  paragraphSpacing: z.number().optional(),
+  paragraphIndent: z.number().optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+  ligatures: z.enum(['none','common','discretionary','historical','contextual','all']).optional(),
+  fontFeatureSettings: z.string().optional(),
+  fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
+  columns: z.number().int().min(1).max(6).optional(),
+  columnGap: z.number().optional(),
+});
+export type ParagraphStyle = z.infer<typeof ParagraphStyleSchema>;
+
+export const CharacterStyleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fontFamily: z.string().optional(),
+  fontWeight: z.union([z.number(), z.enum(['normal','bold'])]).optional(),
+  fontStyle: z.enum(['normal','italic']).optional(),
+  color: z.string().optional(),
+  letterSpacing: z.number().optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+});
+export type CharacterStyle = z.infer<typeof CharacterStyleSchema>;
+
+export const ExportPresetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  variant: z.string(),
+  tagged: z.boolean().optional(),
+  optimizeImages: z.boolean().optional(),
+  mode: z.enum(['preview','final']).optional(),
+  themeId: z.string().optional(),
+  pageRange: z.string().optional(),
+  includeBookmarks: z.boolean().optional(),
+});
+export type ExportPreset = z.infer<typeof ExportPresetSchema>;
+
 export const TokensSchema = z.object({
-  colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
-  fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
-  spacing: z.record(z.number()).default({}),    // { gutter: 16, ... }
-  // Phase 1 extensions — optional, additive, backwards-compatible
+  colors: z.record(z.string()).default({}),
+  fonts: z.record(z.string()).default({}),
+  spacing: z.record(z.number()).default({}),
   radii: z.record(z.number()).optional(),
   shadows: z.record(z.string()).optional(),
   gradients: z.record(z.string()).optional(),
   typeScale: z.record(z.number()).optional(),
   brandKitId: z.string().uuid().optional(),
   activeTheme: z.enum(['light','dark','print','custom']).optional(),
-  // Phase 5 — registered web fonts to inject via @font-face / @import
   fontFaces: z.array(FontFaceSchema).optional(),
-  // Phase 7 — computed/derived fields available in bindings as `{{=name}}`
   computed: z.array(ComputedFieldSchema).optional(),
+  // Section 3 — reusable text styles
+  paragraphStyles: z.record(ParagraphStyleSchema).optional(),
+  characterStyles: z.record(CharacterStyleSchema).optional(),
+  // Section 8 — saved export pipeline presets
+  exportPresets: z.array(ExportPresetSchema).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
 
 
