@@ -113,44 +113,60 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
   const send = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || sending || targets.size === 0) return;
     setSending(true);
+    const sent: string[] = [];
+    const failed: string[] = [];
     try {
-      if (target === 'finance') {
-        // Route to the client's finance partner thread.
-        const { data: t, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
-          operation: 'get_or_create_thread',
-          client_id: clientId,
-        });
-        if (tErr || !t?.thread) throw new Error(tErr?.message || 'No finance partner assigned to this client');
-        const { error } = await invokeSecureFunction('finance-portal-messages', {
-          operation: 'send_message',
-          thread_id: t.thread.id,
-          body: trimmed,
-        });
-        if (error) throw new Error(error.message || 'Send failed');
-        toast.success('Sent to finance partner');
-        setDraft('');
-      } else {
-        // Client or internal message — both stored in client_portal_messages.
-        const { error } = await invokeSecureFunction('staff-client-portal-messages', {
-          operation: 'send_reply',
-          client_id: clientId,
-          message: trimmed,
-          is_internal: target === 'internal',
-        });
-        if (error) throw new Error(error.message || 'Send failed');
+      for (const t of targets) {
+        try {
+          if (t === 'finance') {
+            const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
+              operation: 'get_or_create_thread',
+              client_id: clientId,
+            });
+            if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
+            const { error } = await invokeSecureFunction('finance-portal-messages', {
+              operation: 'send_message',
+              thread_id: thread.thread.id,
+              body: trimmed,
+            });
+            if (error) throw new Error(error.message || 'Send failed');
+          } else {
+            const { error } = await invokeSecureFunction('staff-client-portal-messages', {
+              operation: 'send_reply',
+              client_id: clientId,
+              message: trimmed,
+              is_internal: t === 'internal',
+            });
+            if (error) throw new Error(error.message || 'Send failed');
+          }
+          sent.push(t);
+        } catch (e: any) {
+          console.error(`[Composer] ${t} send failed`, e);
+          failed.push(`${t}: ${e.message}`);
+        }
+      }
+      if (sent.length) {
+        toast.success(`Sent to ${sent.join(', ')}`);
         setDraft('');
         await load(false);
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to send message');
+      if (failed.length) toast.error(`Failed → ${failed.join(' · ')}`);
     } finally {
       setSending(false);
     }
   };
 
-  const activeTarget = TARGETS.find(t => t.value === target)!;
+  const toggleTarget = (v: MessageTarget) => {
+    setTargets(prev => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      if (next.size === 0) next.add(v); // never allow empty
+      return next;
+    });
+  };
+
 
   return (
     <div className="flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden">
