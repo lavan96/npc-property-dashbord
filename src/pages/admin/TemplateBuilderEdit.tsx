@@ -3045,6 +3045,19 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={customCss || undefined}
       />
+      <FindReplaceDialog
+        open={findReplaceOpen}
+        onOpenChange={setFindReplaceOpen}
+        template={template}
+        activePageId={activePageId}
+        onApplyTemplate={(next) => setTemplate(next)}
+        onGoTo={(pid, oid) => {
+          setActivePageId(pid);
+          setSelectedOverlayId(oid);
+          setSelectedBlockId(null);
+          clearMultiSelect();
+        }}
+      />
       {id && (
         <>
           <TemplateBranchingDialog
