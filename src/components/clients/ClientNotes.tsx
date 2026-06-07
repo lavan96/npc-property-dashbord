@@ -304,27 +304,12 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
             onChange={(e) => setNewNote(e.target.value)}
             className="min-h-[80px]"
           />
-          <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
-            <div className="flex items-center gap-2">
-              {shareNote ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-              <div className="space-y-0.5">
-                <Label htmlFor="note-share" className="text-sm cursor-pointer">
-                  {shareNote ? 'Shared with portals' : 'Internal only'}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {shareNote
-                    ? 'Visible in the client & finance portals.'
-                    : 'Kept within the Command Center. Toggle on to share.'}
-                </p>
-              </div>
-            </div>
-            <Switch id="note-share" checked={shareNote} onCheckedChange={setShareNote} />
-          </div>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={() => addNoteMutation.mutate()}
-              disabled={!newNote.trim() || addNoteMutation.isPending}
+              disabled={!newNote.trim() || !visibility || addNoteMutation.isPending}
             >
               {addNoteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -404,13 +389,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       onChange={(e) => setEditContent(e.target.value)}
                       className="min-h-[60px]"
                     />
-                    <div className="flex items-center gap-2">
-                      {editShare ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-                      <Label htmlFor={`note-share-${note.id}`} className="text-xs cursor-pointer">
-                        {editShare ? 'Shared with portals' : 'Internal only'}
-                      </Label>
-                      <Switch id={`note-share-${note.id}`} checked={editShare} onCheckedChange={setEditShare} className="ml-auto" />
-                    </div>
+                    <VisibilityPicker value={editVisibility} onChange={setEditVisibility} />
                     <div className="flex gap-2">
                       <Button
                         size="sm"
