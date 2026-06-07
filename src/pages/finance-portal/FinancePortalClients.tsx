@@ -543,20 +543,15 @@ export default function FinancePortalClients() {
     return list;
   }, [records, search, sortKey, statusFilter]);
 
+  // #13 — Simplified, fixed-column client export. Just the labelled essentials.
   const ghlExportFields = useMemo(
     () => [
-      { key: 'first_name', label: 'First Name' },
-      { key: 'last_name', label: 'Last Name' },
+      { key: 'first_name', label: 'First name' },
+      { key: 'last_name', label: 'Last name' },
       { key: 'email', label: 'Email' },
       { key: 'phone', label: 'Phone' },
       { key: 'tags', label: 'Tags' },
       { key: 'source', label: 'Source' },
-      { key: 'secondary_contact', label: 'Secondary Contact' },
-      { key: 'status', label: 'Status' },
-      { key: 'assigned_at', label: 'Assigned At' },
-      { key: 'permissions', label: 'Permissions' },
-      { key: 'client_id', label: 'Client ID' },
-      { key: 'ghl_contact_id', label: 'GHL Contact ID' },
     ],
     []
   );
@@ -565,11 +560,6 @@ export default function FinancePortalClients() {
     () =>
       filtered.map((record: any) => {
         const { firstName, lastName } = splitFullName(record.client?.primary_contact_name);
-        const permissionSummary = Object.entries(record.permissions || {})
-          .filter(([, permission]: any) => permission?.view)
-          .map(([table, permission]: any) => `${table}:${permission.edit ? 'edit' : 'view'}`)
-          .join(', ');
-
         return {
           first_name: firstName,
           last_name: lastName,
@@ -577,12 +567,6 @@ export default function FinancePortalClients() {
           phone: record.client?.primary_contact_phone || '',
           tags: 'Finance Portal',
           source: 'Finance Portal Export',
-          secondary_contact: record.client?.secondary_contact_name || '',
-          status: record.client?.status || 'active',
-          assigned_at: record.assigned_at || '',
-          permissions: permissionSummary,
-          client_id: record.client_id || '',
-          ghl_contact_id: record.client?.ghl_contact_id || '',
         };
       }),
     [filtered]
@@ -624,13 +608,13 @@ export default function FinancePortalClients() {
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
-        title="Export finance portal clients for GHL"
-        description="Export the current finance-portal client view with field mapping for GoHighLevel CSV or XLSX import."
+        title="Export Clients (CSV)"
+        description="Pick the columns you need and download a clean CSV of your assigned finance-portal clients."
         fields={ghlExportFields}
         records={ghlExportRecords}
-        fileBaseName={`finance-portal-clients-ghl-export-${new Date().toISOString().split('T')[0]}`}
+        fileBaseName={`finance-portal-clients-${new Date().toISOString().split('T')[0]}`}
         sheetName="Finance Portal Clients"
-        onExported={(format, count) => toast.success(`Exported ${count} finance clients to ${format.toUpperCase()}`)}
+        onExported={(format, count) => toast.success(`Exported ${count} clients to ${format.toUpperCase()}`)}
       />
 
       <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
