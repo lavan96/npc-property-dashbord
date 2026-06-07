@@ -66,6 +66,8 @@ import { CapacityMathInspector } from './CapacityMathInspector';
 import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
 import { SolutionOptionCards } from './SolutionOptionCards';
 import type { SolutionApply } from '@/utils/scenarioDeltaEngine';
+import { fetchAndGenerateBorrowingCapacityPDF } from '../BorrowingCapacityPDFReport';
+import { toast } from 'sonner';
 
 // ── Types ──────────────────────────────────────────────
 
