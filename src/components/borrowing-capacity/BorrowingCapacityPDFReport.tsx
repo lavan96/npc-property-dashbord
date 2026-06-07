@@ -188,6 +188,15 @@ export interface BorrowingCapacityExportData {
   scenarioPresets?: any[];
 }
 
+export interface BorrowingCapacityPDFOverrides {
+  assessment?: any;
+  incomeSources?: any[];
+  liabilities?: any[];
+  expenses?: any[];
+  properties?: any[];
+  client?: any;
+}
+
 export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData): Promise<{ blob: Blob; fileName: string } | undefined> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageNum = { value: 1 };
@@ -1257,22 +1266,22 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 }
 
 // ─── Data fetching & orchestration ───────────────────────────────────────────
-export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[]) {
+export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[], overrides?: BorrowingCapacityPDFOverrides) {
   toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
 
   try {
     const { latestAssessment, assessmentHistory, incomeSources, liabilities, expenses, properties, client } = 
       await fetchLatestBorrowingCapacity(clientId);
 
-    if (!latestAssessment) {
+    if (!latestAssessment && !overrides?.assessment) {
       toast.error('No borrowing capacity assessment found. Please calculate capacity first.', { id: 'bc-pdf' });
       return;
     }
 
     // Phase 5: If the assessment doesn't have audit/explanation data, run a quick
     // non-saving calculation to generate it for the PDF
-    let enrichedAssessment = latestAssessment;
-    if (!latestAssessment.auditTrail || !latestAssessment.explanation) {
+    let enrichedAssessment = overrides?.assessment ?? latestAssessment;
+    if (latestAssessment && !overrides?.assessment && (!latestAssessment.auditTrail || !latestAssessment.explanation)) {
       try {
         const { invokeSecureFunction } = await import('@/lib/secureInvoke');
         const { data: calcData, error: calcError } = await invokeSecureFunction('calculate-borrowing-capacity', {
@@ -1307,11 +1316,11 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       clientId,
       clientName,
       assessment: enrichedAssessment,
-      incomeSources,
-      liabilities,
-      expenses,
-      properties,
-      client,
+      incomeSources: overrides?.incomeSources ?? incomeSources,
+      liabilities: overrides?.liabilities ?? liabilities,
+      expenses: overrides?.expenses ?? expenses,
+      properties: overrides?.properties ?? properties,
+      client: overrides?.client ?? client,
       scenarioPresets,
     });
 
