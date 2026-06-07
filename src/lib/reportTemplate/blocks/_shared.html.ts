@@ -294,6 +294,35 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       const cellStyles: Array<any> = Array.isArray(o.cellStyles) ? o.cellStyles : [];
       const styleFor = (row: number, col: number) =>
         cellStyles.find((s) => Number(s.row) === row && Number(s.col) === col) ?? {};
+      // Phase 17 — conditional cell rules: first-match wins per cell, optional row scope.
+      const cellRules: Array<any> = Array.isArray(o.cellRules) ? o.cellRules : [];
+      const matchRule = (row: Record<string, any>, colKey: string): any | null => {
+        for (const r of cellRules) {
+          if (r.scope !== 'row' && r.column !== colKey) continue;
+          const v: any = row?.[r.column];
+          const target = r.value;
+          let hit = false;
+          switch (r.op) {
+            case 'empty': hit = v == null || v === ''; break;
+            case 'nonempty': hit = v != null && v !== ''; break;
+            case 'contains': hit = String(v ?? '').toLowerCase().includes(String(target ?? '').toLowerCase()); break;
+            case '==': hit = String(v) === String(target); break;
+            case '!=': hit = String(v) !== String(target); break;
+            default: {
+              const a = Number(v); const b = Number(target);
+              if (!Number.isFinite(a) || !Number.isFinite(b)) break;
+              if (r.op === '>') hit = a > b;
+              if (r.op === '>=') hit = a >= b;
+              if (r.op === '<') hit = a < b;
+              if (r.op === '<=') hit = a <= b;
+            }
+          }
+          if (hit) return r;
+        }
+        return null;
+      };
+      const iconGlyph = (k?: string) =>
+        k === 'up' ? '▲' : k === 'down' ? '▼' : k === 'flag' ? '⚑' : k === 'star' ? '★' : k === 'dot' ? '●' : '';
       const colGroup = cols.map((c) => c.width != null ? `<col style="width:${Number(c.width)}pt"/>` : `<col/>`).join('');
       const headerCells = cols.map((c, i) => {
         const s = styleFor(-1, i);
@@ -305,16 +334,21 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       }).join('');
       const bodyRows = rows.map((r, ri) => {
         const baseRowBg = altRowBg && ri % 2 === 1 ? altRowBg : rowBg;
+        // Pre-scan for row-scope rule
+        const rowRule = cellRules.find((rl) => rl.scope === 'row' && matchRule(r, rl.column) === rl);
         const tds = cols.map((c, ci) => {
           const s = styleFor(ri, ci);
+          const cellRule = matchRule(r, c.key);
+          const applied = rowRule ?? cellRule;
           const align = s.align ?? c.align ?? 'left';
-          const bg = s.bg ?? baseRowBg;
-          const fg = s.color ?? rowColor;
-          const fw = s.fontWeight ?? 'normal';
+          const bg = s.bg ?? (applied?.bg) ?? baseRowBg;
+          const fg = s.color ?? (applied?.color) ?? rowColor;
+          const fw = s.fontWeight ?? (applied?.fontWeight) ?? 'normal';
           let raw: any = r[c.key];
           if (typeof raw === 'string') raw = resolveBindable(raw, ctx);
           const val = fmtCell(raw, c.format);
-          return `<td style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.rowHeight ?? 20)}pt">${esc(val)}</td>`;
+          const icon = cellRule?.icon && cellRule.icon !== 'none' ? `<span style="margin-right:4pt;opacity:0.85">${iconGlyph(cellRule.icon)}</span>` : '';
+          return `<td style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.rowHeight ?? 20)}pt">${icon}${esc(val)}</td>`;
         }).join('');
         return `<tr>${tds}</tr>`;
       }).join('');
