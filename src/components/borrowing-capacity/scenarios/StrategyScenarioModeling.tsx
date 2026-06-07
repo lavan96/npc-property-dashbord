@@ -240,6 +240,53 @@ export function StrategyScenarioModeling({
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
+
+  // Audit-fix #5 — Auto-route net sale proceeds into the Capital Flow Canvas
+  // when the broker toggles a Sell-to-Buy lever. The user can still re-route
+  // or delete the auto-allocation; we only insert / update / clear our own
+  // `sale_proceeds_<propId>` rows so manual allocations are never clobbered.
+  // Agent fee default 2% mirrors the Sell summary on page 7 of the audit doc.
+  useEffect(() => {
+    const SELL_PREFIX = 'sale_proceeds_';
+    const sellIds = strategy.additional.portfolioSellPropertyIds;
+    const desired = new Map<string, number>();
+    sellIds.forEach(propId => {
+      const prop = properties.find(p => p.id === propId);
+      if (!prop) return;
+      const value = prop.current_value || 0;
+      const loan = prop.loan_remaining || 0;
+      const agentFee = value * 0.02;
+      const net = Math.max(0, Math.round(value - loan - agentFee));
+      if (net > 0) desired.set(`${SELL_PREFIX}${propId}`, net);
+    });
+
+    setCapitalAllocations(prev => {
+      // Keep manual rows untouched
+      const manual = prev.filter(a => !a.id.startsWith(SELL_PREFIX));
+      // Preserve any user edits (sinkType/target) to existing auto rows
+      const existingAutoById = new Map(
+        prev.filter(a => a.id.startsWith(SELL_PREFIX)).map(a => [a.id, a]),
+      );
+      const auto: CapitalAllocation[] = [];
+      desired.forEach((amount, id) => {
+        const existing = existingAutoById.get(id);
+        auto.push(existing
+          ? { ...existing, amount }
+          : { id, amount, sinkType: 'acquisition_deposit' });
+      });
+      // No-op when nothing actually changed (avoid render loops)
+      const next = [...manual, ...auto];
+      if (
+        next.length === prev.length &&
+        next.every((a, i) => {
+          const p = prev[i];
+          return p && p.id === a.id && p.amount === a.amount && p.sinkType === a.sinkType && p.sinkTargetId === a.sinkTargetId;
+        })
+      ) return prev;
+      return next;
+    });
+  }, [strategy.additional.portfolioSellPropertyIds, properties]);
+
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
@@ -295,12 +342,14 @@ export function StrategyScenarioModeling({
       p.loan_remaining > 0
     ), [properties]);
 
-  // Fixed: show all non-rental properties with current_value > 0 for equity release
+  // Audit-fix #2 — ALL properties with a recorded value are eligible for equity
+  // release (incl. rental securities). Previously rental-typed securities were
+  // silently filtered out, hiding Property 4 from the per-property selector
+  // even though the portfolio overview included it. Equity sits in the asset
+  // regardless of how the cash-flow is classified, so the selector must mirror
+  // the full portfolio for the broker.
   const equityReleaseProperties = useMemo(() =>
-    properties.filter(p => {
-      if (p.property_type === 'rental') return false;
-      return p.current_value > 0;
-    }), [properties]);
+    properties.filter(p => p.current_value > 0), [properties]);
 
   // ── Compute scenario result ──
 
@@ -730,6 +779,16 @@ export function StrategyScenarioModeling({
     const validationIssues = result.validationIssues ?? [];
     const capitalLedger = (result as any).capitalLedger ?? null;
 
+    // Audit-fix #3 — Baseline guard. When no levers are active the scenario
+    // MUST equal the base. Some upstream context (e.g. an acquisition target
+    // re-evaluating LMI) was producing a non-zero scenario delta even with
+    // `deltas.length === 0`, which surfaced a phantom "Scenario Borrowing
+    // Capacity = base + base" in the headline. Force-collapse to the base
+    // result so the user sees a true zero-delta baseline.
+    const baselineMode = deltas.length === 0;
+    const effectiveResult = baselineMode ? (baseResult as any) : result;
+    const effectiveInputs = baselineMode ? baseInputs : inputs;
+
     // ── F4 — Per-lever attribution ──────────────────────────────────────
     // Replay each delta IN ISOLATION against the same base context to
     // measure the capacity uplift attributable to that lever alone.
@@ -815,21 +874,27 @@ export function StrategyScenarioModeling({
     const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
     const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
-    const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioAssessmentRate = safeAssessmentRate(result, inputs);
-    const scenarioRawSurplus = rawSurplusFrom(result, inputs);
+    const scenarioTerm = effectiveInputs.loanTermYears ?? baseTerm;
+    const scenarioAssessmentRate = safeAssessmentRate(effectiveResult, effectiveInputs);
+    const scenarioRawSurplus = rawSurplusFrom(effectiveResult, effectiveInputs);
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
-    const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
+    const scenarioTheoreticalCapacity = baselineMode
+      ? baseTheoreticalCapacity
+      : Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
     const baseAfterTaxIncome = resolveMonthlyAfterTaxIncome(baseResult, baseInputs);
     const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
     const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
-    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(result, inputs);
-    const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
-    const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
+    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(effectiveResult, effectiveInputs);
+    const scenarioLivingExpenses = (effectiveInputs as any)?.monthlyLivingExpenses ?? (effectiveResult as any)?.totalLivingExpenses ?? 0;
+    const scenarioCommitments = (effectiveInputs as any)?.monthlyCommitments ?? (effectiveResult as any)?.existingCommitmentsMonthly ?? 0;
 
-    const leverAttribution: LeverAttribution[] = deltas.map(d => {
+    // Audit-fix #4 — Lever attribution invariants. Every isolated delta is
+    // re-run on the same base context and its impact is normalised against
+    // baseResult.borrowingCapacity. When baseline (no deltas) the array is
+    // empty so the waterfall hides itself instead of rendering phantom rows.
+    const leverAttribution: LeverAttribution[] = baselineMode ? [] : deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
       const isoAssessRate = safeAssessmentRate(isolated.result, isolated.inputs);
@@ -844,19 +909,19 @@ export function StrategyScenarioModeling({
       };
     });
 
-    const floorActive =
+    const floorActive = !baselineMode &&
       (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
-      scenarioResult: result as unknown as BorrowingCapacityResult,
-      scenarioInputs: inputs,
-      impactBreakdown: impacts,
+      scenarioResult: effectiveResult as unknown as BorrowingCapacityResult,
+      scenarioInputs: effectiveInputs,
+      impactBreakdown: baselineMode ? [] : impacts,
       acquisitionCapacity,
       validationIssues,
       leverAttribution,
-      appliedDeltas: deltas,
+      appliedDeltas: baselineMode ? [] : deltas,
       capitalLedger,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
