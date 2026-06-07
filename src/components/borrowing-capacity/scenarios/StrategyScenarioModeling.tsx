@@ -2470,6 +2470,48 @@ export function StrategyScenarioModeling({
                       Apply to Calculator
                     </Button>
                   )}
+                  {clientId && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={async () => {
+                        // Build a transient preset reflecting the current
+                        // strategy state so the PDF shows live what-if numbers
+                        // even before the user clicks Save.
+                        const transient: ScenarioPreset = {
+                          id: `transient-${Date.now()}`,
+                          name: scenarioName.trim() || 'Current What-If Scenario',
+                          isBase: false,
+                          createdAt: new Date().toISOString(),
+                          adjustedInputs: { ...scenarioInputs },
+                          result: scenarioResult,
+                          accessibleEquity: totalAccessibleEquity,
+                          acquisitionCapacity: acquisitionCapacity ?? null,
+                          incomeComponents,
+                          currentLenderProfileId,
+                          hemBenchmark,
+                        };
+                        const merged = [
+                          ...presets,
+                          ...(presets.some(p => p.id === transient.id) ? [] : [transient]),
+                        ];
+                        toast.info('Generating What-If PDF…');
+                        try {
+                          await fetchAndGenerateBorrowingCapacityPDF(
+                            clientId,
+                            clientName || 'Client',
+                            merged,
+                          );
+                        } catch (err: any) {
+                          toast.error(`PDF export failed: ${err?.message || 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                      Export PDF
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
