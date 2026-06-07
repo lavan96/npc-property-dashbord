@@ -134,6 +134,63 @@ function getStorageKey(clientId?: string): string {
   return `${STORAGE_PREFIX}${clientId || 'global'}`;
 }
 
+
+function normalizePercentRatio(value: unknown, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n > 1 ? n / 100 : n;
+}
+
+function normalizeScenarioAdjustments(adjustments?: Partial<ScenarioAdjustments> | null): ScenarioAdjustments {
+  const a = adjustments ?? {};
+  const equityRelease = a.equityRelease?.propertyId
+    ? {
+        propertyId: String(a.equityRelease.propertyId),
+        targetLVR: normalizePercentRatio(a.equityRelease.targetLVR, 0.80),
+      }
+    : null;
+  const crossCollatPool = a.crossCollatPool?.enabled
+    ? {
+        enabled: true,
+        propertyIds: Array.isArray(a.crossCollatPool.propertyIds) ? a.crossCollatPool.propertyIds.filter(Boolean).map(String) : [],
+        blendedTargetLVR: normalizePercentRatio(a.crossCollatPool.blendedTargetLVR, 0.80),
+        lenderMaxLVR: normalizePercentRatio(a.crossCollatPool.lenderMaxLVR, 0.95),
+        allocationStrategy: a.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
+      }
+    : null;
+
+  return {
+    consolidatedLiabilityIds: Array.isArray(a.consolidatedLiabilityIds) ? a.consolidatedLiabilityIds.filter(Boolean).map(String) : [],
+    refinancedToIOPropertyIds: Array.isArray(a.refinancedToIOPropertyIds) ? a.refinancedToIOPropertyIds.filter(Boolean).map(String) : [],
+    rateAdjustment: Number.isFinite(Number(a.rateAdjustment)) ? Number(a.rateAdjustment) : 0,
+    incomeGrowthPercent: Number.isFinite(Number(a.incomeGrowthPercent)) ? Number(a.incomeGrowthPercent) : 0,
+    expenseReductionPercent: Number.isFinite(Number(a.expenseReductionPercent)) ? Number(a.expenseReductionPercent) : 0,
+    equityRelease,
+    loanTermAdjustment: Number.isFinite(Number(a.loanTermAdjustment)) ? Number(a.loanTermAdjustment) : 0,
+    portfolioSellPropertyIds: Array.isArray(a.portfolioSellPropertyIds) ? a.portfolioSellPropertyIds.filter(Boolean).map(String) : [],
+    dtiCapOverride: a.dtiCapOverride
+      ? {
+          enabled: !!a.dtiCapOverride.enabled,
+          value: Number.isFinite(Number(a.dtiCapOverride.value)) ? Number(a.dtiCapOverride.value) : 6,
+          lenderProfile: a.dtiCapOverride.lenderProfile,
+        }
+      : null,
+    lenderProfile: a.lenderProfile ?? null,
+    propertyRateChanges: Array.isArray(a.propertyRateChanges) ? a.propertyRateChanges : [],
+    valuationOverrides: Array.isArray(a.valuationOverrides) ? a.valuationOverrides : [],
+    crossCollatPool,
+    acquisition: a.acquisition ?? null,
+  };
+}
+
+function normalizeAIScenario(scenario: AIScenario): AIScenario {
+  return {
+    ...scenario,
+    name: scenario.name || 'Suggested Scenario',
+    adjustments: normalizeScenarioAdjustments(scenario.adjustments),
+  };
+}
+
 function loadPersistedState(clientId?: string): PersistedChatState | null {
   try {
     const raw = localStorage.getItem(getStorageKey(clientId));
@@ -142,7 +199,7 @@ function loadPersistedState(clientId?: string): PersistedChatState | null {
     if (!parsed || typeof parsed !== 'object') return null;
     return {
       messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios : [],
+      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios.map(normalizeAIScenario) : [],
       appliedIndex: typeof parsed.appliedIndex === 'number' ? parsed.appliedIndex : null,
       isOpen: typeof parsed.isOpen === 'boolean' ? parsed.isOpen : true,
     };
@@ -401,7 +458,8 @@ export function BCScenarioAgent({
               currentLenderProfileId,
               hemBenchmark,
             };
-            const locallyValidated = (parsed.scenarios as AIScenario[]).map((scenario) => {
+            const locallyValidated = (parsed.scenarios as AIScenario[]).map((rawScenario) => {
+              const scenario = normalizeAIScenario(rawScenario);
               try {
                 const acq = scenario.adjustments?.acquisition;
                 const runCtx: ScenarioContext = acq
@@ -483,16 +541,28 @@ export function BCScenarioAgent({
   };
 
   const handleApply = (scenario: AIScenario, index: number) => {
-    setAppliedIndex(index);
-    // Phase E (L1): callback may return engine-reconciled impact string —
-    // update the badge so users see verified math, not just AI estimate.
-    const maybe = onApplyScenario(scenario) as unknown;
-    Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
-      if (typeof reconciled === 'string' && reconciled.length > 0) {
-        setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
-      }
-    }).catch(() => {/* non-fatal */});
-    toast.success(`"${scenario.name}" applied to strategy levers`);
+    const safeScenario = normalizeAIScenario(scenario);
+    try {
+      setAppliedIndex(index);
+      setScenarios(prev => prev.map((s, i) => i === index ? safeScenario : s));
+      // Phase E (L1): callback may return engine-reconciled impact string —
+      // update the badge so users see verified math, not just AI estimate.
+      const maybe = onApplyScenario(safeScenario) as unknown;
+      Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
+        if (typeof reconciled === 'string' && reconciled.length > 0) {
+          setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
+        }
+      }).catch((err) => {
+        console.error('[BCScenarioAgent] Apply scenario callback failed:', err);
+        toast.error(err?.message || 'Failed to apply scenario');
+        setAppliedIndex(null);
+      });
+      toast.success(`"${safeScenario.name}" applied to strategy levers`);
+    } catch (err: any) {
+      console.error('[BCScenarioAgent] Apply scenario failed:', err);
+      toast.error(err?.message || 'Failed to apply scenario');
+      setAppliedIndex(null);
+    }
   };
 
   const suggestedPrompts = [

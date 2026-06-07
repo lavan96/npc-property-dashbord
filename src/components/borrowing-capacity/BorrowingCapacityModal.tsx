@@ -155,6 +155,7 @@ export function BorrowingCapacityModal({
   // against this base snapshot, even after a scenario is applied to the
   // calculator panel.
   const [baseScenarioResult, setBaseScenarioResult] = useState<FullAssessmentResult | null>(null);
+  const [baseScenarioInputs, setBaseScenarioInputs] = useState<BorrowingCapacityInput | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
   const [showRateComparison, setShowRateComparison] = useState(false);
   // New mode states
@@ -808,13 +809,14 @@ export function BorrowingCapacityModal({
       setResult(calcResult);
       if (!activeScenario) {
         setBaseScenarioResult(calcResult);
+        setBaseScenarioInputs(baseCalculatorInputs);
       }
     } catch (error) {
       console.error('Calculation failed:', error);
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer, activeScenario]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer, activeScenario, baseCalculatorInputs]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
@@ -922,6 +924,7 @@ export function BorrowingCapacityModal({
             const baseResult = basePreset.result as FullAssessmentResult;
             setResult(baseResult);
             setBaseScenarioResult(baseResult);
+            setBaseScenarioInputs(baseInputs);
           }
           toast.info('Reverted to base case');
         }}
@@ -1222,7 +1225,7 @@ export function BorrowingCapacityModal({
               <StrategyScenarioModeling
                 clientId={clientId}
                 clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
-                baseInputs={baseCalculatorInputs}
+                baseInputs={baseScenarioInputs ?? baseCalculatorInputs}
                 baseResult={baseScenarioResult ?? result}
                 liabilities={liabilitiesBreakdown.map(l => ({
                   id: l.id,
