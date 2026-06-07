@@ -120,6 +120,7 @@ import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
 import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
+import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
