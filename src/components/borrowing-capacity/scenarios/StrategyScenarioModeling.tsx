@@ -1282,22 +1282,7 @@ export function StrategyScenarioModeling({
               };
             });
 
-          // Phase D + F2: also map AI acquisition block into the acquisition state
           const acq = scenario.adjustments.acquisition;
-          if (acq) {
-            setAcquisition(prev => ({
-              ...prev,
-              enabled: true,
-              state: acq.state,
-              intent: acq.intent,
-              category: acq.category ?? prev.category,
-              isFirstHomeBuyer: acq.isFirstHomeBuyer ?? prev.isFirstHomeBuyer,
-              isForeignBuyer: prev.isForeignBuyer,
-              lmiMode: acq.lmiMode ?? prev.lmiMode,
-              cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
-              targetPurchasePrice: acq.targetPurchasePrice ?? prev.targetPurchasePrice,
-            }));
-          }
 
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
@@ -1311,7 +1296,7 @@ export function StrategyScenarioModeling({
             loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
             portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
             dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
-            acquisition: !!acq,
+            acquisition: false,
           }));
 
           // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
