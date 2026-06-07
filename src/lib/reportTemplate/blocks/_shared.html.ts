@@ -91,10 +91,36 @@ function fmtCell(value: any, format?: string): string {
   }
 }
 
+/** Compose CSS for overlay-level effects (shadow / filter / blend / outline). */
+function buildEffectStyle(o: any): string {
+  const e = o?.effects;
+  if (!e) return '';
+  const parts: string[] = [];
+  const filters: string[] = [];
+  if (e.blur != null && Number(e.blur) > 0) filters.push(`blur(${Number(e.blur)}px)`);
+  if (e.brightness != null && Number(e.brightness) !== 1) filters.push(`brightness(${Number(e.brightness)})`);
+  if (e.contrast != null && Number(e.contrast) !== 1) filters.push(`contrast(${Number(e.contrast)})`);
+  if (e.saturate != null && Number(e.saturate) !== 1) filters.push(`saturate(${Number(e.saturate)})`);
+  if (e.grayscale != null && Number(e.grayscale) > 0) filters.push(`grayscale(${Number(e.grayscale)})`);
+  if (filters.length) parts.push(`filter:${filters.join(' ')}`);
+  if (e.shadow) {
+    const s = e.shadow;
+    const inset = s.inset ? 'inset ' : '';
+    parts.push(`box-shadow:${inset}${Number(s.x ?? 0)}pt ${Number(s.y ?? 2)}pt ${Number(s.blur ?? 8)}pt ${Number(s.spread ?? 0)}pt ${s.color ?? 'rgba(0,0,0,0.25)'}`);
+  }
+  if (e.blendMode && e.blendMode !== 'normal') parts.push(`mix-blend-mode:${e.blendMode}`);
+  if (e.outline && Number(e.outline.width ?? 0) > 0) {
+    parts.push(`outline:${Number(e.outline.width)}pt ${e.outline.style ?? 'solid'} ${e.outline.color ?? '#BF9B50'}`);
+    parts.push(`outline-offset:${Number(e.outline.offset ?? 0)}pt`);
+  }
+  return parts.length ? parts.join(';') + ';' : '';
+}
+
 /** Render an overlay (text / image / shape / textOnPath / table) as an absolute-positioned HTML element. */
 export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
   if (!evalConditional(overlay.conditional, ctx)) return '';
-  const base = `position:absolute;left:${overlay.x}pt;top:${overlay.y}pt;width:${overlay.width}pt;height:${overlay.height}pt;opacity:${overlay.opacity};transform:rotate(${overlay.rotation}deg);transform-origin:top left;`;
+  const fx = buildEffectStyle(overlay as any);
+  const base = `position:absolute;left:${overlay.x}pt;top:${overlay.y}pt;width:${overlay.width}pt;height:${overlay.height}pt;opacity:${overlay.opacity};transform:rotate(${overlay.rotation}deg);transform-origin:top left;${fx}`;
   switch (overlay.type) {
     case 'text': {
       const raw = overlay as any;
