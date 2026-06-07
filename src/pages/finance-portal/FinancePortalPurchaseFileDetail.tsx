@@ -283,7 +283,7 @@ export default function FinancePortalPurchaseFileDetail() {
               <AiLenderRecommenderCard purchaseFileId={fileId!} />
               <AiLoanAppPrefillCard purchaseFileId={fileId!} />
             </div>
-            <LenderPlaybookCard lender={data.lender} isSuperadmin />
+            
             <div className="grid gap-4 md:grid-cols-2">
               <NpcHandoffCard purchaseFileId={fileId!} />
               <EntityCommentsThread purchaseFileId={fileId!} entityType="purchase_file" title="File comments" />
