@@ -240,6 +240,53 @@ export function StrategyScenarioModeling({
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
+
+  // Audit-fix #5 — Auto-route net sale proceeds into the Capital Flow Canvas
+  // when the broker toggles a Sell-to-Buy lever. The user can still re-route
+  // or delete the auto-allocation; we only insert / update / clear our own
+  // `sale_proceeds_<propId>` rows so manual allocations are never clobbered.
+  // Agent fee default 2% mirrors the Sell summary on page 7 of the audit doc.
+  useEffect(() => {
+    const SELL_PREFIX = 'sale_proceeds_';
+    const sellIds = strategy.additional.portfolioSellPropertyIds;
+    const desired = new Map<string, number>();
+    sellIds.forEach(propId => {
+      const prop = properties.find(p => p.id === propId);
+      if (!prop) return;
+      const value = prop.current_value || 0;
+      const loan = prop.loan_remaining || 0;
+      const agentFee = value * 0.02;
+      const net = Math.max(0, Math.round(value - loan - agentFee));
+      if (net > 0) desired.set(`${SELL_PREFIX}${propId}`, net);
+    });
+
+    setCapitalAllocations(prev => {
+      // Keep manual rows untouched
+      const manual = prev.filter(a => !a.id.startsWith(SELL_PREFIX));
+      // Preserve any user edits (sinkType/target) to existing auto rows
+      const existingAutoById = new Map(
+        prev.filter(a => a.id.startsWith(SELL_PREFIX)).map(a => [a.id, a]),
+      );
+      const auto: CapitalAllocation[] = [];
+      desired.forEach((amount, id) => {
+        const existing = existingAutoById.get(id);
+        auto.push(existing
+          ? { ...existing, amount }
+          : { id, amount, sinkType: 'acquisition_deposit' });
+      });
+      // No-op when nothing actually changed (avoid render loops)
+      const next = [...manual, ...auto];
+      if (
+        next.length === prev.length &&
+        next.every((a, i) => {
+          const p = prev[i];
+          return p && p.id === a.id && p.amount === a.amount && p.sinkType === a.sinkType && p.sinkTargetId === a.sinkTargetId;
+        })
+      ) return prev;
+      return next;
+    });
+  }, [strategy.additional.portfolioSellPropertyIds, properties]);
+
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
