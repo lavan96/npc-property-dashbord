@@ -36,8 +36,11 @@ interface BcParams {
   bufferRate: number;
   loanTermYears: number;
   totalDebtBalances: number;
+  calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** APS 220-adjusted DTI denominator emitted by aggregateDeltas. */
+  dtiAdjustedAnnualIncome?: number;
 }
 
 interface BcResult {
@@ -51,7 +54,19 @@ function calculateBorrowingCapacity(p: BcParams): BcResult {
   const assessableIncome = p.shadedAnnualIncome > 0 ? p.shadedAnnualIncome : p.grossAnnualIncome;
   const tax = getTaxBreakdown(assessableIncome);
   const monthlyAfterTax = tax.afterTaxIncome / 12;
-  const monthlySurplus = monthlyAfterTax - p.monthlyLivingExpenses - p.monthlyCommitments;
+  const isConservative = p.calculationMode === 'conservative';
+  let monthlySurplus = monthlyAfterTax - p.monthlyLivingExpenses - p.monthlyCommitments;
+
+  // Mirror the browser calculator's conservative-mode floor so the AI card
+  // preview never overstates capacity relative to the post-Apply summary.
+  if (isConservative) {
+    monthlySurplus *= 0.85;
+    if (monthlySurplus < 1000) monthlySurplus = 0;
+    const residualIncome = monthlyAfterTax - p.monthlyCommitments;
+    if (residualIncome < 1500) {
+      monthlySurplus = Math.max(0, monthlySurplus - (1500 - residualIncome));
+    }
+  }
 
   const assessmentRate = p.interestRate + p.bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
@@ -63,15 +78,19 @@ function calculateBorrowingCapacity(p: BcParams): BcResult {
     capacity = Math.round(maxRepayment * factor);
   }
 
-  let dtiRatio = p.grossAnnualIncome > 0
-    ? Math.round(((p.totalDebtBalances + capacity) / p.grossAnnualIncome) * 100) / 100
+  const dtiDenominator = p.dtiAdjustedAnnualIncome && p.dtiAdjustedAnnualIncome > 0
+    ? p.dtiAdjustedAnnualIncome
+    : p.grossAnnualIncome;
+  let dtiRatio = dtiDenominator > 0
+    ? Math.round(((p.totalDebtBalances + capacity) / dtiDenominator) * 100) / 100
     : 0;
 
-  const dtiCap = p.dtiCapLimit ?? 6;
-  if (p.dtiCapEnabled && dtiRatio > dtiCap && p.grossAnnualIncome > 0) {
-    const maxTotalDebt = p.grossAnnualIncome * dtiCap;
+  const dtiCap = isConservative ? 6 : (p.dtiCapLimit ?? 6);
+  const shouldApplyDtiCap = !!p.dtiCapEnabled || isConservative;
+  if (shouldApplyDtiCap && dtiRatio > dtiCap && dtiDenominator > 0) {
+    const maxTotalDebt = dtiDenominator * dtiCap;
     capacity = Math.max(0, Math.round(maxTotalDebt - p.totalDebtBalances));
-    dtiRatio = Math.round(((p.totalDebtBalances + capacity) / p.grossAnnualIncome) * 100) / 100;
+    dtiRatio = Math.round(((p.totalDebtBalances + capacity) / dtiDenominator) * 100) / 100;
   }
 
   let band: 'green' | 'amber' | 'red';
@@ -574,6 +593,7 @@ export function validateAIScenarios(
         calculationMode: inputs.calculationMode,
         dtiCapEnabled: inputs.dtiCapEnabled,
         dtiCapLimit: inputs.dtiCapLimit,
+        dtiAdjustedAnnualIncome: inputs.dtiAdjustedAnnualIncome,
       });
 
       const acquisitionCapacity = ctx.acquisition
