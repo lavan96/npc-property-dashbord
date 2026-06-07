@@ -34,7 +34,7 @@ const NAV_ITEMS = [
   { to: '/finance/insights', label: 'Pipeline Insights', icon: Trophy, end: false, tour: 'insights' },
   { to: '/finance/reports', label: 'Reports & KPIs', icon: BarChart3, end: false },
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
-  { to: '/finance/mobile', label: 'Mobile cockpit', icon: Smartphone, end: false, tour: 'mobile' },
+  
 ];
 
 
