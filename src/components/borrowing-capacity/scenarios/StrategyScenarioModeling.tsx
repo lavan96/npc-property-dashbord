@@ -656,8 +656,11 @@ export function StrategyScenarioModeling({
           id: prop.id,
           label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR (deploy ${(deploymentPercent * 100).toFixed(0)}%, ${repaymentType === 'interest_only' ? 'IO' : 'P&I'})`,
           type: 'equity_release',
+          // targetLVR is a RATIO (e.g. 0.80) — `unit: 'ratio'` so the engine reads
+          // it as 0.80, not 0.80/100. 'percent' silently shrank the release to
+          // ~0.8% LVR, so the lever (and its servicing/released-capital) was ignored.
           value: targetLVR,
-          unit: 'percent',
+          unit: 'ratio',
           meta: {
             targetLVR,
             // honour per-property contracted rate if present, otherwise let engine fall back
@@ -1433,6 +1436,27 @@ export function StrategyScenarioModeling({
         incomeComponents={incomeComponents}
         currentLenderProfileId={currentLenderProfileId}
         hemBenchmark={hemBenchmark}
+        /* Live engine truth for the applied scenario — sourced from the SAME
+         * `scenarioResult` that drives the Compound Impact Summary below, so the
+         * AI card's Engine Truth reconciles exactly with the live calculator
+         * instead of drifting from its pre-Apply preview. Null when no levers are
+         * live so unapplied cards keep showing their own preview. */
+        appliedEngineSnapshot={hasAnyStrategy ? {
+          borrowingCapacity: Math.round(scenarioResult.borrowingCapacity),
+          capacityChange: Math.round(scenarioResult.borrowingCapacity - baseResult.borrowingCapacity),
+          monthlySurplus: Math.round(scenarioResult.monthlySurplus),
+          serviceabilityBand: scenarioResult.serviceabilityBand,
+          dtiRatio: Number((scenarioResult.dtiRatio ?? 0).toFixed(2)),
+          ...(acquisition.enabled && acquisitionCapacity ? {
+            meetsTarget: acquisitionCapacity.meetsTarget,
+            shortfallToTarget: acquisitionCapacity.shortfallToTarget,
+            maxPurchasePrice: acquisitionCapacity.maxPurchasePrice,
+            loanRequiredForPurchase: acquisitionCapacity.loanRequiredForPurchase,
+            netCashAfterSettlement: acquisitionCapacity.netCashAfterSettlement,
+            releasedCapital: acquisitionCapacity.releasedCapital,
+            targetPurchasePrice: acquisitionCapacity.targetPurchasePrice,
+          } : {}),
+        } : null}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state. Be defensive here:
           // AI-generated/persisted cards can omit optional arrays or carry old
