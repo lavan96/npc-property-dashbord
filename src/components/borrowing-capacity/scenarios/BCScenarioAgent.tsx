@@ -117,6 +117,12 @@ interface BCScenarioAgentProps {
   currentLenderProfileId?: string;
   /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
   hemBenchmark?: number;
+  /** Live engine truth for the CURRENTLY-APPLIED scenario, recomputed by the
+   *  parent from the same `scenarioResult` that drives the Compound Impact
+   *  Summary. When provided it supersedes the applied card's pre-Apply preview
+   *  so the card's "Engine Truth" reconciles exactly with the live calculator
+   *  (eliminates the pre-Apply-vs-applied drift). Null when no levers are live. */
+  appliedEngineSnapshot?: AIScenarioEngineValidation | null;
 }
 
 // ── Persistence helpers ────────────────────────────────
@@ -278,6 +284,7 @@ export function BCScenarioAgent({
   incomeComponents,
   currentLenderProfileId,
   hemBenchmark,
+  appliedEngineSnapshot,
 }: BCScenarioAgentProps) {
   // Load persisted state synchronously on mount so history is available immediately
   const initialState = loadPersistedState(clientId);
@@ -703,7 +710,19 @@ export function BCScenarioAgent({
           {/* Scenario Cards */}
           {scenarios.length > 0 && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {scenarios.map((scenario, i) => (
+              {scenarios.map((scenario, i) => {
+                // Reconcile the applied card's "Engine Truth" with the LIVE
+                // calculator. The pre-Apply preview (engineValidation) is derived
+                // from a separate delta translation and can drift from the live
+                // strategy recompute shown in the Compound Impact Summary. Once a
+                // card is applied, the parent feeds the live `scenarioResult`
+                // snapshot here so both surfaces report the identical figure.
+                const isApplied = appliedIndex === i;
+                const liveSnapshot = isApplied ? appliedEngineSnapshot : null;
+                const effectiveValidation = liveSnapshot
+                  ? { ...scenario.engineValidation, ...liveSnapshot }
+                  : scenario.engineValidation;
+                return (
                 <div
                   key={i}
                   className={`border rounded-lg p-4 transition-all ${
@@ -731,19 +750,22 @@ export function BCScenarioAgent({
                       )}
                     </div>
                     <Badge
-                      variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
+                      variant={effectiveValidation || scenario.reconciledImpact ? "default" : "outline"}
                       className="shrink-0 text-xs"
                       title={
-                        scenario.reconciledImpact ? "Engine-verified (post-Apply)"
+                        liveSnapshot ? "Engine-verified (applied · live)"
+                        : scenario.reconciledImpact ? "Engine-verified (post-Apply)"
                         : scenario.engineValidation ? "Engine-validated (pre-Apply preview)"
                         : "AI estimate (not yet verified)"
                       }
                     >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.reconciledImpact
-                        || (scenario.engineValidation
-                          ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
-                          : scenario.estimatedImpact)}
+                      {liveSnapshot
+                        ? `${effectiveValidation!.capacityChange >= 0 ? '+' : ''}$${Math.round(effectiveValidation!.capacityChange).toLocaleString()}`
+                        : (scenario.reconciledImpact
+                          || (scenario.engineValidation
+                            ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
+                            : scenario.estimatedImpact))}
                     </Badge>
                   </div>
 
@@ -784,9 +806,10 @@ export function BCScenarioAgent({
                       </ul>
                     </details>
                   )}
-                  {/* Phase H: Engine-validated truth panel (pre-Apply) */}
-                  {scenario.engineValidation && (() => {
-                    const v = scenario.engineValidation!;
+                  {/* Phase H: Engine truth panel. Pre-Apply this shows the preview;
+                      once applied it reconciles to the LIVE calculator snapshot. */}
+                  {effectiveValidation && (() => {
+                    const v = effectiveValidation!;
                     const fmt = (n?: number) => typeof n === 'number'
                       ? `$${Math.round(n).toLocaleString()}`
                       : '—';
@@ -800,7 +823,7 @@ export function BCScenarioAgent({
                     return (
                       <div className="mb-3 rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
                         <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
-                          <span>Engine Truth</span>
+                          <span>{liveSnapshot ? 'Engine Truth (live)' : 'Engine Truth'}</span>
                           {hasTarget && (
                             <Badge
                               variant={meets ? 'default' : 'destructive'}
@@ -932,7 +955,8 @@ export function BCScenarioAgent({
                     )}
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CollapsibleContent>

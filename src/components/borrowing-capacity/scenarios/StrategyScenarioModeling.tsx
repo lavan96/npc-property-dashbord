@@ -1433,6 +1433,27 @@ export function StrategyScenarioModeling({
         incomeComponents={incomeComponents}
         currentLenderProfileId={currentLenderProfileId}
         hemBenchmark={hemBenchmark}
+        /* Live engine truth for the applied scenario — sourced from the SAME
+         * `scenarioResult` that drives the Compound Impact Summary below, so the
+         * AI card's Engine Truth reconciles exactly with the live calculator
+         * instead of drifting from its pre-Apply preview. Null when no levers are
+         * live so unapplied cards keep showing their own preview. */
+        appliedEngineSnapshot={hasAnyStrategy ? {
+          borrowingCapacity: Math.round(scenarioResult.borrowingCapacity),
+          capacityChange: Math.round(scenarioResult.borrowingCapacity - baseResult.borrowingCapacity),
+          monthlySurplus: Math.round(scenarioResult.monthlySurplus),
+          serviceabilityBand: scenarioResult.serviceabilityBand,
+          dtiRatio: Number((scenarioResult.dtiRatio ?? 0).toFixed(2)),
+          ...(acquisition.enabled && acquisitionCapacity ? {
+            meetsTarget: acquisitionCapacity.meetsTarget,
+            shortfallToTarget: acquisitionCapacity.shortfallToTarget,
+            maxPurchasePrice: acquisitionCapacity.maxPurchasePrice,
+            loanRequiredForPurchase: acquisitionCapacity.loanRequiredForPurchase,
+            netCashAfterSettlement: acquisitionCapacity.netCashAfterSettlement,
+            releasedCapital: acquisitionCapacity.releasedCapital,
+            targetPurchasePrice: acquisitionCapacity.targetPurchasePrice,
+          } : {}),
+        } : null}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state. Be defensive here:
           // AI-generated/persisted cards can omit optional arrays or carry old
