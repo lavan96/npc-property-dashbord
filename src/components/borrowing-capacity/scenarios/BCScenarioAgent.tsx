@@ -249,7 +249,10 @@ function aiAdjustmentsToDeltas(adj: ScenarioAdjustments): ScenarioDelta[] {
     }
   }
   if (adj.equityRelease?.propertyId && Number.isFinite(adj.equityRelease.targetLVR)) {
-    deltas.push({ id: adj.equityRelease.propertyId, label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`, type: 'equity_release', value: adj.equityRelease.targetLVR, unit: 'percent', meta: { targetLVR: adj.equityRelease.targetLVR } });
+    // targetLVR is a RATIO (e.g. 0.80) — must be `unit: 'ratio'` so the engine
+    // treats it as 0.80, not 0.80/100 = 0.008. Mirrors recommendSolutions and
+    // crossCollatPool; using 'percent' here silently released ~nothing.
+    deltas.push({ id: adj.equityRelease.propertyId, label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`, type: 'equity_release', value: adj.equityRelease.targetLVR, unit: 'ratio', meta: { targetLVR: adj.equityRelease.targetLVR } });
   }
   if (adj.crossCollatPool?.enabled && adj.crossCollatPool.propertyIds?.length) {
     deltas.push({ id: 'pool-default', label: `Cross-collat pool → ${(adj.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`, type: 'portfolio_lvr_release', value: adj.crossCollatPool.blendedTargetLVR, unit: 'ratio', meta: { propertyIds: adj.crossCollatPool.propertyIds, lenderMaxLVR: adj.crossCollatPool.lenderMaxLVR ?? null, allocationStrategy: adj.crossCollatPool.allocationStrategy ?? 'highest_equity_first' } });
@@ -883,6 +886,11 @@ export function BCScenarioAgent({
                             ⚠ {v.validationIssues.length} validation note{v.validationIssues.length > 1 ? 's' : ''} — verify with finance.
                           </div>
                         )}
+                        {!liveSnapshot && (
+                          <p className="text-[10px] italic text-muted-foreground/70 pt-1 border-t border-border/40">
+                            Estimate — verify on Apply.
+                          </p>
+                        )}
                       </div>
                     );
                   })()}
@@ -904,9 +912,9 @@ export function BCScenarioAgent({
                         Rate {scenario.adjustments.rateAdjustment > 0 ? '+' : ''}{scenario.adjustments.rateAdjustment}%
                       </Badge>
                     )}
-                    {scenario.adjustments.incomeGrowthPercent > 0 && (
+                    {scenario.adjustments.incomeGrowthPercent !== 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Income +{scenario.adjustments.incomeGrowthPercent}%
+                        Income {scenario.adjustments.incomeGrowthPercent > 0 ? '+' : ''}{scenario.adjustments.incomeGrowthPercent}%
                       </Badge>
                     )}
                     {scenario.adjustments.expenseReductionPercent > 0 && (
@@ -916,7 +924,7 @@ export function BCScenarioAgent({
                     )}
                     {scenario.adjustments.equityRelease && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Equity release
+                        Equity release {Math.round((scenario.adjustments.equityRelease.targetLVR ?? 0) * 100)}% LVR
                       </Badge>
                     )}
                     {(scenario.adjustments.loanTermAdjustment ?? 0) !== 0 && (
@@ -932,6 +940,31 @@ export function BCScenarioAgent({
                     {scenario.adjustments.dtiCapOverride?.enabled && (
                       <Badge variant="secondary" className="text-[10px]">
                         DTI cap {scenario.adjustments.dtiCapOverride.value}x
+                      </Badge>
+                    )}
+                    {(scenario.adjustments.propertyRateChanges?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Reprice {scenario.adjustments.propertyRateChanges!.length} loan{scenario.adjustments.propertyRateChanges!.length > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {(scenario.adjustments.valuationOverrides?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Revalue {scenario.adjustments.valuationOverrides!.length} property(s)
+                      </Badge>
+                    )}
+                    {scenario.adjustments.crossCollatPool?.enabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Cross-collat pool {Math.round((scenario.adjustments.crossCollatPool.blendedTargetLVR ?? 0) * 100)}% LVR
+                      </Badge>
+                    )}
+                    {scenario.adjustments.lenderProfile && !scenario.adjustments.dtiCapOverride?.enabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Lender: {scenario.adjustments.lenderProfile}
+                      </Badge>
+                    )}
+                    {scenario.adjustments.acquisition && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Acquisition{scenario.adjustments.acquisition.targetPurchasePrice ? ` · target $${Math.round(scenario.adjustments.acquisition.targetPurchasePrice).toLocaleString()}` : ''}
                       </Badge>
                     )}
                   </div>

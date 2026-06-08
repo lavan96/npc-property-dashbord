@@ -656,8 +656,11 @@ export function StrategyScenarioModeling({
           id: prop.id,
           label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR (deploy ${(deploymentPercent * 100).toFixed(0)}%, ${repaymentType === 'interest_only' ? 'IO' : 'P&I'})`,
           type: 'equity_release',
+          // targetLVR is a RATIO (e.g. 0.80) — `unit: 'ratio'` so the engine reads
+          // it as 0.80, not 0.80/100. 'percent' silently shrank the release to
+          // ~0.8% LVR, so the lever (and its servicing/released-capital) was ignored.
           value: targetLVR,
-          unit: 'percent',
+          unit: 'ratio',
           meta: {
             targetLVR,
             // honour per-property contracted rate if present, otherwise let engine fall back
