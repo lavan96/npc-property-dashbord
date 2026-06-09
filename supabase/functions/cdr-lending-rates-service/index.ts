@@ -551,15 +551,16 @@ Deno.serve(async (req) => {
       // Fetch fresh if no cache
       if (rates.length === 0) {
         console.log(`[CDR] Fetching fresh rates for ${lenderId}`);
-        rates = await fetchLenderProducts(lenderId, {
+        const result = await fetchLenderProducts(lenderId, {
           baseUrl: lenderConfig.baseUrl,
           productVersion: lenderConfig.productVersion,
           detailVersion: lenderConfig.detailVersion,
         });
+        rates = result.rates;
         if (rates.length > 0) {
           await setCachedRates(supabase, lenderId, rates);
         } else {
-          console.warn(`[CDR] No rates found for ${lenderId}`);
+          console.warn(`[CDR] No rates found for ${lenderId}: ${result.error || 'unknown'}`);
         }
       }
 
