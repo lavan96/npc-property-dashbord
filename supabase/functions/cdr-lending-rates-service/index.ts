@@ -20,158 +20,127 @@ const corsHeaders = {
 // CDR DATA HOLDER ENDPOINTS
 // Each bank has specific API version requirements
 // ============================================
+// Authoritative CDR PublicBaseUri values (sourced from the public AU Open Banking
+// registry, cross-checked against each data-holder's published developer docs).
+// productVersion "4" — /banking/products has been on v4 since Oct 2024; older
+// versions now return 406 on most holders. The fetcher cascades 4→3→2→1.
 const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string; productVersion: string; detailVersion: string }> = {
   macquarie: {
     name: "Macquarie Bank",
     baseUrl: "https://api.macquariebank.io/cds-au/v1",
     logo: "https://www.macquarie.com/favicon.ico",
-    productVersion: "3",
-    detailVersion: "4" // Macquarie works with v4
+    productVersion: "4",
+    detailVersion: "4"
   },
   boq: {
     name: "Bank of Queensland",
-    baseUrl: "https://secure.api.boq.com.au/cds-au/v1",
+    baseUrl: "https://api.cds.boq.com.au/cds-au/v1",
     logo: "https://www.boq.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   amp: {
     name: "AMP",
     baseUrl: "https://api.cdr-api.amp.com.au/cds-au/v1",
     logo: "https://www.amp.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   bendigo: {
     name: "Bendigo Bank",
     baseUrl: "https://api.cdr.bendigobank.com.au/cds-au/v1",
     logo: "https://www.bendigobank.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   bankwest: {
     name: "Bankwest",
     baseUrl: "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
     logo: "https://www.bankwest.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   westpac: {
     name: "Westpac",
     baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
     logo: "https://www.westpac.com.au/etc/designs/westpac/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   banksa: {
     name: "BankSA",
-    baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
+    baseUrl: "https://digital-api.banksa.com.au/cds-au/v1",
     logo: "https://www.banksa.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   stgeorge: {
     name: "St.George",
-    baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
+    baseUrl: "https://digital-api.stgeorge.com.au/cds-au/v1",
     logo: "https://www.stgeorge.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   cba: {
     name: "Commonwealth Bank",
     baseUrl: "https://api.commbank.com.au/public/cds-au/v1",
     logo: "https://www.commbank.com.au/etc/designs/default/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   nab: {
     name: "NAB",
     baseUrl: "https://openbank.api.nab.com.au/cds-au/v1",
     logo: "https://www.nab.com.au/etc/designs/nab/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   anz: {
     name: "ANZ",
     baseUrl: "https://api.anz/cds-au/v1",
     logo: "https://www.anz.com.au/etc/designs/commons/images/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   ing: {
     name: "ING",
-    baseUrl: "https://openbanking.api.ing.com.au/cds-au/v1",
+    baseUrl: "https://id.ob.ing.com.au/cds-au/v1",
     logo: "https://www.ing.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   suncorp: {
     name: "Suncorp",
     baseUrl: "https://id-ob.suncorpbank.com.au/cds-au/v1",
     logo: "https://www.suncorp.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   hsbc: {
     name: "HSBC Australia",
-    baseUrl: "https://ob.hsbc.com.au/cds-au/v1",
+    baseUrl: "https://public.ob.hsbc.com.au/cds-au/v1",
     logo: "https://www.hsbc.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   },
   ubank: {
     name: "UBank",
-    baseUrl: "https://ob.ubank.com.au/cds-au/v1",
+    baseUrl: "https://public.cdr-api.86400.com.au/cds-au/v1",
     logo: "https://www.ubank.com.au/favicon.ico",
-    productVersion: "3",
+    productVersion: "4",
     detailVersion: "4"
   }
 };
 
-// Known alternate / historical hosts. If a lender's primary baseUrl returns 301/308/404,
-// we'll retry with these in order before giving up.
+// Historical/alternate hosts retained as secondary fallback only.
 const BASE_URL_FALLBACKS: Record<string, string[]> = {
-  cba: [
-    "https://api.commbank.com.au/public/cds-au/v1",
-    "https://api.cba/cds-au/v1",
-  ],
-  anz: [
-    "https://api.anz/cds-au/v1",
-    "https://api.anz.com/cds-au/v1",
-  ],
-  nab: [
-    "https://openbank.api.nab.com.au/cds-au/v1",
-    "https://api.nab.com.au/cds-au/v1",
-  ],
-  westpac: [
-    "https://digital-api.westpac.com.au/cds-au/v1",
-    "https://digital-api.westpac.com.au/wbc/cds-au/v1",
-  ],
-  banksa: [
-    "https://digital-api.westpac.com.au/cds-au/v1",
-    "https://digital-api.westpac.com.au/bsa/cds-au/v1",
-  ],
-  stgeorge: [
-    "https://digital-api.westpac.com.au/cds-au/v1",
-    "https://digital-api.westpac.com.au/stg/cds-au/v1",
-  ],
-  bankwest: [
-    "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
-    "https://api.bankwest.com.au/cds-au/v1",
-  ],
-  suncorp: [
-    "https://id-ob.suncorpbank.com.au/cds-au/v1",
-    "https://api.suncorpbank.com.au/cds-au/v1",
-  ],
-  hsbc: [
-    "https://ob.hsbc.com.au/cds-au/v1",
-    "https://api.hsbc.com.au/cds-au/v1",
-  ],
-  ubank: [
-    "https://ob.ubank.com.au/cds-au/v1",
-    "https://openbank.api.nab.com.au/cds-au/v1",
-  ],
+  boq: ["https://secure.api.boq.com.au/cds-au/v1"],
+  anz: ["https://api.anz.com/cds-au/v1"],
+  hsbc: ["https://ob.hsbc.com.au/cds-au/v1"],
+  ubank: ["https://ob.ubank.com.au/cds-au/v1", "https://openbank.api.nab.com.au/cds-au/v1"],
+  ing: ["https://openbanking.api.ing.com.au/cds-au/v1"],
 };
+
 
 // Manual redirect-following fetch.
 // Many CDR data holders return 301/308 from their published baseUrl to a new
