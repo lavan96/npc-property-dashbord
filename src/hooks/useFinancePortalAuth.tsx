@@ -38,6 +38,12 @@ const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
 const FINANCE_SESSION_KEY = 'finance_portal_session_token';
+const FINANCE_AUTHED_AT_KEY = 'finance_portal_authed_at';
+// Grace window after a successful login/verify during which we suppress
+// the auto-clear-on-401 redirect to avoid kicking users right back to the
+// login page when an unrelated widget races ahead of the session being
+// fully recognised downstream.
+const AUTH_GRACE_MS = 15_000;
 
 const getStoredValue = (key: string): string | null => {
   try { return sessionStorage.getItem(key) || localStorage.getItem(key); }
@@ -50,6 +56,11 @@ const persistStoredValue = (key: string, value: string) => {
 const clearStoredValue = (key: string) => {
   try { sessionStorage.removeItem(key); } catch {}
   try { localStorage.removeItem(key); } catch {}
+};
+const markAuthed = () => persistStoredValue(FINANCE_AUTHED_AT_KEY, String(Date.now()));
+const recentlyAuthed = (): boolean => {
+  const ts = Number(getStoredValue(FINANCE_AUTHED_AT_KEY) || 0);
+  return ts > 0 && Date.now() - ts < AUTH_GRACE_MS;
 };
 
 async function invokeFinanceFunction(
