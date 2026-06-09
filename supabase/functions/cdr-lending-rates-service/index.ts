@@ -211,7 +211,7 @@ async function fetchProductDetail(
   const rates: LendingRate[] = [];
 
   try {
-    const versionsToTry = [detailVersion, '3', '2', '1'];
+    const versionsToTry = Array.from(new Set([detailVersion, '4', '3', '2', '1']));
     let detailData: any = null;
 
     for (const version of versionsToTry) {
