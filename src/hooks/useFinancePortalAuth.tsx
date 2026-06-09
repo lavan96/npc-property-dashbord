@@ -179,6 +179,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
       if (data.session_token) {
         persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
       }
+      markAuthed();
       setUser(data.user);
       return { mustChangePassword: !!data.user?.must_change_password || !!data.must_change_password };
     } catch {
