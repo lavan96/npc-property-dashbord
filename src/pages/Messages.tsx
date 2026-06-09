@@ -214,23 +214,35 @@ export default function Messages() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Inbox className="h-6 w-6" />
-            Messages
+            Portal Messages
           </h1>
           <p className="text-sm text-muted-foreground">
             All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            loadClientThreads();
-            loadFinanceThreads();
-          }}
-        >
-          <RefreshCcw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              setNewOpen(true);
+              if (allClients.length === 0) loadAllClients();
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New message
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              loadClientThreads();
+              loadFinanceThreads();
+            }}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
