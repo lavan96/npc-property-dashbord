@@ -130,7 +130,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       const { data, error } = await invokeSecureFunction('scrape-property-listing', {
         url: propertyUrl,
         propertyCategory: category,
-      });
+      }, { timeoutMs: 180000 });
 
       if (error) throw new Error(error.message || 'Failed to scrape property listing');
       if (!data?.success) throw new Error(data?.error || 'Scraping failed');
@@ -200,7 +200,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       }
 
       toast({ title: 'Analyzing document', description: 'Extracting property details from the uploaded file...' });
-      const { data, error } = await invokeSecureFunction('parse-property-pdf', requestBody, { timeoutMs: 180000 });
+      const { data, error } = await invokeSecureFunction('parse-property-pdf', requestBody, { timeoutMs: 300000 });
       if (error) throw new Error(error.message || 'Failed to parse document');
       if (!data?.success) throw new Error(data?.error || 'Document parsing failed');
 

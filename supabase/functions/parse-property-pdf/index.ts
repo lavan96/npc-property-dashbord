@@ -114,10 +114,10 @@ interface PageImage {
 const VISION_BATCH_SIZE = 8;
 
 /**
- * Max concurrent batch calls. We run 2 batches in parallel to speed up
- * large document processing while staying within rate limits.
+ * Max concurrent batch calls. We run 4 batches in parallel to keep large
+ * documents under the edge-function wall clock while staying within rate limits.
  */
-const MAX_PARALLEL_BATCHES = 2;
+const MAX_PARALLEL_BATCHES = 4;
 
 // ============= SYSTEM PROMPT =============
 
