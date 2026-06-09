@@ -206,6 +206,14 @@ export default function TemplateBuilderEdit() {
   const [showReferenceImport, setShowReferenceImport] = useState(false);
   // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. OFF by default.
   const editorV2 = useMemo(() => isTemplateEditorV2Enabled(), []);
+  // First-run coachmark for the new V2 drag-and-drop (dismiss persists per-browser).
+  const [showV2Hint, setShowV2Hint] = useState(() => {
+    try { return editorV2 && localStorage.getItem('tpl-v2-coachmark-seen') !== '1'; } catch { return false; }
+  });
+  const dismissV2Hint = () => {
+    setShowV2Hint(false);
+    try { localStorage.setItem('tpl-v2-coachmark-seen', '1'); } catch { /* ignore */ }
+  };
   const [showDiff, setShowDiff] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
@@ -3014,6 +3022,16 @@ export default function TemplateBuilderEdit() {
         />
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {showV2Hint && (
+        <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[640px] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover px-4 py-2.5 text-sm shadow-lg">
+          <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+          <span className="flex-1">
+            <strong>New:</strong> drag any element from the Insert panel straight onto the canvas, and select a text
+            element for the floating quick-style toolbar.
+          </span>
+          <Button size="sm" variant="ghost" className="h-7" onClick={dismissV2Hint}>Got it</Button>
+        </div>
+      )}
       <SaveConflictDialog
         open={showConflict}
         onOpenChange={setShowConflict}
