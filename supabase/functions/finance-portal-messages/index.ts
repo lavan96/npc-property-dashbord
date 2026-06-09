@@ -18,7 +18,6 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders } from "../_shared/auth.ts";
-import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
 
 const BUCKET = 'finance-portal-messages';
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
@@ -43,31 +42,33 @@ function jsonResponse(data: any, status = 200, corsHeaders: Record<string, strin
   });
 }
 
-async function ensureStaffFinanceMessageNotification(supabase: any, messageRow: any, threadId: string) {
+async function ensureStaffFinanceMessageNotification(supabase: any, messageRow: any, threadId: string): Promise<{ status: 'queued' | 'existing' | 'failed'; error?: string }> {
   try {
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from('notifications')
       .select('id')
       .contains('metadata', { message_id: messageRow.id })
       .eq('type', 'finance_portal_message_received')
       .maybeSingle();
 
-    if (existing?.id) return;
+    if (existingError) return { status: 'failed', error: existingError.message };
+    if (existing?.id) return { status: 'existing' };
 
-    const { data: client } = await supabase
+    const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('primary_first_name, primary_surname, primary_email, assigned_team_user_id')
       .eq('id', messageRow.client_id)
       .maybeSingle();
+    if (clientError) return { status: 'failed', error: clientError.message };
 
     const clientName = [client?.primary_first_name, client?.primary_surname]
       .filter(Boolean)
       .join(' ') || client?.primary_email || 'Client';
     const preview = (messageRow.body || '').slice(0, 140) || '(attachment)';
 
-    await supabase.from('notifications').insert({
+    const { error: insertError } = await supabase.from('notifications').insert({
       type: 'finance_portal_message_received',
-      title: `New finance message · ${clientName}`,
+      title: `${messageRow.sender_type === 'client' ? 'Client finance reply' : 'New finance message'} · ${clientName}`,
       message: preview,
       entity_id: messageRow.client_id,
       target_user_id: client?.assigned_team_user_id || null,
@@ -76,13 +77,46 @@ async function ensureStaffFinanceMessageNotification(supabase: any, messageRow: 
         thread_id: threadId,
         message_id: messageRow.id,
         sender_name: messageRow.sender_name,
+        sender_type: messageRow.sender_type,
+        visibility_scope: messageRow.visibility_scope,
+        thread_type: messageRow.thread_type,
+        allocation_status: messageRow.allocation_status,
         link_path: `/clients?clientId=${messageRow.client_id}&tab=finance-messages`,
         source: 'finance-portal-messages',
       },
     });
-  } catch (e) {
+    if (insertError) return { status: 'failed', error: insertError.message };
+    return { status: 'queued' };
+  } catch (e: any) {
     console.error('Failed to ensure staff finance message notification:', e);
+    return { status: 'failed', error: e?.message || 'Command Centre notification failed' };
   }
+}
+
+async function logNotificationFailure(supabase: any, params: {
+  message: any;
+  threadId: string;
+  senderUserId?: string | null;
+  senderPortal: string;
+  recipientPortals: string[];
+  notificationStatus: Record<string, any>;
+  permissionStatus: Record<string, any>;
+}) {
+  await supabase.from('message_governance_log').insert({
+    event_type: 'notification_failed',
+    message_id: params.message.id,
+    source_table: 'finance_portal_messages',
+    thread_id: params.threadId,
+    client_id: params.message.client_id,
+    sender_user_id: params.senderUserId || null,
+    sender_portal: params.senderPortal,
+    recipient_portals: params.recipientPortals,
+    visibility_scope: params.message.visibility_scope,
+    thread_type: params.message.thread_type,
+    allocation_status: params.message.allocation_status || 'none',
+    notification_status: params.notificationStatus,
+    permission_status: params.permissionStatus,
+  });
 }
 
 Deno.serve(async (req) => {
@@ -415,7 +449,6 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Thread visibility and type are immutable; create or select the correct governed thread' }, 400, corsHeaders);
       }
 
-      const requestedScope = body.visibility_scope || (actor.type === 'partner' || actor.type === 'client' ? 'finance_client_with_command_visibility' : thread.visibility_scope || 'command_finance_private');
       const insertRow: any = {
         thread_id,
         client_id: thread.client_id,
@@ -431,6 +464,13 @@ Deno.serve(async (req) => {
           : requestedScope === 'command_client_with_finance_allocated'
             ? { command_centre: 'full', finance_portal: 'thread_granted', client_portal: 'granted' }
             : { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
+        notification_status: actor.type === 'staff'
+          ? { finance_portal: 'queued' }
+          : actor.type === 'partner'
+            ? (['finance_client_with_command_visibility', 'command_client_with_finance_allocated'].includes(requestedScope)
+              ? { client_portal: 'queued', command_centre: 'queued' }
+              : { command_centre: 'queued' })
+            : { finance_portal: 'queued', command_centre: 'queued' },
       };
       if (actor.type === 'partner') insertRow.finance_user_id = actor.portalUserId;
       else if (actor.type === 'staff') insertRow.staff_user_id = actor.userId;
@@ -473,43 +513,137 @@ Deno.serve(async (req) => {
         });
       } catch (e) { console.error('[messages] audit failed', e); }
 
-      // Notify the receiving side after a send. Staff -> partner uses the
-      // Finance Portal notification table; partner -> staff uses the Command
-      // Centre bell notification table, with this fallback covering deployments
-      // where the DB trigger is missing or misconfigured.
+      // Notify the receiving side after a send. Phase 6 notification matrix:
+      // Command → Finance: Finance only. Finance/Client → each other: receiving party + Command Centre.
+      const finalNotificationStatus: Record<string, any> = { ...insertRow.notification_status };
       if (actor.type === 'staff') {
-        await notifyFinancePortalAssignees({
+        const { error: financeNotifyError } = await supabase.from('finance_portal_notifications').insert({
+          portal_user_id: thread.finance_user_id,
           client_id: thread.client_id,
-          notification_type: 'message_received',
-          title: 'New message from staff',
+          notification_type: insertRow.allocation_status !== 'none' ? insertRow.allocation_status : 'message_received',
+          title: 'New message from Command Centre',
           body: trimmed.slice(0, 140) || 'Sent you an attachment',
           link_path: `/finance/clients/${thread.client_id}?tab=messages`,
-          metadata: { thread_id, message_id: message.id },
-        });
-      } else if (actor.type === 'partner') {
-        await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
-        if (requestedScope === 'finance_client_with_command_visibility') {
-          await supabase.from('client_portal_notifications').insert({
+          metadata: {
             client_id: thread.client_id,
-            title: 'New finance message',
+            thread_id,
+            message_id: message.id,
+            visibility_scope: requestedScope,
+            thread_type: requestedThreadType,
+            allocation_status: insertRow.allocation_status,
+          },
+        });
+        finalNotificationStatus.finance_portal = financeNotifyError ? 'failed' : 'queued';
+        if (financeNotifyError) {
+          console.error('[finance-portal-messages] finance notification failed', financeNotifyError.message);
+          await logNotificationFailure(supabase, {
+            message,
+            threadId: thread_id,
+            senderUserId: actor.userId,
+            senderPortal: 'command_centre',
+            recipientPortals: ['finance_portal'],
+            notificationStatus: { finance_portal: 'failed', error: financeNotifyError.message },
+            permissionStatus: insertRow.permission_status,
+          });
+        }
+      } else if (actor.type === 'partner') {
+        const staffNotify = await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
+        finalNotificationStatus.command_centre = staffNotify.status;
+        if (staffNotify.status === 'failed') {
+          await logNotificationFailure(supabase, {
+            message,
+            threadId: thread_id,
+            senderUserId: null,
+            senderPortal: 'finance_portal',
+            recipientPortals: ['command_centre'],
+            notificationStatus: { command_centre: 'failed', error: staffNotify.error },
+            permissionStatus: insertRow.permission_status,
+          });
+        }
+
+        if (['finance_client_with_command_visibility', 'command_client_with_finance_allocated'].includes(requestedScope)) {
+          const { error: clientNotifyError } = await supabase.from('client_portal_notifications').insert({
+            client_id: thread.client_id,
+            title: requestedScope === 'command_client_with_finance_allocated' ? 'Finance update on allocated thread' : 'New finance message',
             message: trimmed.slice(0, 140) || 'Sent you an attachment',
             type: 'info',
             category: 'message',
             action_url: '/portal/messages',
-            metadata: { thread_id, message_id: message.id, source: 'finance_portal' },
+            metadata: {
+              client_id: thread.client_id,
+              thread_id,
+              message_id: message.id,
+              source: 'finance_portal',
+              visibility_scope: requestedScope,
+              thread_type: requestedThreadType,
+              allocation_status: insertRow.allocation_status,
+            },
           });
+          finalNotificationStatus.client_portal = clientNotifyError ? 'failed' : 'queued';
+          if (clientNotifyError) {
+            console.error('[finance-portal-messages] client notification failed', clientNotifyError.message);
+            await logNotificationFailure(supabase, {
+              message,
+              threadId: thread_id,
+              senderUserId: null,
+              senderPortal: 'finance_portal',
+              recipientPortals: ['client_portal', 'command_centre'],
+              notificationStatus: { client_portal: 'failed', command_centre: staffNotify.status, error: clientNotifyError.message },
+              permissionStatus: insertRow.permission_status,
+            });
+          }
         }
       } else {
-        await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
-        await notifyFinancePortalAssignees({
+        const staffNotify = await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
+        finalNotificationStatus.command_centre = staffNotify.status;
+        if (staffNotify.status === 'failed') {
+          await logNotificationFailure(supabase, {
+            message,
+            threadId: thread_id,
+            senderUserId: null,
+            senderPortal: 'client_portal',
+            recipientPortals: ['command_centre'],
+            notificationStatus: { command_centre: 'failed', error: staffNotify.error },
+            permissionStatus: insertRow.permission_status,
+          });
+        }
+
+        const { error: financeNotifyError } = await supabase.from('finance_portal_notifications').insert({
+          portal_user_id: thread.finance_user_id,
           client_id: thread.client_id,
           notification_type: 'client_finance_reply',
           title: 'Client replied to finance',
           body: trimmed.slice(0, 140) || 'Client sent a reply',
           link_path: `/finance/messages`,
-          metadata: { thread_id, message_id: message.id, source: 'client_portal' },
+          metadata: {
+            client_id: thread.client_id,
+            thread_id,
+            message_id: message.id,
+            source: 'client_portal',
+            visibility_scope: requestedScope,
+            thread_type: requestedThreadType,
+            allocation_status: insertRow.allocation_status,
+          },
         });
+        finalNotificationStatus.finance_portal = financeNotifyError ? 'failed' : 'queued';
+        if (financeNotifyError) {
+          console.error('[finance-portal-messages] finance notification failed', financeNotifyError.message);
+          await logNotificationFailure(supabase, {
+            message,
+            threadId: thread_id,
+            senderUserId: null,
+            senderPortal: 'client_portal',
+            recipientPortals: ['finance_portal', 'command_centre'],
+            notificationStatus: { finance_portal: 'failed', command_centre: staffNotify.status, error: financeNotifyError.message },
+            permissionStatus: insertRow.permission_status,
+          });
+        }
       }
+
+      await supabase
+        .from('finance_portal_messages')
+        .update({ notification_status: finalNotificationStatus })
+        .eq('id', message.id);
 
       return jsonResponse({ success: true, message }, 200, corsHeaders);
     }

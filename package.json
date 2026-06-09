@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:messaging-governance": "node scripts/validate-messaging-governance.cjs"
+    "test:messaging-governance": "node scripts/validate-messaging-governance.cjs",
+    "test:messaging-phase8": "node scripts/validate-messaging-phase8-scenarios.cjs",
+    "test:messaging-phase9": "node scripts/validate-messaging-phase9-deployment.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
