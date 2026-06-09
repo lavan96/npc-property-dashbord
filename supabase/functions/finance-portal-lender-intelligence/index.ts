@@ -126,6 +126,55 @@ Deno.serve(async (req) => {
     }
 
     // -----------------------------------------------------------------------
+    // Refresh shared Command Centre rate cache (mirrors Borrowing Capacity calculator
+    // "Refresh all" flow). Calls cdr-lending-rates-service server-to-server with the
+    // service-role key, so Finance Partners can pull live lender rates on demand.
+    if (operation === 'refresh_rates') {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const lenderOnly = body?.lender_id ? String(body.lender_id) : null;
+
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 240_000); // 4 minutes
+        const resp = await fetch(
+          `${supabaseUrl}/functions/v1/cdr-lending-rates-service`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${serviceKey}`,
+              apikey: serviceKey,
+            },
+            body: JSON.stringify(
+              lenderOnly
+                ? { action: 'rates', lender: lenderOnly, refresh: true }
+                : { action: 'refresh-all' },
+            ),
+            signal: ctrl.signal,
+          },
+        );
+        clearTimeout(t);
+
+        const payload = await resp.json().catch(() => ({}));
+        if (!resp.ok || payload?.success === false) {
+          return json(
+            { error: payload?.error || `Refresh failed (status ${resp.status})` },
+            502,
+          );
+        }
+        return json({
+          success: true,
+          summary: payload?.summary ?? null,
+          results: payload?.data ?? null,
+        });
+      } catch (e: any) {
+        return json({ error: e?.message || 'Refresh failed' }, 500);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+
     if (operation === 'list_playbooks') {
       const { data, error } = await supabase
         .from('lender_playbooks')
