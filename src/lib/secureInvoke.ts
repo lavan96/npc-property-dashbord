@@ -34,6 +34,11 @@ export function isAuthExhausted(): boolean {
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const SESSION_TOKEN_KEY = 'session_token';
 
+const COMMAND_CENTRE_MESSAGING_FUNCTIONS = new Set([
+  'staff-client-portal-messages',
+  'finance-portal-messages',
+]);
+
 export interface InvokeResult<T = any> {
   data: T | null;
   error: { message: string } | null;
@@ -77,9 +82,17 @@ export async function invokeSecureFunction<T = any>(
     const accessToken = getAccessToken();
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
     
+    const isCommandCentreMessagingFunction = COMMAND_CENTRE_MESSAGING_FUNCTIONS.has(functionName);
     const requestBody = body 
-      ? { ...body, session_token: sessionToken, command_centre_session_token: sessionToken }
-      : { session_token: sessionToken, command_centre_session_token: sessionToken };
+      ? {
+        ...body,
+        session_token: sessionToken,
+        ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
+      }
+      : {
+        session_token: sessionToken,
+        ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
+      };
     
     const controller = new AbortController();
     const timeoutMs = options?.timeoutMs || 60000;
@@ -93,7 +106,7 @@ export async function invokeSecureFunction<T = any>(
         'Authorization': `Bearer ${bearerToken}`,
         ...(sessionToken ? {
           'x-session-token': sessionToken,
-          'x-command-centre-session-token': sessionToken,
+          ...(isCommandCentreMessagingFunction ? { 'x-command-centre-session-token': sessionToken } : {}),
         } : {}),
       },
       credentials: 'omit',

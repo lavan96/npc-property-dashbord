@@ -20,6 +20,11 @@ function assertContains(rel, needle, message) {
   if (body.includes(needle)) pass(message);
   else fail(message, `Missing: ${needle}\n   File: ${rel}`);
 }
+function assertNotContains(rel, needle, message) {
+  const body = read(rel);
+  if (!body.includes(needle)) pass(message);
+  else fail(message, `Unexpected: ${needle}\n   File: ${rel}`);
+}
 function assertFile(rel, message) {
   if (fs.existsSync(path.join(root, rel))) pass(message);
   else fail(message, `Missing file: ${rel}`);
@@ -60,7 +65,9 @@ if (staffConfig.includes('verify_jwt = false')) pass('staff-client-portal-messag
 else fail('staff-client-portal-messages must set verify_jwt = false to avoid browser CORS Failed to fetch errors');
 
 
-assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'Phase 9 secureInvoke sends explicit Command Centre session header');
+assertContains('src/lib/secureInvoke.ts', 'COMMAND_CENTRE_MESSAGING_FUNCTIONS', 'Phase 9 secureInvoke scopes Command Centre session headers to messaging functions');
+assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'Phase 9 secureInvoke sends explicit Command Centre session header for messaging');
+assertNotContains('supabase/functions/_shared/auth.ts', "'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token, x-portal-session-token, x-finance-session-token'", 'Phase 9 shared CORS defaults remain compatible with non-messaging integrations');
 assertContains('supabase/functions/staff-client-portal-messages/index.ts', 'x-command-centre-session-token', 'Phase 9 staff messaging CORS permits Command Centre secureInvoke header');
 assertContains('supabase/functions/finance-portal-messages/index.ts', 'const financeToken = commandCentreToken ? null : extractFinancePortalToken', 'Phase 9 finance messages classify Command Centre staff before Finance Portal partner auth');
 assertContains('supabase/functions/_shared/auth.ts', 'command_centre_session_token', 'Phase 9 shared auth accepts Command Centre session body fallback');

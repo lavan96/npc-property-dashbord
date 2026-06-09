@@ -30,6 +30,11 @@ function assertRegex(rel, regex, message) {
   if (regex.test(body)) pass(message);
   else fail(`${message}\n   Missing pattern: ${regex}\n   File: ${rel}`);
 }
+function assertNotContains(rel, needle, message) {
+  const body = read(rel);
+  if (!body.includes(needle)) pass(message);
+  else fail(`${message}\n   Unexpected: ${needle}\n   File: ${rel}`);
+}
 
 console.log('NPC messaging governance static validation\n');
 
@@ -58,8 +63,11 @@ assertContains(governanceMigration, "'client_portal', 'blocked', 'finance_portal
 
 
 // Command Centre secure invoke / CORS diagnostics for outbound messaging.
-assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'secureInvoke sends an explicit Command Centre session header');
-assertContains('src/lib/secureInvoke.ts', 'command_centre_session_token: sessionToken', 'secureInvoke mirrors the Command Centre session in the request body');
+assertContains('src/lib/secureInvoke.ts', 'COMMAND_CENTRE_MESSAGING_FUNCTIONS', 'secureInvoke scopes Command Centre-only headers to messaging functions');
+assertContains('src/lib/secureInvoke.ts', 'COMMAND_CENTRE_MESSAGING_FUNCTIONS.has(functionName)', 'secureInvoke gates Command Centre session propagation by function name');
+assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'secureInvoke sends an explicit Command Centre session header only for messaging functions');
+assertContains('src/lib/secureInvoke.ts', 'command_centre_session_token: sessionToken', 'secureInvoke mirrors the Command Centre session in the request body only for messaging functions');
+assertNotContains('supabase/functions/_shared/auth.ts', "'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token, x-portal-session-token, x-finance-session-token'", 'Shared CORS defaults do not globally require Command Centre-only headers');
 assertContains('supabase/functions/_shared/auth.ts', 'x-command-centre-session-token', 'Shared auth extracts explicit Command Centre session tokens');
 assertContains('supabase/functions/staff-client-portal-messages/index.ts', 'x-command-centre-session-token', 'Staff client messaging CORS allows Command Centre session header');
 assertContains('supabase/functions/finance-portal-messages/index.ts', 'const commandCentreToken =', 'Finance messaging resolves Command Centre staff sessions before portal sessions');
