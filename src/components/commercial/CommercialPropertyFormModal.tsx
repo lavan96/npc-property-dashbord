@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
+import { PropertyImportPanel, type ImportedPropertyData } from '@/components/property-import/PropertyImportPanel';
 
 interface Props {
   open: boolean;
@@ -40,6 +41,28 @@ const TENURE = [
   { value: 'strata', label: 'Strata' },
 ];
 
+
+function normalizeCommercialAssetClass(value: string | undefined, fallback: any) {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase().replace(/[\s-]+/g, '_');
+  const match = ASSET_CLASSES.find(option => option.value === normalized || option.label.toLowerCase() === value.toLowerCase());
+  if (match) return match.value;
+  if (normalized.includes('retail')) return 'retail';
+  if (normalized.includes('industrial') || normalized.includes('warehouse')) return 'industrial';
+  if (normalized.includes('office')) return 'office';
+  if (normalized.includes('medical')) return 'medical';
+  if (normalized.includes('child')) return 'childcare';
+  if (normalized.includes('hospitality') || normalized.includes('hotel')) return 'hospitality';
+  if (normalized.includes('mixed')) return 'mixed_use';
+  return fallback;
+}
+
+function normalizeTenure(value: string | undefined, fallback: any) {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase().replace(/[\s-]+/g, '_');
+  return TENURE.some(option => option.value === normalized) ? normalized : fallback;
+}
+
 export function CommercialPropertyFormModal({ open, onClose, property, onSaved }: Props) {
   const isEdit = !!property;
   const initial = useMemo(() => ({
@@ -69,6 +92,28 @@ export function CommercialPropertyFormModal({ open, onClose, property, onSaved }
   const [saving, setSaving] = useState(false);
 
   const set = (k: keyof typeof form, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const applyImportedData = (data: ImportedPropertyData) => {
+    setForm(prev => ({
+      ...prev,
+      address: data.address ?? prev.address,
+      suburb: data.suburb ?? prev.suburb,
+      state: data.state ?? prev.state,
+      postcode: data.postcode ?? prev.postcode,
+      asset_class: normalizeCommercialAssetClass(data.assetClass, prev.asset_class),
+      asset_sub_type: data.assetSubType ?? prev.asset_sub_type,
+      tenure: normalizeTenure(data.tenure, prev.tenure),
+      zoning: data.zoning ?? prev.zoning,
+      gfa_sqm: data.gfaSqm ?? prev.gfa_sqm,
+      nla_sqm: data.nlaSqm ?? data.glaSqm ?? data.gfaSqm ?? prev.nla_sqm,
+      site_area_sqm: data.siteAreaSqm ?? prev.site_area_sqm,
+      parking_bays: data.parkingBays ?? prev.parking_bays,
+      year_built: data.yearBuilt ?? prev.year_built,
+      purchase_price: data.price ?? prev.purchase_price,
+      valuation: data.valuation ?? prev.valuation,
+      notes: [prev.notes, data.notes, data.sourceUrl ? `Source: ${data.sourceUrl}` : ''].filter(Boolean).join('\n\n'),
+    }));
+  };
 
   const handleSave = async () => {
     if (!form.address.trim()) {
@@ -111,6 +156,7 @@ export function CommercialPropertyFormModal({ open, onClose, property, onSaved }
         </DialogHeader>
         <ScrollArea className="flex-1 px-6">
           <div className="grid grid-cols-2 gap-4 py-4">
+            <PropertyImportPanel category="commercial" onImported={applyImportedData} />
             <div className="col-span-2 space-y-2">
               <Label>Address *</Label>
               <Input value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Main St" />
