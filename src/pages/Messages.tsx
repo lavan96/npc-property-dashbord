@@ -15,11 +15,32 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MessageSquare, RefreshCcw, Search, ShieldCheck, Inbox } from 'lucide-react';
+import { Loader2, MessageSquare, RefreshCcw, Search, ShieldCheck, Inbox, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ClientPortalMessagesPanel } from '@/components/clients/ClientPortalMessagesPanel';
 import { StaffFinancePortalMessagesPanel } from '@/components/clients/StaffFinancePortalMessagesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+
+type NewMessageScope =
+  | 'cp_client_only'
+  | 'cp_internal'
+  | 'cp_client_with_finance'
+  | 'fp_command_finance'
+  | 'fp_finance_client'
+  | 'fp_command_client_allocated';
+
+const SCOPE_OPTIONS: { value: NewMessageScope; label: string; group: 'client' | 'finance'; hint: string }[] = [
+  { value: 'cp_client_only', label: 'Client Portal — Client visible', group: 'client', hint: 'Reply visible to client in their portal' },
+  { value: 'cp_client_with_finance', label: 'Client Portal — Client + Finance allocated', group: 'client', hint: 'Visible to client and finance partner' },
+  { value: 'cp_internal', label: 'Client Portal — Internal note', group: 'client', hint: 'Command Centre staff only' },
+  { value: 'fp_command_finance', label: 'Finance Portal — Command ↔ Finance', group: 'finance', hint: 'Private between Command Centre and finance partner' },
+  { value: 'fp_finance_client', label: 'Finance Portal — Finance ↔ Client (CC visible)', group: 'finance', hint: 'Finance partner ↔ client; Command Centre can observe' },
+  { value: 'fp_command_client_allocated', label: 'Finance Portal — Command ↔ Client (finance allocated)', group: 'finance', hint: 'Command Centre ↔ client with finance allocation' },
+];
 
 interface ClientPortalThread {
   client_id: string;
@@ -68,6 +89,21 @@ export default function Messages() {
   const [financeThreads, setFinanceThreads] = useState<FinanceThreadRow[]>([]);
   const [loadingFinance, setLoadingFinance] = useState(true);
   const [selectedFinanceClientId, setSelectedFinanceClientId] = useState<string | null>(null);
+
+  // New Message dialog
+  const [newOpen, setNewOpen] = useState(false);
+  const [newScope, setNewScope] = useState<NewMessageScope>('cp_client_only');
+  const [newClientId, setNewClientId] = useState<string>('');
+  const [newClientSearch, setNewClientSearch] = useState('');
+  const [allClients, setAllClients] = useState<{ id: string; primary_contact_name: string | null; primary_contact_email: string | null }[]>([]);
+  const [loadingAllClients, setLoadingAllClients] = useState(false);
+
+  const loadAllClients = async () => {
+    setLoadingAllClients(true);
+    const { data, error } = await invokeSecureFunction('finance-portal-admin', { operation: 'list_clients' });
+    if (!error) setAllClients((data?.records || []) as any);
+    setLoadingAllClients(false);
+  };
 
   const loadClientThreads = async () => {
     setLoadingClient(true);
@@ -178,23 +214,35 @@ export default function Messages() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Inbox className="h-6 w-6" />
-            Messages
+            Portal Messages
           </h1>
           <p className="text-sm text-muted-foreground">
             All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            loadClientThreads();
-            loadFinanceThreads();
-          }}
-        >
-          <RefreshCcw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              setNewOpen(true);
+              if (allClients.length === 0) loadAllClients();
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New message
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              loadClientThreads();
+              loadFinanceThreads();
+            }}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
@@ -365,6 +413,105 @@ export default function Messages() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New portal message</DialogTitle>
+            <DialogDescription>
+              Choose the scope and client. The thread will open in the relevant portal panel where you can compose your message.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Scope</Label>
+              <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCOPE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      <div className="flex flex-col">
+                        <span>{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{s.hint}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Client</Label>
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients…"
+                  value={newClientSearch}
+                  onChange={(e) => setNewClientSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <ScrollArea className="h-56 border rounded-md">
+                {loadingAllClients ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {allClients
+                      .filter((c) => {
+                        const q = newClientSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          c.primary_contact_name?.toLowerCase().includes(q) ||
+                          c.primary_contact_email?.toLowerCase().includes(q)
+                        );
+                      })
+                      .slice(0, 100)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setNewClientId(c.id)}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-sm hover:bg-muted/50',
+                            newClientId === c.id && 'bg-muted',
+                          )}
+                        >
+                          <div className="font-medium">{c.primary_contact_name || 'Unnamed client'}</div>
+                          {c.primary_contact_email && (
+                            <div className="text-xs text-muted-foreground">{c.primary_contact_email}</div>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!newClientId}
+              onClick={() => {
+                const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
+                if (scopeMeta.group === 'client') {
+                  setTab('client');
+                  setSelectedClientId(newClientId);
+                } else {
+                  setTab('finance');
+                  setSelectedFinanceClientId(newClientId);
+                }
+                setNewOpen(false);
+                toast.success(`Opened thread in ${scopeMeta.label}. Compose using the scope selector in the panel.`);
+              }}
+            >
+              Open thread
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

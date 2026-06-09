@@ -67,7 +67,7 @@ const navigationItems = [
   { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText, moduleKey: 'report_qa' },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
-  { title: 'Messages', url: '/messages', icon: Inbox, moduleKey: '__always__' },
+  { title: 'Portal Messages', url: '/messages', icon: Inbox, moduleKey: '__always__' },
   { title: 'CRM Conversations', url: '/conversations', icon: MessageSquare, moduleKey: 'conversations' },
   { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
   { title: 'Client Tracker', url: '/client-tracker', icon: Target, moduleKey: 'client_tracker' },
