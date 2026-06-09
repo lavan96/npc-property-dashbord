@@ -386,6 +386,7 @@ export function BCScenarioAgent({
       let assistantText = '';
       let toolCallArgs = '';
       let hasToolCall = false;
+      let streamError: string | null = null;
 
       const updateAssistant = (text: string) => {
         setMessages(prev => {
@@ -414,6 +415,16 @@ export function BCScenarioAgent({
 
           try {
             const parsed = JSON.parse(jsonStr);
+
+            // In-stream error: the edge function now opens the SSE response
+            // immediately (to avoid gateway 504s) and reports model/timeout
+            // errors as a `data: { error }` event rather than a non-200 status.
+            // Record it and stop — surfaced as a toast after the read loop.
+            if (parsed?.error) {
+              streamError = String(parsed.error);
+              break;
+            }
+
             const delta = parsed.choices?.[0]?.delta;
 
             // Text content
@@ -435,6 +446,13 @@ export function BCScenarioAgent({
             // Partial JSON, skip
           }
         }
+        if (streamError) break;
+      }
+
+      // Surface a model/timeout error reported inside the stream as a toast,
+      // mirroring the pre-stream non-200 handling above.
+      if (streamError) {
+        throw new Error(streamError);
       }
 
       // Parse tool call result for scenarios
