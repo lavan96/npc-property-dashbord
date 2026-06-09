@@ -52,84 +52,84 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
     baseUrl: "https://api.cdr.bendigobank.com.au/cds-au/v1",
     logo: "https://www.bendigobank.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   bankwest: {
     name: "Bankwest",
     baseUrl: "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
     logo: "https://www.bankwest.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   westpac: {
     name: "Westpac",
     baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
     logo: "https://www.westpac.com.au/etc/designs/westpac/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   banksa: {
     name: "BankSA",
     baseUrl: "https://digital-api.banksa.com.au/cds-au/v1",
     logo: "https://www.banksa.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   stgeorge: {
     name: "St.George",
     baseUrl: "https://digital-api.stgeorge.com.au/cds-au/v1",
     logo: "https://www.stgeorge.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   cba: {
     name: "Commonwealth Bank",
     baseUrl: "https://api.commbank.com.au/public/cds-au/v1",
     logo: "https://www.commbank.com.au/etc/designs/default/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   nab: {
     name: "NAB",
     baseUrl: "https://openbank.api.nab.com.au/cds-au/v1",
     logo: "https://www.nab.com.au/etc/designs/nab/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   anz: {
     name: "ANZ",
     baseUrl: "https://api.anz/cds-au/v1",
     logo: "https://www.anz.com.au/etc/designs/commons/images/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   ing: {
     name: "ING",
     baseUrl: "https://id.ob.ing.com.au/cds-au/v1",
     logo: "https://www.ing.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   suncorp: {
     name: "Suncorp",
     baseUrl: "https://id-ob.suncorpbank.com.au/cds-au/v1",
     logo: "https://www.suncorp.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   hsbc: {
     name: "HSBC Australia",
     baseUrl: "https://public.ob.hsbc.com.au/cds-au/v1",
     logo: "https://www.hsbc.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   ubank: {
     name: "UBank",
     baseUrl: "https://public.cdr-api.86400.com.au/cds-au/v1",
     logo: "https://www.ubank.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   }
 };
 
