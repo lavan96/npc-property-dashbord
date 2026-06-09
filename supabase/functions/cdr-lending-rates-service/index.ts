@@ -593,6 +593,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Action: Probe one lender without writing cache — useful for diagnostics.
+    if (action === 'probe' && lenderId) {
+      const lenderConfig = CDR_LENDERS[lenderId];
+      if (!lenderConfig) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Unknown lender" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const result = await fetchLenderProducts(lenderId, lenderConfig);
+      return new Response(
+        JSON.stringify({
+          success: result.rates.length > 0,
+          lenderId,
+          lenderName: lenderConfig.name,
+          rateCount: result.rates.length,
+          usedBaseUrl: result.usedBaseUrl,
+          httpStatus: result.status,
+          error: result.error || null,
+          sample: result.rates.slice(0, 5),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Action: Get best rates across all lenders (CDR + manual)
     if (action === 'best-rates') {
       const allRates: LendingRate[] = [];
