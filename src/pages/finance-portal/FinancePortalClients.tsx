@@ -245,7 +245,8 @@ function CreateClientDialog({
       });
 
       if (error || !data?.success || !data?.client?.id) {
-        throw new Error(data?.error || error?.message || 'Failed to create client');
+        const detail = data?.details || data?.error || error?.message || 'Failed to create client';
+        throw new Error(String(detail));
       }
 
       if (data.ghl_sync?.success) {
