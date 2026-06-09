@@ -463,16 +463,83 @@ function CreateClientDialog({
             />
           </div>
 
-          <Card className="bg-muted/20">
-            <CardContent className="flex flex-col gap-2 pt-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-medium text-foreground">What happens next</p>
-                <p>The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.</p>
+          {/* GHL sync (mirrors dashboard AddClientModal) */}
+          <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="finance-syncToGHL"
+                checked={syncToGHL}
+                onCheckedChange={(checked) => setSyncToGHL(checked as boolean)}
+              />
+              <Label htmlFor="finance-syncToGHL" className="text-sm font-normal cursor-pointer">
+                Sync to GoHighLevel after creating
+              </Label>
+            </div>
+
+            {syncToGHL && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="finance-pipeline">Pipeline (Optional)</Label>
+                  <Select
+                    value={selectedPipelineId}
+                    onValueChange={(value) => {
+                      setSelectedPipelineId(value);
+                      setSelectedStageId('');
+                    }}
+                    disabled={pipelinesLoading || pipelines.length === 0}
+                  >
+                    <SelectTrigger id="finance-pipeline">
+                      <SelectValue
+                        placeholder={
+                          pipelinesLoading
+                            ? 'Loading pipelines...'
+                            : pipelines.length === 0
+                              ? 'No pipelines available'
+                              : 'Select a pipeline...'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="finance-stage">Pipeline Stage (Optional)</Label>
+                  <Select
+                    value={selectedStageId}
+                    onValueChange={setSelectedStageId}
+                    disabled={!selectedPipelineId || pipelineStages.length === 0}
+                  >
+                    <SelectTrigger id="finance-stage">
+                      <SelectValue
+                        placeholder={
+                          !selectedPipelineId
+                            ? 'Select a pipeline first...'
+                            : pipelineStages.length === 0
+                              ? 'No stages available'
+                              : 'Select a stage...'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelineStages.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Badge variant="outline">No pipeline opportunity is created</Badge>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.
+            </p>
+          </div>
+
 
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => handleOpenChange(false)} disabled={submitting}>
