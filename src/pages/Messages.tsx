@@ -413,6 +413,105 @@ export default function Messages() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New portal message</DialogTitle>
+            <DialogDescription>
+              Choose the scope and client. The thread will open in the relevant portal panel where you can compose your message.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Scope</Label>
+              <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCOPE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      <div className="flex flex-col">
+                        <span>{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{s.hint}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Client</Label>
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients…"
+                  value={newClientSearch}
+                  onChange={(e) => setNewClientSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <ScrollArea className="h-56 border rounded-md">
+                {loadingAllClients ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {allClients
+                      .filter((c) => {
+                        const q = newClientSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          c.primary_contact_name?.toLowerCase().includes(q) ||
+                          c.primary_contact_email?.toLowerCase().includes(q)
+                        );
+                      })
+                      .slice(0, 100)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setNewClientId(c.id)}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-sm hover:bg-muted/50',
+                            newClientId === c.id && 'bg-muted',
+                          )}
+                        >
+                          <div className="font-medium">{c.primary_contact_name || 'Unnamed client'}</div>
+                          {c.primary_contact_email && (
+                            <div className="text-xs text-muted-foreground">{c.primary_contact_email}</div>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!newClientId}
+              onClick={() => {
+                const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
+                if (scopeMeta.group === 'client') {
+                  setTab('client');
+                  setSelectedClientId(newClientId);
+                } else {
+                  setTab('finance');
+                  setSelectedFinanceClientId(newClientId);
+                }
+                setNewOpen(false);
+                toast.success(`Opened thread in ${scopeMeta.label}. Compose using the scope selector in the panel.`);
+              }}
+            >
+              Open thread
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
