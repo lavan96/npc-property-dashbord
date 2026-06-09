@@ -8073,6 +8073,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "finance_portal_client_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "finance_portal_client_assignments_finance_user_id_fkey"
             columns: ["finance_user_id"]
             isOneToOne: false
