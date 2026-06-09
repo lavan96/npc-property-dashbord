@@ -132,6 +132,11 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
 
   const sortedThreads = useMemo(
     () => [...threads].sort((a, b) => {
+      // Keep the three governed channels in a stable order so staff always see
+      // the same layout (Command↔Finance, Finance↔Client, Command↔Client).
+      const oa = THREAD_TYPE_ORDER[a.thread_type || ''] ?? 99;
+      const ob = THREAD_TYPE_ORDER[b.thread_type || ''] ?? 99;
+      if (oa !== ob) return oa - ob;
       const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
       const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
       return tb - ta;
