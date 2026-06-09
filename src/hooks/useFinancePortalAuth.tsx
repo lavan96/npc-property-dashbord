@@ -107,14 +107,41 @@ async function invokeFinanceFunction(
         !recentlyAuthed() &&
         /invalid session|session expired|invalid or expired session/i.test(msgStr)
       ) {
-        try { clearStoredValue(FINANCE_SESSION_KEY); } catch {}
+        // Re-verify before tearing down the session. A single 401 from a
+        // background widget is not enough evidence that the session is gone —
+        // it can be a race, a transient backend issue, or a function-specific
+        // bug. Only clear + redirect when finance-portal-verify confirms.
         try {
-          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/finance/login')) {
-            const ret = encodeURIComponent(window.location.pathname + window.location.search);
-            window.location.replace(`/finance/login?reason=expired&return=${ret}`);
+          const verifyResp = await fetch(`${SUPABASE_URL}/functions/v1/finance-portal-verify`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'x-finance-session-token': sessionToken,
+            },
+            credentials: 'omit',
+            body: JSON.stringify({ finance_session_token: sessionToken, session_token: sessionToken }),
+          });
+          const verifyData = await verifyResp.json().catch(() => ({}));
+          if (verifyResp.ok && verifyData?.valid) {
+            // Session is fine — keep it and mark recently authed to suppress
+            // further redirects from the same race.
+            markAuthed();
+          } else {
+            try { clearStoredValue(FINANCE_SESSION_KEY); } catch {}
+            try {
+              if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/finance/login')) {
+                const ret = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.replace(`/finance/login?reason=expired&return=${ret}`);
+              }
+            } catch {}
           }
-        } catch {}
+        } catch {
+          // Network blip — don't redirect; let the user keep working.
+        }
       }
+
       return { data, error: { message: msgStr, status: response.status } };
     }
     return { data, error: null };
