@@ -241,6 +241,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
 
   const setSessionFromInvite = useCallback((sessionToken: string, nextUser: FinancePortalUser) => {
     persistStoredValue(FINANCE_SESSION_KEY, sessionToken);
+    markAuthed();
     setUser(nextUser);
     setLoading(false);
   }, []);
