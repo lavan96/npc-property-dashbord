@@ -93,6 +93,7 @@ export function EditorialCanvas({
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [transientOverlayPatches, setTransientOverlayPatches] = useState<Record<string, Partial<Overlay>>>({});
+  const [isDropTarget, setIsDropTarget] = useState(false);
 
   // Flatten overlays with their parent block id (in render order).
   const sourceOverlays = useMemo<FlatOverlay[]>(() => {
@@ -503,8 +504,10 @@ export function EditorialCanvas({
           <div
             ref={stageRef}
             onPointerDown={beginMarquee}
-            onDragOver={onPaletteDrop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } : undefined}
+            onDragOver={onPaletteDrop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDropTarget(true); } : undefined}
+            onDragLeave={onPaletteDrop ? () => setIsDropTarget(false) : undefined}
             onDrop={onPaletteDrop ? (e) => {
+              setIsDropTarget(false);
               const item = parsePaletteDrag(e.dataTransfer.getData(PALETTE_DRAG_MIME));
               if (!item) return;
               e.preventDefault();
@@ -513,7 +516,7 @@ export function EditorialCanvas({
               const rect = el.getBoundingClientRect();
               onPaletteDrop(item, screenToPagePoint({ clientX: e.clientX, clientY: e.clientY, rect, zoom }));
             } : undefined}
-            className="relative bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
+            className={`relative bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)] ${isDropTarget ? 'outline-dashed outline-2 outline-primary outline-offset-2' : ''}`}
             style={{
               width: pageW * zoom,
               height: pageH * zoom,
