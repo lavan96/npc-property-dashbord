@@ -99,6 +99,39 @@ export function EditorialCanvas({
     return out;
   }, [page]);
 
+  // Apply in-flight drag/resize patches so the canvas reflects live state
+  // without committing back to the template until pointer-up.
+  const overlays = useMemo<FlatOverlay[]>(() => {
+    if (Object.keys(transientOverlayPatches).length === 0) return sourceOverlays;
+    return sourceOverlays.map((f) => {
+      const patch = transientOverlayPatches[f.overlay.id];
+      return patch ? { ...f, overlay: { ...f.overlay, ...patch } as Overlay } : f;
+    });
+  }, [sourceOverlays, transientOverlayPatches]);
+
+  // Comment badge counts derived from anchors for the current page.
+  const overlayCommentCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of commentAnchors) {
+      if (a.resolved) continue;
+      if (a.pageId && a.pageId !== page.id) continue;
+      if (!a.overlayId) continue;
+      m.set(a.overlayId, (m.get(a.overlayId) ?? 0) + 1);
+    }
+    return m;
+  }, [commentAnchors, page.id]);
+
+  const unresolvedPageCommentCount = useMemo(() => {
+    let n = 0;
+    for (const a of commentAnchors) {
+      if (a.resolved) continue;
+      if (a.pageId && a.pageId !== page.id) continue;
+      if (!a.overlayId && !a.blockId) n += 1;
+    }
+    return n;
+  }, [commentAnchors, page.id]);
+
+
   // Single-page HTML for the iframe. The canvas hides overlays and draws its own
   // handles, so the rendered background doesn't depend on overlay geometry — key
   // the render on a signature that excludes overlays so dragging/resizing an
