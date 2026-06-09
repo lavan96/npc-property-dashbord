@@ -15,6 +15,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import type { ReportTemplate, Page, Block, Overlay } from '@/lib/reportTemplate/templateSchema';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFontFamily } from './fontResolver';
+import { spansToTextOverlays, type RawSpan } from './textLayout';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -136,47 +137,50 @@ export async function extractPdfToTemplate(
       if (mode === 'ocr') {
         // Skip pdfjs text extraction — rely on Tesseract on the raster image.
         // (Overlays populated in the rasterize block below.)
+      } else if (mode === 'pixel') {
+        // Pixel-perfect (non-editable): raster only, emitted as the page background below.
       } else {
-        // Track A: extract text runs
+        // Track A (R1): collect raw spans, then merge into correctly-positioned,
+        // non-overlapping lines via the pure textLayout pipeline.
         const content = await page.getTextContent({ includeMarkedContent: false } as any);
+        const spans: RawSpan[] = [];
         for (const item of content.items as any[]) {
           if (!('str' in item) || !item.str || !item.transform) continue;
-          const str = item.str as string;
-          if (!str.trim()) continue;
-          const t = item.transform as number[]; // [a,b,c,d,e,f]
-          const fontSize = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 12;
-          const x = t[4];
-          // pdfjs y is text baseline from bottom-left
-          const yBaseline = t[5];
-          const yTop = pageHeight - yBaseline - fontSize;
-          const width = (item.width as number) || fontSize * str.length * 0.5;
-          const height = (item.height as number) || fontSize * 1.2;
-
+          if (!(item.str as string).trim()) continue;
           const styles = (content.styles as Record<string, any>) || {};
-          const styleEntry = styles[item.fontName] || {};
-          const psName = styleEntry.fontFamily || item.fontName || 'Helvetica';
+          const psName = styles[item.fontName]?.fontFamily || item.fontName || 'Helvetica';
           const resolved = resolveFontFamily(psName);
           fontsUsed.add(psName);
           if (resolved.substituted) fontsSubstituted.add(psName);
-
+          spans.push({
+            text: item.str as string,
+            transform: item.transform as number[],
+            width: item.width as number,
+            fontFamily: resolved.family,
+            fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
+            fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
+          });
+        }
+        for (const spec of spansToTextOverlays(spans, pageHeight)) {
           overlays.push({
             id: crypto.randomUUID(),
             type: 'text',
-            x,
-            y: yTop,
-            width: Math.max(width + 4, fontSize * 2),
-            height: Math.max(height, fontSize * 1.2),
-            rotation: 0,
+            x: spec.x,
+            y: spec.y,
+            width: spec.width,
+            height: spec.height,
+            rotation: spec.rotation,
             opacity: 1,
-            content: str,
-            fontFamily: resolved.family,
-            fontSize,
-            fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
-            fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
-            color: '#111111',
-            align: 'left',
-            lineHeight: 1.2,
+            content: spec.content,
+            fontFamily: spec.fontFamily ?? 'Helvetica',
+            fontSize: spec.fontSize,
+            fontWeight: spec.fontWeight ?? 'normal',
+            fontStyle: spec.fontStyle ?? 'normal',
+            color: spec.color ?? '#111111',
+            align: spec.align,
+            lineHeight: spec.lineHeight,
             letterSpacing: 0,
+            ...(spec.runs ? { runs: spec.runs } : {}),
           } as Overlay);
           textBlocks++;
         }
@@ -184,7 +188,9 @@ export async function extractPdfToTemplate(
 
       // Optional Track B raster (also used for OCR mode as the source image)
       let backgroundImageUrl: string | undefined;
-      const needRaster = mode === 'pixel' || mode === 'hybrid' || mode === 'ocr';
+      // R1: editable modes (semantic/hybrid) no longer bake a text-bearing raster
+      // behind live text. Only 'pixel' (non-editable trace) and 'ocr' rasterize.
+      const needRaster = mode === 'pixel' || mode === 'ocr';
       let rasterCanvas: HTMLCanvasElement | null = null;
       if (needRaster) {
         onProgress({ phase: 'rasterizing', page: pageIndex, totalPages });
@@ -197,7 +203,7 @@ export async function extractPdfToTemplate(
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
         rasterCanvas = canvas;
 
-        if (mode === 'pixel' || mode === 'hybrid') {
+        if (mode === 'pixel') {
           const blob: Blob = await new Promise((resolve) =>
             canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
           );

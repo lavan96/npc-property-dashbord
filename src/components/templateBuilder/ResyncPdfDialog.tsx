@@ -37,7 +37,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<FidelityMode>('hybrid');
+  const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
