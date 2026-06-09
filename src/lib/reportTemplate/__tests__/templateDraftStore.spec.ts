@@ -5,7 +5,17 @@ import {
   type DraftComparableFields,
   type TemplateDraft,
 } from '../templateDraftStore';
-import { makeBlankTemplate, type ReportTemplate } from '../templateSchema';
+import { type ReportTemplate } from '../templateSchema';
+
+// A FIXED schema (deterministic page id) — `makeBlankTemplate()` assigns a random
+// page id, which makes signature comparisons across two independently-built
+// templates flaky. The signature is just a JSON serialization, so a stable plain
+// object is all we need here.
+const FIXED_SCHEMA = {
+  version: 1,
+  tokens: { colors: {}, fonts: {}, spacing: {} },
+  pages: [{ id: 'fixed-page', name: 'Cover', size: { width: 595, height: 842 }, background: {}, blocks: [] }],
+} as unknown as ReportTemplate;
 
 function fields(overrides: Partial<DraftComparableFields> = {}): DraftComparableFields {
   return {
@@ -17,7 +27,7 @@ function fields(overrides: Partial<DraftComparableFields> = {}): DraftComparable
     scope: 'global',
     priority: 0,
     customCss: '',
-    schema: makeBlankTemplate(),
+    schema: FIXED_SCHEMA,
     ...overrides,
   };
 }
@@ -51,7 +61,7 @@ describe('makeDraftSignature', () => {
   });
 
   it('changes when the schema changes', () => {
-    const changed: ReportTemplate = { ...makeBlankTemplate(), pages: [{ id: 'p1', blocks: [] } as any] };
+    const changed = { ...FIXED_SCHEMA, pages: [{ id: 'different-page', blocks: [] }] } as unknown as ReportTemplate;
     expect(makeDraftSignature(fields())).not.toBe(makeDraftSignature(fields({ schema: changed })));
   });
 
