@@ -74,6 +74,9 @@ export function FinanceRecordList({ clientId, config }: Props) {
       if (config.key === 'income') {
         qc.invalidateQueries({ queryKey: ['finance-portal-bc', clientId] });
       }
+      if (config.key === 'address_history') {
+        qc.invalidateQueries({ queryKey: ['finance-portal-pipeline'] });
+      }
       setCreating(false);
       setEditing(null);
     },
@@ -97,6 +100,9 @@ export function FinanceRecordList({ clientId, config }: Props) {
       qc.invalidateQueries({ queryKey: ['finance-portal-client-summary', clientId] });
       if (config.key === 'income') {
         qc.invalidateQueries({ queryKey: ['finance-portal-bc', clientId] });
+      }
+      if (config.key === 'address_history') {
+        qc.invalidateQueries({ queryKey: ['finance-portal-pipeline'] });
       }
       setDeleting(null);
     },

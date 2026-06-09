@@ -21,6 +21,9 @@ interface AddressFormData {
   contact_type: string;
   additional_contact_id: string | null;
   address: string;
+  current_suburb: string;
+  current_state: string;
+  current_postcode: string;
   country: string;
   living_situation: string;
   residential_status: string;
@@ -34,6 +37,9 @@ const defaultForm: AddressFormData = {
   contact_type: 'primary',
   additional_contact_id: null,
   address: '',
+  current_suburb: '',
+  current_state: '',
+  current_postcode: '',
   country: 'Australia',
   living_situation: '',
   residential_status: '',
@@ -98,6 +104,9 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
       contact_type: record.contact_type || 'primary',
       additional_contact_id: record.additional_contact_id || null,
       address: record.address || '',
+      current_suburb: record.current_suburb || '',
+      current_state: record.current_state || '',
+      current_postcode: record.current_postcode || '',
       country: record.country || 'Australia',
       living_situation: record.living_situation || '',
       residential_status: record.residential_status || '',
@@ -120,7 +129,10 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
       const payload = {
         contact_type: activeContact?.contactType === 'additional' ? 'additional' : (activeContact?.contactType || 'primary'),
         additional_contact_id: activeContact?.additionalContactId || null,
-        address: form.address,
+        address: form.address.trim(),
+        current_suburb: form.current_suburb.trim() || null,
+        current_state: form.current_state.trim().toUpperCase() || null,
+        current_postcode: form.current_postcode.trim() || null,
         country: form.country,
         living_situation: form.living_situation,
         residential_status: form.residential_status,
@@ -143,6 +155,10 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-address-history', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      onComplete();
       toast.success(editingId ? 'Address updated' : 'Address added');
       resetForm();
     },
@@ -162,6 +178,10 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-address-history', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      onComplete();
       toast.success('Address deleted');
       if (editingId) resetForm();
     },
@@ -196,7 +216,7 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-sm truncate">{addr.address || 'No address'}</span>
+                      <span className="font-medium text-sm truncate">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
                       {addr.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded">Current</span>}
                       {!addr.is_current && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded">Previous</span>}
                       <span className="text-xs text-muted-foreground capitalize">({addr.contact_type})</span>
@@ -273,7 +293,7 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-0.5">
-                                    <span className="text-sm font-medium">{addr.address || 'No address'}</span>
+                                    <span className="text-sm font-medium">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
                                     {addr.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded">Current</span>}
                                   </div>
                                   <p className="text-xs text-muted-foreground">
@@ -310,8 +330,23 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                           <Input
                             value={form.address}
                             onChange={(e) => updateField('address', e.target.value)}
-                            placeholder="123 Main Street, Sydney NSW 2000"
+                            placeholder="123 Main Street"
                           />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Suburb / City</Label>
+                            <Input value={form.current_suburb} onChange={(e) => updateField('current_suburb', e.target.value)} placeholder="Sydney" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">State</Label>
+                            <Input value={form.current_state} onChange={(e) => updateField('current_state', e.target.value.toUpperCase())} placeholder="NSW" maxLength={3} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Postcode</Label>
+                            <Input value={form.current_postcode} onChange={(e) => updateField('current_postcode', e.target.value)} placeholder="2000" maxLength={4} />
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
@@ -360,6 +395,8 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                           <Button
                             onClick={() => {
                               if (!form.address.trim()) { toast.error('Address is required'); return; }
+                              if (form.current_postcode.trim() && !/^\d{4}$/.test(form.current_postcode.trim())) { toast.error('Postcode must be 4 digits'); return; }
+                              if (form.current_state.trim() && !/^[A-Za-z]{2,3}$/.test(form.current_state.trim())) { toast.error('State must be a 2–3 letter code'); return; }
                               saveMutation.mutate();
                             }}
                             disabled={saveMutation.isPending}

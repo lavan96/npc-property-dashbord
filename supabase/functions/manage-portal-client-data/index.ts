@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { createSyncEvent } from "../_shared/client-sync.ts"
 
 /**
  * Portal-specific data management Edge Function
@@ -62,6 +63,48 @@ const PROTECTED_CLIENT_FIELDS = [
 ];
 
 type AllowedTable = typeof ALLOWED_TABLES[number];
+
+
+function normalizeAddressPayload(payload: Record<string, any>) {
+  const out = { ...(payload || {}) };
+  if (typeof out.address === 'string') out.address = out.address.trim();
+  if (typeof out.current_address === 'string') out.current_address = out.current_address.trim();
+  if (typeof out.current_suburb === 'string') out.current_suburb = out.current_suburb.trim();
+  if (typeof out.current_state === 'string') out.current_state = out.current_state.trim().toUpperCase();
+  if (typeof out.current_postcode === 'string') out.current_postcode = out.current_postcode.trim();
+  if (typeof out.country === 'string') out.country = out.country.trim() || 'Australia';
+  if (out.is_current === true && !out.address && !out.current_address && !out.current_suburb && !out.current_state && !out.current_postcode) {
+    throw new Error('Current address requires at least an address line, suburb, state or postcode');
+  }
+  if (out.current_postcode && !/^\d{4}$/.test(String(out.current_postcode))) {
+    throw new Error('Postcode must be 4 digits');
+  }
+  if (out.current_state && !/^[A-Z]{2,3}$/.test(String(out.current_state))) {
+    throw new Error('State must be a 2–3 letter Australian state/territory code');
+  }
+  return out;
+}
+
+function hasAddressFields(payload: Record<string, any> | undefined) {
+  if (!payload) return false;
+  return ['current_address', 'current_suburb', 'current_state', 'current_postcode', 'country', 'living_situation', 'residential_status', 'address'].some((key) => key in payload);
+}
+
+async function logAddressSyncEvent(supabase: any, input: { clientId: string; entityId: string; entityTable: string; operation: string; portalUserId?: string | null; portalEmail?: string | null }) {
+  await createSyncEvent(supabase, {
+    clientId: input.clientId,
+    entityId: input.entityId,
+    entityTable: input.entityTable,
+    entityType: 'address',
+    sourceSurface: 'client_portal',
+    sourceActorType: 'client_user',
+    sourceActorName: input.portalEmail || null,
+    sourceReference: input.portalUserId || null,
+    sourceDetails: { operation: input.operation },
+    syncStatus: 'synced',
+    propagatedTo: ['internal_dashboard', 'finance_portal', 'client_portal'],
+  });
+}
 
 function extractPortalToken(headers: Headers, body?: any): string | null {
   const headerToken = headers.get('x-portal-session-token');
@@ -510,7 +553,6 @@ Deno.serve(async (req) => {
             metadata: { expense_id: result.id, client_id: clientId },
           });
         } catch (e) { console.error('Notification error:', e); }
-
         return new Response(
           JSON.stringify({ success: true, data: result }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -604,11 +646,14 @@ Deno.serve(async (req) => {
 
       // --- Client Address History ---
       if (table === 'client_address_history') {
-        const addressData: Record<string, any> = {
+        const addressData: Record<string, any> = normalizeAddressPayload({
           client_id: clientId,
           contact_type: payload.contact_type || 'primary',
           additional_contact_id: payload.additional_contact_id || null,
           address: payload.address || null,
+          current_suburb: payload.current_suburb || null,
+          current_state: payload.current_state || null,
+          current_postcode: payload.current_postcode || null,
           country: payload.country || 'Australia',
           living_situation: payload.living_situation || null,
           residential_status: payload.residential_status || null,
@@ -619,7 +664,7 @@ Deno.serve(async (req) => {
           notes: payload.notes || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        };
+        });
 
         const { data: result, error } = await supabase
           .from('client_address_history')
@@ -642,6 +687,15 @@ Deno.serve(async (req) => {
             metadata: { address_id: result.id, client_id: clientId },
           });
         } catch (e) { console.error('Notification error:', e); }
+
+        await logAddressSyncEvent(supabase, {
+          clientId,
+          entityId: result.id,
+          entityTable: 'client_address_history',
+          operation: 'insert',
+          portalUserId: session.client_portal_users.id,
+          portalEmail: session.client_portal_users.email,
+        });
 
         return new Response(
           JSON.stringify({ success: true, data: result }),
@@ -794,6 +848,7 @@ Deno.serve(async (req) => {
 
       if (table === 'clients') {
         sanitizedPayload = sanitizeClientData(sanitizedPayload);
+        if (hasAddressFields(sanitizedPayload)) sanitizedPayload = normalizeAddressPayload(sanitizedPayload);
         sanitizedPayload.updated_at = new Date().toISOString();
 
         const { data: result, error } = await supabase
@@ -808,6 +863,17 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: error.message, success: false }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        if (hasAddressFields(sanitizedPayload)) {
+          await logAddressSyncEvent(supabase, {
+            clientId,
+            entityId: result.id,
+            entityTable: 'clients',
+            operation: 'update',
+            portalUserId: session.client_portal_users.id,
+            portalEmail: session.client_portal_users.email,
+          });
         }
 
         return new Response(
@@ -831,6 +897,7 @@ Deno.serve(async (req) => {
 
         delete sanitizedPayload.client_id;
         delete sanitizedPayload.id;
+        if (table === 'client_address_history') sanitizedPayload = normalizeAddressPayload(sanitizedPayload);
         sanitizedPayload.updated_at = new Date().toISOString();
 
         const { data: result, error } = await supabase
@@ -845,6 +912,17 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: error.message, success: false }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        if (table === 'client_address_history') {
+          await logAddressSyncEvent(supabase, {
+            clientId,
+            entityId: result.id,
+            entityTable: 'client_address_history',
+            operation: 'update',
+            portalUserId: session.client_portal_users.id,
+            portalEmail: session.client_portal_users.email,
+          });
         }
 
         return new Response(

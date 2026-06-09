@@ -298,7 +298,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     primaryColumn: 'address',
     secondaryColumn: 'living_situation',
     fields: [
-      { key: 'address', label: 'Address', type: 'text', required: true },
+      { key: 'address', label: 'Street / Address Line', type: 'text', required: true },
+      { key: 'current_suburb', label: 'Suburb / City', type: 'text' },
+      { key: 'current_state', label: 'State', type: 'text', helpText: 'Use 2–3 letter state/territory code, e.g. NSW' },
+      { key: 'current_postcode', label: 'Postcode', type: 'text', helpText: '4 digits' },
+      { key: 'country', label: 'Country', type: 'text' },
       { key: 'start_date', label: 'Start Date', type: 'date', required: true },
       { key: 'end_date', label: 'End Date', type: 'date', helpText: 'Leave blank if current address' },
       { key: 'is_current', label: 'Current address', type: 'boolean' },
@@ -324,6 +328,7 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     renderSummary: (r) => (
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         {r.living_situation && <Badge variant="outline">{r.living_situation.replace(/_/g, ' ')}</Badge>}
+        {(r.current_suburb || r.current_state || r.current_postcode) && <span>{[r.current_suburb, r.current_state, r.current_postcode].filter(Boolean).join(' ')}</span>}
         {r.start_date && <span>From {r.start_date}</span>}
         {r.end_date && <span>to {r.end_date}</span>}
         {r.is_current && <Badge variant="secondary" className="text-xs">current</Badge>}

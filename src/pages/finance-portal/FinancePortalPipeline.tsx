@@ -29,6 +29,8 @@ interface PfCard {
   settlement_date: string | null;
   property_address: string | null;
   property_suburb: string | null;
+  property_state?: string | null;
+  property_postcode?: string | null;
   kanban_position: number | null;
   last_partner_action_at: string | null;
 }
@@ -235,7 +237,7 @@ export default function FinancePortalPipeline() {
                       {(card.property_address || card.property_suburb) && (
                         <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 flex items-center gap-1">
                           <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{card.property_address || card.property_suburb}</span>
+                          <span className="truncate">{[card.property_address || card.property_suburb, card.property_state, card.property_postcode].filter(Boolean).join(', ')}</span>
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-2">

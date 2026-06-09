@@ -44,6 +44,9 @@ export default function PortalProfile() {
         primary_dob: client.primary_dob || '',
         primary_gender: client.primary_gender || '',
         current_address: client.current_address || '',
+        current_suburb: client.current_suburb || '',
+        current_state: client.current_state || '',
+        current_postcode: client.current_postcode || '',
         country: client.country || '',
         marital_status: client.marital_status || '',
         dependents_count: client.dependents_count ?? '',
@@ -57,6 +60,9 @@ export default function PortalProfile() {
         secondary_dob: client.secondary_dob || '',
         secondary_gender: client.secondary_gender || '',
         secondary_current_address: client.secondary_current_address || '',
+        secondary_current_suburb: client.secondary_current_suburb || '',
+        secondary_current_state: client.secondary_current_state || '',
+        secondary_current_postcode: client.secondary_current_postcode || '',
         secondary_country: client.secondary_country || '',
         secondary_living_situation: client.secondary_living_situation || '',
         secondary_residential_status: client.secondary_residential_status || '',
@@ -216,6 +222,18 @@ export default function PortalProfile() {
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Address</Label>
               <Input value={formData.current_address} onChange={(e) => updateField('current_address', e.target.value)} className="border-border/60" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suburb / City</Label>
+              <Input value={formData.current_suburb} onChange={(e) => updateField('current_suburb', e.target.value)} className="border-border/60" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</Label>
+              <Input value={formData.current_state} onChange={(e) => updateField('current_state', e.target.value.toUpperCase())} maxLength={3} className="border-border/60" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Postcode</Label>
+              <Input value={formData.current_postcode} onChange={(e) => updateField('current_postcode', e.target.value)} maxLength={4} className="border-border/60" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Country</Label>

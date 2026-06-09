@@ -97,11 +97,11 @@ const TABLE_COLUMNS: Record<string, Set<string>> = {
   ]),
   client_additional_contacts: new Set([
     'client_id','relationship','first_name','surname','middle_name','email','mobile','dob','gender',
-    'display_order','notes',
+    'display_order','current_address','current_suburb','current_state','current_postcode','country','living_situation','residential_status','same_address_as_primary','notes',
   ]),
   client_address_history: new Set([
-    'client_id','contact_type','additional_contact_id','address','country','living_situation','residential_status',
-    'start_date','end_date','is_current','months_at_address','notes',
+    'client_id','contact_type','additional_contact_id','address','current_suburb','current_state','current_postcode',
+    'country','living_situation','residential_status','start_date','end_date','is_current','months_at_address','notes',
   ]),
 };
 
@@ -125,12 +125,56 @@ function normalizeRelationship(value: any) {
   return raw;
 }
 
+
+function normalizeAddressPayload(payload: Record<string, any>) {
+  const out = { ...(payload || {}) };
+  if (typeof out.address === 'string') out.address = out.address.trim();
+  if (typeof out.current_suburb === 'string') out.current_suburb = out.current_suburb.trim();
+  if (typeof out.current_state === 'string') out.current_state = out.current_state.trim().toUpperCase();
+  if (typeof out.current_postcode === 'string') out.current_postcode = out.current_postcode.trim();
+  if (typeof out.country === 'string') out.country = out.country.trim() || 'Australia';
+  if (out.is_current === true && !out.address && !out.current_suburb && !out.current_state && !out.current_postcode) {
+    throw new Error('Current address requires at least an address line, suburb, state or postcode');
+  }
+  if (out.current_postcode && !/^\d{4}$/.test(String(out.current_postcode))) {
+    throw new Error('Postcode must be 4 digits');
+  }
+  if (out.current_state && !/^[A-Z]{2,3}$/.test(String(out.current_state))) {
+    throw new Error('State must be a 2–3 letter Australian state/territory code');
+  }
+  return out;
+}
+
+async function logAddressSyncEvent(supabase: any, input: { clientId: string; record: any; operation: string; portalUser: any }) {
+  if (!input.record?.id) return;
+  await createSyncEvent(supabase, {
+    clientId: input.clientId,
+    entityId: input.record.id,
+    entityTable: 'client_address_history',
+    entityType: 'address',
+    sourceSurface: 'finance_portal',
+    sourceActorType: 'finance_user',
+    sourceActorName: input.portalUser?.email ?? null,
+    sourceReference: input.portalUser?.id ?? null,
+    sourceDetails: {
+      operation: input.operation,
+      contact_type: input.record.contact_type || 'primary',
+      is_current: input.record.is_current === true,
+    },
+    syncStatus: 'synced',
+    propagatedTo: ['internal_dashboard', 'client_portal', 'finance_portal'],
+  });
+}
+
 async function syncClientRollups(supabase: any, clientId: string, dbTable: string, record: any) {
   if (!record) return;
 
-  if (dbTable === 'client_address_history' && record.is_current !== false && record.contact_type !== 'secondary') {
+  if (dbTable === 'client_address_history' && record.is_current !== false && record.contact_type === 'primary' && !record.additional_contact_id) {
     const patch: Record<string, any> = { updated_at: new Date().toISOString() };
     if (record.address) patch.current_address = record.address;
+    if (record.current_suburb) patch.current_suburb = record.current_suburb;
+    if (record.current_state) patch.current_state = String(record.current_state).toUpperCase();
+    if (record.current_postcode) patch.current_postcode = record.current_postcode;
     if (record.country) patch.country = record.country;
     if (record.living_situation) patch.living_situation = record.living_situation;
     if (record.residential_status) patch.residential_status = record.residential_status;
@@ -440,6 +484,9 @@ Deno.serve(async (req) => {
         secondary_first_name: String(payload.secondary_first_name || '').trim() || null,
         secondary_surname: String(payload.secondary_surname || '').trim() || null,
         current_address: String(payload.current_address || '').trim() || null,
+        current_suburb: String(payload.current_suburb || '').trim() || null,
+        current_state: String(payload.current_state || '').trim().toUpperCase() || null,
+        current_postcode: String(payload.current_postcode || '').trim() || null,
         country: String(payload.country || '').trim() || 'Australia',
         deal_status: String(payload.deal_status || '').trim() || 'lead',
         total_portfolio_value: Number(payload.total_portfolio_value || 0),
@@ -482,16 +529,30 @@ Deno.serve(async (req) => {
       }
 
       if (createdClient.current_address) {
-        const { error: addressSeedError } = await supabase.from('client_address_history').insert({
-          client_id: createdClient.id,
-          contact_type: 'primary',
-          address: createdClient.current_address,
-          country: createdClient.country || 'Australia',
-          is_current: true,
-          notes: 'Seeded from finance portal client intake',
-        });
-        if (addressSeedError) {
-          console.error('[finance-portal-client-data] address history seed failed', addressSeedError.message);
+        const { data: existingCurrentAddress } = await supabase
+          .from('client_address_history')
+          .select('id')
+          .eq('client_id', createdClient.id)
+          .eq('contact_type', 'primary')
+          .is('additional_contact_id', null)
+          .eq('is_current', true)
+          .maybeSingle();
+
+        if (!existingCurrentAddress?.id) {
+          const { error: addressSeedError } = await supabase.from('client_address_history').insert({
+            client_id: createdClient.id,
+            contact_type: 'primary',
+            address: createdClient.current_address,
+            current_suburb: createdClient.current_suburb || null,
+            current_state: createdClient.current_state || null,
+            current_postcode: createdClient.current_postcode || null,
+            country: createdClient.country || 'Australia',
+            is_current: true,
+            notes: 'Seeded from finance portal client intake',
+          });
+          if (addressSeedError) {
+            console.error('[finance-portal-client-data] address history seed failed', addressSeedError.message);
+          }
         }
       }
 
@@ -746,7 +807,7 @@ Deno.serve(async (req) => {
     if (operation === 'get_client_summary') {
       const { data: c } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, current_address, deal_status, created_at')
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, current_address, current_suburb, current_state, current_postcode, country, living_situation, residential_status, deal_status, created_at')
         .eq('id', client_id)
         .maybeSingle();
       const client = c ? {
@@ -756,6 +817,12 @@ Deno.serve(async (req) => {
         primary_contact_email: c.primary_email,
         primary_contact_phone: c.primary_mobile,
         primary_address: c.current_address,
+        primary_suburb: (c as any).current_suburb || null,
+        primary_state: (c as any).current_state || null,
+        primary_postcode: (c as any).current_postcode || null,
+        country: (c as any).country || null,
+        living_situation: (c as any).living_situation || null,
+        residential_status: (c as any).residential_status || null,
         status: c.deal_status,
         created_at: c.created_at,
       } : null;
@@ -793,6 +860,7 @@ Deno.serve(async (req) => {
       let insert = pickKnownColumns(dbTable, { ...(payload || {}), client_id });
       if (dbTable === 'client_income_sources') insert = normalizeIncomeSourceFields(insert);
       if (dbTable === 'client_additional_contacts') insert = normalizeAdditionalContactFields(insert);
+      if (dbTable === 'client_address_history') insert = normalizeAddressPayload(insert);
       let syncMeta: any = null;
       if (dbTable === 'client_notes') {
         const prepared = await prepareFinanceNotePayload(supabase, client_id, insert, portalUser);
@@ -806,6 +874,9 @@ Deno.serve(async (req) => {
 
       if (dbTable === 'client_income_sources' && data) {
         await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: data.id, operation: 'create', portalUser });
+      }
+      if (dbTable === 'client_address_history' && data) {
+        await logAddressSyncEvent(supabase, { clientId: client_id, record: data, operation: 'create', portalUser });
       }
 
       if (dbTable === 'client_notes' && data) {
@@ -888,6 +959,7 @@ Deno.serve(async (req) => {
         updates = normalizeIncomeSourceFields(updates);
       }
       if (dbTable === 'client_additional_contacts') updates = normalizeAdditionalContactFields(updates);
+      if (dbTable === 'client_address_history') updates = normalizeAddressPayload(updates);
 
       if (dbTable === 'client_notes') {
         const provenance = buildProvenance({
@@ -920,6 +992,9 @@ Deno.serve(async (req) => {
 
       if (dbTable === 'client_income_sources' && data) {
         await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: data.id, operation: 'update', portalUser });
+      }
+      if (dbTable === 'client_address_history' && data) {
+        await logAddressSyncEvent(supabase, { clientId: client_id, record: data, operation: 'update', portalUser });
       }
 
       if (dbTable === 'client_notes' && data) {
@@ -1014,6 +1089,9 @@ Deno.serve(async (req) => {
       if (dbTable === 'client_income_sources') {
         await syncClientRollups(supabase, client_id, dbTable, { id: record_id });
         await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: record_id, operation: 'delete', portalUser });
+      }
+      if (dbTable === 'client_address_history') {
+        await logAddressSyncEvent(supabase, { clientId: client_id, record: { id: record_id }, operation: 'delete', portalUser });
       }
       await audit('delete_record', table_key, record_id);
       return jsonResponse({ success: true });

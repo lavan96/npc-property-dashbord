@@ -175,9 +175,9 @@ Deno.serve(async (req) => {
           .select(`
             id, client_id, title, lender, purchase_price, max_approved_budget,
             finance_status, status, risk_level, settlement_date,
-            property_address, property_suburb, kanban_position,
+            property_address, property_suburb, property_state, property_postcode, kanban_position,
             last_partner_action_at, archived_at, assigned_finance_user_id,
-            clients:client_id(primary_first_name, primary_surname)
+            clients:client_id(primary_first_name, primary_surname, current_address, current_suburb, current_state, current_postcode)
           `)
           .in('client_id', allowedClientIds)
           .is('archived_at', null)
@@ -215,8 +215,10 @@ Deno.serve(async (req) => {
           status: pf.status,
           risk_level: pf.risk_level,
           settlement_date: pf.settlement_date,
-          property_address: pf.property_address,
-          property_suburb: pf.property_suburb,
+          property_address: pf.property_address || (pf.clients as any)?.current_address || null,
+          property_suburb: pf.property_suburb || (pf.clients as any)?.current_suburb || null,
+          property_state: (pf as any).property_state || (pf.clients as any)?.current_state || null,
+          property_postcode: (pf as any).property_postcode || (pf.clients as any)?.current_postcode || null,
           kanban_position: pf.kanban_position,
           last_partner_action_at: pf.last_partner_action_at,
           is_mine: pf.assigned_finance_user_id === portalUserId,
