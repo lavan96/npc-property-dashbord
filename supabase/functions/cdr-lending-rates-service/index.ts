@@ -150,15 +150,22 @@ const REGISTER_BRAND_MATCHES: Record<string, string[]> = {
   suncorp: ['suncorp bank'], hsbc: ['hsbc'], ubank: ['ubank'],
 };
 
+let registerBrandsCache: any[] | null = null;
+let registerBrandsCacheAt = 0;
+
 async function fetchRegisterBaseUrls(lenderId: string): Promise<string[]> {
   try {
-    const response = await fetch('https://api.cdr.gov.au/cdr-register/v1/banking/data-holders/brands/summary', {
-      headers: { 'x-v': '2', 'x-min-v': '1', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0)' },
-    });
-    if (!response.ok) return [];
-    const payload = await response.json();
+    if (!registerBrandsCache || Date.now() - registerBrandsCacheAt > 60 * 60 * 1000) {
+      const response = await fetch('https://api.cdr.gov.au/cdr-register/v1/banking/data-holders/brands/summary', {
+        headers: { 'x-v': '2', 'x-min-v': '1', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0)' },
+      });
+      if (!response.ok) return [];
+      const payload = await response.json();
+      registerBrandsCache = (payload?.data || []) as any[];
+      registerBrandsCacheAt = Date.now();
+    }
     const matches = REGISTER_BRAND_MATCHES[lenderId] || [];
-    return ((payload?.data || []) as any[])
+    return registerBrandsCache
       .filter((b) => matches.some((m) => String(b.brandName || '').toLowerCase().includes(m)))
       .map((b) => String(b.publicBaseUri || '').replace(/\/$/, ''))
       .filter(Boolean)
