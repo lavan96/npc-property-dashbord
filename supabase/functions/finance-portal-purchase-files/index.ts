@@ -125,8 +125,10 @@ Deno.serve(async (req) => {
     if (!operation) return jsonResponse({ error: 'operation required' }, 400);
 
     // Helper: resolve permissions for a given client_id; returns null if not assigned.
-    // Default-allow purchase_files (view+edit) when the matrix doesn't mention it yet,
-    // so existing finance partner assignments work immediately.
+    // Default-allow purchase_files (view+edit) when the matrix doesn't mention the key
+    // OR when neither layer has explicitly granted edit. Without this, partners assigned
+    // before the purchase_files permission key existed (or with an empty object stub)
+    // can't create files even though product expectation is "assigned == can manage PFs".
     async function getEffectivePermissions(clientId: string) {
       const { data: assignment } = await supabase
         .from('finance_portal_client_assignments')
@@ -136,10 +138,19 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!assignment) return null;
       const merged = mergePermissions(portalUser.global_permissions, assignment.permissions);
-      const globalHas = portalUser.global_permissions && (portalUser.global_permissions as any).purchase_files;
-      const clientHas = assignment.permissions && (assignment.permissions as any).purchase_files;
-      if (!globalHas && !clientHas) {
-        merged.purchase_files = { view: true, edit: true, delete: false };
+      const globalPf = (portalUser.global_permissions as any)?.purchase_files;
+      const clientPf = (assignment.permissions as any)?.purchase_files;
+      const globalGrantsEdit = globalPf && typeof globalPf === 'object' && globalPf.edit === true;
+      const clientGrantsEdit = clientPf && typeof clientPf === 'object' && clientPf.edit === true;
+      const explicitlyDenied =
+        (globalPf && typeof globalPf === 'object' && globalPf.edit === false && globalPf.view === false) ||
+        (clientPf && typeof clientPf === 'object' && clientPf.edit === false && clientPf.view === false);
+      if (!globalGrantsEdit && !clientGrantsEdit && !explicitlyDenied) {
+        merged.purchase_files = {
+          view: !!(merged.purchase_files?.view) || true,
+          edit: true,
+          delete: !!(merged.purchase_files?.delete),
+        };
       }
       return merged;
     }
@@ -350,67 +361,100 @@ Deno.serve(async (req) => {
       const payload = body.payload || {};
       if (!clientId) return jsonResponse({ error: 'client_id required' }, 400);
       const perms = await getEffectivePermissions(clientId);
-      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
+      if (!perms) return jsonResponse({ error: 'You are not assigned to this client' }, 403);
+      if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'You do not have permission to create purchase files for this client' }, 403);
 
       const insert = pickAllowed(payload, PURCHASE_FILE_COLUMNS);
-      if (!insert.title) return jsonResponse({ error: 'title required' }, 400);
+      if (!insert.title || String(insert.title).trim() === '') {
+        return jsonResponse({ error: 'title required' }, 400);
+      }
+      insert.title = String(insert.title).trim();
+
+      const insertRow = {
+        ...insert,
+        client_id: clientId,
+        assigned_finance_user_id: insert.assigned_finance_user_id || portalUser.id,
+        created_by: portalUser.id,
+      };
 
       const { data: created, error } = await supabase
         .from('purchase_files')
-        .insert({
-          ...insert,
-          client_id: clientId,
-          assigned_finance_user_id: insert.assigned_finance_user_id || portalUser.id,
-          created_by: portalUser.id,
-        })
+        .insert(insertRow)
         .select()
         .single();
-      if (error) return jsonResponse({ error: error.message }, 500);
-
-      let linkedDeal: any = null;
-      const { data: deal, error: dealError } = await supabase
-        .from('client_deals')
-        .insert({
-          client_id: clientId,
-          deal_type: mapPurchaseTypeToDealType(created.purchase_type),
-          current_stage: 'Finance Portal Purchase File Created',
-          current_stage_number: 1,
-          risk_status: created.risk_level === 'high' ? 'urgent' : created.risk_level === 'medium' ? 'needs_follow_up' : 'on_track',
-          total_contract_price: created.purchase_price || null,
-          loan_amount: created.purchase_price || null,
-          settlement_date: created.settlement_date || null,
-          finance_clause_expiry: created.finance_clause_date || null,
-          property_address: created.property_address || null,
-          finance_contact_id: portalUser.finance_contact_id || null,
-          purchase_file_id: created.id,
-          created_by: portalUser.id,
-          notes: `Created from Finance Portal purchase file: ${created.title}`,
-        })
-        .select()
-        .maybeSingle();
-
-      if (dealError) {
-        console.error('[finance-portal-purchase-files] command centre deal mirror failed', dealError.message);
-      } else if (deal) {
-        linkedDeal = deal;
-        await supabase.from('purchase_files').update({ client_deal_id: deal.id }).eq('id', created.id);
-        await supabase.from('purchase_file_deal_link_audit').insert({
-          purchase_file_id: created.id,
-          client_deal_id: deal.id,
-          client_id: clientId,
-          action: 'linked',
-          source: 'system',
-          actor_user_id: portalUser.id,
-          note: 'Automatically mirrored when finance partner created purchase file',
+      if (error || !created) {
+        console.error('[finance-portal-purchase-files] create_file insert failed', {
+          message: error?.message,
+          code: (error as any)?.code,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+          insertRow,
         });
+        return jsonResponse({
+          error: error?.message || 'Failed to create purchase file',
+          code: (error as any)?.code || null,
+          details: (error as any)?.details || null,
+          hint: (error as any)?.hint || null,
+        }, 500);
       }
 
-      await notifyCommandCentreOfPurchaseFile(supabase, {
-        clientId,
-        fileId: created.id,
-        title: created.title,
-        financeEmail: portalUser.email ?? null,
-      });
+      // ───── Best-effort side effects (must NEVER fail the primary create) ─────
+      let linkedDeal: any = null;
+      try {
+        const { data: deal, error: dealError } = await supabase
+          .from('client_deals')
+          .insert({
+            client_id: clientId,
+            deal_type: mapPurchaseTypeToDealType(created.purchase_type),
+            current_stage: 'Finance Portal Purchase File Created',
+            current_stage_number: 1,
+            risk_status: created.risk_level === 'high' ? 'urgent' : created.risk_level === 'medium' ? 'needs_follow_up' : 'on_track',
+            total_contract_price: created.purchase_price || null,
+            loan_amount: created.purchase_price || null,
+            settlement_date: created.settlement_date || null,
+            finance_clause_expiry: created.finance_clause_date || null,
+            property_address: created.property_address || null,
+            finance_contact_id: portalUser.finance_contact_id || null,
+            purchase_file_id: created.id,
+            created_by: portalUser.id,
+            notes: `Created from Finance Portal purchase file: ${created.title}`,
+          })
+          .select()
+          .maybeSingle();
+
+        if (dealError) {
+          console.error('[finance-portal-purchase-files] command centre deal mirror failed', dealError.message);
+        } else if (deal) {
+          linkedDeal = deal;
+          await supabase.from('purchase_files').update({ client_deal_id: deal.id }).eq('id', created.id);
+          try {
+            await supabase.from('purchase_file_deal_link_audit').insert({
+              purchase_file_id: created.id,
+              client_deal_id: deal.id,
+              client_id: clientId,
+              action: 'linked',
+              source: 'system',
+              actor_user_id: portalUser.id,
+              note: 'Automatically mirrored when finance partner created purchase file',
+            });
+          } catch (auditErr) {
+            console.error('[finance-portal-purchase-files] deal link audit failed', auditErr);
+          }
+        }
+      } catch (sideErr) {
+        console.error('[finance-portal-purchase-files] deal mirror threw', sideErr);
+      }
+
+      try {
+        await notifyCommandCentreOfPurchaseFile(supabase, {
+          clientId,
+          fileId: created.id,
+          title: created.title,
+          financeEmail: portalUser.email ?? null,
+        });
+      } catch (notifyErr) {
+        console.error('[finance-portal-purchase-files] notify threw', notifyErr);
+      }
 
       return jsonResponse({ file: { ...created, client_deal_id: linkedDeal?.id || created.client_deal_id || null }, linked_deal: linkedDeal });
     }

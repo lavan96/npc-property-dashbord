@@ -446,13 +446,18 @@ function NewPurchaseFileDialog({
           status: 'active',
         },
       });
-      if (error) throw new Error(data?.error || error.message);
+      if (error || data?.error) {
+        const msg = data?.error || error?.message || 'Unknown error';
+        const hint = data?.hint ? ` (${data.hint})` : '';
+        throw new Error(`${msg}${hint}`);
+      }
       toast.success(data?.linked_deal ? 'Purchase file created and mirrored to Command Centre' : 'Purchase file created');
       onCreated(data?.file?.id);
       onOpenChange(false);
       setClientId(''); setTitle(''); setPropertyAddress(''); setPurchasePrice('');
     } catch (e: any) {
-      toast.error(`Failed to create: ${e.message || 'Unknown error'}`);
+      console.error('[NewPurchaseFileDialog] create failed', e);
+      toast.error(`Failed to create: ${e?.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }
