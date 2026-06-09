@@ -37,6 +37,12 @@ export interface CallLLMArgs {
   forceModelId?: string;
   /** Per-call response_format */
   responseFormat?: any;
+  /** Abort a single provider attempt after this many ms (AbortController).
+   *  Prevents a hung provider from blocking the edge function to a gateway 504. */
+  timeoutMs?: number;
+  /** Absolute wall-clock deadline (epoch ms) for the WHOLE fallback chain. Once
+   *  passed, `callLLM` stops trying further fallbacks instead of compounding latency. */
+  deadlineAt?: number;
 }
 
 export interface CallLLMResult {
@@ -60,6 +66,31 @@ interface AgentAssignment {
 
 const RETRYABLE_STATUSES = new Set([404, 410, 500, 502, 503, 504]);
 const NON_RETRYABLE_STATUSES = new Set([401, 402, 403, 429]);
+
+/** fetch with an optional AbortController timeout. When `timeoutMs` is falsy
+ *  this is a plain fetch (no behaviour change for callers that don't opt in).
+ *  On timeout the fetch rejects with an AbortError, which provider callers
+ *  translate into a retryable 504 so the router can fall back / the caller can
+ *  surface a clean error instead of hanging to a gateway timeout. */
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
+  if (!timeoutMs || timeoutMs <= 0) return fetch(url, init);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Wrap a provider call so an AbortError (timeout) becomes a retryable 504. */
+function asTimeoutResult(e: unknown): { ok: false; status: number; error: string } | null {
+  const name = (e as { name?: string })?.name;
+  if (name === 'AbortError' || name === 'TimeoutError') {
+    return { ok: false, status: 504, error: 'LLM provider call timed out' };
+  }
+  return null;
+}
 
 function getAdminClient() {
   const url = Deno.env.get('SUPABASE_URL')!;
@@ -117,30 +148,31 @@ async function callRoute(
   const temperature = args.temperature ?? assignment.temperature ?? undefined;
   const max_tokens = args.maxTokens ?? assignment.max_tokens ?? undefined;
   const reasoning_effort = args.reasoningEffort ?? assignment.reasoning_effort ?? undefined;
+  const timeoutMs = args.timeoutMs;
 
   try {
     if (route === 'gateway') {
-      return await callGateway(modelId, args.messages, { temperature, max_tokens, reasoning_effort, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+      return await callGateway(modelId, args.messages, { temperature, max_tokens, reasoning_effort, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat, timeoutMs });
     }
     if (route === 'openrouter') {
-      return await callOpenRouter(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+      return await callOpenRouter(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat, timeoutMs });
     }
     // native
     if (modelId.startsWith('gpt-') || modelId.startsWith('o') || modelId.startsWith('chatgpt')) {
-      return await callOpenAINative(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+      return await callOpenAINative(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat, timeoutMs });
     }
     if (modelId.startsWith('claude-')) {
-      return await callAnthropicNative(modelId, args.messages, { temperature, max_tokens });
+      return await callAnthropicNative(modelId, args.messages, { temperature, max_tokens, timeoutMs });
     }
     if (modelId.startsWith('gemini-')) {
-      return await callGeminiNative(modelId, args.messages, { temperature, max_tokens });
+      return await callGeminiNative(modelId, args.messages, { temperature, max_tokens, timeoutMs });
     }
     if (modelId.startsWith('sonar')) {
-      return await callPerplexityNative(modelId, args.messages, { temperature, max_tokens });
+      return await callPerplexityNative(modelId, args.messages, { temperature, max_tokens, timeoutMs });
     }
     return { ok: false, error: `[llmRouter] Unknown native model family: ${modelId}` };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? String(e) };
+    return asTimeoutResult(e) ?? { ok: false, error: e?.message ?? String(e) };
   }
 }
 
@@ -157,11 +189,11 @@ async function callGateway(model: string, messages: LLMMessage[], opts: any) {
   if (opts.response_format) body.response_format = opts.response_format;
   if (opts.reasoning_effort) body.reasoning = { effort: opts.reasoning_effort };
 
-  const r = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const r = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   return { ok: true, status: 200, data: await r.json() };
 }
@@ -176,7 +208,7 @@ async function callOpenRouter(model: string, messages: LLMMessage[], opts: any) 
   if (opts.tool_choice) body.tool_choice = opts.tool_choice;
   if (opts.response_format) body.response_format = opts.response_format;
 
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const r = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -185,7 +217,7 @@ async function callOpenRouter(model: string, messages: LLMMessage[], opts: any) 
       'X-Title': 'NPC Property Dashboard',
     },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   return { ok: true, status: 200, data: await r.json() };
 }
@@ -200,11 +232,11 @@ async function callOpenAINative(model: string, messages: LLMMessage[], opts: any
   if (opts.tool_choice) body.tool_choice = opts.tool_choice;
   if (opts.response_format) body.response_format = opts.response_format;
 
-  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+  const r = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   return { ok: true, status: 200, data: await r.json() };
 }
@@ -216,11 +248,11 @@ async function callPerplexityNative(model: string, messages: LLMMessage[], opts:
   if (opts.temperature !== undefined) body.temperature = opts.temperature;
   if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
 
-  const r = await fetch('https://api.perplexity.ai/chat/completions', {
+  const r = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   return { ok: true, status: 200, data: await r.json() };
 }
@@ -243,7 +275,7 @@ async function callAnthropicNative(model: string, messages: LLMMessage[], opts: 
   if (systemMsg) body.system = systemMsg;
   if (opts.temperature !== undefined) body.temperature = opts.temperature;
 
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -251,7 +283,7 @@ async function callAnthropicNative(model: string, messages: LLMMessage[], opts: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   const data = await r.json();
   // Re-shape to OpenAI-compatible structure
@@ -278,11 +310,11 @@ async function callGeminiNative(model: string, messages: LLMMessage[], opts: any
     if (opts.max_tokens !== undefined) body.generationConfig.maxOutputTokens = opts.max_tokens;
   }
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+  const r = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, opts.timeoutMs);
   if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
   const data = await r.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('\n') ?? '';
@@ -300,7 +332,19 @@ export async function callLLM(args: CallLLMArgs): Promise<CallLLMResult> {
   const attempts: CallLLMResult['attempts'] = [];
 
   for (const step of chain) {
-    const res = await callRoute(step.route, step.model_id, args, assignment);
+    // Deadline guard: don't start another fallback attempt once the caller's
+    // wall-clock budget is spent — compounding slow attempts is what produces
+    // the 504. Derive a per-attempt timeout from whatever budget remains.
+    let perAttemptArgs = args;
+    if (typeof args.deadlineAt === 'number') {
+      const remaining = args.deadlineAt - Date.now();
+      if (remaining <= 1000) {
+        attempts.push({ route: step.route, model_id: step.model_id, ok: false, status: 504, error: 'deadline exceeded before attempt' });
+        break;
+      }
+      perAttemptArgs = { ...args, timeoutMs: Math.min(args.timeoutMs ?? remaining, remaining) };
+    }
+    const res = await callRoute(step.route, step.model_id, perAttemptArgs, assignment);
     attempts.push({ route: step.route, model_id: step.model_id, ok: res.ok, status: res.status, error: res.error?.slice(0, 240) });
 
     if (res.ok && res.data) {
