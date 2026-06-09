@@ -26,8 +26,12 @@ jobs:
           node-version: 20
           cache: npm
 
+      # `npm ci` is intentionally NOT used: the committed package-lock.json is
+      # out of sync with package.json on main (missing rolldown/emnapi platform
+      # binaries etc.), which makes `npm ci` abort. `npm install` reconciles the
+      # lockfile and installs. Swap back to `npm ci` once the lockfile is regenerated.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Unit tests (incl. golden-render isolation guard)
         run: npm test
