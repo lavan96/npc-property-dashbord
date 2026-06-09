@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     // Validate session → resolve client_id
     const { data: session } = await supabase
       .from('client_portal_sessions')
-      .select('*, client_portal_users:user_id ( id, client_id, status )')
+      .select('*, client_portal_users:user_id ( id, client_id, status, email )')
       .eq('session_token', token)
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       const limit = Math.min(Number(body.limit) || 100, 300);
       const channels: string[] | null = Array.isArray(body.channels) ? body.channels : null;
 
-      const [portalMsgs, ghlConv, outbound] = await Promise.all([
+      const [portalMsgs, ghlConv, outbound, financeThreads] = await Promise.all([
         supabase
           .from('client_portal_messages')
           .select('id, sender_type, sender_name, message, is_read, read_at, created_at')
@@ -83,7 +83,28 @@ Deno.serve(async (req) => {
           .eq('client_id', clientId)
           .order('created_at', { ascending: false })
           .limit(limit),
+        supabase
+          .from('finance_portal_threads')
+          .select('id, subject, visibility_scope, allocation_status, thread_type')
+          .eq('client_id', clientId)
+          .in('visibility_scope', ['finance_client_with_command_visibility', 'command_client_with_finance_allocated'])
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .limit(25),
       ]);
+
+      let financeMsgs: any[] = [];
+      const visibleFinanceThreadIds = (financeThreads.data ?? []).map((t: any) => t.id);
+      const financeThreadMeta = new Map((financeThreads.data ?? []).map((t: any) => [t.id, t]));
+      if (visibleFinanceThreadIds.length > 0) {
+        const { data: fmsgs } = await supabase
+          .from('finance_portal_messages')
+          .select('id, thread_id, sender_type, sender_name, body, attachment_filename, created_at, visibility_scope, allocation_status, thread_type')
+          .in('thread_id', visibleFinanceThreadIds)
+          .in('visibility_scope', ['finance_client_with_command_visibility', 'command_client_with_finance_allocated'])
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        financeMsgs = fmsgs ?? [];
+      }
 
       let ghlMsgs: any[] = [];
       if ((ghlConv.data ?? []).length > 0) {
@@ -109,6 +130,24 @@ Deno.serve(async (req) => {
           subject: null,
           created_at: m.created_at,
           is_read: m.is_read,
+        });
+      }
+      for (const m of financeMsgs) {
+        const thread = financeThreadMeta.get(m.thread_id) as any;
+        unified.push({
+          id: `finance:${m.id}`,
+          kind: 'finance',
+          channel: 'portal',
+          direction: m.sender_type === 'client' ? 'outbound' : 'inbound',
+          sender_name: m.sender_name,
+          body: m.body,
+          subject: thread?.subject || 'Finance conversation',
+          created_at: m.created_at,
+          is_read: true,
+          thread_id: m.thread_id,
+          visibility_scope: m.visibility_scope,
+          allocation_status: m.allocation_status,
+          thread_type: m.thread_type,
         });
       }
       for (const m of ghlMsgs) {
@@ -147,6 +186,57 @@ Deno.serve(async (req) => {
       filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return json({ success: true, messages: filtered.slice(0, limit) });
+    }
+
+    if (operation === 'send_finance_reply') {
+      const threadId = body.thread_id;
+      const message = (body.message || '').toString().trim();
+      if (!threadId) return json({ error: 'thread_id required', success: false }, 400);
+      if (!message) return json({ error: 'message required', success: false }, 400);
+      if (message.length > 5000) return json({ error: 'Message too long (max 5000)', success: false }, 400);
+
+      const { data: thread } = await supabase
+        .from('finance_portal_threads')
+        .select('id, client_id, visibility_scope')
+        .eq('id', threadId)
+        .eq('client_id', clientId)
+        .in('visibility_scope', ['finance_client_with_command_visibility', 'command_client_with_finance_allocated'])
+        .maybeSingle();
+      if (!thread) return json({ error: 'Thread not found or access denied', success: false }, 403);
+
+      const { data: inserted, error } = await supabase
+        .from('finance_portal_messages')
+        .insert({
+          thread_id: threadId,
+          client_id: clientId,
+          sender_type: 'client',
+          sender_name: portalUser.email || 'Client',
+          body: message,
+          visibility_scope: 'finance_client_with_command_visibility',
+          thread_type: 'finance_client',
+          allocation_status: 'none',
+          permission_status: { command_centre: 'full', finance_portal: 'granted', client_portal: 'granted' },
+        })
+        .select()
+        .single();
+      if (error) return json({ error: error.message || 'Send failed', success: false }, 400);
+
+      const { data: assignments } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('finance_user_id')
+        .eq('client_id', clientId);
+      const portalRows = (assignments || []).map((a: any) => ({
+        portal_user_id: a.finance_user_id,
+        client_id: clientId,
+        notification_type: 'client_finance_reply',
+        title: 'Client replied to finance',
+        body: message.slice(0, 140),
+        link_path: '/finance/messages',
+        metadata: { thread_id: threadId, message_id: inserted.id, source: 'client_portal' },
+      }));
+      if (portalRows.length) await supabase.from('finance_portal_notifications').insert(portalRows);
+
+      return json({ success: true, message: inserted });
     }
 
     return json({ error: `Unknown operation: ${operation}`, success: false }, 400);

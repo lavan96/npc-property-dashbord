@@ -812,6 +812,11 @@ Deno.serve(async (req) => {
         is_internal: false,
         created_at: now,
         updated_at: now,
+        visibility_scope: 'command_client_private',
+        thread_type: 'command_client',
+        allocation_status: 'none',
+        finance_allocated: false,
+        permission_status: { command_centre: 'full', client_portal: 'granted', finance_portal: 'blocked' },
       };
 
       const { data: result, error } = await supabase

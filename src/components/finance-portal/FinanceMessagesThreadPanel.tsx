@@ -14,6 +14,10 @@ interface ThreadMeta {
   last_message_preview: string | null;
   unread_count_partner: number;
   is_archived: boolean;
+  visibility_scope?: string | null;
+  thread_type?: string | null;
+  allocation_status?: string | null;
+  finance_allocated?: boolean | null;
   clients?: { id: string; primary_contact_name: string; secondary_contact_name: string | null };
 }
 
@@ -55,6 +59,11 @@ export function FinanceMessagesThreadPanel({ thread, invoke, onMessageSent, clas
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{name}</h2>
               {secondary && <span className="truncate text-xs text-muted-foreground sm:text-sm">& {secondary}</span>}
+              {thread.finance_allocated && (
+                <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 px-2 text-[10px] font-semibold text-amber-700">
+                  {String(thread.allocation_status || 'Finance allocated').replace(/_/g, ' ')}
+                </Badge>
+              )}
               {unread > 0 && (
                 <Badge className="h-5 bg-primary/15 px-2 text-[10px] font-semibold text-primary">
                   {unread} unread
