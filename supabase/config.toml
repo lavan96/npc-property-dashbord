@@ -369,7 +369,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.sync-client-to-ghl]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-portfolio-analysis]
 verify_jwt = true
