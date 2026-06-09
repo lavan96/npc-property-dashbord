@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessageSquare, ShieldCheck, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, MessageSquare, ShieldCheck, Users, ClipboardCheck } from 'lucide-react';
 import { FinanceMessagesThread } from './FinanceMessagesThread';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,7 @@ interface Props {
   clientId: string;
 }
 
-type FinanceThreadMode = 'command' | 'client';
+type FinanceThreadMode = 'command' | 'allocated' | 'client';
 
 const MODE_CONFIG: Record<FinanceThreadMode, {
   label: string;
@@ -32,6 +33,13 @@ const MODE_CONFIG: Record<FinanceThreadMode, {
     thread_type: 'command_finance',
     icon: ShieldCheck,
   },
+  allocated: {
+    label: 'Allocated by Command Centre',
+    description: 'Client-facing advisory thread allocated to Finance. Action only within this thread.',
+    visibility_scope: 'command_client_with_finance_allocated',
+    thread_type: 'command_client_allocated',
+    icon: ClipboardCheck,
+  },
   client: {
     label: 'Client thread',
     description: 'Direct Finance ↔ Client thread. Command Centre is visible and notified.',
@@ -45,6 +53,8 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [mode, setMode] = useState<FinanceThreadMode>('command');
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [allocationStatus, setAllocationStatus] = useState<string | null>(null);
+  const [hasAllocatedThread, setHasAllocatedThread] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +64,26 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
       setLoading(true);
       setError(null);
       setThreadId(null);
+      setAllocationStatus(null);
       const cfg = MODE_CONFIG[mode];
+
+      if (mode === 'allocated') {
+        const { data, error } = await invokeFinanceFunction('finance-portal-messages', { operation: 'list_threads' });
+        if (cancelled) return;
+        const allocated = (data?.threads || []).find((thread: any) =>
+          thread.client_id === clientId && thread.visibility_scope === 'command_client_with_finance_allocated'
+        );
+        setHasAllocatedThread(Boolean(allocated));
+        if (error || !allocated) {
+          setError(error?.message || 'No Command Centre allocation is currently available for this client.');
+        } else {
+          setThreadId(allocated.id);
+          setAllocationStatus(allocated.allocation_status || null);
+        }
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await invokeFinanceFunction('finance-portal-messages', {
         operation: 'get_or_create_thread',
         client_id: clientId,
@@ -73,6 +102,18 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
     })();
     return () => { cancelled = true; };
   }, [clientId, invokeFinanceFunction, mode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await invokeFinanceFunction('finance-portal-messages', { operation: 'list_threads' });
+      if (cancelled) return;
+      setHasAllocatedThread((data?.threads || []).some((thread: any) =>
+        thread.client_id === clientId && thread.visibility_scope === 'command_client_with_finance_allocated'
+      ));
+    })();
+    return () => { cancelled = true; };
+  }, [clientId, invokeFinanceFunction]);
 
   const activeCfg = MODE_CONFIG[mode];
 
@@ -94,7 +135,10 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="min-w-0">
-                <span className="block text-xs font-semibold">{cfg.label}</span>
+                <span className="flex items-center gap-1 text-xs font-semibold">
+                  {cfg.label}
+                  {key === 'allocated' && hasAllocatedThread && <Badge className="h-4 px-1 text-[9px]">Allocated</Badge>}
+                </span>
                 <span className={cn('block text-[10px] font-normal', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                   {cfg.description}
                 </span>
@@ -103,6 +147,12 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
           );
         })}
       </div>
+
+      {mode === 'allocated' && allocationStatus && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800">
+          Command Centre allocated this thread as <strong>{allocationStatus.replace(/_/g, ' ')}</strong>. Reply/action only within this permitted thread.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
