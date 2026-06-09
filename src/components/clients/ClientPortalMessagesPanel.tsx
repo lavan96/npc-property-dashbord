@@ -33,8 +33,14 @@ type MessageTarget = 'client' | 'internal' | 'finance';
 
 const TARGETS: { value: MessageTarget; label: string; icon: typeof Users; hint: string }[] = [
   { value: 'client', label: 'Client', icon: Users, hint: 'Sends to the client portal — the client will see this.' },
-  { value: 'internal', label: 'Internal', icon: Lock, hint: 'Staff-only note. Not shown to the client or finance partner.' },
   { value: 'finance', label: 'Finance', icon: Building2, hint: 'Sends to the assigned finance partner (see the Finance Messages tab).' },
+  { value: 'internal', label: 'Internal', icon: Lock, hint: 'Staff-only note. Not shown to the client or finance partner.' },
+];
+
+const ROUTING_PRESETS: { label: string; targets: MessageTarget[] }[] = [
+  { label: 'Client only', targets: ['client'] },
+  { label: 'Finance only', targets: ['finance'] },
+  { label: 'Client + Finance', targets: ['client', 'finance'] },
 ];
 
 const formatStamp = (iso: string) => {
@@ -167,6 +173,10 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
     });
   };
 
+  const applyPreset = (values: MessageTarget[]) => {
+    setTargets(new Set(values));
+  };
+
 
   return (
     <div className="flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden">
@@ -236,7 +246,25 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
       <div className="border-t border-border p-3 bg-card">
         <div className="flex items-center gap-1 mb-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Send to:</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Route:</span>
+          {ROUTING_PRESETS.map(preset => {
+            const active = preset.targets.length === targets.size && preset.targets.every(t => targets.has(t));
+            return (
+              <Button
+                key={preset.label}
+                type="button"
+                size="sm"
+                variant={active ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => applyPreset(preset.targets)}
+              >
+                {preset.label}
+              </Button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-1 mb-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Advanced:</span>
           {TARGETS.map(t => {
             const Icon = t.icon;
             const active = targets.has(t.value);

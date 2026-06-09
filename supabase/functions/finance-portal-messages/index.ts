@@ -26,12 +26,13 @@ const SIGNED_URL_TTL = 60 * 10;
 const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'application/msword',
   'application/vnd.openxmlformats-officedocument', 'text/'];
 
-function extractFinanceToken(headers: Headers, body?: any): string | null {
+function extractFinancePortalToken(headers: Headers, body?: any): string | null {
+  // Only finance-specific token locations identify a Finance Portal partner.
+  // Command Centre staff calls also include generic x-session-token/session_token
+  // values for internal auth; treating those as finance sessions causes false
+  // "Invalid session" errors before staff auth can run.
   return headers.get('x-finance-session-token')
-    || headers.get('x-session-token')
-    || headers.get('x-session-id')
     || body?.finance_session_token
-    || body?.session_token
     || null;
 }
 
@@ -40,6 +41,48 @@ function jsonResponse(data: any, status = 200, corsHeaders: Record<string, strin
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function ensureStaffFinanceMessageNotification(supabase: any, messageRow: any, threadId: string) {
+  try {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .contains('metadata', { message_id: messageRow.id })
+      .eq('type', 'finance_portal_message_received')
+      .maybeSingle();
+
+    if (existing?.id) return;
+
+    const { data: client } = await supabase
+      .from('clients')
+      .select('primary_first_name, primary_surname, primary_email, assigned_team_user_id')
+      .eq('id', messageRow.client_id)
+      .maybeSingle();
+
+    const clientName = [client?.primary_first_name, client?.primary_surname]
+      .filter(Boolean)
+      .join(' ') || client?.primary_email || 'Client';
+    const preview = (messageRow.body || '').slice(0, 140) || '(attachment)';
+
+    await supabase.from('notifications').insert({
+      type: 'finance_portal_message_received',
+      title: `New finance message · ${clientName}`,
+      message: preview,
+      entity_id: messageRow.client_id,
+      target_user_id: client?.assigned_team_user_id || null,
+      metadata: {
+        client_id: messageRow.client_id,
+        thread_id: threadId,
+        message_id: messageRow.id,
+        sender_name: messageRow.sender_name,
+        link_path: `/clients?clientId=${messageRow.client_id}&tab=finance-messages`,
+        source: 'finance-portal-messages',
+      },
+    });
+  } catch (e) {
+    console.error('Failed to ensure staff finance message notification:', e);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -62,7 +105,7 @@ Deno.serve(async (req) => {
     if (!operation) return jsonResponse({ error: 'operation required' }, 400, corsHeaders);
 
     // ── Resolve actor (partner vs staff) ──
-    const financeToken = extractFinanceToken(req.headers, body);
+    const financeToken = extractFinancePortalToken(req.headers, body);
     let actor: { type: 'partner'; portalUserId: string; email: string; name: string }
              | { type: 'staff'; userId: string; username: string }
              | null = null;
@@ -312,7 +355,10 @@ Deno.serve(async (req) => {
         });
       } catch (e) { console.error('[messages] audit failed', e); }
 
-      // Notify partner when staff sends
+      // Notify the receiving side after a send. Staff -> partner uses the
+      // Finance Portal notification table; partner -> staff uses the Command
+      // Centre bell notification table, with this fallback covering deployments
+      // where the DB trigger is missing or misconfigured.
       if (actor.type === 'staff') {
         await notifyFinancePortalAssignees({
           client_id: thread.client_id,
@@ -322,6 +368,8 @@ Deno.serve(async (req) => {
           link_path: `/finance/clients/${thread.client_id}?tab=messages`,
           metadata: { thread_id, message_id: message.id },
         });
+      } else {
+        await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
       }
 
       return jsonResponse({ success: true, message }, 200, corsHeaders);

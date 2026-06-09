@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
 import { usePortalUnifiedInbox, usePortalUpdateData } from '@/hooks/usePortalData';
 import { smartCapitalize } from '@/lib/nameUtils';
@@ -47,12 +47,29 @@ export default function PortalMessages() {
   const updateMutation = usePortalUpdateData();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Unified inbox returns newest-first; render oldest-first as a chat timeline.
-  const messages = [...(data?.messages || [])].reverse();
   const displayName = smartCapitalize(user?.name);
+  const serverMessages = data?.messages || [];
+
+  useEffect(() => {
+    if (localMessages.length === 0) return;
+    const serverIds = new Set(serverMessages.map((msg: any) => msg.id));
+    setLocalMessages((current) => {
+      const next = current.filter((msg) => !serverIds.has(msg.id));
+      return next.length === current.length ? current : next;
+    });
+  }, [serverMessages, localMessages.length]);
+
+  // Unified inbox returns newest-first; render oldest-first as a chat timeline.
+  const messages = useMemo(() => {
+    const byId = new Map<string, any>();
+    for (const msg of [...serverMessages, ...localMessages]) byId.set(msg.id, msg);
+    return Array.from(byId.values())
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }, [serverMessages, localMessages]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -67,7 +84,7 @@ export default function PortalMessages() {
 
     setSending(true);
     try {
-      await updateMutation.mutateAsync({
+      const response = await updateMutation.mutateAsync({
         operation: 'insert',
         table: 'client_portal_messages',
         data: {
@@ -76,6 +93,23 @@ export default function PortalMessages() {
           message: text,
         },
       });
+      const saved = response?.data;
+      if (saved?.id) {
+        setLocalMessages((current) => [
+          ...current,
+          {
+            id: `portal:${saved.id}`,
+            kind: 'portal',
+            channel: 'portal',
+            direction: 'outbound',
+            sender_name: saved.sender_name,
+            body: saved.message || text,
+            subject: null,
+            created_at: saved.created_at || new Date().toISOString(),
+            is_read: false,
+          },
+        ]);
+      }
       setNewMessage('');
       inputRef.current?.focus();
     } catch (err: any) {

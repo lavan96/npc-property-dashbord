@@ -394,14 +394,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         break;
       case 'portal_message_received':
         if (notification.entityId) {
-          navigate(`/clients?highlight=${notification.entityId}&tab=portal-messages`);
+          navigate(`/clients?clientId=${notification.entityId}&tab=portal-messages`);
         } else {
           navigate('/clients');
         }
         break;
       case 'finance_portal_message_received':
         if (notification.entityId) {
-          navigate(`/clients?highlight=${notification.entityId}&tab=finance-messages`);
+          navigate(`/clients?clientId=${notification.entityId}&tab=finance-messages`);
         } else {
           navigate('/clients');
         }
