@@ -14,7 +14,12 @@ import { Progress } from '@/components/ui/progress';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   Search, Users, Loader2, X, ArrowUpDown, UserCheck, Clock, SortAsc,
   ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
