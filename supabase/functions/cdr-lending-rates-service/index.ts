@@ -240,160 +240,153 @@ async function fetchProductDetail(
   detailVersion: string
 ): Promise<LendingRate[]> {
   const rates: LendingRate[] = [];
-  
+
   try {
-    // Try multiple API versions if needed
     const versionsToTry = [detailVersion, '3', '2', '1'];
-    let detailData = null;
-    
+    let detailData: any = null;
+
     for (const version of versionsToTry) {
-      try {
-        const detailResponse = await fetch(
-          `${baseUrl}/banking/products/${product.productId}`,
-          {
-            headers: {
-              'x-v': version,
-              'x-min-v': '1',
-              'Accept': 'application/json',
-            },
-          }
-        );
+      const { response, lastStatus, finalUrl, error } = await fetchCdr(
+        `${baseUrl}/banking/products/${product.productId}`,
+        { 'x-v': version, 'x-min-v': '1', 'Accept': 'application/json' }
+      );
 
-        if (detailResponse.ok) {
-          detailData = await detailResponse.json();
-          break;
-        }
-        
-        // If 406, try next version
-        if (detailResponse.status === 406) {
-          continue;
-        }
-        
-        // For other errors, log and break
-        if (!detailResponse.ok) {
-          console.warn(`[CDR] Product detail ${product.productId} returned ${detailResponse.status}`);
-          break;
-        }
-      } catch (e) {
-        continue;
+      if (!response) {
+        console.warn(`[CDR] ${lenderId} detail ${product.productId} transport error: ${error}`);
+        break;
       }
+
+      if (response.ok) {
+        detailData = await response.json();
+        break;
+      }
+      if (response.status === 406) continue; // try lower version
+      console.warn(`[CDR] ${lenderId} detail ${product.productId} -> ${lastStatus} (final ${finalUrl})`);
+      break;
     }
 
-    if (!detailData) {
-      return rates;
-    }
-
+    if (!detailData) return rates;
     const productDetail = detailData?.data;
+    if (!productDetail?.lendingRates?.length) return rates;
 
-    if (!productDetail?.lendingRates || productDetail.lendingRates.length === 0) {
-      return rates;
-    }
-
-    // Extract lending rates
     for (const lendingRate of productDetail.lendingRates) {
-      const rateValue = parseFloat(lendingRate.rate) * 100; // Convert to percentage
-      
-      // Only include if rate is valid (between 0.1% and 20%)
+      const rateValue = parseFloat(lendingRate.rate) * 100;
       if (rateValue > 0.1 && rateValue < 20) {
-        const rate: LendingRate = {
+        rates.push({
           lenderId,
           lenderName: CDR_LENDERS[lenderId]?.name || lenderId,
           productId: product.productId,
           productName: product.name || product.productId,
           rate: rateValue,
-          comparisonRate: lendingRate.comparisonRate 
-            ? parseFloat(lendingRate.comparisonRate) * 100 
-            : null,
+          comparisonRate: lendingRate.comparisonRate ? parseFloat(lendingRate.comparisonRate) * 100 : null,
           rateType: lendingRate.lendingRateType?.includes('FIXED') ? 'FIXED' : 'VARIABLE',
           loanPurpose: lendingRate.loanPurpose === 'INVESTMENT' ? 'INVESTMENT' : 'OWNER_OCCUPIED',
-          repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' 
-            ? 'INTEREST_ONLY' 
-            : 'PRINCIPAL_AND_INTEREST',
+          repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' ? 'INTEREST_ONLY' : 'PRINCIPAL_AND_INTEREST',
           lvrMin: lendingRate.additionalInfo?.lvrMin || null,
           lvrMax: lendingRate.additionalInfo?.lvrMax || null,
           minLoanAmount: productDetail.constraints?.minLimit || null,
           maxLoanAmount: productDetail.constraints?.maxLimit || null,
           features: productDetail.features?.map((f: any) => f.featureType) || [],
           lastUpdated: new Date().toISOString(),
-        };
-        rates.push(rate);
+        });
       }
     }
   } catch (e) {
-    console.warn(`[CDR] Error fetching product detail ${product.productId}:`, e);
+    console.warn(`[CDR] ${lenderId} detail ${product.productId} exception:`, e);
   }
-  
+
   return rates;
 }
 
-async function fetchLenderProducts(lenderId: string, config: { baseUrl: string; productVersion: string; detailVersion: string }): Promise<LendingRate[]> {
-  const allRates: LendingRate[] = [];
-  const { baseUrl, productVersion, detailVersion } = config;
-  
-  try {
-    console.log(`[CDR] Fetching products from ${lenderId}: ${baseUrl}`);
-    
-    // Fetch residential mortgages with version fallback
-    let products: any[] = [];
-    const versionsToTry = [productVersion, '3', '2', '1'];
-    
-    for (const version of versionsToTry) {
-      try {
-        const response = await fetch(
-          `${baseUrl}/banking/products?product-category=RESIDENTIAL_MORTGAGES&page-size=100`,
-          {
-            headers: {
-              'x-v': version,
-              'x-min-v': '1',
-              'Accept': 'application/json',
-            },
-          }
-        );
+// Attempt a single base URL. Returns {products, status, finalUrl, error}.
+async function tryFetchProductsAtBase(
+  lenderId: string,
+  baseUrl: string,
+  productVersion: string
+): Promise<{ products: any[]; status: number; finalUrl: string; error?: string }> {
+  const versionsToTry = [productVersion, '3', '2', '1'];
+  let lastStatus = 0;
+  let lastFinalUrl = baseUrl;
+  let lastError: string | undefined;
 
-        if (response.ok) {
-          const data = await response.json();
-          products = data?.data?.products || [];
-          console.log(`[CDR] Found ${products.length} products from ${lenderId} (v${version})`);
-          break;
-        }
-        
-        if (response.status === 406) {
-          console.log(`[CDR] Version ${version} not supported by ${lenderId}, trying next...`);
-          continue;
-        }
-        
-        console.warn(`[CDR] Failed to fetch from ${lenderId}: ${response.status}`);
-        break;
-      } catch (e) {
-        console.error(`[CDR] Error fetching products from ${lenderId}:`, e);
-        break;
-      }
+  for (const version of versionsToTry) {
+    const url = `${baseUrl}/banking/products?product-category=RESIDENTIAL_MORTGAGES&page-size=100`;
+    const { response, lastStatus: s, finalUrl, error, redirectChain } = await fetchCdr(url, {
+      'x-v': version,
+      'x-min-v': '1',
+      'Accept': 'application/json',
+    });
+
+    lastStatus = s;
+    lastFinalUrl = finalUrl;
+    lastError = error;
+
+    if (!response) {
+      console.warn(`[CDR] ${lenderId} ${baseUrl} v${version} transport: ${error} (chain=${redirectChain.join(' -> ')})`);
+      break; // network error — fallback baseUrl will try next
     }
 
-    if (products.length === 0) {
-      return allRates;
+    if (response.ok) {
+      const data = await response.json();
+      const products = data?.data?.products || [];
+      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} products (final ${finalUrl})`);
+      return { products, status: response.status, finalUrl };
     }
 
-    // Fetch detailed info for each product (limit to top 15 for performance)
-    const productsToFetch = products.slice(0, 15);
-    
-    // Fetch all product details in parallel and collect rates
-    const rateArrays = await Promise.all(
-      productsToFetch.map((product: any) => fetchProductDetail(lenderId, baseUrl, product, detailVersion))
-    );
-    
-    // Flatten all rate arrays into one
-    for (const rates of rateArrays) {
-      allRates.push(...rates);
+    if (response.status === 406) {
+      console.log(`[CDR] ${lenderId} v${version} 406, trying lower version`);
+      continue;
     }
 
-    console.log(`[CDR] Collected ${allRates.length} total rates from ${lenderId}`);
-    
-  } catch (error) {
-    console.error(`[CDR] Error fetching from ${lenderId}:`, error);
+    // 3xx with no Location, 4xx, 5xx etc.
+    console.warn(`[CDR] ${lenderId} ${baseUrl} v${version} -> ${response.status} (final ${finalUrl}) ${error ?? ''}`);
+    break;
   }
 
-  return allRates;
+  return { products: [], status: lastStatus, finalUrl: lastFinalUrl, error: lastError };
+}
+
+async function fetchLenderProducts(
+  lenderId: string,
+  config: { baseUrl: string; productVersion: string; detailVersion: string }
+): Promise<{ rates: LendingRate[]; usedBaseUrl: string; error?: string; status: number }> {
+  const { baseUrl, productVersion, detailVersion } = config;
+
+  // Build URL attempt list: primary first, then known fallbacks (deduped)
+  const candidates = [baseUrl, ...(BASE_URL_FALLBACKS[lenderId] || [])]
+    .filter((v, i, a) => a.indexOf(v) === i);
+
+  let products: any[] = [];
+  let usedBaseUrl = baseUrl;
+  let lastStatus = 0;
+  let lastError: string | undefined;
+
+  for (const candidate of candidates) {
+    console.log(`[CDR] ${lenderId} trying baseUrl: ${candidate}`);
+    const r = await tryFetchProductsAtBase(lenderId, candidate, productVersion);
+    lastStatus = r.status;
+    lastError = r.error;
+    if (r.products.length > 0) {
+      products = r.products;
+      usedBaseUrl = candidate;
+      break;
+    }
+  }
+
+  if (products.length === 0) {
+    return { rates: [], usedBaseUrl, status: lastStatus, error: lastError || `No products (last status ${lastStatus})` };
+  }
+
+  // Top 15 for performance
+  const productsToFetch = products.slice(0, 15);
+  const rateArrays = await Promise.all(
+    productsToFetch.map((p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion))
+  );
+  const allRates: LendingRate[] = [];
+  for (const arr of rateArrays) allRates.push(...arr);
+
+  console.log(`[CDR] ${lenderId} collected ${allRates.length} rates from ${usedBaseUrl}`);
+  return { rates: allRates, usedBaseUrl, status: lastStatus };
 }
 
 async function getCachedRates(supabase: any, lenderId: string): Promise<CacheEntry | null> {
