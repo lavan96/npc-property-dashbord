@@ -36,11 +36,25 @@ interface ThreadRow {
 }
 
 const THREAD_TYPE_LABEL: Record<string, string> = {
-  command_finance: 'Command ↔ Finance',
+  command_finance: 'Command ↔ Finance (private)',
   finance_client: 'Finance ↔ Client (CC visible)',
   command_client_allocated: 'Command ↔ Client (Finance allocated)',
   internal_command: 'Internal',
 };
+
+// Mirror the finance portal: every assigned client should expose all three
+// governed channels so Command Centre staff keep full oversight. Order here
+// also dictates the sidebar rendering order.
+const GOVERNED_THREAD_TYPES: { thread_type: string; visibility_scope: string }[] = [
+  { thread_type: 'command_finance', visibility_scope: 'command_finance_private' },
+  { thread_type: 'finance_client', visibility_scope: 'finance_client_with_command_visibility' },
+  { thread_type: 'command_client_allocated', visibility_scope: 'command_client_with_finance_allocated' },
+];
+
+const THREAD_TYPE_ORDER: Record<string, number> = GOVERNED_THREAD_TYPES.reduce(
+  (acc, g, idx) => ({ ...acc, [g.thread_type]: idx }),
+  {} as Record<string, number>,
+);
 
 export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
   const [threads, setThreads] = useState<ThreadRow[]>([]);
@@ -59,23 +73,45 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
       setLoading(false);
       return;
     }
-    const list = (data?.threads || []) as ThreadRow[];
+    let list = (data?.threads || []) as ThreadRow[];
+
+    // Auto-seed any missing governed thread so all three channels are always
+    // present on Command Centre, mirroring the finance portal.
+    const missing = GOVERNED_THREAD_TYPES.filter(
+      (g) => !list.some((t) => t.thread_type === g.thread_type),
+    );
+    if (missing.length > 0) {
+      let seedError: string | null = null;
+      for (const g of missing) {
+        const { data: createdData, error: createErr } = await invokeSecureFunction(
+          'finance-portal-messages',
+          {
+            operation: 'get_or_create_thread',
+            client_id: clientId,
+            visibility_scope: g.visibility_scope,
+            thread_type: g.thread_type,
+          },
+        );
+        if (createErr || !createdData?.thread) {
+          seedError = createErr?.message || 'Unable to provision finance thread';
+          continue;
+        }
+        list = [...list, createdData.thread as ThreadRow];
+      }
+      if (list.length === 0 && seedError) {
+        setError(seedError);
+        setLoading(false);
+        return;
+      }
+    }
+
     setThreads(list);
 
-    if (list.length === 0) {
-      // Auto-create the default command↔finance thread so staff can start one.
-      const { data: created, error: createErr } = await invokeSecureFunction('finance-portal-messages', {
-        operation: 'get_or_create_thread',
-        client_id: clientId,
-      });
-      if (createErr || !created?.thread) {
-        setError(createErr?.message || 'No finance partner assigned to this client yet.');
-      } else {
-        setThreads([created.thread as ThreadRow]);
-        setSelectedThreadId(created.thread.id);
-      }
-    } else if (!preserveSelection || !selectedThreadId || !list.some(t => t.id === selectedThreadId)) {
-      // Pick the thread with the most recent activity by default.
+    if (
+      list.length > 0 &&
+      (!preserveSelection || !selectedThreadId || !list.some((t) => t.id === selectedThreadId))
+    ) {
+      // Default to the most recently active thread.
       const sorted = [...list].sort((a, b) => {
         const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
         const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
