@@ -539,6 +539,9 @@ function CreateClientDialog({
               The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.
             </p>
           </div>
+        </div>
+
+
 
 
         <DialogFooter>
