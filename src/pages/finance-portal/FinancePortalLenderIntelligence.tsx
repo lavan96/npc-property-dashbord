@@ -111,6 +111,29 @@ export default function FinancePortalLenderIntelligence() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [compareWarning, setCompareWarning] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [refreshingLive, setRefreshingLive] = useState(false);
+  const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
+
+  const refreshLiveRates = async () => {
+    setRefreshingLive(true);
+    setRefreshSummary(null);
+    const { data, error } = await invokeFinanceFunction(
+      'finance-portal-lender-intelligence',
+      { operation: 'refresh_rates' },
+    );
+    if (error) {
+      setRefreshSummary(error.message || 'Failed to refresh live rates from data holders.');
+    } else {
+      const s = (data as any)?.summary;
+      setRefreshSummary(
+        s
+          ? `Refreshed ${s.successfulLenders}/${s.totalLenders} lenders · ${s.totalRates} rates cached.`
+          : 'Live rates refreshed.',
+      );
+      await load();
+    }
+    setRefreshingLive(false);
+  };
 
   const load = async () => {
     setLoading(true);
