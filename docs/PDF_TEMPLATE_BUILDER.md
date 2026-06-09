@@ -10,6 +10,38 @@ A visual editor for all PDF reports. The same `ReportTemplate` JSON drives the l
 4. Bind any field to live data with `{{property.address}}` or to a brand token with `token:primary`.
 5. Use ⌘Z / ⌘⇧Z to undo/redo, ⌘C / ⌘V / ⌘D to copy/paste/duplicate the selected block.
 
+## V2 editor — Canva-style drag-and-drop (behind a flag)
+
+A drag-and-drop editing experience layered on the existing canvas, gated by the
+`templateEditorV2` flag so the classic editor (V1) stays the default until rollout.
+
+**Enable it:** Advanced menu → **Enable drag & drop (beta)**, or `?editorV2=1`, or set
+`VITE_TEMPLATE_EDITOR_V2=1` at build time. **Kill-switch / rollback** is a single flag:
+`?editorV2=0`, the Advanced toggle, or unsetting the env.
+
+What V2 adds (all renderer-safe — it only authors the same `ReportTemplate` JSON):
+
+- **Drag-to-place** — drag any item from the Insert palette onto the canvas. Free elements
+  (text/image/shape/icon) land at the cursor (`positionOverlayAtPoint`); data blocks
+  (tables/charts/KPIs) flow into the page. A dashed outline marks the drop target.
+- **Floating text toolbar** — select a text element for inline size / bold / italic / align /
+  colour without opening the inspector.
+- **"Start from a reference"** (Import menu) — drag/click/paste a **PDF or image**: PDFs re-sync
+  with a fidelity-mode chooser + staged progress; images are reconstructed by AI
+  (`template-design-agent` `screenshot_to_block`) into editable blocks. The result is
+  **validated** (`validateReconstructedSchema`) before it is applied.
+- **Required-data hints** on data components, and a one-time **coachmark** on first use.
+
+**Isolation guarantee:** V2 never touches the jsPDF or WeasyPrint renderers. A golden-render
+snapshot test (`goldenRender.spec.ts`) runs in CI and fails if renderer output changes, so V1
+and V2 produce byte-identical output for the same template. CI (`.github/workflows/ci.yml`)
+runs the Template Builder test suite + `npm run build` on every PR.
+
+**Rollout (Phase 8):** after live validation, flip the default by setting
+`VITE_TEMPLATE_EDITOR_V2=1` (or changing the `resolveEditorV2Flag` default in
+`editorV2Flag.ts`), keeping the kill-switch for one release. Full design + phase history:
+[`TEMPLATE_BUILDER_REHAUL_PLAN.md`](./TEMPLATE_BUILDER_REHAUL_PLAN.md).
+
 ## Bindings
 
 Every text/image/colour field accepts:
