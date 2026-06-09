@@ -15,11 +15,32 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MessageSquare, RefreshCcw, Search, ShieldCheck, Inbox } from 'lucide-react';
+import { Loader2, MessageSquare, RefreshCcw, Search, ShieldCheck, Inbox, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ClientPortalMessagesPanel } from '@/components/clients/ClientPortalMessagesPanel';
 import { StaffFinancePortalMessagesPanel } from '@/components/clients/StaffFinancePortalMessagesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+
+type NewMessageScope =
+  | 'cp_client_only'
+  | 'cp_internal'
+  | 'cp_client_with_finance'
+  | 'fp_command_finance'
+  | 'fp_finance_client'
+  | 'fp_command_client_allocated';
+
+const SCOPE_OPTIONS: { value: NewMessageScope; label: string; group: 'client' | 'finance'; hint: string }[] = [
+  { value: 'cp_client_only', label: 'Client Portal — Client visible', group: 'client', hint: 'Reply visible to client in their portal' },
+  { value: 'cp_client_with_finance', label: 'Client Portal — Client + Finance allocated', group: 'client', hint: 'Visible to client and finance partner' },
+  { value: 'cp_internal', label: 'Client Portal — Internal note', group: 'client', hint: 'Command Centre staff only' },
+  { value: 'fp_command_finance', label: 'Finance Portal — Command ↔ Finance', group: 'finance', hint: 'Private between Command Centre and finance partner' },
+  { value: 'fp_finance_client', label: 'Finance Portal — Finance ↔ Client (CC visible)', group: 'finance', hint: 'Finance partner ↔ client; Command Centre can observe' },
+  { value: 'fp_command_client_allocated', label: 'Finance Portal — Command ↔ Client (finance allocated)', group: 'finance', hint: 'Command Centre ↔ client with finance allocation' },
+];
 
 interface ClientPortalThread {
   client_id: string;
