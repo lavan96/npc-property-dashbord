@@ -128,6 +128,86 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
   }
 };
 
+// Known alternate / historical hosts. If a lender's primary baseUrl returns 301/308/404,
+// we'll retry with these in order before giving up.
+const BASE_URL_FALLBACKS: Record<string, string[]> = {
+  cba: [
+    "https://api.commbank.com.au/public/cds-au/v1",
+    "https://api.cba/cds-au/v1",
+  ],
+  anz: [
+    "https://api.anz/cds-au/v1",
+    "https://api.anz.com/cds-au/v1",
+  ],
+  nab: [
+    "https://openbank.api.nab.com.au/cds-au/v1",
+    "https://api.nab.com.au/cds-au/v1",
+  ],
+  westpac: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/wbc/cds-au/v1",
+  ],
+  banksa: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/bsa/cds-au/v1",
+  ],
+  stgeorge: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/stg/cds-au/v1",
+  ],
+  bankwest: [
+    "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
+    "https://api.bankwest.com.au/cds-au/v1",
+  ],
+  suncorp: [
+    "https://id-ob.suncorpbank.com.au/cds-au/v1",
+    "https://api.suncorpbank.com.au/cds-au/v1",
+  ],
+  hsbc: [
+    "https://ob.hsbc.com.au/cds-au/v1",
+    "https://api.hsbc.com.au/cds-au/v1",
+  ],
+  ubank: [
+    "https://ob.ubank.com.au/cds-au/v1",
+    "https://openbank.api.nab.com.au/cds-au/v1",
+  ],
+};
+
+// Manual redirect-following fetch.
+// Many CDR data holders return 301/308 from their published baseUrl to a new
+// host. Deno's default fetch DOES follow redirects, but some holders return
+// a 301 with no Location, or to a host that strips required headers — we do
+// it manually so we (a) preserve x-v/x-min-v across hops and (b) capture the
+// final URL + Location header for diagnostics.
+async function fetchCdr(
+  url: string,
+  headers: Record<string, string>,
+  maxRedirects = 5
+): Promise<{ response: Response | null; finalUrl: string; redirectChain: string[]; lastStatus: number; error?: string }> {
+  const chain: string[] = [];
+  let currentUrl = url;
+  for (let i = 0; i <= maxRedirects; i++) {
+    chain.push(currentUrl);
+    try {
+      const res = await fetch(currentUrl, { headers, redirect: 'manual' });
+      // Manual redirect: status 0 in some runtimes, or 301/302/303/307/308
+      if (res.status === 301 || res.status === 302 || res.status === 303 || res.status === 307 || res.status === 308) {
+        const loc = res.headers.get('location');
+        if (!loc) {
+          return { response: res, finalUrl: currentUrl, redirectChain: chain, lastStatus: res.status, error: `${res.status} with no Location header` };
+        }
+        // Resolve relative redirects
+        currentUrl = new URL(loc, currentUrl).toString();
+        continue;
+      }
+      return { response: res, finalUrl: currentUrl, redirectChain: chain, lastStatus: res.status };
+    } catch (e: any) {
+      return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: e?.message || String(e) };
+    }
+  }
+  return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: `Too many redirects (>${maxRedirects})` };
+}
+
 interface LendingRate {
   lenderId: string;
   lenderName: string;
@@ -160,160 +240,153 @@ async function fetchProductDetail(
   detailVersion: string
 ): Promise<LendingRate[]> {
   const rates: LendingRate[] = [];
-  
+
   try {
-    // Try multiple API versions if needed
     const versionsToTry = [detailVersion, '3', '2', '1'];
-    let detailData = null;
-    
+    let detailData: any = null;
+
     for (const version of versionsToTry) {
-      try {
-        const detailResponse = await fetch(
-          `${baseUrl}/banking/products/${product.productId}`,
-          {
-            headers: {
-              'x-v': version,
-              'x-min-v': '1',
-              'Accept': 'application/json',
-            },
-          }
-        );
+      const { response, lastStatus, finalUrl, error } = await fetchCdr(
+        `${baseUrl}/banking/products/${product.productId}`,
+        { 'x-v': version, 'x-min-v': '1', 'Accept': 'application/json' }
+      );
 
-        if (detailResponse.ok) {
-          detailData = await detailResponse.json();
-          break;
-        }
-        
-        // If 406, try next version
-        if (detailResponse.status === 406) {
-          continue;
-        }
-        
-        // For other errors, log and break
-        if (!detailResponse.ok) {
-          console.warn(`[CDR] Product detail ${product.productId} returned ${detailResponse.status}`);
-          break;
-        }
-      } catch (e) {
-        continue;
+      if (!response) {
+        console.warn(`[CDR] ${lenderId} detail ${product.productId} transport error: ${error}`);
+        break;
       }
+
+      if (response.ok) {
+        detailData = await response.json();
+        break;
+      }
+      if (response.status === 406) continue; // try lower version
+      console.warn(`[CDR] ${lenderId} detail ${product.productId} -> ${lastStatus} (final ${finalUrl})`);
+      break;
     }
 
-    if (!detailData) {
-      return rates;
-    }
-
+    if (!detailData) return rates;
     const productDetail = detailData?.data;
+    if (!productDetail?.lendingRates?.length) return rates;
 
-    if (!productDetail?.lendingRates || productDetail.lendingRates.length === 0) {
-      return rates;
-    }
-
-    // Extract lending rates
     for (const lendingRate of productDetail.lendingRates) {
-      const rateValue = parseFloat(lendingRate.rate) * 100; // Convert to percentage
-      
-      // Only include if rate is valid (between 0.1% and 20%)
+      const rateValue = parseFloat(lendingRate.rate) * 100;
       if (rateValue > 0.1 && rateValue < 20) {
-        const rate: LendingRate = {
+        rates.push({
           lenderId,
           lenderName: CDR_LENDERS[lenderId]?.name || lenderId,
           productId: product.productId,
           productName: product.name || product.productId,
           rate: rateValue,
-          comparisonRate: lendingRate.comparisonRate 
-            ? parseFloat(lendingRate.comparisonRate) * 100 
-            : null,
+          comparisonRate: lendingRate.comparisonRate ? parseFloat(lendingRate.comparisonRate) * 100 : null,
           rateType: lendingRate.lendingRateType?.includes('FIXED') ? 'FIXED' : 'VARIABLE',
           loanPurpose: lendingRate.loanPurpose === 'INVESTMENT' ? 'INVESTMENT' : 'OWNER_OCCUPIED',
-          repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' 
-            ? 'INTEREST_ONLY' 
-            : 'PRINCIPAL_AND_INTEREST',
+          repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' ? 'INTEREST_ONLY' : 'PRINCIPAL_AND_INTEREST',
           lvrMin: lendingRate.additionalInfo?.lvrMin || null,
           lvrMax: lendingRate.additionalInfo?.lvrMax || null,
           minLoanAmount: productDetail.constraints?.minLimit || null,
           maxLoanAmount: productDetail.constraints?.maxLimit || null,
           features: productDetail.features?.map((f: any) => f.featureType) || [],
           lastUpdated: new Date().toISOString(),
-        };
-        rates.push(rate);
+        });
       }
     }
   } catch (e) {
-    console.warn(`[CDR] Error fetching product detail ${product.productId}:`, e);
+    console.warn(`[CDR] ${lenderId} detail ${product.productId} exception:`, e);
   }
-  
+
   return rates;
 }
 
-async function fetchLenderProducts(lenderId: string, config: { baseUrl: string; productVersion: string; detailVersion: string }): Promise<LendingRate[]> {
-  const allRates: LendingRate[] = [];
-  const { baseUrl, productVersion, detailVersion } = config;
-  
-  try {
-    console.log(`[CDR] Fetching products from ${lenderId}: ${baseUrl}`);
-    
-    // Fetch residential mortgages with version fallback
-    let products: any[] = [];
-    const versionsToTry = [productVersion, '3', '2', '1'];
-    
-    for (const version of versionsToTry) {
-      try {
-        const response = await fetch(
-          `${baseUrl}/banking/products?product-category=RESIDENTIAL_MORTGAGES&page-size=100`,
-          {
-            headers: {
-              'x-v': version,
-              'x-min-v': '1',
-              'Accept': 'application/json',
-            },
-          }
-        );
+// Attempt a single base URL. Returns {products, status, finalUrl, error}.
+async function tryFetchProductsAtBase(
+  lenderId: string,
+  baseUrl: string,
+  productVersion: string
+): Promise<{ products: any[]; status: number; finalUrl: string; error?: string }> {
+  const versionsToTry = [productVersion, '3', '2', '1'];
+  let lastStatus = 0;
+  let lastFinalUrl = baseUrl;
+  let lastError: string | undefined;
 
-        if (response.ok) {
-          const data = await response.json();
-          products = data?.data?.products || [];
-          console.log(`[CDR] Found ${products.length} products from ${lenderId} (v${version})`);
-          break;
-        }
-        
-        if (response.status === 406) {
-          console.log(`[CDR] Version ${version} not supported by ${lenderId}, trying next...`);
-          continue;
-        }
-        
-        console.warn(`[CDR] Failed to fetch from ${lenderId}: ${response.status}`);
-        break;
-      } catch (e) {
-        console.error(`[CDR] Error fetching products from ${lenderId}:`, e);
-        break;
-      }
+  for (const version of versionsToTry) {
+    const url = `${baseUrl}/banking/products?product-category=RESIDENTIAL_MORTGAGES&page-size=100`;
+    const { response, lastStatus: s, finalUrl, error, redirectChain } = await fetchCdr(url, {
+      'x-v': version,
+      'x-min-v': '1',
+      'Accept': 'application/json',
+    });
+
+    lastStatus = s;
+    lastFinalUrl = finalUrl;
+    lastError = error;
+
+    if (!response) {
+      console.warn(`[CDR] ${lenderId} ${baseUrl} v${version} transport: ${error} (chain=${redirectChain.join(' -> ')})`);
+      break; // network error — fallback baseUrl will try next
     }
 
-    if (products.length === 0) {
-      return allRates;
+    if (response.ok) {
+      const data = await response.json();
+      const products = data?.data?.products || [];
+      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} products (final ${finalUrl})`);
+      return { products, status: response.status, finalUrl };
     }
 
-    // Fetch detailed info for each product (limit to top 15 for performance)
-    const productsToFetch = products.slice(0, 15);
-    
-    // Fetch all product details in parallel and collect rates
-    const rateArrays = await Promise.all(
-      productsToFetch.map((product: any) => fetchProductDetail(lenderId, baseUrl, product, detailVersion))
-    );
-    
-    // Flatten all rate arrays into one
-    for (const rates of rateArrays) {
-      allRates.push(...rates);
+    if (response.status === 406) {
+      console.log(`[CDR] ${lenderId} v${version} 406, trying lower version`);
+      continue;
     }
 
-    console.log(`[CDR] Collected ${allRates.length} total rates from ${lenderId}`);
-    
-  } catch (error) {
-    console.error(`[CDR] Error fetching from ${lenderId}:`, error);
+    // 3xx with no Location, 4xx, 5xx etc.
+    console.warn(`[CDR] ${lenderId} ${baseUrl} v${version} -> ${response.status} (final ${finalUrl}) ${error ?? ''}`);
+    break;
   }
 
-  return allRates;
+  return { products: [], status: lastStatus, finalUrl: lastFinalUrl, error: lastError };
+}
+
+async function fetchLenderProducts(
+  lenderId: string,
+  config: { baseUrl: string; productVersion: string; detailVersion: string }
+): Promise<{ rates: LendingRate[]; usedBaseUrl: string; error?: string; status: number }> {
+  const { baseUrl, productVersion, detailVersion } = config;
+
+  // Build URL attempt list: primary first, then known fallbacks (deduped)
+  const candidates = [baseUrl, ...(BASE_URL_FALLBACKS[lenderId] || [])]
+    .filter((v, i, a) => a.indexOf(v) === i);
+
+  let products: any[] = [];
+  let usedBaseUrl = baseUrl;
+  let lastStatus = 0;
+  let lastError: string | undefined;
+
+  for (const candidate of candidates) {
+    console.log(`[CDR] ${lenderId} trying baseUrl: ${candidate}`);
+    const r = await tryFetchProductsAtBase(lenderId, candidate, productVersion);
+    lastStatus = r.status;
+    lastError = r.error;
+    if (r.products.length > 0) {
+      products = r.products;
+      usedBaseUrl = candidate;
+      break;
+    }
+  }
+
+  if (products.length === 0) {
+    return { rates: [], usedBaseUrl, status: lastStatus, error: lastError || `No products (last status ${lastStatus})` };
+  }
+
+  // Top 15 for performance
+  const productsToFetch = products.slice(0, 15);
+  const rateArrays = await Promise.all(
+    productsToFetch.map((p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion))
+  );
+  const allRates: LendingRate[] = [];
+  for (const arr of rateArrays) allRates.push(...arr);
+
+  console.log(`[CDR] ${lenderId} collected ${allRates.length} rates from ${usedBaseUrl}`);
+  return { rates: allRates, usedBaseUrl, status: lastStatus };
 }
 
 async function getCachedRates(supabase: any, lenderId: string): Promise<CacheEntry | null> {
@@ -478,15 +551,16 @@ Deno.serve(async (req) => {
       // Fetch fresh if no cache
       if (rates.length === 0) {
         console.log(`[CDR] Fetching fresh rates for ${lenderId}`);
-        rates = await fetchLenderProducts(lenderId, {
+        const result = await fetchLenderProducts(lenderId, {
           baseUrl: lenderConfig.baseUrl,
           productVersion: lenderConfig.productVersion,
           detailVersion: lenderConfig.detailVersion,
         });
+        rates = result.rates;
         if (rates.length > 0) {
           await setCachedRates(supabase, lenderId, rates);
         } else {
-          console.warn(`[CDR] No rates found for ${lenderId}`);
+          console.warn(`[CDR] No rates found for ${lenderId}: ${result.error || 'unknown'}`);
         }
       }
 
@@ -588,7 +662,7 @@ Deno.serve(async (req) => {
       // Kick off all CDR fetches concurrently
       const cdrPromises = Object.entries(CDR_LENDERS).map(async ([id, config]) => {
         try {
-          const rates = await withTimeout(
+          const result = await withTimeout(
             fetchLenderProducts(id, {
               baseUrl: config.baseUrl,
               productVersion: config.productVersion,
@@ -597,15 +671,26 @@ Deno.serve(async (req) => {
             PER_LENDER_TIMEOUT_MS,
             id
           );
+          const rates = result.rates;
           let cached = false;
           if (rates.length > 0) {
             cached = await setCachedRates(supabase, id, rates);
           }
-          console.log(`[CDR] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
-          return { lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached };
+          console.log(`[CDR] Refresh ${id}: ${rates.length} rates via ${result.usedBaseUrl}, cached: ${cached}`);
+          return {
+            lenderId: id,
+            lenderName: config.name,
+            success: rates.length > 0,
+            rateCount: rates.length,
+            cached,
+            usedBaseUrl: result.usedBaseUrl,
+            httpStatus: result.status,
+            error: rates.length === 0 ? (result.error || `No products (status ${result.status})`) : undefined,
+          };
         } catch (error: any) {
-          console.error(`[CDR] Failed to refresh ${id}:`, error?.message || error);
-          return { lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false };
+          const msg = error?.message || String(error);
+          console.error(`[CDR] Failed to refresh ${id}:`, msg);
+          return { lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false, error: msg };
         }
       });
 
@@ -617,8 +702,9 @@ Deno.serve(async (req) => {
           console.log(`[manual] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
           return { lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached };
         } catch (error: any) {
-          console.error(`[manual] Failed to refresh ${id}:`, error?.message || error);
-          return { lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false };
+          const msg = error?.message || String(error);
+          console.error(`[manual] Failed to refresh ${id}:`, msg);
+          return { lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false, error: msg };
         }
       });
 
