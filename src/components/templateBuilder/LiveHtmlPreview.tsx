@@ -92,10 +92,15 @@ export function LiveHtmlPreview({
   // `sampleData` and `customCss` change reference on every edit (even when their
   // bytes are identical — e.g. editing a different page), so keying on a content
   // signature avoids needless renderer runs and iframe srcDoc churn.
+  const visible = useMemo(
+    () => (scope === 'page' && activePage ? { ...template, pages: [activePage] } : template),
+    [scope, activePage, template],
+  );
   const renderKey = useMemo(
     () => makePreviewKey(visible, sampleData, customCss),
     [visible, sampleData, customCss],
   );
+
   const html = useMemo(() => {
     try {
       if (scope === 'page' && activePage) {
