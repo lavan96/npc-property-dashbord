@@ -279,13 +279,19 @@ function CreateClientDialog({
 
     setSubmitting(true);
     try {
+      const stage = stages.find((s) => s.id === selectedStageId);
+      const pipeline = pipelines.find((p) => p.id === selectedPipelineId);
+
       const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
         operation: 'create_client',
         payload: formData,
         intake_method: intakeMode === 'pdf' ? 'pdf_upload' : 'manual',
         ingestion_file_name: pdfFileName,
-        sync_to_ghl: true,
+        sync_to_ghl: syncToGHL,
+        pipeline_ghl_id: syncToGHL && pipeline?.ghl_id ? pipeline.ghl_id : undefined,
+        pipeline_stage_ghl_id: syncToGHL && stage?.ghl_id ? stage.ghl_id : undefined,
       });
+
 
       if (error || !data?.success || !data?.client?.id) {
         const detail = data?.details || data?.error || error?.message || 'Failed to create client';
