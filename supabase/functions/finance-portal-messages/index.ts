@@ -259,7 +259,8 @@ Deno.serve(async (req) => {
       }
 
       let fuId = actor.type === 'partner' ? actor.portalUserId : finance_user_id;
-      if (!fuId && actor.type === 'staff') {
+      if (actor.type === 'client' && client_id !== actor.clientId) return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      if (!fuId && (actor.type === 'staff' || actor.type === 'client')) {
         const { data: assignment } = await supabase
           .from('finance_portal_client_assignments')
           .select('finance_user_id, assigned_at')
@@ -414,6 +415,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Thread visibility and type are immutable; create or select the correct governed thread' }, 400, corsHeaders);
       }
 
+      const requestedScope = body.visibility_scope || (actor.type === 'partner' || actor.type === 'client' ? 'finance_client_with_command_visibility' : thread.visibility_scope || 'command_finance_private');
       const insertRow: any = {
         thread_id,
         client_id: thread.client_id,
@@ -446,6 +448,16 @@ Deno.serve(async (req) => {
         .select()
         .single();
       if (error) throw error;
+
+      if (requestedScope !== thread.visibility_scope) {
+        await supabase.from('finance_portal_threads').update({
+          visibility_scope: requestedScope,
+          thread_type: insertRow.thread_type,
+          allocation_status: insertRow.allocation_status,
+          finance_allocated: requestedScope === 'command_client_with_finance_allocated',
+          permission_status: insertRow.permission_status,
+        }).eq('id', thread_id);
+      }
 
       // Audit
       try {
