@@ -33,7 +33,7 @@ const GOLDEN_TEMPLATE = parseTemplate({
           type: 'free',
           props: {},
           overlays: [
-            { id: 'ov-text', type: 'text', x: 60, y: 60, width: 320, height: 48, text: '{{client.name}}' },
+            { id: 'ov-text', type: 'text', x: 60, y: 60, width: 320, height: 48, content: '{{client.name}}' },
             { id: 'ov-img', type: 'image', x: 60, y: 200, width: 200, height: 120, src: 'https://example.com/logo.png', fit: 'cover' },
             { id: 'ov-shape', type: 'shape', x: 60, y: 360, width: 120, height: 80, shape: 'rect', fill: 'token:accent' },
           ],
