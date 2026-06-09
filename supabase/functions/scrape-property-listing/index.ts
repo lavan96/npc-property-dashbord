@@ -277,8 +277,8 @@ Return null for any field not present in the source.`;
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    temperature: 0.1,
-    max_tokens: 2200,
+    temperature: 0.05,
+    max_tokens: 4000,
     response_format: {
       type: "json_schema",
       json_schema: {
