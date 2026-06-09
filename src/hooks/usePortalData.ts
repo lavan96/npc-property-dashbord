@@ -111,7 +111,10 @@ export function usePortalUnifiedInbox() {
     queryKey: ['portal-unified-inbox', user?.client_id],
     queryFn: () => invokePortalEdge('client-portal-comms', { operation: 'list' }),
     enabled: !!user?.client_id,
-    staleTime: 30000,
+    staleTime: 10000,
+    // Poll so CC/Finance-side replies surface without manual refresh.
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 }
 
