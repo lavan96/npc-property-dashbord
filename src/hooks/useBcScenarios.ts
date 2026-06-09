@@ -33,7 +33,8 @@ function normalizeScenarioPreset(raw: Partial<ScenarioPreset> | null | undefined
     serviceabilityBand: 'red',
     stressTestedCapacity: 0,
     capacityChange: { absolute: 0, percentage: 0 },
-  } as ScenarioPreset['result'];
+  } as unknown as ScenarioPreset['result'];
+
 
   return {
     ...(preset as ScenarioPreset),
