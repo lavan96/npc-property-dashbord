@@ -159,7 +159,15 @@ async function fetchCdr(
   for (let i = 0; i <= maxRedirects; i++) {
     chain.push(currentUrl);
     try {
-      const res = await fetch(currentUrl, { headers, redirect: 'manual' });
+      const requestHeaders = {
+        'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0; +https://npcservices.com.au)',
+        ...headers,
+      };
+      let res = await fetch(currentUrl, { headers: requestHeaders, redirect: 'manual' });
+      for (let attempt = 1; attempt <= 2 && [429, 500, 502, 503, 504].includes(res.status); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        res = await fetch(currentUrl, { headers: requestHeaders, redirect: 'manual' });
+      }
       // Manual redirect: status 0 in some runtimes, or 301/302/303/307/308
       if (res.status === 301 || res.status === 302 || res.status === 303 || res.status === 307 || res.status === 308) {
         const loc = res.headers.get('location');
