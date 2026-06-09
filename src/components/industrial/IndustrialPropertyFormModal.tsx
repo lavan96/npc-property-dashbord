@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
+import { PropertyImportPanel, type ImportedPropertyData } from '@/components/property-import/PropertyImportPanel';
 
 interface Props {
   open: boolean;
@@ -42,6 +43,22 @@ const CONDITION = [
   { value: 'D', label: 'D — Refurb required' },
 ];
 
+
+function normalizeIndustrialSubtype(value: string | undefined, fallback: any) {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase().replace(/[\s-]+/g, '_');
+  const match = SUBTYPES.find(option => option.value === normalized || option.label.toLowerCase().includes(value.toLowerCase()));
+  if (match) return match.value;
+  if (normalized.includes('logistics') || normalized.includes('fulfil')) return 'logistics';
+  if (normalized.includes('manufact')) return 'manufacturing';
+  if (normalized.includes('cold')) return 'cold_storage';
+  if (normalized.includes('data')) return 'data_centre';
+  if (normalized.includes('yard') || normalized.includes('transport')) return 'transport_yard';
+  if (normalized.includes('flex')) return 'flex';
+  if (normalized.includes('warehouse') || normalized.includes('distribution')) return 'warehouse';
+  return fallback;
+}
+
 export function IndustrialPropertyFormModal({ open, onClose, property, onSaved }: Props) {
   const isEdit = !!property;
   const initial = useMemo(() => ({
@@ -74,6 +91,33 @@ export function IndustrialPropertyFormModal({ open, onClose, property, onSaved }
   const [form, setForm] = useState<any>(initial);
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  const applyImportedData = (data: ImportedPropertyData) => {
+    setForm((prev: any) => ({
+      ...prev,
+      property_name: data.propertyName ?? prev.property_name,
+      street: data.address ?? prev.street,
+      suburb: data.suburb ?? prev.suburb,
+      state: data.state ?? prev.state,
+      postcode: data.postcode ?? prev.postcode,
+      asset_subtype: normalizeIndustrialSubtype(data.assetSubType || data.assetClass, prev.asset_subtype),
+      purchase_price: data.price ?? prev.purchase_price,
+      current_valuation: data.valuation ?? prev.current_valuation,
+      gla_sqm: data.glaSqm ?? data.nlaSqm ?? data.gfaSqm ?? prev.gla_sqm,
+      site_area_sqm: data.siteAreaSqm ?? prev.site_area_sqm,
+      site_cover_pct: data.siteCoverPct ?? prev.site_cover_pct,
+      office_pct: data.officePct ?? prev.office_pct,
+      hardstand_sqm: data.hardstandSqm ?? prev.hardstand_sqm,
+      clearance_metres: data.clearanceMetres ?? prev.clearance_metres,
+      power_kva: data.powerKva ?? prev.power_kva,
+      dock_doors: data.dockDoors ?? prev.dock_doors,
+      ground_floor_load_kpa: data.groundFloorLoadKpa ?? prev.ground_floor_load_kpa,
+      zoning: data.zoning ?? prev.zoning,
+      year_built: data.yearBuilt ?? prev.year_built,
+      condition_rating: data.conditionRating ?? prev.condition_rating,
+      notes: [prev.notes, data.notes, data.sourceUrl ? `Source: ${data.sourceUrl}` : ''].filter(Boolean).join('\n\n'),
+    }));
+  };
   const num = (v: any) => v === '' || v == null ? null : Number(v);
 
   const handleSave = async () => {
@@ -121,6 +165,7 @@ export function IndustrialPropertyFormModal({ open, onClose, property, onSaved }
         </DialogHeader>
         <ScrollArea className="flex-1 px-6">
           <div className="grid grid-cols-2 gap-4 py-4">
+            <PropertyImportPanel category="industrial" onImported={applyImportedData} />
             <div className="col-span-2 space-y-2">
               <Label>Property Name</Label>
               <Input value={form.property_name} onChange={e => set('property_name', e.target.value)} placeholder="e.g. M7 Logistics Hub" />

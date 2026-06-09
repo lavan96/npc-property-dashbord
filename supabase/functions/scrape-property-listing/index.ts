@@ -36,6 +36,25 @@ type PerplexityListingExtraction = {
   insurance_estimate: number | null;
   property_management_percent: number | null;
   year_built: number | null;
+  asset_class: string | null;
+  asset_sub_type: string | null;
+  tenure: string | null;
+  zoning: string | null;
+  gfa_sqm: number | null;
+  nla_sqm: number | null;
+  gla_sqm: number | null;
+  site_area_sqm: number | null;
+  parking_bays: number | null;
+  current_valuation: number | null;
+  property_name: string | null;
+  site_cover_pct: number | null;
+  office_pct: number | null;
+  hardstand_sqm: number | null;
+  clearance_metres: number | null;
+  power_kva: number | null;
+  dock_doors: number | null;
+  ground_floor_load_kpa: number | null;
+  condition_rating: string | null;
 };
 
 function normalizeUrl(input: string): string {
@@ -86,6 +105,26 @@ function toExtractedDetails(extracted: PerplexityListingExtraction, fallbackTitl
   if (typeof extracted.insurance_estimate === "number") details.extractedInsurance = extracted.insurance_estimate;
   if (typeof extracted.property_management_percent === "number") details.extractedPropertyManagementPercent = extracted.property_management_percent;
   if (typeof extracted.year_built === "number") details.extractedYearBuilt = extracted.year_built;
+
+  if (extracted.asset_class) details.extractedAssetClass = extracted.asset_class;
+  if (extracted.asset_sub_type) details.extractedAssetSubType = extracted.asset_sub_type;
+  if (extracted.tenure) details.extractedTenure = extracted.tenure;
+  if (extracted.zoning) details.extractedZoning = extracted.zoning;
+  if (typeof extracted.gfa_sqm === "number") details.extractedGfaSqm = extracted.gfa_sqm;
+  if (typeof extracted.nla_sqm === "number") details.extractedNlaSqm = extracted.nla_sqm;
+  if (typeof extracted.gla_sqm === "number") details.extractedGlaSqm = extracted.gla_sqm;
+  if (typeof extracted.site_area_sqm === "number") details.extractedSiteAreaSqm = extracted.site_area_sqm;
+  if (typeof extracted.parking_bays === "number") details.extractedParkingBays = extracted.parking_bays;
+  if (typeof extracted.current_valuation === "number") details.extractedValuation = extracted.current_valuation;
+  if (extracted.property_name) details.extractedPropertyName = extracted.property_name;
+  if (typeof extracted.site_cover_pct === "number") details.extractedSiteCoverPct = extracted.site_cover_pct;
+  if (typeof extracted.office_pct === "number") details.extractedOfficePct = extracted.office_pct;
+  if (typeof extracted.hardstand_sqm === "number") details.extractedHardstandSqm = extracted.hardstand_sqm;
+  if (typeof extracted.clearance_metres === "number") details.extractedClearanceMetres = extracted.clearance_metres;
+  if (typeof extracted.power_kva === "number") details.extractedPowerKva = extracted.power_kva;
+  if (typeof extracted.dock_doors === "number") details.extractedDockDoors = extracted.dock_doors;
+  if (typeof extracted.ground_floor_load_kpa === "number") details.extractedGroundFloorLoadKpa = extracted.ground_floor_load_kpa;
+  if (extracted.condition_rating) details.extractedConditionRating = extracted.condition_rating;
 
   // If we have suburb/state/postcode but no address, build a partial address.
   if (!details.extractedAddress && details.extractedSuburb && details.extractedState) {
@@ -143,7 +182,7 @@ function buildListingMarkdown(inputUrl: string, extracted: PerplexityListingExtr
   return lines.join("\n");
 }
 
-async function extractWithPerplexity(url: string) {
+async function extractWithPerplexity(url: string, propertyCategory = 'residential') {
   const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (!apiKey) {
     return {
@@ -156,14 +195,15 @@ async function extractWithPerplexity(url: string) {
   const system =
     "You extract structured property listing details for Australian real estate listings. Be precise; return null when unknown. Do not invent values.";
 
-  const user = `Extract property listing details from this URL: ${url}
+  const user = `Extract ${propertyCategory} property listing details from this URL: ${url}
 
 Rules:
 - Prefer the exact street address as written on the listing.
 - If the listing is for a suburb-only page or an area overview (not a single property), set address to null and capture suburb/state/postcode if available.
 - Price: return a number in AUD (e.g., 1250000). If only ranges or guides exist, choose the best single estimate.
 - Sizes must be in square metres.
-- property_type should be one of: house, apartment, townhouse, land, acreage, rural, duplex, villa, other.
+- property_type should match the listing (for residential: house/apartment/townhouse/land; for commercial/industrial: office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other).
+- For commercial/industrial listings, extract asset_class, asset_sub_type, tenure, zoning, GFA/NLA/GLA, site_area_sqm, parking_bays, current_valuation, property_name, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa and condition_rating when present.
 - weekly_rent: if the listing mentions rental return, rental estimate, or current lease, extract the weekly amount.
 - is_new_build: true if listing mentions "new build", "house & land", "off the plan", "brand new", builder names, or construction terms.
 - land_price / build_price: for house & land packages, extract separate land and build components if shown.
@@ -180,7 +220,7 @@ Rules:
       { role: "user", content: user },
     ],
     temperature: 0.1,
-    max_tokens: 1500,
+    max_tokens: 2200,
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -216,6 +256,25 @@ Rules:
             insurance_estimate: { type: ["number", "null"] },
             property_management_percent: { type: ["number", "null"] },
             year_built: { type: ["number", "null"] },
+            asset_class: { type: ["string", "null"] },
+            asset_sub_type: { type: ["string", "null"] },
+            tenure: { type: ["string", "null"] },
+            zoning: { type: ["string", "null"] },
+            gfa_sqm: { type: ["number", "null"] },
+            nla_sqm: { type: ["number", "null"] },
+            gla_sqm: { type: ["number", "null"] },
+            site_area_sqm: { type: ["number", "null"] },
+            parking_bays: { type: ["number", "null"] },
+            current_valuation: { type: ["number", "null"] },
+            property_name: { type: ["string", "null"] },
+            site_cover_pct: { type: ["number", "null"] },
+            office_pct: { type: ["number", "null"] },
+            hardstand_sqm: { type: ["number", "null"] },
+            clearance_metres: { type: ["number", "null"] },
+            power_kva: { type: ["number", "null"] },
+            dock_doors: { type: ["number", "null"] },
+            ground_floor_load_kpa: { type: ["number", "null"] },
+            condition_rating: { type: ["string", "null"] },
           },
           required: [
             "title",
@@ -245,6 +304,25 @@ Rules:
             "insurance_estimate",
             "property_management_percent",
             "year_built",
+            "asset_class",
+            "asset_sub_type",
+            "tenure",
+            "zoning",
+            "gfa_sqm",
+            "nla_sqm",
+            "gla_sqm",
+            "site_area_sqm",
+            "parking_bays",
+            "current_valuation",
+            "property_name",
+            "site_cover_pct",
+            "office_pct",
+            "hardstand_sqm",
+            "clearance_metres",
+            "power_kva",
+            "dock_doors",
+            "ground_floor_load_kpa",
+            "condition_rating",
           ],
           additionalProperties: false,
         },
@@ -318,7 +396,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const body = await req.json();
-    const { url } = body;
+    const { url, propertyCategory = 'residential' } = body;
     
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
@@ -346,7 +424,7 @@ Deno.serve(async (req) => {
 
     console.log("Using Perplexity macro extraction for URL:", formattedUrl);
 
-    const result = await extractWithPerplexity(formattedUrl);
+    const result = await extractWithPerplexity(formattedUrl, propertyCategory);
 
     if (!result.ok) {
       console.error("Perplexity extraction error:", result.status, result.error);

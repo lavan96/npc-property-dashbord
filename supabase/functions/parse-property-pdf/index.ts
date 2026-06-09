@@ -32,6 +32,25 @@ interface ExtractedPropertyData {
   yearBuilt?: number;
   stampDuty?: number;
   agentFee?: number;
+  assetClass?: string;
+  assetSubType?: string;
+  tenure?: string;
+  zoning?: string;
+  gfaSqm?: number;
+  nlaSqm?: number;
+  glaSqm?: number;
+  siteAreaSqm?: number;
+  parkingBays?: number;
+  currentValuation?: number;
+  propertyName?: string;
+  siteCoverPct?: number;
+  officePct?: number;
+  hardstandSqm?: number;
+  clearanceMetres?: number;
+  powerKva?: number;
+  dockDoors?: number;
+  groundFloorLoadKpa?: number;
+  conditionRating?: string;
 }
 
 interface StructuredPropertyPayload {
@@ -58,6 +77,25 @@ interface StructuredPropertyPayload {
   yearBuilt?: number;
   stampDuty?: number;
   agentFee?: number;
+  assetClass?: string;
+  assetSubType?: string;
+  tenure?: string;
+  zoning?: string;
+  gfaSqm?: number;
+  nlaSqm?: number;
+  glaSqm?: number;
+  siteAreaSqm?: number;
+  parkingBays?: number;
+  currentValuation?: number;
+  propertyName?: string;
+  siteCoverPct?: number;
+  officePct?: number;
+  hardstandSqm?: number;
+  clearanceMetres?: number;
+  powerKva?: number;
+  dockDoors?: number;
+  groundFloorLoadKpa?: number;
+  conditionRating?: string;
 }
 
 interface PageImage {
@@ -96,7 +134,8 @@ Extract ALL property information you can find, including:
 - Number of bedrooms, bathrooms, car spaces
 - Land size in sqm (look for dimensions or "m²")
 - Building/floor size in sqm
-- Property type (house, apartment, townhouse, land, house & land package)
+- Property type (house, apartment, townhouse, land, house & land package, office, retail, warehouse, logistics, manufacturing, mixed use)
+- For commercial and industrial documents: asset class/sub-type, tenure, zoning, GFA/NLA/GLA, site area, parking bays, valuation, estate/building name, site cover, office percentage, hardstand, warehouse clearance, power capacity, dock doors, floor loading and condition rating
 - For house & land packages: separate land and build prices
 - Whether it's a new build (look for "house and land", "new home", "off the plan", "build contract", builder logos, etc.)
 
@@ -112,7 +151,7 @@ ALSO EXTRACT these financial details if mentioned:
 
 Pay special attention to:
 - Header/hero sections with address and key features
-- Floorplans that show dimensions
+- Floorplans, lease plans, IMs and brochures that show dimensions
 - Price breakdowns showing land + build costs
 - Feature lists and specifications
 - Financial summaries or cost breakdowns
@@ -120,9 +159,9 @@ Pay special attention to:
 
 Return ONLY valid JSON with these exact fields (use null for values not found).`;
 
-function buildUserPrompt(imageCount: number, fileName: string, batchInfo?: string): string {
+function buildUserPrompt(imageCount: number, fileName: string, propertyCategory = 'residential', batchInfo?: string): string {
   const batchNote = batchInfo ? `\n${batchInfo}` : '';
-  return `Extract all property details from these ${imageCount} page(s) of the document "${fileName}".${batchNote}
+  return `Extract all ${propertyCategory} property details from these ${imageCount} page(s) of the document "${fileName}".${batchNote}
 
 Return JSON format:
 {
@@ -148,7 +187,26 @@ Return JSON format:
   "propertyManagementPercent": numeric percentage (e.g., 8 for 8%),
   "yearBuilt": numeric year of construction,
   "stampDuty": numeric stamp duty amount,
-  "agentFee": numeric agent/buyer's agent fee
+  "agentFee": numeric agent/buyer's agent fee,
+  "assetClass": "office/retail/industrial/mixed_use/medical/childcare/hospitality/other",
+  "assetSubType": "warehouse/logistics/manufacturing/cold_storage/flex/data_centre/transport_yard/other or listing sub-type",
+  "tenure": "freehold/leasehold/strata",
+  "zoning": "planning or industrial zoning",
+  "gfaSqm": numeric gross floor area,
+  "nlaSqm": numeric net lettable area,
+  "glaSqm": numeric gross lettable area,
+  "siteAreaSqm": numeric site area,
+  "parkingBays": numeric parking spaces/bays,
+  "currentValuation": numeric valuation if shown,
+  "propertyName": "building/estate name",
+  "siteCoverPct": numeric site cover percentage,
+  "officePct": numeric office percentage,
+  "hardstandSqm": numeric hardstand area,
+  "clearanceMetres": numeric warehouse clearance height,
+  "powerKva": numeric power capacity in kVA,
+  "dockDoors": numeric dock doors,
+  "groundFloorLoadKpa": numeric floor load in kPa,
+  "conditionRating": "A/B/C/D if stated or infer only if explicitly graded"
 }`;
 }
 
@@ -157,27 +215,29 @@ Return JSON format:
 async function extractWithVision(
   images: PageImage[], 
   openaiKey: string, 
-  fileName: string
+  fileName: string,
+  propertyCategory = 'residential'
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing ${images.length} page images with GPT-4o Vision...`);
   
   if (images.length <= VISION_BATCH_SIZE) {
-    return await extractWithVisionSingle(images, openaiKey, fileName);
+    return await extractWithVisionSingle(images, openaiKey, fileName, propertyCategory);
   }
   
-  return await extractWithVisionBatched(images, openaiKey, fileName);
+  return await extractWithVisionBatched(images, openaiKey, fileName, propertyCategory);
 }
 
 async function extractWithVisionSingle(
   images: PageImage[], 
   openaiKey: string, 
   fileName: string,
+  propertyCategory = 'residential',
   batchInfo?: string
 ): Promise<ExtractedPropertyData> {
   const userContent: any[] = [
     {
       type: "text",
-      text: buildUserPrompt(images.length, fileName, batchInfo),
+      text: buildUserPrompt(images.length, fileName, propertyCategory, batchInfo),
     }
   ];
 
@@ -249,7 +309,8 @@ async function extractWithVisionSingle(
 async function extractWithVisionBatched(
   images: PageImage[],
   openaiKey: string,
-  fileName: string
+  fileName: string,
+  propertyCategory = 'residential'
 ): Promise<ExtractedPropertyData> {
   // Create batches
   const batches: PageImage[][] = [];
@@ -272,7 +333,7 @@ async function extractWithVisionBatched(
       
       console.log(`🔍 Starting batch ${batchIndex + 1}/${batches.length} (pages: ${pageRange})`);
       
-      return extractWithVisionSingle(batch, openaiKey, fileName, batchInfo)
+      return extractWithVisionSingle(batch, openaiKey, fileName, propertyCategory, batchInfo)
         .then(result => ({ batchIndex, result, error: null as Error | null }))
         .catch(error => {
           console.error(`❌ Batch ${batchIndex + 1} failed:`, error);
@@ -357,6 +418,25 @@ function parseVisionResponse(content: string): ExtractedPropertyData {
       yearBuilt: typeof parsed.yearBuilt === 'number' ? parsed.yearBuilt : undefined,
       stampDuty: typeof parsed.stampDuty === 'number' ? parsed.stampDuty : undefined,
       agentFee: typeof parsed.agentFee === 'number' ? parsed.agentFee : undefined,
+      assetClass: typeof parsed.assetClass === 'string' ? parsed.assetClass : undefined,
+      assetSubType: typeof parsed.assetSubType === 'string' ? parsed.assetSubType : undefined,
+      tenure: typeof parsed.tenure === 'string' ? parsed.tenure : undefined,
+      zoning: typeof parsed.zoning === 'string' ? parsed.zoning : undefined,
+      gfaSqm: typeof parsed.gfaSqm === 'number' ? parsed.gfaSqm : undefined,
+      nlaSqm: typeof parsed.nlaSqm === 'number' ? parsed.nlaSqm : undefined,
+      glaSqm: typeof parsed.glaSqm === 'number' ? parsed.glaSqm : undefined,
+      siteAreaSqm: typeof parsed.siteAreaSqm === 'number' ? parsed.siteAreaSqm : undefined,
+      parkingBays: typeof parsed.parkingBays === 'number' ? parsed.parkingBays : undefined,
+      currentValuation: typeof parsed.currentValuation === 'number' ? parsed.currentValuation : undefined,
+      propertyName: typeof parsed.propertyName === 'string' ? parsed.propertyName : undefined,
+      siteCoverPct: typeof parsed.siteCoverPct === 'number' ? parsed.siteCoverPct : undefined,
+      officePct: typeof parsed.officePct === 'number' ? parsed.officePct : undefined,
+      hardstandSqm: typeof parsed.hardstandSqm === 'number' ? parsed.hardstandSqm : undefined,
+      clearanceMetres: typeof parsed.clearanceMetres === 'number' ? parsed.clearanceMetres : undefined,
+      powerKva: typeof parsed.powerKva === 'number' ? parsed.powerKva : undefined,
+      dockDoors: typeof parsed.dockDoors === 'number' ? parsed.dockDoors : undefined,
+      groundFloorLoadKpa: typeof parsed.groundFloorLoadKpa === 'number' ? parsed.groundFloorLoadKpa : undefined,
+      conditionRating: typeof parsed.conditionRating === 'string' ? parsed.conditionRating : undefined,
     };
   } catch (parseError) {
     console.error('❌ Failed to parse vision response as JSON:', parseError, 'Content:', jsonStr.substring(0, 500));
@@ -370,7 +450,8 @@ async function extractFromSingleImage(
   base64: string,
   mimeType: string,
   openaiKey: string,
-  fileName: string
+  fileName: string,
+  propertyCategory = 'residential'
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing single image with GPT-4o Vision...`);
   
@@ -382,7 +463,7 @@ async function extractFromSingleImage(
       {
         role: 'user',
         content: [
-          { type: 'text', text: buildUserPrompt(1, fileName) },
+          { type: 'text', text: buildUserPrompt(1, fileName, propertyCategory) },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } },
         ] as any,
       },
@@ -474,6 +555,25 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     yearBuilt: extractedData.yearBuilt,
     stampDuty: extractedData.stampDuty,
     agentFee: extractedData.agentFee,
+    assetClass: extractedData.assetClass,
+    assetSubType: extractedData.assetSubType,
+    tenure: extractedData.tenure,
+    zoning: extractedData.zoning,
+    gfaSqm: extractedData.gfaSqm,
+    nlaSqm: extractedData.nlaSqm,
+    glaSqm: extractedData.glaSqm,
+    siteAreaSqm: extractedData.siteAreaSqm,
+    parkingBays: extractedData.parkingBays,
+    currentValuation: extractedData.currentValuation,
+    propertyName: extractedData.propertyName,
+    siteCoverPct: extractedData.siteCoverPct,
+    officePct: extractedData.officePct,
+    hardstandSqm: extractedData.hardstandSqm,
+    clearanceMetres: extractedData.clearanceMetres,
+    powerKva: extractedData.powerKva,
+    dockDoors: extractedData.dockDoors,
+    groundFloorLoadKpa: extractedData.groundFloorLoadKpa,
+    conditionRating: extractedData.conditionRating,
   };
 }
 
@@ -625,6 +725,7 @@ Deno.serve(async (req) => {
       imageMimeType,
       fileName,
       base64Content,
+      propertyCategory = 'residential',
     } = body;
     
     const fileNameToUse = fileName || 'document.pdf';
@@ -643,13 +744,13 @@ Deno.serve(async (req) => {
     // Method 1: Page images from client-side PDF rendering (PREFERRED)
     if (pageImages && Array.isArray(pageImages) && pageImages.length > 0) {
       console.log(`📚 Received ${pageImages.length} page images from client`);
-      extractedData = await extractWithVision(pageImages, openaiKey, fileNameToUse);
+      extractedData = await extractWithVision(pageImages, openaiKey, fileNameToUse, propertyCategory);
       extractionMethod = `gpt-4o-vision-pages-${pageImages.length}`;
     }
     // Method 2: Single image file
     else if (singleImage && imageMimeType) {
       console.log('🖼️ Processing single image file');
-      extractedData = await extractFromSingleImage(singleImage, imageMimeType, openaiKey, fileNameToUse);
+      extractedData = await extractFromSingleImage(singleImage, imageMimeType, openaiKey, fileNameToUse, propertyCategory);
       extractionMethod = 'gpt-4o-vision-image';
     }
     // Method 3: Legacy fallback
@@ -700,6 +801,7 @@ Deno.serve(async (req) => {
         extractedPostcode: structuredPayload.postcode,
         extractedPrice: structuredPayload.purchasePrice,
         extractedRent: structuredPayload.weeklyRent,
+        extractedWeeklyRent: structuredPayload.weeklyRent,
         extractedBedrooms: structuredPayload.bedrooms,
         extractedBathrooms: structuredPayload.bathrooms,
         extractedCarSpaces: structuredPayload.carSpaces,
@@ -709,6 +811,26 @@ Deno.serve(async (req) => {
         extractedLandPrice: structuredPayload.landPrice,
         extractedBuildPrice: structuredPayload.buildPrice,
         isNewBuild: structuredPayload.isNewBuild,
+        extractedIsNewBuild: structuredPayload.isNewBuild,
+        extractedAssetClass: structuredPayload.assetClass,
+        extractedAssetSubType: structuredPayload.assetSubType,
+        extractedTenure: structuredPayload.tenure,
+        extractedZoning: structuredPayload.zoning,
+        extractedGfaSqm: structuredPayload.gfaSqm,
+        extractedNlaSqm: structuredPayload.nlaSqm,
+        extractedGlaSqm: structuredPayload.glaSqm,
+        extractedSiteAreaSqm: structuredPayload.siteAreaSqm,
+        extractedParkingBays: structuredPayload.parkingBays,
+        extractedValuation: structuredPayload.currentValuation,
+        extractedPropertyName: structuredPayload.propertyName,
+        extractedSiteCoverPct: structuredPayload.siteCoverPct,
+        extractedOfficePct: structuredPayload.officePct,
+        extractedHardstandSqm: structuredPayload.hardstandSqm,
+        extractedClearanceMetres: structuredPayload.clearanceMetres,
+        extractedPowerKva: structuredPayload.powerKva,
+        extractedDockDoors: structuredPayload.dockDoors,
+        extractedGroundFloorLoadKpa: structuredPayload.groundFloorLoadKpa,
+        extractedConditionRating: structuredPayload.conditionRating,
       },
       structuredPayload,
       extractionMethod,
