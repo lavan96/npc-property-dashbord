@@ -38,34 +38,43 @@ export default function FinancePortalPipeline() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // After the first successful load, do not blank the board out with skeletons
+    // on refresh — show a subtle "refreshing" indicator instead so the user
+    // never sees the lanes disappear behind blank boxes.
+    if (hasLoadedOnce) setRefreshing(true);
+    else setLoading(true);
     try {
       const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
       if (error) {
         const msg = error.message || 'Failed to load pipeline board';
         setLoadError(msg);
         toast.error(msg);
-        setLanes([]);
+        if (!hasLoadedOnce) setLanes([]);
       } else {
         setLoadError(null);
         setLanes(Array.isArray(data?.lanes) ? data.lanes : []);
+        setHasLoadedOnce(true);
       }
     } catch (e: any) {
       console.error('[Pipeline] load failed', e);
       const msg = e?.message || 'Failed to load pipeline board';
       setLoadError(msg);
       toast.error(msg);
-      setLanes([]);
+      if (!hasLoadedOnce) setLanes([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [invokeFinanceFunction]);
+  }, [invokeFinanceFunction, hasLoadedOnce]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Move a card via either DnD (desktop) or the "Move to…" menu (mobile/touch).
   // Phase 2 #11 — native HTML5 drag-drop does not fire on touch devices, so we expose
@@ -123,9 +132,9 @@ export default function FinancePortalPipeline() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Pipeline Kanban</h1>
           <p className="text-sm text-muted-foreground">Drag &amp; drop on desktop, or tap the <span className="inline-flex items-center px-1 py-px rounded border border-border align-middle"><MoreVertical className="h-3 w-3" /></span> menu on a card to move it.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+        <Button variant="outline" size="sm" onClick={load} disabled={loading || refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading || refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
 
@@ -144,22 +153,30 @@ export default function FinancePortalPipeline() {
             </Button>
           </CardContent>
         </Card>
-      ) : lanes.length === 0 ? (
+      ) : lanes.every(l => l.cards.length === 0) ? (
         <Card>
           <CardContent className="py-16 text-center">
             <Layers className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-            <p className="text-sm font-medium">No pipeline to show</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Once purchase files are assigned to you they'll appear here. Try Refresh if you expected files.
+            <p className="text-sm font-medium">No purchase files in your pipeline yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              The Kanban shows purchase files for clients assigned to you. Open a client from
+              <span className="font-medium"> My Clients</span> to create a purchase file — it will appear
+              here and stay in sync with the Command Centre Deal Pipeline.
             </p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={load}>
-              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Button asChild variant="default" size="sm">
+                <Link to="/finance/clients">Go to My Clients</Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={load}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <ScrollArea className="w-full">
-          <div className="flex gap-4 pb-6">
+          <div className={`flex gap-4 pb-6 transition-opacity ${refreshing ? 'opacity-70' : ''}`}>
+
             {lanes.map((lane) => (
               <div
                 key={lane.status}
