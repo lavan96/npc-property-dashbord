@@ -41,21 +41,74 @@ export const ComputedFieldSchema = z.object({
 });
 export type ComputedField = z.infer<typeof ComputedFieldSchema>;
 
+// ─── Reusable text styles (Section 3) ─────────────────────────────────────────
+export const ParagraphStyleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  basedOn: z.string().optional(),
+  fontFamily: z.string().optional(),
+  fontSize: z.number().optional(),
+  fontWeight: z.union([z.number(), z.enum(['normal','bold'])]).optional(),
+  fontStyle: z.enum(['normal','italic']).optional(),
+  color: z.string().optional(),
+  align: z.enum(['left','center','right','justify']).optional(),
+  lineHeight: z.number().optional(),
+  letterSpacing: z.number().optional(),
+  paragraphSpacing: z.number().optional(),
+  paragraphIndent: z.number().optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+  ligatures: z.enum(['none','common','discretionary','historical','contextual','all']).optional(),
+  fontFeatureSettings: z.string().optional(),
+  fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
+  columns: z.number().int().min(1).max(6).optional(),
+  columnGap: z.number().optional(),
+});
+export type ParagraphStyle = z.infer<typeof ParagraphStyleSchema>;
+
+export const CharacterStyleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fontFamily: z.string().optional(),
+  fontWeight: z.union([z.number(), z.enum(['normal','bold'])]).optional(),
+  fontStyle: z.enum(['normal','italic']).optional(),
+  color: z.string().optional(),
+  letterSpacing: z.number().optional(),
+  textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
+  textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
+});
+export type CharacterStyle = z.infer<typeof CharacterStyleSchema>;
+
+export const ExportPresetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  variant: z.string(),
+  tagged: z.boolean().optional(),
+  optimizeImages: z.boolean().optional(),
+  mode: z.enum(['preview','final']).optional(),
+  themeId: z.string().optional(),
+  pageRange: z.string().optional(),
+  includeBookmarks: z.boolean().optional(),
+});
+export type ExportPreset = z.infer<typeof ExportPresetSchema>;
+
 export const TokensSchema = z.object({
-  colors: z.record(z.string()).default({}),     // { primary: "#BF9B50", ... }
-  fonts: z.record(z.string()).default({}),      // { heading: "Helvetica", body: "Helvetica" }
-  spacing: z.record(z.number()).default({}),    // { gutter: 16, ... }
-  // Phase 1 extensions — optional, additive, backwards-compatible
+  colors: z.record(z.string()).default({}),
+  fonts: z.record(z.string()).default({}),
+  spacing: z.record(z.number()).default({}),
   radii: z.record(z.number()).optional(),
   shadows: z.record(z.string()).optional(),
   gradients: z.record(z.string()).optional(),
   typeScale: z.record(z.number()).optional(),
   brandKitId: z.string().uuid().optional(),
   activeTheme: z.enum(['light','dark','print','custom']).optional(),
-  // Phase 5 — registered web fonts to inject via @font-face / @import
   fontFaces: z.array(FontFaceSchema).optional(),
-  // Phase 7 — computed/derived fields available in bindings as `{{=name}}`
   computed: z.array(ComputedFieldSchema).optional(),
+  // Section 3 — reusable text styles
+  paragraphStyles: z.record(ParagraphStyleSchema).optional(),
+  characterStyles: z.record(CharacterStyleSchema).optional(),
+  // Section 8 — saved export pipeline presets
+  exportPresets: z.array(ExportPresetSchema).optional(),
 }).default({ colors: {}, fonts: {}, spacing: {} });
 
 
@@ -78,6 +131,36 @@ export const BookmarkSchema = z.object({
   includeInToc: z.boolean().optional(),
 }).optional();
 
+// Phase 17 — overlay-level visual effects (shadow, blur, blend, outline).
+// Renderer applies these as CSS box-shadow / filter / mix-blend-mode / outline.
+export const OverlayEffectsSchema = z.object({
+  shadow: z.object({
+    x: z.number().default(0),
+    y: z.number().default(2),
+    blur: z.number().min(0).max(96).default(8),
+    spread: z.number().default(0),
+    color: z.string().default('rgba(0,0,0,0.25)'),
+    inset: z.boolean().optional(),
+  }).optional(),
+  blur: z.number().min(0).max(48).optional(),                   // px
+  brightness: z.number().min(0).max(3).optional(),              // 1 = normal
+  contrast: z.number().min(0).max(3).optional(),
+  saturate: z.number().min(0).max(3).optional(),
+  grayscale: z.number().min(0).max(1).optional(),
+  blendMode: z.enum([
+    'normal','multiply','screen','overlay','darken','lighten',
+    'color-dodge','color-burn','hard-light','soft-light','difference',
+    'exclusion','hue','saturation','color','luminosity',
+  ]).optional(),
+  outline: z.object({
+    color: z.string().default('#BF9B50'),
+    width: z.number().min(0).max(24).default(2),
+    style: z.enum(['solid','dashed','dotted','double']).default('solid'),
+    offset: z.number().min(-12).max(24).default(0),
+  }).optional(),
+}).optional();
+export type OverlayEffects = z.infer<typeof OverlayEffectsSchema>;
+
 // ─── Overlays (free-floating shapes inside a page) ────────────────────────────
 const BaseOverlay = z.object({
   id: z.string(),
@@ -90,6 +173,23 @@ const BaseOverlay = z.object({
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
   link: LinkSchema,
   bookmark: BookmarkSchema,
+  // Layout & Structure (Sections 1+2) — editor-only flags, additive/optional
+  locked: z.boolean().optional(),         // selectable but immovable
+  hidden: z.boolean().optional(),         // skip render + hide in canvas
+  groupId: z.string().optional(),         // overlays sharing groupId move together
+  zIndex: z.number().int().optional(),    // overlay stacking within its block
+  name: z.string().optional(),            // designer label (Layers panel)
+  effects: OverlayEffectsSchema,
+  constraints: z.object({                 // pinning for responsive paper-size changes
+    left: z.boolean().optional(),
+    right: z.boolean().optional(),
+    top: z.boolean().optional(),
+    bottom: z.boolean().optional(),
+    centerH: z.boolean().optional(),
+    centerV: z.boolean().optional(),
+    width: z.enum(['fixed', 'scale']).optional(),
+    height: z.enum(['fixed', 'scale']).optional(),
+  }).optional(),
 });
 
 
@@ -133,8 +233,84 @@ export const TextOverlaySchema = BaseOverlay.extend({
   fontVariantNumeric: z.enum(['normal','lining-nums','oldstyle-nums','tabular-nums','proportional-nums']).optional(),
   fontFeatureSettings: z.string().optional(),                     // raw, advanced override
   fontVariationSettings: z.string().optional(),                   // variable axes
+  // Section 3 — reference a paragraph style (overlay-level fields still win)
+  styleRef: z.string().optional(),
+  // Section 3 — drop cap (rendered as a floated span on the first character)
+  dropCap: z.object({
+    enabled: z.boolean().default(true),
+    lines: z.number().min(2).max(8).default(3),
+    color: z.string().optional(),
+    fontFamily: z.string().optional(),
+    fontWeight: z.union([z.number(), z.string()]).optional(),
+    marginRight: z.number().min(0).max(48).optional(),
+  }).optional(),
   // Baseline alignment — snap top to baseline grid in pt
   snapToBaseline: z.boolean().optional(),
+});
+
+export const TextOnPathOverlaySchema = BaseOverlay.extend({
+  type: z.literal('textOnPath'),
+  content: BindableStringSchema,
+  fontFamily: BindableStringSchema.default('Helvetica'),
+  fontSize: BindableNumberSchema.default(18),
+  fontWeight: z.enum(['normal','bold']).default('normal'),
+  color: BindableColorSchema.default('#000000'),
+  curve: z.enum(['arc-up','arc-down','wave','circle']).default('arc-up'),
+  curvature: z.number().min(-1).max(1).default(0.5),
+  letterSpacing: z.number().default(0),
+  startOffset: z.number().min(0).max(100).default(0),    // percent along path
+});
+
+export const TableColumnSchema = z.object({
+  key: z.string(),
+  label: z.string().optional(),
+  width: z.number().optional(),          // pt; omit for auto
+  align: z.enum(['left','center','right']).optional(),
+  format: z.enum(['raw','currency','number','percent','date']).optional(),
+});
+
+export const TableOverlaySchema = BaseOverlay.extend({
+  type: z.literal('table'),
+  // Bound data path (resolves to an array of objects). Falls back to `rows`.
+  data: z.string().optional(),
+  columns: z.array(TableColumnSchema).default([]),
+  rows: z.array(z.array(z.string())).optional(),       // static fallback when no `data`
+  showHeader: z.boolean().default(true),
+  headerHeight: z.number().default(22),
+  rowHeight: z.number().default(20),
+  fontFamily: BindableStringSchema.optional(),
+  fontSize: z.number().default(10),
+  headerBg: BindableColorSchema.optional(),
+  headerColor: BindableColorSchema.optional(),
+  headerFontWeight: z.enum(['normal','bold']).default('bold'),
+  rowBg: BindableColorSchema.optional(),
+  altRowBg: BindableColorSchema.optional(),
+  rowColor: BindableColorSchema.optional(),
+  borderColor: BindableColorSchema.optional(),
+  borderWidth: z.number().default(0.5),
+  cellPadding: z.number().default(6),
+  maxRows: z.number().int().min(1).max(500).optional(),
+  // Per-cell style overrides keyed by row (0-based, header is row -1) + col.
+  cellStyles: z.array(z.object({
+    row: z.number().int(),
+    col: z.number().int(),
+    bg: z.string().optional(),
+    color: z.string().optional(),
+    fontWeight: z.enum(['normal','bold']).optional(),
+    align: z.enum(['left','center','right']).optional(),
+  })).optional(),
+  // Phase 17 — conditional cell rules (data-driven highlighting).
+  // Evaluated per-cell against the bound row. First match wins.
+  cellRules: z.array(z.object({
+    column: z.string(),                                                // column key
+    op: z.enum(['>','>=','<','<=','==','!=','contains','empty','nonempty']),
+    value: z.union([z.number(), z.string()]).optional(),
+    scope: z.enum(['cell','row']).default('cell').optional(),
+    bg: z.string().optional(),
+    color: z.string().optional(),
+    fontWeight: z.enum(['normal','bold']).optional(),
+    icon: z.enum(['none','up','down','flag','star','dot']).optional(),
+  })).optional(),
 });
 
 export const ImageOverlaySchema = BaseOverlay.extend({
@@ -164,6 +340,8 @@ export const OverlaySchema = z.discriminatedUnion('type', [
   TextOverlaySchema,
   ImageOverlaySchema,
   ShapeOverlaySchema,
+  TextOnPathOverlaySchema,
+  TableOverlaySchema,
 ]);
 
 export type Overlay = z.infer<typeof OverlaySchema>;
@@ -240,6 +418,17 @@ export const PageSchema = z.object({
   background: z.object({
     color: BindableColorSchema.optional(),
     imageUrl: BindableStringSchema.optional(),
+    // Phase 11 — optional gradient overlay/fill. When present and stops.length>0
+    // the HTML renderer composites it above any solid color / image.
+    gradient: z.object({
+      type: z.enum(['linear', 'radial']).default('linear'),
+      angle: z.number().min(0).max(360).default(180),  // deg — linear only
+      stops: z.array(z.object({
+        color: z.string(),                              // hex (8-digit allowed)
+        position: z.number().min(0).max(100),
+      })).default([]),
+    }).optional(),
+    opacity: z.number().min(0).max(1).optional(),       // page bg opacity
   }).default({}),
   blocks: z.array(BlockSchema).default([]),
   conditional: z.string().optional(),
@@ -470,6 +659,25 @@ function salvageTemplate(input: unknown): ReportTemplate | null {
           } else if (overlay.type === 'image') {
             overlay.src = String(overlay.src ?? '');
             overlay.fit = ['cover', 'contain', 'fill'].includes(overlay.fit) ? overlay.fit : 'cover';
+          } else if (overlay.type === 'textOnPath') {
+            overlay.content = String(overlay.content ?? '');
+            overlay.fontFamily = overlay.fontFamily ?? 'Helvetica';
+            overlay.fontSize = Number(overlay.fontSize) || 18;
+            overlay.color = overlay.color ?? '#000000';
+            overlay.curve = ['arc-up','arc-down','wave','circle'].includes(overlay.curve) ? overlay.curve : 'arc-up';
+            overlay.curvature = Number(overlay.curvature ?? 0.5);
+            overlay.letterSpacing = Number(overlay.letterSpacing) || 0;
+            overlay.startOffset = Number(overlay.startOffset) || 0;
+            overlay.fontWeight = normaliseFontWeight(overlay.fontWeight);
+          } else if (overlay.type === 'table') {
+            overlay.columns = Array.isArray(overlay.columns) ? overlay.columns : [];
+            overlay.showHeader = overlay.showHeader !== false;
+            overlay.fontSize = Number(overlay.fontSize) || 10;
+            overlay.borderWidth = Number(overlay.borderWidth ?? 0.5);
+            overlay.cellPadding = Number(overlay.cellPadding ?? 6);
+            overlay.headerHeight = Number(overlay.headerHeight ?? 22);
+            overlay.rowHeight = Number(overlay.rowHeight ?? 20);
+            overlay.headerFontWeight = overlay.headerFontWeight === 'normal' ? 'normal' : 'bold';
           }
         }
       }

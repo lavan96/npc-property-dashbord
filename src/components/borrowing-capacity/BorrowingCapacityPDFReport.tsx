@@ -67,6 +67,16 @@ const bandLabel = (band: string): string => {
 const formatLabel = (s: string): string =>
   s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+const formatScenarioDelta = (delta: any): string => {
+  const label = delta?.label || formatLabel(delta?.type || 'Scenario adjustment');
+  const value = Number(delta?.value);
+  const unit = delta?.unit === 'percent' ? '%' : delta?.unit === 'ratio' ? 'x' : '';
+  const valueText = Number.isFinite(value)
+    ? ` (${delta.unit === 'absolute' ? fmt(value) : `${value}${unit}`})`
+    : '';
+  return `${label}${valueText}`;
+};
+
 function setColor(doc: jsPDF, c: RGB) {
   doc.setTextColor(c.r, c.g, c.b);
 }
@@ -186,6 +196,15 @@ export interface BorrowingCapacityExportData {
   client?: any;
   returnBlob?: boolean;
   scenarioPresets?: any[];
+}
+
+export interface BorrowingCapacityPDFOverrides {
+  assessment?: any;
+  incomeSources?: any[];
+  liabilities?: any[];
+  expenses?: any[];
+  properties?: any[];
+  client?: any;
 }
 
 export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData): Promise<{ blob: Blob; fileName: string } | undefined> {
@@ -1133,70 +1152,42 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
           sy += 5;
         }
       }
-    }
 
-    // ── Phase D: Acquisition Capacity sub-section (per scenario) ───────────
-    const scenariosWithAcquisition = scenarios.filter((s: any) => s.acquisitionCapacity);
-    if (scenariosWithAcquisition.length > 0) {
-      sy = checkPageBreak(doc, sy, 50, pageNum);
-      sy += 6;
-      sy = drawSectionHeader(doc, 'Acquisition Capacity (Max Purchase Price)', sy);
-
-      // Intro text
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      setColor(doc, GRAY);
-      const acqIntro = doc.splitTextToSize(
-        'Modelled maximum purchase price per scenario, net of state stamp duty, Lenders Mortgage Insurance and other acquisition costs. Released equity and cash on hand are included in the deposit pool.',
-        CONTENT_W,
-      );
-      doc.text(acqIntro, MARGIN, sy);
-      sy += acqIntro.length * 4 + 4;
-
-      // Header row
-      const acqColX = {
-        name: MARGIN,
-        max: MARGIN + 65,
-        loan: MARGIN + 102,
-        cash: MARGIN + 132,
-        sd: MARGIN + 158,
-        lmi: PAGE_W - MARGIN,
-      };
-      sy = drawTableRow(doc, sy, [
-        { text: 'Scenario', x: acqColX.name, bold: true, color: NAVY },
-        { text: 'Max Purchase', x: acqColX.max, bold: true, color: NAVY },
-        { text: 'Loan', x: acqColX.loan, bold: true, color: NAVY },
-        { text: 'Cash', x: acqColX.cash, bold: true, color: NAVY },
-        { text: 'Stamp Duty', x: acqColX.sd, bold: true, color: NAVY },
-        { text: 'LMI', x: acqColX.lmi, align: 'right', bold: true, color: NAVY },
-      ], LIGHT_GRAY);
-
-      for (let ai = 0; ai < scenariosWithAcquisition.length; ai++) {
-        const sc = scenariosWithAcquisition[ai];
+      const scenarioDetails: string[] = [];
+      if (Array.isArray(sc.scenarioDeltas) && sc.scenarioDeltas.length > 0) {
+        scenarioDetails.push(`Strategy actions: ${sc.scenarioDeltas.slice(0, 5).map(formatScenarioDelta).join(' · ')}${sc.scenarioDeltas.length > 5 ? ' · …' : ''}`);
+      }
+      if (sc.acquisitionCapacity) {
         const acq = sc.acquisitionCapacity;
-        const rowBg = ai % 2 === 0 ? ALT_ROW : undefined;
-        sy = checkPageBreak(doc, sy, 12, pageNum);
-        sy = drawTableRow(doc, sy, [
-          { text: sc.name || `Scenario ${ai + 1}`, x: acqColX.name, color: BODY_TEXT, maxWidth: 60 },
-          { text: fmt(acq.maxPurchasePrice || 0), x: acqColX.max, bold: true, color: NAVY },
-          { text: fmt(acq.loanAvailableForPurchase || 0), x: acqColX.loan, color: BODY_TEXT },
-          { text: fmt(acq.cashAvailable || 0), x: acqColX.cash, color: BODY_TEXT },
-          { text: fmt(acq.stampDuty || 0), x: acqColX.sd, color: BODY_TEXT },
-          { text: fmt(acq.lmi || 0), x: acqColX.lmi, align: 'right', color: BODY_TEXT },
-        ], rowBg);
+        scenarioDetails.push(`Purchase power: max ${fmt(acq.maxPurchasePrice || 0)}${acq.targetPurchasePrice ? `; target ${fmt(acq.targetPurchasePrice)} ${acq.meetsTarget ? 'met' : `short by ${fmt(acq.shortfallToTarget || 0)}`}` : ''}.`);
+      }
+      const pools = sc.capitalLedger?.pools ? Object.values(sc.capitalLedger.pools) as any[] : [];
+      const sourceTotal = pools.reduce((sum, pool) => sum + (Number(pool.totalIn) || 0), 0);
+      const sinkTotal = pools.reduce((sum, pool) => sum + (Number(pool.totalOut) || 0), 0);
+      if (sourceTotal > 0 || sinkTotal > 0) {
+        scenarioDetails.push(`Capital flow: ${fmt(sourceTotal)} sourced; ${fmt(sinkTotal)} allocated; ${fmt(Math.max(0, sourceTotal - sinkTotal))} remaining.`);
+        const sinkNotes = pools.flatMap(pool => (pool.sinks || []).flatMap((sink: any) => sink.notes || [])).slice(0, 3);
+        sinkNotes.forEach(note => scenarioDetails.push(`Capital note: ${note}`));
+      }
+      const policyIssues = Array.isArray(sc.validationIssues)
+        ? sc.validationIssues.filter((issue: any) => issue?.severity === 'warning' || issue?.severity === 'error').slice(0, 4)
+        : [];
+      policyIssues.forEach((issue: any) => {
+        scenarioDetails.push(`${String(issue.severity || 'note').toUpperCase()}: ${issue.message}`);
+      });
 
-        // Optional footnote with notes / released capital
-        if (acq.releasedCapital > 0) {
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'italic');
-          setColor(doc, GRAY);
-          doc.text(
-            `Equity released: ${fmt(acq.releasedCapital)} · LMI mode: ${acq.lmiMode}` +
-            (acq.otherAcquisitionCosts ? ` · Other costs: ${fmt(acq.otherAcquisitionCosts)}` : ''),
-            MARGIN + 4, sy - 2,
-          );
-          sy += 5;
-        }
+      if (scenarioDetails.length > 0) {
+        sy = checkPageBreak(doc, sy, 8 + scenarioDetails.length * 5, pageNum);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        setColor(doc, BODY_TEXT);
+        scenarioDetails.forEach((line) => {
+          const wrapped = doc.splitTextToSize(`• ${line}`, CONTENT_W - 8);
+          sy = checkPageBreak(doc, sy, wrapped.length * 4 + 2, pageNum);
+          doc.text(wrapped, MARGIN + 4, sy);
+          sy += wrapped.length * 4 + 1;
+        });
+        sy += 2;
       }
     }
 
@@ -1257,22 +1248,22 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 }
 
 // ─── Data fetching & orchestration ───────────────────────────────────────────
-export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[]) {
+export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[], overrides?: BorrowingCapacityPDFOverrides) {
   toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
 
   try {
     const { latestAssessment, assessmentHistory, incomeSources, liabilities, expenses, properties, client } = 
       await fetchLatestBorrowingCapacity(clientId);
 
-    if (!latestAssessment) {
+    if (!latestAssessment && !overrides?.assessment) {
       toast.error('No borrowing capacity assessment found. Please calculate capacity first.', { id: 'bc-pdf' });
       return;
     }
 
     // Phase 5: If the assessment doesn't have audit/explanation data, run a quick
     // non-saving calculation to generate it for the PDF
-    let enrichedAssessment = latestAssessment;
-    if (!latestAssessment.auditTrail || !latestAssessment.explanation) {
+    let enrichedAssessment = overrides?.assessment ?? latestAssessment;
+    if (latestAssessment && !overrides?.assessment && (!latestAssessment.auditTrail || !latestAssessment.explanation)) {
       try {
         const { invokeSecureFunction } = await import('@/lib/secureInvoke');
         const { data: calcData, error: calcError } = await invokeSecureFunction('calculate-borrowing-capacity', {
@@ -1307,11 +1298,11 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       clientId,
       clientName,
       assessment: enrichedAssessment,
-      incomeSources,
-      liabilities,
-      expenses,
-      properties,
-      client,
+      incomeSources: overrides?.incomeSources ?? incomeSources,
+      liabilities: overrides?.liabilities ?? liabilities,
+      expenses: overrides?.expenses ?? expenses,
+      properties: overrides?.properties ?? properties,
+      client: overrides?.client ?? client,
       scenarioPresets,
     });
 

@@ -90,7 +90,7 @@ export default function FinancePortalClientInbox() {
                 return (
                   <button
                     key={r.client_id}
-                    onClick={() => navigate(`/finance/clients/${r.client_id}`)}
+                    onClick={() => navigate(`/finance/clients/${r.client_id}?tab=messages`)}
                     className={cn(
                       'w-full flex items-center gap-3 p-3 border border-border/60 rounded-xl text-left',
                       'hover:bg-card/80 transition-colors',
@@ -102,9 +102,9 @@ export default function FinancePortalClientInbox() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">{smartCapitalize(r.name || 'Unknown')}</span>
-                        {r.unread_portal > 0 && (
+                        {(Number(r.unread_portal || 0) + Number(r.unread_finance || 0)) > 0 && (
                           <Badge className="bg-primary text-primary-foreground h-5">
-                            {r.unread_portal} new
+                            {Number(r.unread_portal || 0) + Number(r.unread_finance || 0)} new
                           </Badge>
                         )}
                       </div>

@@ -21,6 +21,31 @@ interface SelectPayload {
   blockType?: string | null;
 }
 
+
+const MAX_PAGE_HTML_CACHE_ENTRIES = 16;
+
+function stableStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function makePreviewCacheKey(input: {
+  page: unknown;
+  templateContext: unknown;
+  sampleData: Record<string, any>;
+  customCss?: string;
+}): string {
+  return stableStringify({
+    page: input.page,
+    templateContext: input.templateContext,
+    sampleData: input.sampleData,
+    customCss: input.customCss ?? '',
+  });
+}
+
 interface Props {
   template: ReportTemplate;
   sampleData: Record<string, any>;
@@ -47,13 +72,21 @@ export function LiveHtmlPreview({
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(1);
 
-  // Optionally restrict render to active page only
-  const visible = useMemo<ReportTemplate>(() => {
-    if (scope === 'document') return template;
-    const page = template.pages.find((p) => p.id === activePageId);
-    if (!page) return template;
-    return { ...template, pages: [page] };
-  }, [template, scope, activePageId]);
+  const pageHtmlCacheRef = useRef<Map<string, string>>(new Map());
+
+  // Optionally restrict render to active page only. Page preview is the default
+  // fast path, so cache its rendered HTML by page/data/CSS signature. Document
+  // preview still renders the whole template on demand because page wrappers and
+  // cross-page runtime hooks are produced by the renderer as one document.
+  const activePage = useMemo(
+    () => template.pages.find((p) => p.id === activePageId) ?? null,
+    [template.pages, activePageId],
+  );
+  const templateContext = useMemo(() => {
+    const context: Record<string, unknown> = { ...template };
+    delete context.pages;
+    return context;
+  }, [template]);
 
   // Re-render only when the rendered *content* actually changes. `visible`,
   // `sampleData` and `customCss` change reference on every edit (even when their
@@ -65,12 +98,32 @@ export function LiveHtmlPreview({
   );
   const html = useMemo(() => {
     try {
-      const { html } = renderTemplateToHtml(visible, {
+      if (scope === 'page' && activePage) {
+        const cacheKey = makePreviewCacheKey({ page: activePage, templateContext, sampleData, customCss });
+        const cached = pageHtmlCacheRef.current.get(cacheKey);
+        if (cached) return cached;
+
+        const { html: rendered } = renderTemplateToHtml({ ...template, pages: [activePage] }, {
+          data: sampleData,
+          customCss,
+          editorMode: true,
+        });
+
+        const cache = pageHtmlCacheRef.current;
+        cache.set(cacheKey, rendered);
+        if (cache.size > MAX_PAGE_HTML_CACHE_ENTRIES) {
+          const firstKey = cache.keys().next().value;
+          if (firstKey) cache.delete(firstKey);
+        }
+        return rendered;
+      }
+
+      const { html: rendered } = renderTemplateToHtml(template, {
         data: sampleData,
         customCss,
         editorMode: true,
       });
-      return html;
+      return rendered;
     } catch (e) {
       return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#b91c1c">Preview error: ${String((e as any)?.message ?? e)}</body></html>`;
     }

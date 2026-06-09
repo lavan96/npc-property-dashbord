@@ -1,23 +1,16 @@
 /**
  * Generic Template Builder routing helper.
  *
- * Replaces the old compass-only `tryRouteThroughTemplateBuilder` shim: now
- * resolves a template for ANY report_type + variant via
- * `resolveReportTemplate`, compiles HTML via `renderTemplateToHtml` using a
- * real binding context from `buildTemplateBindingContext`, and routes to
- * `render-template-pdf` (WeasyPrint). Falls through (returns null) when no
- * template resolves — the caller's legacy generator continues unchanged.
- *
- * The legacy `tryRouteThroughTemplateBuilder` name is re-exported for
- * backwards compatibility with existing call sites.
+ * Resolves a production-capable adapter for the report, resolves the best
+ * matching active template, renders through HTML/WeasyPrint, and returns null
+ * so callers can fall back to legacy generators whenever routing is not ready.
  */
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { parseTemplate } from '@/lib/reportTemplate/templateSchema';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { resolveReportTemplate, type ReportVariant } from '@/lib/reportTemplate/resolveTemplate';
-import { buildTemplateBindingContext } from '@/lib/reportTemplate/buildBindingContext';
+import { getAdapter, listAdapters, type ReportTemplateAdapter } from '@/lib/reportTemplate/adapters';
 
 export interface TemplateBuilderRouteResult {
   fileUrl: string;
@@ -27,78 +20,72 @@ export interface TemplateBuilderRouteResult {
   source: string;
 }
 
+function candidateAdapters(reportType?: string | null): ReportTemplateAdapter[] {
+  const explicit = getAdapter(reportType);
+  if (explicit) return [explicit];
+  return listAdapters().filter((adapter) => adapter.supportsProduction);
+}
+
 export async function routeReportThroughTemplate(
   reportId: string,
-  opts?: { agencyId?: string | null; userId?: string | null; brand?: any },
+  opts?: { agencyId?: string | null; userId?: string | null; brand?: any; reportType?: string | null },
 ): Promise<TemplateBuilderRouteResult | null> {
   try {
-    // 1. Fetch the report (just the routing fields — full data comes via binding context)
-    const { data: report, error: rErr } = await supabase
-      .from('investment_reports')
-      .select('id, report_scope, report_tier, report_variant, property_address')
-      .eq('id', reportId)
-      .maybeSingle();
-    if (rErr || !report) return null;
+    for (const adapter of candidateAdapters(opts?.reportType)) {
+      if (!adapter.supportsProduction) continue;
 
-    const reportType = String((report as any).report_scope ?? '').toLowerCase();
-    const variant = ((report as any).report_variant ?? null) as ReportVariant | null;
-    if (!reportType) return null;
+      const routing = await adapter.resolveRoutingContext({ reportId });
+      if (!routing?.reportType) continue;
 
-    // 2. Resolve the best-matching active template
-    const resolved = await resolveReportTemplate({
-      reportType,
-      variant,
-      agencyId: opts?.agencyId ?? null,
-      userId: opts?.userId ?? null,
-    });
-    if (!resolved) return null;
+      const resolved = await resolveReportTemplate({
+        reportType: routing.reportType,
+        variant: routing.variant as ReportVariant | null,
+        agencyId: opts?.agencyId ?? null,
+        userId: opts?.userId ?? null,
+      });
+      if (!resolved || resolved.engine !== 'weasyprint') continue;
 
-    // Only route through Template Builder when the template is WeasyPrint-engine.
-    // jsPDF-engine templates stay editor-only until WeasyPrint cutover is broader.
-    if (resolved.engine !== 'weasyprint') return null;
+      const tplRow = resolved.template;
+      const ctx = await adapter.buildBindingContext({ reportId, brand: opts?.brand });
+      const bindingData = ctx?.data ?? {};
 
-    const tplRow = resolved.template;
+      const schema = parseTemplate(tplRow.schema);
+      await preloadImages(schema).catch(() => {});
+      const { html } = renderTemplateToHtml(schema, {
+        data: bindingData,
+        customCss: tplRow.custom_css ?? undefined,
+        title: `${tplRow.name} — ${routing.title ?? ''}`.trim(),
+      });
 
-    // 3. Build the binding context from the real report
-    const ctx = await buildTemplateBindingContext(reportId, opts?.brand);
-    const bindingData = ctx?.data ?? {};
+      const safeLabel = String(routing.fileLabel ?? routing.title ?? routing.reportType ?? 'report')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .slice(0, 60);
+      const fileName = `${routing.reportType}-${safeLabel}-${reportId.slice(0, 8)}.pdf`;
 
-    // 4. Compile HTML
-    const schema = parseTemplate(tplRow.schema);
-    await preloadImages(schema).catch(() => {});
-    const { html } = renderTemplateToHtml(schema, {
-      data: bindingData,
-      customCss: tplRow.custom_css ?? undefined,
-      title: `${tplRow.name} — ${(report as any).property_address ?? ''}`.trim(),
-    });
+      const { data: pdfData, error: pdfErr } = await invokeSecureFunction<{
+        url: string;
+        fileName: string;
+      }>('render-template-pdf', {
+        html,
+        fileName,
+        templateId: tplRow.id,
+        mode: 'final',
+      });
+      if (pdfErr || !pdfData?.url) {
+        console.warn('[routeReportThroughTemplate] render-template-pdf failed', pdfErr);
+        continue;
+      }
 
-    // 5. Render via WeasyPrint
-    const safeAddr = String((report as any).property_address ?? 'report')
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .slice(0, 60);
-    const fileName = `${reportType}-${safeAddr}-${reportId.slice(0, 8)}.pdf`;
-
-    const { data: pdfData, error: pdfErr } = await invokeSecureFunction<{
-      url: string;
-      fileName: string;
-    }>('render-template-pdf', {
-      html,
-      fileName,
-      templateId: tplRow.id,
-      mode: 'final',
-    });
-    if (pdfErr || !pdfData?.url) {
-      console.warn('[routeReportThroughTemplate] render-template-pdf failed', pdfErr);
-      return null;
+      return {
+        fileUrl: pdfData.url,
+        fileName: pdfData.fileName ?? fileName,
+        renderer: 'weasyprint',
+        templateId: tplRow.id,
+        source: `${resolved.source}:${adapter.reportType}`,
+      };
     }
 
-    return {
-      fileUrl: pdfData.url,
-      fileName: pdfData.fileName ?? fileName,
-      renderer: 'weasyprint',
-      templateId: tplRow.id,
-      source: resolved.source,
-    };
+    return null;
   } catch (e) {
     console.warn('[routeReportThroughTemplate] unexpected error, falling back', e);
     return null;

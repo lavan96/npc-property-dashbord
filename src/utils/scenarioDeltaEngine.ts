@@ -227,7 +227,8 @@ export interface DeltaValidationIssue {
 
 /** Validate deltas against the available context. Surfaces unknown
  *  property/liability IDs (AI hallucination guard) and obviously broken
- *  numeric inputs. Engine still runs — these are informational. */
+ *  numeric inputs. Callers should block save/apply/export when any issue
+ *  has severity "error"; preview math still runs on safe deltas only. */
 export function validateDeltas(
   deltas: ScenarioDelta[],
   context: ScenarioContext,
@@ -251,7 +252,7 @@ export function validateDeltas(
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
-            severity: 'warning',
+            severity: 'error',
             message: `Property "${d.id}" not found in client portfolio — delta ignored`,
           });
         }
@@ -307,7 +308,7 @@ export function validateDeltas(
               issues.push({
                 deltaId: d.id,
                 deltaType: d.type,
-                severity: 'warning',
+                severity: 'error',
                 message: `Pool member "${pid}" not in portfolio — excluded from blended LVR`,
               });
             }
@@ -329,7 +330,7 @@ export function validateDeltas(
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
-            severity: 'warning',
+            severity: 'error',
             message: `Liability "${d.id}" not found — delta ignored`,
           });
         }
@@ -1668,6 +1669,9 @@ export function runScenarioWithInputs(
       serviceabilityBand: calc.serviceabilityBand,
       dtiRatio: calc.dtiRatio,
       assessmentRate: calc.assessmentRate,
+      stressTestedCapacity: calc.stressTestedCapacity,
+      recommendations: calc.recommendations,
+      warnings: calc.warnings,
       afterTaxAnnualIncome: calc.afterTaxAnnualIncome,
       monthlyAfterTaxIncome: calc.monthlyAfterTaxIncome,
       capacityChange,
@@ -1790,4 +1794,127 @@ export function createMaximumStrategyScenario(
       },
     ],
   };
+}
+
+// ============================================
+// SOLUTION RECOMMENDATIONS (Audit-fix #1)
+// ============================================
+//
+// Surfaces 3 ranked "one-click" solution cards above the manual lever stack so
+// brokers don't have to hand-build every scenario. Each recommendation:
+//   • runs the engine in isolation to project the capacity uplift,
+//   • ranks by Δ capacity (positive only, capped to 3),
+//   • carries an `apply` payload the UI dispatches into existing strategy state
+//     (no new state shape is introduced).
+//
+// Apply payload kinds map 1:1 to the existing setters in StrategyScenarioModeling:
+//   - 'expense'  → handleAdditionalChange({ expenseReductionPercent: payload.percent })
+//   - 'term'     → handleAdditionalChange({ loanTermAdjustment: payload.years })
+//   - 'equity'   → setStrategy(prev => enable equityRelease + add propertyId @ targetLVR)
+
+export type SolutionApply =
+  | { kind: 'expense'; percent: number }
+  | { kind: 'term'; years: number }
+  | { kind: 'equity'; propertyId: string; targetLVR: number };
+
+export interface SolutionRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  projectedCapacity: number;
+  capacityDelta: number;
+  deltas: ScenarioDelta[];
+  apply: SolutionApply;
+}
+
+export function recommendSolutions(
+  context: ScenarioContext,
+): SolutionRecommendation[] {
+  const baseCapacity = context.baseResult.borrowingCapacity;
+  const candidates: SolutionRecommendation[] = [];
+
+  // — Reduce expenses 15% —
+  {
+    const deltas: ScenarioDelta[] = [{
+      id: 'rec-expense-15',
+      label: 'Reduce expenses 15%',
+      type: 'expense_change',
+      value: -15,
+      unit: 'percent',
+    }];
+    try {
+      const r = runScenario('Recommendation: Reduce Expenses', deltas, context);
+      candidates.push({
+        id: 'reduce-expenses',
+        title: 'Reduce Expenses',
+        description: 'Trim discretionary spend by 15% to lift serviceability surplus.',
+        projectedCapacity: r.borrowingCapacity,
+        capacityDelta: r.borrowingCapacity - baseCapacity,
+        deltas,
+        apply: { kind: 'expense', percent: 15 },
+      });
+    } catch { /* skip */ }
+  }
+
+  // — Extend loan term +5y (only if base term ≤ 25) —
+  if ((context.baseInputs.loanTermYears ?? 30) <= 25) {
+    const deltas: ScenarioDelta[] = [{
+      id: 'rec-term-5',
+      label: 'Extend loan term +5 years',
+      type: 'loan_term_change',
+      value: 5,
+      unit: 'absolute',
+    }];
+    try {
+      const r = runScenario('Recommendation: Extend Term', deltas, context);
+      candidates.push({
+        id: 'extend-term',
+        title: 'Extend Loan Term',
+        description: 'Stretch the assessed loan term by 5 years to lower assessed repayments.',
+        projectedCapacity: r.borrowingCapacity,
+        capacityDelta: r.borrowingCapacity - baseCapacity,
+        deltas,
+        apply: { kind: 'term', years: 5 },
+      });
+    } catch { /* skip */ }
+  }
+
+  // — Release equity (highest-equity property to 80% LVR) —
+  const eligible = (context.properties || [])
+    .filter(p => p.currentValue > 0)
+    .map(p => ({
+      p,
+      equity: Math.max(0, p.currentValue * 0.80 - (p.loanRemaining || 0)),
+    }))
+    .filter(x => x.equity > 25_000)
+    .sort((a, b) => b.equity - a.equity);
+
+  if (eligible.length > 0) {
+    const top = eligible[0];
+    const deltas: ScenarioDelta[] = [{
+      id: top.p.id,
+      label: `Release equity from ${top.p.address?.slice(0, 30) || 'top property'} @ 80% LVR`,
+      type: 'equity_release',
+      value: 0.80,
+      unit: 'ratio',
+    }];
+    try {
+      const r = runScenario('Recommendation: Equity Release', deltas, context);
+      candidates.push({
+        id: 'release-equity',
+        title: 'Release Equity',
+        description: `Unlock ~$${Math.round(top.equity).toLocaleString()} from ${top.p.address?.slice(0, 28) || 'top property'} to seed the next deposit.`,
+        projectedCapacity: r.borrowingCapacity,
+        capacityDelta: r.borrowingCapacity - baseCapacity,
+        deltas,
+        apply: { kind: 'equity', propertyId: top.p.id, targetLVR: 0.80 },
+      });
+    } catch { /* skip */ }
+  }
+
+  // Rank by capacity uplift desc, keep top 3, hide non-positive results.
+  return candidates
+    .filter(c => c.capacityDelta > 0)
+    .sort((a, b) => b.capacityDelta - a.capacityDelta)
+    .slice(0, 3);
 }

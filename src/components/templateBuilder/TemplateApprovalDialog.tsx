@@ -40,8 +40,11 @@ interface ApprovalRow {
 
 const STATUS_COLOR: Record<string, string> = {
   draft: 'outline',
+  pending: 'default',
   in_review: 'default',
   approved: 'default',
+  active: 'default',
+  archived: 'secondary',
   changes_requested: 'destructive',
 };
 
@@ -185,6 +188,24 @@ export function TemplateApprovalDialog({
                 {locked ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
                 {locked ? 'Unlock' : 'Lock'}
               </Button>
+            </section>
+
+            <section className="rounded-lg border bg-muted/20 p-4">
+              <h3 className="text-sm font-semibold">Review workflow rules</h3>
+              <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+                {[
+                  ['Draft', 'Editable until review is requested.'],
+                  ['In review', 'Locked while reviewers inspect the template.'],
+                  ['Approved', 'Read-only; branch before making changes.'],
+                  ['Active', 'Production template; deactivate before replacing.'],
+                  ['Archived', 'Retained for audit and restore only.'],
+                ].map(([label, copy]) => (
+                  <div key={label} className="rounded border bg-background p-2">
+                    <div className="font-medium">{label}</div>
+                    <div className="text-muted-foreground">{copy}</div>
+                  </div>
+                ))}
+              </div>
             </section>
 
             {!pending ? (

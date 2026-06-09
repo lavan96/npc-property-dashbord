@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
           .from('client_portal_messages')
           .select('id, sender_type, sender_name, message, is_read, read_at, created_at')
           .eq('client_id', clientId)
-          .eq('is_internal', false) // never expose staff-only internal messages to the client
+          .or('is_internal.is.null,is_internal.eq.false') // never expose staff-only internal messages to the client
           .order('created_at', { ascending: false })
           .limit(limit),
         supabase

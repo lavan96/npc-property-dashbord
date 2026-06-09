@@ -276,7 +276,7 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
-  const overlays = (block.overlays ?? []).map((o: any) => renderOverlay(o, ctxBase)).join('');
+  const overlays = (block.overlays ?? []).filter((o: any) => !o?.hidden).map((o: any) => renderOverlay(o, ctxBase)).join('');
   const backdrop = decorationBackdrop(block, ctxBase);
   const s = block.style ?? {};
   const opacity = s.opacity != null ? Number(s.opacity) : 1;
@@ -351,13 +351,36 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
   };
 
   let bgStyle = '';
+  const bgImages: string[] = [];
   if (page.background?.color) {
     const c = resolveBindableColor(page.background.color, ctxBase, '#FFFFFF');
     bgStyle += `background-color:${c};`;
   }
+  // Optional gradient (Phase 11) — sits above solid color, below raster image.
+  const gradient = (page.background as any)?.gradient;
+  if (gradient?.stops?.length) {
+    const stops = gradient.stops
+      .slice()
+      .sort((a: any, b: any) => a.position - b.position)
+      .map((s: any) => `${s.color} ${s.position}%`)
+      .join(', ');
+    const grad = gradient.type === 'radial'
+      ? `radial-gradient(circle, ${stops})`
+      : `linear-gradient(${gradient.angle ?? 180}deg, ${stops})`;
+    bgImages.push(grad);
+  }
   if (page.background?.imageUrl) {
     const url = resolveBindable(page.background.imageUrl, ctxBase);
-    if (url) bgStyle += `background-image:url('${url}');background-size:cover;background-position:center;`;
+    if (url) {
+      bgImages.push(`url('${url}')`);
+      bgStyle += `background-size:cover;background-position:center;background-repeat:no-repeat;`;
+    }
+  }
+  if (bgImages.length) bgStyle += `background-image:${bgImages.join(', ')};`;
+  if ((page.background as any)?.opacity !== undefined) {
+    // Render opacity by mixing into bg-color; safer than container opacity which
+    // would dim all child content.
+    // Best-effort: leave color as-is; designers can pick a transparent hex/RGBA.
   }
 
   const blocks: string[] = [];

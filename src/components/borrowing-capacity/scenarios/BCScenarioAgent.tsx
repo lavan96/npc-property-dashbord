@@ -13,6 +13,8 @@ import ReactMarkdown from 'react-markdown';
 import type { BorrowingCapacityInput, BorrowingCapacityResult } from '@/utils/borrowingCapacityCalculations';
 import type { LiabilityItem, PropertyItem } from './StrategyScenarioModeling';
 import { toast } from 'sonner';
+import { runScenarioWithInputs, type ScenarioContext } from '@/utils/scenarioDeltaEngine';
+import type { ScenarioDelta } from '@/utils/borrowingCapacityTypes';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -25,7 +27,8 @@ interface ScenarioAdjustments {
   equityRelease?: { propertyId: string; targetLVR: number } | null;
   loanTermAdjustment?: number;
   portfolioSellPropertyIds?: string[];
-  dtiCapOverride?: { enabled: boolean; value: number } | null;
+  dtiCapOverride?: { enabled: boolean; value: number; lenderProfile?: string } | null;
+  lenderProfile?: 'bank_standard' | 'anz' | 'macquarie' | 'westpac' | 'non_bank' | null;
   /** Phase F1 — per-property rate repricing for partial portfolio refinances. */
   propertyRateChanges?: Array<{ propertyId: string; newRate: number }>;
   /** Phase G1 — Valuation overrides (manual/AVM/desktop/comp sales) */
@@ -114,6 +117,12 @@ interface BCScenarioAgentProps {
   currentLenderProfileId?: string;
   /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
   hemBenchmark?: number;
+  /** Live engine truth for the CURRENTLY-APPLIED scenario, recomputed by the
+   *  parent from the same `scenarioResult` that drives the Compound Impact
+   *  Summary. When provided it supersedes the applied card's pre-Apply preview
+   *  so the card's "Engine Truth" reconciles exactly with the live calculator
+   *  (eliminates the pre-Apply-vs-applied drift). Null when no levers are live. */
+  appliedEngineSnapshot?: AIScenarioEngineValidation | null;
 }
 
 // ── Persistence helpers ────────────────────────────────
@@ -131,6 +140,63 @@ function getStorageKey(clientId?: string): string {
   return `${STORAGE_PREFIX}${clientId || 'global'}`;
 }
 
+
+function normalizePercentRatio(value: unknown, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n > 1 ? n / 100 : n;
+}
+
+function normalizeScenarioAdjustments(adjustments?: Partial<ScenarioAdjustments> | null): ScenarioAdjustments {
+  const a = adjustments ?? {};
+  const equityRelease = a.equityRelease?.propertyId
+    ? {
+        propertyId: String(a.equityRelease.propertyId),
+        targetLVR: normalizePercentRatio(a.equityRelease.targetLVR, 0.80),
+      }
+    : null;
+  const crossCollatPool = a.crossCollatPool?.enabled
+    ? {
+        enabled: true,
+        propertyIds: Array.isArray(a.crossCollatPool.propertyIds) ? a.crossCollatPool.propertyIds.filter(Boolean).map(String) : [],
+        blendedTargetLVR: normalizePercentRatio(a.crossCollatPool.blendedTargetLVR, 0.80),
+        lenderMaxLVR: normalizePercentRatio(a.crossCollatPool.lenderMaxLVR, 0.95),
+        allocationStrategy: a.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
+      }
+    : null;
+
+  return {
+    consolidatedLiabilityIds: Array.isArray(a.consolidatedLiabilityIds) ? a.consolidatedLiabilityIds.filter(Boolean).map(String) : [],
+    refinancedToIOPropertyIds: Array.isArray(a.refinancedToIOPropertyIds) ? a.refinancedToIOPropertyIds.filter(Boolean).map(String) : [],
+    rateAdjustment: Number.isFinite(Number(a.rateAdjustment)) ? Number(a.rateAdjustment) : 0,
+    incomeGrowthPercent: Number.isFinite(Number(a.incomeGrowthPercent)) ? Number(a.incomeGrowthPercent) : 0,
+    expenseReductionPercent: Number.isFinite(Number(a.expenseReductionPercent)) ? Number(a.expenseReductionPercent) : 0,
+    equityRelease,
+    loanTermAdjustment: Number.isFinite(Number(a.loanTermAdjustment)) ? Number(a.loanTermAdjustment) : 0,
+    portfolioSellPropertyIds: Array.isArray(a.portfolioSellPropertyIds) ? a.portfolioSellPropertyIds.filter(Boolean).map(String) : [],
+    dtiCapOverride: a.dtiCapOverride
+      ? {
+          enabled: !!a.dtiCapOverride.enabled,
+          value: Number.isFinite(Number(a.dtiCapOverride.value)) ? Number(a.dtiCapOverride.value) : 6,
+          lenderProfile: a.dtiCapOverride.lenderProfile,
+        }
+      : null,
+    lenderProfile: a.lenderProfile ?? null,
+    propertyRateChanges: Array.isArray(a.propertyRateChanges) ? a.propertyRateChanges : [],
+    valuationOverrides: Array.isArray(a.valuationOverrides) ? a.valuationOverrides : [],
+    crossCollatPool,
+    acquisition: a.acquisition ?? null,
+  };
+}
+
+function normalizeAIScenario(scenario: AIScenario): AIScenario {
+  return {
+    ...scenario,
+    name: scenario.name || 'Suggested Scenario',
+    adjustments: normalizeScenarioAdjustments(scenario.adjustments),
+  };
+}
+
 function loadPersistedState(clientId?: string): PersistedChatState | null {
   try {
     const raw = localStorage.getItem(getStorageKey(clientId));
@@ -139,13 +205,66 @@ function loadPersistedState(clientId?: string): PersistedChatState | null {
     if (!parsed || typeof parsed !== 'object') return null;
     return {
       messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios : [],
+      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios.map(normalizeAIScenario) : [],
       appliedIndex: typeof parsed.appliedIndex === 'number' ? parsed.appliedIndex : null,
       isOpen: typeof parsed.isOpen === 'boolean' ? parsed.isOpen : true,
     };
   } catch {
     return null;
   }
+}
+
+function aiAdjustmentsToDeltas(adj: ScenarioAdjustments): ScenarioDelta[] {
+  const deltas: ScenarioDelta[] = [];
+
+  for (const id of adj.consolidatedLiabilityIds || []) {
+    deltas.push({ id, label: `Pay off liability ${id}`, type: 'liability_payoff', value: 0, unit: 'absolute' });
+  }
+  for (const id of adj.refinancedToIOPropertyIds || []) {
+    deltas.push({ id, label: `Refinance ${id} to IO`, type: 'property_refinance', value: 0, unit: 'absolute' });
+  }
+  for (const id of adj.portfolioSellPropertyIds || []) {
+    deltas.push({ id, label: `Sell ${id}`, type: 'property_sell', value: 0, unit: 'absolute' });
+  }
+  if (adj.incomeGrowthPercent && Math.abs(adj.incomeGrowthPercent) > 0.001) {
+    deltas.push({ id: `income-${adj.incomeGrowthPercent}`, label: `Income ${adj.incomeGrowthPercent > 0 ? '+' : ''}${adj.incomeGrowthPercent}%`, type: 'income_change', value: adj.incomeGrowthPercent, unit: 'percent' });
+  }
+  if (adj.expenseReductionPercent && adj.expenseReductionPercent > 0.001) {
+    deltas.push({ id: `expense-${adj.expenseReductionPercent}`, label: `Reduce expenses ${adj.expenseReductionPercent}%`, type: 'expense_change', value: -adj.expenseReductionPercent, unit: 'percent' });
+  }
+  if (adj.loanTermAdjustment && Math.abs(adj.loanTermAdjustment) > 0) {
+    deltas.push({ id: `loan-term-${adj.loanTermAdjustment}`, label: `Loan term ${adj.loanTermAdjustment > 0 ? '+' : ''}${adj.loanTermAdjustment}yr`, type: 'loan_term_change', value: adj.loanTermAdjustment, unit: 'years' });
+  }
+  if (adj.rateAdjustment && Math.abs(adj.rateAdjustment) > 0.001) {
+    deltas.push({ id: `rate-${adj.rateAdjustment}`, label: `Rates ${adj.rateAdjustment >= 0 ? '+' : ''}${adj.rateAdjustment}%`, type: 'rate_change', value: adj.rateAdjustment, unit: 'rate_points' });
+  }
+  for (const change of adj.propertyRateChanges || []) {
+    if (change.propertyId && Number.isFinite(change.newRate) && change.newRate > 0) {
+      deltas.push({ id: change.propertyId, label: `Reprice ${change.propertyId} → ${change.newRate}%`, type: 'property_rate_change', value: change.newRate, unit: 'rate_points' });
+    }
+  }
+  for (const vo of adj.valuationOverrides || []) {
+    if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
+      deltas.push({ id: vo.propertyId, label: `Revalue ${vo.propertyId} → ${vo.newValue}`, type: 'property_value_change', value: vo.newValue, unit: 'absolute', meta: { basis: vo.basis, source: vo.source || '' } });
+    }
+  }
+  if (adj.equityRelease?.propertyId && Number.isFinite(adj.equityRelease.targetLVR)) {
+    // targetLVR is a RATIO (e.g. 0.80) — must be `unit: 'ratio'` so the engine
+    // treats it as 0.80, not 0.80/100 = 0.008. Mirrors recommendSolutions and
+    // crossCollatPool; using 'percent' here silently released ~nothing.
+    deltas.push({ id: adj.equityRelease.propertyId, label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`, type: 'equity_release', value: adj.equityRelease.targetLVR, unit: 'ratio', meta: { targetLVR: adj.equityRelease.targetLVR } });
+  }
+  if (adj.crossCollatPool?.enabled && adj.crossCollatPool.propertyIds?.length) {
+    deltas.push({ id: 'pool-default', label: `Cross-collat pool → ${(adj.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`, type: 'portfolio_lvr_release', value: adj.crossCollatPool.blendedTargetLVR, unit: 'ratio', meta: { propertyIds: adj.crossCollatPool.propertyIds, lenderMaxLVR: adj.crossCollatPool.lenderMaxLVR ?? null, allocationStrategy: adj.crossCollatPool.allocationStrategy ?? 'highest_equity_first' } });
+  }
+  const lenderProfile = adj.lenderProfile ?? adj.dtiCapOverride?.lenderProfile;
+  if (adj.dtiCapOverride?.enabled && Number.isFinite(adj.dtiCapOverride.value)) {
+    deltas.push({ id: 'dti-cap', label: `DTI cap ${adj.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`, type: 'dti_cap_change', value: adj.dtiCapOverride.value, unit: 'ratio', meta: lenderProfile ? { enabled: true, lenderProfile } : { enabled: true } });
+  } else if (lenderProfile) {
+    deltas.push({ id: 'dti-cap', label: `Lender flip → ${lenderProfile}`, type: 'dti_cap_change', value: 99, unit: 'ratio', meta: { enabled: false, lenderProfile } });
+  }
+
+  return deltas;
 }
 
 function savePersistedState(clientId: string | undefined, state: PersistedChatState) {
@@ -168,6 +287,7 @@ export function BCScenarioAgent({
   incomeComponents,
   currentLenderProfileId,
   hemBenchmark,
+  appliedEngineSnapshot,
 }: BCScenarioAgentProps) {
   // Load persisted state synchronously on mount so history is available immediately
   const initialState = loadPersistedState(clientId);
@@ -266,6 +386,7 @@ export function BCScenarioAgent({
       let assistantText = '';
       let toolCallArgs = '';
       let hasToolCall = false;
+      let streamError: string | null = null;
 
       const updateAssistant = (text: string) => {
         setMessages(prev => {
@@ -294,6 +415,16 @@ export function BCScenarioAgent({
 
           try {
             const parsed = JSON.parse(jsonStr);
+
+            // In-stream error: the edge function now opens the SSE response
+            // immediately (to avoid gateway 504s) and reports model/timeout
+            // errors as a `data: { error }` event rather than a non-200 status.
+            // Record it and stop — surfaced as a toast after the read loop.
+            if (parsed?.error) {
+              streamError = String(parsed.error);
+              break;
+            }
+
             const delta = parsed.choices?.[0]?.delta;
 
             // Text content
@@ -315,6 +446,13 @@ export function BCScenarioAgent({
             // Partial JSON, skip
           }
         }
+        if (streamError) break;
+      }
+
+      // Surface a model/timeout error reported inside the stream as a toast,
+      // mirroring the pre-stream non-200 handling above.
+      if (streamError) {
+        throw new Error(streamError);
       }
 
       // Parse tool call result for scenarios
@@ -322,7 +460,81 @@ export function BCScenarioAgent({
         try {
           const parsed = JSON.parse(toolCallArgs);
           if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
-            setScenarios(parsed.scenarios);
+            const ctx: ScenarioContext = {
+              baseInputs,
+              baseResult,
+              properties: properties.map(p => ({
+                id: p.id,
+                address: p.address,
+                propertyType: p.property_type,
+                currentValue: p.current_value || 0,
+                loanRemaining: p.loan_remaining || 0,
+                monthlyRepayment: p.monthly_interest_repayment || 0,
+                loanRepaymentAmount: p.loan_repayment_amount ?? p.monthly_interest_repayment ?? 0,
+                netMonthlyCashflow: p.net_monthly_cashflow ?? 0,
+                interestRate: p.interest_rate,
+              })),
+              liabilities: liabilities.map(l => ({
+                id: l.id,
+                type: l.type,
+                label: l.label,
+                balance: l.balance,
+                limit: l.limit,
+                monthlyServicing: l.monthlyServicing,
+              })),
+              incomeComponents,
+              currentLenderProfileId,
+              hemBenchmark,
+            };
+            const locallyValidated = (parsed.scenarios as AIScenario[]).map((rawScenario) => {
+              const scenario = normalizeAIScenario(rawScenario);
+              try {
+                const acq = scenario.adjustments?.acquisition;
+                const runCtx: ScenarioContext = acq
+                  ? {
+                      ...ctx,
+                      acquisition: {
+                        state: acq.state,
+                        intent: acq.intent,
+                        category: acq.category,
+                        isFirstHomeBuyer: acq.isFirstHomeBuyer,
+                        isForeignBuyer: acq.isForeignBuyer,
+                        lmiMode: acq.lmiMode,
+                        cashOnHand: acq.cashOnHand,
+                        targetPurchasePrice: acq.targetPurchasePrice,
+                      },
+                    }
+                  : ctx;
+                const preview = runScenarioWithInputs(scenario.name, aiAdjustmentsToDeltas(scenario.adjustments), runCtx);
+                const acqCapacity = preview.result.acquisitionCapacity;
+                return {
+                  ...scenario,
+                  engineValidation: {
+                    ...scenario.engineValidation,
+                    borrowingCapacity: Math.round(preview.result.borrowingCapacity),
+                    capacityChange: Math.round(preview.result.borrowingCapacity - baseResult.borrowingCapacity),
+                    monthlySurplus: Math.round(preview.result.monthlySurplus),
+                    serviceabilityBand: preview.result.serviceabilityBand,
+                    dtiRatio: Number(preview.result.dtiRatio?.toFixed(2) ?? 0),
+                    meetsTarget: acqCapacity?.meetsTarget,
+                    shortfallToTarget: acqCapacity?.shortfallToTarget,
+                    maxPurchasePrice: acqCapacity?.maxPurchasePrice,
+                    loanRequiredForPurchase: acqCapacity?.loanRequiredForPurchase,
+                    netCashAfterSettlement: acqCapacity?.netCashAfterSettlement,
+                    releasedCapital: acqCapacity?.releasedCapital,
+                    targetPurchasePrice: acqCapacity?.targetPurchasePrice,
+                    validationIssues: [
+                      ...(scenario.engineValidation?.validationIssues ?? []),
+                      ...(preview.result.validationIssues ?? []),
+                    ],
+                  },
+                } satisfies AIScenario;
+              } catch (e) {
+                console.warn('[BCScenarioAgent] Local scenario preview failed; using server validation', e);
+                return scenario;
+              }
+            });
+            setScenarios(locallyValidated);
             setAppliedIndex(null);
             // Phase H: only emit the generic fallback when the model returned
             // ZERO prose AND the user message wasn't a clarifying question.
@@ -357,16 +569,28 @@ export function BCScenarioAgent({
   };
 
   const handleApply = (scenario: AIScenario, index: number) => {
-    setAppliedIndex(index);
-    // Phase E (L1): callback may return engine-reconciled impact string —
-    // update the badge so users see verified math, not just AI estimate.
-    const maybe = onApplyScenario(scenario) as unknown;
-    Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
-      if (typeof reconciled === 'string' && reconciled.length > 0) {
-        setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
-      }
-    }).catch(() => {/* non-fatal */});
-    toast.success(`"${scenario.name}" applied to strategy levers`);
+    const safeScenario = normalizeAIScenario(scenario);
+    try {
+      setAppliedIndex(index);
+      setScenarios(prev => prev.map((s, i) => i === index ? safeScenario : s));
+      // Phase E (L1): callback may return engine-reconciled impact string —
+      // update the badge so users see verified math, not just AI estimate.
+      const maybe = onApplyScenario(safeScenario) as unknown;
+      Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
+        if (typeof reconciled === 'string' && reconciled.length > 0) {
+          setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
+        }
+      }).catch((err) => {
+        console.error('[BCScenarioAgent] Apply scenario callback failed:', err);
+        toast.error(err?.message || 'Failed to apply scenario');
+        setAppliedIndex(null);
+      });
+      toast.success(`"${safeScenario.name}" applied to strategy levers`);
+    } catch (err: any) {
+      console.error('[BCScenarioAgent] Apply scenario failed:', err);
+      toast.error(err?.message || 'Failed to apply scenario');
+      setAppliedIndex(null);
+    }
   };
 
   const suggestedPrompts = [
@@ -507,7 +731,19 @@ export function BCScenarioAgent({
           {/* Scenario Cards */}
           {scenarios.length > 0 && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {scenarios.map((scenario, i) => (
+              {scenarios.map((scenario, i) => {
+                // Reconcile the applied card's "Engine Truth" with the LIVE
+                // calculator. The pre-Apply preview (engineValidation) is derived
+                // from a separate delta translation and can drift from the live
+                // strategy recompute shown in the Compound Impact Summary. Once a
+                // card is applied, the parent feeds the live `scenarioResult`
+                // snapshot here so both surfaces report the identical figure.
+                const isApplied = appliedIndex === i;
+                const liveSnapshot = isApplied ? appliedEngineSnapshot : null;
+                const effectiveValidation = liveSnapshot
+                  ? { ...scenario.engineValidation, ...liveSnapshot }
+                  : scenario.engineValidation;
+                return (
                 <div
                   key={i}
                   className={`border rounded-lg p-4 transition-all ${
@@ -535,19 +771,22 @@ export function BCScenarioAgent({
                       )}
                     </div>
                     <Badge
-                      variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
+                      variant={effectiveValidation || scenario.reconciledImpact ? "default" : "outline"}
                       className="shrink-0 text-xs"
                       title={
-                        scenario.reconciledImpact ? "Engine-verified (post-Apply)"
+                        liveSnapshot ? "Engine-verified (applied · live)"
+                        : scenario.reconciledImpact ? "Engine-verified (post-Apply)"
                         : scenario.engineValidation ? "Engine-validated (pre-Apply preview)"
                         : "AI estimate (not yet verified)"
                       }
                     >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.reconciledImpact
-                        || (scenario.engineValidation
-                          ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
-                          : scenario.estimatedImpact)}
+                      {liveSnapshot
+                        ? `${effectiveValidation!.capacityChange >= 0 ? '+' : ''}$${Math.round(effectiveValidation!.capacityChange).toLocaleString()}`
+                        : (scenario.reconciledImpact
+                          || (scenario.engineValidation
+                            ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
+                            : scenario.estimatedImpact))}
                     </Badge>
                   </div>
 
@@ -588,9 +827,10 @@ export function BCScenarioAgent({
                       </ul>
                     </details>
                   )}
-                  {/* Phase H: Engine-validated truth panel (pre-Apply) */}
-                  {scenario.engineValidation && (() => {
-                    const v = scenario.engineValidation!;
+                  {/* Phase H: Engine truth panel. Pre-Apply this shows the preview;
+                      once applied it reconciles to the LIVE calculator snapshot. */}
+                  {effectiveValidation && (() => {
+                    const v = effectiveValidation!;
                     const fmt = (n?: number) => typeof n === 'number'
                       ? `$${Math.round(n).toLocaleString()}`
                       : '—';
@@ -604,7 +844,7 @@ export function BCScenarioAgent({
                     return (
                       <div className="mb-3 rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
                         <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
-                          <span>Engine Truth</span>
+                          <span>{liveSnapshot ? 'Engine Truth (live)' : 'Engine Truth'}</span>
                           {hasTarget && (
                             <Badge
                               variant={meets ? 'default' : 'destructive'}
@@ -664,6 +904,11 @@ export function BCScenarioAgent({
                             ⚠ {v.validationIssues.length} validation note{v.validationIssues.length > 1 ? 's' : ''} — verify with finance.
                           </div>
                         )}
+                        {!liveSnapshot && (
+                          <p className="text-[10px] italic text-muted-foreground/70 pt-1 border-t border-border/40">
+                            Estimate — verify on Apply.
+                          </p>
+                        )}
                       </div>
                     );
                   })()}
@@ -685,9 +930,9 @@ export function BCScenarioAgent({
                         Rate {scenario.adjustments.rateAdjustment > 0 ? '+' : ''}{scenario.adjustments.rateAdjustment}%
                       </Badge>
                     )}
-                    {scenario.adjustments.incomeGrowthPercent > 0 && (
+                    {scenario.adjustments.incomeGrowthPercent !== 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Income +{scenario.adjustments.incomeGrowthPercent}%
+                        Income {scenario.adjustments.incomeGrowthPercent > 0 ? '+' : ''}{scenario.adjustments.incomeGrowthPercent}%
                       </Badge>
                     )}
                     {scenario.adjustments.expenseReductionPercent > 0 && (
@@ -697,7 +942,7 @@ export function BCScenarioAgent({
                     )}
                     {scenario.adjustments.equityRelease && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Equity release
+                        Equity release {Math.round((scenario.adjustments.equityRelease.targetLVR ?? 0) * 100)}% LVR
                       </Badge>
                     )}
                     {(scenario.adjustments.loanTermAdjustment ?? 0) !== 0 && (
@@ -713,6 +958,31 @@ export function BCScenarioAgent({
                     {scenario.adjustments.dtiCapOverride?.enabled && (
                       <Badge variant="secondary" className="text-[10px]">
                         DTI cap {scenario.adjustments.dtiCapOverride.value}x
+                      </Badge>
+                    )}
+                    {(scenario.adjustments.propertyRateChanges?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Reprice {scenario.adjustments.propertyRateChanges!.length} loan{scenario.adjustments.propertyRateChanges!.length > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {(scenario.adjustments.valuationOverrides?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Revalue {scenario.adjustments.valuationOverrides!.length} property(s)
+                      </Badge>
+                    )}
+                    {scenario.adjustments.crossCollatPool?.enabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Cross-collat pool {Math.round((scenario.adjustments.crossCollatPool.blendedTargetLVR ?? 0) * 100)}% LVR
+                      </Badge>
+                    )}
+                    {scenario.adjustments.lenderProfile && !scenario.adjustments.dtiCapOverride?.enabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Lender: {scenario.adjustments.lenderProfile}
+                      </Badge>
+                    )}
+                    {scenario.adjustments.acquisition && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Acquisition{scenario.adjustments.acquisition.targetPurchasePrice ? ` · target $${Math.round(scenario.adjustments.acquisition.targetPurchasePrice).toLocaleString()}` : ''}
                       </Badge>
                     )}
                   </div>
@@ -736,7 +1006,8 @@ export function BCScenarioAgent({
                     )}
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CollapsibleContent>

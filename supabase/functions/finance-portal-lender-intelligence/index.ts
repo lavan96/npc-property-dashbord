@@ -18,7 +18,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-portal-session-token',
+    'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-session-id, x-portal-session-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -35,6 +35,7 @@ function extractToken(req: Request, body: any): string | null {
   return (
     req.headers.get('x-finance-session-token') ||
     req.headers.get('x-session-token') ||
+    req.headers.get('x-session-id') ||
     body?.finance_session_token ||
     body?.session_token ||
     null
@@ -253,6 +254,80 @@ Deno.serve(async (req) => {
 
       results.sort((a, b) => b.composite_score - a.composite_score);
       return json({ comparison: results });
+    }
+
+    // -----------------------------------------------------------------------
+    // Live rates pulled from the Command Centre's bank_lending_rates_cache.
+    // Flattens per-lender JSON arrays into a single ranked list.
+    if (operation === 'live_rates') {
+      const purpose = String(body?.loan_purpose || '').toUpperCase(); // OWNER_OCCUPIED | INVESTMENT
+      const repayment = String(body?.repayment_type || '').toUpperCase(); // PRINCIPAL_AND_INTEREST | INTEREST_ONLY
+      const rateType = String(body?.rate_type || '').toUpperCase(); // FIXED | VARIABLE
+      const lvr = body?.lvr != null ? Number(body.lvr) : null;
+      const loanAmount = body?.loan_amount != null ? Number(body.loan_amount) : null;
+      const limit = Math.min(Math.max(Number(body?.limit) || 50, 1), 200);
+
+      const { data: caches, error } = await supabase
+        .from('bank_lending_rates_cache')
+        .select('lender_id, lender_name, rates, fetched_at, expires_at');
+      if (error) return json({ error: error.message }, 500);
+
+      const flat: any[] = [];
+      for (const row of (caches as any[]) || []) {
+        const rates = Array.isArray(row.rates) ? row.rates : [];
+        for (const r of rates) {
+          if (purpose && r.loanPurpose && String(r.loanPurpose).toUpperCase() !== purpose) continue;
+          if (repayment && r.repaymentType && String(r.repaymentType).toUpperCase() !== repayment) continue;
+          if (rateType && r.rateType && String(r.rateType).toUpperCase() !== rateType) continue;
+          if (lvr != null) {
+            if (r.lvrMin != null && lvr < Number(r.lvrMin)) continue;
+            if (r.lvrMax != null && lvr > Number(r.lvrMax)) continue;
+          }
+          if (loanAmount != null) {
+            if (r.minLoanAmount != null && loanAmount < Number(r.minLoanAmount)) continue;
+            if (r.maxLoanAmount != null && loanAmount > Number(r.maxLoanAmount)) continue;
+          }
+          flat.push({
+            lender_id: row.lender_id,
+            lender_name: row.lender_name,
+            product_name: r.productName,
+            rate: r.rate != null ? Math.round(Number(r.rate) * 100) / 100 : null,
+            comparison_rate:
+              r.comparisonRate != null ? Math.round(Number(r.comparisonRate) * 100) / 100 : null,
+            rate_type: r.rateType,
+            loan_purpose: r.loanPurpose,
+            repayment_type: r.repaymentType,
+            lvr_min: r.lvrMin,
+            lvr_max: r.lvrMax,
+            min_loan: r.minLoanAmount,
+            max_loan: r.maxLoanAmount,
+            features: Array.isArray(r.features) ? r.features : [],
+            last_updated: r.lastUpdated || row.fetched_at,
+          });
+        }
+      }
+
+      flat.sort((a, b) => (a.rate ?? 99) - (b.rate ?? 99));
+
+      // Build a lightweight lender summary for grouped views.
+      const byLender = new Map<string, { lender_id: string; lender_name: string; lowest: number | null; count: number }>();
+      for (const r of flat) {
+        const cur = byLender.get(r.lender_id) || {
+          lender_id: r.lender_id,
+          lender_name: r.lender_name,
+          lowest: null,
+          count: 0,
+        };
+        cur.count += 1;
+        if (r.rate != null && (cur.lowest == null || r.rate < cur.lowest)) cur.lowest = r.rate;
+        byLender.set(r.lender_id, cur);
+      }
+
+      return json({
+        rates: flat.slice(0, limit),
+        total: flat.length,
+        lenders: Array.from(byLender.values()).sort((a, b) => (a.lowest ?? 99) - (b.lowest ?? 99)),
+      });
     }
 
     return json({ error: `Unknown operation: ${operation}` }, 400);

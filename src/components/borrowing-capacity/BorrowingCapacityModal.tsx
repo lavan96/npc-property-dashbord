@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -150,7 +150,17 @@ export function BorrowingCapacityModal({
   const [loanTermYears, setLoanTermYears] = useState(30);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [result, setResult] = useState<FullAssessmentResult | null>(null);
+  // Preserve the last true base-case calculation separately from any applied
+  // what-if result. The scenario modeller must always compare selected levers
+  // against this base snapshot, even after a scenario is applied to the
+  // calculator panel.
+  const [baseScenarioResult, setBaseScenarioResult] = useState<FullAssessmentResult | null>(null);
+  const [baseScenarioInputs, setBaseScenarioInputs] = useState<BorrowingCapacityInput | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
+  // Monotonic id for edge-function recalcs. Applying/reverting a scenario bumps
+  // it so a base recalc already in-flight can't resolve later and clobber the
+  // displayed scenario/base figure with a stale (divergent) value.
+  const calcGenerationRef = useRef(0);
   const [showRateComparison, setShowRateComparison] = useState(false);
   // New mode states
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('bank');
@@ -498,6 +508,15 @@ export function BorrowingCapacityModal({
     0
   );
 
+  const totalDebtBalances = useMemo(() => {
+    const liabilityDebt = liabilitiesBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
+    const propertyDebt = (clientData?.properties || []).reduce(
+      (sum: number, prop: any) => sum + (Number(prop.loan_remaining) || 0),
+      0,
+    );
+    return liabilityDebt + propertyDebt;
+  }, [liabilitiesBreakdown, clientData?.properties]);
+
   // Calculate HEM benchmark with breakdown
   const isCouple = clientData?.client?.marital_status === 'married' || 
                    clientData?.client?.marital_status === 'de_facto' ||
@@ -723,14 +742,49 @@ export function BorrowingCapacityModal({
     }
   }, [pendingChanges, clientId, queryClient, refetchClientData]);
 
-  // When an active scenario is set, overlay its adjusted inputs
-  const effectiveGrossIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.grossAnnualIncome : totalGrossIncome;
-  const effectiveShadedIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.shadedAnnualIncome : totalShadedIncome;
-  const effectiveExpensesForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyLivingExpenses : effectiveExpenses;
-  const effectiveCommitmentsForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyCommitments : totalMonthlyCommitments;
+  const baseCalculatorInputs = useMemo<BorrowingCapacityInput>(() => ({
+    grossAnnualIncome: totalGrossIncome,
+    shadedAnnualIncome: totalShadedIncome,
+    monthlyLivingExpenses: effectiveExpenses,
+    monthlyCommitments: totalMonthlyCommitments,
+    interestRate,
+    bufferRate: effectiveBufferRate,
+    loanTermYears,
+    totalDebtBalances,
+    calculationMode,
+    dtiCapEnabled,
+    dtiCapLimit,
+  }), [
+    totalGrossIncome,
+    totalShadedIncome,
+    effectiveExpenses,
+    totalMonthlyCommitments,
+    interestRate,
+    effectiveBufferRate,
+    loanTermYears,
+    totalDebtBalances,
+    calculationMode,
+    dtiCapEnabled,
+    dtiCapLimit,
+  ]);
+
+  // When an active scenario is set, overlay the full adjusted input snapshot.
+  const activeCalculatorInputs = activeScenario?.adjustedInputs;
+  const effectiveGrossIncomeForCalc = activeCalculatorInputs?.grossAnnualIncome ?? baseCalculatorInputs.grossAnnualIncome;
+  const effectiveShadedIncomeForCalc = activeCalculatorInputs?.shadedAnnualIncome ?? baseCalculatorInputs.shadedAnnualIncome;
+  const effectiveExpensesForCalc = activeCalculatorInputs?.monthlyLivingExpenses ?? baseCalculatorInputs.monthlyLivingExpenses;
+  const effectiveCommitmentsForCalc = activeCalculatorInputs?.monthlyCommitments ?? baseCalculatorInputs.monthlyCommitments;
+  const effectiveInterestRateForCalc = activeCalculatorInputs?.interestRate ?? baseCalculatorInputs.interestRate;
+  const effectiveBufferRateForCalc = activeCalculatorInputs?.bufferRate ?? baseCalculatorInputs.bufferRate;
+  const effectiveLoanTermYearsForCalc = activeCalculatorInputs?.loanTermYears ?? baseCalculatorInputs.loanTermYears;
+  const effectiveTotalDebtBalancesForCalc = activeCalculatorInputs?.totalDebtBalances ?? baseCalculatorInputs.totalDebtBalances;
+  const effectiveCalculationModeForCalc = activeCalculatorInputs?.calculationMode ?? baseCalculatorInputs.calculationMode;
+  const effectiveDtiCapEnabledForCalc = activeCalculatorInputs?.dtiCapEnabled ?? baseCalculatorInputs.dtiCapEnabled;
+  const effectiveDtiCapLimitForCalc = activeCalculatorInputs?.dtiCapLimit ?? baseCalculatorInputs.dtiCapLimit;
 
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
+    const generation = ++calcGenerationRef.current;
     setIsLocalCalculating(true);
     try {
       const lmiOverrides = lmiMode !== 'none' && lmiEstimate ? {
@@ -746,30 +800,45 @@ export function BorrowingCapacityModal({
         shadedAnnualIncome: effectiveShadedIncomeForCalc,
         livingExpenses: effectiveExpensesForCalc,
         existingCommitments: effectiveCommitmentsForCalc,
-        interestRate,
-        bufferRate: effectiveBufferRate,
-        loanTermYears,
+        interestRate: effectiveInterestRateForCalc,
+        bufferRate: effectiveBufferRateForCalc,
+        loanTermYears: effectiveLoanTermYearsForCalc,
         proposedLoanAmount,
-        calculationMode,
-        dtiCapEnabled,
-        dtiCapLimit,
+        calculationMode: effectiveCalculationModeForCalc,
+        dtiCapEnabled: effectiveDtiCapEnabledForCalc,
+        dtiCapLimit: effectiveDtiCapLimitForCalc,
+        totalDebtBalances: effectiveTotalDebtBalancesForCalc,
         selectedLenderName: selectedLenderName || undefined,
         ...lmiOverrides,
       });
+      // Discard if a newer calc started or a scenario was applied/reverted while
+      // this request was in flight — prevents a stale base result from
+      // overwriting the figure the user should be seeing.
+      if (generation !== calcGenerationRef.current) return;
       setResult(calcResult);
+      if (!activeScenario) {
+        setBaseScenarioResult(calcResult);
+        setBaseScenarioInputs(baseCalculatorInputs);
+      }
     } catch (error) {
       console.error('Calculation failed:', error);
     } finally {
-      setIsLocalCalculating(false);
+      if (generation === calcGenerationRef.current) setIsLocalCalculating(false);
     }
-  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer, activeScenario, baseCalculatorInputs]);
 
-  // Auto-calculate on mount and when key inputs change
+  // Auto-calculate on mount and when key inputs change — but ONLY for the base
+  // case. While a scenario is applied, the displayed capacity is the scenario's
+  // own engine result (set by onApplyScenario and shown across the What-If UI).
+  // Re-running the edge function here overwrote that with a divergent (lower)
+  // figure the instant a scenario was applied, and prevented revert from
+  // restoring the original base. The base case still recalculates so direct
+  // calculator-input edits flow through.
   useEffect(() => {
-    if (open && clientData) {
+    if (open && clientData && !activeScenario) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
+  }, [open, clientData, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveLoanTermYearsForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, selectedLenderName, effectiveBufferRateForCalc, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario, handleCalculate]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -798,17 +867,18 @@ export function BorrowingCapacityModal({
           variant="outline"
           onClick={() => {
             calculate({
-              grossAnnualIncome: totalGrossIncome,
-              shadedAnnualIncome: totalShadedIncome,
-              livingExpenses: effectiveExpenses,
-              existingCommitments: totalMonthlyCommitments,
-              interestRate,
-              bufferRate: effectiveBufferRate,
-              loanTermYears,
+              grossAnnualIncome: effectiveGrossIncomeForCalc,
+              shadedAnnualIncome: effectiveShadedIncomeForCalc,
+              livingExpenses: effectiveExpensesForCalc,
+              existingCommitments: effectiveCommitmentsForCalc,
+              interestRate: effectiveInterestRateForCalc,
+              bufferRate: effectiveBufferRateForCalc,
+              loanTermYears: effectiveLoanTermYearsForCalc,
               proposedLoanAmount,
-              calculationMode,
-              dtiCapEnabled,
-              dtiCapLimit,
+              calculationMode: effectiveCalculationModeForCalc,
+              dtiCapEnabled: effectiveDtiCapEnabledForCalc,
+              dtiCapLimit: effectiveDtiCapLimitForCalc,
+              totalDebtBalances: effectiveTotalDebtBalancesForCalc,
               selectedLenderName: selectedLenderName || undefined,
               ...(lmiMode !== 'none' && lmiEstimate ? {
                 lmiAmount: lmiEstimate.lmiAmount,
@@ -817,9 +887,9 @@ export function BorrowingCapacityModal({
                 lmiDepositAmount,
                 isFirstHomeBuyer,
               } : {}),
-              ...(proposedRentalIncome.inputAmount > 0 ? { proposedRentalIncome } : {}),
+              ...(proposedRentalIncome.inputAmount > 0 && !activeScenario ? { proposedRentalIncome } : {}),
             });
-            toast.success('Assessment saved');
+            toast.success(activeScenario ? `Scenario "${activeScenario.name}" saved as the current assessment` : 'Assessment saved');
           }}
           disabled={isLocalCalculating || isCalculating || !result}
           size="sm"
@@ -855,12 +925,26 @@ export function BorrowingCapacityModal({
         size="sm"
         className="h-6 text-xs px-2"
         onClick={() => {
+          // Invalidate any in-flight recalc so it can't land after we revert.
+          calcGenerationRef.current++;
           setActiveScenario(null);
-          // Revert to base preset values if available
+          // Revert to the TRUE base snapshot tracked live by handleCalculate
+          // (baseScenarioInputs/Result) so the displayed figure returns to the
+          // exact original base. The saved base preset is only a fallback — its
+          // snapshot can be stale relative to the live calculator.
           const basePreset = scenarioPresets.find(p => p.isBase);
-          if (basePreset) {
-            setInterestRate(basePreset.adjustedInputs.interestRate);
-            setLoanTermYears(basePreset.adjustedInputs.loanTermYears);
+          const baseInputs = baseScenarioInputs ?? basePreset?.adjustedInputs ?? baseCalculatorInputs;
+          setInterestRate(baseInputs.interestRate);
+          setLoanTermYears(baseInputs.loanTermYears);
+          setBufferEnabled((baseInputs.bufferRate ?? 0) > 0);
+          setCalculationMode(baseInputs.calculationMode ?? 'bank');
+          setDtiCapEnabled(!!baseInputs.dtiCapEnabled);
+          setDtiCapLimit(baseInputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
+          const restoredResult = (baseScenarioResult ?? basePreset?.result ?? null) as FullAssessmentResult | null;
+          if (restoredResult) {
+            setResult(restoredResult);
+            setBaseScenarioResult(restoredResult);
+            setBaseScenarioInputs(baseInputs);
           }
           toast.info('Reverted to base case');
         }}
@@ -1161,16 +1245,8 @@ export function BorrowingCapacityModal({
               <StrategyScenarioModeling
                 clientId={clientId}
                 clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
-                baseInputs={{
-                  grossAnnualIncome: totalGrossIncome,
-                  shadedAnnualIncome: totalShadedIncome,
-                  monthlyLivingExpenses: effectiveExpenses,
-                  monthlyCommitments: totalMonthlyCommitments,
-                  interestRate,
-                  bufferRate: effectiveBufferRate,
-                  loanTermYears,
-                }}
-                baseResult={result}
+                baseInputs={baseScenarioInputs ?? baseCalculatorInputs}
+                baseResult={baseScenarioResult ?? result}
                 liabilities={liabilitiesBreakdown.map(l => ({
                   id: l.id,
                   type: l.type,
@@ -1201,27 +1277,87 @@ export function BorrowingCapacityModal({
                 hemBenchmark={hemBenchmark}
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
-                onApplyScenario={(inputs, accessibleEquity) => {
-                  // Find matching preset or create an ad-hoc one
-                  const matchingPreset = scenarioPresets.find(
-                    p => !p.isBase && p.adjustedInputs === inputs
-                  );
-                  const scenarioPreset: ScenarioPreset = matchingPreset || {
-                    id: `applied-${Date.now()}`,
-                    name: 'Applied Scenario',
-                    isBase: false,
-                    createdAt: new Date().toISOString(),
-                    adjustedInputs: { ...inputs },
-                    result: result!,
-                    accessibleEquity: accessibleEquity ?? 0,
-                  };
-                  setActiveScenario(scenarioPreset);
-                  // Apply the scenario values to calculator state
-                  setInterestRate(inputs.interestRate);
-                  setLoanTermYears(inputs.loanTermYears);
-                  // Switch to calculator tab to show the result
-                  setActiveTab('calculator');
-                  toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
+                onApplyScenario={(inputs, accessibleEquity, preset) => {
+                  // Hardened apply path. Both the "Apply to Calculator" and "Save
+                  // Scenario" buttons route through here; a thrown error or a
+                  // partially-shaped result used to crash the calculator render
+                  // ("jumps straight to error"). We now guard the whole flow and
+                  // coerce every numeric the results UI reads with `.toFixed()` /
+                  // arithmetic so the applied result is always a valid shape.
+                  try {
+                    if (!result) {
+                      toast.error('Calculate borrowing capacity before applying a scenario.');
+                      return;
+                    }
+                    if (!inputs) {
+                      toast.error('Scenario inputs are unavailable — rebuild the scenario and try again.');
+                      return;
+                    }
+                    const baseResultSnapshot = result;
+                    const scenarioPreset: ScenarioPreset = preset || {
+                      id: `applied-${Date.now()}`,
+                      name: 'Applied Scenario',
+                      isBase: false,
+                      createdAt: new Date().toISOString(),
+                      adjustedInputs: { ...inputs },
+                      result: baseResultSnapshot,
+                      accessibleEquity: accessibleEquity ?? 0,
+                    };
+                    const scenarioResult = (scenarioPreset.result ?? baseResultSnapshot) as Partial<FullAssessmentResult>;
+                    const num = (value: unknown, fallback: number): number =>
+                      typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+                    const appliedResult: FullAssessmentResult = {
+                      ...baseResultSnapshot,
+                      ...scenarioResult,
+                      borrowingCapacity: num(scenarioResult.borrowingCapacity, num(baseResultSnapshot.borrowingCapacity, 0)),
+                      monthlySurplus: num(scenarioResult.monthlySurplus, num(baseResultSnapshot.monthlySurplus, 0)),
+                      dtiRatio: num(scenarioResult.dtiRatio, num(baseResultSnapshot.dtiRatio, 0)),
+                      assessmentRate: num(
+                        scenarioResult.assessmentRate,
+                        num(baseResultSnapshot.assessmentRate, (inputs.interestRate ?? 6.5) + (inputs.bufferRate ?? 3)),
+                      ),
+                      serviceabilityBand: scenarioResult.serviceabilityBand ?? baseResultSnapshot.serviceabilityBand ?? 'red',
+                      grossAnnualIncome: inputs.grossAnnualIncome,
+                      shadedAnnualIncome: inputs.shadedAnnualIncome,
+                      livingExpensesMonthly: inputs.monthlyLivingExpenses,
+                      existingCommitmentsMonthly: inputs.monthlyCommitments,
+                      interestRate: inputs.interestRate,
+                      bufferRate: inputs.bufferRate,
+                      loanTermYears: inputs.loanTermYears,
+                      recommendations: Array.isArray(scenarioResult.recommendations)
+                        ? scenarioResult.recommendations
+                        : (baseResultSnapshot.recommendations ?? []),
+                      warnings: Array.isArray(scenarioResult.warnings)
+                        ? scenarioResult.warnings
+                        : (baseResultSnapshot.warnings ?? []),
+                      stressTestedCapacity: num(
+                        scenarioResult.stressTestedCapacity,
+                        num(baseResultSnapshot.stressTestedCapacity, num(scenarioResult.borrowingCapacity, 0)),
+                      ),
+                    };
+                    // Invalidate any base recalc still in flight so it can't
+                    // resolve afterwards and overwrite the scenario figure.
+                    calcGenerationRef.current++;
+                    setActiveScenario({
+                      ...scenarioPreset,
+                      result: appliedResult,
+                    });
+                    setResult(appliedResult);
+                    // Apply the full scenario control surface to calculator state;
+                    // income/expense/commitment/debt overlays come from activeScenario.adjustedInputs.
+                    setInterestRate(inputs.interestRate);
+                    setLoanTermYears(inputs.loanTermYears);
+                    setBufferEnabled((inputs.bufferRate ?? 0) > 0);
+                    setCalculationMode(inputs.calculationMode ?? 'bank');
+                    setDtiCapEnabled(!!inputs.dtiCapEnabled);
+                    setDtiCapLimit(inputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
+                    // Switch to calculator tab to show the result
+                    setActiveTab('calculator');
+                    toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
+                  } catch (err: any) {
+                    console.error('[BorrowingCapacityModal] Failed to apply scenario:', err);
+                    toast.error(`Couldn't apply scenario: ${err?.message || 'unexpected error'}`);
+                  }
                 }}
               />
             ) : (

@@ -14,20 +14,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useReportTemplates, useReportTemplateMutations } from '@/hooks/useReportTemplates';
 import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
+import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  investment: 'Investment Report',
-  cashflow: 'Cash Flow',
-  qa: 'Q&A Export',
-  borrowing_capacity: 'Borrowing Capacity',
-  portfolio: 'Portfolio Analysis',
-  suburb: 'Suburb Analysis',
-  postcode: 'Postcode Analysis',
-  statewide: 'Statewide Analysis',
-  comparison: 'Comparison Report',
-  vownet: 'Vownet / Client Form',
-};
+const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  listAdapters().map((adapter) => [adapter.reportType, adapter.label]),
+);
 
 export default function TemplateBuilder() {
   const navigate = useNavigate();
@@ -124,11 +116,15 @@ export default function TemplateBuilder() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-1.5 text-xs">
-                    {tpl.report_type && (
-                      <Badge variant="secondary">
-                        {REPORT_TYPE_LABELS[tpl.report_type] || tpl.report_type}
-                      </Badge>
-                    )}
+                    {tpl.report_type && (() => {
+                      const adapter = getAdapter(tpl.report_type);
+                      return (
+                        <Badge variant={adapter?.supportsProduction ? 'secondary' : 'outline'} title={adapter?.supportsProduction ? 'Production adapter available' : 'Preview-only report type'}>
+                          {adapter?.label || REPORT_TYPE_LABELS[tpl.report_type] || tpl.report_type}
+                          {adapter && !adapter.supportsProduction ? ' · preview-only' : ''}
+                        </Badge>
+                      );
+                    })()}
                     {tpl.tier && <Badge variant="outline">{tpl.tier}</Badge>}
                     <Badge variant="outline">v{tpl.version}</Badge>
                     <Badge variant="outline">

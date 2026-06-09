@@ -506,46 +506,63 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    // Phase 4 (LLM Router): All model selection + fallback chain is now driven
-    // by the agent_model_assignments table for agent_key='bc_scenario_agent'.
-    // Override per-deployment via the Model Hub UI; the router walks the
-    // configured fallback chain on 404/410/5xx automatically.
+    // Phase 4 (LLM Router): model selection + fallback chain via
+    // agent_model_assignments (agent_key='bc_scenario_agent').
     const { callLLMRaw } = await import('../_shared/llmRouter.ts');
 
-    const callAI = async (msgs: any[]) => {
-      const extraBody: any = {};
+    // ── 504 hardening ───────────────────────────────────────────────────
+    // The model call(s) can take tens of seconds. Awaiting the full completion
+    // before returning a Response let the gateway time out (504). Instead we
+    // open the SSE stream IMMEDIATELY, emit keepalive pings, and run the LLM
+    // work INSIDE the stream. A wall-clock deadline + per-call timeout bound the
+    // total under the function limit; the revision pass is skipped when short.
+    const STARTED_AT = Date.now();
+    const DEADLINE_AT = STARTED_AT + 110_000;   // total budget for all model work
+    const FIRST_CALL_TIMEOUT_MS = 75_000;
+    const REVISION_MIN_BUDGET_MS = 45_000;       // only revise if this much remains
+    const REVISION_TIMEOUT_MS = 45_000;
+
+    const callAI = async (msgs: any[], timeoutMs: number) => {
       const tools = clarificationMode ? undefined : [SCENARIO_TOOL];
-      const result = await callLLMRaw({
+      return await callLLMRaw({
         agentKey: 'bc_scenario_agent',
         messages: msgs as any,
         tools,
-        extraBody,
+        extraBody: {},
+        timeoutMs,
+        deadlineAt: DEADLINE_AT,
       });
-      return result;
     };
 
-    const response = await callAI(aiMessages);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let streamClosed = false;
+        const enqueue = (chunk: Uint8Array) => {
+          if (streamClosed) return;
+          try { controller.enqueue(chunk); } catch { /* consumer gone */ }
+        };
+        const send = (obj: unknown) => enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        const ping = () => enqueue(encoder.encode(`: keepalive\n\n`));
+        ping(); // flush first bytes so the gateway opens the response immediately
+        const keepalive = setInterval(ping, 10_000);
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please top up in Settings → Workspace → Usage." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("[bc-scenario-agent] AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+        try {
+          const response = await callAI(aiMessages, FIRST_CALL_TIMEOUT_MS);
+
+          if (!response.ok) {
+            const errText = await response.text().catch(() => '');
+            console.error("[bc-scenario-agent] AI gateway error:", response.status, errText);
+            const msg = response.status === 429
+              ? "Rate limit exceeded. Please try again shortly."
+              : response.status === 402
+                ? "AI credits exhausted. Please top up in Settings → Workspace → Usage."
+                : response.status === 504
+                  ? "The AI model took too long to respond. Please try again in a moment."
+                  : "AI service error. Please try again.";
+            send({ error: msg });
+            return;
+          }
 
     // Parse the non-streaming AI response, post-process scenarios with the
     // unified engine, and emit a synthetic SSE stream so the existing client
@@ -589,8 +606,14 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
           });
 
           // Trigger re-prompt only when ≥2 of 3 are weak (single weak scenario
-          // can be a deliberate "stretch" option — don't punish that).
-          const SHOULD_REVISE = failures.length >= 2 && !clarificationMode;
+          // can be a deliberate "stretch" option — don't punish that) AND there
+          // is enough wall-clock budget left for a second model call — otherwise
+          // the second call is what tips the request over into a gateway 504.
+          const revisionBudgetLeft = DEADLINE_AT - Date.now();
+          const SHOULD_REVISE = failures.length >= 2 && !clarificationMode && revisionBudgetLeft >= REVISION_MIN_BUDGET_MS;
+          if (failures.length >= 2 && !clarificationMode && revisionBudgetLeft < REVISION_MIN_BUDGET_MS) {
+            console.log('[bc-scenario-agent] Skipping revision pass — only', revisionBudgetLeft, 'ms budget left');
+          }
 
           if (SHOULD_REVISE) {
             revisionAttempts = 1;
@@ -602,7 +625,7 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
               { role: 'tool', tool_call_id: toolCalls[0]?.id || 'call_0', content: JSON.stringify({ status: 'engine_validation_failed', failures }) },
               { role: 'user', content: revisionInstruction },
             ];
-            const revResp = await callAI(revisedMessages);
+            const revResp = await callAI(revisedMessages, Math.min(REVISION_TIMEOUT_MS, Math.max(1, DEADLINE_AT - Date.now())));
             if (revResp.ok) {
               const revData = await revResp.json();
               const revMessage = revData?.choices?.[0]?.message ?? {};
@@ -645,32 +668,35 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       }
     }
 
-    // Build a synthetic SSE stream that the existing front-end SSE parser
-    // already understands (text deltas + tool_calls deltas + [DONE]).
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(controller) {
-        const send = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-
-        if (assistantText) {
-          send({ choices: [{ delta: { content: assistantText } }] });
+          // Emit the assistant prose + validated scenarios as synthetic SSE
+          // events the existing front-end parser already understands.
+          if (assistantText) {
+            send({ choices: [{ delta: { content: assistantText } }] });
+          }
+          if (toolCallArgsString) {
+            send({
+              choices: [{
+                delta: {
+                  tool_calls: [{
+                    index: 0,
+                    function: { name: 'generate_scenarios', arguments: toolCallArgsString },
+                  }],
+                },
+              }],
+            });
+          }
+          if (!assistantText && !toolCallArgsString) {
+            send({ error: 'The assistant did not return a usable response. Please rephrase and try again.' });
+          }
+        } catch (streamErr) {
+          console.error('[bc-scenario-agent] stream worker error:', streamErr);
+          send({ error: streamErr instanceof Error ? streamErr.message : 'Unexpected error generating scenarios.' });
+        } finally {
+          clearInterval(keepalive);
+          enqueue(encoder.encode('data: [DONE]\n\n'));
+          streamClosed = true;
+          try { controller.close(); } catch { /* already closed */ }
         }
-
-        if (toolCallArgsString) {
-          send({
-            choices: [{
-              delta: {
-                tool_calls: [{
-                  index: 0,
-                  function: { name: 'generate_scenarios', arguments: toolCallArgsString },
-                }],
-              },
-            }],
-          });
-        }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
       },
     });
 

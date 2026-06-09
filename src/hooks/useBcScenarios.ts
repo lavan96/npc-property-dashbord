@@ -25,6 +25,36 @@ interface BcScenarioRow {
   updated_at: string;
 }
 
+function normalizeScenarioPreset(raw: Partial<ScenarioPreset> | null | undefined): ScenarioPreset {
+  const preset = (raw || {}) as Partial<ScenarioPreset>;
+  const fallbackResult = {
+    borrowingCapacity: 0,
+    monthlySurplus: 0,
+    serviceabilityBand: 'red',
+    stressTestedCapacity: 0,
+    capacityChange: { absolute: 0, percentage: 0 },
+  } as ScenarioPreset['result'];
+
+  return {
+    ...(preset as ScenarioPreset),
+    id: preset.id || `scenario-${Date.now()}`,
+    name: preset.name || 'Untitled Scenario',
+    isBase: !!preset.isBase,
+    createdAt: preset.createdAt || new Date().toISOString(),
+    adjustedInputs: (preset.adjustedInputs || {}) as ScenarioPreset['adjustedInputs'],
+    result: (preset.result || fallbackResult) as ScenarioPreset['result'],
+    scenarioDeltas: Array.isArray(preset.scenarioDeltas) ? preset.scenarioDeltas : [],
+    validationIssues: Array.isArray(preset.validationIssues) ? preset.validationIssues : [],
+    capitalAllocations: Array.isArray(preset.capitalAllocations) ? preset.capitalAllocations : [],
+    acquisitionCapacity: preset.acquisitionCapacity
+      ? {
+          ...preset.acquisitionCapacity,
+          notes: Array.isArray(preset.acquisitionCapacity.notes) ? preset.acquisitionCapacity.notes : [],
+        }
+      : preset.acquisitionCapacity,
+  };
+}
+
 export interface UseBcScenariosOptions {
   clientId: string | undefined;
   enabled?: boolean;
@@ -51,7 +81,7 @@ export function useBcScenarios({ clientId, enabled = true }: UseBcScenariosOptio
 
       const rows: BcScenarioRow[] = data.items || [];
       // Re-hydrate presets from payload, attaching DB id (in case caller wants it).
-      const presets: ScenarioPreset[] = rows.map((r) => ({
+      const presets: ScenarioPreset[] = rows.map((r) => normalizeScenarioPreset({
         ...(r.payload || ({} as ScenarioPreset)),
         id: r.id, // override with DB id so deletes target the correct row
         name: r.name,
@@ -74,6 +104,7 @@ export function useBcScenarios({ clientId, enabled = true }: UseBcScenariosOptio
   // ── CREATE ─────────────────────────────────────────────
   const saveScenario = useCallback(
     async (preset: ScenarioPreset): Promise<ScenarioPreset | null> => {
+      const normalizedPreset = normalizeScenarioPreset(preset);
       if (!clientId) {
         toast.error('Cannot save scenario without a client');
         return null;
@@ -84,9 +115,9 @@ export function useBcScenarios({ clientId, enabled = true }: UseBcScenariosOptio
           operation: 'create',
           clientId,
           data: {
-            name: preset.name,
-            is_base: !!preset.isBase,
-            payload: preset, // store the whole preset
+            name: normalizedPreset.name,
+            is_base: !!normalizedPreset.isBase,
+            payload: normalizedPreset, // store the whole preset
           },
         });
         if (invokeError) throw new Error(invokeError.message);
@@ -94,19 +125,20 @@ export function useBcScenarios({ clientId, enabled = true }: UseBcScenariosOptio
 
         const row: BcScenarioRow = data.item;
         const saved: ScenarioPreset = {
-          ...(row.payload || preset),
+          ...(row.payload || normalizedPreset),
           id: row.id,
           name: row.name,
           isBase: row.is_base,
           createdAt: row.created_at,
         };
+        const normalizedSaved = normalizeScenarioPreset(saved);
         setScenarios((prev) => {
           // If this is a new base, replace any existing base
-          const filtered = saved.isBase ? prev.filter((p) => !p.isBase) : prev;
-          return [saved, ...filtered];
+          const filtered = normalizedSaved.isBase ? prev.filter((p) => !p.isBase) : prev;
+          return [normalizedSaved, ...filtered.map(normalizeScenarioPreset)];
         });
-        if (!saved.isBase) toast.success(`Scenario "${saved.name}" saved`);
-        return saved;
+        if (!normalizedSaved.isBase) toast.success(`Scenario "${normalizedSaved.name}" saved`);
+        return normalizedSaved;
       } catch (err: any) {
         console.error('[useBcScenarios] save failed:', err);
         toast.error(`Save failed: ${err?.message || 'Unknown error'}`);

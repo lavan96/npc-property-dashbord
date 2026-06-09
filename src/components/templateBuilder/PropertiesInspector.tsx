@@ -42,6 +42,16 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 import { InlineAiTextActions } from './InlineAiTextActions';
+import { PaperSizePicker } from './PaperSizePicker';
+import { EnhancedColorPicker } from './EnhancedColorPicker';
+import { FontPicker } from './FontPicker';
+import { FontSizeControl } from './FontSizeControl';
+import { BackgroundGradientEditor, type GradientValue } from './BackgroundGradientEditor';
+import { StyleClipboardButtons } from './StyleClipboardButtons';
+import { EffectsPanel } from './EffectsPanel';
+import { AlignmentGrid } from './AlignmentGrid';
+import { TextRhythmControl } from './TextRhythmControl';
+import { PalettePresets } from './PalettePresets';
 
 
 interface Props {
@@ -128,6 +138,7 @@ export function PropertiesInspector({
               onMoveBlock={onMoveBlock}
               onDeleteBlock={onDeleteBlock}
               onDuplicateBlock={onDuplicateBlock}
+              onUpdateTemplate={onUpdateTemplate}
             />
           )
         )}
@@ -170,6 +181,7 @@ function OverlayEditor({
           <p className="text-[11px] text-muted-foreground font-mono truncate">{overlay.id}</p>
         </div>
         <div className="flex items-center gap-1">
+          <StyleClipboardButtons overlay={overlay} onChange={onChange} />
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDuplicate} title="Duplicate">
             <Copy className="h-3.5 w-3.5" />
           </Button>
@@ -213,9 +225,30 @@ function OverlayEditor({
         />
       </div>
 
+      {(() => {
+        const pg = template.pages.find((p) => p.id === pageId);
+        if (!pg) return null;
+        return (
+          <AlignmentGrid
+            pageWidth={pg.size.width ?? 595}
+            pageHeight={pg.size.height ?? 842}
+            overlayWidth={overlay.width}
+            overlayHeight={overlay.height}
+            safeArea={pg.safeArea ?? 0}
+            onAlign={({ x, y }) => patch({ x, y })}
+          />
+        );
+      })()}
+
       <Separator />
 
-      {/* Type-specific */}
+      {/* Phase 17 — visual effects (shared across all overlay types) */}
+      <EffectsPanel
+        value={(overlay as any).effects}
+        onChange={(v) => patch({ effects: v } as any)}
+      />
+
+      <Separator />
       {overlay.type === 'text' && (
         <div className="space-y-3">
           {pageId && (
@@ -235,22 +268,86 @@ function OverlayEditor({
             multiline
           />
 
-          <div className="grid grid-cols-2 gap-2">
-            <NumField
-              label="Size (pt)"
-              value={Number(overlay.fontSize) || 12}
-              onChange={(v) => patch({ fontSize: v } as any)}
+          {/* Section 3 — paragraph style reference */}
+          {(() => {
+            const styles = (template.tokens as any).paragraphStyles as Record<string, any> | undefined;
+            const keys = styles ? Object.keys(styles) : [];
+            if (keys.length === 0) return null;
+            const cur = String((overlay as any).styleRef ?? '__none__');
+            return (
+              <div>
+                <Label className="text-xs">Paragraph style</Label>
+                <Select value={cur} onValueChange={(v) => patch({ styleRef: v === '__none__' ? undefined : v } as any)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {keys.map((k) => (
+                      <SelectItem key={k} value={k}>{styles![k].name ?? k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })()}
+
+          {/* Section 3 — drop cap */}
+          <div className="rounded border p-2 space-y-2">
+            <label className="flex items-center justify-between text-xs">
+              <span>Drop cap</span>
+              <input
+                type="checkbox"
+                checked={!!(overlay as any).dropCap?.enabled}
+                onChange={(e) => patch({ dropCap: e.target.checked ? { enabled: true, lines: (overlay as any).dropCap?.lines ?? 3 } : undefined } as any)}
+              />
+            </label>
+            {(overlay as any).dropCap?.enabled && (
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Lines</Label>
+                  <input
+                    type="number" min={2} max={8} className="h-7 w-full text-xs rounded border bg-background px-1"
+                    value={(overlay as any).dropCap?.lines ?? 3}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, lines: Math.max(2, Math.min(8, Number(e.target.value) || 3)) } } as any)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Margin (pt)</Label>
+                  <input
+                    type="number" min={0} max={48} className="h-7 w-full text-xs rounded border bg-background px-1"
+                    value={(overlay as any).dropCap?.marginRight ?? 6}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, marginRight: Number(e.target.value) || 0 } } as any)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Color</Label>
+                  <input
+                    type="color" className="h-7 w-full rounded border bg-background"
+                    value={(overlay as any).dropCap?.color ?? '#000000'}
+                    onChange={(e) => patch({ dropCap: { ...((overlay as any).dropCap ?? {}), enabled: true, color: e.target.value } } as any)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <FontSizeControl
+            value={Number(overlay.fontSize) || 12}
+            onChange={(v) => patch({ fontSize: v } as any)}
+          />
+
+          <div>
+            <Label className="text-xs">Font family</Label>
+            <FontPicker
+              value={String(overlay.fontFamily || 'Helvetica')}
+              weight={overlay.fontWeight}
+              template={template}
+              onChange={(family) => patch({ fontFamily: family } as any)}
+              onWeightChange={(w) => patch({ fontWeight: w } as any)}
+              onTemplateChange={onUpdateTemplate}
             />
-            <div>
-              <Label className="text-xs">Weight</Label>
-              <Select value={overlay.fontWeight} onValueChange={(v) => patch({ fontWeight: v as any })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="bold">Bold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Align</Label>
               <Select value={overlay.align} onValueChange={(v) => patch({ align: v as any })}>
@@ -264,35 +361,17 @@ function OverlayEditor({
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Family</Label>
-              <div className="flex items-center gap-1">
-                <Select
-                  value={String(overlay.fontFamily || 'Helvetica')}
-                  onValueChange={(v) => patch({ fontFamily: v } as any)}
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Helvetica">Helvetica</SelectItem>
-                    <SelectItem value="Times">Times</SelectItem>
-                    <SelectItem value="Courier">Courier</SelectItem>
-                    <SelectItem value="Georgia">Georgia</SelectItem>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    {((template.tokens as any).fontFaces ?? []).map((f: any) => (
-                      <SelectItem key={f.family} value={f.family}>{f.family}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {onUpdateTemplate && (
-                  <FontLibraryPopover
-                    template={template}
-                    onTemplateChange={onUpdateTemplate}
-                    onPick={(family) => patch({ fontFamily: family } as any)}
-                  />
-                )}
-              </div>
+              <Label className="text-xs">Style</Label>
+              <Select value={overlay.fontStyle ?? 'normal'} onValueChange={(v) => patch({ fontStyle: v as any })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="italic">Italic</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <ColorField
+          <EnhancedColorPicker
             label="Color"
             value={String(overlay.color || '#000000')}
             template={template}
@@ -303,6 +382,19 @@ function OverlayEditor({
             template={template}
             onChange={(p) => patch(p as any)}
             onTemplateChange={onUpdateTemplate}
+          />
+          <Separator />
+          <TextRhythmControl
+            value={{
+              lineHeight: (overlay as any).lineHeight,
+              letterSpacing: (overlay as any).letterSpacing,
+              textTransform: (overlay as any).textTransform,
+              textDecoration: (overlay as any).textDecoration,
+            }}
+            fontFamily={String((overlay as any).fontFamily || '')}
+            fontSize={Number((overlay as any).fontSize) || 12}
+            color={String((overlay as any).color || '#000000')}
+            onChange={(p) => patch(p as any)}
           />
         </div>
       )}
@@ -360,6 +452,109 @@ function OverlayEditor({
         </div>
       )}
 
+      {(overlay as any).type === 'textOnPath' && (
+        <div className="space-y-3">
+          <BindableField
+            label="Content"
+            value={String((overlay as any).content ?? '')}
+            onChange={(v) => patch({ content: v } as any)}
+            template={template}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Curve</Label>
+              <Select value={(overlay as any).curve ?? 'arc-up'} onValueChange={(v) => patch({ curve: v as any } as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="arc-up">Arc up</SelectItem>
+                  <SelectItem value="arc-down">Arc down</SelectItem>
+                  <SelectItem value="wave">Wave</SelectItem>
+                  <SelectItem value="circle">Circle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Curvature</Label>
+              <Input
+                type="number" step="0.05" min={-1} max={1}
+                className="h-8 text-xs"
+                value={(overlay as any).curvature ?? 0.5}
+                onChange={(e) => patch({ curvature: Math.max(-1, Math.min(1, Number(e.target.value) || 0)) } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Font size (pt)</Label>
+              <Input
+                type="number" className="h-8 text-xs"
+                value={Number((overlay as any).fontSize) || 18}
+                onChange={(e) => patch({ fontSize: Number(e.target.value) || 18 } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Letter spacing</Label>
+              <Input
+                type="number" step="0.1" className="h-8 text-xs"
+                value={(overlay as any).letterSpacing ?? 0}
+                onChange={(e) => patch({ letterSpacing: Number(e.target.value) || 0 } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Start offset (%)</Label>
+              <Input
+                type="number" min={0} max={100} className="h-8 text-xs"
+                value={(overlay as any).startOffset ?? 0}
+                onChange={(e) => patch({ startOffset: Math.max(0, Math.min(100, Number(e.target.value) || 0)) } as any)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Weight</Label>
+              <Select value={String((overlay as any).fontWeight ?? 'normal')} onValueChange={(v) => patch({ fontWeight: v as any } as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <EnhancedColorPicker
+            label="Color"
+            value={String((overlay as any).color || '#000000')}
+            template={template}
+            onChange={(v) => patch({ color: v } as any)}
+          />
+        </div>
+      )}
+
+      {(overlay as any).type === 'table' && (
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Open the dedicated table editor from <strong>Advanced ▸ Edit table…</strong> for columns, data binding & per-cell styles.
+          </p>
+          <div>
+            <Label className="text-xs">Data binding (array of objects)</Label>
+            <Input
+              className="h-8 text-xs font-mono"
+              placeholder="e.g. property.comparables"
+              value={String((overlay as any).data ?? '')}
+              onChange={(e) => patch({ data: e.target.value || undefined } as any)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Font size (pt)</Label>
+              <Input type="number" className="h-8 text-xs" value={(overlay as any).fontSize ?? 10} onChange={(e) => patch({ fontSize: Number(e.target.value) || 10 } as any)} />
+            </div>
+            <div>
+              <Label className="text-xs">Row height (pt)</Label>
+              <Input type="number" className="h-8 text-xs" value={(overlay as any).rowHeight ?? 20} onChange={(e) => patch({ rowHeight: Number(e.target.value) || 20 } as any)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       <Separator />
       <div>
         <Label className="text-xs">Conditional (e.g. <code>tier === 'compass'</code>)</Label>
@@ -382,6 +577,7 @@ function PageEditor({
   onMoveBlock,
   onDeleteBlock,
   onDuplicateBlock,
+  onUpdateTemplate,
 }: {
   template: ReportTemplate;
   page: Page;
@@ -390,6 +586,7 @@ function PageEditor({
   onMoveBlock?: (id: string, dir: -1 | 1) => void;
   onDeleteBlock?: (id: string) => void;
   onDuplicateBlock?: (id: string) => void;
+  onUpdateTemplate?: (t: ReportTemplate) => void;
 }) {
   const [bgImageUrl, setBgImageUrl] = useState(String(page.background?.imageUrl ?? ''));
   useEffect(() => { setBgImageUrl(String(page.background?.imageUrl ?? '')); }, [page.id]);
@@ -401,16 +598,36 @@ function PageEditor({
         <Label className="text-xs">Name</Label>
         <Input value={page.name} onChange={(e) => onChange({ ...page, name: e.target.value })} className="text-xs" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumField label="Width" value={page.size.width} onChange={(v) => onChange({ ...page, size: { ...page.size, width: v } })} />
-        <NumField label="Height" value={page.size.height} onChange={(v) => onChange({ ...page, size: { ...page.size, height: v } })} />
-      </div>
-      <ColorField
-        label="Background"
+      <PaperSizePicker
+        width={page.size.width}
+        height={page.size.height}
+        onChange={(size) => onChange({ ...page, size: { ...page.size, ...size } })}
+      />
+      {onUpdateTemplate && (
+        <>
+          <Separator />
+          <PalettePresets
+            colors={(template.tokens?.colors as Record<string, string>) || {}}
+            onChange={(nextColors) =>
+              onUpdateTemplate({
+                ...template,
+                tokens: { ...template.tokens, colors: nextColors },
+              })
+            }
+          />
+          <Separator />
+        </>
+      )}
+      <EnhancedColorPicker
+        label="Background color"
         template={template}
         value={page.background?.color || ''}
         allowEmpty
         onChange={(v) => onChange({ ...page, background: { ...(page.background || {}), color: v || undefined } })}
+      />
+      <BackgroundGradientEditor
+        value={(page.background as any)?.gradient as GradientValue | undefined}
+        onChange={(g) => onChange({ ...page, background: { ...(page.background || {}), gradient: g } as any })}
       />
       <div>
         <Label className="text-xs">Background image URL</Label>
@@ -797,27 +1014,16 @@ function NumField({
 function ColorField({
   label, value, onChange, allowEmpty, template,
 }: { label: string; value: string; onChange: (v: string) => void; allowEmpty?: boolean; template: ReportTemplate }) {
-  const isHex = value?.startsWith('#');
   const issues = validateBindable(value, template);
   return (
     <div>
-      <Label className="text-xs">{label}</Label>
-      <div className="flex gap-2">
-        {isHex && (
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-8 w-10 rounded cursor-pointer bg-transparent border"
-          />
-        )}
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex or token:primary'}
-          className={`h-8 text-xs font-mono ${issues.length ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-        />
-      </div>
+      <EnhancedColorPicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        template={template}
+        allowEmpty={allowEmpty}
+      />
       <BindingIssues issues={issues} />
     </div>
   );

@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { SpacingBox } from './SpacingBox';
+import { CornerRadiusBox } from './CornerRadiusBox';
+import { ShadowStudio, type ShadowPreset } from './ShadowStudio';
 
 type StyleObj = NonNullable<Block['style']>;
 type RepeatObj = NonNullable<Block['repeat']>;
@@ -101,33 +104,34 @@ export function BlockStylePanel({ block, onChange }: { block: Block; onChange: (
         <MiniNum label="Width (pt)" value={numOr(s.borderWidth, 0)} onChange={(n) => update({ borderWidth: n || undefined })} min={0} max={8} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-[11px]">Border style</Label>
-          <Select value={s.borderStyle ?? 'solid'} onValueChange={(v) => update({ borderStyle: v as any })}>
-            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{BORDER_STYLES.map((o) => <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <MiniNum label="Radius (pt)" value={numOr(s.borderRadius, 0)} onChange={(n) => update({ borderRadius: n || undefined })} min={0} max={48} />
-      </div>
-
       <div className="space-y-1">
-        <Label className="text-[11px]">Shadow</Label>
-        <Select value={s.shadow ?? 'none'} onValueChange={(v) => update({ shadow: v as any })}>
+        <Label className="text-[11px]">Border style</Label>
+        <Select value={s.borderStyle ?? 'solid'} onValueChange={(v) => update({ borderStyle: v as any })}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{SHADOW_OPTS.map((o) => <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>)}</SelectContent>
+          <SelectContent>{BORDER_STYLES.map((o) => <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
+      <CornerRadiusBox
+        value={numOr(s.borderRadius, 0)}
+        onChange={(n) => update({ borderRadius: n || undefined })}
+        max={48}
+      />
+
+      <ShadowStudio
+        value={(s.shadow as ShadowPreset) ?? 'none'}
+        onChange={(v) => update({ shadow: v })}
+      />
+
       <Separator />
-      <SectionHeading>Padding (backdrop)</SectionHeading>
-      <div className="grid grid-cols-4 gap-1.5">
-        <MiniNum label="T" value={numOr(s.paddingTop, 0)} onChange={(n) => update({ paddingTop: n || undefined })} max={96} />
-        <MiniNum label="R" value={numOr(s.paddingRight, 0)} onChange={(n) => update({ paddingRight: n || undefined })} max={96} />
-        <MiniNum label="B" value={numOr(s.paddingBottom, 0)} onChange={(n) => update({ paddingBottom: n || undefined })} max={96} />
-        <MiniNum label="L" value={numOr(s.paddingLeft, 0)} onChange={(n) => update({ paddingLeft: n || undefined })} max={96} />
-      </div>
+      <SpacingBox
+        label="Padding (backdrop)"
+        value={{ top: s.paddingTop, right: s.paddingRight, bottom: s.paddingBottom, left: s.paddingLeft }}
+        onChange={(p) => update({
+          paddingTop: p.top, paddingRight: p.right, paddingBottom: p.bottom, paddingLeft: p.left,
+        })}
+        max={96}
+      />
 
       <Separator />
       <SectionHeading>Transform</SectionHeading>

@@ -83,6 +83,9 @@ export function TemplateBranchingDialog({
         approval_status: 'draft',
         is_active: false,
         is_default: false,
+        locked_for_review: false,
+        locked_at: null,
+        locked_by: null,
         version: 1,
         created_at: undefined,
         updated_at: undefined,
@@ -115,8 +118,15 @@ export function TemplateBranchingDialog({
       if (dErr || !draft) throw dErr ?? new Error('Draft missing');
 
       const { data: parent, error: pErr } = await supabase
-        .from('report_templates').select('schema,version').eq('id', parentTemplateId).single();
+        .from('report_templates').select('schema,version,locked_for_review,approval_status,is_active,updated_at').eq('id', parentTemplateId).single();
       if (pErr || !parent) throw pErr ?? new Error('Parent missing');
+      if ((parent as any).locked_for_review) {
+        throw new Error('Parent template is locked for review. Unlock or branch again before merging.');
+      }
+      if ((parent as any).is_active || (parent as any).approval_status === 'approved') {
+        const ok = confirm('The parent is approved or active. Merge will return it to draft status for review before activation. Continue?');
+        if (!ok) return;
+      }
 
       // snapshot old parent version
       const nextVersion = (parent.version ?? 1) + 1;
@@ -135,6 +145,9 @@ export function TemplateBranchingDialog({
           schema: draft.schema,
           custom_css: draft.custom_css,
           version: nextVersion,
+          approval_status: 'draft',
+          locked_for_review: false,
+          is_active: false,
           updated_at: new Date().toISOString(),
         })
         .eq('id', parentTemplateId);

@@ -8,13 +8,14 @@
  * overlays (position, size, text content); blocks and bindings are edited in
  * the inspector / page panel. Live PDF regenerates on a 500ms debounce.
  */
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout,
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
+  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
@@ -39,10 +40,11 @@ import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIA
 import { TemplateDesignAgentPanel } from '@/components/templateBuilder/TemplateDesignAgentPanel';
 import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
 import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
+import { SpellCheckDialog } from '@/components/templateBuilder/SpellCheckDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
-import { TemplatePresenceBar } from '@/components/templateBuilder/TemplatePresenceBar';
+import { TemplatePresenceBar, type PresenceUser } from '@/components/templateBuilder/TemplatePresenceBar';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -71,6 +73,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   useReportTemplate,
@@ -90,10 +100,17 @@ import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
-import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
+import { useTemplateAnalysis } from '@/hooks/templateBuilder/useTemplateAnalysis';
+import {
+  applyTemplatePatches,
+  diffTemplateValues,
+  invertTemplatePatches,
+  type TemplatePatch,
+} from '@/lib/reportTemplate/templateHistory';
 import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
+import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
@@ -102,9 +119,23 @@ import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInsp
 import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel';
 import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
+import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
+import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
+import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
+import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
+import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
+import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
 const DEFAULT_SAMPLE_DATA = DEFAULT_SAMPLE_DATA_PRESET.data;
+
+type TemplateCommentAnchorRow = {
+  id: string;
+  page_id: string | null;
+  block_id: string | null;
+  overlay_id: string | null;
+  resolved: boolean;
+};
 
 type TemplateMeta = {
   parent_template_id: string | null;
@@ -129,6 +160,17 @@ type TemplateEditSignatureInput = {
 
 function makeTemplateEditSignature(input: TemplateEditSignatureInput): string {
   return JSON.stringify(input);
+}
+
+function describeJsonError(error: unknown, text: string): string {
+  if (!(error instanceof SyntaxError)) return error instanceof Error ? error.message : 'Invalid JSON';
+  const match = /position (\d+)/i.exec(error.message);
+  if (!match) return error.message;
+  const position = Number(match[1]);
+  const before = text.slice(0, position);
+  const line = before.split('\n').length;
+  const column = before.length - before.lastIndexOf('\n');
+  return `${error.message} (line ${line}, column ${column})`;
 }
 
 const RENDERER_ISSUE_CODES = new Set<LintIssue['code']>(['renderer-partial', 'renderer-unsupported']);
@@ -156,6 +198,7 @@ export default function TemplateBuilderEdit() {
   const [showAIAuthor, setShowAIAuthor] = useState(false);
   const [showDesignAgent, setShowDesignAgent] = useState(false);
   const [showPreviewQA, setShowPreviewQA] = useState(false);
+  const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -176,27 +219,41 @@ export default function TemplateBuilderEdit() {
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('canvas');
+  const [activeMainTab, setActiveMainTab] = useState('visual');
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [saveConflict, setSaveConflict] = useState<{ message: string; serverVersion: number | null } | null>(null);
   const [showConflict, setShowConflict] = useState(false);
   const [dirtySince, setDirtySince] = useState<string | null>(null);
+  const [softLockUsers, setSoftLockUsers] = useState<PresenceUser[]>([]);
+  const [commentRows, setCommentRows] = useState<TemplateCommentAnchorRow[]>([]);
   // ── Local draft recovery (Phase 3B) ─────────────────────────────────────────
   const [draftRecovery, setDraftRecovery] = useState<TemplateDraft | null>(null);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
   const [staleDraftBase, setStaleDraftBase] = useState(false);
 
   // ── Undo / redo history ────────────────────────────────────────────────────
-  const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
+  const historyRef = useRef<{
+    past: Array<{ undo: TemplatePatch[]; redo: TemplatePatch[] }>;
+    future: Array<{ undo: TemplatePatch[]; redo: TemplatePatch[] }>;
+  }>({ past: [], future: [] });
   const skipHistoryRef = useRef(false);
+  const governanceReadOnlyRef = useRef(false);
   const setTemplate = useCallback((updater: ReportTemplate | ((prev: ReportTemplate) => ReportTemplate)) => {
     _setTemplate((prev) => {
+      if (governanceReadOnlyRef.current && !skipHistoryRef.current) {
+        toast.error('Approved templates are read-only. Create a branch before editing.');
+        return prev;
+      }
       const next = typeof updater === 'function' ? (updater as (p: ReportTemplate) => ReportTemplate)(prev) : updater;
       if (!skipHistoryRef.current && next !== prev) {
-        historyRef.current.past.push(prev);
-        if (historyRef.current.past.length > 80) historyRef.current.past.shift();
-        historyRef.current.future = [];
+        const redo = diffTemplateValues(prev, next);
+        if (redo.length > 0) {
+          historyRef.current.past.push({ undo: invertTemplatePatches(redo), redo });
+          if (historyRef.current.past.length > 80) historyRef.current.past.shift();
+          historyRef.current.future = [];
+        }
       }
       skipHistoryRef.current = false;
       return next;
@@ -204,21 +261,21 @@ export default function TemplateBuilderEdit() {
   }, []);
   const undo = useCallback(() => {
     const h = historyRef.current;
-    const prev = h.past.pop();
-    if (!prev) { toast('Nothing to undo'); return; }
+    const entry = h.past.pop();
+    if (!entry) { toast('Nothing to undo'); return; }
     _setTemplate((cur) => {
-      h.future.push(cur);
-      return prev;
+      h.future.push(entry);
+      return applyTemplatePatches(cur, entry.undo);
     });
     skipHistoryRef.current = true;
   }, []);
   const redo = useCallback(() => {
     const h = historyRef.current;
-    const next = h.future.pop();
-    if (!next) { toast('Nothing to redo'); return; }
+    const entry = h.future.pop();
+    if (!entry) { toast('Nothing to redo'); return; }
     _setTemplate((cur) => {
-      h.past.push(cur);
-      return next;
+      h.past.push(entry);
+      return applyTemplatePatches(cur, entry.redo);
     });
     skipHistoryRef.current = true;
   }, []);
@@ -231,9 +288,36 @@ export default function TemplateBuilderEdit() {
   }, [sampleDataText]);
   const sampleData = parsedSampleData.data;
   const sampleDataValid = parsedSampleData.valid;
-  const deferredTemplate = useDeferredValue(template);
-  const deferredSampleData = useDeferredValue(sampleData);
-  const isAnalysisPending = deferredTemplate !== template || deferredSampleData !== sampleData;
+  const [sampleDataError, setSampleDataError] = useState<string | null>(null);
+  const [templateJsonText, setTemplateJsonText] = useState('');
+  const [templateJsonError, setTemplateJsonError] = useState<string | null>(null);
+  const [templateJsonFocused, setTemplateJsonFocused] = useState(false);
+
+  useEffect(() => {
+    try {
+      JSON.parse(sampleDataText);
+      setSampleDataError(null);
+    } catch (error) {
+      setSampleDataError(describeJsonError(error, sampleDataText));
+    }
+  }, [sampleDataText]);
+
+  useEffect(() => {
+    if (templateJsonFocused || templateJsonError) return;
+    setTemplateJsonText(JSON.stringify(template, null, 2));
+  }, [template, templateJsonError, templateJsonFocused]);
+
+  const applyTemplateJsonText = useCallback((text: string) => {
+    try {
+      const parsed = parseTemplate(JSON.parse(text));
+      setTemplate(parsed);
+      setTemplateJsonError(null);
+      return true;
+    } catch (error) {
+      setTemplateJsonError(describeJsonError(error, text));
+      return false;
+    }
+  }, [setTemplate]);
 
   // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
   const clipboardRef = useRef<Block | null>(null);
@@ -317,6 +401,10 @@ export default function TemplateBuilderEdit() {
   }, [tplRow, setTemplate]);
 
   useEffect(() => {
+    governanceReadOnlyRef.current = (tplMeta?.approval_status === 'approved' && !tplMeta?.is_draft) || false;
+  }, [tplMeta?.approval_status, tplMeta?.is_draft]);
+
+  useEffect(() => {
     if (!template.pages.length) {
       if (activePageId) setActivePageId(null);
       return;
@@ -338,6 +426,27 @@ export default function TemplateBuilderEdit() {
     if (data) setTplMeta(data as any);
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const loadCommentAnchors = async () => {
+      const { data } = await supabase
+        .from('template_comments' as any)
+        .select('id,page_id,block_id,overlay_id,resolved')
+        .eq('template_id', id);
+      if (!cancelled) setCommentRows(((data ?? []) as unknown) as TemplateCommentAnchorRow[]);
+    };
+    void loadCommentAnchors();
+    const channel = supabase
+      .channel(`tpl-comment-anchors:${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'template_comments', filter: `template_id=eq.${id}` }, () => loadCommentAnchors())
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const activePage = useMemo<Page | null>(
     () => template.pages.find((p) => p.id === activePageId) ?? null,
     [template, activePageId],
@@ -352,6 +461,31 @@ export default function TemplateBuilderEdit() {
     }
     return null;
   }, [activePage, selectedOverlayId]);
+
+  const selectedBlock = useMemo<Block | null>(() => {
+    if (!activePage || !selectedBlockId) return null;
+    return activePage.blocks.find((block) => block.id === selectedBlockId) ?? null;
+  }, [activePage, selectedBlockId]);
+
+  const selectedOverlayBlockId = useMemo(() => {
+    if (!activePage || !selectedOverlayId) return null;
+    return activePage.blocks.find((block) => block.overlays.some((overlay) => overlay.id === selectedOverlayId))?.id ?? null;
+  }, [activePage, selectedOverlayId]);
+
+  const commentAnchors = useMemo(() => commentRows.map((row) => ({
+    id: row.id,
+    pageId: row.page_id,
+    blockId: row.block_id,
+    overlayId: row.overlay_id,
+    resolved: row.resolved,
+  })), [commentRows]);
+
+  const activePageCommentAnchors = useMemo(() => commentAnchors
+    .filter((anchor) => anchor.pageId === activePageId), [activePageId, commentAnchors]);
+
+  const adapterOptions = useMemo(() => listAdapters(), []);
+  const reportTypeAdapter = useMemo(() => getAdapter(reportType), [reportType]);
+  const isProductionReportType = !!reportTypeAdapter?.supportsProduction;
 
   const currentSignature = useMemo(() => makeTemplateEditSignature({
     name,
@@ -624,22 +758,32 @@ export default function TemplateBuilderEdit() {
     toast.success(`Sample data: ${preset.label}`);
   };
   const loadSampleFromRealReport = async () => {
+    if (!reportTypeAdapter) {
+      toast.error('Choose a report type before loading a real report.');
+      return;
+    }
+    if (!reportTypeAdapter.supportsProduction) {
+      toast.error(`${reportTypeAdapter.label} is preview-only until a production adapter is configured.`);
+      return;
+    }
     const input = window.prompt(
-      'Load binding context from a real investment_reports row.\n\nPaste a report ID (UUID):',
+      `Load binding context for ${reportTypeAdapter.label}.\n\nPaste a report ID (UUID):`,
     );
     const reportId = (input ?? '').trim();
     if (!reportId) return;
-    const toastId = toast.loading('Loading report binding context…');
+    const toastId = toast.loading(`Loading ${reportTypeAdapter.label} binding context…`);
     try {
-      const { buildTemplateBindingContext } = await import('@/lib/reportTemplate/buildBindingContext');
-      const ctx = await buildTemplateBindingContext(reportId, {
-        tokens: (brand as any)?.tokens ?? (brand as any)?.theme?.tokens ?? {},
-        logoUrl: (brand as any)?.logoUrl ?? (brand as any)?.logo?.url ?? null,
+      const ctx = await reportTypeAdapter.buildBindingContext({
+        reportId,
+        brand: {
+          tokens: (brand as any)?.tokens ?? (brand as any)?.theme?.tokens ?? {},
+          logoUrl: (brand as any)?.logoUrl ?? (brand as any)?.logo?.url ?? null,
+        },
       });
-      if (!ctx) throw new Error('Report not found or inaccessible');
+      if (!ctx) throw new Error('Report not found, inaccessible, or unsupported by this adapter');
       setSampleDataText(JSON.stringify(ctx.data, null, 2));
       toast.success(
-        `Loaded ${ctx.meta.reportType}${ctx.meta.variant ? ` (${ctx.meta.variant})` : ''}`,
+        `Loaded ${reportTypeAdapter.label}${ctx.meta.variant ? ` (${ctx.meta.variant})` : ''}`,
         { id: toastId },
       );
     } catch (e: any) {
@@ -773,7 +917,95 @@ export default function TemplateBuilderEdit() {
     }
   };
 
-  // ── Overlay selection helpers (used by Ctrl+A and clipboard) ────────────────
+  // ── Layout & Structure (Sections 1+2) — multi-select align/distribute/etc.
+  const runOnActivePage = useCallback((mutator: (p: Page) => Page) => {
+    if (!activePage) return;
+    const next = mutator(activePage);
+    if (next !== activePage) updatePage(next);
+  }, [activePage]);
+  const bulkAlign = (op: layoutActions.AlignOp) =>
+    runOnActivePage((p) => layoutActions.alignOverlays(p, Array.from(multiOverlayIds), op));
+  const bulkDistribute = (op: layoutActions.DistributeOp) =>
+    runOnActivePage((p) => layoutActions.distributeSpacing(p, Array.from(multiOverlayIds), op));
+  const bulkAlignToPage = (op: layoutActions.PageAlignOp) =>
+    runOnActivePage((p) => layoutActions.alignToPage(p, Array.from(multiOverlayIds), op));
+  const bulkGroup = () =>
+    runOnActivePage((p) => layoutActions.groupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkUngroup = () =>
+    runOnActivePage((p) => layoutActions.ungroupOverlays(p, Array.from(multiOverlayIds)));
+  const bulkZ = (op: 'forward' | 'backward' | 'front' | 'back') =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.reorderOverlayZ(acc, id, op),
+      p,
+    ));
+  const bulkLock = (locked: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayLocked(acc, id, locked),
+      p,
+    ));
+  const bulkHide = (hidden: boolean) =>
+    runOnActivePage((p) => Array.from(multiOverlayIds).reduce(
+      (acc, id) => layoutActions.setOverlayHidden(acc, id, hidden),
+      p,
+    ));
+  const multiOverlaysSnap = useMemo(() => {
+    if (!activePage) return [] as Overlay[];
+    const out: Overlay[] = [];
+    for (const b of activePage.blocks) for (const o of b.overlays) if (multiOverlayIds.has(o.id)) out.push(o);
+    return out;
+  }, [activePage, multiOverlayIds]);
+  const anyLocked = multiOverlaysSnap.some((o) => !!o.locked);
+  const anyHidden = multiOverlaysSnap.some((o) => !!o.hidden);
+  const anyGrouped = multiOverlaysSnap.some((o) => !!o.groupId);
+
+  // ── Find & Replace (Cmd/Ctrl+F) + Asset Library (Shift+I) ─────────────────
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [textStylesOpen, setTextStylesOpen] = useState(false);
+  const [tableEditorOpen, setTableEditorOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable);
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        if (inEditable) return;
+        e.preventDefault();
+        setFindReplaceOpen(true);
+        return;
+      }
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'i') {
+        if (inEditable) return;
+        e.preventDefault();
+        setAssetLibraryOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const insertImageFromLibrary = useCallback((asset: { src: string; width: number; height: number }) => {
+    if (!activePage) { toast.error('Select a page first'); return; }
+    const pageW = activePage.size.width || 595;
+    const pageH = activePage.size.height || 842;
+    const overlay = {
+      id: crypto.randomUUID(),
+      type: 'image' as const,
+      src: asset.src,
+      fit: 'contain' as const,
+      x: Math.round((pageW - asset.width) / 2),
+      y: Math.round((pageH - asset.height) / 2),
+      width: asset.width,
+      height: asset.height,
+      rotation: 0,
+      opacity: 1,
+    };
+    updatePage(editorActions.addOverlay(activePage, overlay as Overlay));
+    setSelectedOverlayId(overlay.id);
+    toast.success('Image inserted');
+  }, [activePage]);
+
+
   const getSelectedOverlayIds = useCallback((): string[] => {
     if (multiOverlayIds.size > 0) return Array.from(multiOverlayIds);
     return selectedOverlayId ? [selectedOverlayId] : [];
@@ -1057,9 +1289,15 @@ export default function TemplateBuilderEdit() {
     pasteOverlays, duplicateSelectedOverlays, toggleTextStyle, shiftZOrder, workspaceMode,
   ]);
 
-  // ── Deferred template analysis keeps large templates responsive while typing/dragging.
-  const bindingIssues = useMemo(() => collectTemplateIssues(deferredTemplate), [deferredTemplate]);
-  const lintIssues = useMemo<LintIssue[]>(() => lintTemplate(deferredTemplate, deferredSampleData), [deferredTemplate, deferredSampleData]);
+  // ── Idle/debounced analysis keeps large templates responsive while typing/dragging.
+  // Active-page analysis updates immediately; full-document analysis settles after idle.
+  const {
+    bindingIssues,
+    lintIssues,
+    activePageBindingIssues,
+    activePageLintIssues,
+    isCheckingFullDocument,
+  } = useTemplateAnalysis(template, activePage, sampleData);
   const rendererIssues = useMemo(() => lintIssues.filter(isRendererIssue), [lintIssues]);
   const rendererIssueCount = rendererIssues.length;
   const rendererErrorCount = useMemo(() => rendererIssues.filter((i) => i.severity === 'error').length, [rendererIssues]);
@@ -1073,13 +1311,13 @@ export default function TemplateBuilderEdit() {
       existing.push(issue);
       issuesByPage.set(issue.pageId, existing);
     });
-    return deferredTemplate.pages
+    return template.pages
       .map((page, index) => ({ page, index, issues: issuesByPage.get(page.id) ?? [] }))
       .filter((group) => group.issues.length > 0);
-  }, [rendererIssues, deferredTemplate.pages]);
+  }, [rendererIssues, template.pages]);
   const usedBlockCompatibility = useMemo(() => {
     const counts = new Map<string, number>();
-    deferredTemplate.pages.forEach((page) => page.blocks.forEach((block) => counts.set(block.type, (counts.get(block.type) ?? 0) + 1)));
+    template.pages.forEach((page) => page.blocks.forEach((block) => counts.set(block.type, (counts.get(block.type) ?? 0) + 1)));
     return Array.from(counts.entries())
       .map(([type, count]) => ({
         type,
@@ -1088,7 +1326,7 @@ export default function TemplateBuilderEdit() {
         capabilities: getBlockRendererCapabilities(type),
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [deferredTemplate.pages]);
+  }, [template.pages]);
   const firstRendererBlocker = useMemo(() => rendererIssues.find((issue) => issue.severity === 'error') ?? null, [rendererIssues]);
   const firstRendererNote = useMemo(() => rendererIssues.find((issue) => issue.severity !== 'error') ?? null, [rendererIssues]);
   const activationBlockers = useMemo(() => {
@@ -1096,13 +1334,28 @@ export default function TemplateBuilderEdit() {
     if (!isSuperadmin) blockers.push('Superadmin access is required to activate templates.');
     if ((tplMeta?.approval_status ?? 'draft') !== 'approved') blockers.push('Template must be approved.');
     if (!reportType) blockers.push('Report type is required.');
+    if (reportType && !isProductionReportType) blockers.push('A production adapter is required for this report type.');
     if (isDirty) blockers.push('Save unsaved changes before activation.');
     if (bindingIssues.length > 0) blockers.push(`Resolve ${bindingIssues.length} binding issue${bindingIssues.length === 1 ? '' : 's'}.`);
     if (rendererErrorCount > 0) blockers.push(`Resolve ${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'}.`);
     if (printErrorCount > 0) blockers.push(`Resolve ${printErrorCount} print-safety error${printErrorCount === 1 ? '' : 's'}.`);
     return blockers;
-  }, [bindingIssues.length, isDirty, isSuperadmin, printErrorCount, rendererErrorCount, reportType, tplMeta?.approval_status]);
+  }, [bindingIssues.length, isDirty, isProductionReportType, isSuperadmin, printErrorCount, rendererErrorCount, reportType, tplMeta?.approval_status]);
   const canActivateTemplate = activationBlockers.length === 0;
+  const onboardingChecklist = useMemo(() => [
+    { label: 'Set report type', done: !!reportType },
+    { label: 'Use production-ready report adapter', done: isProductionReportType },
+    { label: 'Use production engine (HTML/WeasyPrint)', done: true },
+    { label: 'Add at least one page', done: template.pages.length > 0 },
+    { label: 'Add blocks or overlays', done: template.pages.some((page) => page.blocks.length > 0) },
+    { label: 'Resolve binding issues', done: bindingIssues.length === 0 },
+    { label: 'Resolve print/render blockers', done: rendererErrorCount === 0 && printErrorCount === 0 },
+    { label: 'Preview final PDF', done: workspaceMode === 'pdf' },
+    { label: 'Snapshot a version', done: versions.length > 0 },
+    { label: 'Submit/review approval', done: ['in_review', 'approved'].includes(tplMeta?.approval_status ?? '') },
+    { label: 'Activate when ready', done: !!tplMeta?.is_active },
+  ], [bindingIssues.length, isProductionReportType, printErrorCount, rendererErrorCount, reportType, template.pages, tplMeta?.approval_status, tplMeta?.is_active, versions.length, workspaceMode]);
+  const onboardingDoneCount = onboardingChecklist.filter((item) => item.done).length;
   const confirmRendererPreflight = useCallback((actionLabel: string): boolean => {
     const currentRendererIssues = lintTemplate(template, sampleData).filter(isRendererIssue);
     const currentRendererErrorCount = currentRendererIssues.filter((issue) => issue.severity === 'error').length;
@@ -1192,6 +1445,10 @@ export default function TemplateBuilderEdit() {
     if (!id) return;
     if (tplMeta?.locked_for_review) {
       toast.error('Template is locked for review. Unlock from the Review dialog before saving.');
+      return;
+    }
+    if (tplMeta?.approval_status === 'approved' && !tplMeta?.is_draft) {
+      toast.error('Approved templates are read-only. Create a branch before saving changes.');
       return;
     }
     const snapshot = !!opts.snapshot;
@@ -1398,6 +1655,27 @@ export default function TemplateBuilderEdit() {
           </Button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1" title="Template onboarding checklist">
+                <CheckSquare className="h-4 w-4" /> Checklist {onboardingDoneCount}/{onboardingChecklist.length}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="border-b px-3 py-2">
+                <div className="text-xs font-semibold">Template readiness checklist</div>
+                <div className="text-[11px] text-muted-foreground">Follow these steps to get from draft to activation.</div>
+              </div>
+              <div className="p-2 space-y-1">
+                {onboardingChecklist.map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs">
+                    {item.done ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+                    <span className={item.done ? 'text-muted-foreground line-through' : 'text-foreground'}>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           <BindingFixerPopover
             template={template}
             issues={bindingIssues}
@@ -1468,13 +1746,17 @@ export default function TemplateBuilderEdit() {
                 title="Print-safety lint"
               >
                 <ShieldAlert className="h-2.5 w-2.5" />
-                {isAnalysisPending ? 'Updating…' : lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
+                {isCheckingFullDocument ? 'Checking…' : lintIssues.length === 0 ? 'Print safe' : `${lintIssues.length} lint`}
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-96 p-0">
               <div className="px-3 py-2 border-b text-xs font-semibold flex items-center justify-between">
                 <span>Print-safety issues ({lintIssues.length})</span>
-                <span className="text-[10px] text-muted-foreground font-normal">{isAnalysisPending ? 'Updating analysis…' : 'Click to jump'}</span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  {isCheckingFullDocument
+                    ? `Checking full document… active page has ${activePageLintIssues.length} issue${activePageLintIssues.length === 1 ? '' : 's'}`
+                    : 'Click to jump'}
+                </span>
               </div>
               {lintIssues.length === 0 ? (
                 <div className="px-3 py-6 text-xs text-muted-foreground text-center">
@@ -1520,164 +1802,245 @@ export default function TemplateBuilderEdit() {
               e.target.value = '';
             }}
           />
-          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} title="Import .json">
-            <Upload className="h-4 w-4 mr-1" /> Import
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleExport} title="Download template .json">
-            <Download className="h-4 w-4 mr-1" /> Export
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(JSON.stringify(template, null, 2));
-                toast.success('Template JSON copied');
-              } catch { toast.error('Copy failed'); }
-            }}
-          >
-            <CopyIcon className="h-4 w-4 mr-1" /> Copy JSON
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!previewUrl}
-            onClick={() => {
-              if (!previewUrl) return;
-              const a = document.createElement('a');
-              a.href = previewUrl;
-              a.download = `${name || 'template'}.pdf`;
-              a.click();
-            }}
-          >
-            <Download className="h-4 w-4 mr-1" /> Download PDF
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              if (!confirmRendererPreflight('render with WeasyPrint')) return;
-              const toastId = toast.loading('Rendering via WeasyPrint…');
-              try {
-                const { html } = renderTemplateToHtml(template, {
-                  data: sampleData,
-                  title: name || 'Template Preview',
-                  customCss: customCss || undefined,
-                });
-                const { data: sess } = await supabase.auth.getSession();
-                const token = sess?.session?.access_token;
-                const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
-                const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
-                const res = await fetch(url, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                  },
-                  body: JSON.stringify({
-                    html,
-                    fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-                    templateId: id,
-                    mode: 'preview',
-                  }),
-                });
-                const json = await res.json();
-                if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-                window.open(json.url, '_blank', 'noopener');
-                toast.success('WeasyPrint render ready', { id: toastId });
-              } catch (e: any) {
-                toast.error(`WeasyPrint failed: ${e?.message ?? e}`, { id: toastId });
-              }
-            }}
-            title="Render production-grade PDF via WeasyPrint (opens in new tab)"
-          >
-            <Sparkles className="h-4 w-4 mr-1" /> WeasyPrint
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setShowExportDialog(true)}
-            title="Open the production export pipeline (PDF/A, themes, history)"
-          >
-            <Upload className="h-4 w-4 mr-1" /> Export…
-          </Button>
-          {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)} title="Version history, compare and restore">
-              <Sparkles className="h-4 w-4 mr-1" /> History
-            </Button>
-          )}
-          {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowAnalyticsDialog(true)} title="Usage, edits and share-preview analytics">
-              <Sparkles className="h-4 w-4 mr-1" /> Analytics
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => setShowPageMarket(true)} title="Browse page layouts marketplace">
-            <LayoutTemplate className="h-4 w-4 mr-1" /> Page Templates
-          </Button>
-          <Button
-            variant="ghost" size="sm"
-            onClick={() => copyOverlayStyle(selectedOverlay)}
-            disabled={!selectedOverlay}
-            title="Copy style from selected overlay (⌘⌥C)"
-          >
-            <ClipboardCopy className="h-4 w-4 mr-1" /> Copy style
-          </Button>
-          <Button
-            variant="ghost" size="sm"
-            onClick={() => {
-              const ids = multiOverlayIds.size > 0
-                ? Array.from(multiOverlayIds)
-                : selectedOverlayId ? [selectedOverlayId] : [];
-              if (ids.length === 0) { toast.error('Select an overlay or multi-select first'); return; }
-              pasteOverlayStyleToIds(ids);
-            }}
-            disabled={!hasStyleClipboard}
-            title="Paste style to selected/multi-selected overlays (⌘⌥V)"
-          >
-            <ClipboardPaste className="h-4 w-4 mr-1" /> Paste style
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowAIAuthor(true)} title="AI authoring: generate pages, rewrite copy, name template">
-            <Wand2 className="h-4 w-4 mr-1" /> AI Author
-          </Button>
-          <Button variant="default" size="sm" onClick={() => setShowDesignAgent(true)} title="Conversational design agent — multi-step instructions, full template context">
-            <Sparkles className="h-4 w-4 mr-1" /> Design Agent
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowPreviewQA(true)} title="Side-by-side preview, lint, binding & QA report">
-            <Eye className="h-4 w-4 mr-1" /> Preview & QA
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowComponentLib(true)} title="Save / reuse component snippets across templates">
-            <Component className="h-4 w-4 mr-1" /> Components
-          </Button>
-          {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowResync(true)} title="Re-import a revised PDF over this template (snapshots previous version)">
-              <RefreshCw className="h-4 w-4 mr-1" /> Re-sync PDF
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => setShowDiff(true)} title="Side-by-side fidelity diff between a source PDF and the current template render">
-            <GitCompareArrows className="h-4 w-4 mr-1" /> Fidelity diff
-          </Button>
-          {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} title="Create read-only share links">
-              <Sparkles className="h-4 w-4 mr-1" /> Share
-            </Button>
-          )}
-          {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowBranches(true)} title="Branch or merge drafts">
-              <GitBranch className="h-4 w-4 mr-1" /> Branches
-            </Button>
-          )}
-          {id && (
-            <Button
-              variant={tplMeta?.locked_for_review ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => setShowApproval(true)}
-              title="Request review / approve / lock"
-            >
-              {tplMeta?.locked_for_review ? <Lock className="h-4 w-4 mr-1" /> : <ClipboardCheck className="h-4 w-4 mr-1" />}
-              {tplMeta?.approval_status === 'approved' ? 'Approved' : tplMeta?.approval_status === 'in_review' ? 'In review' : 'Review'}
-            </Button>
-          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Sparkles className="h-4 w-4" /> Design <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Design tools</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowAIAuthor(true)}>
+                <Wand2 className="h-4 w-4 mr-2" /> AI Author
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowDesignAgent(true)}>
+                <Sparkles className="h-4 w-4 mr-2" /> Design Agent
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowComponentLib(true)}>
+                <Component className="h-4 w-4 mr-2" /> Components
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowPageMarket(true)}>
+                <LayoutTemplate className="h-4 w-4 mr-2" /> Page Templates
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setActiveMainTab('tokens')}>
+                <Palette className="h-4 w-4 mr-2" /> Themes
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setActiveMainTab('brand')}>
+                <Palette className="h-4 w-4 mr-2" /> Brand kit
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <ShieldAlert className="h-4 w-4" /> Quality <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>Quality checks</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowPreviewQA(true)}>
+                <Eye className="h-4 w-4 mr-2" /> Preview & QA
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowSpellCheck(true)}>
+                <ShieldAlert className="h-4 w-4 mr-2" /> Spell check
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setFixerOpen(true)}>
+                <ShieldAlert className="h-4 w-4 mr-2" /> Binding Fixer
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowDiff(true)}>
+                <GitCompareArrows className="h-4 w-4 mr-2" /> Fidelity Diff
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!isProductionReportType} onSelect={() => loadSampleFromRealReport()}>
+                <Database className="h-4 w-4 mr-2" /> Load real report
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setWorkspaceMode('pdf')}>
+                <FileText className="h-4 w-4 mr-2" /> Final PDF preview
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Upload className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Export & files</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowExportDialog(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Export pipeline…
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  if (!confirmRendererPreflight('render with WeasyPrint')) return;
+                  const toastId = toast.loading('Rendering via WeasyPrint…');
+                  try {
+                    const { html } = renderTemplateToHtml(template, {
+                      data: sampleData,
+                      title: name || 'Template Preview',
+                      customCss: customCss || undefined,
+                    });
+                    const { data: sess } = await supabase.auth.getSession();
+                    const token = sess?.session?.access_token;
+                    const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
+                    const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
+                    const res = await fetch(url, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({
+                        html,
+                        fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
+                        templateId: id,
+                        mode: 'preview',
+                      }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+                    window.open(json.url, '_blank', 'noopener');
+                    toast.success('WeasyPrint render ready', { id: toastId });
+                  } catch (e: any) {
+                    toast.error(`WeasyPrint failed: ${e?.message ?? e}`, { id: toastId });
+                  }
+                }}
+              >
+                <Sparkles className="h-4 w-4 mr-2" /> Render with WeasyPrint
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!previewUrl}
+                onSelect={() => {
+                  if (!previewUrl) return;
+                  const a = document.createElement('a');
+                  a.href = previewUrl;
+                  a.download = `${name || 'template'}.pdf`;
+                  a.click();
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" /> Download current PDF
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => handleExport()}>
+                <Download className="h-4 w-4 mr-2" /> Download JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" /> Import JSON…
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  try {
+                    await navigator.clipboard.writeText(JSON.stringify(template, null, 2));
+                    toast.success('Template JSON copied');
+                  } catch { toast.error('Copy failed'); }
+                }}
+              >
+                <CopyIcon className="h-4 w-4 mr-2" /> Copy JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <ClipboardCheck className="h-4 w-4" /> Governance <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Governance</DropdownMenuLabel>
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowHistoryDialog(true)}>
+                  <History className="h-4 w-4 mr-2" /> Version history
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowBranches(true)}>
+                  <GitBranch className="h-4 w-4 mr-2" /> Branches
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowApproval(true)}>
+                  {tplMeta?.locked_for_review ? <Lock className="h-4 w-4 mr-2" /> : <ClipboardCheck className="h-4 w-4 mr-2" />}
+                  {tplMeta?.approval_status === 'approved' ? 'Approved' : tplMeta?.approval_status === 'in_review' ? 'In review' : 'Review'}
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowAudit(true)}>
+                  <History className="h-4 w-4 mr-2" /> Audit trail
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowAnalyticsDialog(true)}>
+                  <Sparkles className="h-4 w-4 mr-2" /> Analytics
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowComments(s => !s)}>
+                  <Component className="h-4 w-4 mr-2" /> {showComments ? 'Hide comments' : 'Show comments'}
+                </DropdownMenuItem>
+              )}
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowShareDialog(true)}>
+                  <Sparkles className="h-4 w-4 mr-2" /> Share links
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Advanced tools">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => copyOverlayStyle(selectedOverlay)} disabled={!selectedOverlay}>
+                <ClipboardCopy className="h-4 w-4 mr-2" /> Copy overlay style
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!hasStyleClipboard}
+                onSelect={() => {
+                  const ids = multiOverlayIds.size > 0
+                    ? Array.from(multiOverlayIds)
+                    : selectedOverlayId ? [selectedOverlayId] : [];
+                  if (ids.length === 0) { toast.error('Select an overlay or multi-select first'); return; }
+                  pasteOverlayStyleToIds(ids);
+                }}
+              >
+                <ClipboardPaste className="h-4 w-4 mr-2" /> Paste overlay style
+              </DropdownMenuItem>
+              {id && (
+                <DropdownMenuItem onSelect={() => setShowResync(true)}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Re-sync PDF
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => setActiveMainTab('json')}>
+                <Code2 className="h-4 w-4 mr-2" /> Edit template JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setActiveMainTab('settings')}>
+                <Settings2 className="h-4 w-4 mr-2" /> Custom CSS / settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAssetLibraryOpen(true)} disabled={!activePage}>
+                <ImageIcon className="h-4 w-4 mr-2" /> Asset library… <span className="ml-auto text-[10px] text-muted-foreground">Shift+I</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setTextStylesOpen(true)}>
+                <Type className="h-4 w-4 mr-2" /> Text styles…
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setTableEditorOpen(true)}
+                disabled={selectedOverlay?.type !== 'table'}
+              >
+                <TableIcon className="h-4 w-4 mr-2" /> Edit table…
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
+                <CommandIcon className="h-4 w-4 mr-2" /> Command palette
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {id && (
             <Popover>
               <PopoverTrigger asChild>
@@ -1700,9 +2063,23 @@ export default function TemplateBuilderEdit() {
                 <div className="p-3 space-y-3 text-xs">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded border p-2"><div className="text-muted-foreground">Status</div><div className="font-medium">{tplMeta?.approval_status ?? 'draft'}</div></div>
-                    <div className="rounded border p-2"><div className="text-muted-foreground">Report type</div><div className="font-medium">{reportType || 'Missing'}</div></div>
+                    <div className="rounded border p-2">
+                      <div className="text-muted-foreground">Report type</div>
+                      <div className="font-medium">{reportTypeAdapter?.label ?? (reportType || 'Missing')}</div>
+                      {reportType && (
+                        <div className={isProductionReportType ? 'mt-0.5 text-[10px] text-success' : 'mt-0.5 text-[10px] text-amber-600'}>
+                          {isProductionReportType ? 'Production enabled' : 'Preview-only'}
+                        </div>
+                      )}
+                    </div>
                     <div className="rounded border p-2"><div className="text-muted-foreground">Lock</div><div className="font-medium">{tplMeta?.locked_for_review ? 'Locked' : 'Unlocked'}</div></div>
-                    <div className="rounded border p-2"><div className="text-muted-foreground">Bindings</div><div className="font-medium">{bindingIssues.length === 0 ? 'OK' : `${bindingIssues.length} issue${bindingIssues.length === 1 ? '' : 's'}`}</div></div>
+                    <div className="rounded border p-2">
+                      <div className="text-muted-foreground">Bindings</div>
+                      <div className="font-medium">{bindingIssues.length === 0 ? 'OK' : `${bindingIssues.length} issue${bindingIssues.length === 1 ? '' : 's'}`}</div>
+                      {isCheckingFullDocument && (
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">Active page: {activePageBindingIssues.length}</div>
+                      )}
+                    </div>
                     <div className="rounded border p-2"><div className="text-muted-foreground">Renderer</div><div className="font-medium">{rendererIssueCount === 0 ? 'OK' : rendererErrorCount > 0 ? `${rendererErrorCount} blocker${rendererErrorCount === 1 ? '' : 's'}` : `${rendererIssueCount} note${rendererIssueCount === 1 ? '' : 's'}`}</div></div>
                     <div className="rounded border p-2"><div className="text-muted-foreground">Print errors</div><div className="font-medium">{printErrorCount === 0 ? 'OK' : printErrorCount}</div></div>
                   </div>
@@ -1730,39 +2107,34 @@ export default function TemplateBuilderEdit() {
             </Popover>
           )}
           {id && (
-            <Button variant="outline" size="sm" onClick={() => setShowAudit(true)} title="Full audit trail">
-              <History className="h-4 w-4 mr-1" /> Audit
-            </Button>
-          )}
-          {id && (
-            <Button
-              variant={showComments ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowComments(s => !s)}
-              title="Toggle comments sidebar"
-            >
-              <Component className="h-4 w-4 mr-1" /> Comments
-            </Button>
-          )}
-          {id && (
             <div className="ml-1 mr-1">
               <TemplatePresenceBar
                 templateId={id}
                 currentUserId={user?.id ?? null}
                 currentUserName={user?.username ?? null}
                 activePageId={activePageId}
+                selectedBlockId={selectedBlockId}
+                selectedOverlayId={selectedOverlayId}
+                workspaceMode={workspaceMode}
+                editingText={false}
+                onSoftLockChange={setSoftLockUsers}
               />
             </div>
           )}
+          {softLockUsers.length > 0 && (
+            <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700" title={softLockUsers.map((u) => u.name).join(', ')}>
+              {softLockUsers[0].name} is editing this {selectedOverlayId ? 'overlay' : 'block'}
+            </div>
+          )}
           <div className="flex items-center rounded-md border bg-muted/30 p-0.5">
-            <Button variant={workspaceMode === 'preview' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('preview')}>
-              <Eye className="h-3.5 w-3.5 mr-1" /> Preview
-            </Button>
             <Button variant={workspaceMode === 'canvas' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('canvas')}>
-              <Layout className="h-3.5 w-3.5 mr-1" /> Canvas
+              <Layout className="h-3.5 w-3.5 mr-1" /> Design
+            </Button>
+            <Button variant={workspaceMode === 'preview' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('preview')}>
+              <Eye className="h-3.5 w-3.5 mr-1" /> Interactive Preview
             </Button>
             <Button variant={workspaceMode === 'pdf' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 text-xs" onClick={() => setWorkspaceMode('pdf')}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+              <FileText className="h-3.5 w-3.5 mr-1" /> Final PDF
             </Button>
           </div>
           <div
@@ -1782,7 +2154,7 @@ export default function TemplateBuilderEdit() {
             </span>
           )}
           <Button variant="outline" size="sm" onClick={() => handleSave(true)} disabled={update.isPending}>
-            <History className="h-4 w-4 mr-1" /> Save version
+            <History className="h-4 w-4 mr-1" /> Snapshot version
           </Button>
           <Button size="sm" onClick={() => handleSave(false)} disabled={update.isPending}>
             {update.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
@@ -1791,7 +2163,7 @@ export default function TemplateBuilderEdit() {
         </div>
       </div>
 
-      <Tabs defaultValue="visual" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="self-start mx-3 mt-2">
           <TabsTrigger value="visual"><Layout className="h-3.5 w-3.5 mr-1" /> Visual</TabsTrigger>
           <TabsTrigger value="outline"><Component className="h-3.5 w-3.5 mr-1" /> Outline</TabsTrigger>
@@ -1826,6 +2198,7 @@ export default function TemplateBuilderEdit() {
               selectedBlockId={selectedBlockId}
               onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
               onReorderBlocks={reorderBlocks}
+              commentAnchors={commentAnchors}
             />
 
             <div className="relative bg-muted/30 min-h-0">
@@ -1906,6 +2279,7 @@ export default function TemplateBuilderEdit() {
                     onDeleteOverlay={deleteOverlay}
                     onDuplicateOverlay={duplicateOverlay}
                     onSelectBlock={(bid) => { setSelectedBlockId(bid); }}
+                    commentAnchors={activePageCommentAnchors}
                   />
                   <CanvasChrome
                     page={activePage}
@@ -1924,6 +2298,20 @@ export default function TemplateBuilderEdit() {
                     onCopyStyle={bulkCopyStyleFromFirst}
                     onPasteStyle={bulkPasteStyle}
                     hasStyleClipboard={hasStyleClipboard}
+                  />
+                  <AlignDistributeBar
+                    count={multiOverlayIds.size}
+                    onAlign={bulkAlign}
+                    onDistribute={bulkDistribute}
+                    onAlignToPage={bulkAlignToPage}
+                    onGroup={bulkGroup}
+                    onUngroup={bulkUngroup}
+                    onZ={bulkZ}
+                    onLock={bulkLock}
+                    onHide={bulkHide}
+                    anyLocked={anyLocked}
+                    anyHidden={anyHidden}
+                    anyGrouped={anyGrouped}
                   />
                 </>
               ) : (
@@ -2028,10 +2416,49 @@ export default function TemplateBuilderEdit() {
               )}
             </div>
           </div>
+          <div className={`rounded-lg border p-3 text-xs ${isProductionReportType ? 'border-success/40 bg-success/5' : reportType ? 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/20 dark:text-amber-200' : 'border-border bg-muted/20 text-muted-foreground'}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-medium text-foreground">Report type production support</div>
+                <div className="mt-1">
+                  {!reportType
+                    ? 'Not configured — choose a report type before activation.'
+                    : isProductionReportType
+                      ? `${reportTypeAdapter?.label ?? reportType} can route production reports through Template Builder.`
+                      : `${reportTypeAdapter?.label ?? reportType} is currently preview-only until an adapter is implemented.`}
+                </div>
+              </div>
+              <span className={isProductionReportType ? 'rounded bg-success/10 px-2 py-1 font-medium text-success' : 'rounded bg-background/70 px-2 py-1 font-medium'}>
+                {isProductionReportType ? 'Production enabled' : reportType ? 'Preview only' : 'Not configured'}
+              </span>
+            </div>
+            {reportTypeAdapter?.legacyFallback?.reason && (
+              <div className="mt-2 text-[11px]">
+                Fallback: {reportTypeAdapter.legacyFallback.label} — {reportTypeAdapter.legacyFallback.reason}
+              </div>
+            )}
+            {reportTypeAdapter?.samplePresetIds?.length ? (
+              <div className="mt-2 text-[11px]">Sample presets: {reportTypeAdapter.samplePresetIds.join(', ')}</div>
+            ) : null}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Report type</Label>
-              <Input value={reportType} onChange={(e) => setReportType(e.target.value)} placeholder="e.g. investment_compass" />
+              <select
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">Choose report type</option>
+                {reportType && !adapterOptions.some((adapter) => adapter.reportType === reportType) && (
+                  <option value={reportType}>{reportTypeAdapter?.label ?? reportType} · current alias</option>
+                )}
+                {adapterOptions.map((adapter) => (
+                  <option key={adapter.reportType} value={adapter.reportType}>
+                    {adapter.label}{adapter.supportsProduction ? ' · production' : ' · preview only'}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label className="text-xs">Tier (legacy label)</Label>
@@ -2121,7 +2548,7 @@ export default function TemplateBuilderEdit() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {isAnalysisPending && (
+                    {isCheckingFullDocument && (
                       <span className="text-[11px] px-2 py-1 rounded border bg-muted text-muted-foreground">Updating analysis…</span>
                     )}
                     {firstRendererBlocker && (
@@ -2286,14 +2713,28 @@ export default function TemplateBuilderEdit() {
 
 
 
-              <span className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded ${sampleDataValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}
+                title={sampleDataError ?? undefined}
+              >
                 {sampleDataValid ? 'Valid JSON' : 'Invalid JSON'}
               </span>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={!sampleDataValid}
+                onClick={() => setSampleDataText(JSON.stringify(sampleData, null, 2))}
+              >
+                Format
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={loadSampleFromRealReport}
-                title="Load binding context from a real investment_reports row — preview against actual data"
+                disabled={!isProductionReportType}
+                title={isProductionReportType
+                  ? `Load binding context from a real ${reportTypeAdapter?.label ?? reportType} report`
+                  : 'Choose a production-enabled report type before loading real data'}
               >
                 Load real report…
               </Button>
@@ -2320,25 +2761,73 @@ export default function TemplateBuilderEdit() {
               </button>
             ))}
           </div>
+          {!sampleDataValid && sampleDataError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {sampleDataError}
+            </div>
+          )}
           <Textarea
             value={sampleDataText}
             onChange={(e) => setSampleDataText(e.target.value)}
             spellCheck={false}
             className="font-mono text-xs h-[55vh] resize-none"
+            placeholder={`{
+  "property": {
+    "address": "..."
+  }
+}`}
           />
         </TabsContent>
 
         {/* Raw JSON fallback (still editable) */}
-        <TabsContent value="json" className="flex-1 min-h-0 px-3 pb-3">
+        <TabsContent value="json" className="flex-1 min-h-0 px-3 pb-3 space-y-2">
+          <div className="flex items-center justify-between gap-2 py-2">
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Template JSON</Label>
+              <p className="text-[11px] text-muted-foreground">Advanced editor with safe parse feedback. Invalid JSON stays in the editor until fixed.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[11px] px-2 py-0.5 rounded ${templateJsonError ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'}`}>
+                {templateJsonError ? 'Invalid JSON' : 'Valid JSON'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!!templateJsonError}
+                onClick={() => {
+                  const formatted = JSON.stringify(JSON.parse(templateJsonText || '{}'), null, 2);
+                  setTemplateJsonText(formatted);
+                  applyTemplateJsonText(formatted);
+                }}
+              >
+                Format
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (applyTemplateJsonText(templateJsonText)) toast.success('Template JSON applied');
+                }}
+              >
+                Apply JSON
+              </Button>
+            </div>
+          </div>
+          {templateJsonError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {templateJsonError}
+            </div>
+          )}
           <Textarea
-            value={JSON.stringify(template, null, 2)}
+            value={templateJsonText}
+            onFocus={() => setTemplateJsonFocused(true)}
+            onBlur={() => setTemplateJsonFocused(false)}
             onChange={(e) => {
-              try {
-                setTemplate(parseTemplate(JSON.parse(e.target.value)));
-              } catch { /* keep typing */ }
+              const next = e.target.value;
+              setTemplateJsonText(next);
+              applyTemplateJsonText(next);
             }}
             spellCheck={false}
-            className="font-mono text-xs h-[80vh] resize-none"
+            className="font-mono text-xs h-[72vh] resize-none"
           />
         </TabsContent>
 
@@ -2446,6 +2935,7 @@ export default function TemplateBuilderEdit() {
         templateName={name}
         sampleData={sampleData}
         customCss={customCss || undefined}
+        onTemplateChange={(next) => setTemplate(next)}
       />
       {id && (
         <ShareLinksDialog
@@ -2556,6 +3046,16 @@ export default function TemplateBuilderEdit() {
         sampleData={sampleData}
         customCss={customCss || undefined}
       />
+      <SpellCheckDialog
+        open={showSpellCheck}
+        onOpenChange={setShowSpellCheck}
+        template={template}
+        onJumpTo={(pageId, blockId, overlayId) => {
+          setActivePageId(pageId);
+          setSelectedBlockId(blockId);
+          setSelectedOverlayId(overlayId);
+        }}
+      />
       <ComponentLibraryDialog
         open={showComponentLib}
         onOpenChange={setShowComponentLib}
@@ -2575,9 +3075,17 @@ export default function TemplateBuilderEdit() {
           <TemplateCommentsPanel
             templateId={id}
             activePage={activePage}
+            selectedBlock={selectedBlock}
             selectedOverlay={selectedOverlay}
+            selectedOverlayBlockId={selectedOverlayBlockId}
             currentUserId={user?.id ?? null}
             currentUserName={user?.username ?? null}
+            onRowsChange={(rows) => setCommentRows(rows)}
+            onJumpToAnchor={({ pageId, blockId, overlayId }) => {
+              if (pageId) setActivePageId(pageId);
+              if (overlayId) { setSelectedOverlayId(overlayId); setSelectedBlockId(null); }
+              else if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
+            }}
           />
         </aside>
       )}
@@ -2599,6 +3107,42 @@ export default function TemplateBuilderEdit() {
         template={template}
         sampleData={sampleData}
         customCss={customCss || undefined}
+      />
+      <FindReplaceDialog
+        open={findReplaceOpen}
+        onOpenChange={setFindReplaceOpen}
+        template={template}
+        activePageId={activePageId}
+        onApplyTemplate={(next) => setTemplate(next)}
+        onGoTo={(pid, oid) => {
+          setActivePageId(pid);
+          setSelectedOverlayId(oid);
+          setSelectedBlockId(null);
+          clearMultiSelect();
+        }}
+      />
+      <AssetLibraryDialog
+        open={assetLibraryOpen}
+        onOpenChange={setAssetLibraryOpen}
+        templateId={id}
+        pageWidth={activePage?.size.width ?? 595}
+        pageHeight={activePage?.size.height ?? 842}
+        onInsert={insertImageFromLibrary}
+      />
+      <TextStylesDialog
+        open={textStylesOpen}
+        onOpenChange={setTextStylesOpen}
+        template={template}
+        onChange={(next) => setTemplate(next)}
+      />
+      <TableEditorDialog
+        open={tableEditorOpen}
+        onOpenChange={setTableEditorOpen}
+        overlay={selectedOverlay?.type === 'table' ? (selectedOverlay as any) : null}
+        onChange={(next) => {
+          if (!activePage) return;
+          updatePage(editorActions.updateOverlay(activePage, next as Overlay));
+        }}
       />
       {id && (
         <>

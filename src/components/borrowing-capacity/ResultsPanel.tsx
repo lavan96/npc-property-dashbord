@@ -191,6 +191,21 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
     );
   }
 
+  const recommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
+  const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+  const stressTestedCapacity = typeof result.stressTestedCapacity === 'number'
+    ? result.stressTestedCapacity
+    : result.borrowingCapacity;
+  // Guard numerics used with `.toFixed()` — a scenario/preset result applied to
+  // the calculator may omit these, and an undefined `.toFixed()` would crash the
+  // whole panel render.
+  const safeDtiRatio = typeof result.dtiRatio === 'number' && Number.isFinite(result.dtiRatio)
+    ? result.dtiRatio
+    : 0;
+  const safeAssessmentRate = typeof result.assessmentRate === 'number' && Number.isFinite(result.assessmentRate)
+    ? result.assessmentRate
+    : (interestRate ?? 6.5) + (bufferRate ?? 3);
+
   const bandConfig = getBandConfig(result.serviceabilityBand);
   const BandIcon = bandConfig.icon;
   const capacityProgress = Math.min(100, (Math.max(0, result.borrowingCapacity) / 1500000) * 100);
@@ -320,7 +335,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             />
           </div>
           <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-            <span>Stress-tested: {formatCurrency(result.stressTestedCapacity)}</span>
+            <span>Stress-tested: {formatCurrency(stressTestedCapacity)}</span>
             {floorActive && (
               <span className="text-xs">Engine lendable: {formatCurrency(result.borrowingCapacity)}</span>
             )}
@@ -385,15 +400,15 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground mb-1">DTI</p>
-            <p className={`text-lg font-bold ${result.dtiRatio < 6 ? 'text-success' : result.dtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
-              {result.dtiRatio.toFixed(1)}x
+            <p className={`text-lg font-bold ${safeDtiRatio < 6 ? 'text-success' : safeDtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
+              {safeDtiRatio.toFixed(1)}x
             </p>
             <p className="text-xs text-muted-foreground">ratio</p>
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground mb-1">Assessment</p>
             <p className="text-lg font-bold text-foreground">
-              {result.assessmentRate.toFixed(2)}%
+              {safeAssessmentRate.toFixed(2)}%
             </p>
             <p className="text-xs text-muted-foreground">rate</p>
           </div>
@@ -580,7 +595,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         <Separator />
 
         {/* Recommendations */}
-        {result.recommendations.length > 0 && (
+        {recommendations.length > 0 && (
           <Collapsible open={showRecommendations} onOpenChange={setShowRecommendations}>
             <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
               <div className="flex items-center gap-2">
@@ -590,7 +605,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               <ChevronDown className={`h-4 w-4 transition-transform ${showRecommendations ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 space-y-2">
-              {result.recommendations.map((rec, i) => (
+              {recommendations.map((rec, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
                   <CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />
                   <span>{rec}</span>
@@ -601,13 +616,13 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         )}
 
         {/* Warnings */}
-        {result.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <span className="text-sm font-medium">Warnings</span>
             </div>
-            {result.warnings.map((warning, i) => (
+            {warnings.map((warning, i) => (
               <div key={i} className="flex items-start gap-2 text-sm text-warning">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{warning}</span>
@@ -637,11 +652,11 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Interest Rate:</span>
-                <span className="font-medium">{(result.assessmentRate - 3).toFixed(2)}%</span>
+                <span className="font-medium">{(safeAssessmentRate - 3).toFixed(2)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Assessment Rate:</span>
-                <span className="font-medium">{result.assessmentRate.toFixed(2)}%</span>
+                <span className="font-medium">{safeAssessmentRate.toFixed(2)}%</span>
               </div>
             </div>
           </CollapsibleContent>

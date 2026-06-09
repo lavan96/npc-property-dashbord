@@ -76,9 +76,12 @@ async function invokeFinanceFunction(
       body: JSON.stringify(requestBody),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return { data, error: { message: data.error || `HTTP ${response.status}` } };
+      const errorMessage = typeof data?.error === 'object' && data.error?.message
+        ? data.error.message
+        : data?.error || data?.message || data?.details || `HTTP ${response.status}`;
+      return { data, error: { message: String(errorMessage) } };
     }
     return { data, error: null };
   } catch (error: any) {

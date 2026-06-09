@@ -36,6 +36,14 @@ interface FlatOverlay {
   blockId: string;
 }
 
+interface CommentAnchor {
+  id: string;
+  pageId?: string | null;
+  blockId?: string | null;
+  overlayId?: string | null;
+  resolved?: boolean;
+}
+
 interface Props {
   template: ReportTemplate;
   page: Page;
@@ -49,6 +57,7 @@ interface Props {
   onDeleteOverlay: (id: string) => void;
   onDuplicateOverlay: (id: string) => void;
   onSelectBlock: (blockId: string | null) => void;
+  commentAnchors?: CommentAnchor[];
 }
 
 const MIN_ZOOM = 0.25;
@@ -68,6 +77,7 @@ export function EditorialCanvas({
   onDeleteOverlay,
   onDuplicateOverlay,
   onSelectBlock,
+  commentAnchors = [],
 }: Props) {
   const pageW = page.size.width || 595;
   const pageH = page.size.height || 842;
@@ -78,9 +88,10 @@ export function EditorialCanvas({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [transientOverlayPatches, setTransientOverlayPatches] = useState<Record<string, Partial<Overlay>>>({});
 
   // Flatten overlays with their parent block id (in render order).
-  const overlays = useMemo<FlatOverlay[]>(() => {
+  const sourceOverlays = useMemo<FlatOverlay[]>(() => {
     const out: FlatOverlay[] = [];
     for (const b of page.blocks) {
       for (const o of b.overlays) out.push({ overlay: o, blockId: b.id });
@@ -275,6 +286,16 @@ export function EditorialCanvas({
     for (const f of overlays) if (ids.includes(f.overlay.id)) starts.set(f.overlay.id, { ...f.overlay });
     const altClone = e.altKey && kind === 'move';
     let cloned = false;
+    let latestPatches: Array<{ id: string; patch: Partial<Overlay> }> = [];
+
+    const applyTransientPatches = (patches: Array<{ id: string; patch: Partial<Overlay> }>) => {
+      latestPatches = patches;
+      setTransientOverlayPatches((prev) => {
+        const next = { ...prev };
+        patches.forEach(({ id, patch }) => { next[id] = patch; });
+        return next;
+      });
+    };
 
     const onMove = (ev: PointerEvent) => {
       const pt = stagePoint(ev);
@@ -291,9 +312,9 @@ export function EditorialCanvas({
         const moving = ids.map((id) => starts.get(id)!).filter(Boolean);
         const { dx, dy, guides: g } = computeSnap(moving, rawDx, rawDy);
         setGuides(g);
-        onUpdateOverlaysBulk(ids.map((id) => {
+        applyTransientPatches(ids.map((id) => {
           const s = starts.get(id)!;
-          return { id, patch: { x: Math.round(s.x + dx), y: Math.round(s.y + dy) } as any };
+          return { id, patch: { x: Math.round(s.x + dx), y: Math.round(s.y + dy) } as Partial<Overlay> };
         }));
         return;
       }
@@ -304,7 +325,7 @@ export function EditorialCanvas({
         const ang = Math.atan2(pt.y - cy, pt.x - cx) * 180 / Math.PI + 90;
         const snap = ev.shiftKey ? 15 : 1;
         const rot = Math.round(ang / snap) * snap;
-        onUpdateOverlay({ ...s, rotation: rot } as Overlay);
+        applyTransientPatches([{ id: ov.id, patch: { rotation: rot } as Partial<Overlay> }]);
         return;
       }
       // Resize handles
@@ -325,15 +346,36 @@ export function EditorialCanvas({
           if (kind.includes('w')) x = s.x + (s.width - width);
         }
       }
-      onUpdateOverlay({ ...s, x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) } as Overlay);
+      applyTransientPatches([{ id: ov.id, patch: { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) } as Partial<Overlay> }]);
     };
-    const onUp = () => {
+    let finished = false;
+    const finishInteraction = (commit: boolean) => {
+      if (finished) return;
+      finished = true;
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
       setGuides({ v: [], h: [] });
+      if (commit && latestPatches.length > 0) {
+        if (latestPatches.length === 1) {
+          const id = latestPatches[0].id;
+          const start = starts.get(id);
+          if (start) onUpdateOverlay({ ...start, ...latestPatches[0].patch } as Overlay);
+        } else {
+          onUpdateOverlaysBulk(latestPatches);
+        }
+      }
+      setTransientOverlayPatches((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => { delete next[id]; });
+        return next;
+      });
     };
+    const onUp = () => finishInteraction(true);
+    const onCancel = () => finishInteraction(false);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
   }, [stagePoint, multiOverlayIds, overlays, onSelectOverlay, onUpdateOverlay, onUpdateOverlaysBulk, onDuplicateOverlay, computeSnap, spaceDown]);
 
   // Marquee selection on the empty page background.
@@ -392,6 +434,11 @@ export function EditorialCanvas({
       <div className="px-3 py-1.5 border-b flex items-center gap-2 text-xs bg-background">
         <MousePointer2 className="h-3.5 w-3.5 text-primary" />
         <span className="font-medium">Editor</span>
+        {unresolvedPageCommentCount > 0 && (
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700">
+            {unresolvedPageCommentCount} page comment{unresolvedPageCommentCount === 1 ? '' : 's'}
+          </span>
+        )}
         <span className="text-muted-foreground hidden md:inline">·</span>
         <span className="text-muted-foreground hidden md:inline truncate">
           Click to select · Shift-click multi · Dbl-click text to edit
@@ -433,20 +480,27 @@ export function EditorialCanvas({
               className="absolute inset-0 w-full h-full border-0 pointer-events-none"
             />
 
-            {/* Alignment guides */}
+            {/* Alignment guides — magenta lines with a coordinate pill so
+                designers see exactly where the snap landed (pt). */}
             {guides.v.map((v, i) => (
-              <div
-                key={`v${i}`}
-                className="absolute top-0 bottom-0 pointer-events-none"
-                style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}
-              />
+              <div key={`v${i}`} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}>
+                <span
+                  className="absolute -translate-x-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  style={{ left: 0, top: 4 }}
+                >
+                  x {Math.round(v)}
+                </span>
+              </div>
             ))}
             {guides.h.map((h, i) => (
-              <div
-                key={`h${i}`}
-                className="absolute left-0 right-0 pointer-events-none"
-                style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}
-              />
+              <div key={`h${i}`} className="absolute left-0 right-0 pointer-events-none" style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}>
+                <span
+                  className="absolute -translate-y-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  style={{ top: 0, left: 4 }}
+                >
+                  y {Math.round(h)}
+                </span>
+              </div>
             ))}
 
             {/* Marquee */}
@@ -500,6 +554,15 @@ export function EditorialCanvas({
                     if (!sel) (e.currentTarget as HTMLElement).style.outline = '1px dashed transparent';
                   }}
                 >
+                  {overlayCommentCounts.has(o.id) && (
+                    <div
+                      className="absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white shadow"
+                      title={`${overlayCommentCounts.get(o.id)} unresolved comment${overlayCommentCounts.get(o.id) === 1 ? '' : 's'}`}
+                    >
+                      {overlayCommentCounts.get(o.id)}
+                    </div>
+                  )}
+
                   {/* Render a soft preview of the overlay so it's always visible */}
                   <OverlayPreview overlay={o} zoom={zoom} editing={editing} onCommit={(v) => finishInlineEdit(o, v)} />
 

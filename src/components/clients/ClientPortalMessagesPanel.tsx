@@ -59,7 +59,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
-  const [target, setTarget] = useState<MessageTarget>('client');
+  const [targets, setTargets] = useState<Set<MessageTarget>>(new Set(['client']));
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
 
@@ -113,44 +113,60 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
   const send = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || sending || targets.size === 0) return;
     setSending(true);
+    const sent: string[] = [];
+    const failed: string[] = [];
     try {
-      if (target === 'finance') {
-        // Route to the client's finance partner thread.
-        const { data: t, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
-          operation: 'get_or_create_thread',
-          client_id: clientId,
-        });
-        if (tErr || !t?.thread) throw new Error(tErr?.message || 'No finance partner assigned to this client');
-        const { error } = await invokeSecureFunction('finance-portal-messages', {
-          operation: 'send_message',
-          thread_id: t.thread.id,
-          body: trimmed,
-        });
-        if (error) throw new Error(error.message || 'Send failed');
-        toast.success('Sent to finance partner');
-        setDraft('');
-      } else {
-        // Client or internal message — both stored in client_portal_messages.
-        const { error } = await invokeSecureFunction('staff-client-portal-messages', {
-          operation: 'send_reply',
-          client_id: clientId,
-          message: trimmed,
-          is_internal: target === 'internal',
-        });
-        if (error) throw new Error(error.message || 'Send failed');
+      for (const t of targets) {
+        try {
+          if (t === 'finance') {
+            const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
+              operation: 'get_or_create_thread',
+              client_id: clientId,
+            });
+            if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
+            const { error } = await invokeSecureFunction('finance-portal-messages', {
+              operation: 'send_message',
+              thread_id: thread.thread.id,
+              body: trimmed,
+            });
+            if (error) throw new Error(error.message || 'Send failed');
+          } else {
+            const { error } = await invokeSecureFunction('staff-client-portal-messages', {
+              operation: 'send_reply',
+              client_id: clientId,
+              message: trimmed,
+              is_internal: t === 'internal',
+            });
+            if (error) throw new Error(error.message || 'Send failed');
+          }
+          sent.push(t);
+        } catch (e: any) {
+          console.error(`[Composer] ${t} send failed`, e);
+          failed.push(`${t}: ${e.message}`);
+        }
+      }
+      if (sent.length) {
+        toast.success(`Sent to ${sent.join(', ')}`);
         setDraft('');
         await load(false);
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to send message');
+      if (failed.length) toast.error(`Failed → ${failed.join(' · ')}`);
     } finally {
       setSending(false);
     }
   };
 
-  const activeTarget = TARGETS.find(t => t.value === target)!;
+  const toggleTarget = (v: MessageTarget) => {
+    setTargets(prev => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      if (next.size === 0) next.add(v); // never allow empty
+      return next;
+    });
+  };
+
 
   return (
     <div className="flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden">
@@ -219,10 +235,11 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
       </ScrollArea>
 
       <div className="border-t border-border p-3 bg-card">
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Send to:</span>
           {TARGETS.map(t => {
             const Icon = t.icon;
-            const active = t.value === target;
+            const active = targets.has(t.value);
             return (
               <Button
                 key={t.value}
@@ -230,7 +247,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                 size="sm"
                 variant={active ? 'default' : 'outline'}
                 className="h-7 px-2.5 text-xs"
-                onClick={() => setTarget(t.value)}
+                onClick={() => toggleTarget(t.value)}
               >
                 <Icon className="h-3 w-3 mr-1" /> {t.label}
               </Button>
@@ -240,8 +257,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         <div className="flex gap-2 items-end">
           <Textarea
             placeholder={
-              target === 'internal' ? 'Add an internal staff-only note...'
-              : target === 'finance' ? 'Message the finance partner...'
+              targets.size > 1 ? `Compose once — fan out to ${targets.size} destinations…`
+              : targets.has('internal') ? 'Add an internal staff-only note...'
+              : targets.has('finance') ? 'Message the finance partner...'
               : 'Reply to the client...'
             }
             value={draft}
@@ -256,11 +274,13 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             className="min-h-[60px] resize-none flex-1"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()}>
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim() || targets.size === 0}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">Press ⌘/Ctrl+Enter to send · {activeTarget.hint}</p>
+        <p className="text-[10px] text-muted-foreground mt-1.5">
+          Press ⌘/Ctrl+Enter to send · Tap chips to fan out to multiple destinations.
+        </p>
       </div>
     </div>
   );

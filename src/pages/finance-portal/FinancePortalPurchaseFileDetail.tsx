@@ -40,7 +40,7 @@ import { InternalDealLinkCard } from '@/components/finance-portal/InternalDealLi
 import { PurchaseFileStickyBar } from '@/components/finance-portal/PurchaseFileStickyBar';
 import { RecordOutcomeDialog } from '@/components/finance-portal/RecordOutcomeDialog';
 import { NudgeSequencesPanel } from '@/components/finance-portal/NudgeSequencesPanel';
-import { LenderPlaybookCard } from '@/components/finance-portal/LenderPlaybookCard';
+
 import { NpcHandoffCard } from '@/components/finance-portal/NpcHandoffCard';
 import { EntityCommentsThread } from '@/components/finance-portal/EntityCommentsThread';
 import { DealTypeFieldsCard } from '@/components/finance-portal/DealTypeFieldsCard';
@@ -283,7 +283,7 @@ export default function FinancePortalPurchaseFileDetail() {
               <AiLenderRecommenderCard purchaseFileId={fileId!} />
               <AiLoanAppPrefillCard purchaseFileId={fileId!} />
             </div>
-            <LenderPlaybookCard lender={data.lender} isSuperadmin />
+            
             <div className="grid gap-4 md:grid-cols-2">
               <NpcHandoffCard purchaseFileId={fileId!} />
               <EntityCommentsThread purchaseFileId={fileId!} entityType="purchase_file" title="File comments" />

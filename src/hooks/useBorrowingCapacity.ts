@@ -18,6 +18,7 @@ interface BorrowingCapacityOverrides {
   livingExpenses?: number;
   existingCommitments?: number;
   additionalLiabilities?: number;
+  totalDebtBalances?: number;
   interestRate?: number;
   bufferRate?: number;
   loanTermYears?: number;

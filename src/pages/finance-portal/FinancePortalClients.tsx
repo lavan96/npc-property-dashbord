@@ -249,9 +249,9 @@ function CreateClientDialog({
       }
 
       if (data.ghl_sync?.success) {
-        toast.success('Client created and synced to GoHighLevel');
+        toast.success('Client created and Command Centre notified');
       } else if (data.ghl_sync?.error) {
-        toast.warning('Client created, but GHL sync needs attention', {
+        toast.warning('Client created, but CRM sync needs attention', {
           description: data.ghl_sync.error,
         });
       } else {
@@ -276,7 +276,7 @@ function CreateClientDialog({
             Add new client
           </DialogTitle>
           <DialogDescription>
-            Create a finance-partner-originated client record, sync the contact into GoHighLevel, and keep the client available for downstream portal-access setup from the internal dashboard.
+            Create a finance-partner-originated client record, notify the Command Centre, and keep the client available for downstream portal-access setup from the internal dashboard.
           </DialogDescription>
         </DialogHeader>
 
@@ -296,7 +296,7 @@ function CreateClientDialog({
             <TabsContent value="manual" className="space-y-4">
               <Card className="border-dashed bg-muted/20">
                 <CardContent className="pt-6 text-sm text-muted-foreground">
-                  Enter the client details directly. This creates the client in the shared data model, marks finance-portal provenance, assigns it back to your finance account, and syncs a GHL contact only.
+                  Enter the client details directly. This creates the client in the shared data model, marks finance-portal provenance, assigns it back to your finance account, and notifies the Command Centre.
                 </CardContent>
               </Card>
             </TabsContent>
@@ -417,7 +417,7 @@ function CreateClientDialog({
             <CardContent className="flex flex-col gap-2 pt-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="font-medium text-foreground">What happens next</p>
-                <p>The client is created in the shared dashboard data model, linked to your finance account, and synced to GoHighLevel as a contact only.</p>
+                <p>The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.</p>
               </div>
               <Badge variant="outline">No pipeline opportunity is created</Badge>
             </CardContent>
@@ -543,20 +543,15 @@ export default function FinancePortalClients() {
     return list;
   }, [records, search, sortKey, statusFilter]);
 
+  // #13 — Simplified, fixed-column client export. Just the labelled essentials.
   const ghlExportFields = useMemo(
     () => [
-      { key: 'first_name', label: 'First Name' },
-      { key: 'last_name', label: 'Last Name' },
+      { key: 'first_name', label: 'First name' },
+      { key: 'last_name', label: 'Last name' },
       { key: 'email', label: 'Email' },
       { key: 'phone', label: 'Phone' },
       { key: 'tags', label: 'Tags' },
       { key: 'source', label: 'Source' },
-      { key: 'secondary_contact', label: 'Secondary Contact' },
-      { key: 'status', label: 'Status' },
-      { key: 'assigned_at', label: 'Assigned At' },
-      { key: 'permissions', label: 'Permissions' },
-      { key: 'client_id', label: 'Client ID' },
-      { key: 'ghl_contact_id', label: 'GHL Contact ID' },
     ],
     []
   );
@@ -565,11 +560,6 @@ export default function FinancePortalClients() {
     () =>
       filtered.map((record: any) => {
         const { firstName, lastName } = splitFullName(record.client?.primary_contact_name);
-        const permissionSummary = Object.entries(record.permissions || {})
-          .filter(([, permission]: any) => permission?.view)
-          .map(([table, permission]: any) => `${table}:${permission.edit ? 'edit' : 'view'}`)
-          .join(', ');
-
         return {
           first_name: firstName,
           last_name: lastName,
@@ -577,12 +567,6 @@ export default function FinancePortalClients() {
           phone: record.client?.primary_contact_phone || '',
           tags: 'Finance Portal',
           source: 'Finance Portal Export',
-          secondary_contact: record.client?.secondary_contact_name || '',
-          status: record.client?.status || 'active',
-          assigned_at: record.assigned_at || '',
-          permissions: permissionSummary,
-          client_id: record.client_id || '',
-          ghl_contact_id: record.client?.ghl_contact_id || '',
         };
       }),
     [filtered]
@@ -624,13 +608,13 @@ export default function FinancePortalClients() {
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
-        title="Export finance portal clients for GHL"
-        description="Export the current finance-portal client view with field mapping for GoHighLevel CSV or XLSX import."
+        title="Export finance portal clients"
+        description="Pick exactly the columns you need. Unticked or unmapped fields are excluded from the downloaded CSV/XLSX."
         fields={ghlExportFields}
         records={ghlExportRecords}
-        fileBaseName={`finance-portal-clients-ghl-export-${new Date().toISOString().split('T')[0]}`}
+        fileBaseName={`finance-portal-clients-${new Date().toISOString().split('T')[0]}`}
         sheetName="Finance Portal Clients"
-        onExported={(format, count) => toast.success(`Exported ${count} finance clients to ${format.toUpperCase()}`)}
+        onExported={(format, count) => toast.success(`Exported ${count} clients to ${format.toUpperCase()}`)}
       />
 
       <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">

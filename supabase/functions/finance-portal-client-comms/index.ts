@@ -338,63 +338,94 @@ async function markRead(supabase: any, _partner: any, body: any) {
 }
 
 async function crossClientInbox(supabase: any, partner: any) {
-  // List clients assigned to this partner with unread counts
-  const { data: assignments } = await supabase
+  // List clients assigned to this finance portal user with their latest activity
+  // across client portal messages, direct finance/staff messages, and broker-sent
+  // outbound SMS/WhatsApp/email. Use physical `clients` columns — the previous
+  // query selected legacy aliases (`primary_contact_name`, `primary_phone`) and
+  // returned an empty/broken inbox in production.
+  const { data: assignments, error: assignmentError } = await supabase
     .from('finance_portal_client_assignments')
     .select('client_id')
     .eq('finance_user_id', partner.id);
-  const clientIds = (assignments ?? []).map((a: any) => a.client_id);
+  if (assignmentError) return json({ error: assignmentError.message }, 500);
+
+  const clientIds = (assignments ?? []).map((a: any) => a.client_id).filter(Boolean);
   if (clientIds.length === 0) return json({ clients: [] });
 
-  const [{ data: clients }, { data: portalUnread }, { data: recentOutbound }] = await Promise.all([
+  const [clientsRes, portalRes, financeThreadRes, outboundRes, ghlConvRes] = await Promise.all([
     supabase.from('clients')
-      .select('id, primary_contact_name, primary_email, primary_phone')
+      .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, secondary_first_name, secondary_surname')
       .in('id', clientIds),
     supabase.from('client_portal_messages')
-      .select('client_id, created_at, message')
-      .in('client_id', clientIds)
-      .eq('sender_type', 'client')
-      .eq('is_read', false),
-    supabase.from('finance_outbound_messages')
-      .select('client_id, created_at, channel, body, status')
+      .select('id, client_id, created_at, message, sender_type, is_read')
       .in('client_id', clientIds)
       .order('created_at', { ascending: false })
       .limit(500),
+    supabase.from('finance_portal_messages')
+      .select('id, client_id, created_at, body, sender_type, is_read_by_partner')
+      .in('client_id', clientIds)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase.from('finance_outbound_messages')
+      .select('id, client_id, created_at, channel, body, status')
+      .in('client_id', clientIds)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase.from('ghl_conversations')
+      .select('id, client_id, channel_type, last_message_date')
+      .in('client_id', clientIds),
   ]);
 
+  if (clientsRes.error) return json({ error: clientsRes.error.message }, 500);
+
   const byClient: Record<string, any> = {};
-  for (const c of clients ?? []) {
+  for (const c of clientsRes.data ?? []) {
+    const primary = [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim();
+    const secondary = [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim();
     byClient[c.id] = {
       client_id: c.id,
-      name: c.primary_contact_name,
-      email: c.primary_email,
-      phone: c.primary_phone,
+      name: primary || 'Unknown client',
+      secondary_name: secondary || null,
+      email: c.primary_email || '',
+      phone: c.primary_mobile || '',
       unread_portal: 0,
+      unread_finance: 0,
       last_message_at: null as string | null,
       last_message_preview: null as string | null,
       last_channel: null as string | null,
     };
   }
-  for (const m of portalUnread ?? []) {
-    const row = byClient[m.client_id]; if (!row) continue;
-    row.unread_portal += 1;
-    if (!row.last_message_at || m.created_at > row.last_message_at) {
-      row.last_message_at = m.created_at;
-      row.last_message_preview = (m.message || '').slice(0, 120);
-      row.last_channel = 'portal';
+
+  const touch = (clientId: string, at: string | null, preview: string | null, channel: string | null) => {
+    const row = byClient[clientId];
+    if (!row || !at) return;
+    if (!row.last_message_at || at > row.last_message_at) {
+      row.last_message_at = at;
+      row.last_message_preview = preview ? preview.slice(0, 140) : '';
+      row.last_channel = channel;
     }
+  };
+
+  for (const m of portalRes.data ?? []) {
+    const row = byClient[m.client_id]; if (!row) continue;
+    if (m.sender_type === 'client' && m.is_read === false) row.unread_portal += 1;
+    touch(m.client_id, m.created_at, m.message || '', 'portal');
   }
-  for (const m of recentOutbound ?? []) {
+  for (const m of financeThreadRes.data ?? []) {
     const row = byClient[m.client_id]; if (!row) continue;
-    if (!row.last_message_at || m.created_at > row.last_message_at) {
-      row.last_message_at = m.created_at;
-      row.last_message_preview = (m.body || '').slice(0, 120);
-      row.last_channel = m.channel;
-    }
+    if (m.sender_type === 'staff' && m.is_read_by_partner === false) row.unread_finance += 1;
+    touch(m.client_id, m.created_at, m.body || '', 'portal');
+  }
+  for (const m of outboundRes.data ?? []) {
+    touch(m.client_id, m.created_at, m.body || '', m.channel || 'email');
+  }
+  for (const c of ghlConvRes.data ?? []) {
+    touch(c.client_id, c.last_message_date, 'GHL conversation activity', String(c.channel_type || '').toLowerCase() || 'sms');
   }
 
   const list = Object.values(byClient).sort((a: any, b: any) =>
-    String(b.last_message_at || '').localeCompare(String(a.last_message_at || ''))
+    String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')) ||
+    String(a.name || '').localeCompare(String(b.name || ''))
   );
   return json({ clients: list });
 }

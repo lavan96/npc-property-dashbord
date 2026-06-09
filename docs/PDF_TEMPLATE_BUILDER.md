@@ -72,9 +72,33 @@ While you edit, the builder **autosaves a local draft to IndexedDB** (per templa
 
 Drafts are browser-local (IndexedDB) — they are not shared across devices or users, and degrade to a no-op where IndexedDB is unavailable.
 
+## Report type adapters (Phase 7)
+
+Template Builder production routing is adapter-driven. The generic router never reaches directly into a report table; it asks the adapter registry in `src/lib/reportTemplate/adapters/` to resolve routing metadata and build the binding context for a real report.
+
+| Report type | Status | Notes |
+|-------------|--------|-------|
+| Investment Report | Production enabled | Uses `investment_reports`, builds the existing `report/property/financials/scores/...` binding shape, and preserves the legacy fallback when no active WeasyPrint template matches. |
+| Portfolio Analysis | Preview only | Listed in the builder and can be designed with sample data, but activation is blocked until an adapter is implemented. |
+| Cash Flow | Preview only | Legacy generator remains the production path until an adapter is added. |
+| Borrowing Capacity | Preview only | Legacy generator remains the production path until an adapter is added. |
+| Q&A Export | Preview only | Legacy generator remains the production path until an adapter is added. |
+| Suburb / Postcode / Statewide / Comparison / Vownet | Preview only | Available for template design and sample-data validation; production routing is intentionally disabled. |
+
+The editor settings panel shows the selected report type's adapter status as **Production enabled**, **Preview only**, or **Not configured**. Activation readiness also blocks preview-only types so production cannot accidentally route through an incomplete adapter.
+
+### Adding an adapter
+
+1. Create an adapter file under `src/lib/reportTemplate/adapters/` that implements `ReportTemplateAdapter`.
+2. Implement `resolveRoutingContext({ reportId })` to return the report type, variant, tier, source table, and fallback descriptor used by the production router.
+3. Implement `buildBindingContext({ reportId, brand })` to return the exact binding data shape templates should consume.
+4. Register the adapter in `REPORT_TEMPLATE_ADAPTERS` in `src/lib/reportTemplate/adapters/index.ts`.
+5. Mark `supportsProduction: true` only after the report type has a real routing context, binding context, fallback story, and sample/report loading path.
+6. Add adapter tests that verify route context, binding context shape, sample presets, and fallback behavior.
+
 ## Governance and activation safety
 
-Templates locked for review cannot be edited, snapshotted, or deleted until unlocked. Activating a template or marking it as the default requires superadmin access, an approved template status, and a report type. Active templates must be deactivated before deletion.
+Templates locked for review cannot be edited, snapshotted, or deleted until unlocked. Activating a template or marking it as the default requires superadmin access, an approved template status, a report type, and a production-enabled adapter for that report type. Active templates must be deactivated before deletion.
 
 ## Performance
 
@@ -103,6 +127,7 @@ report_templates (DB)
 - **`bindingValidation.ts`** — pre-export binding linter
 - **`lintTemplate.ts`** — print-safety linter
 - **`pdfRenderer.ts`** — pure `(template, data, brand) → Blob`
+- **`adapters/`** — report-type registry and production binding/routing adapters
 - **`blocks/*.ts`** — one file per block type (renderer + def)
 
 ## Adding a new block type

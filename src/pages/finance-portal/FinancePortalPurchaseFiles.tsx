@@ -136,7 +136,7 @@ export default function FinancePortalPurchaseFiles() {
     queryKey: ['finance-portal-purchase-files'],
     queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-purchase-files', { operation: 'list_files' });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(data?.error || error.message);
       return data ?? { files: [] };
     },
   });
@@ -446,13 +446,13 @@ function NewPurchaseFileDialog({
           status: 'active',
         },
       });
-      if (error) throw new Error(error.message);
-      toast.success('Purchase file created');
+      if (error) throw new Error(data?.error || error.message);
+      toast.success(data?.linked_deal ? 'Purchase file created and mirrored to Command Centre' : 'Purchase file created');
       onCreated(data?.file?.id);
       onOpenChange(false);
       setClientId(''); setTitle(''); setPropertyAddress(''); setPurchasePrice('');
     } catch (e: any) {
-      toast.error(e.message || 'Failed to create');
+      toast.error(`Failed to create: ${e.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }
@@ -464,6 +464,9 @@ function NewPurchaseFileDialog({
         <DialogHeader>
           <DialogTitle>New Purchase File</DialogTitle>
         </DialogHeader>
+        <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+          Creating a finance purchase file also mirrors a linked deal into the Command Centre and raises an internal notification.
+        </div>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Client</Label>

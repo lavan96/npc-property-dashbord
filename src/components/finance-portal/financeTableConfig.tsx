@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { FREQUENCY_OPTIONS, SOURCE_CATEGORIES, SOURCE_TYPES } from '@/components/clients/income/incomeSourceTypes';
 
 export type FinanceTableKey =
   | 'properties' | 'income' | 'expenses' | 'assets'
@@ -48,28 +49,17 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'rental', label: 'Rental (not owned)' },
         { value: 'smsf', label: 'SMSF' },
       ]},
-      { key: 'purchase_price', label: 'Purchase Price', type: 'currency' },
-      { key: 'purchase_date', label: 'Purchase Date', type: 'date' },
+      { key: 'value', label: 'Estimated Value', type: 'currency' },
       { key: 'loan_remaining', label: 'Loan Remaining', type: 'currency' },
-      { key: 'lender_name', label: 'Lender', type: 'text' },
       { key: 'interest_rate', label: 'Interest Rate (%)', type: 'percent' },
-      { key: 'repayment_type', label: 'Repayment Type', type: 'select', options: [
-        { value: 'principal_and_interest', label: 'P&I' },
-        { value: 'interest_only', label: 'Interest Only' },
-      ]},
-      { key: 'loan_repayment_amount', label: 'Repayment Amount', type: 'currency' },
-      { key: 'loan_repayment_frequency', label: 'Repayment Frequency', type: 'select', options: [
-        { value: 'monthly', label: 'Monthly' },
-        { value: 'fortnightly', label: 'Fortnightly' },
-        { value: 'weekly', label: 'Weekly' },
-      ]},
+      { key: 'monthly_interest_repayment', label: 'Monthly Interest Repayment', type: 'currency' },
       { key: 'monthly_rental_income', label: 'Monthly Rental Income', type: 'currency' },
       { key: 'ownership_percentage', label: 'Ownership %', type: 'percent' },
     ],
     renderSummary: (r) => (
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         <Badge variant="outline">{r.property_type?.replace('_', ' ') || 'unspecified'}</Badge>
-        {r.purchase_price && <span>Purchase {fmtCurrency(r.purchase_price)}</span>}
+        {r.value && <span>Value {fmtCurrency(r.value)}</span>}
         {r.loan_remaining && <span>· Loan {fmtCurrency(r.loan_remaining)}</span>}
         {r.monthly_rental_income && <span>· Rent {fmtCurrency(r.monthly_rental_income)}/mo</span>}
       </div>
@@ -90,29 +80,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'primary', label: 'Primary Applicant' },
         { value: 'secondary', label: 'Secondary Applicant' },
       ]},
-      { key: 'source_category', label: 'Category', type: 'select', options: [
-        { value: 'employment', label: 'Employment' },
-        { value: 'passive', label: 'Passive Income' },
-        { value: 'government', label: 'Government Benefits' },
-        { value: 'investment', label: 'Investment Income' },
-        { value: 'other', label: 'Other' },
-      ]},
-      { key: 'source_type', label: 'Type', type: 'select', options: [
-        { value: 'payg_fulltime', label: 'PAYG Full-time' },
-        { value: 'payg_parttime', label: 'PAYG Part-time' },
-        { value: 'casual', label: 'Casual' },
-        { value: 'self_employed', label: 'Self-Employed / ABN' },
-        { value: 'contract', label: 'Contract' },
-        { value: 'rental', label: 'Rental Income' },
-        { value: 'dividends', label: 'Dividends' },
-        { value: 'interest', label: 'Interest Income' },
-        { value: 'trust', label: 'Trust Distributions' },
-        { value: 'centrelink', label: 'Centrelink' },
-        { value: 'pension', label: 'Pension' },
-        { value: 'other', label: 'Other Income' },
-      ]},
+      { key: 'source_category', label: 'Category', type: 'select', options: [...SOURCE_CATEGORIES] },
+      { key: 'source_type', label: 'Type', type: 'select', options: Object.values(SOURCE_TYPES).flat().map(({ value, label }) => ({ value, label })) },
       { key: 'source_name', label: 'Source Name', type: 'text', helpText: 'e.g. employer or investment name' },
       { key: 'gross_annual_amount', label: 'Gross Annual Amount', type: 'currency' },
+      { key: 'input_frequency', label: 'Frequency', type: 'select', options: [...FREQUENCY_OPTIONS] },
       { key: 'bonus', label: 'Annual Bonus', type: 'currency' },
       { key: 'commission', label: 'Annual Commission', type: 'currency' },
       { key: 'allowance', label: 'Allowances', type: 'currency' },
@@ -254,26 +226,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
       ]},
       { key: 'start_date', label: 'Start Date', type: 'date' },
       { key: 'is_current', label: 'Currently employed here', type: 'boolean' },
-      { key: 'gross_annual_salary', label: 'Gross Annual Salary', type: 'currency' },
-      { key: 'salary_amount', label: 'Salary Amount', type: 'currency' },
-      { key: 'salary_frequency', label: 'Salary Frequency', type: 'select', options: [
-        { value: 'annually', label: 'Annual' },
-        { value: 'monthly', label: 'Monthly' },
-        { value: 'fortnightly', label: 'Fortnightly' },
-        { value: 'weekly', label: 'Weekly' },
-        { value: 'hourly', label: 'Hourly' },
-      ]},
-      { key: 'bonus', label: 'Bonus', type: 'currency' },
-      { key: 'commission', label: 'Commission', type: 'currency' },
-      { key: 'allowance', label: 'Allowances', type: 'currency' },
-      { key: 'overtime_essential', label: 'Overtime (Essential)', type: 'currency' },
-      { key: 'overtime_non_essential', label: 'Overtime (Non-essential)', type: 'currency' },
-      { key: 'other_taxable_income', label: 'Other Taxable Income', type: 'currency' },
     ],
     renderSummary: (r) => (
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         <Badge variant="outline">{r.employment_type?.replace('_', ' ') || 'role'}</Badge>
-        {r.gross_annual_salary && <span>{fmtCurrency(r.gross_annual_salary)} / yr</span>}
+        {r.start_date && <span>Since {r.start_date}</span>}
         {r.is_current && <Badge variant="secondary" className="text-xs">current</Badge>}
       </div>
     ),
@@ -294,6 +251,11 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
         { value: 'document', label: 'Document Request' },
       ]},
       { key: 'content', label: 'Note', type: 'textarea', required: true },
+      { key: 'visibility', label: 'Visibility', type: 'select', required: true, options: [
+        { value: 'finance_only', label: 'Finance Portal + Command Center' },
+        { value: 'shared', label: 'Share with Client Portal too' },
+        { value: 'internal_npc', label: 'Command Center only' },
+      ], helpText: 'Defaults to finance/internal only; choose shared only when the client should see it.' },
     ],
     renderSummary: (r) => (
       <div className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line">
@@ -313,7 +275,7 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     fields: [
       { key: 'first_name', label: 'First Name', type: 'text', required: true },
       { key: 'surname', label: 'Last Name', type: 'text', required: true },
-      { key: 'relationship', label: 'Role', type: 'select', options: [
+      { key: 'relationship', label: 'Role', type: 'select', required: true, options: [
         { value: 'co_applicant', label: 'Co-applicant' },
         { value: 'guarantor', label: 'Guarantor' },
         { value: 'spouse', label: 'Spouse / Partner' },

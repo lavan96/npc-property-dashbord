@@ -258,7 +258,7 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
       case 'property_rate_change':
       case 'property_value_change':
         if (!propertyIds.has(d.id)) {
-          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Property "${d.id}" not found in client portfolio — delta ignored` });
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: `Property "${d.id}" not found in client portfolio — delta ignored` });
         }
         if (d.type === 'property_value_change') {
           if (d.unit === 'percent' && Math.abs(d.value) > 100) {
@@ -280,7 +280,7 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
         } else {
           for (const pid of ids) {
             if (!propertyIds.has(pid)) {
-              issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Pool member "${pid}" not in portfolio — excluded from blended LVR` });
+              issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: `Pool member "${pid}" not in portfolio — excluded from blended LVR` });
             }
           }
         }
@@ -292,7 +292,7 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
       }
       case 'liability_payoff':
         if (!liabilityIds.has(d.id)) {
-          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Liability "${d.id}" not found — delta ignored` });
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: `Liability "${d.id}" not found — delta ignored` });
         }
         break;
       case 'rate_change':

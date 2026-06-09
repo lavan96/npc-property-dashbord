@@ -10,8 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil, Lock, Share2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil, Lock, Share2, Users, Briefcase, Globe } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -35,6 +34,56 @@ const noteTypes = [
 ] as const;
 
 type NoteType = typeof noteTypes[number]['value'];
+
+type Visibility = 'internal_npc' | 'client_only' | 'finance_only' | 'shared';
+
+const visibilityOptions: { value: Visibility; label: string; icon: any; desc: string }[] = [
+  { value: 'internal_npc', label: 'Internal', icon: Lock, desc: 'Command Center only' },
+  { value: 'client_only', label: 'Client', icon: Users, desc: 'Visible in client portal' },
+  { value: 'finance_only', label: 'Finance', icon: Briefcase, desc: 'Visible in finance portal' },
+  { value: 'shared', label: 'All', icon: Globe, desc: 'Both portals + GHL' },
+];
+
+function VisibilityPicker({ value, onChange }: { value: Visibility | null; onChange: (v: Visibility) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">Visibility (required)</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {visibilityOptions.map(opt => {
+          const Icon = opt.icon;
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={
+                'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ' +
+                (active
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:border-primary/40')
+              }
+              title={opt.desc}
+            >
+              <Icon className="h-3 w-3" />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getVisibilityBadge(v?: string | null) {
+  const opt = visibilityOptions.find(o => o.value === v) || visibilityOptions[0];
+  const Icon = opt.icon;
+  return (
+    <Badge variant="outline" className="text-xs">
+      <Icon className="h-3 w-3 mr-1" /> {opt.label}
+    </Badge>
+  );
+}
 
 const PAGE_SIZE = 10;
 
@@ -64,14 +113,13 @@ async function fetchNotesSecure(clientId: string, page: number) {
 export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
-  // Notes are internal to the Command Center by default; staff opt in to share
-  // them outward to the client & finance portals.
-  const [shareNote, setShareNote] = useState(false);
+  // Per-note visibility picker — no default; user must choose before saving.
+  const [visibility, setVisibility] = useState<Visibility | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editNoteType, setEditNoteType] = useState<NoteType>('general');
-  const [editShare, setEditShare] = useState(false);
+  const [editVisibility, setEditVisibility] = useState<Visibility>('internal_npc');
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -92,10 +140,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
+      if (!visibility) throw new Error('Choose a visibility');
       const payload = {
         note_type: noteType,
         content: newNote.trim(),
-        visibility: shareNote ? 'shared' : 'internal_npc',
+        visibility,
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -115,11 +164,10 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         actionType: 'client_note_added',
         entityType: 'client_note',
         entityId: clientId,
-        metadata: { note_type: noteType, visibility: shareNote ? 'shared' : 'internal_npc' }
+        metadata: { note_type: noteType, visibility }
       });
-      // Only push to the external GHL CRM when the note is shared — internal
-      // notes stay within the Command Center.
-      if (shareNote) {
+      // Push to external GHL only when fully shared (both portals + external).
+      if (visibility === 'shared') {
         invokeSecureFunction('sync-notes-to-ghl', {
           action: 'create',
           clientId,
@@ -128,10 +176,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
           noteType,
         }).catch(err => console.warn('GHL note sync failed:', err));
       }
+      const label = visibilityOptions.find(o => o.value === visibility)?.label || 'Note';
       setNewNote('');
-      setShareNote(false);
+      setVisibility(null);
       setIsAdding(false);
-      toast.success(shareNote ? 'Note added & shared to portals' : 'Internal note added');
+      toast.success(`${label} note saved`);
     },
     onError: (error: any) => {
       toast.error('Failed to add note: ' + error.message);
@@ -173,13 +222,13 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         data: {
           content: editContent.trim(),
           note_type: editNoteType,
-          visibility: editShare ? 'shared' : 'internal_npc',
+          visibility: editVisibility,
         },
       });
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to update note');
-      // When a note is (re)shared, push the current content to the external GHL CRM.
-      if (editShare) {
+      // Push to external GHL only when fully shared (both portals + external).
+      if (editVisibility === 'shared') {
         invokeSecureFunction('sync-notes-to-ghl', {
           action: 'create',
           clientId,
@@ -203,7 +252,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
     setEditingId(note.id);
     setEditContent(note.content);
     setEditNoteType(note.note_type);
-    setEditShare(note.visibility === 'shared');
+    setEditVisibility((note.visibility as Visibility) || 'internal_npc');
   };
 
   const getNoteIcon = (type: string) => {
@@ -255,27 +304,12 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
             onChange={(e) => setNewNote(e.target.value)}
             className="min-h-[80px]"
           />
-          <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
-            <div className="flex items-center gap-2">
-              {shareNote ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-              <div className="space-y-0.5">
-                <Label htmlFor="note-share" className="text-sm cursor-pointer">
-                  {shareNote ? 'Shared with portals' : 'Internal only'}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {shareNote
-                    ? 'Visible in the client & finance portals.'
-                    : 'Kept within the Command Center. Toggle on to share.'}
-                </p>
-              </div>
-            </div>
-            <Switch id="note-share" checked={shareNote} onCheckedChange={setShareNote} />
-          </div>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={() => addNoteMutation.mutate()}
-              disabled={!newNote.trim() || addNoteMutation.isPending}
+              disabled={!newNote.trim() || !visibility || addNoteMutation.isPending}
             >
               {addNoteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -355,13 +389,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       onChange={(e) => setEditContent(e.target.value)}
                       className="min-h-[60px]"
                     />
-                    <div className="flex items-center gap-2">
-                      {editShare ? <Share2 className="h-4 w-4 text-blue-600" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-                      <Label htmlFor={`note-share-${note.id}`} className="text-xs cursor-pointer">
-                        {editShare ? 'Shared with portals' : 'Internal only'}
-                      </Label>
-                      <Switch id={`note-share-${note.id}`} checked={editShare} onCheckedChange={setEditShare} className="ml-auto" />
-                    </div>
+                    <VisibilityPicker value={editVisibility} onChange={setEditVisibility} />
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -389,15 +417,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                       </Badge>
                       <SyncStatusBadge status={note.sync_status} />
                       {note.source_surface && <Badge variant="outline" className="text-xs">{getSurfaceLabel(note.source_surface)}</Badge>}
-                      {note.visibility === 'shared' ? (
-                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">
-                          <Share2 className="h-3 w-3 mr-1" /> Shared
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          <Lock className="h-3 w-3 mr-1" /> Internal
-                        </Badge>
-                      )}
+                      {getVisibilityBadge(note.visibility)}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">

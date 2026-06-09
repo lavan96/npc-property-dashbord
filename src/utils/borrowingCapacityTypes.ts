@@ -369,6 +369,12 @@ export interface ScenarioCapacityResult {
   dtiRatio: number;
   /** Assessment rate used for this scenario */
   assessmentRate?: number;
+  /** Capacity at the stress-tested rate under this scenario */
+  stressTestedCapacity?: number;
+  /** Textual recommendations from the borrowing-capacity engine */
+  recommendations?: string[];
+  /** Warning flags from the borrowing-capacity engine */
+  warnings?: string[];
   /** After-tax annual income used for serviceability */
   afterTaxAnnualIncome?: number;
   /** After-tax monthly income used for serviceability */

@@ -3,11 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
-interface PresenceUser {
+export interface PresenceUser {
   user_id: string;
   name: string;
   color: string;
   page_id?: string | null;
+  selected_block_id?: string | null;
+  selected_overlay_id?: string | null;
+  workspace_mode?: string | null;
+  editing_text?: boolean;
   online_at: string;
 }
 
@@ -16,6 +20,11 @@ interface TemplatePresenceBarProps {
   currentUserId?: string | null;
   currentUserName?: string | null;
   activePageId?: string | null;
+  selectedBlockId?: string | null;
+  selectedOverlayId?: string | null;
+  workspaceMode?: string | null;
+  editingText?: boolean;
+  onSoftLockChange?: (users: PresenceUser[]) => void;
 }
 
 const PALETTE = ['#D4A843', '#7AB7FF', '#8AE6A2', '#F4A0C5', '#C99BFF', '#FFB36B', '#73E3D6'];
@@ -25,7 +34,17 @@ function colorFor(id: string): string {
   return PALETTE[h % PALETTE.length];
 }
 
-export function TemplatePresenceBar({ templateId, currentUserId, currentUserName, activePageId }: TemplatePresenceBarProps) {
+export function TemplatePresenceBar({
+  templateId,
+  currentUserId,
+  currentUserName,
+  activePageId,
+  selectedBlockId,
+  selectedOverlayId,
+  workspaceMode,
+  editingText = false,
+  onSoftLockChange,
+}: TemplatePresenceBarProps) {
   const [users, setUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -51,6 +70,10 @@ export function TemplatePresenceBar({ templateId, currentUserId, currentUserName
           name: currentUserName || 'Anon',
           color: colorFor(currentUserId),
           page_id: activePageId ?? null,
+          selected_block_id: selectedBlockId ?? null,
+          selected_overlay_id: selectedOverlayId ?? null,
+          workspace_mode: workspaceMode ?? null,
+          editing_text: editingText,
           online_at: new Date().toISOString(),
         });
       }
@@ -69,9 +92,23 @@ export function TemplatePresenceBar({ templateId, currentUserId, currentUserName
       name: currentUserName || 'Anon',
       color: colorFor(currentUserId),
       page_id: activePageId ?? null,
+      selected_block_id: selectedBlockId ?? null,
+      selected_overlay_id: selectedOverlayId ?? null,
+      workspace_mode: workspaceMode ?? null,
+      editing_text: editingText,
       online_at: new Date().toISOString(),
     }).catch(() => {});
-  }, [activePageId, currentUserId, currentUserName]);
+  }, [activePageId, currentUserId, currentUserName, selectedBlockId, selectedOverlayId, workspaceMode, editingText]);
+
+  useEffect(() => {
+    const blockers = users.filter((u) => {
+      if (u.user_id === currentUserId) return false;
+      if (selectedOverlayId && u.selected_overlay_id === selectedOverlayId) return true;
+      if (!selectedOverlayId && selectedBlockId && u.selected_block_id === selectedBlockId) return true;
+      return false;
+    });
+    onSoftLockChange?.(blockers);
+  }, [currentUserId, onSoftLockChange, selectedBlockId, selectedOverlayId, users]);
 
   if (users.length === 0) return null;
 
@@ -94,7 +131,11 @@ export function TemplatePresenceBar({ templateId, currentUserId, currentUserName
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
                 <div className="font-semibold">{u.name}</div>
-                {u.page_id && <div className="text-muted-foreground">on page {u.page_id.slice(0, 8)}</div>}
+                {u.workspace_mode && <div className="text-muted-foreground">mode: {u.workspace_mode}</div>}
+                {u.page_id && <div className="text-muted-foreground">page {u.page_id.slice(0, 8)}</div>}
+                {u.selected_block_id && <div className="text-muted-foreground">block {u.selected_block_id.slice(0, 8)}</div>}
+                {u.selected_overlay_id && <div className="text-muted-foreground">overlay {u.selected_overlay_id.slice(0, 8)}</div>}
+                {u.editing_text && <div className="text-amber-600">editing text</div>}
               </TooltipContent>
             </Tooltip>
           );

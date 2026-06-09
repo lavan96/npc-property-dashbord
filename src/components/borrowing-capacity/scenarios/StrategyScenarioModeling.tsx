@@ -25,6 +25,8 @@ import {
   Save,
   FolderOpen,
   Trash2,
+  FileDown,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Collapsible,
@@ -45,7 +47,7 @@ import {
   type ScenarioLiability as EngineLiability,
   type AcquisitionContext as EngineAcquisitionContext,
 } from '@/utils/scenarioDeltaEngine';
-import type { ScenarioDelta, AcquisitionCapacity } from '@/utils/borrowingCapacityTypes';
+import type { ScenarioDelta, AcquisitionCapacity, CapitalLedger, ScenarioValidationIssue } from '@/utils/borrowingCapacityTypes';
 import type { AustralianState, PurchaseIntent, PropertyCategory } from '@/utils/stampDutyCalculator';
 import {
   estimateLMI,
@@ -63,8 +65,19 @@ import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 import { CapacityMathInspector } from './CapacityMathInspector';
 import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
+import { SolutionOptionCards } from './SolutionOptionCards';
+import type { SolutionApply } from '@/utils/scenarioDeltaEngine';
+import { fetchAndGenerateBorrowingCapacityPDF } from '../BorrowingCapacityPDFReport';
+import { toast } from 'sonner';
+import {
+  buildPersistedBcScenarioV2,
+  computeScenarioDrift,
+  type PersistedBcScenarioV2,
+} from '@/utils/bcScenarioReplay';
 
 // ── Types ──────────────────────────────────────────────
+
+const PAYOFF_ALLOCATION_PREFIX = 'liability_payoff_';
 
 export interface LiabilityItem {
   id: string;
@@ -113,7 +126,7 @@ interface StrategyState {
 
 /** Phase C: Acquisition context driving stamp duty + LMI math.
  *  Defaults to a NSW investor purchase of an established dwelling. */
-interface AcquisitionState {
+export interface AcquisitionState {
   enabled: boolean;
   state: AustralianState;
   intent: PurchaseIntent;
@@ -176,6 +189,18 @@ export interface ScenarioPreset {
   currentLenderProfileId?: string;
   /** Phase I (parity) — HEM benchmark used at save time. */
   hemBenchmark?: number;
+  /** Replayable deltas that produced this preset. */
+  scenarioDeltas?: ScenarioDelta[];
+  /** Engine validation/audit issues captured when the preset was saved. */
+  validationIssues?: ScenarioValidationIssue[];
+  /** Capital source/use ledger captured when the preset was saved. */
+  capitalLedger?: CapitalLedger | null;
+  /** Explicit capital allocations used to route sources into funded uses. */
+  capitalAllocations?: CapitalAllocation[];
+  /** Acquisition controls/context captured when this scenario was saved. */
+  acquisition?: AcquisitionState;
+  /** Phase 3 — replayable/auditable scenario payload with base snapshot hashes. */
+  replayAudit?: PersistedBcScenarioV2;
 }
 
 interface StrategyScenarioModelingProps {
@@ -183,7 +208,7 @@ interface StrategyScenarioModelingProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
+  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number, preset?: ScenarioPreset) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
   /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
@@ -229,7 +254,7 @@ export function StrategyScenarioModeling({
   liabilities,
   properties,
   onApplyScenario,
-  savedPresets: externalPresets,
+  savedPresets: externalPresets = [],
   onPresetsChange,
   clientId,
   clientName,
@@ -240,9 +265,60 @@ export function StrategyScenarioModeling({
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
-  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
+
+  // Audit-fix #5 — Auto-route net sale proceeds into the Capital Flow Canvas
+  // when the broker toggles a Sell-to-Buy lever. The user can still re-route
+  // or delete the auto-allocation; we only insert / update / clear our own
+  // `sale_proceeds_<propId>` rows so manual allocations are never clobbered.
+  // Agent fee default 2% mirrors the Sell summary on page 7 of the audit doc.
+  useEffect(() => {
+    const SELL_PREFIX = 'sale_proceeds_';
+    const sellIds = strategy.additional.portfolioSellPropertyIds;
+    const desired = new Map<string, number>();
+    sellIds.forEach(propId => {
+      const prop = properties.find(p => p.id === propId);
+      if (!prop) return;
+      const value = prop.current_value || 0;
+      const loan = prop.loan_remaining || 0;
+      const agentFee = value * 0.02;
+      const net = Math.max(0, Math.round(value - loan - agentFee));
+      if (net > 0) desired.set(`${SELL_PREFIX}${propId}`, net);
+    });
+
+    setCapitalAllocations(prev => {
+      // Keep manual rows untouched
+      const manual = prev.filter(a => !a.id.startsWith(SELL_PREFIX));
+      // Preserve any user edits (sinkType/target) to existing auto rows
+      const existingAutoById = new Map(
+        prev.filter(a => a.id.startsWith(SELL_PREFIX)).map(a => [a.id, a]),
+      );
+      const auto: CapitalAllocation[] = [];
+      desired.forEach((amount, id) => {
+        const existing = existingAutoById.get(id);
+        auto.push(existing
+          ? { ...existing, amount }
+          : { id, amount, sinkType: 'acquisition_deposit' });
+      });
+      // No-op when nothing actually changed (avoid render loops)
+      const next = [...manual, ...auto];
+      if (
+        next.length === prev.length &&
+        next.every((a, i) => {
+          const p = prev[i];
+          return p && p.id === a.id && p.amount === a.amount && p.sinkType === a.sinkType && p.sinkTargetId === a.sinkTargetId;
+        })
+      ) return prev;
+      return next;
+    });
+  }, [strategy.additional.portfolioSellPropertyIds, properties]);
+
+  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+
+  useEffect(() => {
+    setPresets(externalPresets);
+  }, [externalPresets]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
     refinance: true,
@@ -252,8 +328,9 @@ export function StrategyScenarioModeling({
     expenseReduction: false,
     loanTerm: false,
     dtiCap: false,
-    stampDuty: false,
     portfolioPlay: false,
+    valuationUplift: false,
+    crossCollatPool: false,
     acquisition: false,
   });
 
@@ -295,12 +372,63 @@ export function StrategyScenarioModeling({
       p.loan_remaining > 0
     ), [properties]);
 
-  // Fixed: show all non-rental properties with current_value > 0 for equity release
+  // Phase 4 — selected debt payoffs are no longer free-form calculator
+  // adjustments. They must be funded from explicit capital sources (cash,
+  // equity release, sale proceeds, etc.) through the Capital Flow Canvas.
+  // This keeps servicing gains, DTI debt reduction and capital feasibility in
+  // one auditable ledger, and lets the scenario engine block underfunded
+  // payoff plans instead of silently removing debt commitments.
+  useEffect(() => {
+    const selectedIds = strategy.consolidatedLiabilities;
+
+    setCapitalAllocations(prev => {
+      const manualAllocations = prev.filter(alloc => !alloc.id.startsWith(PAYOFF_ALLOCATION_PREFIX));
+      const existingPayoffAllocations = new Map(
+        prev
+          .filter(alloc => alloc.id.startsWith(PAYOFF_ALLOCATION_PREFIX))
+          .map(alloc => [alloc.id, alloc]),
+      );
+
+      const payoffAllocations = Array.from(selectedIds)
+        .map(id => consolidatableDebts.find(debt => debt.id === id))
+        .filter((debt): debt is LiabilityItem => Boolean(debt))
+        .map(debt => {
+          const allocId = `${PAYOFF_ALLOCATION_PREFIX}${debt.id}`;
+          const existing = existingPayoffAllocations.get(allocId);
+          return {
+            ...existing,
+            id: allocId,
+            amount: debt.balance,
+            sinkType: 'liability_payoff' as const,
+            sinkTargetId: debt.id,
+          };
+        });
+
+      const next = [...manualAllocations, ...payoffAllocations];
+      const same = next.length === prev.length && next.every((alloc, index) => {
+        const old = prev[index];
+        return old &&
+          old.id === alloc.id &&
+          old.amount === alloc.amount &&
+          old.sinkType === alloc.sinkType &&
+          old.sinkTargetId === alloc.sinkTargetId &&
+          old.offsetRatePoints === alloc.offsetRatePoints &&
+          old.rateBuydownPoints === alloc.rateBuydownPoints &&
+          old.repaymentReductionMonthly === alloc.repaymentReductionMonthly;
+      });
+
+      return same ? prev : next;
+    });
+  }, [consolidatableDebts, strategy.consolidatedLiabilities]);
+
+  // Audit-fix #2 — ALL properties with a recorded value are eligible for equity
+  // release (incl. rental securities). Previously rental-typed securities were
+  // silently filtered out, hiding Property 4 from the per-property selector
+  // even though the portfolio overview included it. Equity sits in the asset
+  // regardless of how the cash-flow is classified, so the selector must mirror
+  // the full portfolio for the broker.
   const equityReleaseProperties = useMemo(() =>
-    properties.filter(p => {
-      if (p.property_type === 'rental') return false;
-      return p.current_value > 0;
-    }), [properties]);
+    properties.filter(p => p.current_value > 0), [properties]);
 
   // ── Compute scenario result ──
 
@@ -344,7 +472,6 @@ export function StrategyScenarioModeling({
       String(a.expenseReductionPercent),
       String(a.loanTermAdjustment),
       a.dtiCapEnabled ? `dti:${a.dtiCapValue}` : 'dti:off',
-      String(a.stampDutyPurchasePrice),
       setSig(a.portfolioSellPropertyIds),
       a.portfolioSellReinvest ? '1' : '0',
       mapSig(a.valuationOverrides as Map<string, unknown>),
@@ -374,31 +501,31 @@ export function StrategyScenarioModeling({
     [capitalAllocations],
   );
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
+  const { scenarioContext, scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
      *  per-lever waterfall row (e.g. "+$420/mo servicing saving"). */
     const leverCashflowNotes = new Map<string, string>();
 
-    // 1. Debt Consolidation → liability_payoff deltas
+    // 1. Debt Consolidation → funded capital_allocation rows.
+    // Phase 4 deliberately does NOT emit direct liability_payoff deltas from
+    // the UI: a debt can only disappear once the capital ledger finds a real
+    // source to fund that payoff allocation.
     let consolidationSaving = 0;
     strategy.consolidatedLiabilities.forEach(id => {
       const liability = consolidatableDebts.find(l => l.id === id);
       if (liability) {
         consolidationSaving += liability.monthlyServicing;
-        deltas.push({
-          id: liability.id,
-          label: `Pay off ${liability.label}`,
-          type: 'liability_payoff',
-          value: liability.balance,
-          unit: 'absolute',
-        });
-        leverCashflowNotes.set(`liability_payoff-${liability.id}`, `+${formatCurrency(liability.monthlyServicing)}/mo`);
+        leverCashflowNotes.set(`capital_allocation-${PAYOFF_ALLOCATION_PREFIX}${liability.id}`, `+${formatCurrency(liability.monthlyServicing)}/mo if funded`);
       }
     });
     if (consolidationSaving > 0) {
-      impacts.push({ label: `Consolidate ${strategy.consolidatedLiabilities.size} debt(s)`, monthlySaving: consolidationSaving, type: 'saving' });
+      impacts.push({
+        label: `Fund payoff for ${strategy.consolidatedLiabilities.size} debt(s)`,
+        monthlySaving: consolidationSaving,
+        type: 'info',
+      });
     }
 
     // 2. Refinance P&I → IO → property_refinance deltas (Phase 3 — granular)
@@ -529,8 +656,11 @@ export function StrategyScenarioModeling({
           id: prop.id,
           label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR (deploy ${(deploymentPercent * 100).toFixed(0)}%, ${repaymentType === 'interest_only' ? 'IO' : 'P&I'})`,
           type: 'equity_release',
+          // targetLVR is a RATIO (e.g. 0.80) — `unit: 'ratio'` so the engine reads
+          // it as 0.80, not 0.80/100. 'percent' silently shrank the release to
+          // ~0.8% LVR, so the lever (and its servicing/released-capital) was ignored.
           value: targetLVR,
-          unit: 'percent',
+          unit: 'ratio',
           meta: {
             targetLVR,
             // honour per-property contracted rate if present, otherwise let engine fall back
@@ -730,6 +860,16 @@ export function StrategyScenarioModeling({
     const validationIssues = result.validationIssues ?? [];
     const capitalLedger = (result as any).capitalLedger ?? null;
 
+    // Audit-fix #3 — Baseline guard. When no levers are active the scenario
+    // MUST equal the base. Some upstream context (e.g. an acquisition target
+    // re-evaluating LMI) was producing a non-zero scenario delta even with
+    // `deltas.length === 0`, which surfaced a phantom "Scenario Borrowing
+    // Capacity = base + base" in the headline. Force-collapse to the base
+    // result so the user sees a true zero-delta baseline.
+    const baselineMode = deltas.length === 0;
+    const effectiveResult = baselineMode ? (baseResult as any) : result;
+    const effectiveInputs = baselineMode ? baseInputs : inputs;
+
     // ── F4 — Per-lever attribution ──────────────────────────────────────
     // Replay each delta IN ISOLATION against the same base context to
     // measure the capacity uplift attributable to that lever alone.
@@ -815,21 +955,27 @@ export function StrategyScenarioModeling({
     const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
     const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
-    const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioAssessmentRate = safeAssessmentRate(result, inputs);
-    const scenarioRawSurplus = rawSurplusFrom(result, inputs);
+    const scenarioTerm = effectiveInputs.loanTermYears ?? baseTerm;
+    const scenarioAssessmentRate = safeAssessmentRate(effectiveResult, effectiveInputs);
+    const scenarioRawSurplus = rawSurplusFrom(effectiveResult, effectiveInputs);
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
-    const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
+    const scenarioTheoreticalCapacity = baselineMode
+      ? baseTheoreticalCapacity
+      : Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
     const baseAfterTaxIncome = resolveMonthlyAfterTaxIncome(baseResult, baseInputs);
     const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
     const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
-    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(result, inputs);
-    const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
-    const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
+    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(effectiveResult, effectiveInputs);
+    const scenarioLivingExpenses = (effectiveInputs as any)?.monthlyLivingExpenses ?? (effectiveResult as any)?.totalLivingExpenses ?? 0;
+    const scenarioCommitments = (effectiveInputs as any)?.monthlyCommitments ?? (effectiveResult as any)?.existingCommitmentsMonthly ?? 0;
 
-    const leverAttribution: LeverAttribution[] = deltas.map(d => {
+    // Audit-fix #4 — Lever attribution invariants. Every isolated delta is
+    // re-run on the same base context and its impact is normalised against
+    // baseResult.borrowingCapacity. When baseline (no deltas) the array is
+    // empty so the waterfall hides itself instead of rendering phantom rows.
+    const leverAttribution: LeverAttribution[] = baselineMode ? [] : deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
       const isoAssessRate = safeAssessmentRate(isolated.result, isolated.inputs);
@@ -844,19 +990,20 @@ export function StrategyScenarioModeling({
       };
     });
 
-    const floorActive =
+    const floorActive = !baselineMode &&
       (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
-      scenarioResult: result as unknown as BorrowingCapacityResult,
-      scenarioInputs: inputs,
-      impactBreakdown: impacts,
+      scenarioContext: ctx,
+      scenarioResult: effectiveResult as unknown as BorrowingCapacityResult,
+      scenarioInputs: effectiveInputs,
+      impactBreakdown: baselineMode ? [] : impacts,
       acquisitionCapacity,
       validationIssues,
       leverAttribution,
-      appliedDeltas: deltas,
+      appliedDeltas: baselineMode ? [] : deltas,
       capitalLedger,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
@@ -989,6 +1136,82 @@ export function StrategyScenarioModeling({
     [equityReleaseItems]
   );
 
+  const buildReplayAudit = useCallback((name: string, createdAt: string): PersistedBcScenarioV2 => buildPersistedBcScenarioV2({
+    scenarioName: name,
+    baseInputs,
+    baseResult: baseResult as BorrowingCapacityResult & { assessmentId?: string; calculatedAt?: string },
+    adjustedInputs: scenarioInputs,
+    resultSnapshot: scenarioResult,
+    scenarioDeltas: appliedDeltas,
+    acquisition,
+    acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+    validationIssues,
+    capitalLedger,
+    capitalAllocations,
+    properties: properties.map(p => ({
+      id: p.id,
+      address: p.address,
+      propertyType: p.property_type,
+      currentValue: p.current_value,
+      loanRemaining: p.loan_remaining,
+      monthlyRepayment: p.monthly_interest_repayment,
+      loanRepaymentAmount: p.loan_repayment_amount,
+      netMonthlyCashflow: p.net_monthly_cashflow,
+      interestRate: p.interest_rate,
+    })),
+    liabilities: liabilities.map(l => ({
+      id: l.id,
+      type: l.type,
+      label: l.label,
+      balance: l.balance,
+      limit: l.limit,
+      monthlyServicing: l.monthlyServicing,
+    })),
+    incomeComponents: incomeComponents || [],
+    createdAt,
+  }), [
+    baseInputs,
+    baseResult,
+    scenarioInputs,
+    scenarioResult,
+    appliedDeltas,
+    acquisition,
+    acquisitionCapacity,
+    validationIssues,
+    capitalLedger,
+    capitalAllocations,
+    properties,
+    liabilities,
+    incomeComponents,
+  ]);
+
+  const presetDriftById = useMemo(() => {
+    const current = {
+      baseInputs,
+      properties: properties.map(p => ({
+        id: p.id,
+        address: p.address,
+        propertyType: p.property_type,
+        currentValue: p.current_value,
+        loanRemaining: p.loan_remaining,
+        monthlyRepayment: p.monthly_interest_repayment,
+        loanRepaymentAmount: p.loan_repayment_amount,
+        netMonthlyCashflow: p.net_monthly_cashflow,
+        interestRate: p.interest_rate,
+      })),
+      liabilities: liabilities.map(l => ({
+        id: l.id,
+        type: l.type,
+        label: l.label,
+        balance: l.balance,
+        limit: l.limit,
+        monthlyServicing: l.monthlyServicing,
+      })),
+      incomeComponents: incomeComponents || [],
+    };
+    return new Map(presets.map(preset => [preset.id, computeScenarioDrift(preset.replayAudit, current)]));
+  }, [baseInputs, properties, liabilities, incomeComponents, presets]);
+
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
   const totalMonthlySaving = impactBreakdown.reduce((sum, i) =>
@@ -1006,6 +1229,9 @@ export function StrategyScenarioModeling({
     [scenarioInputs, scenarioResult]
   );
 
+  const blockingValidationIssues = validationIssues.filter(issue => issue.severity === 'error');
+  const hasBlockingValidationIssues = blockingValidationIssues.length > 0;
+
   const hasAnyStrategy = strategy.consolidatedLiabilities.size > 0 ||
     strategy.refinancedToIO.size > 0 ||
     strategy.equityReleaseEnabled ||
@@ -1017,7 +1243,9 @@ export function StrategyScenarioModeling({
     strategy.additional.dtiCapEnabled ||
     strategy.additional.portfolioSellPropertyIds.size > 0 ||
     strategy.additional.valuationOverrides.size > 0 ||
-    strategy.additional.crossCollatPool.enabled;
+    strategy.additional.crossCollatPool.enabled ||
+    capitalAllocations.length > 0 ||
+    acquisition.enabled;
 
   const handleReset = useCallback(() => {
     setStrategy({
@@ -1034,31 +1262,53 @@ export function StrategyScenarioModeling({
       propertyRateOverrides: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
+    setAcquisition(DEFAULT_ACQUISITION);
+    setCapitalAllocations([]);
   }, []);
 
   const handleSavePreset = useCallback(() => {
-    const name = scenarioName.trim() || `Scenario ${presets.length}`;
-    const newPreset: ScenarioPreset = {
-      id: `preset-${Date.now()}`,
-      name,
-      isBase: false,
-      createdAt: new Date().toISOString(),
-      adjustedInputs: { ...scenarioInputs },
-      result: scenarioResult,
-      accessibleEquity: totalAccessibleEquity,
-      acquisitionCapacity: acquisitionCapacity ?? null,
-      // Phase I (parity) — capture lender-aware context at save time so a
-      // future load reproduces the same shading + HEM floor decisions.
-      incomeComponents,
-      currentLenderProfileId,
-      hemBenchmark,
-    };
-    const updated = [...presets, newPreset];
-    setPresets(updated);
-    onPresetsChange?.(updated);
-    setScenarioName('');
-    setShowSaveInput(false);
-  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark]);
+    if (hasBlockingValidationIssues) {
+      toast.error('Resolve blocking scenario validation errors before saving.');
+      return;
+    }
+    try {
+      const name = scenarioName.trim() || `Scenario ${presets.length}`;
+      const createdAt = new Date().toISOString();
+      const replayAudit = buildReplayAudit(name, createdAt);
+      const newPreset: ScenarioPreset = {
+        id: `preset-${Date.now()}`,
+        name,
+        isBase: false,
+        createdAt,
+        adjustedInputs: { ...scenarioInputs },
+        result: scenarioResult,
+        accessibleEquity: totalAccessibleEquity,
+        acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+        scenarioDeltas: appliedDeltas,
+        validationIssues,
+        capitalLedger,
+        capitalAllocations: [...capitalAllocations],
+        acquisition,
+        replayAudit,
+        incomeComponents,
+        currentLenderProfileId,
+        hemBenchmark,
+      };
+      const updated = [...presets, newPreset];
+      setPresets(updated);
+      onPresetsChange?.(updated);
+      setScenarioName('');
+      setShowSaveInput(false);
+      // Save-only: persist to the Saved Scenarios list and STAY on the What-If
+      // tab. The scenario is intentionally NOT auto-applied to the calculator —
+      // use "Load" on the saved entry, or "Apply to Calculator", to push it into
+      // the live calc. The base snapshot the modeller compares against is held
+      // separately (baseScenarioResult), so not applying never reverts the view.
+    } catch (err: any) {
+      console.error('[StrategyScenarioModeling] Save scenario failed:', err);
+      toast.error(err?.message || 'Failed to save scenario');
+    }
+  }, [scenarioName, hasBlockingValidationIssues, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisition, acquisitionCapacity, appliedDeltas, validationIssues, capitalLedger, capitalAllocations, buildReplayAudit, incomeComponents, currentLenderProfileId, hemBenchmark]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
@@ -1069,9 +1319,60 @@ export function StrategyScenarioModeling({
   const handleLoadPreset = useCallback((preset: ScenarioPreset) => {
     // Reset all strategies and show the preset's result as the "base" comparison
     handleReset();
+    if (preset.acquisition) {
+      setAcquisition(preset.acquisition);
+    }
+    if (Array.isArray(preset.capitalAllocations)) {
+      setCapitalAllocations(preset.capitalAllocations);
+      const payoffIds = new Set(
+        preset.capitalAllocations
+          .filter(alloc => alloc.id.startsWith(PAYOFF_ALLOCATION_PREFIX) && alloc.sinkType === 'liability_payoff' && alloc.sinkTargetId)
+          .map(alloc => alloc.sinkTargetId as string),
+      );
+      if (payoffIds.size > 0) {
+        setStrategy(prev => ({ ...prev, consolidatedLiabilities: payoffIds }));
+      }
+    }
     // Apply the preset's inputs to the main calculator
-    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0);
+    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0, preset);
   }, [handleReset, onApplyScenario]);
+
+  const buildPdfOverrideAssessment = useCallback((inputs: BorrowingCapacityInput, result: BorrowingCapacityResult) => ({
+    created_at: new Date().toISOString(),
+    borrowing_capacity: result.borrowingCapacity,
+    monthly_surplus: result.monthlySurplus,
+    serviceability_band: result.serviceabilityBand,
+    stress_tested_capacity: result.stressTestedCapacity,
+    dti_ratio: result.dtiRatio,
+    assessment_rate: result.assessmentRate,
+    gross_annual_income: inputs.grossAnnualIncome,
+    shaded_annual_income: inputs.shadedAnnualIncome ?? inputs.grossAnnualIncome,
+    living_expenses_monthly: inputs.monthlyLivingExpenses,
+    existing_commitments_monthly: inputs.monthlyCommitments,
+    interest_rate_used: inputs.interestRate,
+    buffer_rate: inputs.bufferRate,
+    loan_term_years: inputs.loanTermYears,
+    proposed_loan_amount: 0,
+    expense_method: 'hybrid',
+    recommendations: result.recommendations ?? [],
+    warnings: result.warnings ?? [],
+    assumptions: {
+      selectedLenderName: currentLenderProfileId,
+      source: 'Current What-If Scenario',
+    },
+    income_breakdown: incomeComponents?.map((item) => ({
+      source_name: item.label,
+      gross_annual_amount: item.grossAnnual,
+      custom_shading_rate: item.currentShadingRate,
+      shaded_amount: item.grossAnnual * item.currentShadingRate,
+    })) ?? [],
+    liability_breakdown: liabilities.map((item) => ({
+      type: item.type,
+      label: item.label,
+      balance: item.balance,
+      monthlyServicing: item.monthlyServicing,
+    })),
+  }), [currentLenderProfileId, incomeComponents, liabilities]);
 
   const toggleConsolidation = (id: string) => {
     setStrategy(prev => {
@@ -1096,12 +1397,36 @@ export function StrategyScenarioModeling({
     }));
   }, []);
 
+  // Audit-fix #1 — Apply a "Suggested Solution" card click into the existing
+  // strategy state. Maps each typed payload to the matching setter so we never
+  // duplicate state shape.
+  const handleApplySolution = useCallback((apply: SolutionApply) => {
+    if (apply.kind === 'expense') {
+      handleAdditionalChange({ expenseReductionPercent: apply.percent });
+    } else if (apply.kind === 'term') {
+      handleAdditionalChange({ loanTermAdjustment: apply.years });
+    } else if (apply.kind === 'equity') {
+      setStrategy(prev => {
+        const ids = new Set(prev.equityReleasePropertyIds);
+        ids.add(apply.propertyId);
+        const lvrs = new Map(prev.equityReleaseTargetLVRs);
+        lvrs.set(apply.propertyId, apply.targetLVR);
+        return {
+          ...prev,
+          equityReleaseEnabled: true,
+          equityReleasePropertyIds: ids,
+          equityReleaseTargetLVRs: lvrs,
+        };
+      });
+    }
+  }, [handleAdditionalChange]);
+
   const baseBand = getServiceabilityBandColor(baseResult.serviceabilityBand);
   const scenarioBand = getServiceabilityBandColor(scenarioResult.serviceabilityBand);
 
   return (
     <div className="space-y-4">
-      {/* AI Strategy Advisor */}
+      {/* AI Strategy Advisor and its directly attached suggested solutions */}
       <BCScenarioAgent
         baseInputs={baseInputs}
         baseResult={baseResult}
@@ -1111,23 +1436,73 @@ export function StrategyScenarioModeling({
         incomeComponents={incomeComponents}
         currentLenderProfileId={currentLenderProfileId}
         hemBenchmark={hemBenchmark}
+        /* Live engine truth for the applied scenario — sourced from the SAME
+         * `scenarioResult` that drives the Compound Impact Summary below, so the
+         * AI card's Engine Truth reconciles exactly with the live calculator
+         * instead of drifting from its pre-Apply preview. Null when no levers are
+         * live so unapplied cards keep showing their own preview. */
+        appliedEngineSnapshot={hasAnyStrategy ? {
+          borrowingCapacity: Math.round(scenarioResult.borrowingCapacity),
+          capacityChange: Math.round(scenarioResult.borrowingCapacity - baseResult.borrowingCapacity),
+          monthlySurplus: Math.round(scenarioResult.monthlySurplus),
+          serviceabilityBand: scenarioResult.serviceabilityBand,
+          dtiRatio: Number((scenarioResult.dtiRatio ?? 0).toFixed(2)),
+          ...(acquisition.enabled && acquisitionCapacity ? {
+            meetsTarget: acquisitionCapacity.meetsTarget,
+            shortfallToTarget: acquisitionCapacity.shortfallToTarget,
+            maxPurchasePrice: acquisitionCapacity.maxPurchasePrice,
+            loanRequiredForPurchase: acquisitionCapacity.loanRequiredForPurchase,
+            netCashAfterSettlement: acquisitionCapacity.netCashAfterSettlement,
+            releasedCapital: acquisitionCapacity.releasedCapital,
+            targetPurchasePrice: acquisitionCapacity.targetPurchasePrice,
+          } : {}),
+        } : null}
         onApplyScenario={(scenario: AIScenario) => {
-          // Map AI scenario adjustments to strategy state
-           setStrategy(prev => {
-              const eqRelease = scenario.adjustments.equityRelease;
+          // Map AI scenario adjustments to strategy state. Be defensive here:
+          // AI-generated/persisted cards can omit optional arrays or carry old
+          // payload shapes, and this callback is invoked directly by the three
+          // card action buttons. Normalising prevents a bad card from throwing
+          // before the selected scenario can surface in the builder.
+          const adjustments = {
+            consolidatedLiabilityIds: [],
+            refinancedToIOPropertyIds: [],
+            rateAdjustment: 0,
+            incomeGrowthPercent: 0,
+            expenseReductionPercent: 0,
+            portfolioSellPropertyIds: [],
+            propertyRateChanges: [],
+            valuationOverrides: [],
+            ...(scenario.adjustments ?? {}),
+          };
+          const aiAcquisition = adjustments.acquisition;
+          if (aiAcquisition) {
+            setAcquisition({
+              enabled: true,
+              state: aiAcquisition.state ?? DEFAULT_ACQUISITION.state,
+              intent: aiAcquisition.intent ?? DEFAULT_ACQUISITION.intent,
+              category: aiAcquisition.category ?? DEFAULT_ACQUISITION.category,
+              isFirstHomeBuyer: !!aiAcquisition.isFirstHomeBuyer,
+              isForeignBuyer: !!aiAcquisition.isForeignBuyer,
+              lmiMode: aiAcquisition.lmiMode ?? DEFAULT_ACQUISITION.lmiMode,
+              cashOnHand: Math.max(0, aiAcquisition.cashOnHand ?? 0),
+              targetPurchasePrice: Math.max(0, aiAcquisition.targetPurchasePrice ?? 0),
+            });
+          }
+          setStrategy(prev => {
+              const eqRelease = adjustments.equityRelease;
               const newPropertyIds = new Set<string>(eqRelease ? [eqRelease.propertyId] : []);
               const newTargetLVRs = new Map<string, number>();
               if (eqRelease) newTargetLVRs.set(eqRelease.propertyId, eqRelease.targetLVR || DEFAULT_EQUITY_LVR);
 
               // Map portfolio sell property IDs
-              const sellIds = new Set<string>(scenario.adjustments.portfolioSellPropertyIds || []);
+              const sellIds = new Set<string>(adjustments.portfolioSellPropertyIds || []);
 
               // Map DTI cap override
-              const dtiOverride = scenario.adjustments.dtiCapOverride;
+              const dtiOverride = adjustments.dtiCapOverride;
 
               // Phase F1 — map per-property rate changes
               const rateOverrides = new Map<string, number>();
-              (scenario.adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
+              (adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
                 if (propertyId && Number.isFinite(newRate) && newRate > 0) {
                   rateOverrides.set(propertyId, newRate);
                 }
@@ -1135,7 +1510,7 @@ export function StrategyScenarioModeling({
 
               // Phase G1 — map valuation overrides
               const valOverrides = new Map<string, import('./AdditionalStrategyLevers').ValuationOverride>();
-              (scenario.adjustments.valuationOverrides || []).forEach((vo) => {
+              (adjustments.valuationOverrides || []).forEach((vo) => {
                 if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
                   valOverrides.set(vo.propertyId, {
                     propertyId: vo.propertyId,
@@ -1147,7 +1522,7 @@ export function StrategyScenarioModeling({
               });
 
               // Phase G2 — map cross-collateralised pool
-              const aiPool = scenario.adjustments.crossCollatPool;
+              const aiPool = adjustments.crossCollatPool;
               const poolState = aiPool && aiPool.enabled
                 ? {
                     enabled: true,
@@ -1160,18 +1535,18 @@ export function StrategyScenarioModeling({
 
               return {
                 ...prev,
-                consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
-                refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
-                rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                consolidatedLiabilities: new Set(adjustments.consolidatedLiabilityIds || []),
+                refinancedToIO: new Set(adjustments.refinancedToIOPropertyIds || []),
+                rateAdjustment: adjustments.rateAdjustment || 0,
                 propertyRateOverrides: rateOverrides,
                 equityReleaseEnabled: !!eqRelease,
                 equityReleasePropertyIds: newPropertyIds,
                 equityReleaseTargetLVRs: newTargetLVRs,
                 additional: {
                   ...prev.additional,
-                  incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
-                  expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
-                  loanTermAdjustment: scenario.adjustments.loanTermAdjustment || 0,
+                  incomeGrowthPercent: adjustments.incomeGrowthPercent || 0,
+                  expenseReductionPercent: adjustments.expenseReductionPercent || 0,
+                  loanTermAdjustment: adjustments.loanTermAdjustment || 0,
                   portfolioSellPropertyIds: sellIds,
                   portfolioSellReinvest: false,
                   dtiCapEnabled: dtiOverride?.enabled || false,
@@ -1182,48 +1557,48 @@ export function StrategyScenarioModeling({
               };
             });
 
-          // Phase D + F2: also map AI acquisition block into the acquisition state
-          const acq = scenario.adjustments.acquisition;
-          if (acq) {
-            setAcquisition(prev => ({
-              ...prev,
-              enabled: true,
-              state: acq.state,
-              intent: acq.intent,
-              category: acq.category ?? prev.category,
-              isFirstHomeBuyer: acq.isFirstHomeBuyer ?? prev.isFirstHomeBuyer,
-              isForeignBuyer: prev.isForeignBuyer,
-              lmiMode: acq.lmiMode ?? prev.lmiMode,
-              cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
-              targetPurchasePrice: acq.targetPurchasePrice ?? prev.targetPurchasePrice,
-            }));
-          }
-
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
-            consolidation: (scenario.adjustments.consolidatedLiabilityIds?.length || 0) > 0,
-            refinance: (scenario.adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
-            equity: !!scenario.adjustments.equityRelease,
-            rates: (scenario.adjustments.rateAdjustment || 0) !== 0,
-            incomeGrowth: (scenario.adjustments.incomeGrowthPercent || 0) !== 0,
-            expenseReduction: (scenario.adjustments.expenseReductionPercent || 0) > 0,
-            loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
-            portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
-            dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
-            acquisition: !!acq,
+            consolidation: (adjustments.consolidatedLiabilityIds?.length || 0) > 0,
+            refinance: (adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
+            equity: !!adjustments.equityRelease,
+            rates: (adjustments.rateAdjustment || 0) !== 0,
+            incomeGrowth: (adjustments.incomeGrowthPercent || 0) !== 0,
+            expenseReduction: (adjustments.expenseReductionPercent || 0) > 0,
+            loanTerm: (adjustments.loanTermAdjustment || 0) !== 0,
+            portfolioPlay: (adjustments.portfolioSellPropertyIds?.length || 0) > 0,
+            dtiCap: !!adjustments.dtiCapOverride?.enabled,
+            valuationUplift: (adjustments.valuationOverrides?.length || 0) > 0,
+            crossCollatPool: !!adjustments.crossCollatPool?.enabled,
+            acquisition: !!adjustments.acquisition,
           }));
 
-          // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
-          // computed delta. The result string is sent back to the agent so users see
-          // engine-verified numbers in the scenario badge instead of LLM free-text.
-          const baseCap = baseResult.borrowingCapacity || 0;
-          const newCap = scenarioResult?.borrowingCapacity ?? baseCap;
-          const delta = newCap - baseCap;
+          setScenarioName(scenario.name || 'Suggested Scenario');
+
+          // Phase E (L1): Reconcile AI's estimatedImpact against engine truth.
+          // React state updates above are asynchronous, so reading the local
+          // `scenarioResult` immediately after applying a card can still return
+          // the pre-apply/base result — this was surfacing as `+$0K (engine)`
+          // while the card's Engine Truth panel showed a real uplift. Prefer the
+          // pre-Apply engine validation already attached to the selected card,
+          // then fall back to the current live result only if no validation was
+          // available.
+          const delta = typeof scenario.engineValidation?.capacityChange === 'number'
+            ? scenario.engineValidation.capacityChange
+            : ((scenarioResult?.borrowingCapacity ?? baseResult.borrowingCapacity ?? 0) - (baseResult.borrowingCapacity || 0));
           const sign = delta >= 0 ? '+' : '−';
           const absK = Math.round(Math.abs(delta) / 1000);
           return `${sign}$${absK}K (engine)`;
         }}
+      />
+
+
+      {/* Suggested one-click solutions stay directly under Strategy Advisor. */}
+      <SolutionOptionCards
+        context={scenarioContext}
+        onApply={handleApplySolution}
+        formatCurrency={formatCurrency}
       />
 
       {/* Header */}
@@ -1262,7 +1637,7 @@ export function StrategyScenarioModeling({
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-3">
               <p className="text-xs text-muted-foreground">
-                Select debts to consolidate or pay off. Their monthly servicing will be removed from commitments.
+                Select debts to consolidate or pay off. Phase 4 requires each payoff to be funded through the Capital Flow Canvas before servicing or DTI debt is removed.
               </p>
               {consolidatableDebts.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic py-2">No consolidatable debts found.</p>
@@ -1924,6 +2299,7 @@ export function StrategyScenarioModeling({
         </Collapsible>
       </Card>
 
+
       {/* ═══ LEVERS 5-10: Additional Strategy Levers ═══ */}
       <AdditionalStrategyLevers
         strategy={strategy.additional}
@@ -2049,9 +2425,7 @@ export function StrategyScenarioModeling({
         </div>
       </div>
 
-      <Separator />
-
-      {/* ═══ ACQUISITION CAPACITY (Phase C) ═══ */}
+      {/* ═══ PHASE 2 — Acquisition / Purchase-Power Controls ═══ */}
       <Card>
         <Collapsible open={openSections.acquisition} onOpenChange={() => toggleSection('acquisition')}>
           <CollapsibleTrigger asChild>
@@ -2059,12 +2433,15 @@ export function StrategyScenarioModeling({
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-primary" />
-                  Acquisition Capacity (Stamp Duty + LMI)
+                  Acquisition / Purchase Power
+                  <Badge variant="outline" className="text-[10px]">Phase 2</Badge>
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {acquisition.enabled && acquisitionCapacity && (
-                    <Badge variant="secondary" className="text-xs">
-                      Max {formatCurrency(acquisitionCapacity.maxPurchasePrice)}
+                    <Badge variant={acquisitionCapacity.meetsTarget === false ? 'destructive' : 'secondary'} className="text-xs">
+                      {acquisitionCapacity.targetPurchasePrice
+                        ? acquisitionCapacity.meetsTarget ? 'Target met' : `Short ${formatCurrency(acquisitionCapacity.shortfallToTarget || 0)}`
+                        : `${formatCurrency(acquisitionCapacity.maxPurchasePrice)} power`}
                     </Badge>
                   )}
                   <ChevronDown className={`h-4 w-4 transition-transform ${openSections.acquisition ? 'rotate-180' : ''}`} />
@@ -2073,118 +2450,134 @@ export function StrategyScenarioModeling({
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="pt-0 space-y-3">
+            <CardContent className="pt-0 space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Compute max purchase price</Label>
-                <Switch checked={acquisition.enabled} onCheckedChange={(v) => setAcquisition(p => ({ ...p, enabled: v }))} />
+                <div>
+                  <Label className="text-sm">Model next purchase</Label>
+                  <p className="text-xs text-muted-foreground">Adds stamp duty, LMI, cash-on-hand, and target-price feasibility to the scenario.</p>
+                </div>
+                <Switch
+                  checked={acquisition.enabled}
+                  onCheckedChange={(checked) => setAcquisition(prev => ({ ...prev, enabled: checked }))}
+                />
               </div>
+
               {acquisition.enabled && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">State</Label>
-                      <Select value={acquisition.state} onValueChange={(v) => setAcquisition(p => ({ ...p, state: v as AustralianState }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(['NSW','VIC','QLD','WA','SA','TAS','NT','ACT'] as const).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Intent</Label>
-                      <Select value={acquisition.intent} onValueChange={(v) => setAcquisition(p => ({ ...p, intent: v as PurchaseIntent }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="owner_occupier">Owner-Occupier</SelectItem>
-                          <SelectItem value="investor">Investor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Property Type</Label>
-                      <Select value={acquisition.category} onValueChange={(v) => setAcquisition(p => ({ ...p, category: v as PropertyCategory }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="established">Established</SelectItem>
-                          <SelectItem value="new">New Build</SelectItem>
-                          <SelectItem value="vacant_land">Vacant Land</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">LMI Mode</Label>
-                      <Select value={acquisition.lmiMode} onValueChange={(v) => setAcquisition(p => ({ ...p, lmiMode: v as AcquisitionState['lmiMode'] }))}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No LMI</SelectItem>
-                          <SelectItem value="display_deduction">Deduct from cash</SelectItem>
-                          <SelectItem value="debt_capitalised">Capitalise to loan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-2 rounded border">
-                      <Label className="text-xs">First Home Buyer</Label>
-                      <Switch checked={acquisition.isFirstHomeBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isFirstHomeBuyer: v, intent: v ? 'owner_occupier' : p.intent }))} />
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded border">
-                      <Label className="text-xs">Foreign Buyer</Label>
-                      <Switch checked={acquisition.isForeignBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isForeignBuyer: v }))} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
-                      <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                        Target Purchase Price
-                        <span className="text-[10px] text-muted-foreground/70">(optional)</span>
-                      </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Target purchase price</Label>
                       <Input
                         type="number"
+                        min="0"
+                        step="10000"
                         value={acquisition.targetPurchasePrice || ''}
-                        onChange={(e) => setAcquisition(p => ({ ...p, targetPurchasePrice: Number(e.target.value) || 0 }))}
-                        placeholder="e.g. 700000"
+                        placeholder="e.g. 750000"
+                        onChange={(e) => setAcquisition(prev => ({ ...prev, targetPurchasePrice: Math.max(0, Number(e.target.value) || 0) }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Cash on hand</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="5000"
+                        value={acquisition.cashOnHand || ''}
+                        placeholder="Cash available for deposit/costs"
+                        onChange={(e) => setAcquisition(prev => ({ ...prev, cashOnHand: Math.max(0, Number(e.target.value) || 0) }))}
                         className="h-9 text-sm"
                       />
                     </div>
                   </div>
 
-                  {acquisitionCapacity && (
-                    <div className="mt-3 p-3 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Max Purchase Price</span>
-                        <span className="text-lg font-bold text-primary">{formatCurrency(acquisitionCapacity.maxPurchasePrice)}</span>
-                      </div>
-                      <Separator />
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Loan available</span><span className="font-medium">{formatCurrency(acquisitionCapacity.loanAvailableForPurchase)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Cash available</span><span className="font-medium">{formatCurrency(acquisitionCapacity.cashAvailable)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Released equity</span><span className="font-medium">{formatCurrency(acquisitionCapacity.releasedCapital)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Stamp duty</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.stampDuty)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">LMI</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.lmi)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Other costs</span><span className="font-medium text-destructive">−{formatCurrency(acquisitionCapacity.otherAcquisitionCosts)}</span></div>
-                      </div>
-                      {acquisitionCapacity.notes.length > 0 && (
-                        <details className="text-xs text-muted-foreground pt-1">
-                          <summary className="cursor-pointer hover:text-foreground">Audit notes ({acquisitionCapacity.notes.length})</summary>
-                          <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                            {acquisitionCapacity.notes.map((n, i) => <li key={i}>{n}</li>)}
-                          </ul>
-                        </details>
-                      )}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">State</Label>
+                      <Select value={acquisition.state} onValueChange={(v) => setAcquisition(prev => ({ ...prev, state: v as AustralianState }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'] as AustralianState[]).map(state => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Intent</Label>
+                      <Select value={acquisition.intent} onValueChange={(v) => setAcquisition(prev => ({ ...prev, intent: v as PurchaseIntent }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="investor">Investor</SelectItem>
+                          <SelectItem value="owner_occupier">Owner occupier</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Property</Label>
+                      <Select value={acquisition.category} onValueChange={(v) => setAcquisition(prev => ({ ...prev, category: v as PropertyCategory }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="established">Established</SelectItem>
+                          <SelectItem value="new">New build</SelectItem>
+                          <SelectItem value="vacant_land">Vacant land</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">LMI treatment</Label>
+                      <Select value={acquisition.lmiMode} onValueChange={(v) => setAcquisition(prev => ({ ...prev, lmiMode: v as AcquisitionState['lmiMode'] }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="display_deduction">Deduct from cash</SelectItem>
+                          <SelectItem value="debt_capitalised">Capitalise</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                  {validationIssues && validationIssues.length > 0 && (
-                    <div className="mt-2 p-2 rounded border border-destructive/40 bg-destructive/5 text-xs space-y-1">
-                      <p className="font-medium text-destructive">Validation issues ({validationIssues.length})</p>
-                      <ul className="list-disc list-inside text-muted-foreground">
-                        {validationIssues.map((iss: any, i: number) => <li key={i}>{iss.message}</li>)}
-                      </ul>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <Label className="text-sm">First home buyer</Label>
+                      <Switch checked={acquisition.isFirstHomeBuyer} onCheckedChange={(checked) => setAcquisition(prev => ({ ...prev, isFirstHomeBuyer: checked }))} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <Label className="text-sm">Foreign buyer</Label>
+                      <Switch checked={acquisition.isForeignBuyer} onCheckedChange={(checked) => setAcquisition(prev => ({ ...prev, isForeignBuyer: checked }))} />
+                    </div>
+                  </div>
+
+                  {acquisitionCapacity && (
+                    <div className="rounded-lg border bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Effective purchase power</p>
+                          <p className="text-2xl font-bold text-primary">{formatCurrency(acquisitionCapacity.maxPurchasePrice)}</p>
+                        </div>
+                        {acquisitionCapacity.targetPurchasePrice && (
+                          <Badge variant={acquisitionCapacity.meetsTarget ? 'default' : 'destructive'}>
+                            {acquisitionCapacity.meetsTarget ? 'Target achievable' : `Short ${formatCurrency(acquisitionCapacity.shortfallToTarget || 0)}`}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div><span className="text-muted-foreground">Loan available</span><p className="font-medium">{formatCurrency(acquisitionCapacity.loanAvailableForPurchase)}</p></div>
+                        <div><span className="text-muted-foreground">Cash available</span><p className="font-medium">{formatCurrency(acquisitionCapacity.cashAvailable)}</p></div>
+                        <div><span className="text-muted-foreground">Stamp duty</span><p className="font-medium">{formatCurrency(acquisitionCapacity.stampDuty)}</p></div>
+                        <div><span className="text-muted-foreground">LMI</span><p className="font-medium">{formatCurrency(acquisitionCapacity.lmi)}</p></div>
+                      </div>
+                      {acquisitionCapacity.targetPurchasePrice && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-muted-foreground">Loan required</span><p className="font-medium">{formatCurrency(acquisitionCapacity.loanRequiredForPurchase || 0)}</p></div>
+                          <div><span className="text-muted-foreground">Net cash after settlement</span><p className={`font-medium ${(acquisitionCapacity.netCashAfterSettlement || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{formatCurrency(acquisitionCapacity.netCashAfterSettlement || 0)}</p></div>
+                        </div>
+                      )}
+                      {(acquisitionCapacity.notes ?? []).length > 0 && (
+                        <ul className="space-y-1 text-[11px] text-muted-foreground">
+                          {(acquisitionCapacity.notes ?? []).slice(-3).map((note, idx) => <li key={idx}>• {note}</li>)}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </>
@@ -2193,8 +2586,6 @@ export function StrategyScenarioModeling({
           </CollapsibleContent>
         </Collapsible>
       </Card>
-
-      <Separator />
 
       {/* ═══ IMPACT SUMMARY ═══ */}
 
@@ -2462,6 +2853,22 @@ export function StrategyScenarioModeling({
             </p>
           )}
 
+          {validationIssues.length > 0 && (
+            <div className={`p-3 rounded-lg border space-y-2 ${hasBlockingValidationIssues ? 'bg-destructive/10 border-destructive/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <AlertTriangle className={`h-4 w-4 ${hasBlockingValidationIssues ? 'text-destructive' : 'text-amber-600'}`} />
+                Scenario validation {hasBlockingValidationIssues ? 'requires action' : 'notes'}
+              </div>
+              <ul className="space-y-1 text-xs">
+                {validationIssues.map((issue, idx) => (
+                  <li key={`${issue.deltaId}-${idx}`} className={issue.severity === 'error' ? 'text-destructive' : 'text-muted-foreground'}>
+                    <span className="font-medium uppercase">{issue.severity}</span>: {issue.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Save & Apply Actions */}
           {hasAnyStrategy && (
             <div className="space-y-2 pt-2">
@@ -2475,7 +2882,7 @@ export function StrategyScenarioModeling({
                     className="h-9 text-sm"
                     onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
                   />
-                  <Button size="sm" onClick={handleSavePreset}>
+                  <Button size="sm" onClick={handleSavePreset} disabled={hasBlockingValidationIssues}>
                     <Save className="h-3.5 w-3.5 mr-1" />
                     Save
                   </Button>
@@ -2498,10 +2905,102 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity)}
+                      disabled={hasBlockingValidationIssues}
+                      onClick={() => {
+                        if (hasBlockingValidationIssues) {
+                          toast.error('Resolve blocking scenario validation errors before applying.');
+                          return;
+                        }
+                        try {
+                          const name = scenarioName.trim() || 'Current What-If Scenario';
+                          const createdAt = new Date().toISOString();
+                          onApplyScenario(scenarioInputs, totalAccessibleEquity, {
+                            id: `applied-${Date.now()}`,
+                            name,
+                            isBase: false,
+                            createdAt,
+                            adjustedInputs: { ...scenarioInputs },
+                            result: scenarioResult,
+                            accessibleEquity: totalAccessibleEquity,
+                            acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+                            scenarioDeltas: appliedDeltas,
+                            validationIssues,
+                            capitalLedger,
+                            capitalAllocations: [...capitalAllocations],
+                            acquisition,
+                            replayAudit: buildReplayAudit(name, createdAt),
+                            incomeComponents,
+                            currentLenderProfileId,
+                            hemBenchmark,
+                          });
+                        } catch (err: any) {
+                          console.error('[StrategyScenarioModeling] Apply scenario failed:', err);
+                          toast.error(err?.message || 'Failed to apply scenario');
+                        }
+                      }}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
+                    </Button>
+                  )}
+                  {clientId && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="flex-1"
+                      disabled={hasBlockingValidationIssues}
+                      onClick={async () => {
+                        if (hasBlockingValidationIssues) {
+                          toast.error('Resolve blocking scenario validation errors before exporting.');
+                          return;
+                        }
+                        try {
+                          // Build a transient preset reflecting the current
+                          // strategy state so the PDF shows live what-if numbers
+                          // even before the user clicks Save.
+                          const transientName = scenarioName.trim() || 'Current What-If Scenario';
+                          const transientCreatedAt = new Date().toISOString();
+                          const transient: ScenarioPreset = {
+                            id: `transient-${Date.now()}`,
+                            name: transientName,
+                            isBase: false,
+                            createdAt: transientCreatedAt,
+                            adjustedInputs: { ...scenarioInputs },
+                            result: scenarioResult,
+                            accessibleEquity: totalAccessibleEquity,
+                            acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+                            scenarioDeltas: appliedDeltas,
+                            validationIssues,
+                            capitalLedger,
+                            capitalAllocations: [...capitalAllocations],
+                            acquisition,
+                            replayAudit: buildReplayAudit(transientName, transientCreatedAt),
+                            incomeComponents,
+                            currentLenderProfileId,
+                            hemBenchmark,
+                          };
+                          const merged = [
+                            ...presets,
+                            ...(presets.some(p => p.id === transient.id) ? [] : [transient]),
+                          ];
+                          toast.info('Generating What-If PDF…');
+                          await fetchAndGenerateBorrowingCapacityPDF(
+                            clientId,
+                            clientName || 'Client',
+                            merged,
+                            {
+                              assessment: buildPdfOverrideAssessment(scenarioInputs, scenarioResult),
+                              liabilities,
+                              properties,
+                            },
+                          );
+                        } catch (err: any) {
+                          toast.error(`PDF export failed: ${err?.message || 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                      Export PDF
                     </Button>
                   )}
                 </div>
@@ -2512,26 +3011,39 @@ export function StrategyScenarioModeling({
       </Card>
 
       {/* ═══ SAVED PRESETS ═══ */}
-      {presets.length > 0 && (
+      {(presets?.length ?? 0) > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FolderOpen className="h-4 w-4 text-primary" />
-              Saved Scenarios ({presets.length})
+              Saved Scenarios ({presets?.length ?? 0})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {presets.map(preset => (
+            {(presets ?? []).map(preset => {
+              const drift = presetDriftById.get(preset.id);
+              return (
               <div
                 key={preset.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors ${drift?.isStale ? 'border-amber-500/40 bg-amber-500/5' : ''}`}
               >
-                <div>
-                  <p className="text-sm font-medium">{preset.name}</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium">{preset.name}</p>
+                    {preset.replayAudit?.schemaVersion === 2 && <Badge variant="outline" className="text-[10px]">Replay v2</Badge>}
+                    {preset.acquisition?.enabled && <Badge variant="secondary" className="text-[10px]">Acquisition</Badge>}
+                    {drift?.isStale && <Badge variant="warning" className="text-[10px]">Stale base data</Badge>}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Capacity: {formatCapacity(preset.result.borrowingCapacity)}
                     {!preset.isBase && ` · Saved ${new Date(preset.createdAt).toLocaleDateString()}`}
+                    {preset.replayAudit?.baseAssessmentId && ` · Base ${preset.replayAudit.baseAssessmentId.slice(0, 8)}`}
                   </p>
+                  {drift?.isStale && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                      Base data changed: {drift.changed.filter(k => k !== 'combined').join(', ')}. Load as historical snapshot or re-save after review.
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   {onApplyScenario && (
@@ -2556,7 +3068,8 @@ export function StrategyScenarioModeling({
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
