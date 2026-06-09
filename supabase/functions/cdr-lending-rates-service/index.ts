@@ -662,7 +662,7 @@ Deno.serve(async (req) => {
       // Kick off all CDR fetches concurrently
       const cdrPromises = Object.entries(CDR_LENDERS).map(async ([id, config]) => {
         try {
-          const rates = await withTimeout(
+          const result = await withTimeout(
             fetchLenderProducts(id, {
               baseUrl: config.baseUrl,
               productVersion: config.productVersion,
@@ -671,15 +671,26 @@ Deno.serve(async (req) => {
             PER_LENDER_TIMEOUT_MS,
             id
           );
+          const rates = result.rates;
           let cached = false;
           if (rates.length > 0) {
             cached = await setCachedRates(supabase, id, rates);
           }
-          console.log(`[CDR] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
-          return { lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached };
+          console.log(`[CDR] Refresh ${id}: ${rates.length} rates via ${result.usedBaseUrl}, cached: ${cached}`);
+          return {
+            lenderId: id,
+            lenderName: config.name,
+            success: rates.length > 0,
+            rateCount: rates.length,
+            cached,
+            usedBaseUrl: result.usedBaseUrl,
+            httpStatus: result.status,
+            error: rates.length === 0 ? (result.error || `No products (status ${result.status})`) : undefined,
+          };
         } catch (error: any) {
-          console.error(`[CDR] Failed to refresh ${id}:`, error?.message || error);
-          return { lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false };
+          const msg = error?.message || String(error);
+          console.error(`[CDR] Failed to refresh ${id}:`, msg);
+          return { lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false, error: msg };
         }
       });
 
@@ -691,8 +702,9 @@ Deno.serve(async (req) => {
           console.log(`[manual] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
           return { lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached };
         } catch (error: any) {
-          console.error(`[manual] Failed to refresh ${id}:`, error?.message || error);
-          return { lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false };
+          const msg = error?.message || String(error);
+          console.error(`[manual] Failed to refresh ${id}:`, msg);
+          return { lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false, error: msg };
         }
       });
 
