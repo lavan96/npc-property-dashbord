@@ -25,11 +25,12 @@ export const BindableNumberSchema = z.union([z.number(), z.string()]);
 // CSS URL) via `cssUrl`, or a direct font-file `src` for self-hosting.
 export const FontFaceSchema = z.object({
   family: z.string(),                     // e.g. "Playfair Display"
-  cssUrl: z.string().url().optional(),    // https://fonts.googleapis.com/css2?...
-  src: z.string().url().optional(),       // direct .woff2 / .otf
+  cssUrl: z.string().optional(),          // https://fonts.googleapis.com/css2?...  (or data:)
+  src: z.string().optional(),             // direct .woff2/.otf URL, OR a data: URL (R0 — embedded/captured font)
   weight: z.union([z.number(), z.string()]).optional(),
   style: z.enum(['normal', 'italic']).optional(),
   display: z.enum(['auto', 'swap', 'block', 'fallback', 'optional']).optional(),
+  source: z.enum(['url', 'embedded']).optional(),   // 'embedded' = captured from a reference PDF/image (data: src)
 });
 export type FontFace = z.infer<typeof FontFaceSchema>;
 
@@ -212,6 +213,17 @@ export const TextOverlaySchema = BaseOverlay.extend({
   letterSpacing: z.number().default(0),
   // Phase 5 — advanced typography (all optional, additive)
   rich: z.boolean().optional(),                                   // interpret content as HTML
+  // Reconstruction (R0) — precise weight + per-run styling captured from a source PDF/image.
+  fontWeightNumeric: z.number().int().min(100).max(900).optional(), // exact weight (renderer prefers this)
+  runs: z.array(z.object({
+    text: z.string(),
+    fontFamily: z.string().optional(),
+    fontSize: z.number().optional(),
+    fontWeight: z.union([z.number(), z.enum(['normal', 'bold'])]).optional(),
+    fontStyle: z.enum(['normal', 'italic']).optional(),
+    color: BindableColorSchema.optional(),
+    letterSpacing: z.number().optional(),
+  })).optional(),                                                 // rich-text runs: per-span color/font/weight
   textDecoration: z.enum(['none','underline','line-through','overline']).optional(),
   textTransform: z.enum(['none','uppercase','lowercase','capitalize','small-caps']).optional(),
   textShadow: z.string().optional(),                              // raw CSS
@@ -336,12 +348,31 @@ export const ShapeOverlaySchema = BaseOverlay.extend({
   borderRadius: z.number().default(0),
 });
 
+// Reconstruction (R0) — editable vector geometry (icons/logos/dividers captured as SVG paths).
+export const VectorPathSchema = z.object({
+  d: z.string(),                                  // SVG path data
+  fill: BindableColorSchema.optional(),
+  stroke: BindableColorSchema.optional(),
+  strokeWidth: z.number().optional(),
+  fillRule: z.enum(['nonzero', 'evenodd']).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+});
+export type VectorPath = z.infer<typeof VectorPathSchema>;
+
+export const VectorOverlaySchema = BaseOverlay.extend({
+  type: z.literal('vector'),
+  viewBox: z.string().default('0 0 100 100'),
+  preserveAspectRatio: z.string().optional(),     // default xMidYMid meet
+  paths: z.array(VectorPathSchema).default([]),
+});
+
 export const OverlaySchema = z.discriminatedUnion('type', [
   TextOverlaySchema,
   ImageOverlaySchema,
   ShapeOverlaySchema,
   TextOnPathOverlaySchema,
   TableOverlaySchema,
+  VectorOverlaySchema,
 ]);
 
 export type Overlay = z.infer<typeof OverlaySchema>;

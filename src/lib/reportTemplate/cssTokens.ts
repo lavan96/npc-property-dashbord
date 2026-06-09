@@ -58,10 +58,13 @@ export function tokensToFontFaceCss(tokens: Tokens): string {
       continue;
     }
     if (f?.src && f?.family) {
-      const fmt = /\.woff2(\?|$)/i.test(f.src) ? 'woff2'
-        : /\.woff(\?|$)/i.test(f.src) ? 'woff'
-        : /\.otf(\?|$)/i.test(f.src) ? 'opentype'
-        : /\.ttf(\?|$)/i.test(f.src) ? 'truetype' : '';
+      // Match both file extensions (.woff2) and data: MIME types (data:font/woff2)
+      // so embedded/captured fonts (R0, data: src) get the right format() hint.
+      const src = String(f.src);
+      const fmt = /woff2/i.test(src) ? 'woff2'
+        : /woff/i.test(src) ? 'woff'
+        : /(otf|opentype)/i.test(src) ? 'opentype'
+        : /(ttf|truetype)/i.test(src) ? 'truetype' : '';
       declarations.push(`@font-face {
   font-family: '${f.family}';
   src: url('${f.src}')${fmt ? ` format('${fmt}')` : ''};

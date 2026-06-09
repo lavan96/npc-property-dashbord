@@ -130,7 +130,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       // Always restore base fields the editor sets even when ps had a value
       for (const k of ['type','id','x','y','width','height','rotation','opacity','content']) o[k] = raw[k];
       const text = resolveBindable(o.content, ctx);
-      if (!text && !o.rich) return '';
+      if (!text && !o.rich && !(Array.isArray(o.runs) && o.runs.length)) return '';
       const size = resolveBindableNumber(o.fontSize, ctx, 12);
       const color = resolveBindableColor(o.color, ctx, '#000000');
       const family = resolveTokenReference(o.fontFamily, ctx) || 'Helvetica';
@@ -145,7 +145,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
         `color:${color}`,
         `font-family:${esc(family)}`,
         `font-size:${size}pt`,
-        `font-weight:${o.fontWeight ?? 'normal'}`,
+        `font-weight:${o.fontWeightNumeric ?? o.fontWeight ?? 'normal'}`,
         `font-style:${o.fontStyle ?? 'normal'}`,
         `text-align:${o.align ?? 'left'}`,
         `line-height:${o.lineHeight ?? 1.3}`,
@@ -195,7 +195,22 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
         return `${esc(match[1])}<span style="${dcStyle}">${esc(match[2])}</span>${esc(match[3]).replace(/\n/g,'<br/>')}`;
       };
       let inner: string;
-      if (o.rich) {
+      if (Array.isArray(o.runs) && o.runs.length) {
+        // R0 — rich-text runs: per-span colour/font/weight captured from a source.
+        inner = o.runs.map((run: any) => {
+          const rc = run.color ? resolveBindableColor(run.color, ctx, color) : color;
+          const rf = run.fontFamily ? (resolveTokenReference(run.fontFamily, ctx) || run.fontFamily) : '';
+          const rdecls = [
+            rf ? `font-family:${esc(rf)}` : '',
+            run.fontSize != null ? `font-size:${run.fontSize}pt` : '',
+            run.fontWeight != null ? `font-weight:${run.fontWeight}` : '',
+            run.fontStyle ? `font-style:${run.fontStyle}` : '',
+            `color:${rc}`,
+            run.letterSpacing != null ? `letter-spacing:${run.letterSpacing}pt` : '',
+          ].filter(Boolean).join(';');
+          return `<span style="${rdecls}">${esc(String(run.text ?? '')).replace(/\n/g, '<br/>')}</span>`;
+        }).join('');
+      } else if (o.rich) {
         inner = String(text ?? '');
       } else {
         const paras = String(text).split(/\n{2,}/);
@@ -228,6 +243,26 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
         return `<div style="${base}border-top:${sw}pt solid ${stroke};"></div>`;
       }
       return `<div style="${base}background:${fill};border:${sw}pt solid ${stroke};border-radius:${radius};"></div>`;
+    }
+    case 'vector': {
+      // R0 — editable vector geometry (icons/logos captured as SVG paths).
+      const o: any = overlay;
+      const paths = Array.isArray(o.paths) ? o.paths : [];
+      const inner = paths.map((p: any) => {
+        const pFill = p.fill ? resolveBindableColor(p.fill, ctx, 'none') : 'none';
+        const pStroke = p.stroke ? resolveBindableColor(p.stroke, ctx, 'none') : 'none';
+        const attrs = [
+          `d="${esc(String(p.d ?? ''))}"`,
+          `fill="${pFill}"`,
+          `stroke="${pStroke}"`,
+          p.strokeWidth != null ? `stroke-width="${p.strokeWidth}"` : '',
+          p.fillRule ? `fill-rule="${p.fillRule}"` : '',
+          p.opacity != null ? `opacity="${p.opacity}"` : '',
+        ].filter(Boolean).join(' ');
+        return `<path ${attrs}/>`;
+      }).join('');
+      const par = esc(String(o.preserveAspectRatio ?? 'xMidYMid meet'));
+      return `<svg viewBox="${esc(String(o.viewBox ?? '0 0 100 100'))}" preserveAspectRatio="${par}" style="${base}">${inner}</svg>`;
     }
     case 'textOnPath': {
       const o: any = overlay;
