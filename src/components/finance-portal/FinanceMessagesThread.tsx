@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 export interface ThreadMessage {
   id: string;
   thread_id: string;
-  sender_type: 'partner' | 'staff';
+  sender_type: 'partner' | 'staff' | 'client';
   sender_name: string | null;
   body: string;
   attachment_path: string | null;
@@ -198,7 +198,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                   )}>
                     {!mine && (
                       <div className="text-[10px] uppercase opacity-70 mb-1">
-                        {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : 'Finance Partner')}
+                        {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : m.sender_type === 'client' ? 'Client' : 'Finance Partner')}
                       </div>
                     )}
                     <div>{m.body}</div>

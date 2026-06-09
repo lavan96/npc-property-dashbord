@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
-import { usePortalUnifiedInbox, usePortalUpdateData } from '@/hooks/usePortalData';
+import { usePortalUnifiedInbox, usePortalUpdateData, usePortalSendFinanceReply } from '@/hooks/usePortalData';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MessageSquare, Send, Loader2, Headphones,
@@ -45,14 +46,20 @@ export default function PortalMessages() {
   const { user } = usePortalAuth();
   const { data, isLoading } = usePortalUnifiedInbox();
   const updateMutation = usePortalUpdateData();
+  const financeReplyMutation = usePortalSendFinanceReply();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
+  const [replyRoute, setReplyRoute] = useState<'command' | 'finance'>('command');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayName = smartCapitalize(user?.name);
   const serverMessages = data?.messages || [];
+  const latestFinanceThreadId = useMemo(() => {
+    const msg = serverMessages.find((m: any) => m.kind === 'finance' && m.thread_id);
+    return msg?.thread_id as string | undefined;
+  }, [serverMessages]);
 
   useEffect(() => {
     if (localMessages.length === 0) return;
@@ -84,7 +91,9 @@ export default function PortalMessages() {
 
     setSending(true);
     try {
-      const response = await updateMutation.mutateAsync({
+      const response = replyRoute === 'finance' && latestFinanceThreadId
+        ? await financeReplyMutation.mutateAsync({ thread_id: latestFinanceThreadId, message: text })
+        : await updateMutation.mutateAsync({
         operation: 'insert',
         table: 'client_portal_messages',
         data: {
@@ -93,17 +102,17 @@ export default function PortalMessages() {
           message: text,
         },
       });
-      const saved = response?.data;
+      const saved = response?.data || response?.message;
       if (saved?.id) {
         setLocalMessages((current) => [
           ...current,
           {
-            id: `portal:${saved.id}`,
-            kind: 'portal',
+            id: `${replyRoute === 'finance' ? 'finance' : 'portal'}:${saved.id}`,
+            kind: replyRoute === 'finance' ? 'finance' : 'portal',
             channel: 'portal',
             direction: 'outbound',
             sender_name: saved.sender_name,
-            body: saved.message || text,
+            body: saved.message || saved.body || text,
             subject: null,
             created_at: saved.created_at || new Date().toISOString(),
             is_read: false,
@@ -201,6 +210,20 @@ export default function PortalMessages() {
 
         {/* Input Area */}
         <div className="border-t border-border/60 bg-card/90 p-4 backdrop-blur-sm">
+          {latestFinanceThreadId && (
+            <div className="mb-3">
+              <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Reply route</label>
+              <Select value={replyRoute} onValueChange={(value) => setReplyRoute(value as 'command' | 'finance')}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="command">Command Centre advisory thread</SelectItem>
+                  <SelectItem value="finance">Finance thread (Command Centre visible)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Input
               ref={inputRef}
@@ -225,7 +248,7 @@ export default function PortalMessages() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground/50 mt-2 text-center">
-            Messages are encrypted and only visible to you and your advisor
+            Messages follow NPC visibility controls. Finance replies are automatically visible to Command Centre.
           </p>
         </div>
       </Card>

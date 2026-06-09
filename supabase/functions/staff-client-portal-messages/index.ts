@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     if (operation === 'list_clients_with_messages') {
       const { data: rows, error } = await supabase
         .from('client_portal_messages')
-        .select('client_id, sender_type, message, is_read, created_at, sender_name')
+        .select('client_id, sender_type, message, is_read, created_at, sender_name, visibility_scope, allocation_status, finance_allocated')
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
       const { data, error } = await supabase
         .from('client_portal_messages')
-        .select('id, client_id, sender_type, sender_name, message, is_read, read_at, is_internal, created_at')
+        .select('id, client_id, sender_type, sender_name, message, is_read, read_at, is_internal, created_at, visibility_scope, thread_type, allocation_status, finance_allocated, permission_status')
         .eq('client_id', client_id)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -122,11 +122,23 @@ Deno.serve(async (req) => {
     // ── send staff reply ──
     // is_internal=true stores a staff-only note (never shown to the client).
     if (operation === 'send_reply') {
-      const { client_id, message, is_internal } = body;
+      const { client_id, message, is_internal, visibility_scope, allocation_status } = body;
       const trimmed = (message || '').toString().trim();
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
       if (!trimmed) return jsonResponse({ error: 'message required' }, 400);
       if (trimmed.length > 5000) return jsonResponse({ error: 'Message too long (max 5000)' }, 400);
+
+      const financeAllocated = ['finance_action_required', 'finance_review_required', 'finance_input_required', 'allocate_to_finance'].includes(allocation_status);
+      const scope = is_internal === true
+        ? 'internal_command_only'
+        : financeAllocated || visibility_scope === 'command_client_with_finance_allocated'
+          ? 'command_client_with_finance_allocated'
+          : 'command_client_private';
+      const permissionStatus = scope === 'command_client_with_finance_allocated'
+        ? { command_centre: 'full', client_portal: 'granted', finance_portal: 'thread_granted' }
+        : scope === 'internal_command_only'
+          ? { command_centre: 'full', client_portal: 'blocked', finance_portal: 'blocked' }
+          : { command_centre: 'full', client_portal: 'granted', finance_portal: 'blocked' };
 
       const { data, error } = await supabase
         .from('client_portal_messages')
@@ -137,10 +149,102 @@ Deno.serve(async (req) => {
           message: trimmed,
           is_read: false,
           is_internal: is_internal === true,
+          visibility_scope: scope,
+          thread_type: scope === 'command_client_with_finance_allocated' ? 'command_client_allocated' : scope === 'internal_command_only' ? 'internal_command' : 'command_client',
+          allocation_status: financeAllocated ? allocation_status : 'none',
+          finance_allocated: financeAllocated,
+          command_owner_user_id: auth.userId,
+          permission_status: permissionStatus,
         })
         .select()
         .single();
       if (error) throw error;
+
+      if (scope !== 'internal_command_only') {
+        await supabase.from('client_portal_notifications').insert({
+          client_id,
+          title: financeAllocated ? 'New message with finance allocation' : 'New message from Command Centre',
+          message: trimmed.slice(0, 140),
+          type: 'info',
+          category: 'message',
+          action_url: '/portal/messages',
+          metadata: { message_id: data.id, visibility_scope: scope, allocation_status: financeAllocated ? allocation_status : 'none' },
+        });
+      }
+
+      if (financeAllocated) {
+        const { data: assignment } = await supabase
+          .from('finance_portal_client_assignments')
+          .select('finance_user_id, assigned_at')
+          .eq('client_id', client_id)
+          .order('assigned_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (assignment?.finance_user_id) {
+          const { data: existingThread } = await supabase
+            .from('finance_portal_threads')
+            .select('id')
+            .eq('client_id', client_id)
+            .eq('finance_user_id', assignment.finance_user_id)
+            .maybeSingle();
+
+          let threadId = existingThread?.id;
+          if (!threadId) {
+            const { data: createdThread } = await supabase
+              .from('finance_portal_threads')
+              .insert({
+                client_id,
+                finance_user_id: assignment.finance_user_id,
+                visibility_scope: 'command_client_with_finance_allocated',
+                thread_type: 'command_client_allocated',
+                allocation_status,
+                finance_allocated: true,
+                command_owner_user_id: auth.userId,
+                permission_status: permissionStatus,
+              })
+              .select('id')
+              .single();
+            threadId = createdThread?.id;
+          } else {
+            await supabase.from('finance_portal_threads').update({
+              visibility_scope: 'command_client_with_finance_allocated',
+              thread_type: 'command_client_allocated',
+              allocation_status,
+              finance_allocated: true,
+              command_owner_user_id: auth.userId,
+              permission_status: permissionStatus,
+            }).eq('id', threadId);
+          }
+
+          await supabase.from('finance_portal_notifications').insert({
+            portal_user_id: assignment.finance_user_id,
+            client_id,
+            notification_type: allocation_status,
+            title: 'Finance allocation from Command Centre',
+            body: trimmed.slice(0, 140),
+            link_path: '/finance/messages',
+            metadata: { client_message_id: data.id, thread_id: threadId, allocation_status },
+          });
+
+          await supabase.from('message_governance_log').insert({
+            event_type: 'thread_routed',
+            message_id: data.id,
+            source_table: 'client_portal_messages',
+            thread_id: threadId,
+            client_id,
+            sender_user_id: auth.userId,
+            sender_portal: 'command_centre',
+            recipient_portals: ['client_portal', 'finance_portal'],
+            visibility_scope: 'command_client_with_finance_allocated',
+            thread_type: 'command_client_allocated',
+            allocation_status,
+            notification_status: { finance_portal: 'queued', client_portal: 'queued' },
+            permission_status: permissionStatus,
+          });
+        }
+      }
+
       return jsonResponse({ success: true, message: data });
     }
 

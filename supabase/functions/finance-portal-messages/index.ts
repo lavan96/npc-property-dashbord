@@ -106,8 +106,10 @@ Deno.serve(async (req) => {
 
     // ── Resolve actor (partner vs staff) ──
     const financeToken = extractFinancePortalToken(req.headers, body);
+    const portalToken = req.headers.get('x-portal-session-token') || body?.portal_session_token || null;
     let actor: { type: 'partner'; portalUserId: string; email: string; name: string }
              | { type: 'staff'; userId: string; username: string }
+             | { type: 'client'; portalUserId: string; clientId: string; name: string }
              | null = null;
 
     if (financeToken) {
@@ -127,6 +129,23 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Session expired' }, 401, corsHeaders);
       }
       actor = { type: 'partner', portalUserId: portalUser.id, email: portalUser.email, name: portalUser.email };
+    } else if (portalToken) {
+      const { data: session } = await supabase
+        .from('client_portal_sessions')
+        .select('*, client_portal_users:user_id ( id, client_id, status, email )')
+        .eq('session_token', portalToken)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      const portalUser = (session as any)?.client_portal_users;
+      if (!portalUser || portalUser.status !== 'active') {
+        return jsonResponse({ error: 'Invalid or expired client session' }, 401, corsHeaders);
+      }
+      actor = {
+        type: 'client',
+        portalUserId: portalUser.id,
+        clientId: portalUser.client_id,
+        name: portalUser.email || 'Client',
+      };
     } else {
       const auth = await verifyAuth(supabase, req.headers, body);
       if (auth.error || !auth.userId) {
@@ -172,7 +191,7 @@ Deno.serve(async (req) => {
         .from('finance_portal_threads')
         .select(`
           id, client_id, finance_user_id, subject, last_message_at, last_message_preview,
-          unread_count_partner, unread_count_staff, is_archived, created_at,
+          unread_count_partner, unread_count_staff, is_archived, created_at, visibility_scope, thread_type, allocation_status, finance_allocated,
           clients:client_id (id, primary_first_name, primary_surname, secondary_first_name, secondary_surname),
           finance_portal_users:finance_user_id (id, email)
         `)
@@ -180,7 +199,11 @@ Deno.serve(async (req) => {
         .limit(200);
 
       if (actor.type === 'partner') {
-        query = query.eq('finance_user_id', actor.portalUserId);
+        query = query.eq('finance_user_id', actor.portalUserId)
+          .in('visibility_scope', ['command_finance_private', 'command_client_with_finance_allocated', 'finance_client_with_command_visibility']);
+      } else if (actor.type === 'client') {
+        query = query.eq('client_id', actor.clientId)
+          .in('visibility_scope', ['finance_client_with_command_visibility', 'command_client_with_finance_allocated']);
       } else if (body.client_id) {
         query = query.eq('client_id', body.client_id);
       } else if (body.finance_user_id) {
@@ -208,7 +231,8 @@ Deno.serve(async (req) => {
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400, corsHeaders);
 
       let fuId = actor.type === 'partner' ? actor.portalUserId : finance_user_id;
-      if (!fuId && actor.type === 'staff') {
+      if (actor.type === 'client' && client_id !== actor.clientId) return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      if (!fuId && (actor.type === 'staff' || actor.type === 'client')) {
         const { data: assignment } = await supabase
           .from('finance_portal_client_assignments')
           .select('finance_user_id, assigned_at')
@@ -234,7 +258,17 @@ Deno.serve(async (req) => {
 
       const { data: created, error } = await supabase
         .from('finance_portal_threads')
-        .insert({ client_id, finance_user_id: fuId, subject: subject?.slice(0, 200) || null })
+        .insert({
+          client_id,
+          finance_user_id: fuId,
+          subject: subject?.slice(0, 200) || null,
+          visibility_scope: body.visibility_scope || 'command_finance_private',
+          thread_type: body.thread_type || 'command_finance',
+          allocation_status: body.allocation_status || 'none',
+          finance_allocated: body.finance_allocated === true,
+          command_owner_user_id: actor.type === 'staff' ? actor.userId : null,
+          permission_status: body.permission_status || { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
+        })
         .select()
         .single();
       if (error) throw error;
@@ -248,11 +282,14 @@ Deno.serve(async (req) => {
 
       const { data: thread } = await supabase
         .from('finance_portal_threads')
-        .select('id, client_id, finance_user_id')
+        .select('id, client_id, finance_user_id, visibility_scope')
         .eq('id', thread_id)
         .maybeSingle();
       if (!thread) return jsonResponse({ error: 'Thread not found' }, 404, corsHeaders);
       if (actor.type === 'partner' && thread.finance_user_id !== actor.portalUserId) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      }
+      if (actor.type === 'client' && (thread.client_id !== actor.clientId || !['finance_client_with_command_visibility', 'command_client_with_finance_allocated'].includes(thread.visibility_scope))) {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
@@ -273,7 +310,7 @@ Deno.serve(async (req) => {
 
       const { data: thread } = await supabase
         .from('finance_portal_threads')
-        .select('id, finance_user_id')
+        .select('id, client_id, finance_user_id, visibility_scope')
         .eq('id', thread_id)
         .maybeSingle();
       if (!thread) return jsonResponse({ error: 'Thread not found' }, 404, corsHeaders);
@@ -281,16 +318,24 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
+      if (actor.type === 'client' && (thread.client_id !== actor.clientId || !['finance_client_with_command_visibility', 'command_client_with_finance_allocated'].includes(thread.visibility_scope))) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      }
+
       const updates: any = actor.type === 'partner'
         ? { unread_count_partner: 0 }
-        : { unread_count_staff: 0 };
+        : actor.type === 'staff'
+          ? { unread_count_staff: 0 }
+          : {};
       await supabase.from('finance_portal_threads').update(updates).eq('id', thread_id);
 
       const msgUpdate = actor.type === 'partner'
         ? { is_read_by_partner: true, read_by_partner_at: new Date().toISOString() }
-        : { is_read_by_staff: true, read_by_staff_at: new Date().toISOString() };
+        : actor.type === 'staff'
+          ? { is_read_by_staff: true, read_by_staff_at: new Date().toISOString() }
+          : null;
       const filterField = actor.type === 'partner' ? 'is_read_by_partner' : 'is_read_by_staff';
-      await supabase
+      if (msgUpdate) await supabase
         .from('finance_portal_messages')
         .update(msgUpdate)
         .eq('thread_id', thread_id)
@@ -309,23 +354,36 @@ Deno.serve(async (req) => {
 
       const { data: thread } = await supabase
         .from('finance_portal_threads')
-        .select('id, client_id, finance_user_id')
+        .select('id, client_id, finance_user_id, visibility_scope, thread_type, allocation_status')
         .eq('id', thread_id)
         .maybeSingle();
       if (!thread) return jsonResponse({ error: 'Thread not found' }, 404, corsHeaders);
       if (actor.type === 'partner' && thread.finance_user_id !== actor.portalUserId) {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
+      if (actor.type === 'client' && (thread.client_id !== actor.clientId || !['finance_client_with_command_visibility', 'command_client_with_finance_allocated'].includes(thread.visibility_scope))) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      }
 
+      const requestedScope = body.visibility_scope || (actor.type === 'partner' || actor.type === 'client' ? 'finance_client_with_command_visibility' : thread.visibility_scope || 'command_finance_private');
       const insertRow: any = {
         thread_id,
         client_id: thread.client_id,
         sender_type: actor.type,
-        sender_name: actor.type === 'partner' ? actor.name : actor.username,
+        sender_name: actor.type === 'partner' ? actor.name : actor.type === 'staff' ? actor.username : actor.name,
         body: trimmed || '(attachment)',
+        visibility_scope: requestedScope,
+        thread_type: body.thread_type || (requestedScope === 'finance_client_with_command_visibility' ? 'finance_client' : thread.thread_type || 'command_finance'),
+        allocation_status: body.allocation_status || thread.allocation_status || 'none',
+        command_owner_user_id: actor.type === 'staff' ? actor.userId : null,
+        permission_status: requestedScope === 'finance_client_with_command_visibility'
+          ? { command_centre: 'full', finance_portal: 'granted', client_portal: 'granted' }
+          : requestedScope === 'command_client_with_finance_allocated'
+            ? { command_centre: 'full', finance_portal: 'thread_granted', client_portal: 'granted' }
+            : { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
       };
       if (actor.type === 'partner') insertRow.finance_user_id = actor.portalUserId;
-      else insertRow.staff_user_id = actor.userId;
+      else if (actor.type === 'staff') insertRow.staff_user_id = actor.userId;
 
       if (attachment && attachment.path) {
         insertRow.attachment_path = attachment.path;
@@ -341,13 +399,23 @@ Deno.serve(async (req) => {
         .single();
       if (error) throw error;
 
+      if (requestedScope !== thread.visibility_scope) {
+        await supabase.from('finance_portal_threads').update({
+          visibility_scope: requestedScope,
+          thread_type: insertRow.thread_type,
+          allocation_status: insertRow.allocation_status,
+          finance_allocated: requestedScope === 'command_client_with_finance_allocated',
+          permission_status: insertRow.permission_status,
+        }).eq('id', thread_id);
+      }
+
       // Audit
       try {
         await supabase.from('finance_portal_activity_log').insert({
           finance_user_id: actor.type === 'partner' ? actor.portalUserId : thread.finance_user_id,
           client_id: thread.client_id,
           actor_user_id: actor.type === 'staff' ? actor.userId : null,
-          actor_type: actor.type === 'partner' ? 'finance_partner' : 'admin',
+          actor_type: actor.type === 'partner' ? 'finance_partner' : actor.type === 'client' ? 'client' : 'admin',
           action: 'message_sent',
           entity_type: 'finance_portal_message',
           entity_id: message.id,
@@ -368,8 +436,29 @@ Deno.serve(async (req) => {
           link_path: `/finance/clients/${thread.client_id}?tab=messages`,
           metadata: { thread_id, message_id: message.id },
         });
+      } else if (actor.type === 'partner') {
+        await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
+        if (requestedScope === 'finance_client_with_command_visibility') {
+          await supabase.from('client_portal_notifications').insert({
+            client_id: thread.client_id,
+            title: 'New finance message',
+            message: trimmed.slice(0, 140) || 'Sent you an attachment',
+            type: 'info',
+            category: 'message',
+            action_url: '/portal/messages',
+            metadata: { thread_id, message_id: message.id, source: 'finance_portal' },
+          });
+        }
       } else {
         await ensureStaffFinanceMessageNotification(supabase, message, thread_id);
+        await notifyFinancePortalAssignees({
+          client_id: thread.client_id,
+          notification_type: 'client_finance_reply',
+          title: 'Client replied to finance',
+          body: trimmed.slice(0, 140) || 'Client sent a reply',
+          link_path: `/finance/messages`,
+          metadata: { thread_id, message_id: message.id, source: 'client_portal' },
+        });
       }
 
       return jsonResponse({ success: true, message }, 200, corsHeaders);
@@ -386,7 +475,7 @@ Deno.serve(async (req) => {
 
       const { data: thread } = await supabase
         .from('finance_portal_threads')
-        .select('id, client_id, finance_user_id')
+        .select('id, client_id, finance_user_id, visibility_scope')
         .eq('id', thread_id)
         .maybeSingle();
       if (!thread) return jsonResponse({ error: 'Thread not found' }, 404, corsHeaders);
