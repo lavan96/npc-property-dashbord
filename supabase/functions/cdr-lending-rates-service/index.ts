@@ -377,8 +377,9 @@ async function fetchLenderProducts(
 ): Promise<{ rates: LendingRate[]; usedBaseUrl: string; error?: string; status: number }> {
   const { baseUrl, productVersion, detailVersion } = config;
 
-  // Build URL attempt list: primary first, then known fallbacks (deduped)
-  const candidates = [baseUrl, ...(BASE_URL_FALLBACKS[lenderId] || [])]
+  // Build URL attempt list: configured primary, live ACCC register URI, then known fallbacks (deduped)
+  const registerBaseUrls = await fetchRegisterBaseUrls(lenderId);
+  const candidates = [baseUrl, ...registerBaseUrls, ...(BASE_URL_FALLBACKS[lenderId] || [])]
     .filter((v, i, a) => a.indexOf(v) === i);
 
   let products: any[] = [];
