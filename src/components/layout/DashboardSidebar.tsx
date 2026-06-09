@@ -37,6 +37,7 @@ import {
   Cpu,
   Coins,
   Factory,
+  Inbox,
 } from 'lucide-react';
 import {
   Sidebar,
