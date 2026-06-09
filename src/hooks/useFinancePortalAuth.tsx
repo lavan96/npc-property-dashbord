@@ -133,6 +133,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
 
   const clearAuthState = () => {
     clearStoredValue(FINANCE_SESSION_KEY);
+    clearStoredValue(FINANCE_AUTHED_AT_KEY);
     setUser(null);
   };
 
