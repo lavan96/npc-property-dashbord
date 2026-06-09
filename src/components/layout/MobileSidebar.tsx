@@ -18,6 +18,7 @@ import {
   Phone,
   MessageSquareText,
   MessageSquare,
+  Inbox,
   FileStack,
   Palette,
   Users,
