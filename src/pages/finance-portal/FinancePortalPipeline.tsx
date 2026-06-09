@@ -38,34 +38,43 @@ export default function FinancePortalPipeline() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // After the first successful load, do not blank the board out with skeletons
+    // on refresh — show a subtle "refreshing" indicator instead so the user
+    // never sees the lanes disappear behind blank boxes.
+    if (hasLoadedOnce) setRefreshing(true);
+    else setLoading(true);
     try {
       const { data, error } = await invokeFinanceFunction('finance-portal-pipeline', { operation: 'kanban_board' });
       if (error) {
         const msg = error.message || 'Failed to load pipeline board';
         setLoadError(msg);
         toast.error(msg);
-        setLanes([]);
+        if (!hasLoadedOnce) setLanes([]);
       } else {
         setLoadError(null);
         setLanes(Array.isArray(data?.lanes) ? data.lanes : []);
+        setHasLoadedOnce(true);
       }
     } catch (e: any) {
       console.error('[Pipeline] load failed', e);
       const msg = e?.message || 'Failed to load pipeline board';
       setLoadError(msg);
       toast.error(msg);
-      setLanes([]);
+      if (!hasLoadedOnce) setLanes([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [invokeFinanceFunction]);
+  }, [invokeFinanceFunction, hasLoadedOnce]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Move a card via either DnD (desktop) or the "Move to…" menu (mobile/touch).
   // Phase 2 #11 — native HTML5 drag-drop does not fire on touch devices, so we expose
