@@ -117,6 +117,42 @@ export default function FinancePortalPurchaseFileDetail() {
   const queryClient = useQueryClient();
   const [savingStatus, setSavingStatus] = useState(false);
   const [tab, setTab] = useState('overview');
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const tabDefs = useMemo(() => ([
+    { key: 'overview', label: 'Overview', icon: Briefcase },
+    { key: 'dates', label: 'Critical Dates', icon: Calendar },
+    { key: 'documents', label: 'Documents', icon: FileText },
+    { key: 'decisions', label: 'Finance Decisions', icon: Lightbulb },
+    { key: 'tasks', label: 'Action Items', icon: ListChecks },
+    { key: 'conditions', label: 'Conditions', icon: ShieldCheck },
+    { key: 'valuation', label: 'Valuation', icon: Wallet },
+    { key: 'risks', label: 'Risks', icon: ShieldAlert },
+    { key: 'runway', label: 'Settlement Runway', icon: Ship },
+    { key: 'borrowing', label: 'Borrowing', icon: Calculator },
+    { key: 'inbox', label: 'Unified Inbox', icon: Inbox },
+    { key: 'activity', label: 'Activity', icon: Activity },
+    { key: 'onboarding', label: 'Onboarding', icon: Users },
+    { key: 'compliance', label: 'Compliance', icon: PackageCheck },
+    { key: 'calculators', label: 'Calculators', icon: Calculator },
+    { key: 'audit', label: 'Audit Trail', icon: FileSearch },
+  ]), []);
+
+  const activeIndex = tabDefs.findIndex(t => t.key === tab);
+  const canGoPrev = activeIndex > 0;
+  const canGoNext = activeIndex >= 0 && activeIndex < tabDefs.length - 1;
+  const goToTab = useCallback((direction: 'prev' | 'next') => {
+    if (activeIndex < 0) return;
+    const next = tabDefs[direction === 'prev' ? activeIndex - 1 : activeIndex + 1];
+    if (next) setTab(next.key);
+  }, [activeIndex, tabDefs]);
+
+  useEffect(() => {
+    const node = tabsScrollRef.current;
+    if (!node || !tab) return;
+    const btn = node.querySelector<HTMLButtonElement>(`button[data-tab-key="${tab}"]`);
+    btn?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [tab]);
 
   const { data: getRes, isLoading } = useQuery({
     queryKey: ['finance-portal-purchase-file', fileId],
@@ -250,24 +286,55 @@ export default function FinancePortalPurchaseFileDetail() {
 
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview"><Briefcase className="h-4 w-4 mr-2" />Overview</TabsTrigger>
-          <TabsTrigger value="dates"><Calendar className="h-4 w-4 mr-2" />Critical Dates</TabsTrigger>
-          <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" />Documents</TabsTrigger>
-          <TabsTrigger value="decisions"><Lightbulb className="h-4 w-4 mr-2" />Finance Decisions</TabsTrigger>
-          <TabsTrigger value="tasks"><ListChecks className="h-4 w-4 mr-2" />Action Items</TabsTrigger>
-          <TabsTrigger value="conditions"><ShieldCheck className="h-4 w-4 mr-2" />Conditions</TabsTrigger>
-          <TabsTrigger value="valuation"><Wallet className="h-4 w-4 mr-2" />Valuation</TabsTrigger>
-          <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-2" />Risks</TabsTrigger>
-          <TabsTrigger value="runway"><Ship className="h-4 w-4 mr-2" />Settlement Runway</TabsTrigger>
-          <TabsTrigger value="borrowing"><Calculator className="h-4 w-4 mr-2" />Borrowing</TabsTrigger>
-          <TabsTrigger value="inbox"><Inbox className="h-4 w-4 mr-2" />Unified Inbox</TabsTrigger>
-          <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
-          <TabsTrigger value="onboarding"><Users className="h-4 w-4 mr-2" />Onboarding</TabsTrigger>
-          <TabsTrigger value="compliance"><PackageCheck className="h-4 w-4 mr-2" />Compliance</TabsTrigger>
-          <TabsTrigger value="calculators"><Calculator className="h-4 w-4 mr-2" />Calculators</TabsTrigger>
-          <TabsTrigger value="audit"><FileSearch className="h-4 w-4 mr-2" />Audit Trail</TabsTrigger>
-        </TabsList>
+        <div className="relative">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+            onClick={() => goToTab('prev')}
+            disabled={!canGoPrev}
+            aria-label="Previous tab"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 h-8 w-8 md:h-9 md:w-9 shadow-sm bg-card"
+            onClick={() => goToTab('next')}
+            disabled={!canGoNext}
+            aria-label="Next tab"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <div className="w-full px-9 md:px-10">
+            <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5 scroll-smooth">
+              {tabDefs.map((t) => {
+                const Icon = t.icon;
+                const isActive = tab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    data-tab-key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={cn(
+                      'flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 border',
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20'
+                        : 'bg-card text-muted-foreground border-border/50 hover:border-primary/20 hover:text-foreground hover:bg-primary/5'
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <TabsContent value="overview">
           <div className="space-y-4">
