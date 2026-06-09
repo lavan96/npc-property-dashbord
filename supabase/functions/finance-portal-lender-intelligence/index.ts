@@ -2,10 +2,9 @@
  * Phase 7.4 — Lender Intelligence
  *
  * Operations:
- *  - list_playbooks                                  → all active playbooks (+ computed stats)
- *  - get_playbook   { lender_key }                   → single playbook + stats
- *  - upsert_playbook { lender_key, lender_label, ... } → create/update
- *  - compare_lenders { lender_keys[], loan_amount }  → side-by-side scoring
+ *  - live_rates                                      → shared Command Centre lender/rate cache
+ *  - list_playbooks/get_playbook/upsert_playbook      → legacy internal playbook maintenance
+ *  - compare_lenders { product_keys[], lender_keys[], loan_amount } → side-by-side rate comparison from shared cache
  *
  * Auth: finance partner session token (x-finance-session-token).
  * Service-role internally to bypass RLS.
@@ -105,7 +104,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { operation = 'list_playbooks' } = body || {};
+    const { operation = 'live_rates' } = body || {};
 
     const token = extractToken(req, body);
     if (!token) return json({ error: 'Session token required' }, 401);
@@ -205,55 +204,80 @@ Deno.serve(async (req) => {
 
     // -----------------------------------------------------------------------
     if (operation === 'compare_lenders') {
-      const keys: string[] = Array.isArray(body?.lender_keys)
-        ? body.lender_keys.map(normalizeKey).filter(Boolean)
-        : [];
+      const keys: string[] = Array.isArray(body?.product_keys)
+        ? body.product_keys.map((v: unknown) => String(v || '')).filter(Boolean)
+        : Array.isArray(body?.lender_keys)
+          ? body.lender_keys.map(normalizeKey).filter(Boolean)
+          : [];
       const loanAmount = Number(body?.loan_amount) || 0;
-      if (!keys.length) return json({ error: 'lender_keys required' }, 400);
+      if (keys.length < 2 || keys.length > 5) {
+        return json({ error: 'Select 2–5 lender products to compare' }, 400);
+      }
 
-      const { data: playbooks } = await supabase
-        .from('lender_playbooks')
-        .select('*')
-        .in('lender_key', keys);
+      const { data: caches, error } = await supabase
+        .from('bank_lending_rates_cache')
+        .select('lender_id, lender_name, rates, fetched_at, expires_at');
+      if (error) return json({ error: error.message }, 500);
 
-      const results = await Promise.all(
-        (playbooks || []).map(async (p: any) => {
-          const stats = await computeTurnaroundStats(supabase, p.lender_key, p.lender_label);
-          const effectiveTurnaround =
-            p.typical_turnaround_days_override ?? stats.median_days_to_approval;
-          // Simple normalized score (lower turnaround + lower rate = higher score)
-          const rateScore =
-            p.rate_band_pa != null ? Math.max(0, 100 - (Number(p.rate_band_pa) - 5) * 20) : 50;
-          const speedScore =
-            effectiveTurnaround != null
-              ? Math.max(0, 100 - effectiveTurnaround * 4)
-              : 50;
-          const approvalScore = stats.approval_rate_pct ?? 50;
-          const compositeScore = Math.round(
-            rateScore * 0.4 + speedScore * 0.35 + approvalScore * 0.25,
-          );
+      const allRates: any[] = [];
+      for (const row of (caches as any[]) || []) {
+        const rates = Array.isArray(row.rates) ? row.rates : [];
+        for (const r of rates) {
+          const productKey = [
+            row.lender_id,
+            r.productId || r.productName || 'product',
+            r.rateType || 'rate',
+            r.loanPurpose || 'purpose',
+            r.repaymentType || 'repayment',
+            r.lvrMin ?? 'min',
+            r.lvrMax ?? 'max',
+          ].join(':');
+          const lenderKey = normalizeKey(row.lender_id || row.lender_name || '');
+          if (!keys.includes(productKey) && !keys.includes(lenderKey)) continue;
 
-          return {
-            lender_key: p.lender_key,
-            lender_label: p.lender_label,
-            rate_band_pa: p.rate_band_pa,
-            rate_notes: p.rate_notes,
-            effective_turnaround_days: effectiveTurnaround,
-            stats,
-            estimated_monthly_repayment:
-              loanAmount > 0 && p.rate_band_pa != null
-                ? Math.round(
-                    (loanAmount * (Number(p.rate_band_pa) / 100 / 12)) /
-                      (1 - Math.pow(1 + Number(p.rate_band_pa) / 100 / 12, -30 * 12)),
-                  )
-                : null,
-            composite_score: compositeScore,
-          };
-        }),
-      );
+          const rate = r.rate != null ? Math.round(Number(r.rate) * 100) / 100 : null;
+          const monthlyRate = rate != null ? rate / 100 / 12 : null;
+          const estimatedMonthlyRepayment = loanAmount > 0 && monthlyRate
+            ? r.repaymentType === 'INTEREST_ONLY'
+              ? Math.round(loanAmount * monthlyRate)
+              : Math.round((loanAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -30 * 12)))
+            : null;
+          const missing_fields = [
+            rate == null ? 'interest rate' : null,
+            r.comparisonRate == null ? 'comparison rate' : null,
+            !r.productName ? 'product name' : null,
+            !(r.lastUpdated || row.fetched_at) ? 'last updated date' : null,
+          ].filter(Boolean);
 
-      results.sort((a, b) => b.composite_score - a.composite_score);
-      return json({ comparison: results });
+          allRates.push({
+            product_key: productKey,
+            lender_id: row.lender_id,
+            lender_name: row.lender_name,
+            product_id: r.productId || null,
+            product_name: r.productName || null,
+            rate,
+            comparison_rate: r.comparisonRate != null ? Math.round(Number(r.comparisonRate) * 100) / 100 : null,
+            rate_type: r.rateType || null,
+            loan_purpose: r.loanPurpose || null,
+            repayment_type: r.repaymentType || null,
+            lvr_min: r.lvrMin ?? null,
+            lvr_max: r.lvrMax ?? null,
+            min_loan: r.minLoanAmount ?? null,
+            max_loan: r.maxLoanAmount ?? null,
+            features: Array.isArray(r.features) ? r.features : [],
+            notes: Array.isArray(r.features) ? r.features.join(', ') : null,
+            last_updated: r.lastUpdated || row.fetched_at,
+            fetched_at: row.fetched_at,
+            expires_at: row.expires_at,
+            source: row.lender_id === 'resimac' ? 'Manual Command Centre rate card' : 'CDR Command Centre cache',
+            status: new Date(row.expires_at) < new Date() ? 'stale' : (missing_fields.length ? 'missing_fields' : 'current'),
+            missing_fields,
+            estimated_monthly_repayment: estimatedMonthlyRepayment,
+          });
+        }
+      }
+
+      return json({ comparison: allRates });
     }
 
     // -----------------------------------------------------------------------
@@ -265,7 +289,7 @@ Deno.serve(async (req) => {
       const rateType = String(body?.rate_type || '').toUpperCase(); // FIXED | VARIABLE
       const lvr = body?.lvr != null ? Number(body.lvr) : null;
       const loanAmount = body?.loan_amount != null ? Number(body.loan_amount) : null;
-      const limit = Math.min(Math.max(Number(body?.limit) || 50, 1), 200);
+      const limit = Math.min(Math.max(Number(body?.limit) || 50, 1), 500);
 
       const { data: caches, error } = await supabase
         .from('bank_lending_rates_cache')
@@ -287,22 +311,43 @@ Deno.serve(async (req) => {
             if (r.minLoanAmount != null && loanAmount < Number(r.minLoanAmount)) continue;
             if (r.maxLoanAmount != null && loanAmount > Number(r.maxLoanAmount)) continue;
           }
+          const roundedRate = r.rate != null ? Math.round(Number(r.rate) * 100) / 100 : null;
+          const missing_fields = [
+            roundedRate == null ? 'interest rate' : null,
+            r.comparisonRate == null ? 'comparison rate' : null,
+            !r.productName ? 'product name' : null,
+            !(r.lastUpdated || row.fetched_at) ? 'last updated date' : null,
+          ].filter(Boolean);
+          const cacheStatus = new Date(row.expires_at) < new Date()
+            ? 'stale'
+            : missing_fields.length
+              ? 'missing_fields'
+              : 'current';
+
           flat.push({
             lender_id: row.lender_id,
             lender_name: row.lender_name,
-            product_name: r.productName,
-            rate: r.rate != null ? Math.round(Number(r.rate) * 100) / 100 : null,
+            product_id: r.productId || null,
+            product_name: r.productName || null,
+            rate: roundedRate,
             comparison_rate:
               r.comparisonRate != null ? Math.round(Number(r.comparisonRate) * 100) / 100 : null,
-            rate_type: r.rateType,
-            loan_purpose: r.loanPurpose,
-            repayment_type: r.repaymentType,
-            lvr_min: r.lvrMin,
-            lvr_max: r.lvrMax,
-            min_loan: r.minLoanAmount,
-            max_loan: r.maxLoanAmount,
+            rate_type: r.rateType || null,
+            loan_purpose: r.loanPurpose || null,
+            repayment_type: r.repaymentType || null,
+            lvr_min: r.lvrMin ?? null,
+            lvr_max: r.lvrMax ?? null,
+            min_loan: r.minLoanAmount ?? null,
+            max_loan: r.maxLoanAmount ?? null,
+            fees: r.fees || null,
+            notes: r.notes || (Array.isArray(r.features) ? r.features.join(', ') : null),
             features: Array.isArray(r.features) ? r.features : [],
             last_updated: r.lastUpdated || row.fetched_at,
+            fetched_at: row.fetched_at,
+            expires_at: row.expires_at,
+            source: row.lender_id === 'resimac' ? 'Manual Command Centre rate card' : 'CDR Command Centre cache',
+            status: cacheStatus,
+            missing_fields,
           });
         }
       }
@@ -310,16 +355,21 @@ Deno.serve(async (req) => {
       flat.sort((a, b) => (a.rate ?? 99) - (b.rate ?? 99));
 
       // Build a lightweight lender summary for grouped views.
-      const byLender = new Map<string, { lender_id: string; lender_name: string; lowest: number | null; count: number }>();
+      const byLender = new Map<string, { lender_id: string; lender_name: string; lowest: number | null; count: number; fetched_at: string | null; expires_at: string | null; status: string }>();
       for (const r of flat) {
         const cur = byLender.get(r.lender_id) || {
           lender_id: r.lender_id,
           lender_name: r.lender_name,
           lowest: null,
           count: 0,
+          fetched_at: r.fetched_at || null,
+          expires_at: r.expires_at || null,
+          status: r.status || 'current',
         };
         cur.count += 1;
         if (r.rate != null && (cur.lowest == null || r.rate < cur.lowest)) cur.lowest = r.rate;
+        if (cur.status !== 'stale' && r.status === 'stale') cur.status = 'stale';
+        if (cur.status === 'current' && r.status === 'missing_fields') cur.status = 'missing_fields';
         byLender.set(r.lender_id, cur);
       }
 
