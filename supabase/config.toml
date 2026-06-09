@@ -726,3 +726,15 @@ verify_jwt = false
 
 [functions.mission-control-catalog]
 verify_jwt = false
+
+[functions.finance-portal-bulk-actions]
+verify_jwt = false
+request_timeout = 120
+
+[functions.finance-portal-nudges]
+verify_jwt = false
+request_timeout = 120
+
+[functions.message-governance]
+verify_jwt = false
+request_timeout = 60

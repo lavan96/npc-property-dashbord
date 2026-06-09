@@ -155,21 +155,53 @@ Deno.serve(async (req) => {
           finance_allocated: financeAllocated,
           command_owner_user_id: auth.userId,
           permission_status: permissionStatus,
+          notification_status: scope === 'internal_command_only'
+            ? {}
+            : financeAllocated
+              ? { client_portal: 'queued', finance_portal: 'queued' }
+              : { client_portal: 'queued' },
         })
         .select()
         .single();
       if (error) throw error;
 
+      const finalNotificationStatus: Record<string, any> = { ...(data.notification_status || {}) };
+
       if (scope !== 'internal_command_only') {
-        await supabase.from('client_portal_notifications').insert({
+        const { error: clientNotifyError } = await supabase.from('client_portal_notifications').insert({
           client_id,
           title: financeAllocated ? 'New message with finance allocation' : 'New message from Command Centre',
           message: trimmed.slice(0, 140),
           type: 'info',
           category: 'message',
           action_url: '/portal/messages',
-          metadata: { message_id: data.id, visibility_scope: scope, allocation_status: financeAllocated ? allocation_status : 'none' },
+          metadata: {
+            client_id,
+            message_id: data.id,
+            visibility_scope: scope,
+            thread_type: scope === 'command_client_with_finance_allocated' ? 'command_client_allocated' : 'command_client',
+            allocation_status: financeAllocated ? allocation_status : 'none',
+          },
         });
+        finalNotificationStatus.client_portal = clientNotifyError ? 'failed' : 'queued';
+        if (clientNotifyError) {
+          console.error('[staff-client-portal-messages] client notification failed', clientNotifyError.message);
+          await supabase.from('message_governance_log').insert({
+            event_type: 'notification_failed',
+            message_id: data.id,
+            source_table: 'client_portal_messages',
+            thread_id: null,
+            client_id,
+            sender_user_id: auth.userId,
+            sender_portal: 'command_centre',
+            recipient_portals: ['client_portal'],
+            visibility_scope: scope,
+            thread_type: scope === 'command_client_with_finance_allocated' ? 'command_client_allocated' : 'command_client',
+            allocation_status: financeAllocated ? allocation_status : 'none',
+            notification_status: { client_portal: 'failed', error: clientNotifyError.message },
+            permission_status: permissionStatus,
+          });
+        }
       }
 
       if (financeAllocated) {
@@ -218,15 +250,23 @@ Deno.serve(async (req) => {
             }).eq('id', threadId);
           }
 
-          await supabase.from('finance_portal_notifications').insert({
+          const { error: financeNotifyError } = await supabase.from('finance_portal_notifications').insert({
             portal_user_id: assignment.finance_user_id,
             client_id,
             notification_type: allocation_status,
             title: 'Finance allocation from Command Centre',
             body: trimmed.slice(0, 140),
             link_path: '/finance/messages',
-            metadata: { client_message_id: data.id, thread_id: threadId, allocation_status },
+            metadata: {
+              client_id,
+              client_message_id: data.id,
+              thread_id: threadId,
+              visibility_scope: 'command_client_with_finance_allocated',
+              thread_type: 'command_client_allocated',
+              allocation_status,
+            },
           });
+          finalNotificationStatus.finance_portal = financeNotifyError ? 'failed' : 'queued';
 
           await supabase.from('message_governance_log').insert({
             event_type: 'thread_routed',
@@ -240,13 +280,35 @@ Deno.serve(async (req) => {
             visibility_scope: 'command_client_with_finance_allocated',
             thread_type: 'command_client_allocated',
             allocation_status,
-            notification_status: { finance_portal: 'queued', client_portal: 'queued' },
+            notification_status: { finance_portal: financeNotifyError ? 'failed' : 'queued', client_portal: finalNotificationStatus.client_portal || 'queued', ...(financeNotifyError ? { error: financeNotifyError.message } : {}) },
+            permission_status: permissionStatus,
+          });
+        } else {
+          finalNotificationStatus.finance_portal = 'no_assigned_finance_user';
+          await supabase.from('message_governance_log').insert({
+            event_type: 'notification_failed',
+            message_id: data.id,
+            source_table: 'client_portal_messages',
+            thread_id: null,
+            client_id,
+            sender_user_id: auth.userId,
+            sender_portal: 'command_centre',
+            recipient_portals: ['finance_portal'],
+            visibility_scope: 'command_client_with_finance_allocated',
+            thread_type: 'command_client_allocated',
+            allocation_status,
+            notification_status: { finance_portal: 'no_assigned_finance_user' },
             permission_status: permissionStatus,
           });
         }
       }
 
-      return jsonResponse({ success: true, message: data });
+      await supabase
+        .from('client_portal_messages')
+        .update({ notification_status: finalNotificationStatus })
+        .eq('id', data.id);
+
+      return jsonResponse({ success: true, message: { ...data, notification_status: finalNotificationStatus } });
     }
 
     return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);

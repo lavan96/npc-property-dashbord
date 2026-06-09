@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Send, Headphones, User as UserIcon, MessageCircle, Lock, Users, Building2 } from 'lucide-react';
+import { Loader2, Send, Headphones, User as UserIcon, MessageCircle, Lock, ShieldCheck } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -27,23 +27,22 @@ interface ClientPortalMessage {
   message: string;
   is_read: boolean;
   is_internal?: boolean;
+  visibility_scope?: string | null;
+  thread_type?: string | null;
+  allocation_status?: string | null;
+  finance_allocated?: boolean | null;
+  notification_status?: Record<string, string> | null;
   created_at: string;
 }
 
-type MessageTarget = 'client' | 'internal' | 'finance';
+type MessageRoute = 'client_only' | 'finance_only' | 'client_finance' | 'internal';
 type FinanceAllocationStatus = 'finance_action_required' | 'finance_review_required' | 'finance_input_required' | 'allocate_to_finance';
 
-const TARGETS: { value: MessageTarget; label: string; icon: typeof Users; hint: string }[] = [
-  { value: 'client', label: 'Client', icon: Users, hint: 'Sends to the client portal — the client will see this.' },
-  { value: 'finance', label: 'Finance', icon: Building2, hint: 'Sends to the assigned finance partner (see the Finance Messages tab).' },
-  { value: 'internal', label: 'Internal', icon: Lock, hint: 'Staff-only note. Not shown to the client or finance partner.' },
-];
-
-const ROUTING_PRESETS: { label: string; targets: MessageTarget[] }[] = [
-  { label: 'Send to Client only', targets: ['client'] },
-  { label: 'Send to Finance only', targets: ['finance'] },
-  { label: 'Send to Client + allocate Finance', targets: ['client', 'finance'] },
-  { label: 'Internal note', targets: ['internal'] },
+const ROUTING_PRESETS: { value: MessageRoute; label: string; description: string }[] = [
+  { value: 'client_only', label: 'Send to Client only', description: 'Client Portal + Command Centre only. Finance is blocked.' },
+  { value: 'finance_only', label: 'Send to Finance only', description: 'Private Command Centre ↔ Finance thread. Client is blocked.' },
+  { value: 'client_finance', label: 'Send to Client + allocate Finance', description: 'Client sees the advisory message; Finance gets access only to the allocated thread.' },
+  { value: 'internal', label: 'Internal note', description: 'Command Centre staff-only note. Client and Finance are blocked.' },
 ];
 
 const FINANCE_ALLOCATION_LABELS: Record<FinanceAllocationStatus, string> = {
@@ -58,6 +57,20 @@ const formatStamp = (iso: string) => {
   if (isToday(d)) return format(d, 'h:mm a');
   if (isYesterday(d)) return `Yesterday ${format(d, 'h:mm a')}`;
   return format(d, 'd MMM, h:mm a');
+};
+
+
+const MESSAGE_SCOPE_LABELS: Record<string, string> = {
+  command_client_private: 'Client only',
+  command_client_with_finance_allocated: 'Finance allocated',
+  internal_command_only: 'Internal',
+};
+
+const notificationSummary = (status?: Record<string, string> | null) => {
+  if (!status) return null;
+  if (Object.values(status).includes('failed')) return 'Notification failed';
+  if (status.finance_portal === 'no_assigned_finance_user') return 'No finance assignment';
+  return null;
 };
 
 const getInitials = (name?: string | null) => {
@@ -75,7 +88,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
-  const [targets, setTargets] = useState<Set<MessageTarget>>(new Set(['client']));
+  const [route, setRoute] = useState<MessageRoute>('client_only');
   const [financeAllocationStatus, setFinanceAllocationStatus] = useState<FinanceAllocationStatus>('finance_action_required');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
@@ -130,76 +143,60 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
   const send = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || sending || targets.size === 0) return;
+    if (!trimmed || sending) return;
     setSending(true);
-    const sent: string[] = [];
-    const failed: string[] = [];
     try {
-      for (const t of targets) {
-        try {
-          if (t === 'finance') {
-            const financeScope = targets.has('client') ? 'command_client_with_finance_allocated' : 'command_finance_private';
-            const financeThreadType = targets.has('client') ? 'command_client_allocated' : 'command_finance';
-            const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
-              operation: 'get_or_create_thread',
-              client_id: clientId,
-              visibility_scope: financeScope,
-              thread_type: financeThreadType,
-              allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
-              finance_allocated: targets.has('client'),
-            });
-            if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
-            const { error } = await invokeSecureFunction('finance-portal-messages', {
-              operation: 'send_message',
-              thread_id: thread.thread.id,
-              body: trimmed,
-              visibility_scope: financeScope,
-              thread_type: financeThreadType,
-              allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
-            });
-            if (error) throw new Error(error.message || 'Send failed');
-          } else {
-            const { error } = await invokeSecureFunction('staff-client-portal-messages', {
-              operation: 'send_reply',
-              client_id: clientId,
-              message: trimmed,
-              is_internal: t === 'internal',
-              visibility_scope: targets.has('client') && targets.has('finance') ? 'command_client_with_finance_allocated' : undefined,
-              allocation_status: targets.has('client') && targets.has('finance') ? financeAllocationStatus : undefined,
-            });
-            if (error) throw new Error(error.message || 'Send failed');
-          }
-          sent.push(t);
-        } catch (e: any) {
-          console.error(`[Composer] ${t} send failed`, e);
-          failed.push(`${t}: ${e.message}`);
-        }
+      if (route === 'finance_only') {
+        const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
+          operation: 'get_or_create_thread',
+          client_id: clientId,
+          visibility_scope: 'command_finance_private',
+          thread_type: 'command_finance',
+          allocation_status: 'none',
+          finance_allocated: false,
+        });
+        if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
+        const { error } = await invokeSecureFunction('finance-portal-messages', {
+          operation: 'send_message',
+          thread_id: thread.thread.id,
+          body: trimmed,
+          visibility_scope: 'command_finance_private',
+          thread_type: 'command_finance',
+          allocation_status: 'none',
+        });
+        if (error) throw new Error(error.message || 'Send failed');
+        toast.success('Sent to Finance Portal only');
+      } else {
+        const financeAllocated = route === 'client_finance';
+        const { error } = await invokeSecureFunction('staff-client-portal-messages', {
+          operation: 'send_reply',
+          client_id: clientId,
+          message: trimmed,
+          is_internal: route === 'internal',
+          visibility_scope: financeAllocated ? 'command_client_with_finance_allocated' : undefined,
+          allocation_status: financeAllocated ? financeAllocationStatus : undefined,
+        });
+        if (error) throw new Error(error.message || 'Send failed');
+        toast.success(
+          route === 'client_finance'
+            ? 'Sent to Client Portal and allocated to Finance'
+            : route === 'internal'
+              ? 'Internal note saved'
+              : 'Sent to Client Portal only',
+        );
       }
-      if (sent.length) {
-        toast.success(`Sent to ${sent.join(', ')}`);
-        setDraft('');
-        await load(false);
-      }
-      if (failed.length) toast.error(`Failed → ${failed.join(' · ')}`);
+      setDraft('');
+      await load(false);
+    } catch (e: any) {
+      console.error('[ClientPortalMessagesPanel] send failed', e);
+      toast.error(e.message || 'Failed to send');
     } finally {
       setSending(false);
     }
   };
 
-  const toggleTarget = (v: MessageTarget) => {
-    setTargets(prev => {
-      const next = new Set(prev);
-      if (next.has(v)) next.delete(v); else next.add(v);
-      if (next.size === 0) next.add(v); // never allow empty
-      return next;
-    });
-  };
-
-  const applyPreset = (values: MessageTarget[]) => {
-    setTargets(new Set(values));
-  };
-
-  const financeAllocatedToClient = targets.has('client') && targets.has('finance');
+  const selectedPreset = ROUTING_PRESETS.find((preset) => preset.value === route) || ROUTING_PRESETS[0];
+  const financeAllocatedToClient = route === 'client_finance';
 
 
   return (
@@ -253,9 +250,22 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                       {m.message}
                     </div>
                     <span className="text-[10px] text-muted-foreground mt-1 px-1 flex items-center gap-1">
-                      {m.is_internal && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-amber-500/40 text-amber-600">
-                          <Lock className="h-2 w-2" /> Internal
+                      {(m.is_internal || m.visibility_scope) && (
+                        <Badge variant="outline" className={cn(
+                          'text-[9px] px-1 py-0 h-3.5 gap-0.5',
+                          m.is_internal || m.visibility_scope === 'internal_command_only'
+                            ? 'border-amber-500/40 text-amber-600'
+                            : m.visibility_scope === 'command_client_with_finance_allocated'
+                              ? 'border-primary/30 text-primary'
+                              : 'border-border text-muted-foreground',
+                        )}>
+                          {(m.is_internal || m.visibility_scope === 'internal_command_only') && <Lock className="h-2 w-2" />}
+                          {MESSAGE_SCOPE_LABELS[m.visibility_scope || ''] || 'Governed'}
+                        </Badge>
+                      )}
+                      {notificationSummary(m.notification_status) && (
+                        <Badge variant="outline" className="h-3.5 border-destructive/40 px-1 py-0 text-[9px] text-destructive">
+                          {notificationSummary(m.notification_status)}
                         </Badge>
                       )}
                       {formatStamp(m.created_at)}
@@ -272,39 +282,25 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         <div className="flex items-center gap-1 mb-2 flex-wrap">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Route:</span>
           {ROUTING_PRESETS.map(preset => {
-            const active = preset.targets.length === targets.size && preset.targets.every(t => targets.has(t));
+            const active = preset.value === route;
             return (
               <Button
-                key={preset.label}
+                key={preset.value}
                 type="button"
                 size="sm"
                 variant={active ? 'default' : 'outline'}
-                className="h-7 px-2.5 text-xs"
-                onClick={() => applyPreset(preset.targets)}
+                className="h-auto min-h-7 px-2.5 py-1 text-xs"
+                onClick={() => setRoute(preset.value)}
+                title={preset.description}
               >
                 {preset.label}
               </Button>
             );
           })}
         </div>
-        <div className="flex items-center gap-1 mb-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Advanced:</span>
-          {TARGETS.map(t => {
-            const Icon = t.icon;
-            const active = targets.has(t.value);
-            return (
-              <Button
-                key={t.value}
-                type="button"
-                size="sm"
-                variant={active ? 'default' : 'outline'}
-                className="h-7 px-2.5 text-xs"
-                onClick={() => toggleTarget(t.value)}
-              >
-                <Icon className="h-3 w-3 mr-1" /> {t.label}
-              </Button>
-            );
-          })}
+        <div className="mb-2 flex items-start gap-2 rounded-md border border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+          <span>{selectedPreset.description}</span>
         </div>
 
         {financeAllocatedToClient && (
@@ -326,9 +322,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         <div className="flex gap-2 items-end">
           <Textarea
             placeholder={
-              targets.size > 1 ? `Compose once — fan out to ${targets.size} destinations…`
-              : targets.has('internal') ? 'Add an internal staff-only note...'
-              : targets.has('finance') ? 'Message the finance partner...'
+              route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
+              : route === 'internal' ? 'Add an internal staff-only note...'
+              : route === 'finance_only' ? 'Message the finance partner privately...'
               : 'Reply to the client...'
             }
             value={draft}
@@ -343,12 +339,12 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             className="min-h-[60px] resize-none flex-1"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim() || targets.size === 0}>
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5">
-          Press ⌘/Ctrl+Enter to send · Tap chips to fan out to multiple destinations.
+          Press ⌘/Ctrl+Enter to send · Command Centre controls route, visibility, allocation and governance logging.
         </p>
       </div>
     </div>
