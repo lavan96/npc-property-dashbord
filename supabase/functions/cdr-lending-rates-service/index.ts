@@ -178,6 +178,19 @@ async function fetchCdr(
   return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: `Too many redirects (>${maxRedirects})` };
 }
 
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 interface LendingRate {
   lenderId: string;
   lenderName: string;
@@ -305,8 +318,8 @@ async function tryFetchProductsAtBase(
 
     if (response.ok) {
       const data = await response.json();
-      const products = data?.data?.products || [];
-      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} products (final ${finalUrl})`);
+      const products = (data?.data?.products || []).filter((p: any) => p?.productCategory === 'RESIDENTIAL_MORTGAGES');
+      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} mortgage products (final ${finalUrl})`);
       return { products, status: response.status, finalUrl };
     }
 
@@ -356,8 +369,10 @@ async function fetchLenderProducts(
 
   // Top 15 for performance
   const productsToFetch = products.slice(0, 15);
-  const rateArrays = await Promise.all(
-    productsToFetch.map((p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion))
+  const rateArrays = await mapWithConcurrency(
+    productsToFetch,
+    4,
+    (p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion)
   );
   const allRates: LendingRate[] = [];
   for (const arr of rateArrays) allRates.push(...arr);
