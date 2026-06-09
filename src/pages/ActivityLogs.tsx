@@ -169,6 +169,7 @@ const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
   call_log: <Phone className="h-4 w-4" />,
   call_alert_rule: <Zap className="h-4 w-4" />,
   qa_conversation: <MessageSquare className="h-4 w-4" />,
+  portal_message: <MessageSquare className="h-4 w-4" />,
   automation_switch: <Settings className="h-4 w-4" />,
   template: <FileText className="h-4 w-4" />,
   branding_profile: <Palette className="h-4 w-4" />,
