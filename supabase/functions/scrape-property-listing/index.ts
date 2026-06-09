@@ -514,7 +514,8 @@ Deno.serve(async (req) => {
     const metadata = {
       title: result.extracted.title,
       description: result.extracted.listing_text,
-      provider: "perplexity",
+      provider: result.scrapedFromPage ? "firecrawl+perplexity" : "perplexity",
+      scrapedFromPage: result.scrapedFromPage,
       citations: result.citations,
       confidence: result.extracted.confidence,
     };
