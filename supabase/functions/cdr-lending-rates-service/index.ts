@@ -23,123 +23,158 @@ const corsHeaders = {
 // Authoritative CDR PublicBaseUri values (sourced from the public AU Open Banking
 // registry, cross-checked against each data-holder's published developer docs).
 // productVersion "4" — /banking/products has been on v4 since Oct 2024; older
-// versions now return 406 on most holders. The fetcher cascades 4→3→2→1.
+// versions now return 406 on most holders. Product detail is now v6 for most
+// holders; calling detail with v4 returns 406 and produces 0 cached rates.
 const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string; productVersion: string; detailVersion: string }> = {
   macquarie: {
     name: "Macquarie Bank",
     baseUrl: "https://api.macquariebank.io/cds-au/v1",
     logo: "https://www.macquarie.com/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   boq: {
     name: "Bank of Queensland",
     baseUrl: "https://api.cds.boq.com.au/cds-au/v1",
     logo: "https://www.boq.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   amp: {
     name: "AMP",
     baseUrl: "https://api.cdr-api.amp.com.au/cds-au/v1",
     logo: "https://www.amp.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   bendigo: {
     name: "Bendigo Bank",
     baseUrl: "https://api.cdr.bendigobank.com.au/cds-au/v1",
     logo: "https://www.bendigobank.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   bankwest: {
     name: "Bankwest",
     baseUrl: "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
     logo: "https://www.bankwest.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   westpac: {
     name: "Westpac",
     baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
     logo: "https://www.westpac.com.au/etc/designs/westpac/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   banksa: {
     name: "BankSA",
     baseUrl: "https://digital-api.banksa.com.au/cds-au/v1",
     logo: "https://www.banksa.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   stgeorge: {
     name: "St.George",
     baseUrl: "https://digital-api.stgeorge.com.au/cds-au/v1",
     logo: "https://www.stgeorge.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   cba: {
     name: "Commonwealth Bank",
     baseUrl: "https://api.commbank.com.au/public/cds-au/v1",
     logo: "https://www.commbank.com.au/etc/designs/default/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   nab: {
     name: "NAB",
     baseUrl: "https://openbank.api.nab.com.au/cds-au/v1",
     logo: "https://www.nab.com.au/etc/designs/nab/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   anz: {
     name: "ANZ",
     baseUrl: "https://api.anz/cds-au/v1",
     logo: "https://www.anz.com.au/etc/designs/commons/images/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   ing: {
     name: "ING",
     baseUrl: "https://id.ob.ing.com.au/cds-au/v1",
     logo: "https://www.ing.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   suncorp: {
     name: "Suncorp",
     baseUrl: "https://id-ob.suncorpbank.com.au/cds-au/v1",
     logo: "https://www.suncorp.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   hsbc: {
     name: "HSBC Australia",
     baseUrl: "https://public.ob.hsbc.com.au/cds-au/v1",
     logo: "https://www.hsbc.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   ubank: {
     name: "UBank",
     baseUrl: "https://public.cdr-api.86400.com.au/cds-au/v1",
     logo: "https://www.ubank.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   }
 };
 
 // Historical/alternate hosts retained as secondary fallback only.
 const BASE_URL_FALLBACKS: Record<string, string[]> = {
   boq: ["https://secure.api.boq.com.au/cds-au/v1"],
+  amp: ["https://pub.cdr-sme.amp.com.au/api/cds-au/v1"],
   anz: ["https://api.anz.com/cds-au/v1"],
   hsbc: ["https://ob.hsbc.com.au/cds-au/v1"],
   ubank: ["https://ob.ubank.com.au/cds-au/v1", "https://openbank.api.nab.com.au/cds-au/v1"],
   ing: ["https://openbanking.api.ing.com.au/cds-au/v1"],
 };
+
+const REGISTER_BRAND_MATCHES: Record<string, string[]> = {
+  macquarie: ['macquarie bank'], boq: ['bank of queensland'], amp: ['amp - my amp', 'amp bank go'],
+  bendigo: ['bendigo bank'], bankwest: ['bankwest'], westpac: ['westpac'], banksa: ['banksa'],
+  stgeorge: ['st.george'], cba: ['commonwealth bank'], nab: ['nab'], anz: ['anz'], ing: ['ing bank'],
+  suncorp: ['suncorp bank'], hsbc: ['hsbc'], ubank: ['ubank'],
+};
+
+let registerBrandsCache: any[] | null = null;
+let registerBrandsCacheAt = 0;
+
+async function fetchRegisterBaseUrls(lenderId: string): Promise<string[]> {
+  try {
+    if (!registerBrandsCache || Date.now() - registerBrandsCacheAt > 60 * 60 * 1000) {
+      const response = await fetch('https://api.cdr.gov.au/cdr-register/v1/banking/data-holders/brands/summary', {
+        headers: { 'x-v': '2', 'x-min-v': '1', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0)' },
+      });
+      if (!response.ok) return [];
+      const payload = await response.json();
+      registerBrandsCache = (payload?.data || []) as any[];
+      registerBrandsCacheAt = Date.now();
+    }
+    const matches = REGISTER_BRAND_MATCHES[lenderId] || [];
+    return registerBrandsCache
+      .filter((b) => matches.some((m) => String(b.brandName || '').toLowerCase().includes(m)))
+      .map((b) => String(b.publicBaseUri || '').replace(/\/$/, ''))
+      .filter(Boolean)
+      .map((base) => base.endsWith('/cds-au/v1') ? base : `${base}/cds-au/v1`);
+  } catch (e) {
+    console.warn(`[CDR] Register lookup failed for ${lenderId}:`, e);
+    return [];
+  }
+}
 
 
 // Manual redirect-following fetch.
@@ -158,7 +193,15 @@ async function fetchCdr(
   for (let i = 0; i <= maxRedirects; i++) {
     chain.push(currentUrl);
     try {
-      const res = await fetch(currentUrl, { headers, redirect: 'manual' });
+      const requestHeaders = {
+        'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0; +https://npcservices.com.au)',
+        ...headers,
+      };
+      let res = await fetch(currentUrl, { headers: requestHeaders, redirect: 'manual' });
+      for (let attempt = 1; attempt <= 2 && [429, 500, 502, 503, 504].includes(res.status); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        res = await fetch(currentUrl, { headers: requestHeaders, redirect: 'manual' });
+      }
       // Manual redirect: status 0 in some runtimes, or 301/302/303/307/308
       if (res.status === 301 || res.status === 302 || res.status === 303 || res.status === 307 || res.status === 308) {
         const loc = res.headers.get('location');
@@ -175,6 +218,19 @@ async function fetchCdr(
     }
   }
   return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: `Too many redirects (>${maxRedirects})` };
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 interface LendingRate {
@@ -211,12 +267,12 @@ async function fetchProductDetail(
   const rates: LendingRate[] = [];
 
   try {
-    const versionsToTry = Array.from(new Set([detailVersion, '4', '3', '2', '1']));
+    const versionsToTry = Array.from(new Set([detailVersion, '6', '5', '4', '3', '2', '1']));
     let detailData: any = null;
 
     for (const version of versionsToTry) {
       const { response, lastStatus, finalUrl, error } = await fetchCdr(
-        `${baseUrl}/banking/products/${product.productId}`,
+        `${baseUrl}/banking/products/${encodeURIComponent(product.productId)}`,
         { 'x-v': version, 'x-min-v': '1', 'Accept': 'application/json' }
       );
 
@@ -227,6 +283,7 @@ async function fetchProductDetail(
 
       if (response.ok) {
         detailData = await response.json();
+        console.log(`[CDR] ${lenderId} detail ${product.productId} v${version}: ${(detailData?.data?.lendingRates || []).length} rates`);
         break;
       }
       if (response.status === 406) continue; // try lower version
@@ -241,6 +298,12 @@ async function fetchProductDetail(
     for (const lendingRate of productDetail.lendingRates) {
       const rateValue = parseFloat(lendingRate.rate) * 100;
       if (rateValue > 0.1 && rateValue < 20) {
+        const tier = Array.isArray(lendingRate.tiers) ? lendingRate.tiers[0] : null;
+        const tierMin = tier?.unitOfMeasure === 'PERCENT' && tier.minimumValue != null ? parseFloat(tier.minimumValue) * 100 : null;
+        const tierMax = tier?.unitOfMeasure === 'PERCENT' && tier.maximumValue != null ? parseFloat(tier.maximumValue) * 100 : null;
+        const constraints = Array.isArray(productDetail.constraints) ? productDetail.constraints : [];
+        const minLoanConstraint = constraints.find((c: any) => c.constraintType === 'MIN_LIMIT');
+        const maxLoanConstraint = constraints.find((c: any) => c.constraintType === 'MAX_LIMIT');
         rates.push({
           lenderId,
           lenderName: CDR_LENDERS[lenderId]?.name || lenderId,
@@ -251,10 +314,10 @@ async function fetchProductDetail(
           rateType: lendingRate.lendingRateType?.includes('FIXED') ? 'FIXED' : 'VARIABLE',
           loanPurpose: lendingRate.loanPurpose === 'INVESTMENT' ? 'INVESTMENT' : 'OWNER_OCCUPIED',
           repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' ? 'INTEREST_ONLY' : 'PRINCIPAL_AND_INTEREST',
-          lvrMin: lendingRate.additionalInfo?.lvrMin || null,
-          lvrMax: lendingRate.additionalInfo?.lvrMax || null,
-          minLoanAmount: productDetail.constraints?.minLimit || null,
-          maxLoanAmount: productDetail.constraints?.maxLimit || null,
+          lvrMin: Number.isFinite(tierMin) ? tierMin : null,
+          lvrMax: Number.isFinite(tierMax) ? tierMax : null,
+          minLoanAmount: minLoanConstraint?.minimumValue ? parseFloat(minLoanConstraint.minimumValue) : null,
+          maxLoanAmount: maxLoanConstraint?.maximumValue ? parseFloat(maxLoanConstraint.maximumValue) : null,
           features: productDetail.features?.map((f: any) => f.featureType) || [],
           lastUpdated: new Date().toISOString(),
         });
@@ -297,8 +360,8 @@ async function tryFetchProductsAtBase(
 
     if (response.ok) {
       const data = await response.json();
-      const products = data?.data?.products || [];
-      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} products (final ${finalUrl})`);
+      const products = (data?.data?.products || []).filter((p: any) => p?.productCategory === 'RESIDENTIAL_MORTGAGES');
+      console.log(`[CDR] ${lenderId} ${baseUrl} v${version}: ${products.length} mortgage products (final ${finalUrl})`);
       return { products, status: response.status, finalUrl };
     }
 
@@ -321,8 +384,9 @@ async function fetchLenderProducts(
 ): Promise<{ rates: LendingRate[]; usedBaseUrl: string; error?: string; status: number }> {
   const { baseUrl, productVersion, detailVersion } = config;
 
-  // Build URL attempt list: primary first, then known fallbacks (deduped)
-  const candidates = [baseUrl, ...(BASE_URL_FALLBACKS[lenderId] || [])]
+  // Build URL attempt list: configured primary, live ACCC register URI, then known fallbacks (deduped)
+  const registerBaseUrls = await fetchRegisterBaseUrls(lenderId);
+  const candidates = [baseUrl, ...registerBaseUrls, ...(BASE_URL_FALLBACKS[lenderId] || [])]
     .filter((v, i, a) => a.indexOf(v) === i);
 
   let products: any[] = [];
@@ -348,8 +412,10 @@ async function fetchLenderProducts(
 
   // Top 15 for performance
   const productsToFetch = products.slice(0, 15);
-  const rateArrays = await Promise.all(
-    productsToFetch.map((p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion))
+  const rateArrays = await mapWithConcurrency(
+    productsToFetch,
+    4,
+    (p: any) => fetchProductDetail(lenderId, usedBaseUrl, p, detailVersion)
   );
   const allRates: LendingRate[] = [];
   for (const arr of rateArrays) allRates.push(...arr);
@@ -562,6 +628,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Action: Probe one lender without writing cache — useful for diagnostics.
+    if (action === 'probe' && lenderId) {
+      const lenderConfig = CDR_LENDERS[lenderId];
+      if (!lenderConfig) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Unknown lender" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const result = await fetchLenderProducts(lenderId, lenderConfig);
+      return new Response(
+        JSON.stringify({
+          success: result.rates.length > 0,
+          lenderId,
+          lenderName: lenderConfig.name,
+          rateCount: result.rates.length,
+          usedBaseUrl: result.usedBaseUrl,
+          httpStatus: result.status,
+          error: result.error || null,
+          sample: result.rates.slice(0, 5),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Action: Get best rates across all lenders (CDR + manual)
     if (action === 'best-rates') {
       const allRates: LendingRate[] = [];
@@ -619,7 +710,7 @@ Deno.serve(async (req) => {
       const totalCount = Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length;
       console.log(`[CDR] Starting PARALLEL refresh-all for ${totalCount} lenders`);
 
-      const PER_LENDER_TIMEOUT_MS = 25_000; // 25s hard cap per lender
+      const PER_LENDER_TIMEOUT_MS = 60_000; // detail v6 can be slower on lenders with many mortgage tiers
       const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
         Promise.race([
           p,
@@ -628,8 +719,8 @@ Deno.serve(async (req) => {
           ),
         ]);
 
-      // Kick off all CDR fetches concurrently
-      const cdrPromises = Object.entries(CDR_LENDERS).map(async ([id, config]) => {
+      // CDR fetches are network-heavy; cap concurrency to avoid data-holder throttling
+      const cdrResults = await mapWithConcurrency(Object.entries(CDR_LENDERS), 5, async ([id, config]) => {
         try {
           const result = await withTimeout(
             fetchLenderProducts(id, {
@@ -677,12 +768,8 @@ Deno.serve(async (req) => {
         }
       });
 
-      const settled = await Promise.allSettled([...cdrPromises, ...manualPromises]);
-      const results = settled.map((s) =>
-        s.status === 'fulfilled'
-          ? s.value
-          : { lenderId: 'unknown', lenderName: 'unknown', success: false, rateCount: 0, cached: false }
-      );
+      const manualResults = await Promise.all(manualPromises);
+      const results = [...cdrResults, ...manualResults];
 
       const successCount = results.filter(r => r.success && r.rateCount > 0).length;
       const totalRates = results.reduce((sum, r) => sum + r.rateCount, 0);
