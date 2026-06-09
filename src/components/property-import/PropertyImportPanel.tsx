@@ -130,7 +130,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       const { data, error } = await invokeSecureFunction('scrape-property-listing', {
         url: propertyUrl,
         propertyCategory: category,
-      });
+      }, { timeoutMs: 180000 });
 
       if (error) throw new Error(error.message || 'Failed to scrape property listing');
       if (!data?.success) throw new Error(data?.error || 'Scraping failed');
