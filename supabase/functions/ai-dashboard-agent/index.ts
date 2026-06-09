@@ -3299,23 +3299,51 @@ async function executeGetFreeSlots(args: any) {
 
 // ─── CALLS ───
 
+function normalizeVapiCallForAgent(call: any) {
+  const severityScore = call.escalation_severity ?? call.recovery_priority ?? null;
+  return {
+    ...call,
+    caller_phone: call.phone_number,
+    call_duration_seconds: call.duration_seconds,
+    severity_score: severityScore,
+  };
+}
+
+function normalizeVapiCallsForAgent(calls: any[] = []) {
+  return calls.map(normalizeVapiCallForAgent);
+}
+
+const VAPI_AGENT_SELECT = 'id, vapi_call_id, agent_name, phone_number, customer_name, duration_seconds, call_outcome, call_status, sentiment, escalation_severity, recovery_priority, resolution_status, summary, created_at, started_at, ended_at';
+const VAPI_FLAGGED_FILTER = 'escalation_severity.gte.4,recovery_priority.gte.4,sentiment.eq.negative,sentiment.eq.mixed,resolution_status.eq.needs_review';
+
 async function executeGetRecentCalls(sb: any, args: any) {
-  const limit = args.limit || 20;
-  let query = sb.from('vapi_call_logs').select('id, agent_name, caller_phone, call_duration_seconds, call_outcome, sentiment, severity_score, created_at');
+  const limit = Math.min(args.limit || 20, 100);
+  let query = sb.from('vapi_call_logs').select(VAPI_AGENT_SELECT);
   if (args.agent_name) query = query.ilike('agent_name', `%${args.agent_name}%`);
-  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
-  return { calls: data || [] };
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
+  if (error) return { error: `Failed to fetch VAPI calls: ${error.message}` };
+  return { calls: normalizeVapiCallsForAgent(data || []), count: data?.length || 0 };
 }
 
 async function executeGetCallDetails(sb: any, args: any) {
-  const { data } = await sb.from('vapi_call_logs').select('*').eq('id', args.call_id).single();
-  return data ? { call: data } : { error: 'Call not found.' };
+  const { data, error } = await sb.from('vapi_call_logs').select('*').eq('id', args.call_id).maybeSingle();
+  if (error) return { error: `Failed to fetch call details: ${error.message}` };
+  return data ? { call: normalizeVapiCallForAgent(data) } : { error: 'Call not found.' };
 }
 
 async function executeSearchCalls(sb: any, args: any) {
-  const limit = args.limit || 20;
-  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, created_at').or(`summary.ilike.%${args.query}%,agent_name.ilike.%${args.query}%,caller_phone.ilike.%${args.query}%`).order('created_at', { ascending: false }).limit(limit);
-  return { calls: data || [], count: data?.length || 0 };
+  const limit = Math.min(args.limit || 20, 100);
+  const q = String(args.query || '').trim();
+  if (!q) return { error: 'query is required for search_calls.' };
+  const safeOrQ = q.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+  const { data, error } = await sb
+    .from('vapi_call_logs')
+    .select(VAPI_AGENT_SELECT)
+    .or(`summary.ilike.%${safeOrQ}%,agent_name.ilike.%${safeOrQ}%,phone_number.ilike.%${safeOrQ}%,customer_name.ilike.%${safeOrQ}%`)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return { error: `Failed to search VAPI calls: ${error.message}` };
+  return { calls: normalizeVapiCallsForAgent(data || []), count: data?.length || 0 };
 }
 
 async function executeGetCallAlerts(sb: any, args: any) {
@@ -3335,13 +3363,10 @@ async function executeGetCallAlerts(sb: any, args: any) {
     return { alerts: persistedAlerts, count: persistedAlerts.length, source: 'call_alert_history' };
   }
 
-  // If the alert-history table has no rows, still surface actionable call alerts
-  // from the source call log data so the agent does not incorrectly imply that
-  // there are no concerning recent calls.
   const { data: derivedCalls, error: derivedError } = await sb
     .from('vapi_call_logs')
-    .select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at')
-    .or('severity_score.gte.4,sentiment.eq.negative')
+    .select(VAPI_AGENT_SELECT)
+    .or(VAPI_FLAGGED_FILTER)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -3354,11 +3379,11 @@ async function executeGetCallAlerts(sb: any, args: any) {
     };
   }
 
-  const derivedAlerts = (derivedCalls || []).map((call: any) => ({
+  const derivedAlerts = normalizeVapiCallsForAgent(derivedCalls || []).map((call: any) => ({
     id: `derived-${call.id}`,
     call_id: call.id,
-    rule_name: call.severity_score >= 4 ? 'High severity call' : 'Negative sentiment call',
-    message: call.summary || `${call.agent_name || 'VAPI'} call from ${call.caller_phone || 'unknown caller'} requires review.`,
+    rule_name: call.severity_score >= 4 ? 'High severity call' : 'Negative or unresolved call',
+    message: call.summary || `${call.agent_name || 'VAPI'} call from ${call.caller_phone || call.customer_name || 'unknown caller'} requires review.`,
     is_positive: false,
     is_read: false,
     triggered_at: call.created_at,
@@ -3371,27 +3396,60 @@ async function executeGetCallAlerts(sb: any, args: any) {
     count: derivedAlerts.length,
     source: 'derived_from_vapi_call_logs',
     note: derivedAlerts.length
-      ? 'No persisted call alert history rows were found, so these alerts were derived from recent negative or high-severity VAPI calls.'
+      ? 'No persisted call alert history rows were found, so these alerts were derived from recent negative, mixed, unresolved, or high-severity VAPI calls.'
       : 'No persisted call alert history rows and no recent negative/high-severity VAPI calls were found.',
   };
 }
 
 async function executeGetCallAnalytics(sb: any, args: any) {
-  const daysBack = args.days_back || 30;
+  const daysBack = Math.min(args.days_back || 30, 365);
   const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
-  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, call_duration_seconds, call_outcome, sentiment, severity_score').gte('created_at', cutoff);
+  const { data, error } = await sb
+    .from('vapi_call_logs')
+    .select('id, agent_name, duration_seconds, call_outcome, call_status, sentiment, escalation_severity, recovery_priority, call_direction, cost')
+    .gte('created_at', cutoff);
+  if (error) return { error: `Failed to fetch VAPI analytics: ${error.message}` };
+
   const calls = data || [];
-  const avgDuration = calls.length ? Math.round(calls.reduce((s: number, c: any) => s + (c.call_duration_seconds || 0), 0) / calls.length) : 0;
+  const avgDuration = calls.length ? Math.round(calls.reduce((sum: number, call: any) => sum + (call.duration_seconds || 0), 0) / calls.length) : 0;
   const sentimentDist: Record<string, number> = {};
   const byAgent: Record<string, number> = {};
-  for (const c of calls) { sentimentDist[c.sentiment || 'unknown'] = (sentimentDist[c.sentiment || 'unknown'] || 0) + 1; byAgent[c.agent_name || 'unknown'] = (byAgent[c.agent_name || 'unknown'] || 0) + 1; }
-  return { total_calls: calls.length, avg_duration_seconds: avgDuration, sentiment_distribution: sentimentDist, calls_by_agent: byAgent };
+  const byOutcome: Record<string, number> = {};
+  const byDirection: Record<string, number> = {};
+  let flaggedCount = 0;
+  let totalCost = 0;
+
+  for (const call of calls) {
+    sentimentDist[call.sentiment || 'unknown'] = (sentimentDist[call.sentiment || 'unknown'] || 0) + 1;
+    byAgent[call.agent_name || 'unknown'] = (byAgent[call.agent_name || 'unknown'] || 0) + 1;
+    byOutcome[call.call_outcome || call.call_status || 'unknown'] = (byOutcome[call.call_outcome || call.call_status || 'unknown'] || 0) + 1;
+    byDirection[call.call_direction || 'unknown'] = (byDirection[call.call_direction || 'unknown'] || 0) + 1;
+    if ((call.escalation_severity || 0) >= 4 || (call.recovery_priority || 0) >= 4 || call.sentiment === 'negative' || call.sentiment === 'mixed') flaggedCount++;
+    totalCost += call.cost || 0;
+  }
+
+  return {
+    total_calls: calls.length,
+    avg_duration_seconds: avgDuration,
+    total_cost: Number(totalCost.toFixed(4)),
+    flagged_calls: flaggedCount,
+    sentiment_distribution: sentimentDist,
+    outcome_distribution: byOutcome,
+    direction_distribution: byDirection,
+    calls_by_agent: byAgent,
+  };
 }
 
 async function executeGetFlaggedCalls(sb: any, args: any) {
-  const limit = args.limit || 10;
-  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at').or('severity_score.gte.4,sentiment.eq.negative').order('created_at', { ascending: false }).limit(limit);
-  return { flagged_calls: data || [] };
+  const limit = Math.min(args.limit || 10, 100);
+  const { data, error } = await sb
+    .from('vapi_call_logs')
+    .select(VAPI_AGENT_SELECT)
+    .or(VAPI_FLAGGED_FILTER)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return { error: `Failed to fetch flagged VAPI calls: ${error.message}` };
+  return { flagged_calls: normalizeVapiCallsForAgent(data || []), count: data?.length || 0 };
 }
 
 // ─── REPORTS & DOCUMENTS ───
@@ -4657,7 +4715,7 @@ async function executeGetClientEngagementScore(sb: any, args: any) {
     sb.from('email_copilot_emails').select('id').eq('client_id', cid).gte('received_at', thirtyDaysAgo),
     // Fix: Match calls by the client's actual phone number, not UUID substring
     clientPhone
-      ? sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${clientPhone.replace(/\s+/g, '').slice(-8)}%`).gte('created_at', thirtyDaysAgo)
+      ? sb.from('vapi_call_logs').select('id').ilike('phone_number', `%${clientPhone.replace(/\s+/g, '').slice(-8)}%`).gte('created_at', thirtyDaysAgo)
       : Promise.resolve({ data: [] }),
     sb.from('client_reminders').select('id, status').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
     sb.from('client_deals').select('id, updated_at, risk_status').eq('client_id', cid),
@@ -4887,9 +4945,9 @@ async function executeSmartSearch(sb: any, args: any) {
     results.emails = data || [];
   }
   if (cats.includes('calls')) {
-    const { data, error } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at').or(`summary.ilike.%${safeOrQ}%,agent_name.ilike.%${safeOrQ}%,caller_phone.ilike.%${safeOrQ}%`).order('created_at', { ascending: false }).limit(10);
+    const { data, error } = await sb.from('vapi_call_logs').select(VAPI_AGENT_SELECT).or(`summary.ilike.%${safeOrQ}%,agent_name.ilike.%${safeOrQ}%,phone_number.ilike.%${safeOrQ}%,customer_name.ilike.%${safeOrQ}%`).order('created_at', { ascending: false }).limit(10);
     if (error) errors.calls = error.message;
-    results.calls = data || [];
+    results.calls = normalizeVapiCallsForAgent(data || []);
   }
   if (cats.includes('notes')) {
     const { data, error } = await sb.from('client_notes').select('id, content, note_type, created_at, client_id').ilike('content', `%${q}%`).order('created_at', { ascending: false }).limit(10);

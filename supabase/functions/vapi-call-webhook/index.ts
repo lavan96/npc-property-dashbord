@@ -4,7 +4,7 @@ import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret',
 };
 
 /**
@@ -411,6 +411,111 @@ async function updateCallCostInBackground(
   }
 }
 
+type CallAlertRule = {
+  id: string;
+  name: string;
+  condition_type: string;
+  condition_operator: string;
+  condition_value: string;
+  is_positive: boolean;
+  is_enabled: boolean;
+  notification_type?: string;
+};
+
+function compareAlertValue(actual: unknown, operator: string, expectedRaw: string): boolean {
+  if (actual === null || actual === undefined) return false;
+
+  if (operator === 'contains') {
+    return String(actual).toLowerCase().includes(String(expectedRaw).toLowerCase());
+  }
+
+  if (operator === 'equals') {
+    return String(actual).toLowerCase() === String(expectedRaw).toLowerCase();
+  }
+
+  const actualNumber = typeof actual === 'number' ? actual : Number(actual);
+  const expectedNumber = Number(expectedRaw);
+  if (!Number.isFinite(actualNumber) || !Number.isFinite(expectedNumber)) return false;
+
+  if (operator === 'greater_than') return actualNumber > expectedNumber;
+  if (operator === 'less_than') return actualNumber < expectedNumber;
+  return false;
+}
+
+function getAlertActualValue(rule: CallAlertRule, call: Record<string, any>): unknown {
+  switch (rule.condition_type) {
+    case 'sentiment': return call.sentiment;
+    case 'duration': return call.duration_seconds;
+    case 'outcome': return call.call_outcome || call.call_status;
+    case 'cost': return call.cost;
+    case 'severity': return call.escalation_severity;
+    case 'recovery_priority': return call.recovery_priority;
+    case 'resolution_status': return call.resolution_status;
+    default: return call[rule.condition_type];
+  }
+}
+
+function buildAlertMessage(rule: CallAlertRule, call: Record<string, any>): string {
+  const caller = call.customer_name || call.phone_number || 'Unknown caller';
+  switch (rule.condition_type) {
+    case 'sentiment': return `${caller} - ${rule.condition_value} sentiment detected`;
+    case 'duration': return `${caller} - Call duration: ${Math.round((call.duration_seconds || 0) / 60)}min`;
+    case 'outcome': return `${caller} - Call ${rule.condition_value}`;
+    case 'cost': return `${caller} - Call cost: $${(call.cost || 0).toFixed(2)}`;
+    case 'severity': return `${caller} - Escalation severity ${call.escalation_severity ?? 'N/A'}`;
+    case 'recovery_priority': return `${caller} - Recovery priority ${call.recovery_priority ?? 'N/A'}`;
+    default: return `${caller} - Alert triggered: ${rule.name}`;
+  }
+}
+
+async function persistCallAlerts(supabase: any, call: Record<string, any>): Promise<void> {
+  if (!call?.id) return;
+
+  const { data: rules, error: rulesError } = await supabase
+    .from('call_alert_rules')
+    .select('id, name, condition_type, condition_operator, condition_value, is_positive, is_enabled, notification_type')
+    .eq('is_enabled', true);
+
+  if (rulesError) {
+    console.error('[Vapi Webhook] Failed to fetch call alert rules:', rulesError);
+    return;
+  }
+
+  for (const rule of (rules || []) as CallAlertRule[]) {
+    const actual = getAlertActualValue(rule, call);
+    if (!compareAlertValue(actual, rule.condition_operator, rule.condition_value)) continue;
+
+    const { data: existing, error: existingError } = await supabase
+      .from('call_alert_history')
+      .select('id')
+      .eq('call_id', call.id)
+      .eq('rule_id', rule.id)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('[Vapi Webhook] Failed checking existing call alert:', existingError);
+      continue;
+    }
+    if (existing) continue;
+
+    const { error: insertError } = await supabase
+      .from('call_alert_history')
+      .insert({
+        rule_id: rule.id,
+        call_id: call.id,
+        rule_name: rule.name,
+        message: buildAlertMessage(rule, call),
+        is_positive: rule.is_positive,
+      });
+
+    if (insertError) {
+      console.error('[Vapi Webhook] Failed to persist call alert:', insertError);
+    } else {
+      console.log('[Vapi Webhook] Persisted call alert:', { callId: call.id, rule: rule.name });
+    }
+  }
+}
+
 // Use AI to analyze transcript for missing data (enhanced with negative call analysis)
 async function analyzeTranscriptWithAI(transcript: string, summary: string | null, isSquadCall: boolean): Promise<AIAnalysis> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -494,7 +599,7 @@ Respond ONLY with valid JSON in this exact format:
         maxTokens: 800,
         temperature: 0.3,
       });
-      content = routerRes?.choices?.[0]?.message?.content ?? null;
+      content = (routerRes as any)?.choices?.[0]?.message?.content ?? null;
       usedRouter = true;
       console.log('[Vapi Webhook] AI analysis via Model Hub router');
     } catch (routerErr) {
@@ -643,6 +748,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const webhookSecret = Deno.env.get('VAPI_WEBHOOK_SECRET');
+    if (webhookSecret) {
+      const providedSecret = req.headers.get('x-vapi-secret') || req.headers.get('x-webhook-secret');
+      if (providedSecret !== webhookSecret) {
+        console.warn('[Vapi Webhook] Rejected request with invalid webhook secret');
+        return new Response(JSON.stringify({ error: 'Unauthorized webhook request' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -717,8 +834,29 @@ Deno.serve(async (req) => {
         });
       }
       
-      // If it's a status-update for 'ended', let it fall through to be ignored
-      // (the end-of-call-report will handle the final update)
+      if (call?.id && currentStatus?.toLowerCase() === 'ended') {
+        const endedAt = call.endedAt || new Date().toISOString();
+        const { error: endedUpdateError } = await supabase
+          .from('vapi_call_logs')
+          .upsert({
+            vapi_call_id: call.id,
+            call_status: 'ended',
+            ended_at: endedAt,
+            phone_number: call.customer?.number || null,
+          }, {
+            onConflict: 'vapi_call_id',
+            ignoreDuplicates: false,
+          });
+
+        if (endedUpdateError) {
+          console.error('[Vapi Webhook] Error marking status-update as ended:', endedUpdateError);
+        }
+
+        return new Response(JSON.stringify({ success: true, message: 'Ended status tracked' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       console.log('[Vapi Webhook] Ignoring status-update:', currentStatus);
       return new Response(JSON.stringify({ success: true, message: 'Skipping status-update' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -785,10 +923,10 @@ Deno.serve(async (req) => {
 
     // Determine call direction early for squad assignment
     const callType = call.type;
-    const isInboundCall = callType === 'inboundPhoneCall' || callType === 'webCall' || call.webCallUrl;
+    const isInboundCall = callType === 'inboundPhoneCall' || callType === 'webCall' || !!call.webCallUrl;
 
     // Detect if this is a Squad call - for inbound calls, always use the hardcoded squad
-    const isSquadCall = isInboundCall || !!(call.squadId || call.squad);
+    const isSquadCall = Boolean(isInboundCall || call.squadId || call.squad);
     const squadId = isInboundCall ? INBOUND_SQUAD_ID : (call.squadId || call.squad?.id || null);
     const squadName = isInboundCall ? INBOUND_SQUAD_NAME : (call.squad?.name || null);
     
@@ -1168,6 +1306,10 @@ Deno.serve(async (req) => {
 
     console.log('[Vapi Webhook] Successfully saved call log:', data.id);
 
+    if (isEndOfCall) {
+      await persistCallAlerts(supabase, data);
+    }
+
     // Log VAPI usage for cost tracking
     if (isEndOfCall) {
       await logApiUsage(supabase, {
@@ -1201,8 +1343,9 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('[Vapi Webhook] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
