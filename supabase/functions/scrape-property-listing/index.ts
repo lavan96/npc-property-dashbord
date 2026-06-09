@@ -416,6 +416,10 @@ Return null for any field not present in the source.`;
   }
 
   const content = parsed?.choices?.[0]?.message?.content as string | undefined;
+  const finishReason = parsed?.choices?.[0]?.finish_reason;
+  if (finishReason && finishReason !== "stop") {
+    console.warn(`[scrape-property-listing] LLM finish_reason=${finishReason} (possible truncation)`);
+  }
   const extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
 
   if (!extracted) {
@@ -434,6 +438,7 @@ Return null for any field not present in the source.`;
     extracted,
     citations,
     raw: parsed,
+    scrapedFromPage: !!pageContent,
   };
 }
 
