@@ -43,15 +43,29 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
   }
 
   if (error || !threadId) {
+    const isSession = /invalid session|session expired|session token required|authentication required/i.test(error || '');
     return (
       <Card>
         <CardContent className="py-12 text-center">
           <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-          <p className="text-sm text-destructive">{error || 'Conversation unavailable'}</p>
+          <p className="text-sm font-medium">
+            {isSession ? 'Your session has expired' : 'Conversation unavailable'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+            {isSession
+              ? 'Please sign in again to view this client\'s messages.'
+              : (error || 'We couldn\'t load this conversation. Try again in a moment.')}
+          </p>
+          {isSession && (
+            <a href="/finance/login" className="inline-flex items-center text-xs font-medium text-primary hover:underline mt-3">
+              Sign in again →
+            </a>
+          )}
         </CardContent>
       </Card>
     );
   }
+
 
   return (
     <FinanceMessagesThread
