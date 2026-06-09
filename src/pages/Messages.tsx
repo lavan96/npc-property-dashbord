@@ -90,6 +90,21 @@ export default function Messages() {
   const [loadingFinance, setLoadingFinance] = useState(true);
   const [selectedFinanceClientId, setSelectedFinanceClientId] = useState<string | null>(null);
 
+  // New Message dialog
+  const [newOpen, setNewOpen] = useState(false);
+  const [newScope, setNewScope] = useState<NewMessageScope>('cp_client_only');
+  const [newClientId, setNewClientId] = useState<string>('');
+  const [newClientSearch, setNewClientSearch] = useState('');
+  const [allClients, setAllClients] = useState<{ id: string; primary_contact_name: string | null; primary_contact_email: string | null }[]>([]);
+  const [loadingAllClients, setLoadingAllClients] = useState(false);
+
+  const loadAllClients = async () => {
+    setLoadingAllClients(true);
+    const { data, error } = await invokeSecureFunction('finance-portal-admin', { operation: 'list_clients' });
+    if (!error) setAllClients((data?.records || []) as any);
+    setLoadingAllClients(false);
+  };
+
   const loadClientThreads = async () => {
     setLoadingClient(true);
     const { data, error } = await invokeSecureFunction('staff-client-portal-messages', {
