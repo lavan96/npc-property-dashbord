@@ -273,7 +273,7 @@ async function tryFetchProductsAtBase(
   baseUrl: string,
   productVersion: string
 ): Promise<{ products: any[]; status: number; finalUrl: string; error?: string }> {
-  const versionsToTry = [productVersion, '3', '2', '1'];
+  const versionsToTry = Array.from(new Set([productVersion, '4', '3', '2', '1']));
   let lastStatus = 0;
   let lastFinalUrl = baseUrl;
   let lastError: string | undefined;
