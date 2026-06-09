@@ -484,6 +484,14 @@ Deno.serve(async (req) => {
       let ghlSync: { success: boolean; error?: string | null } = { success: false, error: null };
       if (body?.sync_to_ghl !== false) {
         try {
+          const syncBody: Record<string, any> = {
+            clientId: createdClient.id,
+            source: 'finance_portal',
+            sourceActorId: portalUser.id,
+          };
+          if (body?.pipeline_ghl_id) syncBody.pipelineGhlId = body.pipeline_ghl_id;
+          if (body?.pipeline_stage_ghl_id) syncBody.pipelineStageGhlId = body.pipeline_stage_ghl_id;
+
           const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-client-to-ghl`, {
             method: 'POST',
             headers: {
@@ -491,23 +499,25 @@ Deno.serve(async (req) => {
               'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
             },
-            body: JSON.stringify({
-              clientId: createdClient.id,
-              source: 'finance_portal',
-              sourceActorId: portalUser.id,
-            }),
+            body: JSON.stringify(syncBody),
           });
 
           const syncData = await response.json().catch(() => ({}));
           if (!response.ok || !syncData?.success) {
             ghlSync = { success: false, error: syncData?.error || `HTTP ${response.status}` };
+            console.error('[finance-portal-client-data] GHL sync failed', response.status, syncData);
           } else {
             ghlSync = { success: true, error: null };
           }
         } catch (error) {
           ghlSync = { success: false, error: error instanceof Error ? error.message : 'Failed to sync client to GHL' };
+          console.error('[finance-portal-client-data] GHL sync exception', error);
         }
       }
+
+      // Notify dashboard clients list (realtime/subscribers may listen)
+      console.log('[finance-portal-client-data] Client created', { id: createdClient.id, name: createdClientName, ghl_synced: ghlSync.success });
+
 
       return jsonResponse({
         success: true,
