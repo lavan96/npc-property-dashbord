@@ -81,7 +81,29 @@ async function invokeFinanceFunction(
       const errorMessage = typeof data?.error === 'object' && data.error?.message
         ? data.error.message
         : data?.error || data?.message || data?.details || `HTTP ${response.status}`;
-      return { data, error: { message: String(errorMessage) } };
+      const msgStr = String(errorMessage);
+      // Auto-clear stale finance portal session on 401 from any function except
+      // login/verify itself, so the user is redirected to the login screen
+      // rather than seeing a cryptic "Invalid session" inside a tab.
+      const isAuthLikeFn = functionName === 'finance-portal-login'
+        || functionName === 'finance-portal-verify'
+        || functionName === 'finance-portal-forgot-password'
+        || functionName === 'finance-portal-reset-password';
+      if (
+        response.status === 401 &&
+        !isAuthLikeFn &&
+        sessionToken &&
+        /invalid session|session expired|session token required|authentication required/i.test(msgStr)
+      ) {
+        try { clearStoredValue(FINANCE_SESSION_KEY); } catch {}
+        try {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/finance/login')) {
+            const ret = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.replace(`/finance/login?reason=expired&return=${ret}`);
+          }
+        } catch {}
+      }
+      return { data, error: { message: msgStr, status: response.status } };
     }
     return { data, error: null };
   } catch (error: any) {
