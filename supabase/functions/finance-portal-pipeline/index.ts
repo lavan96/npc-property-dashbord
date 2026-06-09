@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         const { data, error } = await supabase
           .from('purchase_files')
           .select(`
-            id, client_id, title, lender, purchase_price, loan_amount,
+            id, client_id, title, lender, purchase_price, max_approved_budget,
             finance_status, status, risk_level, settlement_date,
             property_address, property_suburb, kanban_position,
             last_partner_action_at, archived_at, assigned_finance_user_id,
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
           title: pf.title,
           client_name: clientName,
           lender: pf.lender,
-          loan_amount: Number(pf.loan_amount || pf.purchase_price || 0),
+          loan_amount: Number(pf.max_approved_budget || pf.purchase_price || 0),
           finance_status: pf.finance_status,
           status: pf.status,
           risk_level: pf.risk_level,
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
 
       const { data: pfs } = await supabase
         .from('purchase_files')
-        .select('id, title, lender, loan_amount, purchase_price, settlement_date, finance_status, client_id, clients:client_id(primary_first_name,primary_surname)')
+        .select('id, title, lender, max_approved_budget, purchase_price, settlement_date, finance_status, client_id, clients:client_id(primary_first_name,primary_surname)')
         .eq('assigned_finance_user_id', portalUserId)
         .not('settlement_date', 'is', null)
         .gte('settlement_date', today.toISOString().slice(0, 10))
@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
             count: 0,
           };
         }
-        const loan = Number(pf.loan_amount || pf.purchase_price || 0);
+        const loan = Number(pf.max_approved_budget || pf.purchase_price || 0);
         const net = estimateNet(loan);
         const gross = Math.round(loan * DEFAULT_UPFRONT_RATE);
         const confidence = STATUS_CONFIDENCE[pf.finance_status as string] ?? 0.2;
@@ -528,7 +528,7 @@ Deno.serve(async (req) => {
 
       const { data: pfs } = await supabase
         .from('purchase_files')
-        .select('id, title, finance_status, status, lender, loan_amount, purchase_price, settlement_date, last_partner_action_at, client_id, clients:client_id(primary_first_name,primary_surname), risk_level')
+        .select('id, title, finance_status, status, lender, max_approved_budget, purchase_price, settlement_date, last_partner_action_at, client_id, clients:client_id(primary_first_name,primary_surname), risk_level')
         .eq('assigned_finance_user_id', portalUserId)
         .is('archived_at', null)
         .or(`last_partner_action_at.is.null,last_partner_action_at.lte.${thresholdIso}`)
@@ -575,7 +575,7 @@ Deno.serve(async (req) => {
           client_name: cn,
           lender: pf.lender,
           finance_status: pf.finance_status,
-          loan_amount: Number(pf.loan_amount || pf.purchase_price || 0),
+          loan_amount: Number(pf.max_approved_budget || pf.purchase_price || 0),
           settlement_date: pf.settlement_date,
           last_partner_action_at: pf.last_partner_action_at,
           days_idle: daysIdle,
@@ -606,7 +606,7 @@ Deno.serve(async (req) => {
       // Derived wins from settled PFs (not already recorded)
       const { data: settled } = await supabase
         .from('purchase_files')
-        .select('id, lender, loan_amount, purchase_price, settlement_date, finance_status')
+        .select('id, lender, max_approved_budget, purchase_price, settlement_date, finance_status')
         .eq('assigned_finance_user_id', portalUserId)
         .eq('finance_status', 'settled')
         .gte('settlement_date', sinceIso.slice(0, 10));
@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
           reason_category: null,
           reason_detail: null,
           lender: p.lender,
-          loan_amount: Number(p.loan_amount || p.purchase_price || 0),
+          loan_amount: Number(p.max_approved_budget || p.purchase_price || 0),
           recorded_at: p.settlement_date,
           derived: true,
         }));
@@ -669,7 +669,7 @@ Deno.serve(async (req) => {
       }
       const { data: pf } = await supabase
         .from('purchase_files')
-        .select('id, assigned_finance_user_id, lender, loan_amount, purchase_price')
+        .select('id, assigned_finance_user_id, lender, max_approved_budget, purchase_price')
         .eq('id', purchase_file_id)
         .maybeSingle();
       if (!pf || pf.assigned_finance_user_id !== portalUserId) {
@@ -682,7 +682,7 @@ Deno.serve(async (req) => {
         reason_category: reason_category || null,
         reason_detail: reason_detail || null,
         lender: lender || pf.lender || null,
-        loan_amount: loan_amount != null ? Number(loan_amount) : Number(pf.loan_amount || pf.purchase_price || 0),
+        loan_amount: loan_amount != null ? Number(loan_amount) : Number(pf.max_approved_budget || pf.purchase_price || 0),
         recorded_by: portalUserId,
       };
       const { data, error } = await supabase
