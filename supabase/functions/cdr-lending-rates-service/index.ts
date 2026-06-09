@@ -31,21 +31,21 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
     baseUrl: "https://api.macquariebank.io/cds-au/v1",
     logo: "https://www.macquarie.com/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   boq: {
     name: "Bank of Queensland",
     baseUrl: "https://api.cds.boq.com.au/cds-au/v1",
     logo: "https://www.boq.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   amp: {
     name: "AMP",
     baseUrl: "https://api.cdr-api.amp.com.au/cds-au/v1",
     logo: "https://www.amp.com.au/favicon.ico",
     productVersion: "4",
-    detailVersion: "4"
+    detailVersion: "6"
   },
   bendigo: {
     name: "Bendigo Bank",
