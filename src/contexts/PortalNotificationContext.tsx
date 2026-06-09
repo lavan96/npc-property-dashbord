@@ -113,7 +113,21 @@ export function PortalNotificationProvider({ children }: { children: ReactNode }
 
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_INTERVAL);
-    return () => clearInterval(interval);
+
+    // Realtime: refetch immediately on any insert/update for this client
+    const channel = supabase
+      .channel(`client-portal-notif-${user.client_id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_portal_notifications', filter: `client_id=eq.${user.client_id}` },
+        () => { fetchNotifications(); }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [user?.client_id, fetchNotifications]);
 
   const markAsRead = useCallback(async (id: string) => {
