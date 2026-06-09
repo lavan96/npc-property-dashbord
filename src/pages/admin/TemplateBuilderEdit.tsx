@@ -112,7 +112,7 @@ import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
-import { isTemplateEditorV2Enabled } from '@/lib/reportTemplate/editorV2Flag';
+import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
 import { makeOverlayForKind } from '@/lib/reportTemplate/overlayDropFactory';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
@@ -2061,6 +2061,17 @@ export default function TemplateBuilderEdit() {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
                 <CommandIcon className="h-4 w-4 mr-2" /> Command palette
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  setTemplateEditorV2(!editorV2);
+                  toast.success(`Drag & drop ${editorV2 ? 'disabled' : 'enabled'} — reloading…`);
+                  setTimeout(() => window.location.reload(), 300);
+                }}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                {editorV2 ? 'Disable drag & drop (beta)' : 'Enable drag & drop (beta)'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
