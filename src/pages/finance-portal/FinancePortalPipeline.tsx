@@ -132,9 +132,9 @@ export default function FinancePortalPipeline() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Layers className="h-6 w-6 text-primary" /> Pipeline Kanban</h1>
           <p className="text-sm text-muted-foreground">Drag &amp; drop on desktop, or tap the <span className="inline-flex items-center px-1 py-px rounded border border-border align-middle"><MoreVertical className="h-3 w-3" /></span> menu on a card to move it.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+        <Button variant="outline" size="sm" onClick={load} disabled={loading || refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading || refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
 
@@ -153,22 +153,30 @@ export default function FinancePortalPipeline() {
             </Button>
           </CardContent>
         </Card>
-      ) : lanes.length === 0 ? (
+      ) : lanes.every(l => l.cards.length === 0) ? (
         <Card>
           <CardContent className="py-16 text-center">
             <Layers className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-            <p className="text-sm font-medium">No pipeline to show</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Once purchase files are assigned to you they'll appear here. Try Refresh if you expected files.
+            <p className="text-sm font-medium">No purchase files in your pipeline yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              The Kanban shows purchase files for clients assigned to you. Open a client from
+              <span className="font-medium"> My Clients</span> to create a purchase file — it will appear
+              here and stay in sync with the Command Centre Deal Pipeline.
             </p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={load}>
-              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Button asChild variant="default" size="sm">
+                <Link to="/finance/clients">Go to My Clients</Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={load}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <ScrollArea className="w-full">
-          <div className="flex gap-4 pb-6">
+          <div className={`flex gap-4 pb-6 transition-opacity ${refreshing ? 'opacity-70' : ''}`}>
+
             {lanes.map((lane) => (
               <div
                 key={lane.status}
