@@ -182,6 +182,48 @@ function buildListingMarkdown(inputUrl: string, extracted: PerplexityListingExtr
   return lines.join("\n");
 }
 
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
+  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!apiKey) {
+    console.warn("[scrape-property-listing] FIRECRAWL_API_KEY not set — skipping page scrape, falling back to URL-only extraction.");
+    return null;
+  }
+  try {
+    const resp = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url,
+        formats: ["markdown"],
+        onlyMainContent: true,
+        waitFor: 2500,
+        location: { country: "AU", languages: ["en-AU", "en"] },
+      }),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      console.error("[scrape-property-listing] Firecrawl failed", resp.status, t.slice(0, 300));
+      return null;
+    }
+    const j = await resp.json();
+    const root = j?.data ?? j;
+    const markdown: string = root?.markdown || "";
+    const title: string | undefined = root?.metadata?.title;
+    const description: string | undefined = root?.metadata?.description;
+    if (!markdown || markdown.length < 80) {
+      console.warn("[scrape-property-listing] Firecrawl returned empty/short markdown:", markdown.length);
+      return null;
+    }
+    return { markdown, title, description };
+  } catch (e) {
+    console.error("[scrape-property-listing] Firecrawl exception", e);
+    return null;
+  }
+}
+
 async function extractWithPerplexity(url: string, propertyCategory = 'residential') {
   const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (!apiKey) {
@@ -192,26 +234,42 @@ async function extractWithPerplexity(url: string, propertyCategory = 'residentia
     };
   }
 
+  // Step 1: scrape the actual page so the model extracts from real content
+  // instead of hallucinating from a URL slug.
+  const scraped = await scrapeWithFirecrawl(url);
+  const pageContent = scraped?.markdown ?? null;
+  if (pageContent) {
+    console.log(`[scrape-property-listing] Firecrawl markdown length: ${pageContent.length}`);
+  }
+
   const system =
-    "You extract structured property listing details for Australian real estate listings. Be precise; return null when unknown. Do not invent values.";
+    "You extract structured property listing details for Australian real estate listings. CRITICAL RULES: (1) Only extract values explicitly stated in the provided source content. (2) When a field is not clearly present, return null — never guess, never infer from URL slugs, never carry over examples. (3) Numbers must be raw integers/decimals without thousands separators or currency symbols (e.g. 1250000 not \"$1,250,000\"). (4) Never invent agents, prices, sizes, or features.";
 
-  const user = `Extract ${propertyCategory} property listing details from this URL: ${url}
+  const sourceBlock = pageContent
+    ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 18000)}\n---\n\n`
+    : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
 
-Rules:
-- Prefer the exact street address as written on the listing.
-- If the listing is for a suburb-only page or an area overview (not a single property), set address to null and capture suburb/state/postcode if available.
-- Price: return a number in AUD (e.g., 1250000). If only ranges or guides exist, choose the best single estimate.
-- Sizes must be in square metres.
-- property_type should match the listing (for residential: house/apartment/townhouse/land; for commercial/industrial: office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other).
-- For commercial/industrial listings, extract asset_class, asset_sub_type, tenure, zoning, GFA/NLA/GLA, site_area_sqm, parking_bays, current_valuation, property_name, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa and condition_rating when present.
-- weekly_rent: if the listing mentions rental return, rental estimate, or current lease, extract the weekly amount.
-- is_new_build: true if listing mentions "new build", "house & land", "off the plan", "brand new", builder names, or construction terms.
-- land_price / build_price: for house & land packages, extract separate land and build components if shown.
-- council_rates, water_rates, strata_fees: extract annual amounts if mentioned in the listing.
-- insurance_estimate: extract if landlord/building insurance is mentioned.
-- property_management_percent: extract if management fees are mentioned (usually 6-10%).
-- year_built: extract construction year if mentioned.
-- listing_text: include the most relevant summary/excerpt.`;
+  const user = `${sourceBlock}URL: ${url}
+Property category hint: ${propertyCategory}
+
+Extraction rules:
+- address: exact street address as written on the listing. For suburb-only/area pages, set null and only fill suburb/state/postcode.
+- price_aud: raw integer in AUD (e.g. 1250000). Skip "Contact Agent"/"Offers over"/"Auction" unless an explicit number is shown. If a range is given, use the midpoint.
+- bedrooms/bathrooms/car_spaces: only the integers shown on the listing specs.
+- Sizes (land_size_sqm, build_size_sqm, gfa_sqm, nla_sqm, gla_sqm, site_area_sqm, hardstand_sqm): convert to sqm (1 ha = 10000 sqm; 1 sqft = 0.0929 sqm). Only if explicitly stated.
+- property_type: residential => house/apartment/townhouse/villa/unit/land/duplex; commercial/industrial => office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other.
+- For commercial/industrial: only extract asset_class, asset_sub_type, tenure, zoning, GFA/NLA/GLA, site_area_sqm, parking_bays, current_valuation, property_name, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa, condition_rating when explicitly stated.
+- weekly_rent: only if listing states rental return / current lease / rental estimate. Convert monthly (×12/52) or annual (÷52) only for the same property.
+- is_new_build: true ONLY if "brand new", "new build", "house & land", "off the plan", or a builder is explicitly named.
+- land_price / build_price: only for explicit H&L packages with split pricing.
+- council_rates, water_rates, strata_fees: annual AUD amounts, only if explicitly stated.
+- insurance_estimate, property_management_percent, year_built: only if explicitly stated.
+- agent_name, agency: only if visible.
+- key_features: short bullet list from the listing's features section (max 10).
+- listing_text: 2–4 sentence summary using only facts from the source.
+- confidence: 0.0–1.0 self-rating of extraction accuracy.
+
+Return null for any field not present in the source.`;
 
   const body = {
     model: "sonar-pro",
@@ -219,8 +277,8 @@ Rules:
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    temperature: 0.1,
-    max_tokens: 2200,
+    temperature: 0.05,
+    max_tokens: 4000,
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -358,6 +416,10 @@ Rules:
   }
 
   const content = parsed?.choices?.[0]?.message?.content as string | undefined;
+  const finishReason = parsed?.choices?.[0]?.finish_reason;
+  if (finishReason && finishReason !== "stop") {
+    console.warn(`[scrape-property-listing] LLM finish_reason=${finishReason} (possible truncation)`);
+  }
   const extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
 
   if (!extracted) {
@@ -376,6 +438,7 @@ Rules:
     extracted,
     citations,
     raw: parsed,
+    scrapedFromPage: !!pageContent,
   };
 }
 
@@ -451,7 +514,8 @@ Deno.serve(async (req) => {
     const metadata = {
       title: result.extracted.title,
       description: result.extracted.listing_text,
-      provider: "perplexity",
+      provider: result.scrapedFromPage ? "firecrawl+perplexity" : "perplexity",
+      scrapedFromPage: result.scrapedFromPage,
       citations: result.citations,
       confidence: result.extracted.confidence,
     };
