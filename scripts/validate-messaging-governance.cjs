@@ -56,6 +56,16 @@ assertContains(governanceMigration, 'ON public.finance_portal_threads(client_id,
 assertContains(governanceMigration, "SET visibility_scope = 'command_finance_private'", 'Existing finance messages backfill to finance-private');
 assertContains(governanceMigration, "'client_portal', 'blocked', 'finance_portal', 'blocked'", 'Internal command notes block both client and finance portals');
 
+
+// Command Centre secure invoke / CORS diagnostics for outbound messaging.
+assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'secureInvoke sends an explicit Command Centre session header');
+assertContains('src/lib/secureInvoke.ts', 'command_centre_session_token: sessionToken', 'secureInvoke mirrors the Command Centre session in the request body');
+assertContains('supabase/functions/_shared/auth.ts', 'x-command-centre-session-token', 'Shared auth extracts explicit Command Centre session tokens');
+assertContains('supabase/functions/staff-client-portal-messages/index.ts', 'x-command-centre-session-token', 'Staff client messaging CORS allows Command Centre session header');
+assertContains('supabase/functions/finance-portal-messages/index.ts', 'const commandCentreToken =', 'Finance messaging resolves Command Centre staff sessions before portal sessions');
+assertContains('supabase/functions/finance-portal-messages/index.ts', 'const financeToken = commandCentreToken ? null : extractFinancePortalToken', 'Finance messaging does not treat Command Centre sessions as finance partner sessions');
+assertContains('supabase/functions/finance-portal-messages/index.ts', 'x-portal-session-token, x-session-token, x-command-centre-session-token', 'Finance messaging CORS allows portal and Command Centre session headers');
+
 // Finance message backend enforcement.
 const financeMessages = 'supabase/functions/finance-portal-messages/index.ts';
 assertContains(financeMessages, "return ['command_finance_private', 'command_client_with_finance_allocated', 'finance_client_with_command_visibility'];", 'Finance actor permitted scopes are explicit');

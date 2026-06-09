@@ -59,6 +59,12 @@ const staffConfig = staffConfigIndex >= 0
 if (staffConfig.includes('verify_jwt = false')) pass('staff-client-portal-messages disables gateway JWT verification for secureInvoke custom sessions');
 else fail('staff-client-portal-messages must set verify_jwt = false to avoid browser CORS Failed to fetch errors');
 
+
+assertContains('src/lib/secureInvoke.ts', "'x-command-centre-session-token': sessionToken", 'Phase 9 secureInvoke sends explicit Command Centre session header');
+assertContains('supabase/functions/staff-client-portal-messages/index.ts', 'x-command-centre-session-token', 'Phase 9 staff messaging CORS permits Command Centre secureInvoke header');
+assertContains('supabase/functions/finance-portal-messages/index.ts', 'const financeToken = commandCentreToken ? null : extractFinancePortalToken', 'Phase 9 finance messages classify Command Centre staff before Finance Portal partner auth');
+assertContains('supabase/functions/_shared/auth.ts', 'command_centre_session_token', 'Phase 9 shared auth accepts Command Centre session body fallback');
+
 for (const fn of [
   'finance-portal-messages',
   'client-portal-comms',

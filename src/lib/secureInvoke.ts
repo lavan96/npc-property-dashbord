@@ -78,8 +78,8 @@ export async function invokeSecureFunction<T = any>(
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
     
     const requestBody = body 
-      ? { ...body, session_token: sessionToken }
-      : { session_token: sessionToken };
+      ? { ...body, session_token: sessionToken, command_centre_session_token: sessionToken }
+      : { session_token: sessionToken, command_centre_session_token: sessionToken };
     
     const controller = new AbortController();
     const timeoutMs = options?.timeoutMs || 60000;
@@ -91,7 +91,10 @@ export async function invokeSecureFunction<T = any>(
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${bearerToken}`,
-        ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+        ...(sessionToken ? {
+          'x-session-token': sessionToken,
+          'x-command-centre-session-token': sessionToken,
+        } : {}),
       },
       credentials: 'omit',
       body: JSON.stringify(requestBody),

@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = {
     ...createCorsHeaders(origin),
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token, x-session-id',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-portal-session-token, x-session-token, x-command-centre-session-token, x-session-id',
   };
 
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -139,14 +139,25 @@ Deno.serve(async (req) => {
     if (!operation) return jsonResponse({ error: 'operation required' }, 400, corsHeaders);
 
     // ── Resolve actor (partner vs staff) ──
-    const financeToken = extractFinancePortalToken(req.headers, body);
-    const portalToken = req.headers.get('x-portal-session-token') || body?.portal_session_token || null;
+    const commandCentreToken = req.headers.get('x-command-centre-session-token') || body?.command_centre_session_token || null;
+    const financeToken = commandCentreToken ? null : extractFinancePortalToken(req.headers, body);
+    const portalToken = commandCentreToken ? null : (req.headers.get('x-portal-session-token') || body?.portal_session_token || null);
     let actor: { type: 'partner'; portalUserId: string; email: string; name: string }
              | { type: 'staff'; userId: string; username: string }
              | { type: 'client'; portalUserId: string; clientId: string; name: string }
              | null = null;
 
-    if (financeToken) {
+    if (commandCentreToken) {
+      const auth = await verifyAuth(supabase, req.headers, {
+        ...body,
+        session_token: commandCentreToken,
+        command_centre_session_token: commandCentreToken,
+      });
+      if (auth.error || !auth.userId) {
+        return jsonResponse({ error: auth.error || 'Authentication required' }, 401, corsHeaders);
+      }
+      actor = { type: 'staff', userId: auth.userId, username: auth.username || 'Staff' };
+    } else if (financeToken) {
       const { data: portalUser, error: portalUserErr } = await supabase
         .from('finance_portal_users')
         .select('id, email, is_active, revoked_at, session_expires_at')
