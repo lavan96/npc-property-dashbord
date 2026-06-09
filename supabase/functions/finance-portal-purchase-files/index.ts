@@ -125,8 +125,10 @@ Deno.serve(async (req) => {
     if (!operation) return jsonResponse({ error: 'operation required' }, 400);
 
     // Helper: resolve permissions for a given client_id; returns null if not assigned.
-    // Default-allow purchase_files (view+edit) when the matrix doesn't mention it yet,
-    // so existing finance partner assignments work immediately.
+    // Default-allow purchase_files (view+edit) when the matrix doesn't mention the key
+    // OR when neither layer has explicitly granted edit. Without this, partners assigned
+    // before the purchase_files permission key existed (or with an empty object stub)
+    // can't create files even though product expectation is "assigned == can manage PFs".
     async function getEffectivePermissions(clientId: string) {
       const { data: assignment } = await supabase
         .from('finance_portal_client_assignments')
@@ -136,10 +138,19 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!assignment) return null;
       const merged = mergePermissions(portalUser.global_permissions, assignment.permissions);
-      const globalHas = portalUser.global_permissions && (portalUser.global_permissions as any).purchase_files;
-      const clientHas = assignment.permissions && (assignment.permissions as any).purchase_files;
-      if (!globalHas && !clientHas) {
-        merged.purchase_files = { view: true, edit: true, delete: false };
+      const globalPf = (portalUser.global_permissions as any)?.purchase_files;
+      const clientPf = (assignment.permissions as any)?.purchase_files;
+      const globalGrantsEdit = globalPf && typeof globalPf === 'object' && globalPf.edit === true;
+      const clientGrantsEdit = clientPf && typeof clientPf === 'object' && clientPf.edit === true;
+      const explicitlyDenied =
+        (globalPf && typeof globalPf === 'object' && globalPf.edit === false && globalPf.view === false) ||
+        (clientPf && typeof clientPf === 'object' && clientPf.edit === false && clientPf.view === false);
+      if (!globalGrantsEdit && !clientGrantsEdit && !explicitlyDenied) {
+        merged.purchase_files = {
+          view: !!(merged.purchase_files?.view) || true,
+          edit: true,
+          delete: !!(merged.purchase_files?.delete),
+        };
       }
       return merged;
     }
