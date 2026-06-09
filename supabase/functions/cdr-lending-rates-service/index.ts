@@ -136,11 +136,38 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
 // Historical/alternate hosts retained as secondary fallback only.
 const BASE_URL_FALLBACKS: Record<string, string[]> = {
   boq: ["https://secure.api.boq.com.au/cds-au/v1"],
+  amp: ["https://pub.cdr-sme.amp.com.au/api/cds-au/v1"],
   anz: ["https://api.anz.com/cds-au/v1"],
   hsbc: ["https://ob.hsbc.com.au/cds-au/v1"],
   ubank: ["https://ob.ubank.com.au/cds-au/v1", "https://openbank.api.nab.com.au/cds-au/v1"],
   ing: ["https://openbanking.api.ing.com.au/cds-au/v1"],
 };
+
+const REGISTER_BRAND_MATCHES: Record<string, string[]> = {
+  macquarie: ['macquarie bank'], boq: ['bank of queensland'], amp: ['amp - my amp', 'amp bank go'],
+  bendigo: ['bendigo bank'], bankwest: ['bankwest'], westpac: ['westpac'], banksa: ['banksa'],
+  stgeorge: ['st.george'], cba: ['commonwealth bank'], nab: ['nab'], anz: ['anz'], ing: ['ing bank'],
+  suncorp: ['suncorp bank'], hsbc: ['hsbc'], ubank: ['ubank'],
+};
+
+async function fetchRegisterBaseUrls(lenderId: string): Promise<string[]> {
+  try {
+    const response = await fetch('https://api.cdr.gov.au/cdr-register/v1/banking/data-holders/brands/summary', {
+      headers: { 'x-v': '2', 'x-min-v': '1', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; NPCFinancePortal/1.0)' },
+    });
+    if (!response.ok) return [];
+    const payload = await response.json();
+    const matches = REGISTER_BRAND_MATCHES[lenderId] || [];
+    return ((payload?.data || []) as any[])
+      .filter((b) => matches.some((m) => String(b.brandName || '').toLowerCase().includes(m)))
+      .map((b) => String(b.publicBaseUri || '').replace(/\/$/, ''))
+      .filter(Boolean)
+      .map((base) => base.endsWith('/cds-au/v1') ? base : `${base}/cds-au/v1`);
+  } catch (e) {
+    console.warn(`[CDR] Register lookup failed for ${lenderId}:`, e);
+    return [];
+  }
+}
 
 
 // Manual redirect-following fetch.
