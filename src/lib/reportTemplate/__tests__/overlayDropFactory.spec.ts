@@ -3,6 +3,10 @@ import {
   screenToPagePoint,
   makeOverlayForKind,
   draggableKindForOverlayType,
+  serializePaletteDrag,
+  parsePaletteDrag,
+  isOverlayPayload,
+  positionOverlayAtPoint,
 } from '../overlayDropFactory';
 
 let n = 0;
@@ -67,5 +71,38 @@ describe('makeOverlayForKind', () => {
     expect(o.fit).toBe('cover');
     expect(o.width).toBe(200);
     expect(o.height).toBe(140);
+  });
+});
+
+describe('unified palette drag payload', () => {
+  const overlayItem = { kind: 'overlay' as const, overlay: { id: 'o1', type: 'text', x: 0, y: 0, width: 200, height: 40, content: 'Hi' } as any };
+  const blockItem = { id: 'b1', type: 'kpi-grid', props: {}, overlays: [] } as any;
+
+  it('round-trips an overlay payload and detects it', () => {
+    const parsed = parsePaletteDrag(serializePaletteDrag(overlayItem));
+    expect(parsed).not.toBeNull();
+    expect(isOverlayPayload(parsed!)).toBe(true);
+  });
+
+  it('round-trips a block payload and detects it is not an overlay', () => {
+    const parsed = parsePaletteDrag(serializePaletteDrag(blockItem));
+    expect(parsed).not.toBeNull();
+    expect(isOverlayPayload(parsed!)).toBe(false);
+    expect((parsed as any).type).toBe('kpi-grid');
+  });
+
+  it('returns null for empty or malformed payloads', () => {
+    expect(parsePaletteDrag('')).toBeNull();
+    expect(parsePaletteDrag('{not json')).toBeNull();
+  });
+
+  it('centres an overlay on the drop point and clamps to origin', () => {
+    const o = positionOverlayAtPoint(overlayItem.overlay, { x: 300, y: 200 }) as any;
+    expect(o.x).toBe(200); // 300 - 200/2
+    expect(o.y).toBe(180); // 200 - 40/2
+    expect(o.content).toBe('Hi'); // other fields preserved
+    const clamped = positionOverlayAtPoint(overlayItem.overlay, { x: 10, y: 5 }) as any;
+    expect(clamped.x).toBe(0); // 10 - 100 clamped
+    expect(clamped.y).toBe(0);
   });
 });

@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
-import { draggableKindForOverlayType, OVERLAY_DRAG_MIME } from '@/lib/reportTemplate/overlayDropFactory';
+import { serializePaletteDrag, PALETTE_DRAG_MIME } from '@/lib/reportTemplate/overlayDropFactory';
 import { cn } from '@/lib/utils';
 
 interface CommentAnchor {
@@ -508,19 +508,14 @@ export function PagesPanel({
               <div key={item.label} className="relative group">
                 <button
                   type="button"
-                  draggable={enableCanvasDrag && item.category === 'Overlays'}
+                  draggable={enableCanvasDrag}
                   onDragStart={enableCanvasDrag ? (e) => {
-                    const built = item.build();
-                    const kind = 'kind' in built && built.kind === 'overlay'
-                      ? draggableKindForOverlayType((built.overlay as any).type)
-                      : null;
-                    if (!kind) { e.preventDefault(); return; }
-                    e.dataTransfer.setData(OVERLAY_DRAG_MIME, kind);
+                    e.dataTransfer.setData(PALETTE_DRAG_MIME, serializePaletteDrag(item.build()));
                     e.dataTransfer.effectAllowed = 'copy';
                   } : undefined}
                   onClick={() => insertPaletteItem(item)}
                   className="flex min-h-[86px] w-full flex-col items-center gap-1.5 rounded-md border bg-card hover:border-primary/50 hover:bg-muted/40 transition-colors p-3 text-xs"
-                  title={enableCanvasDrag && item.category === 'Overlays'
+                  title={enableCanvasDrag
                     ? `${item.label} — click to insert, or drag onto the canvas`
                     : `${item.category} · ${item.keywords?.join(', ') ?? item.label}`}
                 >

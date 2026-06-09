@@ -6,7 +6,7 @@
  * overlay of the matching kind at the drop point. Pure + unit-tested; the
  * defaults mirror the palette in `PagesPanel.tsx`.
  */
-import { type Overlay } from './templateSchema';
+import { type Block, type Overlay } from './templateSchema';
 
 export interface DropPoint {
   x: number;
@@ -50,6 +50,47 @@ const KIND_BY_OVERLAY_TYPE: Record<string, DraggableOverlayKind> = {
 export function draggableKindForOverlayType(type: string | undefined | null): DraggableOverlayKind | null {
   if (!type) return null;
   return KIND_BY_OVERLAY_TYPE[type] ?? null;
+}
+
+// ─── Unified palette drag payload (all overlays + blocks) ────────────────────
+//
+// Rather than re-deriving each element's defaults (error-prone for tables/curved
+// text), we serialize the palette item's own `build()` output on dragstart and
+// rebuild it at the drop point. Overlays are repositioned under the cursor;
+// blocks flow into the page (renderer-safe).
+
+export const PALETTE_DRAG_MIME = 'application/x-tpl-palette';
+
+/** The shape a palette item's `build()` returns — an overlay wrapper or a block. */
+export type BuiltPaletteItem = Block | { kind: 'overlay'; overlay: Overlay };
+
+export function serializePaletteDrag(built: BuiltPaletteItem): string {
+  return JSON.stringify(built);
+}
+
+export function parsePaletteDrag(raw: string): BuiltPaletteItem | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' ? (v as BuiltPaletteItem) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isOverlayPayload(item: BuiltPaletteItem): item is { kind: 'overlay'; overlay: Overlay } {
+  return !!item && (item as any).kind === 'overlay' && !!(item as any).overlay;
+}
+
+/** Reposition an overlay so it is centred on the drop point (clamped to origin). */
+export function positionOverlayAtPoint(overlay: Overlay, point: DropPoint): Overlay {
+  const w = Number((overlay as any).width) || 0;
+  const h = Number((overlay as any).height) || 0;
+  return {
+    ...overlay,
+    x: Math.max(0, Math.round(point.x - w / 2)),
+    y: Math.max(0, Math.round(point.y - h / 2)),
+  } as Overlay;
 }
 
 const DEFAULT_SIZE: Record<DraggableOverlayKind, { width: number; height: number }> = {

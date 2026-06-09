@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
-import { screenToPagePoint, OVERLAY_DRAG_MIME, type DraggableOverlayKind } from '@/lib/reportTemplate/overlayDropFactory';
+import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag, type BuiltPaletteItem } from '@/lib/reportTemplate/overlayDropFactory';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
@@ -58,8 +58,8 @@ interface Props {
   onDeleteOverlay: (id: string) => void;
   onDuplicateOverlay: (id: string) => void;
   onSelectBlock: (blockId: string | null) => void;
-  /** V2 drop-to-place: create an overlay of `kind` at the dropped page point. */
-  onCanvasDropCreate?: (kind: DraggableOverlayKind, point: { x: number; y: number }) => void;
+  /** V2 drop-to-place: a palette item (overlay or block) was dropped at `point`. */
+  onPaletteDrop?: (item: BuiltPaletteItem, point: { x: number; y: number }) => void;
   commentAnchors?: CommentAnchor[];
 }
 
@@ -80,7 +80,7 @@ export function EditorialCanvas({
   onDeleteOverlay,
   onDuplicateOverlay,
   onSelectBlock,
-  onCanvasDropCreate,
+  onPaletteDrop,
   commentAnchors = [],
 }: Props) {
   const pageW = page.size.width || 595;
@@ -503,15 +503,15 @@ export function EditorialCanvas({
           <div
             ref={stageRef}
             onPointerDown={beginMarquee}
-            onDragOver={onCanvasDropCreate ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } : undefined}
-            onDrop={onCanvasDropCreate ? (e) => {
-              const kind = e.dataTransfer.getData(OVERLAY_DRAG_MIME) as DraggableOverlayKind;
-              if (!kind) return;
+            onDragOver={onPaletteDrop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } : undefined}
+            onDrop={onPaletteDrop ? (e) => {
+              const item = parsePaletteDrag(e.dataTransfer.getData(PALETTE_DRAG_MIME));
+              if (!item) return;
               e.preventDefault();
               const el = stageRef.current;
               if (!el) return;
               const rect = el.getBoundingClientRect();
-              onCanvasDropCreate(kind, screenToPagePoint({ clientX: e.clientX, clientY: e.clientY, rect, zoom }));
+              onPaletteDrop(item, screenToPagePoint({ clientX: e.clientX, clientY: e.clientY, rect, zoom }));
             } : undefined}
             className="relative bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
             style={{

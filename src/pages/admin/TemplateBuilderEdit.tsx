@@ -113,7 +113,7 @@ import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/b
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
-import { makeOverlayForKind } from '@/lib/reportTemplate/overlayDropFactory';
+import { isOverlayPayload, positionOverlayAtPoint } from '@/lib/reportTemplate/overlayDropFactory';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -2283,7 +2283,10 @@ export default function TemplateBuilderEdit() {
                     page={activePage}
                     sampleData={sampleData}
                     customCss={customCss || undefined}
-                    onCanvasDropCreate={editorV2 ? (kind, point) => addOverlayToActivePage(makeOverlayForKind(kind, point)) : undefined}
+                    onPaletteDrop={editorV2 ? (item, point) => {
+                      if (isOverlayPayload(item)) addOverlayToActivePage(positionOverlayAtPoint(item.overlay, point));
+                      else addBlockToActivePage(item as Block);
+                    } : undefined}
                     selectedOverlayId={selectedOverlayId}
                     multiOverlayIds={multiOverlayIds}
                     onSelectOverlay={(oid, additive) => {
