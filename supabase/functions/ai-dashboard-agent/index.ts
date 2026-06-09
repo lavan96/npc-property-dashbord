@@ -602,8 +602,8 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "get_call_alerts",
-      description: "Fetch triggered call alert history (positive and negative alerts).",
-      parameters: { type: "object", properties: { limit: { type: "number", description: "Max alerts (default 20)" }, unread_only: { type: "boolean", description: "Only unread alerts" } } },
+      description: "Fetch triggered VAPI call alerts (positive and negative). If no persisted alert history exists, also returns derived high-priority alert candidates from recent negative/high-severity calls instead of saying there is no call data.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max alerts (default 20)" }, unread_only: { type: "boolean", description: "Only unread persisted alerts" } } },
     },
   },
   {
@@ -1354,8 +1354,8 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "get_cash_flow_analysis",
-      description: "Fetch stored 10-year cash flow analyses for a report, including comparison data.",
-      parameters: { type: "object", properties: { report_id: { type: "string", description: "UUID of the investment report (optional)" }, limit: { type: "number", description: "Max results (default 5)" } } },
+      description: "Fetch stored 10-year cash flow analyses only. Accepts a report UUID or a property/client search query; resolves matching investment reports before reading cash_flow_analyses. Do not substitute emails or unrelated smart_search results when no analysis exists.",
+      parameters: { type: "object", properties: { report_id: { type: "string", description: "UUID of the investment report (optional)" }, query: { type: "string", description: "Property address, suburb, lot number, or client name/email to resolve to reports (optional)" }, limit: { type: "number", description: "Max results (default 5)" } } },
     },
   },
 
@@ -1596,13 +1596,12 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "undo_action",
-      description: "Undo/rollback a previously executed agent action using its audit log ID. REQUIRES USER CONFIRMATION.",
+      description: "Undo/rollback a previously executed agent action using its audit log ID, or the latest undoable action for the current user if action_id is omitted. Never answer an undo request with a dashboard summary. REQUIRES USER CONFIRMATION.",
       parameters: {
         type: "object",
         properties: {
-          action_id: { type: "string", description: "UUID of the action from the audit trail" },
+          action_id: { type: "string", description: "UUID of the action from the audit trail (optional; omit to undo the latest undoable action)" },
         },
-        required: ["action_id"],
       },
     },
   },
@@ -1989,7 +1988,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "smart_search",
-      description: "Unified intelligent search across clients, deals, emails, calls, and notes. Returns categorized results with relevance. Use for broad 'find anything about X' queries.",
+      description: "Unified intelligent search across clients, deals, emails, calls, and notes. Returns categorized search results only; never use this for morning briefings, dashboard snapshots, or weekly digests. Use for broad 'find anything about X' or client-data lookup queries.",
       parameters: { type: "object", properties: { query: { type: "string", description: "Search term" }, categories: { type: "array", items: { type: "string", enum: ["clients", "deals", "emails", "calls", "notes"] }, description: "Categories to search (default: all)" } }, required: ["query"] },
     },
   },
@@ -2067,7 +2066,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "recall_memories",
-      description: "Recall all stored memories/context about the current user. Use this at the start of conversations to personalize responses.",
+      description: "Recall stored memory_* context about the current user only. Lightweight startup context; excludes unrelated user preferences to avoid large/slow responses.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -2240,7 +2239,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "get_cloudflare_status",
-      description: "Read-only Cloudflare status: domain list, SSL status, recent analytics (requests, bandwidth, threats blocked). Requires cloudflare-proxy edge function.",
+      description: "Read-only Cloudflare status: zone details and recent analytics (requests, bandwidth, threats blocked) via cloudflare-proxy.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -3320,11 +3319,61 @@ async function executeSearchCalls(sb: any, args: any) {
 }
 
 async function executeGetCallAlerts(sb: any, args: any) {
-  const limit = args.limit || 20;
-  let query = sb.from('call_alert_history').select('*');
+  const limit = Math.min(args.limit || 20, 100);
+  let query = sb
+    .from('call_alert_history')
+    .select('id, call_id, rule_name, message, is_positive, is_read, triggered_at')
+    .order('triggered_at', { ascending: false })
+    .limit(limit);
   if (args.unread_only) query = query.eq('is_read', false);
-  const { data } = await query.order('triggered_at', { ascending: false }).limit(limit);
-  return { alerts: data || [] };
+
+  const { data: alerts, error } = await query;
+  if (error) return { error: `Failed to fetch call alerts: ${error.message}` };
+
+  const persistedAlerts = alerts || [];
+  if (persistedAlerts.length > 0 || args.unread_only) {
+    return { alerts: persistedAlerts, count: persistedAlerts.length, source: 'call_alert_history' };
+  }
+
+  // If the alert-history table has no rows, still surface actionable call alerts
+  // from the source call log data so the agent does not incorrectly imply that
+  // there are no concerning recent calls.
+  const { data: derivedCalls, error: derivedError } = await sb
+    .from('vapi_call_logs')
+    .select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at')
+    .or('severity_score.gte.4,sentiment.eq.negative')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (derivedError) {
+    return {
+      alerts: [],
+      count: 0,
+      source: 'call_alert_history',
+      warning: `Alert history is empty and derived alert lookup failed: ${derivedError.message}`,
+    };
+  }
+
+  const derivedAlerts = (derivedCalls || []).map((call: any) => ({
+    id: `derived-${call.id}`,
+    call_id: call.id,
+    rule_name: call.severity_score >= 4 ? 'High severity call' : 'Negative sentiment call',
+    message: call.summary || `${call.agent_name || 'VAPI'} call from ${call.caller_phone || 'unknown caller'} requires review.`,
+    is_positive: false,
+    is_read: false,
+    triggered_at: call.created_at,
+    source_call: call,
+  }));
+
+  return {
+    alerts: [],
+    derived_alerts: derivedAlerts,
+    count: derivedAlerts.length,
+    source: 'derived_from_vapi_call_logs',
+    note: derivedAlerts.length
+      ? 'No persisted call alert history rows were found, so these alerts were derived from recent negative or high-severity VAPI calls.'
+      : 'No persisted call alert history rows and no recent negative/high-severity VAPI calls were found.',
+  };
 }
 
 async function executeGetCallAnalytics(sb: any, args: any) {
@@ -3750,10 +3799,86 @@ async function executeRemoveAdditionalContact(sb: any, args: any) {
 }
 
 async function executeGetCashFlowAnalysis(sb: any, args: any) {
+  const limit = Math.min(args.limit || 5, 50);
+  let reportIds: string[] = [];
+  let matchedReports: any[] = [];
+
+  if (args.report_id) {
+    reportIds = [args.report_id];
+  } else if (args.query && String(args.query).trim()) {
+    const q = String(args.query).trim();
+    const safeOrQ = q.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    const { data: addressReports, error: addressReportError } = await sb
+      .from('investment_reports')
+      .select('id, property_address, status, client_id, created_at')
+      .ilike('property_address', `%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (addressReportError) return { error: `Failed to resolve reports for cash-flow query: ${addressReportError.message}` };
+
+    matchedReports = addressReports || [];
+
+    const { data: clients, error: clientError } = await sb
+      .from('clients')
+      .select('id, primary_first_name, primary_surname, primary_email')
+      .or(`primary_first_name.ilike.%${safeOrQ}%,primary_surname.ilike.%${safeOrQ}%,primary_email.ilike.%${safeOrQ}%`)
+      .limit(25);
+    if (clientError) return { error: `Failed to resolve clients for cash-flow query: ${clientError.message}` };
+
+    let resolvedClients = clients || [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    if (resolvedClients.length === 0 && terms.length > 1) {
+      const { data: splitClients, error: splitClientError } = await sb
+        .from('clients')
+        .select('id, primary_first_name, primary_surname, primary_email')
+        .ilike('primary_first_name', `%${terms[0]}%`)
+        .ilike('primary_surname', `%${terms[terms.length - 1]}%`)
+        .limit(25);
+      if (splitClientError) return { error: `Failed to resolve clients by split name for cash-flow query: ${splitClientError.message}` };
+      resolvedClients = splitClients || [];
+    }
+
+    const clientIds = resolvedClients.map((client: any) => client.id);
+    if (clientIds.length) {
+      const { data: clientReports, error: clientReportError } = await sb
+        .from('investment_reports')
+        .select('id, property_address, status, client_id, created_at')
+        .in('client_id', clientIds)
+        .order('created_at', { ascending: false })
+        .limit(25);
+      if (clientReportError) return { error: `Failed to resolve client reports for cash-flow query: ${clientReportError.message}` };
+      const byId = new Map(matchedReports.map((report: any) => [report.id, report]));
+      for (const report of (clientReports || [])) byId.set(report.id, report);
+      matchedReports = Array.from(byId.values());
+    }
+
+    reportIds = matchedReports.map((report: any) => report.id);
+  }
+
   let query = sb.from('cash_flow_analyses').select('*');
-  if (args.report_id) query = query.eq('primary_report_id', args.report_id);
-  const { data } = await query.order('created_at', { ascending: false }).limit(args.limit || 5);
-  return { analyses: data || [] };
+  if (reportIds.length === 1) query = query.eq('primary_report_id', reportIds[0]);
+  else if (reportIds.length > 1) query = query.in('primary_report_id', reportIds);
+  else if (args.query) {
+    return {
+      analyses: [],
+      count: 0,
+      matched_reports: [],
+      note: 'No investment reports matched the supplied property/client query, so no cash-flow analyses can be returned.',
+    };
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
+  if (error) return { error: `Failed to fetch cash-flow analyses: ${error.message}` };
+
+  return {
+    analyses: data || [],
+    count: data?.length || 0,
+    matched_reports: matchedReports,
+    note: (data || []).length === 0
+      ? 'No stored 10-year cash-flow analysis was found for the resolved report(s). This tool returns only cash-flow analysis records and does not substitute email threads or unrelated client activity.'
+      : undefined,
+  };
 }
 
 async function executeGetAutoReportSwitches(sb: any) {
@@ -3911,18 +4036,44 @@ async function executeGetAuditTrail(sb: any, args: any, userId: string) {
 }
 
 async function executeUndoAction(sb: any, args: any, userId: string) {
-  const { data: action } = await sb.from('agent_action_log').select('*').eq('id', args.action_id).eq('user_id', userId).single();
-  if (!action) return { error: 'Action not found or not yours.' };
-  if (action.is_rolled_back) return { error: 'Action already rolled back.' };
-  if (!action.rollback_data) return { error: 'No rollback data available for this action.' };
-  // Apply rollback
+  let actionQuery = sb
+    .from('agent_action_log')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_rolled_back', false)
+    .not('rollback_data', 'is', null);
+
+  if (args.action_id) {
+    actionQuery = actionQuery.eq('id', args.action_id).maybeSingle();
+  } else {
+    actionQuery = actionQuery.order('created_at', { ascending: false }).limit(1).maybeSingle();
+  }
+
+  const { data: action, error: actionError } = await actionQuery;
+  if (actionError) return { error: `Failed to find undoable action: ${actionError.message}` };
+  if (!action) {
+    return {
+      error: args.action_id
+        ? 'Action not found, not yours, already rolled back, or has no rollback data.'
+        : 'No undoable action with rollback data was found for your user.',
+    };
+  }
+  if (!action.affected_table || !action.affected_record_id) return { error: 'No affected table/record is available for this action.' };
+
   try {
-    if (action.affected_table && action.affected_record_id && action.rollback_data) {
-      await sb.from(action.affected_table).update(action.rollback_data).eq('id', action.affected_record_id);
-    }
-    await sb.from('agent_action_log').update({ is_rolled_back: true, rolled_back_at: new Date().toISOString(), rolled_back_by: userId }).eq('id', args.action_id);
-    return { success: true, message: `Action "${action.tool_name}" has been undone.` };
-  } catch (err: any) { return { error: `Rollback failed: ${err.message}` }; }
+    const { error: rollbackError } = await sb.from(action.affected_table).update(action.rollback_data).eq('id', action.affected_record_id);
+    if (rollbackError) return { error: `Rollback failed: ${rollbackError.message}` };
+
+    const { error: logError } = await sb
+      .from('agent_action_log')
+      .update({ is_rolled_back: true, rolled_back_at: new Date().toISOString(), rolled_back_by: userId })
+      .eq('id', action.id);
+    if (logError) return { error: `Rollback succeeded but audit log update failed: ${logError.message}` };
+
+    return { success: true, action_id: action.id, message: `Action "${action.tool_name}" has been undone.` };
+  } catch (err: any) {
+    return { error: `Rollback failed: ${err.message}` };
+  }
 }
 
 // ─── PROACTIVE INSIGHTS (Batch 2) ───
@@ -4692,30 +4843,61 @@ async function executeGetWeeklyDigest(sb: any) {
 }
 
 async function executeSmartSearch(sb: any, args: any) {
-  const q = args.query; const cats = args.categories || ['clients', 'deals', 'emails', 'calls', 'notes'];
+  const q = String(args.query || '').trim();
+  if (!q) return { error: 'query is required for smart_search.' };
+
+  const cats = args.categories || ['clients', 'deals', 'emails', 'calls', 'notes'];
+  const safeOrQ = q.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
   const results: any = {};
+  const errors: Record<string, string> = {};
+  const terms = q.split(/\s+/).filter(Boolean);
+
   if (cats.includes('clients')) {
-    const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status').or(`primary_first_name.ilike.%${q}%,primary_surname.ilike.%${q}%,primary_email.ilike.%${q}%`).limit(10);
-    results.clients = (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, status: c.pipeline_status }));
+    let clientQuery = sb
+      .from('clients')
+      .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status')
+      .or(`primary_first_name.ilike.%${safeOrQ}%,primary_surname.ilike.%${safeOrQ}%,primary_email.ilike.%${safeOrQ}%,primary_mobile.ilike.%${safeOrQ}%`)
+      .limit(10);
+
+    const { data, error } = await clientQuery;
+    if (error) errors.clients = error.message;
+
+    let clients = data || [];
+    if (clients.length === 0 && terms.length > 1) {
+      const { data: splitData, error: splitError } = await sb
+        .from('clients')
+        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status')
+        .ilike('primary_first_name', `%${terms[0]}%`)
+        .ilike('primary_surname', `%${terms[terms.length - 1]}%`)
+        .limit(10);
+      if (splitError) errors.clients = splitError.message;
+      clients = splitData || clients;
+    }
+
+    results.clients = clients.map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, phone: c.primary_mobile, status: c.pipeline_status }));
   }
   if (cats.includes('deals')) {
-    const { data } = await sb.from('client_deals').select('id, property_address, current_stage, loan_amount, clients:client_id(primary_first_name, primary_surname)').ilike('property_address', `%${q}%`).limit(10);
-    results.deals = (data || []).map((d: any) => ({ id: d.id, address: d.property_address, stage: d.current_stage, client: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() }));
+    const { data, error } = await sb.from('client_deals').select('id, property_address, current_stage, loan_amount, clients:client_id(primary_first_name, primary_surname)').ilike('property_address', `%${q}%`).limit(10);
+    if (error) errors.deals = error.message;
+    results.deals = (data || []).map((d: any) => ({ id: d.id, address: d.property_address, stage: d.current_stage, loan_amount: d.loan_amount, client: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() }));
   }
   if (cats.includes('emails')) {
-    const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at').or(`subject.ilike.%${q}%,sender.ilike.%${q}%`).order('received_at', { ascending: false }).limit(10);
+    const { data, error } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at').or(`subject.ilike.%${safeOrQ}%,sender.ilike.%${safeOrQ}%`).order('received_at', { ascending: false }).limit(10);
+    if (error) errors.emails = error.message;
     results.emails = data || [];
   }
   if (cats.includes('calls')) {
-    const { data } = await sb.from('vapi_call_logs').select('id, agent_name, summary, created_at').ilike('summary', `%${q}%`).order('created_at', { ascending: false }).limit(10);
+    const { data, error } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at').or(`summary.ilike.%${safeOrQ}%,agent_name.ilike.%${safeOrQ}%,caller_phone.ilike.%${safeOrQ}%`).order('created_at', { ascending: false }).limit(10);
+    if (error) errors.calls = error.message;
     results.calls = data || [];
   }
   if (cats.includes('notes')) {
-    const { data } = await sb.from('client_notes').select('id, content, note_type, created_at, client_id').ilike('content', `%${q}%`).order('created_at', { ascending: false }).limit(10);
+    const { data, error } = await sb.from('client_notes').select('id, content, note_type, created_at, client_id').ilike('content', `%${q}%`).order('created_at', { ascending: false }).limit(10);
+    if (error) errors.notes = error.message;
     results.notes = data || [];
   }
   const totalResults = Object.values(results).reduce((s: number, r: any) => s + (r?.length || 0), 0);
-  return { query: q, total_results: totalResults, results };
+  return { query: q, total_results: totalResults, results, errors: Object.keys(errors).length ? errors : undefined };
 }
 
 async function executeWhatIfAnalysis(sb: any, args: any) {
@@ -5084,17 +5266,45 @@ async function executeGetIntegrationStatus(sb: any) {
 }
 
 async function executeGetCloudflareStatus() {
-  try {
-    const url = `${SUPABASE_URL}/functions/v1/cloudflare-proxy`;
+  const url = `${SUPABASE_URL}/functions/v1/cloudflare-proxy`;
+  const now = new Date();
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const callProxy = async (action: string, params?: any) => {
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action: 'get-analytics' }),
+      body: JSON.stringify({ action, params }),
     });
-    if (!resp.ok) return { status: 'unavailable', message: 'Cloudflare proxy returned an error. Check configuration.' };
-    const data = await resp.json();
-    return { status: 'connected', analytics: data };
-  } catch (err: any) { return { status: 'unavailable', message: `Cloudflare proxy error: ${err.message}` }; }
+    const text = await resp.text();
+    let payload: any = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { raw: text }; }
+    return { ok: resp.ok, status: resp.status, payload };
+  };
+
+  try {
+    const [zone, analytics] = await Promise.all([
+      callProxy('zone_details'),
+      callProxy('analytics_dashboard', { since: since.toISOString(), until: now.toISOString() }),
+    ]);
+
+    if (!zone.ok && !analytics.ok) {
+      return {
+        status: 'unavailable',
+        message: 'Cloudflare proxy returned errors for both zone details and analytics.',
+        diagnostics: { zone: zone.payload, analytics: analytics.payload },
+      };
+    }
+
+    return {
+      status: zone.ok && analytics.ok ? 'connected' : 'partial',
+      zone: zone.payload?.data || zone.payload,
+      analytics: analytics.payload?.data || analytics.payload,
+      diagnostics: { zone_http_status: zone.status, analytics_http_status: analytics.status },
+    };
+  } catch (err: any) {
+    return { status: 'unavailable', message: `Cloudflare proxy error: ${err.message}` };
+  }
 }
 
 async function executeGetUserList(sb: any, args: any) {
@@ -5919,9 +6129,22 @@ async function executeSaveMemory(sb: any, args: any, userId: string) {
 }
 
 async function executeRecallMemories(sb: any, userId: string) {
-  const { data } = await sb.from('agent_user_preferences').select('preference_key, preference_value, updated_at')
-    .eq('user_id', userId).order('updated_at', { ascending: false }).limit(50);
-  const memories = (data || []).map((p: any) => ({ key: p.preference_key.replace('memory_', ''), ...p.preference_value, last_updated: p.updated_at }));
+  const { data, error } = await sb
+    .from('agent_user_preferences')
+    .select('preference_key, preference_value, updated_at')
+    .eq('user_id', userId)
+    .like('preference_key', 'memory_%')
+    .order('updated_at', { ascending: false })
+    .limit(25);
+
+  if (error) return { error: `Failed to recall memories: ${error.message}` };
+
+  const memories = (data || []).map((p: any) => ({
+    key: p.preference_key.replace(/^memory_/, ''),
+    ...(typeof p.preference_value === 'object' && p.preference_value !== null ? p.preference_value : { value: p.preference_value }),
+    last_updated: p.updated_at,
+  }));
+
   return { memories, count: memories.length };
 }
 
@@ -6245,7 +6468,7 @@ PLAYBOOK & AUTOMATION RULES:
 BATCH 4 INTELLIGENCE RULES:
 17. For "how am I doing" or "performance" queries, use get_performance_metrics.
 18. For "weekly summary" or "what happened this week", use get_weekly_digest.
-19. For "find anything about X" style queries, use smart_search for unified results.
+19. For "find anything about X" or client-data lookup queries, use smart_search for unified results; do not answer these with a morning briefing, dashboard snapshot, or weekly digest.
 20. For "what if rates go up" or scenario questions, use what_if_analysis with the client's latest BC assessment.
 21. For "top clients" or ranking queries, use get_top_clients with appropriate sort criteria.
 22. For "export" or "download" requests, use export_pipeline_data or export_client_portfolio.

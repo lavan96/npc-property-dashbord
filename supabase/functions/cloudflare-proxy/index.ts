@@ -24,15 +24,20 @@ Deno.serve(async (req) => {
       return createUnauthorizedResponse(authResult.error, corsHeaders);
     }
 
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', authResult.userId)
-      .eq('role', 'superadmin')
-      .single();
+    const readOnlyServiceActions = new Set(['analytics_dashboard', 'analytics_dns', 'cache_settings', 'list_workers', 'list_pages', 'worker_details', 'list_firewall_rules', 'zone_details']);
+    const requestedAction = body?.action;
 
-    if (!roleData) {
-      return createForbiddenResponse('Superadmin access required', corsHeaders);
+    if (authResult.authMethod !== 'service_role' || !readOnlyServiceActions.has(requestedAction)) {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authResult.userId)
+        .eq('role', 'superadmin')
+        .single();
+
+      if (!roleData) {
+        return createForbiddenResponse('Superadmin access required', corsHeaders);
+      }
     }
 
     // Get Cloudflare credentials
@@ -40,9 +45,21 @@ Deno.serve(async (req) => {
     const zoneId = Deno.env.get('CLOUDFLARE_ZONE_ID');
     const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
 
-    if (!apiToken || !zoneId || !accountId) {
+    const { action, params } = body;
+    const accountActions = new Set(['list_workers', 'list_pages', 'worker_details']);
+
+    if (!apiToken || !zoneId || (accountActions.has(action) && !accountId)) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Cloudflare credentials not configured', missingSecrets: true }),
+        JSON.stringify({
+          success: false,
+          error: 'Cloudflare credentials not configured',
+          missingSecrets: true,
+          missing: {
+            apiToken: !apiToken,
+            zoneId: !zoneId,
+            accountId: accountActions.has(action) && !accountId,
+          },
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -51,8 +68,6 @@ Deno.serve(async (req) => {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
     };
-
-    const { action, params } = body;
 
     let result: any;
 
@@ -287,9 +302,10 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('Cloudflare proxy error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       { status: 500, headers: { ...createCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
     );
   }
