@@ -1,7 +1,7 @@
 /**
  * Template Builder — Editor (Phase 2).
  *
- * Layout: [PagesPanel] [TemplateCanvas (tldraw)] [PropertiesInspector]
+ * Layout: [PagesPanel] [EditorialCanvas] [PropertiesInspector]
  *                                              + collapsible Live PDF preview
  *
  * The template JSON remains the single source of truth. The canvas only edits
@@ -111,7 +111,6 @@ import {
 import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
-import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
@@ -1802,6 +1801,26 @@ export default function TemplateBuilderEdit() {
               e.target.value = '';
             }}
           />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1" title="Import a reference (PDF or image) and reconstruct it in the editor">
+                <Upload className="h-4 w-4" /> Import <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Import & reconstruct a reference</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowDesignAgent(true)}>
+                <Sparkles className="h-4 w-4 mr-2" /> Reconstruct from image (AI)
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowResync(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Import / re-sync from PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowAIAuthor(true)}>
+                <Wand2 className="h-4 w-4 mr-2" /> Generate a page with AI
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
