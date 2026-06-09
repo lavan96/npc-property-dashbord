@@ -81,6 +81,47 @@ function sanitizeClientData(data: Record<string, any>): Record<string, any> {
   return sanitized;
 }
 
+async function ensureStaffPortalMessageNotification(supabase: any, messageRow: any) {
+  try {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .contains('metadata', { message_id: messageRow.id })
+      .eq('type', 'portal_message_received')
+      .maybeSingle();
+
+    if (existing?.id) return;
+
+    const { data: client } = await supabase
+      .from('clients')
+      .select('primary_first_name, primary_surname, primary_email, assigned_team_user_id')
+      .eq('id', messageRow.client_id)
+      .maybeSingle();
+
+    const clientName = [client?.primary_first_name, client?.primary_surname]
+      .filter(Boolean)
+      .join(' ') || client?.primary_email || 'a client';
+    const preview = (messageRow.message || '').slice(0, 140) || '(blank message)';
+
+    await supabase.from('notifications').insert({
+      type: 'portal_message_received',
+      title: `New message from ${clientName}`,
+      message: preview,
+      entity_id: messageRow.client_id,
+      target_user_id: client?.assigned_team_user_id || null,
+      metadata: {
+        client_id: messageRow.client_id,
+        message_id: messageRow.id,
+        sender_name: messageRow.sender_name,
+        link_path: `/clients?clientId=${messageRow.client_id}&tab=portal-messages`,
+        source: 'manage-portal-client-data',
+      },
+    });
+  } catch (e) {
+    console.error('Failed to ensure staff portal message notification:', e);
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -692,14 +733,32 @@ Deno.serve(async (req) => {
       }
 
       // --- Messages ---
+      const messageText = (payload?.message || '').toString().trim();
+      if (!messageText) {
+        return new Response(
+          JSON.stringify({ error: 'Message is required', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (messageText.length > 5000) {
+        return new Response(
+          JSON.stringify({ error: 'Message too long (max 5000)', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const now = new Date().toISOString();
       const insertData = {
-        ...payload,
         client_id: clientId,
         portal_user_id: session.client_portal_users.id,
         sender_type: 'client',
-        created_at: new Date().toISOString(),
+        sender_name: payload?.sender_name || null,
+        message: messageText,
+        is_read: false,
+        is_internal: false,
+        created_at: now,
+        updated_at: now,
       };
-      delete insertData.id;
 
       const { data: result, error } = await supabase
         .from('client_portal_messages')
@@ -713,6 +772,9 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      await ensureStaffPortalMessageNotification(supabase, result);
+
       return new Response(
         JSON.stringify({ success: true, data: result }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
