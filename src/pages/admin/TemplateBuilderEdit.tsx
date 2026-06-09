@@ -18,6 +18,7 @@ import {
   ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
+import { ReferenceImportDialog } from '@/components/templateBuilder/ReferenceImportDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
 import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
@@ -202,6 +203,7 @@ export default function TemplateBuilderEdit() {
   const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
+  const [showReferenceImport, setShowReferenceImport] = useState(false);
   // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. OFF by default.
   const editorV2 = useMemo(() => isTemplateEditorV2Enabled(), []);
   const [showDiff, setShowDiff] = useState(false);
@@ -1814,6 +1816,10 @@ export default function TemplateBuilderEdit() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>Import & reconstruct a reference</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowReferenceImport(true)} disabled={!id}>
+                <Upload className="h-4 w-4 mr-2" /> Start from a reference…
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setShowDesignAgent(true)}>
                 <Sparkles className="h-4 w-4 mr-2" /> Reconstruct from image (AI)
               </DropdownMenuItem>
@@ -3138,6 +3144,19 @@ export default function TemplateBuilderEdit() {
             // Force the editor to reload the freshly resynced template.
             window.location.reload();
           }}
+        />
+      )}
+      {id && (
+        <ReferenceImportDialog
+          open={showReferenceImport}
+          onOpenChange={setShowReferenceImport}
+          templateId={id}
+          templateName={name}
+          schema={template}
+          activePageId={activePageId}
+          sampleData={sampleData}
+          onResynced={() => window.location.reload()}
+          onApplySchema={(s) => { setTemplate(s); toast.success('Reconstruction applied — review and Save'); }}
         />
       )}
       <PdfFidelityDiffDialog
