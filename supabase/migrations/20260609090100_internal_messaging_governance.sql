@@ -315,3 +315,15 @@ EXCEPTION WHEN OTHERS THEN
   RETURN NEW;
 END;
 $$;
+
+-- Phase 1 hardening: a finance partner/client pair can have separate governed
+-- thread types (private Command Centre finance, allocated client advisory, and
+-- direct finance-client). Do not let one mutable thread carry multiple scopes.
+ALTER TABLE public.finance_portal_threads
+  DROP CONSTRAINT IF EXISTS finance_portal_threads_client_id_finance_user_id_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_finance_portal_threads_client_finance_type
+  ON public.finance_portal_threads(client_id, finance_user_id, thread_type);
+
+CREATE INDEX IF NOT EXISTS idx_finance_portal_threads_client_finance_scope
+  ON public.finance_portal_threads(client_id, finance_user_id, visibility_scope, thread_type);

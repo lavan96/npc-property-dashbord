@@ -187,6 +187,7 @@ Deno.serve(async (req) => {
             .select('id')
             .eq('client_id', client_id)
             .eq('finance_user_id', assignment.finance_user_id)
+            .eq('thread_type', 'command_client_allocated')
             .maybeSingle();
 
           let threadId = existingThread?.id;

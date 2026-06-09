@@ -233,6 +233,11 @@ export default function FinancePortalMessages() {
                               & {smartCapitalize(t.clients.secondary_contact_name)}
                             </span>
                           )}
+                          {t.visibility_scope === 'finance_client_with_command_visibility' && (
+                            <Badge variant="outline" className="border-teal-500/30 bg-teal-500/10 text-[10px] text-teal-700 h-[18px] px-1.5 shrink-0">
+                              Client + CC visible
+                            </Badge>
+                          )}
                           {t.finance_allocated && (
                             <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 h-[18px] px-1.5 shrink-0">
                               {String(t.allocation_status || 'Allocated').replace(/_/g, ' ')}

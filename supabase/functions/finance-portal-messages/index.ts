@@ -173,6 +173,24 @@ Deno.serve(async (req) => {
       return null;
     };
 
+
+    const scopeForThreadType = (scope: string) => {
+      if (scope === 'finance_client_with_command_visibility') return 'finance_client';
+      if (scope === 'command_client_with_finance_allocated') return 'command_client_allocated';
+      if (scope === 'internal_command_only') return 'internal_command';
+      return 'command_finance';
+    };
+
+    const permittedScopesForActor = (actorType: string) => {
+      if (actorType === 'partner') {
+        return ['command_finance_private', 'command_client_with_finance_allocated', 'finance_client_with_command_visibility'];
+      }
+      if (actorType === 'client') {
+        return ['command_client_with_finance_allocated', 'finance_client_with_command_visibility'];
+      }
+      return null;
+    };
+
     // ── unread_count (partner only) ──
     if (operation === 'unread_count') {
       if (actor.type !== 'partner') return jsonResponse({ error: 'Partner only' }, 403, corsHeaders);
@@ -229,6 +247,16 @@ Deno.serve(async (req) => {
     if (operation === 'get_or_create_thread') {
       const { client_id, finance_user_id, subject } = body;
       if (!client_id) return jsonResponse({ error: 'client_id required' }, 400, corsHeaders);
+      if (actor.type === 'client') {
+        return jsonResponse({ error: 'Clients cannot create finance threads; reply to an existing authorised thread' }, 403, corsHeaders);
+      }
+
+      const requestedScope = body.visibility_scope || 'command_finance_private';
+      const requestedThreadType = body.thread_type || scopeForThreadType(requestedScope);
+      const allowedScopes = permittedScopesForActor(actor.type);
+      if (allowedScopes && !allowedScopes.includes(requestedScope)) {
+        return jsonResponse({ error: 'Requested visibility scope is not permitted for this actor' }, 403, corsHeaders);
+      }
 
       let fuId = actor.type === 'partner' ? actor.portalUserId : finance_user_id;
       if (actor.type === 'client' && client_id !== actor.clientId) return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
@@ -252,9 +280,17 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('client_id', client_id)
         .eq('finance_user_id', fuId)
+        .eq('thread_type', requestedThreadType)
         .maybeSingle();
 
       if (existing) return jsonResponse({ success: true, thread: existing }, 200, corsHeaders);
+
+      const requestedPermissionStatus = body.permission_status
+        || (requestedScope === 'finance_client_with_command_visibility'
+          ? { command_centre: 'full', finance_portal: 'granted', client_portal: 'granted' }
+          : requestedScope === 'command_client_with_finance_allocated'
+            ? { command_centre: 'full', finance_portal: 'thread_granted', client_portal: 'granted' }
+            : { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' });
 
       const { data: created, error } = await supabase
         .from('finance_portal_threads')
@@ -262,12 +298,12 @@ Deno.serve(async (req) => {
           client_id,
           finance_user_id: fuId,
           subject: subject?.slice(0, 200) || null,
-          visibility_scope: body.visibility_scope || 'command_finance_private',
-          thread_type: body.thread_type || 'command_finance',
+          visibility_scope: requestedScope,
+          thread_type: requestedThreadType,
           allocation_status: body.allocation_status || 'none',
           finance_allocated: body.finance_allocated === true,
           command_owner_user_id: actor.type === 'staff' ? actor.userId : null,
-          permission_status: body.permission_status || { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
+          permission_status: requestedPermissionStatus,
         })
         .select()
         .single();
@@ -293,12 +329,16 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
-      const { data, error } = await supabase
+      let messageQuery = supabase
         .from('finance_portal_messages')
         .select('*')
         .eq('thread_id', thread_id)
         .order('created_at', { ascending: true })
         .limit(500);
+      const messageAllowedScopes = permittedScopesForActor(actor.type);
+      if (messageAllowedScopes) messageQuery = messageQuery.in('visibility_scope', messageAllowedScopes);
+
+      const { data, error } = await messageQuery;
       if (error) throw error;
       return jsonResponse({ success: true, messages: data || [], thread }, 200, corsHeaders);
     }
@@ -365,6 +405,16 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
+      const requestedScope = body.visibility_scope || thread.visibility_scope;
+      const requestedThreadType = body.thread_type || thread.thread_type;
+      const allowedScopes = permittedScopesForActor(actor.type);
+      if (allowedScopes && !allowedScopes.includes(requestedScope)) {
+        return jsonResponse({ error: 'Requested visibility scope is not permitted for this actor' }, 403, corsHeaders);
+      }
+      if (requestedScope !== thread.visibility_scope || requestedThreadType !== thread.thread_type) {
+        return jsonResponse({ error: 'Thread visibility and type are immutable; create or select the correct governed thread' }, 400, corsHeaders);
+      }
+
       const requestedScope = body.visibility_scope || (actor.type === 'partner' || actor.type === 'client' ? 'finance_client_with_command_visibility' : thread.visibility_scope || 'command_finance_private');
       const insertRow: any = {
         thread_id,
@@ -373,7 +423,7 @@ Deno.serve(async (req) => {
         sender_name: actor.type === 'partner' ? actor.name : actor.type === 'staff' ? actor.username : actor.name,
         body: trimmed || '(attachment)',
         visibility_scope: requestedScope,
-        thread_type: body.thread_type || (requestedScope === 'finance_client_with_command_visibility' ? 'finance_client' : thread.thread_type || 'command_finance'),
+        thread_type: requestedThreadType,
         allocation_status: body.allocation_status || thread.allocation_status || 'none',
         command_owner_user_id: actor.type === 'staff' ? actor.userId : null,
         permission_status: requestedScope === 'finance_client_with_command_visibility'
@@ -482,6 +532,9 @@ Deno.serve(async (req) => {
       if (actor.type === 'partner' && thread.finance_user_id !== actor.portalUserId) {
         return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
+      if (actor.type === 'client' && (thread.client_id !== actor.clientId || !permittedScopesForActor('client')!.includes(thread.visibility_scope))) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+      }
 
       const safe = String(filename).replace(/[^\w.\-]+/g, '_').slice(0, 200);
       const path = `${thread.client_id}/${thread_id}/${Date.now()}_${safe}`;
@@ -499,14 +552,19 @@ Deno.serve(async (req) => {
 
       const { data: msg } = await supabase
         .from('finance_portal_messages')
-        .select('id, thread_id, attachment_path, finance_portal_threads:thread_id(finance_user_id)')
+        .select('id, thread_id, client_id, visibility_scope, attachment_path, finance_portal_threads:thread_id(finance_user_id)')
         .eq('id', message_id)
         .maybeSingle();
       if (!msg || !msg.attachment_path) return jsonResponse({ error: 'Attachment not found' }, 404, corsHeaders);
 
       if (actor.type === 'partner') {
         const fuId = (msg as any).finance_portal_threads?.finance_user_id;
-        if (fuId !== actor.portalUserId) return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+        if (fuId !== actor.portalUserId || !permittedScopesForActor('partner')!.includes(msg.visibility_scope)) {
+          return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+        }
+      }
+      if (actor.type === 'client' && (msg.client_id !== actor.clientId || !permittedScopesForActor('client')!.includes(msg.visibility_scope))) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
       const { data: signed, error } = await supabase.storage

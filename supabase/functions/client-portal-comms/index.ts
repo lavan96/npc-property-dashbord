@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
 
       const { data: thread } = await supabase
         .from('finance_portal_threads')
-        .select('id, client_id, visibility_scope')
+        .select('id, client_id, finance_user_id, visibility_scope, thread_type, allocation_status')
         .eq('id', threadId)
         .eq('client_id', clientId)
         .in('visibility_scope', ['finance_client_with_command_visibility', 'command_client_with_finance_allocated'])
@@ -212,29 +212,24 @@ Deno.serve(async (req) => {
           sender_type: 'client',
           sender_name: portalUser.email || 'Client',
           body: message,
-          visibility_scope: 'finance_client_with_command_visibility',
-          thread_type: 'finance_client',
-          allocation_status: 'none',
+          visibility_scope: thread.visibility_scope,
+          thread_type: thread.thread_type,
+          allocation_status: thread.allocation_status || 'none',
           permission_status: { command_centre: 'full', finance_portal: 'granted', client_portal: 'granted' },
         })
         .select()
         .single();
       if (error) return json({ error: error.message || 'Send failed', success: false }, 400);
 
-      const { data: assignments } = await supabase
-        .from('finance_portal_client_assignments')
-        .select('finance_user_id')
-        .eq('client_id', clientId);
-      const portalRows = (assignments || []).map((a: any) => ({
-        portal_user_id: a.finance_user_id,
+      await supabase.from('finance_portal_notifications').insert({
+        portal_user_id: thread.finance_user_id,
         client_id: clientId,
         notification_type: 'client_finance_reply',
         title: 'Client replied to finance',
         body: message.slice(0, 140),
         link_path: '/finance/messages',
         metadata: { thread_id: threadId, message_id: inserted.id, source: 'client_portal' },
-      }));
-      if (portalRows.length) await supabase.from('finance_portal_notifications').insert(portalRows);
+      });
 
       return json({ success: true, message: inserted });
     }

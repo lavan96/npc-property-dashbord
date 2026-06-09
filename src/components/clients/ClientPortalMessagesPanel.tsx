@@ -138,17 +138,23 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
       for (const t of targets) {
         try {
           if (t === 'finance') {
+            const financeScope = targets.has('client') ? 'command_client_with_finance_allocated' : 'command_finance_private';
+            const financeThreadType = targets.has('client') ? 'command_client_allocated' : 'command_finance';
             const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
               operation: 'get_or_create_thread',
               client_id: clientId,
+              visibility_scope: financeScope,
+              thread_type: financeThreadType,
+              allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
+              finance_allocated: targets.has('client'),
             });
             if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
             const { error } = await invokeSecureFunction('finance-portal-messages', {
               operation: 'send_message',
               thread_id: thread.thread.id,
               body: trimmed,
-              visibility_scope: targets.has('client') ? 'command_client_with_finance_allocated' : 'command_finance_private',
-              thread_type: targets.has('client') ? 'command_client_allocated' : 'command_finance',
+              visibility_scope: financeScope,
+              thread_type: financeThreadType,
               allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
             });
             if (error) throw new Error(error.message || 'Send failed');

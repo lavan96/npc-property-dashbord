@@ -59,6 +59,11 @@ export function FinanceMessagesThreadPanel({ thread, invoke, onMessageSent, clas
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{name}</h2>
               {secondary && <span className="truncate text-xs text-muted-foreground sm:text-sm">& {secondary}</span>}
+              {thread.visibility_scope === 'finance_client_with_command_visibility' && (
+                <Badge variant="outline" className="h-5 border-teal-500/30 bg-teal-500/10 px-2 text-[10px] font-semibold text-teal-700">
+                  Client + CC visible
+                </Badge>
+              )}
               {thread.finance_allocated && (
                 <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 px-2 text-[10px] font-semibold text-amber-700">
                   {String(thread.allocation_status || 'Finance allocated').replace(/_/g, ' ')}
