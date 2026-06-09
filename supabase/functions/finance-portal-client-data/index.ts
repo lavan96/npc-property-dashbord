@@ -15,6 +15,8 @@ import { buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, S
 
 const CREATE_CLIENT_PERMISSION_TABLES = [
   'properties', 'income', 'expenses', 'assets', 'liabilities', 'employment', 'address_history', 'notes', 'contacts', 'documents', 'borrowing_capacity', 'messages',
+  // Finance partners who originate a client must also be able to create purchase files for them.
+  'purchase_files', 'client_tasks',
 ] as const;
 
 const EMPTY_ASSIGNMENT_PERMISSIONS = CREATE_CLIENT_PERMISSION_TABLES.reduce((acc, key) => {
