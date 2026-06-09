@@ -17933,6 +17933,10 @@ export type Database = {
           requeued_count: number
         }[]
       }
+      resolve_client_display_name: {
+        Args: { p_client_id: string }
+        Returns: string
+      }
       resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       retry_failed_bulk_items: { Args: { p_job_id: string }; Returns: number }
       seed_sample_schools: { Args: never; Returns: undefined }
@@ -18041,6 +18045,8 @@ export type Database = {
         | "agreement_sent"
         | "agreement_signed"
         | "agreement_voided"
+        | "portal_message_sent"
+        | "portal_message_received"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -18067,6 +18073,7 @@ export type Database = {
         | "data_import"
         | "portfolio_report"
         | "agency_agreement"
+        | "portal_message"
       app_role: "superadmin" | "admin" | "user"
       attribution_source_type:
         | "webhook_auto"
@@ -18605,6 +18612,8 @@ export const Constants = {
         "agreement_sent",
         "agreement_signed",
         "agreement_voided",
+        "portal_message_sent",
+        "portal_message_received",
       ],
       activity_entity_type: [
         "investment_report",
@@ -18632,6 +18641,7 @@ export const Constants = {
         "data_import",
         "portfolio_report",
         "agency_agreement",
+        "portal_message",
       ],
       app_role: ["superadmin", "admin", "user"],
       attribution_source_type: [

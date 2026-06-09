@@ -11,6 +11,7 @@ import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { smartCapitalize } from '@/lib/nameUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationItem {
   id: string;
@@ -57,13 +58,29 @@ export function FinancePortalNotificationBell() {
     setLoading(false);
   }, [invokeFinanceFunction]);
 
-  // Initial + polling for unread count
+  // Initial + polling for unread count + realtime
   useEffect(() => {
     if (!user) return;
     void fetchUnreadCount();
     const id = setInterval(fetchUnreadCount, POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, [user, fetchUnreadCount]);
+
+    const channel = supabase
+      .channel(`finance-portal-notif-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'finance_portal_notifications', filter: `portal_user_id=eq.${user.id}` },
+        () => {
+          void fetchUnreadCount();
+          if (open) void fetchList();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(id);
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchUnreadCount, fetchList, open]);
 
   // Fetch list when opened
   useEffect(() => {
