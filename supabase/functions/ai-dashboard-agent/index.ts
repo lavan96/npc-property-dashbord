@@ -5273,13 +5273,24 @@ async function executeGetCloudflareStatus() {
   const callProxy = async (action: string, params?: any) => {
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        // cloudflare-proxy has verify_jwt=true, so use the anon JWT at the
+        // Supabase gateway and pass the service role key only as an internal
+        // edge-to-edge header that the proxy validates for read-only actions.
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'x-internal-service-key': SUPABASE_SERVICE_ROLE_KEY,
+      },
       body: JSON.stringify({ action, params }),
     });
     const text = await resp.text();
     let payload: any = {};
     try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { raw: text }; }
-    return { ok: resp.ok, status: resp.status, payload };
+
+    const proxyPayload = payload?.data || payload;
+    const cloudflareOk = proxyPayload?.success !== false;
+    return { ok: resp.ok && cloudflareOk, http_ok: resp.ok, status: resp.status, payload };
   };
 
   try {
@@ -5288,11 +5299,14 @@ async function executeGetCloudflareStatus() {
       callProxy('analytics_dashboard', { since: since.toISOString(), until: now.toISOString() }),
     ]);
 
+    const missingSecrets = zone.payload?.missingSecrets || analytics.payload?.missingSecrets;
     if (!zone.ok && !analytics.ok) {
       return {
-        status: 'unavailable',
-        message: 'Cloudflare proxy returned errors for both zone details and analytics.',
-        diagnostics: { zone: zone.payload, analytics: analytics.payload },
+        status: missingSecrets ? 'configuration_required' : 'unavailable',
+        message: missingSecrets
+          ? 'Cloudflare proxy is reachable, but required Cloudflare environment secrets are missing or incomplete.'
+          : 'Cloudflare proxy is reachable, but both zone details and analytics requests failed.',
+        diagnostics: { zone, analytics },
       };
     }
 
@@ -5300,7 +5314,7 @@ async function executeGetCloudflareStatus() {
       status: zone.ok && analytics.ok ? 'connected' : 'partial',
       zone: zone.payload?.data || zone.payload,
       analytics: analytics.payload?.data || analytics.payload,
-      diagnostics: { zone_http_status: zone.status, analytics_http_status: analytics.status },
+      diagnostics: { zone_http_status: zone.status, analytics_http_status: analytics.status, zone_ok: zone.ok, analytics_ok: analytics.ok },
     };
   } catch (err: any) {
     return { status: 'unavailable', message: `Cloudflare proxy error: ${err.message}` };

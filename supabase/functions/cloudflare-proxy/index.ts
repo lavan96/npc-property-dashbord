@@ -18,16 +18,24 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
 
-    // Verify auth + superadmin
-    const authResult = await verifyAuth(supabase, req.headers, body);
-    if (authResult.error) {
-      return createUnauthorizedResponse(authResult.error, corsHeaders);
-    }
-
     const readOnlyServiceActions = new Set(['analytics_dashboard', 'analytics_dns', 'cache_settings', 'list_workers', 'list_pages', 'worker_details', 'list_firewall_rules', 'zone_details']);
     const requestedAction = body?.action;
+    const internalServiceKey = req.headers.get('x-internal-service-key') || body?.internal_service_key;
+    const isInternalReadOnlyCall = Boolean(
+      internalServiceKey &&
+      internalServiceKey === supabaseKey &&
+      readOnlyServiceActions.has(requestedAction)
+    );
 
-    if (authResult.authMethod !== 'service_role' || !readOnlyServiceActions.has(requestedAction)) {
+    // Verify auth + superadmin. Internal edge-to-edge calls from the agent use
+    // the anon JWT for the Supabase gateway (this function has verify_jwt=true)
+    // plus x-internal-service-key for read-only proxy actions only.
+    if (!isInternalReadOnlyCall) {
+      const authResult = await verifyAuth(supabase, req.headers, body);
+      if (authResult.error) {
+        return createUnauthorizedResponse(authResult.error, corsHeaders);
+      }
+
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
