@@ -3674,47 +3674,91 @@ export type Database = {
       }
       client_portal_messages: {
         Row: {
+          allocated_finance_user_id: string | null
+          allocation_status: Database["public"]["Enums"]["message_allocation_status"]
           client_id: string
+          command_owner_user_id: string | null
           created_at: string | null
+          finance_allocated: boolean
           id: string
+          is_internal: boolean
           is_read: boolean | null
           message: string
+          notification_status: Json
+          permission_status: Json
           portal_user_id: string | null
           read_at: string | null
           sender_name: string | null
           sender_type: string
+          thread_id: string | null
+          thread_type: string
           updated_at: string | null
+          visibility_scope: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Insert: {
+          allocated_finance_user_id?: string | null
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           client_id: string
+          command_owner_user_id?: string | null
           created_at?: string | null
+          finance_allocated?: boolean
           id?: string
+          is_internal?: boolean
           is_read?: boolean | null
           message: string
+          notification_status?: Json
+          permission_status?: Json
           portal_user_id?: string | null
           read_at?: string | null
           sender_name?: string | null
           sender_type: string
+          thread_id?: string | null
+          thread_type?: string
           updated_at?: string | null
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Update: {
+          allocated_finance_user_id?: string | null
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           client_id?: string
+          command_owner_user_id?: string | null
           created_at?: string | null
+          finance_allocated?: boolean
           id?: string
+          is_internal?: boolean
           is_read?: boolean | null
           message?: string
+          notification_status?: Json
+          permission_status?: Json
           portal_user_id?: string | null
           read_at?: string | null
           sender_name?: string | null
           sender_type?: string
+          thread_id?: string | null
+          thread_type?: string
           updated_at?: string | null
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Relationships: [
+          {
+            foreignKeyName: "client_portal_messages_allocated_finance_user_id_fkey"
+            columns: ["allocated_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_portal_messages_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_messages_command_owner_user_id_fkey"
+            columns: ["command_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
             referencedColumns: ["id"]
           },
           {
@@ -8432,61 +8476,79 @@ export type Database = {
       }
       finance_portal_messages: {
         Row: {
+          allocation_status: Database["public"]["Enums"]["message_allocation_status"]
           attachment_filename: string | null
           attachment_mime: string | null
           attachment_path: string | null
           attachment_size_bytes: number | null
           body: string
           client_id: string
+          command_owner_user_id: string | null
           created_at: string
           finance_user_id: string | null
           id: string
           is_read_by_partner: boolean
           is_read_by_staff: boolean
+          notification_status: Json
+          permission_status: Json
           read_by_partner_at: string | null
           read_by_staff_at: string | null
           sender_name: string | null
           sender_type: string
           staff_user_id: string | null
           thread_id: string
+          thread_type: string
+          visibility_scope: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Insert: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           attachment_filename?: string | null
           attachment_mime?: string | null
           attachment_path?: string | null
           attachment_size_bytes?: number | null
           body: string
           client_id: string
+          command_owner_user_id?: string | null
           created_at?: string
           finance_user_id?: string | null
           id?: string
           is_read_by_partner?: boolean
           is_read_by_staff?: boolean
+          notification_status?: Json
+          permission_status?: Json
           read_by_partner_at?: string | null
           read_by_staff_at?: string | null
           sender_name?: string | null
           sender_type: string
           staff_user_id?: string | null
           thread_id: string
+          thread_type?: string
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Update: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           attachment_filename?: string | null
           attachment_mime?: string | null
           attachment_path?: string | null
           attachment_size_bytes?: number | null
           body?: string
           client_id?: string
+          command_owner_user_id?: string | null
           created_at?: string
           finance_user_id?: string | null
           id?: string
           is_read_by_partner?: boolean
           is_read_by_staff?: boolean
+          notification_status?: Json
+          permission_status?: Json
           read_by_partner_at?: string | null
           read_by_staff_at?: string | null
           sender_name?: string | null
           sender_type?: string
           staff_user_id?: string | null
           thread_id?: string
+          thread_type?: string
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Relationships: [
           {
@@ -8494,6 +8556,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_messages_command_owner_user_id_fkey"
+            columns: ["command_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
             referencedColumns: ["id"]
           },
           {
@@ -8837,43 +8906,61 @@ export type Database = {
       }
       finance_portal_threads: {
         Row: {
+          allocation_status: Database["public"]["Enums"]["message_allocation_status"]
           client_id: string
+          command_owner_user_id: string | null
           created_at: string
+          finance_allocated: boolean
           finance_user_id: string
           id: string
           is_archived: boolean
           last_message_at: string | null
           last_message_preview: string | null
+          permission_status: Json
           subject: string | null
+          thread_type: string
           unread_count_partner: number
           unread_count_staff: number
           updated_at: string
+          visibility_scope: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Insert: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           client_id: string
+          command_owner_user_id?: string | null
           created_at?: string
+          finance_allocated?: boolean
           finance_user_id: string
           id?: string
           is_archived?: boolean
           last_message_at?: string | null
           last_message_preview?: string | null
+          permission_status?: Json
           subject?: string | null
+          thread_type?: string
           unread_count_partner?: number
           unread_count_staff?: number
           updated_at?: string
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Update: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
           client_id?: string
+          command_owner_user_id?: string | null
           created_at?: string
+          finance_allocated?: boolean
           finance_user_id?: string
           id?: string
           is_archived?: boolean
           last_message_at?: string | null
           last_message_preview?: string | null
+          permission_status?: Json
           subject?: string | null
+          thread_type?: string
           unread_count_partner?: number
           unread_count_staff?: number
           updated_at?: string
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
         }
         Relationships: [
           {
@@ -8881,6 +8968,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_threads_command_owner_user_id_fkey"
+            columns: ["command_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
             referencedColumns: ["id"]
           },
           {
@@ -12281,6 +12375,74 @@ export type Database = {
           vacancy_rate?: number | null
         }
         Relationships: []
+      }
+      message_governance_log: {
+        Row: {
+          allocation_status: Database["public"]["Enums"]["message_allocation_status"]
+          attachment_metadata: Json | null
+          client_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          message_id: string | null
+          metadata: Json
+          notification_status: Json
+          permission_status: Json
+          recipient_portals: string[]
+          sender_portal: string
+          sender_user_id: string | null
+          source_table: string | null
+          thread_id: string | null
+          thread_type: string
+          visibility_scope: Database["public"]["Enums"]["message_visibility_scope"]
+        }
+        Insert: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
+          attachment_metadata?: Json | null
+          client_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          notification_status?: Json
+          permission_status?: Json
+          recipient_portals?: string[]
+          sender_portal: string
+          sender_user_id?: string | null
+          source_table?: string | null
+          thread_id?: string | null
+          thread_type: string
+          visibility_scope: Database["public"]["Enums"]["message_visibility_scope"]
+        }
+        Update: {
+          allocation_status?: Database["public"]["Enums"]["message_allocation_status"]
+          attachment_metadata?: Json | null
+          client_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          notification_status?: Json
+          permission_status?: Json
+          recipient_portals?: string[]
+          sender_portal?: string
+          sender_user_id?: string | null
+          source_table?: string | null
+          thread_id?: string | null
+          thread_type?: string
+          visibility_scope?: Database["public"]["Enums"]["message_visibility_scope"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_governance_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       migration_job_items: {
         Row: {
@@ -18067,6 +18229,18 @@ export type Database = {
         | "settled"
         | "declined"
         | "withdrawn"
+      message_allocation_status:
+        | "none"
+        | "finance_action_required"
+        | "finance_review_required"
+        | "finance_input_required"
+        | "allocate_to_finance"
+      message_visibility_scope:
+        | "command_finance_private"
+        | "command_client_private"
+        | "command_client_with_finance_allocated"
+        | "finance_client_with_command_visibility"
+        | "internal_command_only"
       payout_status: "draft" | "pending" | "paid" | "cancelled"
       pf_client_task_status:
         | "pending"
@@ -18641,6 +18815,20 @@ export const Constants = {
         "settled",
         "declined",
         "withdrawn",
+      ],
+      message_allocation_status: [
+        "none",
+        "finance_action_required",
+        "finance_review_required",
+        "finance_input_required",
+        "allocate_to_finance",
+      ],
+      message_visibility_scope: [
+        "command_finance_private",
+        "command_client_private",
+        "command_client_with_finance_allocated",
+        "finance_client_with_command_visibility",
+        "internal_command_only",
       ],
       payout_status: ["draft", "pending", "paid", "cancelled"],
       pf_client_task_status: [
