@@ -87,6 +87,9 @@ const ACTION_TYPE_LABELS: Record<string, { label: string; tone: ActionTone; grou
   email_reply_generated: { label: 'Reply Generated', tone: 'info', group: 'Email' },
   email_reply_sent: { label: 'Reply Sent', tone: 'success', group: 'Email' },
   email_linked_to_report: { label: 'Email Linked', tone: 'info', group: 'Email' },
+  // Cross-portal messages
+  portal_message_sent: { label: 'Portal Message Sent', tone: 'info', group: 'Messages' },
+  portal_message_received: { label: 'Portal Message Received', tone: 'accent', group: 'Messages' },
   // Calls
   call_tagged: { label: 'Call Tagged', tone: 'accent', group: 'Calls' },
   alert_rule_created: { label: 'Alert Created', tone: 'info', group: 'Calls' },
