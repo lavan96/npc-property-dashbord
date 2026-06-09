@@ -148,6 +148,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
         clearAuthState();
       } else {
         setUser(data.user);
+        markAuthed();
         if (data.session_token) {
           persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
         }
