@@ -11,6 +11,7 @@ import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { smartCapitalize } from '@/lib/nameUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationItem {
   id: string;
