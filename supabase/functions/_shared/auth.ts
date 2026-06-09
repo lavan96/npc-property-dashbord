@@ -92,19 +92,22 @@ export async function verifySession(
 export async function verifyAuth(
   supabase: any,
   headers: Headers,
-  body?: { session_token?: string }
+  body?: { session_token?: string; command_centre_session_token?: string }
 ): Promise<SessionValidationResult> {
   // DIAGNOSTIC: Log all headers for debugging
   const authHeader = headers.get('authorization');
   const cookieHeader = headers.get('cookie');
+  const commandCentreSessionHeader = headers.get('x-command-centre-session-token');
   const sessionHeader = headers.get('x-session-token');
   console.log('[verifyAuth] Headers check:', {
     hasAuthHeader: !!authHeader,
     authHeaderPrefix: authHeader?.substring(0, 20) + '...',
     hasCookieHeader: !!cookieHeader,
     cookieHeaderPreview: cookieHeader ? cookieHeader.substring(0, 50) + '...' : null,
+    hasCommandCentreSessionHeader: !!commandCentreSessionHeader,
     hasSessionHeader: !!sessionHeader,
     hasBody: !!body,
+    bodyHasCommandCentreSessionToken: !!(body?.command_centre_session_token),
     bodyHasSessionToken: !!(body?.session_token)
   });
 
@@ -221,7 +224,7 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
 
 /**
  * Extract session token from request headers, cookies, or body
- * Priority: Cookie > x-session-token header > body > Authorization header (only if not a JWT)
+ * Priority: Cookie > x-command-centre-session-token header > x-session-token header > body > Authorization header (only if not a JWT)
  * Supports HttpOnly cookies for XSS protection
  * 
  * NOTE: We check Authorization header LAST and only if it doesn't look like a JWT
@@ -229,7 +232,7 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
  */
 export function extractSessionToken(
   headers: Headers,
-  body?: { session_token?: string | null }
+  body?: { session_token?: string | null; command_centre_session_token?: string | null }
 ): string | null {
   // Helper: reject falsy, "null", "undefined", empty strings
   const isValidToken = (t: any): t is string => 
@@ -247,6 +250,17 @@ export function extractSessionToken(
     console.log('[extractSessionToken] No cookie header found');
   }
 
+  // Check explicit Command Centre session header before generic portal headers.
+  // This prevents staff dashboard calls from being misclassified by portal-specific
+  // endpoints that also accept their own session-token headers.
+  const commandCentreSessionHeader = headers.get('x-command-centre-session-token');
+  if (isValidToken(commandCentreSessionHeader)) {
+    console.log('[extractSessionToken] Found session_token in x-command-centre-session-token header');
+    return commandCentreSessionHeader;
+  } else {
+    console.log('[extractSessionToken] No valid x-command-centre-session-token header found');
+  }
+
   // Check custom session header (reliable fallback for cross-origin)
   const sessionHeader = headers.get('x-session-token');
   if (isValidToken(sessionHeader)) {
@@ -254,6 +268,14 @@ export function extractSessionToken(
     return sessionHeader;
   } else {
     console.log('[extractSessionToken] No valid x-session-token header found');
+  }
+
+  // Check explicit Command Centre body parameter before legacy generic body support.
+  if (isValidToken(body?.command_centre_session_token)) {
+    console.log('[extractSessionToken] Found session_token in command_centre_session_token body field');
+    return body!.command_centre_session_token!;
+  } else {
+    console.log('[extractSessionToken] No valid command_centre_session_token in body');
   }
 
   // Check body parameter (legacy support)
