@@ -484,6 +484,14 @@ Deno.serve(async (req) => {
       let ghlSync: { success: boolean; error?: string | null } = { success: false, error: null };
       if (body?.sync_to_ghl !== false) {
         try {
+          const syncBody: Record<string, any> = {
+            clientId: createdClient.id,
+            source: 'finance_portal',
+            sourceActorId: portalUser.id,
+          };
+          if (body?.pipeline_ghl_id) syncBody.pipelineGhlId = body.pipeline_ghl_id;
+          if (body?.pipeline_stage_ghl_id) syncBody.pipelineStageGhlId = body.pipeline_stage_ghl_id;
+
           const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-client-to-ghl`, {
             method: 'POST',
             headers: {
@@ -491,23 +499,25 @@ Deno.serve(async (req) => {
               'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
             },
-            body: JSON.stringify({
-              clientId: createdClient.id,
-              source: 'finance_portal',
-              sourceActorId: portalUser.id,
-            }),
+            body: JSON.stringify(syncBody),
           });
 
           const syncData = await response.json().catch(() => ({}));
           if (!response.ok || !syncData?.success) {
             ghlSync = { success: false, error: syncData?.error || `HTTP ${response.status}` };
+            console.error('[finance-portal-client-data] GHL sync failed', response.status, syncData);
           } else {
             ghlSync = { success: true, error: null };
           }
         } catch (error) {
           ghlSync = { success: false, error: error instanceof Error ? error.message : 'Failed to sync client to GHL' };
+          console.error('[finance-portal-client-data] GHL sync exception', error);
         }
       }
+
+      // Notify dashboard clients list (realtime/subscribers may listen)
+      console.log('[finance-portal-client-data] Client created', { id: createdClient.id, name: createdClientName, ghl_synced: ghlSync.success });
+
 
       return jsonResponse({
         success: true,
@@ -516,6 +526,28 @@ Deno.serve(async (req) => {
         ghl_sync: ghlSync,
       });
     }
+
+    // ── list_ghl_pipelines ── (for client creation pipeline picker)
+    if (operation === 'list_ghl_pipelines') {
+      const { data: pipelines, error } = await supabase
+        .from('ghl_pipelines')
+        .select('id, ghl_id, name, position')
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+      if (error) return jsonResponse({ error: error.message }, 400);
+      return jsonResponse({ success: true, pipelines: pipelines || [] });
+    }
+
+    // ── list_ghl_pipeline_stages ──
+    if (operation === 'list_ghl_pipeline_stages') {
+      const { data: stages, error } = await supabase
+        .from('ghl_pipeline_stages')
+        .select('id, ghl_id, name, position, pipeline_id')
+        .order('position', { ascending: true });
+      if (error) return jsonResponse({ error: error.message }, 400);
+      return jsonResponse({ success: true, stages: stages || [] });
+    }
+
 
     // ── list_assigned_clients ──
     if (operation === 'list_assigned_clients') {

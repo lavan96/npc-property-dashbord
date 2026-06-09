@@ -14,7 +14,12 @@ import { Progress } from '@/components/ui/progress';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   Search, Users, Loader2, X, ArrowUpDown, UserCheck, Clock, SortAsc,
   ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
@@ -156,6 +161,40 @@ function CreateClientDialog({
   const [parseProgress, setParseProgress] = useState(0);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [parsedMetrics, setParsedMetrics] = useState<{ properties: number; employment: number; liabilities: number } | null>(null);
+  const [syncToGHL, setSyncToGHL] = useState(true);
+  const [pipelines, setPipelines] = useState<Array<{ id: string; ghl_id: string; name: string }>>([]);
+  const [stages, setStages] = useState<Array<{ id: string; ghl_id: string; name: string; pipeline_id: string }>>([]);
+  const [pipelinesLoading, setPipelinesLoading] = useState(false);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
+
+  // Load pipelines/stages when GHL sync is enabled
+  useEffect(() => {
+    if (!open || !syncToGHL || pipelines.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      setPipelinesLoading(true);
+      try {
+        const [pRes, sRes] = await Promise.all([
+          invokeFinanceFunction('finance-portal-client-data', { operation: 'list_ghl_pipelines' }),
+          invokeFinanceFunction('finance-portal-client-data', { operation: 'list_ghl_pipeline_stages' }),
+        ]);
+        if (cancelled) return;
+        if (pRes?.data?.success) setPipelines(pRes.data.pipelines || []);
+        if (sRes?.data?.success) setStages(sRes.data.stages || []);
+      } catch (err) {
+        console.warn('[FinancePortalClients] Failed to load GHL pipelines', err);
+      } finally {
+        if (!cancelled) setPipelinesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, syncToGHL, pipelines.length, invokeFinanceFunction]);
+
+  const pipelineStages = useMemo(() => {
+    if (!selectedPipelineId) return [];
+    return stages.filter((s) => s.pipeline_id === selectedPipelineId);
+  }, [stages, selectedPipelineId]);
 
   const resetState = useCallback(() => {
     setIntakeMode('manual');
@@ -165,7 +204,11 @@ function CreateClientDialog({
     setParseProgress(0);
     setPdfFileName(null);
     setParsedMetrics(null);
+    setSyncToGHL(true);
+    setSelectedPipelineId('');
+    setSelectedStageId('');
   }, []);
+
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) resetState();
@@ -236,13 +279,19 @@ function CreateClientDialog({
 
     setSubmitting(true);
     try {
+      const stage = stages.find((s) => s.id === selectedStageId);
+      const pipeline = pipelines.find((p) => p.id === selectedPipelineId);
+
       const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
         operation: 'create_client',
         payload: formData,
         intake_method: intakeMode === 'pdf' ? 'pdf_upload' : 'manual',
         ingestion_file_name: pdfFileName,
-        sync_to_ghl: true,
+        sync_to_ghl: syncToGHL,
+        pipeline_ghl_id: syncToGHL && pipeline?.ghl_id ? pipeline.ghl_id : undefined,
+        pipeline_stage_ghl_id: syncToGHL && stage?.ghl_id ? stage.ghl_id : undefined,
       });
+
 
       if (error || !data?.success || !data?.client?.id) {
         const detail = data?.details || data?.error || error?.message || 'Failed to create client';
@@ -414,16 +463,86 @@ function CreateClientDialog({
             />
           </div>
 
-          <Card className="bg-muted/20">
-            <CardContent className="flex flex-col gap-2 pt-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-medium text-foreground">What happens next</p>
-                <p>The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.</p>
+          {/* GHL sync (mirrors dashboard AddClientModal) */}
+          <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="finance-syncToGHL"
+                checked={syncToGHL}
+                onCheckedChange={(checked) => setSyncToGHL(checked as boolean)}
+              />
+              <Label htmlFor="finance-syncToGHL" className="text-sm font-normal cursor-pointer">
+                Sync to GoHighLevel after creating
+              </Label>
+            </div>
+
+            {syncToGHL && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="finance-pipeline">Pipeline (Optional)</Label>
+                  <Select
+                    value={selectedPipelineId}
+                    onValueChange={(value) => {
+                      setSelectedPipelineId(value);
+                      setSelectedStageId('');
+                    }}
+                    disabled={pipelinesLoading || pipelines.length === 0}
+                  >
+                    <SelectTrigger id="finance-pipeline">
+                      <SelectValue
+                        placeholder={
+                          pipelinesLoading
+                            ? 'Loading pipelines...'
+                            : pipelines.length === 0
+                              ? 'No pipelines available'
+                              : 'Select a pipeline...'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="finance-stage">Pipeline Stage (Optional)</Label>
+                  <Select
+                    value={selectedStageId}
+                    onValueChange={setSelectedStageId}
+                    disabled={!selectedPipelineId || pipelineStages.length === 0}
+                  >
+                    <SelectTrigger id="finance-stage">
+                      <SelectValue
+                        placeholder={
+                          !selectedPipelineId
+                            ? 'Select a pipeline first...'
+                            : pipelineStages.length === 0
+                              ? 'No stages available'
+                              : 'Select a stage...'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelineStages.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Badge variant="outline">No pipeline opportunity is created</Badge>
-            </CardContent>
-          </Card>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              The client is created in the shared dashboard data model, linked to your finance account, and surfaced to the Command Centre with finance-portal provenance.
+            </p>
+          </div>
         </div>
+
+
+
 
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => handleOpenChange(false)} disabled={submitting}>
