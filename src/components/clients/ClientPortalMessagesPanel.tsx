@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Send, Headphones, User as UserIcon, MessageCircle, Lock, Users, Building2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface ClientPortalMessage {
 }
 
 type MessageTarget = 'client' | 'internal' | 'finance';
+type FinanceAllocationStatus = 'finance_action_required' | 'finance_review_required' | 'finance_input_required' | 'allocate_to_finance';
 
 const TARGETS: { value: MessageTarget; label: string; icon: typeof Users; hint: string }[] = [
   { value: 'client', label: 'Client', icon: Users, hint: 'Sends to the client portal — the client will see this.' },
@@ -38,10 +40,18 @@ const TARGETS: { value: MessageTarget; label: string; icon: typeof Users; hint: 
 ];
 
 const ROUTING_PRESETS: { label: string; targets: MessageTarget[] }[] = [
-  { label: 'Client only', targets: ['client'] },
-  { label: 'Finance only', targets: ['finance'] },
-  { label: 'Client + Finance', targets: ['client', 'finance'] },
+  { label: 'Send to Client only', targets: ['client'] },
+  { label: 'Send to Finance only', targets: ['finance'] },
+  { label: 'Send to Client + allocate Finance', targets: ['client', 'finance'] },
+  { label: 'Internal note', targets: ['internal'] },
 ];
+
+const FINANCE_ALLOCATION_LABELS: Record<FinanceAllocationStatus, string> = {
+  finance_action_required: 'Finance Action Required',
+  finance_review_required: 'Finance Review Required',
+  finance_input_required: 'Finance Input Required',
+  allocate_to_finance: 'Allocate to Finance',
+};
 
 const formatStamp = (iso: string) => {
   const d = new Date(iso);
@@ -66,6 +76,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
   const [targets, setTargets] = useState<Set<MessageTarget>>(new Set(['client']));
+  const [financeAllocationStatus, setFinanceAllocationStatus] = useState<FinanceAllocationStatus>('finance_action_required');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
 
@@ -127,15 +138,24 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
       for (const t of targets) {
         try {
           if (t === 'finance') {
+            const financeScope = targets.has('client') ? 'command_client_with_finance_allocated' : 'command_finance_private';
+            const financeThreadType = targets.has('client') ? 'command_client_allocated' : 'command_finance';
             const { data: thread, error: tErr } = await invokeSecureFunction('finance-portal-messages', {
               operation: 'get_or_create_thread',
               client_id: clientId,
+              visibility_scope: financeScope,
+              thread_type: financeThreadType,
+              allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
+              finance_allocated: targets.has('client'),
             });
             if (tErr || !thread?.thread) throw new Error(tErr?.message || 'No finance partner assigned');
             const { error } = await invokeSecureFunction('finance-portal-messages', {
               operation: 'send_message',
               thread_id: thread.thread.id,
               body: trimmed,
+              visibility_scope: financeScope,
+              thread_type: financeThreadType,
+              allocation_status: targets.has('client') ? financeAllocationStatus : 'none',
             });
             if (error) throw new Error(error.message || 'Send failed');
           } else {
@@ -144,6 +164,8 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
               client_id: clientId,
               message: trimmed,
               is_internal: t === 'internal',
+              visibility_scope: targets.has('client') && targets.has('finance') ? 'command_client_with_finance_allocated' : undefined,
+              allocation_status: targets.has('client') && targets.has('finance') ? financeAllocationStatus : undefined,
             });
             if (error) throw new Error(error.message || 'Send failed');
           }
@@ -176,6 +198,8 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const applyPreset = (values: MessageTarget[]) => {
     setTargets(new Set(values));
   };
+
+  const financeAllocatedToClient = targets.has('client') && targets.has('finance');
 
 
   return (
@@ -282,6 +306,23 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             );
           })}
         </div>
+
+        {financeAllocatedToClient && (
+          <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 p-2">
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Finance action allocation</label>
+            <Select value={financeAllocationStatus} onValueChange={(value) => setFinanceAllocationStatus(value as FinanceAllocationStatus)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Choose finance action" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(FINANCE_ALLOCATION_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[10px] text-muted-foreground">Finance receives access only to this allocated client-facing thread.</p>
+          </div>
+        )}
         <div className="flex gap-2 items-end">
           <Textarea
             placeholder={

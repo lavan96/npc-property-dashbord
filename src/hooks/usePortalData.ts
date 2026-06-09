@@ -116,6 +116,22 @@ export function usePortalUnifiedInbox() {
 }
 
 /**
+ * Send a client reply into a permitted Finance ↔ Client thread.
+ */
+export function usePortalSendFinanceReply() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { thread_id: string; message: string }) =>
+      invokePortalEdge('client-portal-comms', { operation: 'send_finance_reply', ...params }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal-unified-inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-client-data'] });
+    },
+  });
+}
+
+/**
  * Fetch portal deal progress data
  */
 export function usePortalDealProgressData() {

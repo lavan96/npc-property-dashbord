@@ -150,9 +150,14 @@ Deno.serve(async (req) => {
             .from('client_portal_messages')
             .insert({
               client_id: seq.client_id,
-              sender_type: 'admin',
+              sender_type: 'advisor',
               sender_name: senderName,
               message: messageBody,
+              visibility_scope: 'command_client_private',
+              thread_type: 'command_client',
+              allocation_status: 'none',
+              finance_allocated: false,
+              permission_status: { command_centre: 'full', client_portal: 'granted', finance_portal: 'blocked' },
             })
             .select('id')
             .single();

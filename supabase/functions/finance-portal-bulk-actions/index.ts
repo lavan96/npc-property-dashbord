@@ -99,11 +99,20 @@ Deno.serve(async (req) => {
             .select('id')
             .eq('client_id', f.client_id)
             .eq('finance_user_id', portalUser.id)
+            .eq('thread_type', 'command_finance')
             .maybeSingle();
           if (!thread) {
             const { data: created } = await supabase
               .from('finance_portal_threads')
-              .insert({ client_id: f.client_id, finance_user_id: portalUser.id })
+              .insert({
+                client_id: f.client_id,
+                finance_user_id: portalUser.id,
+                visibility_scope: 'command_finance_private',
+                thread_type: 'command_finance',
+                allocation_status: 'none',
+                finance_allocated: false,
+                permission_status: { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
+              })
               .select('id').single();
             thread = created;
           }
@@ -115,6 +124,10 @@ Deno.serve(async (req) => {
             sender_type: 'partner',
             sender_name: portalUser.full_name || portalUser.email,
             body: messageBody,
+            visibility_scope: 'command_finance_private',
+            thread_type: 'command_finance',
+            allocation_status: 'none',
+            permission_status: { command_centre: 'full', finance_portal: 'granted', client_portal: 'blocked' },
           });
           results.push({ id: f.id, ok: !error, error: error?.message });
         } catch (e: any) {

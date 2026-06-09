@@ -32,6 +32,10 @@ interface ThreadRow {
   last_message_preview: string | null;
   unread_count_partner: number;
   is_archived: boolean;
+  visibility_scope?: string | null;
+  thread_type?: string | null;
+  allocation_status?: string | null;
+  finance_allocated?: boolean | null;
   clients?: { id: string; primary_contact_name: string; secondary_contact_name: string | null };
 }
 
@@ -228,6 +232,16 @@ export default function FinancePortalMessages() {
                             <span className="text-xs text-muted-foreground truncate hidden sm:inline">
                               & {smartCapitalize(t.clients.secondary_contact_name)}
                             </span>
+                          )}
+                          {t.visibility_scope === 'finance_client_with_command_visibility' && (
+                            <Badge variant="outline" className="border-teal-500/30 bg-teal-500/10 text-[10px] text-teal-700 h-[18px] px-1.5 shrink-0">
+                              Client + CC visible
+                            </Badge>
+                          )}
+                          {t.finance_allocated && (
+                            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 h-[18px] px-1.5 shrink-0">
+                              {String(t.allocation_status || 'Allocated').replace(/_/g, ' ')}
+                            </Badge>
                           )}
                           {hasUnread && (
                             <Badge

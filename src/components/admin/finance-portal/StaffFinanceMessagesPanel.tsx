@@ -25,6 +25,10 @@ interface ThreadRow {
   last_message_preview: string | null;
   unread_count_staff: number;
   is_archived: boolean;
+  visibility_scope?: string | null;
+  thread_type?: string | null;
+  allocation_status?: string | null;
+  finance_allocated?: boolean | null;
   finance_portal_users?: { id: string; email: string; full_name: string | null };
 }
 
@@ -118,6 +122,19 @@ export function StaffFinanceMessagesPanel({ clientId }: Props) {
                     <Badge variant="default" className="text-[10px] h-4 px-1.5">{t.unread_count_staff}</Badge>
                   )}
                 </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {t.visibility_scope === 'command_finance_private' && (
+                    <Badge variant="outline" className="h-4 px-1 text-[9px]">Finance private</Badge>
+                  )}
+                  {t.visibility_scope === 'finance_client_with_command_visibility' && (
+                    <Badge variant="outline" className="h-4 border-teal-500/30 bg-teal-500/10 px-1 text-[9px] text-teal-700">Client + CC visible</Badge>
+                  )}
+                  {t.finance_allocated && (
+                    <Badge variant="outline" className="h-4 border-amber-500/30 bg-amber-500/10 px-1 text-[9px] text-amber-700">
+                      {String(t.allocation_status || 'Allocated').replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {t.last_message_preview || 'No messages yet'}
                 </p>
@@ -142,6 +159,17 @@ export function StaffFinanceMessagesPanel({ clientId }: Props) {
                   {active.finance_portal_users?.full_name || active.finance_portal_users?.email}
                 </p>
                 <p className="text-xs text-muted-foreground">{active.finance_portal_users?.email}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{String(active.thread_type || 'thread').replace(/_/g, ' ')}</Badge>
+                  {active.visibility_scope === 'finance_client_with_command_visibility' && (
+                    <Badge variant="outline" className="h-5 border-teal-500/30 bg-teal-500/10 px-1.5 text-[10px] text-teal-700">Client + CC visible</Badge>
+                  )}
+                  {active.finance_allocated && (
+                    <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] text-amber-700">
+                      {String(active.allocation_status || 'Allocated').replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <Button size="sm" variant="outline" onClick={() => toggleArchive(active)} className="gap-1.5">
                 {active.is_archived ? <><ArchiveRestore className="h-3.5 w-3.5" /> Restore</> : <><Archive className="h-3.5 w-3.5" /> Archive</>}
