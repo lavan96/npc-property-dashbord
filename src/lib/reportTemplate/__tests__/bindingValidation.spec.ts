@@ -26,7 +26,7 @@ describe('validateBindable', () => {
   });
 
   it('flags an empty binding and unbalanced braces', () => {
-    expect(validateBindable('{{}}').some((i) => /Empty binding/.test(i.message))).toBe(true);
+    expect(validateBindable('{{ }}').some((i) => /Empty binding/.test(i.message))).toBe(true);
     expect(validateBindable('{{property.address').some((i) => /Unbalanced/.test(i.message))).toBe(true);
   });
 
