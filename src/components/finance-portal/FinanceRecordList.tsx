@@ -59,7 +59,10 @@ export function FinanceRecordList({ clientId, config }: Props) {
         record_id: vars.record_id,
         payload: vars.payload,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        const detail = (data && (data.details || data.error)) || error.message;
+        throw new Error(String(detail || 'Save failed'));
+      }
       return data;
     },
     onSuccess: (_d, vars) => {
