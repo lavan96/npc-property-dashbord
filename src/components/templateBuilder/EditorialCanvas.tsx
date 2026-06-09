@@ -20,6 +20,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
@@ -98,26 +99,14 @@ export function EditorialCanvas({
     return out;
   }, [page]);
 
-  // During pointer drags/resizes we update only this local chrome layer and
-  // commit a single template mutation on pointer-up. That prevents iframe
-  // srcDoc rebuilds and full editor history snapshots on every drag tick.
-  const overlays = useMemo<FlatOverlay[]>(() => sourceOverlays.map(({ overlay, blockId }) => ({
-    blockId,
-    overlay: transientOverlayPatches[overlay.id]
-      ? ({ ...overlay, ...transientOverlayPatches[overlay.id] } as Overlay)
-      : overlay,
-  })), [sourceOverlays, transientOverlayPatches]);
-  const unresolvedPageCommentCount = commentAnchors.filter((anchor) => !anchor.resolved && anchor.pageId === page.id && !anchor.blockId && !anchor.overlayId).length;
-  const overlayCommentCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    commentAnchors.forEach((anchor) => {
-      if (anchor.resolved || anchor.pageId !== page.id || !anchor.overlayId) return;
-      counts.set(anchor.overlayId, (counts.get(anchor.overlayId) ?? 0) + 1);
-    });
-    return counts;
-  }, [commentAnchors, page.id]);
-
-  // Single-page HTML for the iframe.
+  // Single-page HTML for the iframe. The canvas hides overlays and draws its own
+  // handles, so the rendered background doesn't depend on overlay geometry — key
+  // the render on a signature that excludes overlays so dragging/resizing an
+  // overlay never rebuilds the iframe srcDoc (the dominant drag-jank source).
+  const renderKey = useMemo(
+    () => makeCanvasRenderKey(template, page, sampleData, customCss),
+    [template, page, sampleData, customCss],
+  );
   const html = useMemo(() => {
     try {
       const visible: ReportTemplate = { ...template, pages: [page] };
@@ -140,7 +129,10 @@ export function EditorialCanvas({
     } catch (e: any) {
       return `<!doctype html><body style="font:13px sans-serif;color:#b91c1c;padding:24px">Preview error: ${String(e?.message ?? e)}</body>`;
     }
-  }, [template, page, sampleData, customCss]);
+    // template/page/sampleData/customCss are encoded in renderKey (overlays
+    // excluded on purpose); depend on it alone to reuse the cached HTML.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderKey]);
 
   // ── Zoom controls ─────────────────────────────────────────────────────────
   const fitToViewport = useCallback(() => {
