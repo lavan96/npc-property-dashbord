@@ -21,7 +21,7 @@ interface NotificationItem {
   is_read: boolean;
   created_at: string;
   client_id: string | null;
-  clients?: { id: string; first_name: string; surname: string } | null;
+  clients?: { id: string; primary_first_name: string; primary_surname: string } | null;
 }
 
 const POLL_INTERVAL = 60_000; // 60s
@@ -150,7 +150,7 @@ export function FinancePortalNotificationBell() {
             <div className="divide-y">
               {items.map(item => {
                 const clientName = item.clients
-                  ? `${smartCapitalize(item.clients.first_name)} ${smartCapitalize(item.clients.surname)}`.trim()
+                  ? `${smartCapitalize(item.clients.primary_first_name)} ${smartCapitalize(item.clients.primary_surname)}`.trim()
                   : null;
                 return (
                   <button

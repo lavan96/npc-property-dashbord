@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
         const onlyUnread = !!body.only_unread;
         let q = supabase
           .from('finance_portal_notifications')
-          .select('*, clients:client_id(id, first_name, surname)')
+          .select('*, clients:client_id(id, primary_first_name, primary_surname)')
           .eq('portal_user_id', portalUser.id)
           .order('created_at', { ascending: false })
           .limit(limit);
