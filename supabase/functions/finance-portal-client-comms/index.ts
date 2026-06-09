@@ -338,94 +338,274 @@ async function markRead(supabase: any, _partner: any, body: any) {
 }
 
 async function crossClientInbox(supabase: any, partner: any) {
-  // List clients assigned to this finance portal user with their latest activity
-  // across client portal messages, direct finance/staff messages, and broker-sent
-  // outbound SMS/WhatsApp/email. Use physical `clients` columns — the previous
-  // query selected legacy aliases (`primary_contact_name`, `primary_phone`) and
-  // returned an empty/broken inbox in production.
+  // Safe aggregation layer for the Finance Portal Client Inbox. We only return
+  // clients assigned to the signed-in finance partner, but we aggregate activity
+  // from the existing source tables instead of creating duplicate inbox records.
   const { data: assignments, error: assignmentError } = await supabase
     .from('finance_portal_client_assignments')
-    .select('client_id')
+    .select('client_id, permissions')
     .eq('finance_user_id', partner.id);
   if (assignmentError) return json({ error: assignmentError.message }, 500);
 
-  const clientIds = (assignments ?? []).map((a: any) => a.client_id).filter(Boolean);
-  if (clientIds.length === 0) return json({ clients: [] });
+  const allowedAssignments = (assignments ?? []).filter((a: any) => {
+    const msgPerm = a.permissions?.messages;
+    return !(msgPerm && msgPerm.view === false);
+  });
+  const clientIds = [...new Set(allowedAssignments.map((a: any) => a.client_id).filter(Boolean))];
+  if (clientIds.length === 0) {
+    return json({
+      clients: [],
+      meta: {
+        assigned_clients: (assignments ?? []).length,
+        visible_clients: 0,
+        source_counts: {},
+        available_sources: [],
+      },
+    });
+  }
 
-  const [clientsRes, portalRes, financeThreadRes, outboundRes, ghlConvRes] = await Promise.all([
+  const [clientsRes, portalRes, financeThreadRes, threadRes, outboundRes, ghlConvRes, notesRes, activityRes] = await Promise.all([
     supabase.from('clients')
-      .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, secondary_first_name, secondary_surname')
+      .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, secondary_first_name, secondary_surname, secondary_email, secondary_mobile, last_note_at, finance_contact_id')
       .in('id', clientIds),
     supabase.from('client_portal_messages')
-      .select('id, client_id, created_at, message, sender_type, is_read')
+      .select('id, client_id, created_at, message, sender_type, sender_name, is_read, is_internal')
       .in('client_id', clientIds)
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(1000),
     supabase.from('finance_portal_messages')
-      .select('id, client_id, created_at, body, sender_type, is_read_by_partner')
+      .select('id, thread_id, client_id, created_at, body, sender_type, sender_name, is_read_by_partner, finance_user_id')
       .in('client_id', clientIds)
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(1000),
+    supabase.from('finance_portal_threads')
+      .select('id, client_id, finance_user_id, subject, last_message_at, last_message_preview, unread_count_partner')
+      .in('client_id', clientIds)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .limit(1000),
     supabase.from('finance_outbound_messages')
-      .select('id, client_id, created_at, channel, body, status')
+      .select('id, client_id, finance_contact_id, created_at, channel, body, subject, recipient, status, provider_message_id')
+      .in('client_id', clientIds)
+      .order('created_at', { ascending: false })
+      .limit(1000),
+    supabase.from('ghl_conversations')
+      .select('id, client_id, channel_type, last_message_date, last_message_body, last_message_direction, unread_count')
+      .in('client_id', clientIds)
+      .order('last_message_date', { ascending: false, nullsFirst: false })
+      .limit(1000),
+    supabase.from('client_notes')
+      .select('id, client_id, note_type, content, visibility, source_surface, source_actor_type, source_actor_name, created_at, updated_at')
+      .in('client_id', clientIds)
+      .in('visibility', ['shared', 'finance_only'])
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase.from('client_activities')
+      .select('id, client_id, activity_type, title, description, source_surface, source_actor_type, source_actor_name, created_at')
       .in('client_id', clientIds)
       .order('created_at', { ascending: false })
       .limit(500),
-    supabase.from('ghl_conversations')
-      .select('id, client_id, channel_type, last_message_date')
-      .in('client_id', clientIds),
   ]);
 
   if (clientsRes.error) return json({ error: clientsRes.error.message }, 500);
+
+  const sourceErrors = [
+    ['client_portal_messages', portalRes.error],
+    ['finance_portal_messages', financeThreadRes.error],
+    ['finance_portal_threads', threadRes.error],
+    ['finance_outbound_messages', outboundRes.error],
+    ['ghl_conversations', ghlConvRes.error],
+    ['client_notes', notesRes.error],
+    ['client_activities', activityRes.error],
+  ].filter(([, err]: any[]) => !!err).map(([source, err]: any[]) => ({ source, message: err.message }));
 
   const byClient: Record<string, any> = {};
   for (const c of clientsRes.data ?? []) {
     const primary = [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim();
     const secondary = [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim();
     byClient[c.id] = {
+      id: `client:${c.id}`,
+      thread_key: `client:${c.id}`,
       client_id: c.id,
+      client_name: primary || 'Unknown client',
       name: primary || 'Unknown client',
       secondary_name: secondary || null,
       email: c.primary_email || '',
+      secondary_email: c.secondary_email || '',
       phone: c.primary_mobile || '',
+      secondary_phone: c.secondary_mobile || '',
+      assigned_finance_partner: partner.full_name || partner.email || null,
+      assigned_finance_partner_email: partner.email || null,
+      sources: [] as string[],
+      unread_count: 0,
       unread_portal: 0,
       unread_finance: 0,
       last_message_at: null as string | null,
       last_message_preview: null as string | null,
       last_channel: null as string | null,
+      last_source: null as string | null,
+      last_source_label: null as string | null,
+      last_source_id: null as string | null,
+      last_thread_id: null as string | null,
+      item_count: 0,
+      has_activity: false,
+      open_path: `/finance/clients/${c.id}?tab=messages`,
     };
   }
 
-  const touch = (clientId: string, at: string | null, preview: string | null, channel: string | null) => {
-    const row = byClient[clientId];
-    if (!row || !at) return;
-    if (!row.last_message_at || at > row.last_message_at) {
-      row.last_message_at = at;
-      row.last_message_preview = preview ? preview.slice(0, 140) : '';
-      row.last_channel = channel;
+  const labelFor = (source: string, channel?: string | null) => {
+    if (source === 'ghl') return channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'SMS';
+    if (source === 'finance_portal') return 'Finance Portal';
+    if (source === 'command_centre') return 'Command Centre';
+    if (source === 'client_portal') return 'Client Portal';
+    if (source === 'outbound') return channel === 'whatsapp' ? 'WhatsApp' : channel === 'sms' ? 'SMS' : channel === 'email' ? 'Email' : 'Outbound';
+    if (source === 'note') return 'Note';
+    if (source === 'activity') return 'Activity';
+    return 'Internal';
+  };
+
+  const touch = (args: { clientId: string; at: string | null; preview: string | null; channel: string; source: string; sourceId?: string | null; threadId?: string | null; unread?: boolean | number; openPath?: string | null }) => {
+    const row = byClient[args.clientId];
+    if (!row || !args.at) return;
+    row.item_count += 1;
+    row.has_activity = true;
+    if (!row.sources.includes(args.source)) row.sources.push(args.source);
+    const unreadInc = typeof args.unread === 'number' ? args.unread : args.unread ? 1 : 0;
+    row.unread_count += unreadInc;
+    if (args.source === 'client_portal') row.unread_portal += unreadInc;
+    if (args.source === 'finance_portal' || args.source === 'command_centre') row.unread_finance += unreadInc;
+    if (!row.last_message_at || args.at > row.last_message_at) {
+      row.last_message_at = args.at;
+      row.last_message_preview = (args.preview || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+      row.last_channel = args.channel;
+      row.last_source = args.source;
+      row.last_source_label = labelFor(args.source, args.channel);
+      row.last_source_id = args.sourceId || null;
+      row.last_thread_id = args.threadId || null;
+      row.open_path = args.openPath || `/finance/clients/${args.clientId}?tab=messages`;
     }
   };
 
   for (const m of portalRes.data ?? []) {
-    const row = byClient[m.client_id]; if (!row) continue;
-    if (m.sender_type === 'client' && m.is_read === false) row.unread_portal += 1;
-    touch(m.client_id, m.created_at, m.message || '', 'portal');
-  }
-  for (const m of financeThreadRes.data ?? []) {
-    const row = byClient[m.client_id]; if (!row) continue;
-    if (m.sender_type === 'staff' && m.is_read_by_partner === false) row.unread_finance += 1;
-    touch(m.client_id, m.created_at, m.body || '', 'portal');
-  }
-  for (const m of outboundRes.data ?? []) {
-    touch(m.client_id, m.created_at, m.body || '', m.channel || 'email');
-  }
-  for (const c of ghlConvRes.data ?? []) {
-    touch(c.client_id, c.last_message_date, 'GHL conversation activity', String(c.channel_type || '').toLowerCase() || 'sms');
+    if (m.is_internal === true) continue;
+    touch({
+      clientId: m.client_id,
+      at: m.created_at,
+      preview: m.message || '',
+      channel: 'portal',
+      source: 'client_portal',
+      sourceId: m.id,
+      unread: m.sender_type === 'client' && m.is_read === false,
+      openPath: `/finance/clients/${m.client_id}?tab=messages&source=client_portal&message=${m.id}`,
+    });
   }
 
-  const list = Object.values(byClient).sort((a: any, b: any) =>
-    String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')) ||
-    String(a.name || '').localeCompare(String(b.name || ''))
-  );
-  return json({ clients: list });
+  for (const m of financeThreadRes.data ?? []) {
+    touch({
+      clientId: m.client_id,
+      at: m.created_at,
+      preview: m.body || '',
+      channel: 'portal',
+      source: m.sender_type === 'staff' ? 'command_centre' : 'finance_portal',
+      sourceId: m.id,
+      threadId: m.thread_id,
+      unread: m.sender_type === 'staff' && m.is_read_by_partner === false,
+      openPath: `/finance/clients/${m.client_id}?tab=messages&source=finance_portal&thread=${m.thread_id}`,
+    });
+  }
+
+  for (const t of threadRes.data ?? []) {
+    if (!t.last_message_at) continue;
+    touch({
+      clientId: t.client_id,
+      at: t.last_message_at,
+      preview: t.last_message_preview || t.subject || 'Finance Portal thread activity',
+      channel: 'portal',
+      source: 'finance_portal',
+      sourceId: t.id,
+      threadId: t.id,
+      unread: Number(t.unread_count_partner || 0),
+      openPath: `/finance/clients/${t.client_id}?tab=messages&source=finance_portal&thread=${t.id}`,
+    });
+  }
+
+  for (const c of ghlConvRes.data ?? []) {
+    touch({
+      clientId: c.client_id,
+      at: c.last_message_date,
+      preview: c.last_message_body || 'Conversation activity',
+      channel: String(c.channel_type || 'sms').toLowerCase(),
+      source: 'ghl',
+      sourceId: c.id,
+      unread: Number(c.unread_count || 0),
+      openPath: `/finance/clients/${c.client_id}?tab=messages&source=ghl&conversation=${c.id}`,
+    });
+  }
+
+  for (const m of outboundRes.data ?? []) {
+    touch({
+      clientId: m.client_id,
+      at: m.created_at,
+      preview: m.body || m.subject || `${m.channel || 'Outbound'} message`,
+      channel: String(m.channel || 'email').toLowerCase(),
+      source: 'outbound',
+      sourceId: m.id,
+      unread: false,
+      openPath: `/finance/clients/${m.client_id}?tab=messages&source=outbound&message=${m.id}`,
+    });
+  }
+
+  for (const n of notesRes.data ?? []) {
+    touch({
+      clientId: n.client_id,
+      at: n.created_at || n.updated_at,
+      preview: n.content || `${n.note_type || 'Client'} note`,
+      channel: 'note',
+      source: 'note',
+      sourceId: n.id,
+      unread: false,
+      openPath: `/finance/clients/${n.client_id}?tab=notes&note=${n.id}`,
+    });
+  }
+
+  for (const a of activityRes.data ?? []) {
+    touch({
+      clientId: a.client_id,
+      at: a.created_at,
+      preview: a.title || a.description || a.activity_type || 'Client activity',
+      channel: 'activity',
+      source: 'activity',
+      sourceId: a.id,
+      unread: false,
+      openPath: `/finance/clients/${a.client_id}?tab=messages&source=activity&activity=${a.id}`,
+    });
+  }
+
+  const list = Object.values(byClient)
+    .filter((row: any) => row.has_activity)
+    .sort((a: any, b: any) =>
+      (Number(b.unread_count > 0) - Number(a.unread_count > 0)) ||
+      String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')) ||
+      String(a.name || '').localeCompare(String(b.name || ''))
+    );
+
+  return json({
+    clients: list,
+    meta: {
+      assigned_clients: (assignments ?? []).length,
+      visible_clients: clientIds.length,
+      returned_conversations: list.length,
+      source_counts: {
+        client_portal: (portalRes.data ?? []).filter((m: any) => m.is_internal !== true).length,
+        finance_portal: (financeThreadRes.data ?? []).filter((m: any) => m.sender_type !== 'staff').length + (threadRes.data ?? []).filter((t: any) => !!t.last_message_at).length,
+        command_centre: (financeThreadRes.data ?? []).filter((m: any) => m.sender_type === 'staff').length,
+        outbound: (outboundRes.data ?? []).length,
+        ghl: (ghlConvRes.data ?? []).length,
+        notes: (notesRes.data ?? []).length,
+        activity: (activityRes.data ?? []).length,
+      },
+      available_sources: ['finance_portal', 'client_portal', 'command_centre', 'ghl_sms_whatsapp_email', 'finance_outbound_messages', 'client_notes', 'client_activities'],
+      source_errors: sourceErrors,
+      empty_reason: list.length === 0 ? 'No assigned clients have messages, notes, GHL conversations, outbound messages, or activity records available to this portal user.' : null,
+    },
+  });
 }
