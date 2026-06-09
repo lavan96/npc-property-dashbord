@@ -90,18 +90,20 @@ export function PortalLayout() {
       {/* Sidebar - Desktop */}
       <aside className="client-portal-sidebar hidden w-72 flex-col border-r md:flex">
         {/* Logo Area */}
-        <div className="flex items-center justify-between p-6 pb-4">
-          <div>
+        <div className="flex items-center justify-between gap-3 p-6 pb-4">
+          <div className="min-w-0 flex-1">
             <BrandLockup
               slot="auth"
               meta="Secure Access"
-              logoClassName="h-10 max-w-[200px] object-contain"
+              logoClassName="h-10 max-w-[160px] object-contain"
               fallbackClassName="h-10 w-10"
-              companyClassName="text-lg font-bold tracking-tight"
-              metaClassName="tracking-widest"
+              companyClassName="text-base font-bold tracking-tight truncate"
+              metaClassName="tracking-widest truncate"
             />
           </div>
-          <PortalNotificationBell />
+          <div className="shrink-0">
+            <PortalNotificationBell />
+          </div>
         </div>
         <Separator />
 
