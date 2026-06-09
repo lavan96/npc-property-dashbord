@@ -8,7 +8,7 @@ import {
   Hash, Columns2, MessageSquare, Images, ArrowUp, ArrowDown, QrCode, Tag, ListOrdered,
   PenLine, Space, GripVertical,
   Gauge, ShieldAlert, Milestone, Grid3x3, ClipboardList, CheckSquare, Lightbulb, ThumbsUp,
-  Search, Star, Sparkles, Box, MousePointer2,
+  Search, Star, Sparkles, Box, MousePointer2, Database,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
+import { serializePaletteDrag, PALETTE_DRAG_MIME } from '@/lib/reportTemplate/overlayDropFactory';
 import { cn } from '@/lib/utils';
 
 interface CommentAnchor {
@@ -39,6 +40,8 @@ interface Props {
   selectedBlockId?: string | null;
   onSelectBlock?: (id: string | null) => void;
   onReorderBlocks?: (fromIndex: number, toIndex: number) => void;
+  /** V2: make overlay palette items draggable onto the canvas (drop-to-place). */
+  enableCanvasDrag?: boolean;
   commentAnchors?: CommentAnchor[];
 }
 
@@ -59,6 +62,16 @@ function blockFromDef(type: string): Block {
     props: def ? def.defaultProps() : {},
     overlays: [],
   };
+}
+
+/** Components that need report data wired to render meaningfully (Phase 2). */
+function dataHintForItem(item: PaletteItem): string | null {
+  switch (item.category) {
+    case 'Data': return 'Binds to report data — wire metrics / table / chart values in the inspector';
+    case 'Compass': return 'Binds to Compass report data';
+    case 'Media': return 'Binds to images / links from report data';
+    default: return null;
+  }
 }
 
 const PALETTE: PaletteItem[] = [
@@ -240,6 +253,7 @@ export function PagesPanel({
   selectedBlockId,
   onSelectBlock,
   onReorderBlocks,
+  enableCanvasDrag = false,
   commentAnchors = [],
 }: Props) {
   const activePage = template.pages.find((p) => p.id === activePageId) || null;
@@ -500,19 +514,32 @@ export function PagesPanel({
             const Icon = item.icon;
             const CategoryIcon = categoryIcon(item.category);
             const favorite = favorites.has(item.label);
+            const dataHint = dataHintForItem(item);
             return (
               <div key={item.label} className="relative group">
                 <button
                   type="button"
+                  draggable={enableCanvasDrag}
+                  onDragStart={enableCanvasDrag ? (e) => {
+                    e.dataTransfer.setData(PALETTE_DRAG_MIME, serializePaletteDrag(item.build()));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  } : undefined}
                   onClick={() => insertPaletteItem(item)}
                   className="flex min-h-[86px] w-full flex-col items-center gap-1.5 rounded-md border bg-card hover:border-primary/50 hover:bg-muted/40 transition-colors p-3 text-xs"
-                  title={`${item.category} · ${item.keywords?.join(', ') ?? item.label}`}
+                  title={`${enableCanvasDrag
+                    ? `${item.label} — click to insert, or drag onto the canvas`
+                    : `${item.category} · ${item.keywords?.join(', ') ?? item.label}`}${dataHint ? `\n${dataHint}` : ''}`}
                 >
                   <Icon className="h-4 w-4 text-primary" />
                   <span className="leading-tight text-center">{item.label}</span>
                   <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground">
                     <CategoryIcon className="h-2.5 w-2.5" /> {item.category}
                   </span>
+                  {dataHint && (
+                    <span className="inline-flex items-center gap-1 text-[9px] text-amber-600/90" title={dataHint}>
+                      <Database className="h-2.5 w-2.5" /> needs data
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"

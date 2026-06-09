@@ -1,7 +1,7 @@
 /**
  * Template Builder — Editor (Phase 2).
  *
- * Layout: [PagesPanel] [TemplateCanvas (tldraw)] [PropertiesInspector]
+ * Layout: [PagesPanel] [EditorialCanvas] [PropertiesInspector]
  *                                              + collapsible Live PDF preview
  *
  * The template JSON remains the single source of truth. The canvas only edits
@@ -18,6 +18,7 @@ import {
   ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
 } from 'lucide-react';
 import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
+import { ReferenceImportDialog } from '@/components/templateBuilder/ReferenceImportDialog';
 import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
 import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
 import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
@@ -111,8 +112,9 @@ import {
 import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
-import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
+import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
+import { isOverlayPayload, positionOverlayAtPoint } from '@/lib/reportTemplate/overlayDropFactory';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -201,6 +203,17 @@ export default function TemplateBuilderEdit() {
   const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
+  const [showReferenceImport, setShowReferenceImport] = useState(false);
+  // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. OFF by default.
+  const editorV2 = useMemo(() => isTemplateEditorV2Enabled(), []);
+  // First-run coachmark for the new V2 drag-and-drop (dismiss persists per-browser).
+  const [showV2Hint, setShowV2Hint] = useState(() => {
+    try { return editorV2 && localStorage.getItem('tpl-v2-coachmark-seen') !== '1'; } catch { return false; }
+  });
+  const dismissV2Hint = () => {
+    setShowV2Hint(false);
+    try { localStorage.setItem('tpl-v2-coachmark-seen', '1'); } catch { /* ignore */ }
+  };
   const [showDiff, setShowDiff] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
@@ -1805,6 +1818,30 @@ export default function TemplateBuilderEdit() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1" title="Import a reference (PDF or image) and reconstruct it in the editor">
+                <Upload className="h-4 w-4" /> Import <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Import & reconstruct a reference</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowReferenceImport(true)} disabled={!id}>
+                <Upload className="h-4 w-4 mr-2" /> Start from a reference…
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setShowDesignAgent(true)}>
+                <Sparkles className="h-4 w-4 mr-2" /> Reconstruct from image (AI)
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowResync(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Import / re-sync from PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowAIAuthor(true)}>
+                <Wand2 className="h-4 w-4 mr-2" /> Generate a page with AI
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1">
                 <Sparkles className="h-4 w-4" /> Design <ChevronDown className="h-3 w-3" />
               </Button>
@@ -2039,6 +2076,17 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setPaletteOpen(true)}>
                 <CommandIcon className="h-4 w-4 mr-2" /> Command palette
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  setTemplateEditorV2(!editorV2);
+                  toast.success(`Drag & drop ${editorV2 ? 'disabled' : 'enabled'} — reloading…`);
+                  setTimeout(() => window.location.reload(), 300);
+                }}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                {editorV2 ? 'Disable drag & drop (beta)' : 'Enable drag & drop (beta)'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           {id && (
@@ -2195,6 +2243,7 @@ export default function TemplateBuilderEdit() {
               onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
+              enableCanvasDrag={editorV2}
               selectedBlockId={selectedBlockId}
               onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
               onReorderBlocks={reorderBlocks}
@@ -2248,6 +2297,11 @@ export default function TemplateBuilderEdit() {
                     page={activePage}
                     sampleData={sampleData}
                     customCss={customCss || undefined}
+                    onPaletteDrop={editorV2 ? (item, point) => {
+                      if (isOverlayPayload(item)) addOverlayToActivePage(positionOverlayAtPoint(item.overlay, point));
+                      else addBlockToActivePage(item as Block);
+                    } : undefined}
+                    enableTextToolbar={editorV2}
                     selectedOverlayId={selectedOverlayId}
                     multiOverlayIds={multiOverlayIds}
                     onSelectOverlay={(oid, additive) => {
@@ -2968,6 +3022,16 @@ export default function TemplateBuilderEdit() {
         />
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {showV2Hint && (
+        <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[640px] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover px-4 py-2.5 text-sm shadow-lg">
+          <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+          <span className="flex-1">
+            <strong>New:</strong> drag any element from the Insert panel straight onto the canvas, and select a text
+            element for the floating quick-style toolbar.
+          </span>
+          <Button size="sm" variant="ghost" className="h-7" onClick={dismissV2Hint}>Got it</Button>
+        </div>
+      )}
       <SaveConflictDialog
         open={showConflict}
         onOpenChange={setShowConflict}
@@ -3099,6 +3163,19 @@ export default function TemplateBuilderEdit() {
             // Force the editor to reload the freshly resynced template.
             window.location.reload();
           }}
+        />
+      )}
+      {id && (
+        <ReferenceImportDialog
+          open={showReferenceImport}
+          onOpenChange={setShowReferenceImport}
+          templateId={id}
+          templateName={name}
+          schema={template}
+          activePageId={activePageId}
+          sampleData={sampleData}
+          onResynced={() => window.location.reload()}
+          onApplySchema={(s) => { setTemplate(s); toast.success('Reconstruction applied — review and Save'); }}
         />
       )}
       <PdfFidelityDiffDialog

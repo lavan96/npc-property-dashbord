@@ -260,7 +260,15 @@ export async function extractPdfToTemplate(
             textBlocks++;
           }
         } catch (err) {
+          // Surface the failure instead of swallowing it silently: the page
+          // simply gets no OCR text overlays, which the user should know about.
           console.warn('[ocr] failed on page', pageIndex, err);
+          onProgress({
+            phase: 'ocr',
+            page: pageIndex,
+            totalPages,
+            message: `OCR could not read page ${pageIndex + 1} — it will have no text overlays.`,
+          });
         }
       }
 

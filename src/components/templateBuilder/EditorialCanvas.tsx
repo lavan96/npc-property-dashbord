@@ -21,8 +21,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
+import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag, type BuiltPaletteItem } from '@/lib/reportTemplate/overlayDropFactory';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
+import { FloatingTextToolbar } from '@/components/templateBuilder/FloatingTextToolbar';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
 
 type HandleKind =
@@ -57,6 +59,10 @@ interface Props {
   onDeleteOverlay: (id: string) => void;
   onDuplicateOverlay: (id: string) => void;
   onSelectBlock: (blockId: string | null) => void;
+  /** V2 drop-to-place: a palette item (overlay or block) was dropped at `point`. */
+  onPaletteDrop?: (item: BuiltPaletteItem, point: { x: number; y: number }) => void;
+  /** V2: show a floating quick-style toolbar above a selected text overlay. */
+  enableTextToolbar?: boolean;
   commentAnchors?: CommentAnchor[];
 }
 
@@ -77,6 +83,8 @@ export function EditorialCanvas({
   onDeleteOverlay,
   onDuplicateOverlay,
   onSelectBlock,
+  onPaletteDrop,
+  enableTextToolbar = false,
   commentAnchors = [],
 }: Props) {
   const pageW = page.size.width || 595;
@@ -89,6 +97,7 @@ export function EditorialCanvas({
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [transientOverlayPatches, setTransientOverlayPatches] = useState<Record<string, Partial<Overlay>>>({});
+  const [isDropTarget, setIsDropTarget] = useState(false);
 
   // Flatten overlays with their parent block id (in render order).
   const sourceOverlays = useMemo<FlatOverlay[]>(() => {
@@ -499,7 +508,19 @@ export function EditorialCanvas({
           <div
             ref={stageRef}
             onPointerDown={beginMarquee}
-            className="relative bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
+            onDragOver={onPaletteDrop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDropTarget(true); } : undefined}
+            onDragLeave={onPaletteDrop ? () => setIsDropTarget(false) : undefined}
+            onDrop={onPaletteDrop ? (e) => {
+              setIsDropTarget(false);
+              const item = parsePaletteDrag(e.dataTransfer.getData(PALETTE_DRAG_MIME));
+              if (!item) return;
+              e.preventDefault();
+              const el = stageRef.current;
+              if (!el) return;
+              const rect = el.getBoundingClientRect();
+              onPaletteDrop(item, screenToPagePoint({ clientX: e.clientX, clientY: e.clientY, rect, zoom }));
+            } : undefined}
+            className={`relative bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)] ${isDropTarget ? 'outline-dashed outline-2 outline-primary outline-offset-2' : ''}`}
             style={{
               width: pageW * zoom,
               height: pageH * zoom,
@@ -649,6 +670,22 @@ export function EditorialCanvas({
                 </div>
               );
             })}
+
+            {/* Floating text toolbar (V2) — quick styling above one selected text overlay */}
+            {(() => {
+              if (!enableTextToolbar || multiOverlayIds.size > 1 || !selectedOverlayId || editingId === selectedOverlayId) return null;
+              const to = overlays.find((x) => x.overlay.id === selectedOverlayId)?.overlay;
+              if (!to || to.type !== 'text') return null;
+              return (
+                <div
+                  className="absolute z-20"
+                  style={{ left: to.x * zoom, top: Math.max(2, to.y * zoom - 42) }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <FloatingTextToolbar overlay={to} onChange={(patch) => onUpdateOverlay({ ...to, ...patch } as Overlay)} />
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -1,0 +1,44 @@
+name: CI
+
+# Verification gate for the Template Builder rehaul (and the repo generally).
+# `test` runs the golden-render isolation guard, so any change that alters
+# renderer output (i.e. touches the WeasyPrint/jsPDF path) fails here.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` is intentionally NOT used: the committed package-lock.json is
+      # out of sync with package.json on main (missing rolldown/emnapi platform
+      # binaries etc.), which makes `npm ci` abort. `npm install` reconciles the
+      # lockfile and installs. Swap back to `npm ci` once the lockfile is regenerated.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Scoped to the Template Builder test surface (golden-render isolation guard
+      # + all editor logic). The wider repo has pre-existing failing/flaky suites
+      # (e.g. src/utils finance scenario tests) unrelated to this rehaul; `npm run
+      # build` below still type-checks the entire app, including the editor edits.
+      - name: Unit tests (incl. golden-render isolation guard)
+        run: npx vitest run src/lib/reportTemplate
+
+      - name: Build
+        run: npm run build
