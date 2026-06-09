@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
@@ -20,6 +20,7 @@ import {
   ArrowLeft, Briefcase, Calendar, AlertTriangle, Clock, CheckCircle2,
   Plus, Trash2, Loader2, Activity, FileText, Lightbulb, Wallet, ShieldCheck,
   ShieldAlert, Calculator, ListChecks, Ship, FileSearch, Inbox, Users, PackageCheck,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { ComplianceTab } from '@/components/finance-portal/ComplianceTab';
 import { ApplicantsCard } from '@/components/finance-portal/ApplicantsCard';
