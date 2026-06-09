@@ -23,7 +23,8 @@ const corsHeaders = {
 // Authoritative CDR PublicBaseUri values (sourced from the public AU Open Banking
 // registry, cross-checked against each data-holder's published developer docs).
 // productVersion "4" — /banking/products has been on v4 since Oct 2024; older
-// versions now return 406 on most holders. The fetcher cascades 4→3→2→1.
+// versions now return 406 on most holders. Product detail is now v6 for most
+// holders; calling detail with v4 returns 406 and produces 0 cached rates.
 const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string; productVersion: string; detailVersion: string }> = {
   macquarie: {
     name: "Macquarie Bank",
@@ -211,12 +212,12 @@ async function fetchProductDetail(
   const rates: LendingRate[] = [];
 
   try {
-    const versionsToTry = Array.from(new Set([detailVersion, '4', '3', '2', '1']));
+    const versionsToTry = Array.from(new Set([detailVersion, '6', '5', '4', '3', '2', '1']));
     let detailData: any = null;
 
     for (const version of versionsToTry) {
       const { response, lastStatus, finalUrl, error } = await fetchCdr(
-        `${baseUrl}/banking/products/${product.productId}`,
+        `${baseUrl}/banking/products/${encodeURIComponent(product.productId)}`,
         { 'x-v': version, 'x-min-v': '1', 'Accept': 'application/json' }
       );
 
@@ -227,6 +228,7 @@ async function fetchProductDetail(
 
       if (response.ok) {
         detailData = await response.json();
+        console.log(`[CDR] ${lenderId} detail ${product.productId} v${version}: ${(detailData?.data?.lendingRates || []).length} rates`);
         break;
       }
       if (response.status === 406) continue; // try lower version
@@ -241,6 +243,12 @@ async function fetchProductDetail(
     for (const lendingRate of productDetail.lendingRates) {
       const rateValue = parseFloat(lendingRate.rate) * 100;
       if (rateValue > 0.1 && rateValue < 20) {
+        const tier = Array.isArray(lendingRate.tiers) ? lendingRate.tiers[0] : null;
+        const tierMin = tier?.unitOfMeasure === 'PERCENT' && tier.minimumValue != null ? parseFloat(tier.minimumValue) * 100 : null;
+        const tierMax = tier?.unitOfMeasure === 'PERCENT' && tier.maximumValue != null ? parseFloat(tier.maximumValue) * 100 : null;
+        const constraints = Array.isArray(productDetail.constraints) ? productDetail.constraints : [];
+        const minLoanConstraint = constraints.find((c: any) => c.constraintType === 'MIN_LIMIT');
+        const maxLoanConstraint = constraints.find((c: any) => c.constraintType === 'MAX_LIMIT');
         rates.push({
           lenderId,
           lenderName: CDR_LENDERS[lenderId]?.name || lenderId,
@@ -251,10 +259,10 @@ async function fetchProductDetail(
           rateType: lendingRate.lendingRateType?.includes('FIXED') ? 'FIXED' : 'VARIABLE',
           loanPurpose: lendingRate.loanPurpose === 'INVESTMENT' ? 'INVESTMENT' : 'OWNER_OCCUPIED',
           repaymentType: lendingRate.repaymentType === 'INTEREST_ONLY' ? 'INTEREST_ONLY' : 'PRINCIPAL_AND_INTEREST',
-          lvrMin: lendingRate.additionalInfo?.lvrMin || null,
-          lvrMax: lendingRate.additionalInfo?.lvrMax || null,
-          minLoanAmount: productDetail.constraints?.minLimit || null,
-          maxLoanAmount: productDetail.constraints?.maxLimit || null,
+          lvrMin: Number.isFinite(tierMin) ? tierMin : null,
+          lvrMax: Number.isFinite(tierMax) ? tierMax : null,
+          minLoanAmount: minLoanConstraint?.minimumValue ? parseFloat(minLoanConstraint.minimumValue) : null,
+          maxLoanAmount: maxLoanConstraint?.maximumValue ? parseFloat(maxLoanConstraint.maximumValue) : null,
           features: productDetail.features?.map((f: any) => f.featureType) || [],
           lastUpdated: new Date().toISOString(),
         });
