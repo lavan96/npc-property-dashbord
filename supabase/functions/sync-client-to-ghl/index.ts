@@ -200,8 +200,12 @@ async function syncSingleClient(
         const errorText = await updateResponse.text();
         console.error('GHL update error:', errorText);
         
-        // If contact not found, create new one
-        if (updateResponse.status === 404) {
+        // If contact not found, create new one (GHL returns 404 or 400 with "Contact not found")
+        const notFound =
+          updateResponse.status === 404 ||
+          /contact not found/i.test(errorText);
+        if (notFound) {
+          console.log(`Stale GHL contact id ${ghlContactId}; will create a new contact.`);
           ghlContactId = null;
         } else {
           throw new Error(`GHL update failed: ${errorText}`);
