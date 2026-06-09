@@ -16,9 +16,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Pencil, Trash2, Eye, Lock } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Eye, Lock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TableConfig } from './financeTableConfig';
+import { IncomeSourceForm } from '@/components/clients/income/IncomeSourceForm';
+import type { IncomeSource } from '@/components/clients/income/incomeSourceTypes';
 
 interface Props {
   clientId: string;
@@ -66,8 +68,12 @@ export function FinanceRecordList({ clientId, config }: Props) {
       return data;
     },
     onSuccess: (_d, vars) => {
-      toast.success(vars.mode === 'create' ? `${config.singular} created` : `${config.singular} updated`);
+      toast.success(vars.mode === 'create' ? `${config.singular} created and synced to Command Centre` : `${config.singular} updated and synced to Command Centre`);
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['finance-portal-client-summary', clientId] });
+      if (config.key === 'income') {
+        qc.invalidateQueries({ queryKey: ['finance-portal-bc', clientId] });
+      }
       setCreating(false);
       setEditing(null);
     },
@@ -86,8 +92,12 @@ export function FinanceRecordList({ clientId, config }: Props) {
       return data;
     },
     onSuccess: () => {
-      toast.success(`${config.singular} deleted`);
+      toast.success(`${config.singular} deleted and synced to Command Centre`);
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['finance-portal-client-summary', clientId] });
+      if (config.key === 'income') {
+        qc.invalidateQueries({ queryKey: ['finance-portal-bc', clientId] });
+      }
       setDeleting(null);
     },
     onError: (e: any) => toast.error(e.message || 'Delete failed'),
@@ -134,6 +144,12 @@ export function FinanceRecordList({ clientId, config }: Props) {
               {permission.edit && <> · <Pencil className="h-3 w-3" /> Edit</>}
               {permission.delete && <> · <Trash2 className="h-3 w-3" /> Delete</>}
             </Badge>
+            {config.key === 'income' && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <RefreshCw className="h-3 w-3" />
+                Command Centre sync
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>{config.description}</CardDescription>
         </div>
@@ -258,6 +274,42 @@ function RecordDialog({ open, onClose, config, record, onSave, saving }: {
     }
     onSave(payload);
   };
+
+  if (config.key === 'income') {
+    const contactType: 'primary' | 'secondary' = record?.contact_type === 'secondary' ? 'secondary' : 'primary';
+
+    const handleIncomeSave = (source: IncomeSource) => {
+      const { id, client_id, ...payload } = source;
+      onSave(payload);
+    };
+
+    return (
+      <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{record ? 'Edit Income Source' : 'Add Income Source'}</DialogTitle>
+            <DialogDescription>
+              Uses the same income categories, source types, frequency conversion and annual totals as the Command Centre.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Saved income is written to the shared Command Centre income source table for transparent account sync.
+          </div>
+
+          <IncomeSourceForm
+            source={record || undefined}
+            contactType={contactType}
+            onSave={handleIncomeSave}
+            onCancel={onClose}
+            isPending={saving}
+            hideShading
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>

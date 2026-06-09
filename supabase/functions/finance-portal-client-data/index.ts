@@ -155,11 +155,18 @@ async function syncClientRollups(supabase: any, clientId: string, dbTable: strin
   if (dbTable === 'client_income_sources') {
     const { data: incomeRows } = await supabase
       .from('client_income_sources')
-      .select('gross_annual_amount, is_active')
+      .select('gross_annual_amount, bonus, commission, overtime_essential, overtime_non_essential, allowance, other_taxable_income, is_active')
       .eq('client_id', clientId);
     const annual = (incomeRows || [])
       .filter((row: any) => row.is_active !== false)
-      .reduce((sum: number, row: any) => sum + Number(row.gross_annual_amount || 0), 0);
+      .reduce((sum: number, row: any) => sum +
+        Number(row.gross_annual_amount || 0) +
+        Number(row.bonus || 0) +
+        Number(row.commission || 0) +
+        Number(row.overtime_essential || 0) +
+        Number(row.overtime_non_essential || 0) +
+        Number(row.allowance || 0) +
+        Number(row.other_taxable_income || 0), 0);
     await supabase.from('clients').update({
       total_monthly_income: Math.round((annual / 12) * 100) / 100,
       updated_at: new Date().toISOString(),
@@ -197,15 +204,28 @@ async function notifyCommandCentreOfFinanceClient(supabase: any, input: { client
 }
 
 // client_income_sources stores annual amounts plus the raw input/frequency used
-// for UI conversion. The finance portal form captures the gross annual figure
-// directly, so default the conversion fields and required columns here.
+// for UI conversion. The finance portal uses the same frequency-based income
+// editor as the Command Centre, so normalise both values before persistence.
+function annualizeIncomeAmount(amount: number, frequency: string) {
+  if (frequency === 'weekly') return amount * 52;
+  if (frequency === 'fortnightly') return amount * 26;
+  if (frequency === 'monthly') return amount * 12;
+  return amount;
+}
+
 function normalizeIncomeSourceFields(input: Record<string, any>) {
   const out = { ...input };
-  // Coerce empty strings → null/0 so NOT NULL columns get a usable value.
-  const grossRaw = out.gross_annual_amount;
-  const gross = grossRaw === '' || grossRaw == null ? 0 : Number(grossRaw) || 0;
-  out.gross_annual_amount = gross;
+  // Coerce empty strings → null/0 so NOT NULL columns get a usable value,
+  // and keep raw input/frequency in step with the annual amount used by the
+  // Command Centre income source editor.
   if (out.input_frequency == null || out.input_frequency === '') out.input_frequency = 'annual';
+  const inputRaw = out.input_amount;
+  const inputAmount = inputRaw === '' || inputRaw == null ? null : Number(inputRaw) || 0;
+  const grossRaw = out.gross_annual_amount;
+  const gross = grossRaw === '' || grossRaw == null
+    ? annualizeIncomeAmount(inputAmount ?? 0, String(out.input_frequency || 'annual'))
+    : Number(grossRaw) || 0;
+  out.gross_annual_amount = gross;
   if (out.input_amount == null || out.input_amount === '') out.input_amount = gross;
   if (out.source_category == null || out.source_category === '') out.source_category = 'employment';
   if (out.source_type == null || out.source_type === '') out.source_type = 'payg_fulltime';
@@ -227,6 +247,32 @@ function normalizeAdditionalContactFields(input: Record<string, any>) {
   out.relationship = normalizeRelationship(out.relationship);
   if (out.display_order == null || out.display_order === '') out.display_order = 1;
   return out;
+}
+
+async function logIncomeSourceSyncEvent(supabase: any, input: {
+  clientId: string;
+  recordId: string | null;
+  operation: 'create' | 'update' | 'delete';
+  portalUser: any;
+}) {
+  if (!input.recordId) return;
+  await createSyncEvent(supabase, {
+    clientId: input.clientId,
+    entityId: input.recordId,
+    entityTable: 'client_income_sources',
+    entityType: 'income_source',
+    sourceSurface: 'finance_portal',
+    sourceActorType: 'finance_user',
+    sourceActorName: input.portalUser.email ?? null,
+    sourceReference: input.portalUser.id ?? null,
+    sourceDetails: {
+      finance_contact_id: input.portalUser.finance_contact_id ?? null,
+      operation: input.operation,
+      shared_table: 'client_income_sources',
+    },
+    syncStatus: 'synced',
+    propagatedTo: ['internal_dashboard', 'finance_portal'],
+  });
 }
 
 async function prepareFinanceNotePayload(supabase: any, clientId: string, payload: Record<string, any>, portalUser: any) {
@@ -728,9 +774,10 @@ Deno.serve(async (req) => {
         .from(dbTable)
         .select('*')
         .eq('client_id', client_id);
-      // Finance portal sees notes targeted to finance or shared with both portals
+      // Finance portal sees notes targeted to finance or shared with both portals.
       if (dbTable === 'client_notes') listQuery = listQuery.in('visibility', ['shared', 'finance_only']);
-      const { data, error } = await listQuery.order('created_at', { ascending: false });
+      const orderColumn = dbTable === 'client_income_sources' ? 'display_order' : 'created_at';
+      const { data, error } = await listQuery.order(orderColumn, { ascending: dbTable === 'client_income_sources' });
       if (error) throw error;
       await audit('list_records', table_key, null, { count: data?.length || 0 });
       return jsonResponse({ success: true, records: data || [], permission: permissions[table_key] });
@@ -756,6 +803,10 @@ Deno.serve(async (req) => {
       if (error) throw error;
 
       await syncClientRollups(supabase, client_id, dbTable, data);
+
+      if (dbTable === 'client_income_sources' && data) {
+        await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: data.id, operation: 'create', portalUser });
+      }
 
       if (dbTable === 'client_notes' && data) {
         if (syncMeta?.shouldSupersedeExisting && syncMeta.existingId) {
@@ -867,6 +918,10 @@ Deno.serve(async (req) => {
 
       await syncClientRollups(supabase, client_id, dbTable, data);
 
+      if (dbTable === 'client_income_sources' && data) {
+        await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: data.id, operation: 'update', portalUser });
+      }
+
       if (dbTable === 'client_notes' && data) {
         await logClientActivity(supabase, {
           clientId: client_id,
@@ -956,6 +1011,10 @@ Deno.serve(async (req) => {
         .eq('id', record_id)
         .eq('client_id', client_id);
       if (error) throw error;
+      if (dbTable === 'client_income_sources') {
+        await syncClientRollups(supabase, client_id, dbTable, { id: record_id });
+        await logIncomeSourceSyncEvent(supabase, { clientId: client_id, recordId: record_id, operation: 'delete', portalUser });
+      }
       await audit('delete_record', table_key, record_id);
       return jsonResponse({ success: true });
     }
