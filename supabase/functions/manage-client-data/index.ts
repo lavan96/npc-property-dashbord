@@ -55,6 +55,47 @@ const ALLOWED_TABLES: TableName[] = [
   'ghl_conversation_messages',
 ];
 
+
+function normalizeAddressPayload(payload: Record<string, any>) {
+  const out = { ...(payload || {}) };
+  if (typeof out.address === 'string') out.address = out.address.trim();
+  if (typeof out.current_suburb === 'string') out.current_suburb = out.current_suburb.trim();
+  if (typeof out.current_state === 'string') out.current_state = out.current_state.trim().toUpperCase();
+  if (typeof out.current_postcode === 'string') out.current_postcode = out.current_postcode.trim();
+  if (typeof out.country === 'string') out.country = out.country.trim() || 'Australia';
+  if (out.is_current === true && !out.address && !out.current_address && !out.current_suburb && !out.current_state && !out.current_postcode) {
+    throw new Error('Current address requires at least an address line, suburb, state or postcode');
+  }
+  if (out.current_postcode && !/^\d{4}$/.test(String(out.current_postcode))) {
+    throw new Error('Postcode must be 4 digits');
+  }
+  if (out.current_state && !/^[A-Z]{2,3}$/.test(String(out.current_state))) {
+    throw new Error('State must be a 2–3 letter Australian state/territory code');
+  }
+  return out;
+}
+
+function hasAddressFields(payload: Record<string, any> | undefined) {
+  if (!payload) return false;
+  return ['current_address', 'current_suburb', 'current_state', 'current_postcode', 'country', 'living_situation', 'residential_status', 'address'].some((key) => key in payload);
+}
+
+async function logAddressSyncEvent(supabase: any, input: { clientId: string; entityId: string; entityTable: string; operation: string; username?: string | null; userId?: string | null; authMethod?: string | null }) {
+  await createSyncEvent(supabase, {
+    clientId: input.clientId,
+    entityId: input.entityId,
+    entityTable: input.entityTable,
+    entityType: 'address',
+    sourceSurface: 'internal_dashboard',
+    sourceActorType: 'internal_user',
+    sourceActorName: input.username || null,
+    sourceReference: input.userId || null,
+    sourceDetails: { operation: input.operation, auth_method: input.authMethod || 'unknown' },
+    syncStatus: 'synced',
+    propagatedTo: ['finance_portal', 'client_portal', 'internal_dashboard'],
+  });
+}
+
 // Map employment_type to income source_type and default shading
 const EMPLOYMENT_TO_INCOME_MAP: Record<string, { sourceType: string; defaultShading: number }> = {
   permanent: { sourceType: 'payg_fulltime', defaultShading: 1.0 },
@@ -364,6 +405,11 @@ Deno.serve(async (req) => {
           insertData = isArray 
             ? data.map((item: Record<string, any>) => ({ ...item, client_id: clientId }))
             : { ...data, client_id: clientId };
+          if (table === 'client_address_history') {
+            insertData = isArray
+              ? (insertData as Record<string, any>[]).map((item) => normalizeAddressPayload(item))
+              : normalizeAddressPayload(insertData as Record<string, any>);
+          }
         }
 
         const syncPlans = table === 'client_files' || table === 'client_notes'
@@ -449,6 +495,10 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (!error && table === 'client_address_history' && result && clientId) {
+          await logAddressSyncEvent(supabase, { clientId, entityId: result.id, entityTable: table, operation: 'create', username, userId, authMethod });
+        }
+
         // ── Portal Notification: Report published to client ──
         if (!error && table === 'client_portal_reports' && clientId && result) {
           try {
@@ -507,7 +557,10 @@ Deno.serve(async (req) => {
         // For clients table, use clientId as the record ID
         const idToUpdate = table === 'clients' ? clientId : recordId;
 
-        const updatePayload = { ...data } as Record<string, any>;
+        let updatePayload = { ...data } as Record<string, any>;
+        if (table === 'client_address_history' || (table === 'clients' && hasAddressFields(updatePayload))) {
+          updatePayload = normalizeAddressPayload(updatePayload);
+        }
         if (table === 'client_notes' || table === 'client_files') {
           Object.assign(updatePayload, {
             ...buildProvenance({
@@ -549,6 +602,10 @@ Deno.serve(async (req) => {
           } catch (syncError) {
             console.warn('Failed to sync employment to income source:', syncError);
           }
+        }
+
+        if (!error && result && clientId && (table === 'client_address_history' || (table === 'clients' && hasAddressFields(updatePayload)))) {
+          await logAddressSyncEvent(supabase, { clientId, entityId: result.id || clientId, entityTable: table === 'clients' ? 'clients' : table, operation: 'update', username, userId, authMethod });
         }
 
         // ── Portal Notification: Report request status updated ──
@@ -631,6 +688,9 @@ Deno.serve(async (req) => {
 
         result = { deleted: true, id: idToDelete };
         error = deleteError;
+        if (!error && table === 'client_address_history' && clientId && idToDelete) {
+          await logAddressSyncEvent(supabase, { clientId, entityId: idToDelete, entityTable: table, operation: 'delete', username, userId, authMethod });
+        }
         break;
       }
 

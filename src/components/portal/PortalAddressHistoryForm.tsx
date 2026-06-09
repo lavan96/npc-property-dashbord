@@ -31,6 +31,10 @@ const residentialStatusOptions = [
 
 interface AddressFormData {
   address: string;
+  current_suburb: string;
+  current_state: string;
+  current_postcode: string;
+  country: string;
   start_date: string;
   end_date: string;
   is_current: boolean;
@@ -40,6 +44,10 @@ interface AddressFormData {
 
 const defaultForm: AddressFormData = {
   address: '',
+  current_suburb: '',
+  current_state: '',
+  current_postcode: '',
+  country: 'Australia',
   start_date: '',
   end_date: '',
   is_current: true,
@@ -71,6 +79,10 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
   const startEdit = (addr: any) => {
     setForm({
       address: addr.address || '',
+      current_suburb: addr.current_suburb || '',
+      current_state: addr.current_state || '',
+      current_postcode: addr.current_postcode || '',
+      country: addr.country || 'Australia',
       start_date: addr.start_date || '',
       end_date: addr.end_date || '',
       is_current: addr.is_current ?? false,
@@ -84,10 +96,16 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
   const handleSubmit = async () => {
     if (!form.address.trim()) { toast.error('Address is required'); return; }
     if (!form.start_date) { toast.error('Start date is required'); return; }
+    if (form.current_postcode.trim() && !/^\d{4}$/.test(form.current_postcode.trim())) { toast.error('Postcode must be 4 digits'); return; }
+    if (form.current_state.trim() && !/^[A-Za-z]{2,3}$/.test(form.current_state.trim())) { toast.error('State must be a 2–3 letter code'); return; }
 
     const payload: Record<string, any> = {
       contact_type: 'primary',
-      address: form.address,
+      address: form.address.trim(),
+      current_suburb: form.current_suburb.trim() || null,
+      current_state: form.current_state.trim().toUpperCase() || null,
+      current_postcode: form.current_postcode.trim() || null,
+      country: form.country.trim() || 'Australia',
       start_date: form.start_date,
       end_date: form.is_current ? null : (form.end_date || null),
       is_current: form.is_current,
@@ -142,7 +160,7 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-sm">{addr.address || 'Unknown Address'}</span>
+                      <span className="font-medium text-sm">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'Unknown Address'}</span>
                        {addr.is_current && <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[10px] text-success">Current</span>}
                        {!addr.is_current && <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Previous</span>}
                     </div>
@@ -180,7 +198,29 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
 
             <div className="space-y-1.5">
               <Label className="text-xs">Address *</Label>
-              <Input value={form.address} onChange={(e) => updateField('address', e.target.value)} placeholder="123 Main St, Sydney NSW 2000" />
+              <Input value={form.address} onChange={(e) => updateField('address', e.target.value)} placeholder="123 Main Street" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Suburb / City</Label>
+                <Input value={form.current_suburb} onChange={(e) => updateField('current_suburb', e.target.value)} placeholder="Sydney" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">State</Label>
+                <Input value={form.current_state} onChange={(e) => updateField('current_state', e.target.value.toUpperCase())} placeholder="NSW" maxLength={3} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Postcode</Label>
+                <Input value={form.current_postcode} onChange={(e) => updateField('current_postcode', e.target.value)} placeholder="2000" maxLength={4} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Country</Label>
+                <Input value={form.country} onChange={(e) => updateField('country', e.target.value)} placeholder="Australia" />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

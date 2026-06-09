@@ -42,6 +42,9 @@ interface PersonalDetailsManualEntryProps {
     secondary_gender: string | null;
     secondary_dob: string | null;
     current_address: string | null;
+    current_suburb?: string | null;
+    current_state?: string | null;
+    current_postcode?: string | null;
     country: string | null;
     living_situation: string | null;
     residential_status: string | null;
@@ -49,6 +52,9 @@ interface PersonalDetailsManualEntryProps {
     dependents_count: number | null;
     // Secondary address fields
     secondary_current_address?: string | null;
+    secondary_current_suburb?: string | null;
+    secondary_current_state?: string | null;
+    secondary_current_postcode?: string | null;
     secondary_country?: string | null;
     secondary_living_situation?: string | null;
     secondary_residential_status?: string | null;
@@ -75,11 +81,17 @@ interface FormData {
   secondary_dob: string;
   // Primary address
   current_address: string;
+  current_suburb: string;
+  current_state: string;
+  current_postcode: string;
   country: string;
   living_situation: string;
   residential_status: string;
   // Secondary address
   secondary_current_address: string;
+  secondary_current_suburb: string;
+  secondary_current_state: string;
+  secondary_current_postcode: string;
   secondary_country: string;
   secondary_living_situation: string;
   secondary_residential_status: string;
@@ -128,7 +140,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
 
-  const [additionalContacts, setAdditionalContacts] = useState<(AdditionalContact & { current_address?: string; country?: string; living_situation?: string; residential_status?: string; same_address_as_primary?: boolean })[]>([]);
+  const [additionalContacts, setAdditionalContacts] = useState<(AdditionalContact & { current_address?: string; current_suburb?: string; current_state?: string; current_postcode?: string; country?: string; living_situation?: string; residential_status?: string; same_address_as_primary?: boolean })[]>([]);
   const [deletedContactIds, setDeletedContactIds] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
@@ -136,8 +148,8 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
     primary_mobile: '', primary_email: '', primary_gender: '', primary_dob: '',
     secondary_first_name: '', secondary_middle_name: '', secondary_surname: '',
     secondary_mobile: '', secondary_email: '', secondary_gender: '', secondary_dob: '',
-    current_address: '', country: 'Australia', living_situation: '', residential_status: '',
-    secondary_current_address: '', secondary_country: 'Australia', secondary_living_situation: '', secondary_residential_status: '', secondary_same_address_as_primary: false,
+    current_address: '', current_suburb: '', current_state: '', current_postcode: '', country: 'Australia', living_situation: '', residential_status: '',
+    secondary_current_address: '', secondary_current_suburb: '', secondary_current_state: '', secondary_current_postcode: '', secondary_country: 'Australia', secondary_living_situation: '', secondary_residential_status: '', secondary_same_address_as_primary: false,
     marital_status: '', dependents_count: 0,
   });
 
@@ -159,10 +171,16 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         secondary_gender: clientData.secondary_gender || '',
         secondary_dob: clientData.secondary_dob || '',
         current_address: clientData.current_address || '',
+        current_suburb: clientData.current_suburb || '',
+        current_state: clientData.current_state || '',
+        current_postcode: clientData.current_postcode || '',
         country: clientData.country || 'Australia',
         living_situation: clientData.living_situation || '',
         residential_status: clientData.residential_status || '',
         secondary_current_address: (clientData as any).secondary_current_address || '',
+        secondary_current_suburb: (clientData as any).secondary_current_suburb || '',
+        secondary_current_state: (clientData as any).secondary_current_state || '',
+        secondary_current_postcode: (clientData as any).secondary_current_postcode || '',
         secondary_country: (clientData as any).secondary_country || 'Australia',
         secondary_living_situation: (clientData as any).secondary_living_situation || '',
         secondary_residential_status: (clientData as any).secondary_residential_status || '',
@@ -210,13 +228,16 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
       // If toggling "same as primary", copy primary address
       if (field === 'same_address_as_primary' && value === true) {
         updated.current_address = formData.current_address;
+        (updated as any).current_suburb = formData.current_suburb;
+        (updated as any).current_state = formData.current_state;
+        (updated as any).current_postcode = formData.current_postcode;
         updated.country = formData.country;
         updated.living_situation = formData.living_situation;
         updated.residential_status = formData.residential_status;
       }
       return updated;
     }));
-  }, [formData.current_address, formData.country, formData.living_situation, formData.residential_status]);
+  }, [formData.current_address, formData.current_suburb, formData.current_state, formData.current_postcode, formData.country, formData.living_situation, formData.residential_status]);
 
   const updateClientMutation = useMutation({
     mutationFn: async () => {
@@ -236,10 +257,16 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         secondary_gender: formData.secondary_gender || null,
         secondary_dob: formData.secondary_dob || null,
         current_address: formData.current_address || null,
+        current_suburb: formData.current_suburb || null,
+        current_state: formData.current_state || null,
+        current_postcode: formData.current_postcode || null,
         country: formData.country || null,
         living_situation: formData.living_situation || null,
         residential_status: formData.residential_status || null,
         secondary_current_address: formData.secondary_current_address || null,
+        secondary_current_suburb: formData.secondary_current_suburb || null,
+        secondary_current_state: formData.secondary_current_state || null,
+        secondary_current_postcode: formData.secondary_current_postcode || null,
         secondary_country: formData.secondary_country || null,
         secondary_living_situation: formData.secondary_living_situation || null,
         secondary_residential_status: formData.secondary_residential_status || null,
@@ -296,6 +323,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
           gender: contact.gender || null,
           display_order: i + 1,
           current_address: contact.current_address || null,
+          current_suburb: contact.current_suburb || null,
+          current_state: contact.current_state || null,
+          current_postcode: contact.current_postcode || null,
           country: contact.country || 'Australia',
           living_situation: contact.living_situation || null,
           residential_status: contact.residential_status || null,
@@ -345,6 +375,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
 
   const primaryAddressRef = {
     current_address: formData.current_address,
+    current_suburb: formData.current_suburb,
+    current_state: formData.current_state,
+    current_postcode: formData.current_postcode,
     country: formData.country,
     living_situation: formData.living_situation,
     residential_status: formData.residential_status,
@@ -446,6 +479,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                     <ContactAddressFields
                       data={{
                         current_address: formData.current_address,
+                        current_suburb: formData.current_suburb,
+                        current_state: formData.current_state,
+                        current_postcode: formData.current_postcode,
                         country: formData.country,
                         living_situation: formData.living_situation,
                         residential_status: formData.residential_status,
@@ -467,6 +503,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                         <ContactAddressFields
                           data={{
                             current_address: formData.secondary_current_address,
+                            current_suburb: formData.secondary_current_suburb,
+                            current_state: formData.secondary_current_state,
+                            current_postcode: formData.secondary_current_postcode,
                             country: formData.secondary_country,
                             living_situation: formData.secondary_living_situation,
                             residential_status: formData.secondary_residential_status,
@@ -495,6 +534,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                         <ContactAddressFields
                           data={{
                             current_address: contact.current_address || '',
+                            current_suburb: contact.current_suburb || '',
+                            current_state: contact.current_state || '',
+                            current_postcode: contact.current_postcode || '',
                             country: contact.country || 'Australia',
                             living_situation: contact.living_situation || '',
                             residential_status: contact.residential_status || '',
@@ -576,7 +618,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         </DisplayCard>
 
         <DisplayCard title="Primary Address" icon={MapPin}>
-          <DisplayItem label="Current Address" value={clientData?.current_address || '-'} />
+          <DisplayItem label="Current Address" value={[clientData?.current_address, clientData?.current_suburb, clientData?.current_state, clientData?.current_postcode].filter(Boolean).join(', ') || '-'} />
           <DisplayItem label="Country" value={clientData?.country || '-'} />
           <DisplayItem label="Living Situation" value={formatLabel(clientData?.living_situation, livingSituationOptions)} />
           <DisplayItem label="Residential Status" value={formatLabel(clientData?.residential_status, residentialStatusOptions)} />
