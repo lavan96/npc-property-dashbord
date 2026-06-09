@@ -24,6 +24,7 @@ import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
 import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag, type BuiltPaletteItem } from '@/lib/reportTemplate/overlayDropFactory';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
+import { FloatingTextToolbar } from '@/components/templateBuilder/FloatingTextToolbar';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
 
 type HandleKind =
@@ -60,6 +61,8 @@ interface Props {
   onSelectBlock: (blockId: string | null) => void;
   /** V2 drop-to-place: a palette item (overlay or block) was dropped at `point`. */
   onPaletteDrop?: (item: BuiltPaletteItem, point: { x: number; y: number }) => void;
+  /** V2: show a floating quick-style toolbar above a selected text overlay. */
+  enableTextToolbar?: boolean;
   commentAnchors?: CommentAnchor[];
 }
 
@@ -81,6 +84,7 @@ export function EditorialCanvas({
   onDuplicateOverlay,
   onSelectBlock,
   onPaletteDrop,
+  enableTextToolbar = false,
   commentAnchors = [],
 }: Props) {
   const pageW = page.size.width || 595;
@@ -666,6 +670,22 @@ export function EditorialCanvas({
                 </div>
               );
             })}
+
+            {/* Floating text toolbar (V2) — quick styling above one selected text overlay */}
+            {(() => {
+              if (!enableTextToolbar || multiOverlayIds.size > 1 || !selectedOverlayId || editingId === selectedOverlayId) return null;
+              const to = overlays.find((x) => x.overlay.id === selectedOverlayId)?.overlay;
+              if (!to || to.type !== 'text') return null;
+              return (
+                <div
+                  className="absolute z-20"
+                  style={{ left: to.x * zoom, top: Math.max(2, to.y * zoom - 42) }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <FloatingTextToolbar overlay={to} onChange={(patch) => onUpdateOverlay({ ...to, ...patch } as Overlay)} />
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

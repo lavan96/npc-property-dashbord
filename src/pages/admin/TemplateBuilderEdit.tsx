@@ -2293,6 +2293,7 @@ export default function TemplateBuilderEdit() {
                       if (isOverlayPayload(item)) addOverlayToActivePage(positionOverlayAtPoint(item.overlay, point));
                       else addBlockToActivePage(item as Block);
                     } : undefined}
+                    enableTextToolbar={editorV2}
                     selectedOverlayId={selectedOverlayId}
                     multiOverlayIds={multiOverlayIds}
                     onSelectOverlay={(oid, additive) => {
