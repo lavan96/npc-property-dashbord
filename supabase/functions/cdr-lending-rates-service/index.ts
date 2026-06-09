@@ -650,7 +650,7 @@ Deno.serve(async (req) => {
       const totalCount = Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length;
       console.log(`[CDR] Starting PARALLEL refresh-all for ${totalCount} lenders`);
 
-      const PER_LENDER_TIMEOUT_MS = 25_000; // 25s hard cap per lender
+      const PER_LENDER_TIMEOUT_MS = 60_000; // detail v6 can be slower on lenders with many mortgage tiers
       const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
         Promise.race([
           p,
@@ -659,8 +659,8 @@ Deno.serve(async (req) => {
           ),
         ]);
 
-      // Kick off all CDR fetches concurrently
-      const cdrPromises = Object.entries(CDR_LENDERS).map(async ([id, config]) => {
+      // CDR fetches are network-heavy; cap concurrency to avoid data-holder throttling
+      const cdrResults = await mapWithConcurrency(Object.entries(CDR_LENDERS), 5, async ([id, config]) => {
         try {
           const result = await withTimeout(
             fetchLenderProducts(id, {
@@ -708,12 +708,8 @@ Deno.serve(async (req) => {
         }
       });
 
-      const settled = await Promise.allSettled([...cdrPromises, ...manualPromises]);
-      const results = settled.map((s) =>
-        s.status === 'fulfilled'
-          ? s.value
-          : { lenderId: 'unknown', lenderName: 'unknown', success: false, rateCount: 0, cached: false }
-      );
+      const manualResults = await Promise.all(manualPromises);
+      const results = [...cdrResults, ...manualResults];
 
       const successCount = results.filter(r => r.success && r.rateCount > 0).length;
       const totalRates = results.reduce((sum, r) => sum + r.rateCount, 0);
