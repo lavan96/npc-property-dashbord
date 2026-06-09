@@ -161,6 +161,40 @@ function CreateClientDialog({
   const [parseProgress, setParseProgress] = useState(0);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [parsedMetrics, setParsedMetrics] = useState<{ properties: number; employment: number; liabilities: number } | null>(null);
+  const [syncToGHL, setSyncToGHL] = useState(true);
+  const [pipelines, setPipelines] = useState<Array<{ id: string; ghl_id: string; name: string }>>([]);
+  const [stages, setStages] = useState<Array<{ id: string; ghl_id: string; name: string; pipeline_id: string }>>([]);
+  const [pipelinesLoading, setPipelinesLoading] = useState(false);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
+
+  // Load pipelines/stages when GHL sync is enabled
+  useEffect(() => {
+    if (!open || !syncToGHL || pipelines.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      setPipelinesLoading(true);
+      try {
+        const [pRes, sRes] = await Promise.all([
+          invokeFinanceFunction('finance-portal-client-data', { operation: 'list_ghl_pipelines' }),
+          invokeFinanceFunction('finance-portal-client-data', { operation: 'list_ghl_pipeline_stages' }),
+        ]);
+        if (cancelled) return;
+        if (pRes?.data?.success) setPipelines(pRes.data.pipelines || []);
+        if (sRes?.data?.success) setStages(sRes.data.stages || []);
+      } catch (err) {
+        console.warn('[FinancePortalClients] Failed to load GHL pipelines', err);
+      } finally {
+        if (!cancelled) setPipelinesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, syncToGHL, pipelines.length, invokeFinanceFunction]);
+
+  const pipelineStages = useMemo(() => {
+    if (!selectedPipelineId) return [];
+    return stages.filter((s) => s.pipeline_id === selectedPipelineId);
+  }, [stages, selectedPipelineId]);
 
   const resetState = useCallback(() => {
     setIntakeMode('manual');
@@ -170,7 +204,11 @@ function CreateClientDialog({
     setParseProgress(0);
     setPdfFileName(null);
     setParsedMetrics(null);
+    setSyncToGHL(true);
+    setSelectedPipelineId('');
+    setSelectedStageId('');
   }, []);
+
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) resetState();
