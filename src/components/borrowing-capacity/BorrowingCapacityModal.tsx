@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -157,6 +157,10 @@ export function BorrowingCapacityModal({
   const [baseScenarioResult, setBaseScenarioResult] = useState<FullAssessmentResult | null>(null);
   const [baseScenarioInputs, setBaseScenarioInputs] = useState<BorrowingCapacityInput | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
+  // Monotonic id for edge-function recalcs. Applying/reverting a scenario bumps
+  // it so a base recalc already in-flight can't resolve later and clobber the
+  // displayed scenario/base figure with a stale (divergent) value.
+  const calcGenerationRef = useRef(0);
   const [showRateComparison, setShowRateComparison] = useState(false);
   // New mode states
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('bank');
@@ -780,6 +784,7 @@ export function BorrowingCapacityModal({
 
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
+    const generation = ++calcGenerationRef.current;
     setIsLocalCalculating(true);
     try {
       const lmiOverrides = lmiMode !== 'none' && lmiEstimate ? {
@@ -806,6 +811,10 @@ export function BorrowingCapacityModal({
         selectedLenderName: selectedLenderName || undefined,
         ...lmiOverrides,
       });
+      // Discard if a newer calc started or a scenario was applied/reverted while
+      // this request was in flight — prevents a stale base result from
+      // overwriting the figure the user should be seeing.
+      if (generation !== calcGenerationRef.current) return;
       setResult(calcResult);
       if (!activeScenario) {
         setBaseScenarioResult(calcResult);
@@ -814,13 +823,19 @@ export function BorrowingCapacityModal({
     } catch (error) {
       console.error('Calculation failed:', error);
     } finally {
-      setIsLocalCalculating(false);
+      if (generation === calcGenerationRef.current) setIsLocalCalculating(false);
     }
   }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveBufferRateForCalc, effectiveLoanTermYearsForCalc, effectiveTotalDebtBalancesForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, proposedLoanAmount, selectedLenderName, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer, activeScenario, baseCalculatorInputs]);
 
-  // Auto-calculate on mount and when key inputs change
+  // Auto-calculate on mount and when key inputs change — but ONLY for the base
+  // case. While a scenario is applied, the displayed capacity is the scenario's
+  // own engine result (set by onApplyScenario and shown across the What-If UI).
+  // Re-running the edge function here overwrote that with a divergent (lower)
+  // figure the instant a scenario was applied, and prevented revert from
+  // restoring the original base. The base case still recalculates so direct
+  // calculator-input edits flow through.
   useEffect(() => {
-    if (open && clientData) {
+    if (open && clientData && !activeScenario) {
       handleCalculate();
     }
   }, [open, clientData, effectiveExpensesForCalc, effectiveInterestRateForCalc, effectiveLoanTermYearsForCalc, effectiveCalculationModeForCalc, effectiveDtiCapEnabledForCalc, effectiveDtiCapLimitForCalc, selectedLenderName, effectiveBufferRateForCalc, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario, handleCalculate]);
@@ -910,20 +925,25 @@ export function BorrowingCapacityModal({
         size="sm"
         className="h-6 text-xs px-2"
         onClick={() => {
+          // Invalidate any in-flight recalc so it can't land after we revert.
+          calcGenerationRef.current++;
           setActiveScenario(null);
-          // Revert the full calculator control surface to the current base snapshot.
+          // Revert to the TRUE base snapshot tracked live by handleCalculate
+          // (baseScenarioInputs/Result) so the displayed figure returns to the
+          // exact original base. The saved base preset is only a fallback — its
+          // snapshot can be stale relative to the live calculator.
           const basePreset = scenarioPresets.find(p => p.isBase);
-          const baseInputs = basePreset?.adjustedInputs ?? baseCalculatorInputs;
+          const baseInputs = baseScenarioInputs ?? basePreset?.adjustedInputs ?? baseCalculatorInputs;
           setInterestRate(baseInputs.interestRate);
           setLoanTermYears(baseInputs.loanTermYears);
           setBufferEnabled((baseInputs.bufferRate ?? 0) > 0);
           setCalculationMode(baseInputs.calculationMode ?? 'bank');
           setDtiCapEnabled(!!baseInputs.dtiCapEnabled);
           setDtiCapLimit(baseInputs.dtiCapLimit ?? DEFAULT_DTI_CAP);
-          if (basePreset) {
-            const baseResult = basePreset.result as FullAssessmentResult;
-            setResult(baseResult);
-            setBaseScenarioResult(baseResult);
+          const restoredResult = (baseScenarioResult ?? basePreset?.result ?? null) as FullAssessmentResult | null;
+          if (restoredResult) {
+            setResult(restoredResult);
+            setBaseScenarioResult(restoredResult);
             setBaseScenarioInputs(baseInputs);
           }
           toast.info('Reverted to base case');
@@ -1315,6 +1335,9 @@ export function BorrowingCapacityModal({
                         num(baseResultSnapshot.stressTestedCapacity, num(scenarioResult.borrowingCapacity, 0)),
                       ),
                     };
+                    // Invalidate any base recalc still in flight so it can't
+                    // resolve afterwards and overwrite the scenario figure.
+                    calcGenerationRef.current++;
                     setActiveScenario({
                       ...scenarioPreset,
                       result: appliedResult,
