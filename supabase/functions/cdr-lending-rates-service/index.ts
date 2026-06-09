@@ -128,6 +128,86 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
   }
 };
 
+// Known alternate / historical hosts. If a lender's primary baseUrl returns 301/308/404,
+// we'll retry with these in order before giving up.
+const BASE_URL_FALLBACKS: Record<string, string[]> = {
+  cba: [
+    "https://api.commbank.com.au/public/cds-au/v1",
+    "https://api.cba/cds-au/v1",
+  ],
+  anz: [
+    "https://api.anz/cds-au/v1",
+    "https://api.anz.com/cds-au/v1",
+  ],
+  nab: [
+    "https://openbank.api.nab.com.au/cds-au/v1",
+    "https://api.nab.com.au/cds-au/v1",
+  ],
+  westpac: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/wbc/cds-au/v1",
+  ],
+  banksa: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/bsa/cds-au/v1",
+  ],
+  stgeorge: [
+    "https://digital-api.westpac.com.au/cds-au/v1",
+    "https://digital-api.westpac.com.au/stg/cds-au/v1",
+  ],
+  bankwest: [
+    "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
+    "https://api.bankwest.com.au/cds-au/v1",
+  ],
+  suncorp: [
+    "https://id-ob.suncorpbank.com.au/cds-au/v1",
+    "https://api.suncorpbank.com.au/cds-au/v1",
+  ],
+  hsbc: [
+    "https://ob.hsbc.com.au/cds-au/v1",
+    "https://api.hsbc.com.au/cds-au/v1",
+  ],
+  ubank: [
+    "https://ob.ubank.com.au/cds-au/v1",
+    "https://openbank.api.nab.com.au/cds-au/v1",
+  ],
+};
+
+// Manual redirect-following fetch.
+// Many CDR data holders return 301/308 from their published baseUrl to a new
+// host. Deno's default fetch DOES follow redirects, but some holders return
+// a 301 with no Location, or to a host that strips required headers — we do
+// it manually so we (a) preserve x-v/x-min-v across hops and (b) capture the
+// final URL + Location header for diagnostics.
+async function fetchCdr(
+  url: string,
+  headers: Record<string, string>,
+  maxRedirects = 5
+): Promise<{ response: Response | null; finalUrl: string; redirectChain: string[]; lastStatus: number; error?: string }> {
+  const chain: string[] = [];
+  let currentUrl = url;
+  for (let i = 0; i <= maxRedirects; i++) {
+    chain.push(currentUrl);
+    try {
+      const res = await fetch(currentUrl, { headers, redirect: 'manual' });
+      // Manual redirect: status 0 in some runtimes, or 301/302/303/307/308
+      if (res.status === 301 || res.status === 302 || res.status === 303 || res.status === 307 || res.status === 308) {
+        const loc = res.headers.get('location');
+        if (!loc) {
+          return { response: res, finalUrl: currentUrl, redirectChain: chain, lastStatus: res.status, error: `${res.status} with no Location header` };
+        }
+        // Resolve relative redirects
+        currentUrl = new URL(loc, currentUrl).toString();
+        continue;
+      }
+      return { response: res, finalUrl: currentUrl, redirectChain: chain, lastStatus: res.status };
+    } catch (e: any) {
+      return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: e?.message || String(e) };
+    }
+  }
+  return { response: null, finalUrl: currentUrl, redirectChain: chain, lastStatus: 0, error: `Too many redirects (>${maxRedirects})` };
+}
+
 interface LendingRate {
   lenderId: string;
   lenderName: string;
