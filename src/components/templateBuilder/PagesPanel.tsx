@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
+import { draggableKindForOverlayType, OVERLAY_DRAG_MIME } from '@/lib/reportTemplate/overlayDropFactory';
 import { cn } from '@/lib/utils';
 
 interface CommentAnchor {
@@ -39,6 +40,8 @@ interface Props {
   selectedBlockId?: string | null;
   onSelectBlock?: (id: string | null) => void;
   onReorderBlocks?: (fromIndex: number, toIndex: number) => void;
+  /** V2: make overlay palette items draggable onto the canvas (drop-to-place). */
+  enableCanvasDrag?: boolean;
   commentAnchors?: CommentAnchor[];
 }
 
@@ -240,6 +243,7 @@ export function PagesPanel({
   selectedBlockId,
   onSelectBlock,
   onReorderBlocks,
+  enableCanvasDrag = false,
   commentAnchors = [],
 }: Props) {
   const activePage = template.pages.find((p) => p.id === activePageId) || null;
@@ -504,9 +508,21 @@ export function PagesPanel({
               <div key={item.label} className="relative group">
                 <button
                   type="button"
+                  draggable={enableCanvasDrag && item.category === 'Overlays'}
+                  onDragStart={enableCanvasDrag ? (e) => {
+                    const built = item.build();
+                    const kind = 'kind' in built && built.kind === 'overlay'
+                      ? draggableKindForOverlayType((built.overlay as any).type)
+                      : null;
+                    if (!kind) { e.preventDefault(); return; }
+                    e.dataTransfer.setData(OVERLAY_DRAG_MIME, kind);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  } : undefined}
                   onClick={() => insertPaletteItem(item)}
                   className="flex min-h-[86px] w-full flex-col items-center gap-1.5 rounded-md border bg-card hover:border-primary/50 hover:bg-muted/40 transition-colors p-3 text-xs"
-                  title={`${item.category} · ${item.keywords?.join(', ') ?? item.label}`}
+                  title={enableCanvasDrag && item.category === 'Overlays'
+                    ? `${item.label} — click to insert, or drag onto the canvas`
+                    : `${item.category} · ${item.keywords?.join(', ') ?? item.label}`}
                 >
                   <Icon className="h-4 w-4 text-primary" />
                   <span className="leading-tight text-center">{item.label}</span>

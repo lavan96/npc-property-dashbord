@@ -112,6 +112,8 @@ import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
+import { isTemplateEditorV2Enabled } from '@/lib/reportTemplate/editorV2Flag';
+import { makeOverlayForKind } from '@/lib/reportTemplate/overlayDropFactory';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -200,6 +202,8 @@ export default function TemplateBuilderEdit() {
   const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
+  // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. OFF by default.
+  const editorV2 = useMemo(() => isTemplateEditorV2Enabled(), []);
   const [showDiff, setShowDiff] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
@@ -2214,6 +2218,7 @@ export default function TemplateBuilderEdit() {
               onMovePage={movePage}
               onAddBlock={addBlockToActivePage}
               onAddOverlay={addOverlayToActivePage}
+              enableCanvasDrag={editorV2}
               selectedBlockId={selectedBlockId}
               onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
               onReorderBlocks={reorderBlocks}
@@ -2267,6 +2272,7 @@ export default function TemplateBuilderEdit() {
                     page={activePage}
                     sampleData={sampleData}
                     customCss={customCss || undefined}
+                    onCanvasDropCreate={editorV2 ? (kind, point) => addOverlayToActivePage(makeOverlayForKind(kind, point)) : undefined}
                     selectedOverlayId={selectedOverlayId}
                     multiOverlayIds={multiOverlayIds}
                     onSelectOverlay={(oid, additive) => {
