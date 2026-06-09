@@ -6459,6 +6459,35 @@ export type Database = {
         }
         Relationships: []
       }
+      email_copilot_email_addresses: {
+        Row: {
+          address: string
+          address_kind: string
+          created_at: string
+          email_id: string
+        }
+        Insert: {
+          address: string
+          address_kind?: string
+          created_at?: string
+          email_id: string
+        }
+        Update: {
+          address?: string
+          address_kind?: string
+          created_at?: string
+          email_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_copilot_email_addresses_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "email_copilot_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_copilot_emails: {
         Row: {
           attachments: Json | null
