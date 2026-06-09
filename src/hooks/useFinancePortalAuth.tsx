@@ -104,7 +104,8 @@ async function invokeFinanceFunction(
         response.status === 401 &&
         !isAuthLikeFn &&
         sessionToken &&
-        /invalid session|session expired|session token required|authentication required/i.test(msgStr)
+        !recentlyAuthed() &&
+        /invalid session|session expired|invalid or expired session/i.test(msgStr)
       ) {
         try { clearStoredValue(FINANCE_SESSION_KEY); } catch {}
         try {
