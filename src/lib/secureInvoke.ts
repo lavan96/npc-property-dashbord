@@ -179,9 +179,20 @@ export async function invokeSecureFunction<T = any>(
     return { data: data as T, error: null };
   } catch (error: any) {
     const isTimeout = error.name === 'AbortError';
-    return { 
-      data: null, 
-      error: { message: isTimeout ? 'Request timed out. Please try again.' : (error.message || 'Network error') } 
+    const rawMessage = error.message || 'Network error';
+    const message = isTimeout
+      ? 'Request timed out. Please try again.'
+      : rawMessage === 'Failed to fetch'
+        ? `Network/CORS error calling ${functionName}. Please check the function deployment and auth/CORS configuration.`
+        : rawMessage;
+    console.error('[invokeSecureFunction] Network invocation failed', {
+      functionName,
+      message: rawMessage,
+      isTimeout,
+    });
+    return {
+      data: null,
+      error: { message },
     };
   }
 }

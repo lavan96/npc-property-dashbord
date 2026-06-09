@@ -90,6 +90,8 @@ assertContains(staffMessages, ".eq('thread_type', 'command_client_allocated')", 
 assertContains(staffMessages, "visibility_scope: 'command_client_with_finance_allocated'", 'Command Centre allocation creates finance-allocated scope');
 assertContains(staffMessages, "finance_portal: 'no_assigned_finance_user'", 'Command Centre allocation records missing finance assignment fallback');
 assertContains(staffMessages, ".update({ notification_status: finalNotificationStatus })", 'Command Centre client messages persist final notification status');
+assertContains('supabase/config.toml', '[functions.staff-client-portal-messages]', 'Command Centre client message function is configured');
+assertContains('supabase/config.toml', 'verify_jwt = false', 'Messaging functions support custom secureInvoke session authentication without gateway JWT/CORS failures');
 assertContains('supabase/functions/message-governance/index.ts', "from('message_governance_log')", 'Command Centre governance function reads governance log');
 assertContains('supabase/functions/message-governance/index.ts', "from('user_roles')", 'Governance API verifies Command Centre staff role');
 assertContains('supabase/functions/message-governance/index.ts', ".in('role', ['superadmin', 'admin'])", 'Governance API limits audit access to admin roles');

@@ -48,6 +48,17 @@ else fail('Missing test:messaging-phase8 npm script');
 if (packageJson.scripts?.['test:messaging-phase9']) pass('Phase 9 deployment validation npm script is available');
 else fail('Missing test:messaging-phase9 npm script');
 
+
+const config = read('supabase/config.toml');
+const staffConfigSnippet = '[functions.staff-client-portal-messages]';
+const staffConfigIndex = config.indexOf(staffConfigSnippet);
+const nextFunctionIndex = config.indexOf('\n[functions.', staffConfigIndex + staffConfigSnippet.length);
+const staffConfig = staffConfigIndex >= 0
+  ? config.slice(staffConfigIndex, nextFunctionIndex >= 0 ? nextFunctionIndex : undefined)
+  : '';
+if (staffConfig.includes('verify_jwt = false')) pass('staff-client-portal-messages disables gateway JWT verification for secureInvoke custom sessions');
+else fail('staff-client-portal-messages must set verify_jwt = false to avoid browser CORS Failed to fetch errors');
+
 for (const fn of [
   'finance-portal-messages',
   'client-portal-comms',

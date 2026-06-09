@@ -591,7 +591,10 @@ verify_jwt = false
 request_timeout = 120
 
 [functions.staff-client-portal-messages]
-verify_jwt = true
+# Uses custom Command Centre session tokens verified inside the function.
+# Keep Supabase gateway JWT verification disabled so browser preflight/auth errors
+# do not surface as opaque Failed to fetch CORS failures.
+verify_jwt = false
 request_timeout = 60
 
 [functions.client-portal-comms]
