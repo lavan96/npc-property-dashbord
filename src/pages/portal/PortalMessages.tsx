@@ -2,16 +2,15 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
 import { usePortalUnifiedInbox, usePortalUpdateData, usePortalSendFinanceReply } from '@/hooks/usePortalData';
 import { smartCapitalize } from '@/lib/nameUtils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   MessageSquare, Send, Loader2, Headphones,
-  MessageCircle, Phone, Mail
+  MessageCircle, Phone, Mail, Building2, Landmark,
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
@@ -42,17 +41,118 @@ function channelBadge(channel: string) {
   );
 }
 
+type ChannelKey = 'command' | 'finance';
+
+interface ChannelThreadProps {
+  channel: ChannelKey;
+  messages: any[];
+  displayName: string;
+  onSend: (text: string) => Promise<void>;
+  sending: boolean;
+  disabledReason?: string;
+  emptyHint: string;
+}
+
+function ChannelThread({ channel, messages, displayName, onSend, sending, disabledReason, emptyHint }: ChannelThreadProps) {
+  const [text, setText] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages.length]);
+
+  const send = async () => {
+    const t = text.trim();
+    if (!t || sending) return;
+    await onSend(t);
+    setText('');
+    inputRef.current?.focus();
+  };
+
+  return (
+    <Card className="client-portal-soft-panel flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 340px)', minHeight: '400px' }}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="mb-4 rounded-full border border-primary/10 bg-primary/5 p-4 shadow-lg shadow-primary/5">
+              {channel === 'finance'
+                ? <Landmark className="h-10 w-10 text-primary/40" />
+                : <Building2 className="h-10 w-10 text-primary/40" />}
+            </div>
+            <p className="text-muted-foreground font-medium">No messages yet</p>
+            <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">{emptyHint}</p>
+          </div>
+        ) : (
+          messages.map((msg: any) => {
+            const isClient = msg.direction === 'outbound';
+            return (
+              <div key={msg.id} className={`flex items-end gap-2 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}>
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarFallback className={`text-xs font-semibold ${
+                    isClient ? 'bg-primary/10 text-primary' : 'bg-card text-primary border border-primary/10'
+                  }`}>
+                    {isClient ? getInitials(displayName) : <Headphones className="h-3.5 w-3.5" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
+                  <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                    isClient
+                      ? 'bg-primary text-primary-foreground rounded-br-md'
+                      : 'border border-border/60 bg-card/90 text-foreground rounded-bl-md shadow-sm shadow-primary/5'
+                  }`}>
+                    {msg.subject && <p className="font-semibold mb-1">{msg.subject}</p>}
+                    <p className="whitespace-pre-wrap">{msg.body}</p>
+                  </div>
+                  <div className={`flex items-center gap-1.5 mt-1 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <p className="text-[10px] text-muted-foreground/50">{formatMessageDate(new Date(msg.created_at))}</p>
+                    {channelBadge(msg.channel)}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="border-t border-border/60 bg-card/90 p-4 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <Input
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            placeholder={disabledReason || `Message your ${channel === 'finance' ? 'finance broker' : 'advisor'}...`}
+            className="flex-1 border-border/60"
+            disabled={sending || !!disabledReason}
+          />
+          <Button
+            size="icon"
+            onClick={send}
+            disabled={!text.trim() || sending || !!disabledReason}
+            className="shrink-0 h-10 w-10 rounded-xl"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground/50 mt-2 text-center">
+          {channel === 'finance'
+            ? 'Replies sync to your finance broker and remain visible to Command Centre.'
+            : 'Messages go to your Command Centre advisory team.'}
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 export default function PortalMessages() {
   const { user } = usePortalAuth();
   const { data, isLoading } = usePortalUnifiedInbox();
   const updateMutation = usePortalUpdateData();
   const financeReplyMutation = usePortalSendFinanceReply();
-  const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
-  const [replyRoute, setReplyRoute] = useState<'command' | 'finance'>('command');
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<ChannelKey>('command');
 
   const displayName = smartCapitalize(user?.name);
   const serverMessages = data?.messages || [];
@@ -63,37 +163,36 @@ export default function PortalMessages() {
 
   useEffect(() => {
     if (localMessages.length === 0) return;
-    const serverIds = new Set(serverMessages.map((msg: any) => msg.id));
-    setLocalMessages((current) => {
-      const next = current.filter((msg) => !serverIds.has(msg.id));
-      return next.length === current.length ? current : next;
+    const serverIds = new Set(serverMessages.map((m: any) => m.id));
+    setLocalMessages((cur) => {
+      const next = cur.filter((m) => !serverIds.has(m.id));
+      return next.length === cur.length ? cur : next;
     });
   }, [serverMessages, localMessages.length]);
 
-  // Unified inbox returns newest-first; render oldest-first as a chat timeline.
-  const messages = useMemo(() => {
+  const allMessages = useMemo(() => {
     const byId = new Map<string, any>();
-    for (const msg of [...serverMessages, ...localMessages]) byId.set(msg.id, msg);
+    for (const m of [...serverMessages, ...localMessages]) byId.set(m.id, m);
     return Array.from(byId.values())
-      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [serverMessages, localMessages]);
 
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages.length]);
+  const commandMessages = useMemo(
+    () => allMessages.filter((m) => m.kind === 'portal' || m.kind === 'ghl' || m.kind === 'outbound'),
+    [allMessages]
+  );
+  const financeMessages = useMemo(
+    () => allMessages.filter((m) => m.kind === 'finance'),
+    [allMessages]
+  );
 
-  const handleSend = async () => {
-    const text = newMessage.trim();
-    if (!text || sending) return;
+  const commandUnread = commandMessages.filter((m) => m.direction === 'inbound' && m.is_read === false).length;
+  const financeUnread = financeMessages.filter((m) => m.direction === 'inbound' && m.is_read === false).length;
 
+  const sendCommand = async (text: string) => {
     setSending(true);
     try {
-      const response = replyRoute === 'finance' && latestFinanceThreadId
-        ? await financeReplyMutation.mutateAsync({ thread_id: latestFinanceThreadId, message: text })
-        : await updateMutation.mutateAsync({
+      const response = await updateMutation.mutateAsync({
         operation: 'insert',
         table: 'client_portal_messages',
         data: {
@@ -104,35 +203,36 @@ export default function PortalMessages() {
       });
       const saved = response?.data || response?.message;
       if (saved?.id) {
-        setLocalMessages((current) => [
-          ...current,
-          {
-            id: `${replyRoute === 'finance' ? 'finance' : 'portal'}:${saved.id}`,
-            kind: replyRoute === 'finance' ? 'finance' : 'portal',
-            channel: 'portal',
-            direction: 'outbound',
-            sender_name: saved.sender_name,
-            body: saved.message || saved.body || text,
-            subject: null,
-            created_at: saved.created_at || new Date().toISOString(),
-            is_read: false,
-          },
-        ]);
+        setLocalMessages((cur) => [...cur, {
+          id: `portal:${saved.id}`,
+          kind: 'portal', channel: 'portal', direction: 'outbound',
+          sender_name: saved.sender_name, body: saved.message || text,
+          subject: null, created_at: saved.created_at || new Date().toISOString(), is_read: false,
+        }]);
       }
-      setNewMessage('');
-      inputRef.current?.focus();
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to send message. Please try again.');
-    } finally {
-      setSending(false);
-    }
+    } finally { setSending(false); }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const sendFinance = async (text: string) => {
+    if (!latestFinanceThreadId) return;
+    setSending(true);
+    try {
+      const response = await financeReplyMutation.mutateAsync({ thread_id: latestFinanceThreadId, message: text });
+      const saved = response?.data || response?.message;
+      if (saved?.id) {
+        setLocalMessages((cur) => [...cur, {
+          id: `finance:${saved.id}`,
+          kind: 'finance', channel: 'portal', direction: 'outbound',
+          sender_name: saved.sender_name, body: saved.body || text,
+          subject: null, created_at: saved.created_at || new Date().toISOString(), is_read: true,
+          thread_id: latestFinanceThreadId,
+        }]);
+      }
+    } catch {
+      toast.error('Failed to send finance reply. Please try again.');
+    } finally { setSending(false); }
   };
 
   if (isLoading) {
@@ -152,106 +252,51 @@ export default function PortalMessages() {
           Messages
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          All your messages — portal, SMS, WhatsApp and email — in one place
+          Separate threads for your Command Centre advisor and finance broker — both stay in sync with NPC.
         </p>
       </div>
 
-      <Card className="client-portal-soft-panel flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
-        {/* Messages Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="mb-4 rounded-full border border-primary/10 bg-primary/5 p-4 shadow-lg shadow-primary/5">
-                <MessageCircle className="h-10 w-10 text-primary/40" />
-              </div>
-              <p className="text-muted-foreground font-medium">Start a conversation</p>
-              <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">
-                Send a message to your advisor. They'll respond as soon as possible.
-              </p>
-            </div>
-          ) : (
-            messages.map((msg: any) => {
-              const isClient = msg.direction === 'outbound';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-end gap-2 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}
-                >
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className={`text-xs font-semibold ${
-                      isClient ? 'bg-primary/10 text-primary' : 'bg-card text-primary border border-primary/10'
-                    }`}>
-                      {isClient ? getInitials(displayName) : (
-                        <Headphones className="h-3.5 w-3.5" />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-                    <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                      isClient
-                        ? 'bg-primary text-primary-foreground rounded-br-md'
-                        : 'border border-border/60 bg-card/90 text-foreground rounded-bl-md shadow-sm shadow-primary/5'
-                    }`}>
-                      {msg.subject && <p className="font-semibold mb-1">{msg.subject}</p>}
-                      <p className="whitespace-pre-wrap">{msg.body}</p>
-                    </div>
-                    <div className={`flex items-center gap-1.5 mt-1 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <p className="text-[10px] text-muted-foreground/50">
-                        {formatMessageDate(new Date(msg.created_at))}
-                      </p>
-                      {channelBadge(msg.channel)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChannelKey)} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2 md:w-[480px]">
+          <TabsTrigger value="command" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            Command Centre
+            {commandUnread > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{commandUnread}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="finance" className="gap-2">
+            <Landmark className="h-4 w-4" />
+            Finance Portal
+            {financeUnread > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{financeUnread}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Input Area */}
-        <div className="border-t border-border/60 bg-card/90 p-4 backdrop-blur-sm">
-          {latestFinanceThreadId && (
-            <div className="mb-3">
-              <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Reply route</label>
-              <Select value={replyRoute} onValueChange={(value) => setReplyRoute(value as 'command' | 'finance')}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="command">Command Centre advisory thread</SelectItem>
-                  <SelectItem value="finance">Finance thread (Command Centre visible)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Input
-              ref={inputRef}
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="flex-1 border-border/60"
-              disabled={sending}
-            />
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!newMessage.trim() || sending}
-              className="shrink-0 h-10 w-10 rounded-xl"
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <p className="text-[10px] text-muted-foreground/50 mt-2 text-center">
-            Messages follow NPC visibility controls. Finance replies are automatically visible to Command Centre.
-          </p>
-        </div>
-      </Card>
+        <TabsContent value="command" className="m-0">
+          <ChannelThread
+            channel="command"
+            messages={commandMessages}
+            displayName={displayName || ''}
+            onSend={sendCommand}
+            sending={sending}
+            emptyHint="Send a message to your advisor. They'll respond as soon as possible."
+          />
+        </TabsContent>
+
+        <TabsContent value="finance" className="m-0">
+          <ChannelThread
+            channel="finance"
+            messages={financeMessages}
+            displayName={displayName || ''}
+            onSend={sendFinance}
+            sending={sending}
+            disabledReason={!latestFinanceThreadId ? 'Your finance broker will start this conversation when ready.' : undefined}
+            emptyHint="Once your finance broker reaches out, your conversation will appear here."
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
