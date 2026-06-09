@@ -76,6 +76,14 @@ Drafts are browser-local (IndexedDB) — they are not shared across devices or u
 
 Templates locked for review cannot be edited, snapshotted, or deleted until unlocked. Activating a template or marking it as the default requires superadmin access, an approved template status, and a report type. Active templates must be deactivated before deletion.
 
+## Performance
+
+The editor is tuned to stay responsive on large, multi-page templates:
+
+- **Deferred analysis** — binding/print-safety/renderer linting runs against a `useDeferredValue` copy of the template and sample data, so typing and dragging are never blocked by validation. Issue panels show an "Updating…" state while analysis catches up; activation/export pre-flight always runs against the live state.
+- **Content-keyed previews** — both the live HTML preview and the editorial canvas render their iframe `srcDoc` through a render that is memoized on a *content* signature (`makePreviewKey` / `makeCanvasRenderKey` in `previewCache.ts`), not object identity. Editing one page no longer re-renders the others.
+- **Overlay drags don't reload the canvas** — the canvas hides overlays and draws its own handles, so its render key deliberately excludes overlay geometry. Moving/resizing/adding/removing an overlay updates only the React handle layer; the page-background iframe is not rebuilt on every pointer tick.
+
 ## Architecture
 
 ```

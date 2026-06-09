@@ -9,6 +9,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { makePreviewKey } from '@/lib/reportTemplate/previewCache';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
 import { Eye, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
@@ -54,7 +55,14 @@ export function LiveHtmlPreview({
     return { ...template, pages: [page] };
   }, [template, scope, activePageId]);
 
-  // Build HTML — debounced via React's natural batching; render is cheap.
+  // Re-render only when the rendered *content* actually changes. `visible`,
+  // `sampleData` and `customCss` change reference on every edit (even when their
+  // bytes are identical — e.g. editing a different page), so keying on a content
+  // signature avoids needless renderer runs and iframe srcDoc churn.
+  const renderKey = useMemo(
+    () => makePreviewKey(visible, sampleData, customCss),
+    [visible, sampleData, customCss],
+  );
   const html = useMemo(() => {
     try {
       const { html } = renderTemplateToHtml(visible, {
@@ -66,7 +74,10 @@ export function LiveHtmlPreview({
     } catch (e) {
       return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#b91c1c">Preview error: ${String((e as any)?.message ?? e)}</body></html>`;
     }
-  }, [visible, sampleData, customCss]);
+    // `visible`/`sampleData`/`customCss` are fully encoded in `renderKey`; depend
+    // on it alone so identical content reuses the cached HTML string.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderKey]);
 
   // Listen for selection messages from inside the iframe
   useEffect(() => {

@@ -20,6 +20,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
+import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
@@ -87,7 +88,14 @@ export function EditorialCanvas({
     return out;
   }, [page]);
 
-  // Single-page HTML for the iframe.
+  // Single-page HTML for the iframe. The canvas hides overlays and draws its own
+  // handles, so the rendered background doesn't depend on overlay geometry — key
+  // the render on a signature that excludes overlays so dragging/resizing an
+  // overlay never rebuilds the iframe srcDoc (the dominant drag-jank source).
+  const renderKey = useMemo(
+    () => makeCanvasRenderKey(template, page, sampleData, customCss),
+    [template, page, sampleData, customCss],
+  );
   const html = useMemo(() => {
     try {
       const visible: ReportTemplate = { ...template, pages: [page] };
@@ -110,7 +118,10 @@ export function EditorialCanvas({
     } catch (e: any) {
       return `<!doctype html><body style="font:13px sans-serif;color:#b91c1c;padding:24px">Preview error: ${String(e?.message ?? e)}</body>`;
     }
-  }, [template, page, sampleData, customCss]);
+    // template/page/sampleData/customCss are encoded in renderKey (overlays
+    // excluded on purpose); depend on it alone to reuse the cached HTML.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderKey]);
 
   // ── Zoom controls ─────────────────────────────────────────────────────────
   const fitToViewport = useCallback(() => {
