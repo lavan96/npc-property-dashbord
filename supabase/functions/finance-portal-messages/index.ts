@@ -579,7 +579,7 @@ Deno.serve(async (req) => {
             message: trimmed.slice(0, 140) || 'Sent you an attachment',
             type: 'info',
             category: 'message',
-            action_url: '/portal/messages',
+            action_url: '/client/messages',
             metadata: {
               client_id: thread.client_id,
               thread_id,
