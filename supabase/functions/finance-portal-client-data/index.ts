@@ -527,6 +527,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── list_ghl_pipelines ── (for client creation pipeline picker)
+    if (operation === 'list_ghl_pipelines') {
+      const { data: pipelines, error } = await supabase
+        .from('ghl_pipelines')
+        .select('id, ghl_id, name, position')
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+      if (error) return jsonResponse({ error: error.message }, 400);
+      return jsonResponse({ success: true, pipelines: pipelines || [] });
+    }
+
+    // ── list_ghl_pipeline_stages ──
+    if (operation === 'list_ghl_pipeline_stages') {
+      const { data: stages, error } = await supabase
+        .from('ghl_pipeline_stages')
+        .select('id, ghl_id, name, position, pipeline_id')
+        .order('position', { ascending: true });
+      if (error) return jsonResponse({ error: error.message }, 400);
+      return jsonResponse({ success: true, stages: stages || [] });
+    }
+
+
     // ── list_assigned_clients ──
     if (operation === 'list_assigned_clients') {
       const { data: assignments, error: aErr } = await supabase
