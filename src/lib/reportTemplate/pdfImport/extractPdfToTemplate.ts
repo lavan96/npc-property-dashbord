@@ -13,6 +13,14 @@
  */
 import * as pdfjsLib from 'pdfjs-dist';
 import type { ReportTemplate, Page, Block, Overlay, FontFace as FontFaceToken } from '@/lib/reportTemplate/templateSchema';
+import type { CdirDocument } from '@/lib/reportTemplate/ingestion/cdir';
+import { reportTemplateToCdir } from '@/lib/reportTemplate/ingestion/cdir';
+import {
+  buildCdirFidelityReport,
+  type CdirFidelityReport,
+  type SourceBoundsExpectation,
+  type SourceTextExpectation,
+} from '@/lib/reportTemplate/ingestion/fidelity';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
@@ -58,6 +66,9 @@ export interface ImportResult {
   template: { id: string; name: string };
   importId: string;
   pageCount: number;
+  /** Phase 1/2 normalized editable IR and quality metrics for import review. */
+  cdir?: CdirDocument;
+  cdirFidelity?: CdirFidelityReport;
   fidelityReport: {
     semanticPages: number;
     rasterizedPages: number;
@@ -91,6 +102,15 @@ function bytesToBase64(bytes: Uint8Array): string {
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
   return bytesToBase64(buf);
+}
+
+async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', buf.slice(0));
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) {
+    return `unverified-${buf.byteLength}`;
+  }
 }
 
 function colorFromArray(rgb: number[] | undefined): string {
@@ -331,6 +351,7 @@ export async function extractPdfToTemplate(
 
   onProgress({ phase: 'reading', message: 'Reading PDF…' });
   const buf = await file.arrayBuffer();
+  const sourceChecksum = `sha256:${await sha256Hex(buf)}`;
   // fontExtraProperties keeps the reconstructed embedded-font bytes available on
   // the main thread (commonObjs) so R3 can capture them as @font-face entries.
   const pdf = await pdfjsLib.getDocument({ data: buf, useSystemFonts: true, fontExtraProperties: true } as any).promise;
@@ -344,6 +365,7 @@ export async function extractPdfToTemplate(
     source_filename: file.name,
     source_size_bytes: file.size,
     page_count: totalPages,
+    meta: { source_checksum: sourceChecksum },
   });
   const importId: string = createRes.record.id;
 
@@ -355,6 +377,8 @@ export async function extractPdfToTemplate(
   let vectorCount = 0;
   let rasterized = 0;
   let semantic = 0;
+  const expectedText: SourceTextExpectation[] = [];
+  const expectedBounds: SourceBoundsExpectation[] = [];
 
   // R3 — embedded fonts captured as @font-face entries (deduped by loadedName).
   type EmbeddedRef = { family: string; weight: number; style: 'normal' | 'italic' };
@@ -393,6 +417,7 @@ export async function extractPdfToTemplate(
       const pageHeight = viewport.height;
 
       const overlays: Overlay[] = [];
+      let extractedPageText = '';
 
       if (mode === 'ocr') {
         // Skip pdfjs text extraction — rely on Tesseract on the raster image.
@@ -486,9 +511,11 @@ export async function extractPdfToTemplate(
         // correctly-positioned, non-overlapping lines via the textLayout pipeline.
         const content = await page.getTextContent({ includeMarkedContent: false } as any);
         const spans: RawSpan[] = [];
+        const pageTextParts: string[] = [];
         for (const item of content.items as any[]) {
           if (!('str' in item) || !item.str || !item.transform) continue;
           if (!(item.str as string).trim()) continue;
+          pageTextParts.push(item.str as string);
           const styles = (content.styles as Record<string, any>) || {};
           const psName = styles[item.fontName]?.fontFamily || item.fontName || 'Helvetica';
           // R3: prefer the actual embedded font program; else fall back to a web stack.
@@ -507,6 +534,7 @@ export async function extractPdfToTemplate(
             color: colorSamples.length ? nearestColor(colorSamples, t[4], t[5]) : undefined,
           });
         }
+        extractedPageText = pageTextParts.join(' ').replace(/\s+/g, ' ').trim();
         for (const spec of spansToTextOverlays(spans, pageHeight)) {
           overlays.push({
             id: crypto.randomUUID(),
@@ -587,6 +615,7 @@ export async function extractPdfToTemplate(
           await worker.terminate();
           const ratio = pageWidth / rasterCanvas.width; // pt per px
           const words: any[] = data?.words ?? [];
+          const ocrTextParts: string[] = [];
           for (const w of words) {
             if (!w?.text?.trim()) continue;
             const bbox = w.bbox || {};
@@ -595,6 +624,7 @@ export async function extractPdfToTemplate(
             const ww = ((bbox.x1 ?? 0) - (bbox.x0 ?? 0)) * ratio;
             const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
             const fontSize = Math.max(8, hh * 0.85);
+            ocrTextParts.push(w.text);
             overlays.push({
               id: crypto.randomUUID(),
               type: 'text',
@@ -615,6 +645,7 @@ export async function extractPdfToTemplate(
             } as Overlay);
             textBlocks++;
           }
+          extractedPageText = ocrTextParts.join(' ').replace(/\s+/g, ' ').trim();
         } catch (err) {
           // Surface the failure instead of swallowing it silently: the page
           // simply gets no OCR text overlays, which the user should know about.
@@ -635,6 +666,22 @@ export async function extractPdfToTemplate(
       }
 
       // Wrap overlays in a single 'free' block so they are positioned absolutely
+      const newPageId = crypto.randomUUID();
+      const textForPage = extractedPageText || overlays
+        .filter((overlay): overlay is Extract<Overlay, { type: 'text' }> => overlay.type === 'text')
+        .map((overlay) => overlay.content)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (textForPage) expectedText.push({ pageId: newPageId, text: textForPage });
+      for (const overlay of overlays) {
+        expectedBounds.push({
+          pageId: newPageId,
+          layerId: overlay.id,
+          bounds: { x: overlay.x, y: overlay.y, width: overlay.width, height: overlay.height },
+        });
+      }
+
       const freeBlock: Block = {
         id: crypto.randomUUID(),
         type: 'free',
@@ -643,7 +690,7 @@ export async function extractPdfToTemplate(
       } as Block;
 
       const newPage: Page = {
-        id: crypto.randomUUID(),
+        id: newPageId,
         name: `Page ${pageIndex}`,
         size: { width: pageWidth, height: pageHeight },
         background: backgroundImageUrl ? { imageUrl: backgroundImageUrl } : {},
@@ -666,6 +713,13 @@ export async function extractPdfToTemplate(
       meta: { title: options.templateName ?? file.name.replace(/\.pdf$/i, '') },
     };
 
+    const cdir = reportTemplateToCdir(template, {
+      kind: 'pdf',
+      checksum: sourceChecksum,
+      filename: file.name,
+    });
+    const cdirFidelity = buildCdirFidelityReport(cdir, { expectedText, expectedBounds });
+
     onProgress({ phase: 'finalizing', message: options.targetTemplateId ? 'Re-syncing template…' : 'Creating template…' });
     const finRes = options.targetTemplateId
       ? await invokeImport({
@@ -675,6 +729,9 @@ export async function extractPdfToTemplate(
           schema: template,
           page_count: totalPages,
           source_filename: file.name,
+          source_checksum: sourceChecksum,
+          cdir,
+          cdir_fidelity: cdirFidelity,
           note: `Re-synced from ${file.name}`,
         })
       : await invokeImport({
@@ -684,6 +741,9 @@ export async function extractPdfToTemplate(
           schema: template,
           page_count: totalPages,
           source_filename: file.name,
+          source_checksum: sourceChecksum,
+          cdir,
+          cdir_fidelity: cdirFidelity,
         });
 
     onProgress({ phase: 'done', totalPages });
@@ -691,6 +751,8 @@ export async function extractPdfToTemplate(
       template: { id: finRes.template.id, name: finRes.template.name ?? options.templateName ?? file.name },
       importId,
       pageCount: totalPages,
+      cdir,
+      cdirFidelity,
       fidelityReport: {
         semanticPages: semantic,
         rasterizedPages: rasterized,

@@ -42,9 +42,40 @@ describe('renderAndGroundCode', () => {
       url: 'https://example.com', width: 1280, height: 1600,
     }));
     expect(res.rasterDataUrl).toBe('data:image/png;base64,AAAA');
+    expect(res.rasterDataUrls).toEqual(['data:image/png;base64,AAAA']);
     expect(res.grounded.elements).toHaveLength(1);
     expect(res.grounded.elements[0].text).toBe('Headline');
+    expect(res.groundedPages).toHaveLength(1);
+    expect(res.cdir.source.kind).toBe('url');
+    expect(res.cdir.pages[0].traceRasterAssetId).toBe('page_1_trace_raster');
+    expect(res.cdirFidelity.textAccuracy).toBe(1);
+    expect(res.editableTemplate.pages[0].background?.imageUrl).toBe('data:image/png;base64,AAAA');
     expect(res.pageWidth).toBe(res.grounded.pageWidth);
+  });
+
+  it('preserves multi-page project zip renders as editable CDIR/template pages', async () => {
+    const secondTree: DomBoxTree = {
+      pageWidthPx: 1280,
+      pageHeightPx: 1600,
+      textBoxes: [{ text: 'Details page', x: 80, y: 90, width: 320, height: 44, fontSizePx: 32 }],
+    };
+    const invoke = ok({
+      pages: [
+        { id: 'cover', label: 'Cover', route: '/', raster: 'AAAA', boxTree: BOX_TREE },
+        { id: 'details', label: 'Details', route: '/details', raster: 'BBBB', boxTree: secondTree },
+      ],
+    });
+
+    const res = await renderAndGroundCode({ zipBase64: 'UEsDBA==', sourceFilename: 'project.zip' }, invoke);
+
+    expect(res.cdir.source).toMatchObject({ kind: 'zip', filename: 'project.zip' });
+    expect(res.cdir.pages.map((page) => page.id)).toEqual(['cover', 'details']);
+    expect(res.cdir.pages[1].layers[0]).toMatchObject({ id: 'details_el_1', kind: 'text', text: 'Details page' });
+    expect(res.rasterDataUrls).toEqual(['data:image/png;base64,AAAA', 'data:image/png;base64,BBBB']);
+    expect(res.groundedPages).toHaveLength(2);
+    expect(res.editableTemplate.pages).toHaveLength(2);
+    expect(res.editableTemplate.pages[1].background?.imageUrl).toBe('data:image/png;base64,BBBB');
+    expect(res.cdirFidelity.pages.map((page) => page.textAccuracy)).toEqual([1, 1]);
   });
 
   it('passes through an existing data: raster unchanged', async () => {
