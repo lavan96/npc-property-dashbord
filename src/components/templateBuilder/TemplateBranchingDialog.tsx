@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { GitBranch, GitMerge, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -45,7 +44,6 @@ export function TemplateBranchingDialog({
   open, onOpenChange, templateId, templateName, parentTemplateId, isDraft, onMerged,
 }: TemplateBranchingDialogProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [branchLabel, setBranchLabel] = useState('');
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [creating, setCreating] = useState(false);
@@ -90,10 +88,11 @@ export function TemplateBranchingDialog({
         locked_at: null,
         locked_by: null,
         version: 1,
-        // Own the branch as the current user so it satisfies the RLS insert
-        // check (was inheriting the source's created_by → blocked when branching
-        // a seeded/other-owned template).
-        created_by: user?.id ?? src.created_by ?? null,
+        // Leave the owner unset (like seeded templates). The service-role
+        // manage-templates write bypasses RLS, so created_by no longer needs to
+        // equal the current user — and stamping a custom-auth user id here
+        // violates the created_by → auth.users foreign key.
+        created_by: null,
         created_at: undefined,
         updated_at: undefined,
       };
