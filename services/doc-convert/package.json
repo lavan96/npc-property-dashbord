@@ -1,0 +1,12 @@
+{
+  "name": "doc-convert-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LibreOffice-headless 'anything → PDF' service for the importer (office/rtf/html/csv/markdown/…).",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  }
+}

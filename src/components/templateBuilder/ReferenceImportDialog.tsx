@@ -32,11 +32,11 @@ import {
 } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
 import { parseTemplate, type ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import {
-  detectReferenceKind,
   validateReconstructedSchema,
   fileToDataUrl,
   type ReferenceKind,
 } from '@/lib/reportTemplate/referenceImport';
+import { prepareImportFile } from '@/lib/reportTemplate/pdfImport/prepareImportFile';
 import { groundOcrWords, type GroundedReference, type OcrWord } from '@/lib/reportTemplate/imageGrounding';
 import { Input } from '@/components/ui/input';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -110,8 +110,7 @@ interface Props {
   onApplySchema?: (schema: ReportTemplate) => void;
 }
 
-const PDF_MAX = 50 * 1024 * 1024;
-const IMG_MAX = 25 * 1024 * 1024; // generous: rendered full-page screenshots can be large
+const MAX_UPLOAD = 100 * 1024 * 1024; // accept any file type; only a generous overall size cap
 
 export function ReferenceImportDialog({
   open,
@@ -138,23 +137,34 @@ export function ReferenceImportDialog({
   const [dragging, setDragging] = useState(false);
   const [url, setUrl] = useState('');
   const [urlBusy, setUrlBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
 
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false);
+    setUrl(''); setUrlBusy(false); setPreparing(false);
   };
-  const handleClose = (v: boolean) => { if (busy) return; if (!v) reset(); onOpenChange(v); };
+  const handleClose = (v: boolean) => { if (busy || preparing) return; if (!v) reset(); onOpenChange(v); };
 
-  const onFile = useCallback((f: File | null) => {
+  // Accept ANY file: detect what it really is and normalise it (svg→image,
+  // text→pdf, office/html/…→pdf via the convert service) into something the
+  // pipeline understands. No MIME/extension gating.
+  const onFile = useCallback(async (f: File | null) => {
     if (!f) return;
-    const k = detectReferenceKind(f);
-    if (k === 'unsupported') { toast.error('Unsupported file. Drop a PDF or an image.'); return; }
-    if (k === 'pdf' && f.size > PDF_MAX) { toast.error('PDF too large (max 50 MB).'); return; }
-    if (k === 'image' && f.size > IMG_MAX) { toast.error('Image too large (max 6 MB).'); return; }
-    setFile(f); setKind(k); setError(null); setDone(null);
+    setError(null); setDone(null);
+    if (f.size > MAX_UPLOAD) { setError(`File is larger than ${Math.round(MAX_UPLOAD / 1024 / 1024)} MB.`); return; }
+    setPreparing(true);
+    try {
+      const prepared = await prepareImportFile(f, { onStage: setStage });
+      setFile(prepared.file);
+      setKind(prepared.kind);
+    } catch (e) {
+      setError((e as Error).message || 'Could not read this file.');
+    } finally {
+      setPreparing(false); setStage(null);
+    }
   }, []);
 
   // Paste an image straight from the clipboard while the dialog is open.
@@ -294,10 +304,10 @@ export function ReferenceImportDialog({
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, or
-            <strong> paste a link</strong> (Google Drive, Docs/Slides, Dropbox, OneDrive, Figma…). PDFs are
-            re-synced with selectable fidelity; images are <strong>faithfully reconstructed</strong> (OCR-grounded, keeps your
-            copy) or redesigned from inspiration. The result is validated before it touches your template.
+            Drop <strong>any file</strong> — PDF, image, Office doc (Word/PowerPoint/Excel), RTF, HTML, Markdown,
+            CSV, SVG — paste an image, or <strong>paste a link</strong> (Google Drive, Docs/Slides, Dropbox,
+            OneDrive, Figma…). We detect the type and convert as needed, then reconstruct it into an editable
+            template. The result is validated before it touches your template.
           </DialogDescription>
         </DialogHeader>
 
@@ -316,10 +326,15 @@ export function ReferenceImportDialog({
               onDrop={(e) => { e.preventDefault(); setDragging(false); onFile(e.dataTransfer.files?.[0] ?? null); }}
               role="button"
               tabIndex={0}
-              onClick={() => !busy && fileRef.current?.click()}
-              className={`w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${dragging ? 'border-primary bg-primary/5' : 'hover:border-primary/50'} ${busy ? 'opacity-60 pointer-events-none' : ''}`}
+              onClick={() => !busy && !preparing && fileRef.current?.click()}
+              className={`w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${dragging ? 'border-primary bg-primary/5' : 'hover:border-primary/50'} ${busy || preparing ? 'opacity-60 pointer-events-none' : ''}`}
             >
-              {file ? (
+              {preparing ? (
+                <div className="text-sm">
+                  <Loader2 className="h-10 w-10 mx-auto text-primary mb-2 animate-spin" />
+                  <div className="text-muted-foreground">{stage ?? 'Preparing…'}</div>
+                </div>
+              ) : file ? (
                 <div className="text-sm">
                   {kind === 'pdf' ? <FileText className="h-10 w-10 mx-auto text-primary mb-2" /> : <ImageIcon className="h-10 w-10 mx-auto text-primary mb-2" />}
                   <div className="font-medium">{file.name}</div>
@@ -328,19 +343,18 @@ export function ReferenceImportDialog({
               ) : (
                 <>
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <div className="text-sm text-muted-foreground">Drag a PDF or image here, click to browse, or paste an image</div>
+                  <div className="text-sm text-muted-foreground">Drag <strong>any file</strong> here, click to browse, or paste an image</div>
                 </>
               )}
               <input
                 ref={fileRef}
                 type="file"
-                accept="application/pdf,image/*"
                 className="hidden"
                 onChange={(e) => onFile(e.target.files?.[0] ?? null)}
               />
             </div>
 
-            {!file && (
+            {!file && !preparing && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
@@ -455,8 +469,8 @@ export function ReferenceImportDialog({
             <Button onClick={() => handleClose(false)}>Close</Button>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
-              <Button onClick={start} disabled={!file || busy}>
+              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy || preparing}>Cancel</Button>
+              <Button onClick={start} disabled={!file || busy || preparing}>
                 {busy
                   ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {kind === 'pdf' ? 'Importing…' : imageMode === 'faithful' ? 'Reconstructing…' : 'Redesigning…'}</>
                   : <><Upload className="h-4 w-4 mr-1" /> {error ? 'Retry' : kind === 'image' ? (imageMode === 'faithful' ? 'Reconstruct' : 'Redesign') : 'Import'}</>}
