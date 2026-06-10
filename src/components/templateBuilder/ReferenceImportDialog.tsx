@@ -45,6 +45,7 @@ import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRend
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
 import { pickInkColor } from '@/lib/reportTemplate/pdfImport/tokenDerivation';
 import { extractMakeAssets, isFigmaMakeFile, MAKE_NO_RASTER_GUIDANCE } from '@/lib/reportTemplate/ingestion/makeImport';
+import { renderCodeLocally, isRenderSourceUnconfigured } from '@/lib/reportTemplate/ingestion/localRender';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
 import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
@@ -56,9 +57,24 @@ type CodeSourceFlavor = ReturnType<typeof codeFlavorForFile>;
 const MAX_CODE_ZIP_BYTES = 18 * 1024 * 1024;
 const CSS_SAMPLE_HTML = '<!doctype html><html><body><main class="template-builder-css-sample"><section class="hero"><p class="eyebrow">CSS preview</p><h1>Template style sample</h1><p>Upload paired HTML or a project ZIP for exact content reconstruction.</p><button>Sample CTA</button></section></main></body></html>';
 
-/** Adapter: secureInvoke → the InvokeFn shape renderAndGroundCode expects. */
-const invokeRenderSource = (name: string, payload: unknown, options?: { timeoutMs?: number }) =>
-  invokeSecureFunction(name, payload as any, { timeoutMs: options?.timeoutMs ?? 180000 }) as Promise<{ data: any; error: { message: string } | null }>;
+/**
+ * Adapter: secureInvoke → the InvokeFn shape renderAndGroundCode expects.
+ * When the render-source service is not configured on this deployment, code
+ * imports fall back to rendering in a sandboxed iframe in THIS browser — the
+ * payload shape is identical, so the CDIR pipeline downstream is unchanged.
+ */
+const invokeRenderSource = async (name: string, payload: unknown, options?: { timeoutMs?: number }) => {
+  const res = await invokeSecureFunction(name, payload as any, { timeoutMs: options?.timeoutMs ?? 180000 }) as { data: any; error: { message: string } | null };
+  if (name === 'render-source' && isRenderSourceUnconfigured(res)) {
+    toast.info('Render service not configured — rendering locally in your browser instead.');
+    try {
+      return { data: await renderCodeLocally(payload as CodeRenderInput), error: null };
+    } catch (e) {
+      return { data: null, error: { message: (e as Error).message } };
+    }
+  }
+  return res;
+};
 
 /** base64 → File (for documents fetched by URL via the import-from-url function). */
 function base64ToFile(b64: string, filename: string, type: string): File {
