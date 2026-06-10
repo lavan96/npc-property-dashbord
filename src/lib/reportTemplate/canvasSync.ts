@@ -90,7 +90,8 @@ function overlayToShape(o: Overlay): TLShapePartial {
     };
   }
 
-  // shape
+  // shape / path
+  const s = o as any;
   return {
     id,
     type: 'geo',
@@ -100,11 +101,11 @@ function overlayToShape(o: Overlay): TLShapePartial {
     opacity: o.opacity ?? 1,
     meta,
     props: {
-      geo: o.shape === 'ellipse' ? 'ellipse' : o.shape === 'line' ? 'rectangle' : 'rectangle',
+      geo: s.shape === 'ellipse' ? 'ellipse' : s.shape === 'line' ? 'rectangle' : 'rectangle',
       w: o.width,
       h: o.height,
-      color: o.fill && o.fill.startsWith('#') ? mapHexToTldrawColor(o.fill) : 'black',
-      fill: o.fill ? 'solid' : 'none',
+      color: s.fill && typeof s.fill === 'string' && s.fill.startsWith('#') ? mapHexToTldrawColor(s.fill) : 'black',
+      fill: s.fill ? 'solid' : 'none',
       dash: 'solid',
     } as any,
   };
