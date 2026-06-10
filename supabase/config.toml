@@ -309,10 +309,11 @@ request_timeout = 60
 
 [functions.parse-template-document]
 verify_jwt = true
-request_timeout = 120
+request_timeout = 1500
 
 [functions.retrieve-template-context]
 verify_jwt = true
+request_timeout = 1500
 
 [functions.ghl-calendar-test]
 verify_jwt = true
