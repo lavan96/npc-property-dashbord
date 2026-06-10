@@ -84,3 +84,138 @@ describe('golden render — editor→renderer contract (renderers must stay byte
     expect(html).toContain('tpl-page');
   });
 });
+
+/**
+ * Reconstruction-primitive contract (R0–R6).
+ *
+ * The ingestion/reconstruction pipeline emits editable primitives that the
+ * legacy golden template above does not exercise: vector geometry, data tables,
+ * rich-text runs, exact numeric font weight, and embedded @font-face. These are
+ * exactly the surfaces the upcoming Claude-powered ingestion work will produce,
+ * so pinning them here means any renderer change that drops one fails CI before
+ * it can silently regress a reconstructed template.
+ */
+const PRIMITIVES_TEMPLATE = parseTemplate({
+  version: 1,
+  tokens: {
+    colors: { primary: '#1a1a2e', accent: '#c9a227' },
+    fonts: {},
+    spacing: {},
+    // R3 — embedded/captured font as a data: URL (not a Google Fonts cssUrl).
+    fontFaces: [
+      {
+        family: 'Reconstructed Display',
+        src: 'data:font/woff2;base64,d09GMgABAAAA',
+        source: 'embedded',
+        weight: 700,
+        style: 'normal',
+        display: 'swap',
+      },
+    ],
+  },
+  pages: [
+    {
+      id: 'p1',
+      name: 'Primitives',
+      size: { width: 595, height: 842 },
+      background: {},
+      blocks: [
+        {
+          id: 'free-1',
+          type: 'free',
+          props: {},
+          overlays: [
+            // R1 — rich-text runs (per-span styling) + exact numeric weight.
+            {
+              id: 'ov-runs',
+              type: 'text',
+              x: 48,
+              y: 48,
+              width: 420,
+              height: 60,
+              content: 'unused-fallback',
+              fontWeightNumeric: 700,
+              runs: [
+                { text: 'Bold runs ', fontWeight: 700, color: '#c9a227' },
+                { text: 'and italic', fontStyle: 'italic', color: '#1a1a2e' },
+              ],
+            },
+            // R2 — editable vector geometry (logo/icon as SVG paths, not a raster).
+            {
+              id: 'ov-vec',
+              type: 'vector',
+              x: 48,
+              y: 140,
+              width: 64,
+              height: 64,
+              viewBox: '0 0 24 24',
+              paths: [{ d: 'M2 2 L22 22', stroke: '#1a1a2e', strokeWidth: 2 }],
+            },
+            // Data table (native <table>).
+            {
+              id: 'ov-tbl',
+              type: 'table',
+              x: 48,
+              y: 240,
+              width: 480,
+              height: 120,
+              columns: [
+                { key: 'metric', label: 'Metric' },
+                { key: 'value', label: 'Value', align: 'right' },
+              ],
+              rows: [
+                ['Gross yield', '5.2%'],
+                ['Cap rate', '4.8%'],
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+describe('golden render — reconstruction primitives + multi-page (import→renderer contract)', () => {
+  it('renders editable vector geometry as inline <svg><path> (not a raster)', () => {
+    const { html } = renderTemplateToHtml(PRIMITIVES_TEMPLATE, { data: {}, editorMode: false });
+    expect(html).toContain('<svg viewBox="0 0 24 24"');
+    expect(html).toContain('d="M2 2 L22 22"');
+  });
+
+  it('renders data tables as a native <table> with header + body cells', () => {
+    const { html } = renderTemplateToHtml(PRIMITIVES_TEMPLATE, { data: {}, editorMode: false });
+    expect(html).toContain('<table');
+    expect(html).toContain('Metric'); // column header
+    expect(html).toContain('Gross yield'); // static row cell
+  });
+
+  it('preserves rich-text runs and exact numeric font weight (not just bold/normal)', () => {
+    const { html } = renderTemplateToHtml(PRIMITIVES_TEMPLATE, { data: {}, editorMode: false });
+    expect(html).toContain('Bold runs ');
+    expect(html).toContain('and italic');
+    expect(html).toContain('<span style='); // per-run span
+    expect(html).toContain('font-weight:700'); // fontWeightNumeric, not 'bold'
+  });
+
+  it('emits @font-face for an embedded (data:) captured font', () => {
+    const { html, css } = renderTemplateToHtml(PRIMITIVES_TEMPLATE, { data: {}, editorMode: false });
+    const out = html + css;
+    expect(out).toContain('@font-face');
+    expect(out).toContain('Reconstructed Display');
+  });
+
+  it('multi-page template renders exactly one page section per page', () => {
+    const twoPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [
+        { id: 'pa', name: 'A', size: { width: 595, height: 842 }, background: {}, blocks: [] },
+        { id: 'pb', name: 'B', size: { width: 595, height: 842 }, background: {}, blocks: [] },
+      ],
+    });
+    const { html } = renderTemplateToHtml(twoPage, { data: {}, editorMode: false });
+    expect(html).toContain('<section id="tpl-page-0"');
+    expect(html).toContain('<section id="tpl-page-1"');
+    expect((html.match(/class="tpl-page /g) || []).length).toBe(2);
+  });
+});
