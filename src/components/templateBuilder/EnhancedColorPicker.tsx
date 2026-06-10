@@ -1,7 +1,7 @@
 /**
  * EnhancedColorPicker — Production color picker for the Template Builder.
  *
- *  • Native color input + hex / rgb / hsl text field
+ *  • Native color input + explicit #hex / rgb() / rgba() / hsl() / token text field
  *  • Alpha slider (writes `#RRGGBBAA` when < 1)
  *  • Theme-token swatches sourced from `template.tokens.colors`
  *  • Curated brand-quality preset palette
@@ -64,6 +64,7 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
   const isHex = value?.startsWith('#');
   const isBinding = /^(token:|\{\{)/.test(value || '');
   const tokenColors = (template.tokens?.colors ?? {}) as Record<string, string>;
+  const previewColor = resolvePreviewColor(value, tokenColors);
   const tokenEntries = Object.entries(tokenColors);
 
   // Parse current alpha if hex includes one
@@ -133,7 +134,7 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
             >
               <span
                 className="absolute inset-0"
-                style={{ background: isHex ? value : (isBinding ? 'transparent' : value || 'transparent') }}
+                style={{ background: previewColor }}
               />
               {!isHex && isBinding && (
                 <span className="absolute inset-0 flex items-center justify-center text-[9px] text-muted-foreground font-mono">tok</span>
@@ -151,7 +152,7 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
               <Input
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex'}
+                placeholder={allowEmpty ? 'none / #hex / rgba() / token:primary' : '#hex / rgba() / token:primary'}
                 className="h-9 text-xs font-mono"
               />
               {typeof window !== 'undefined' && 'EyeDropper' in window && (
@@ -160,6 +161,10 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
                 </Button>
               )}
             </div>
+
+            <p className="text-[10px] text-muted-foreground">
+              Enter <code>#RRGGBB</code>, <code>#RRGGBBAA</code>, <code>rgb()</code>, <code>rgba()</code>, <code>hsl()</code>, or <code>token:name</code>.
+            </p>
 
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -234,7 +239,7 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={allowEmpty ? 'none / #hex / token:primary' : '#hex or token:primary'}
+          placeholder={allowEmpty ? 'none / #hex / rgba() / token:primary' : '#hex / rgba() / token:primary'}
           className="h-8 text-xs font-mono"
         />
       </div>
@@ -251,4 +256,13 @@ export function EnhancedColorPicker({ label, value, onChange, template, allowEmp
       )}
     </div>
   );
+}
+
+
+function resolvePreviewColor(value: string, tokenColors: Record<string, string>): string {
+  const raw = String(value || '').trim();
+  if (!raw) return 'transparent';
+  if (raw.startsWith('token:')) return tokenColors[raw.slice(6)] || 'transparent';
+  if (/^\{\{/.test(raw)) return 'transparent';
+  return raw;
 }

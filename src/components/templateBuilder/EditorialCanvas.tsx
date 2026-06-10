@@ -618,7 +618,13 @@ export function EditorialCanvas({
                   )}
 
                   {/* Render a soft preview of the overlay so it's always visible */}
-                  <OverlayPreview overlay={o} zoom={zoom} editing={editing} onCommit={(v) => finishInlineEdit(o, v)} />
+                  <OverlayPreview
+                    overlay={o}
+                    zoom={zoom}
+                    editing={editing}
+                    tokenColors={(template.tokens?.colors ?? {}) as Record<string, string>}
+                    onCommit={(v) => finishInlineEdit(o, v)}
+                  />
 
                   {/* Selection chrome */}
                   {sel && !editing && (
@@ -708,10 +714,11 @@ function OverlayPreview({
   zoom,
   editing,
   onCommit,
-}: { overlay: Overlay; zoom: number; editing: boolean; onCommit: (v: string) => void }) {
+  tokenColors,
+}: { overlay: Overlay; zoom: number; editing: boolean; tokenColors: Record<string, string>; onCommit: (v: string) => void }) {
   if (o.type === 'text') {
     const t: any = o;
-    const color = typeof t.color === 'string' && t.color.startsWith('#') ? t.color : '#111';
+    const color = previewCssColor(t.color, tokenColors, '#111111');
     const style: React.CSSProperties = {
       width: '100%', height: '100%',
       padding: 0,
@@ -781,8 +788,8 @@ function OverlayPreview({
   }
   // shape
   const s: any = o;
-  const fill = typeof s.fill === 'string' && s.fill.startsWith('#') ? s.fill : 'rgba(0,0,0,0.08)';
-  const stroke = typeof s.stroke === 'string' && s.stroke.startsWith('#') ? s.stroke : 'transparent';
+  const fill = previewCssColor(s.fill, tokenColors, 'rgba(0,0,0,0.08)');
+  const stroke = previewCssColor(s.stroke, tokenColors, 'transparent');
   return (
     <div
       style={{
@@ -795,4 +802,13 @@ function OverlayPreview({
       }}
     />
   );
+}
+
+
+function previewCssColor(value: unknown, tokenColors: Record<string, string>, fallback: string): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return fallback;
+  if (raw.startsWith('token:')) return tokenColors[raw.slice(6)] || fallback;
+  if (/^\{\{/.test(raw)) return fallback;
+  return raw;
 }

@@ -64,6 +64,13 @@ function mergeTokens(base: Tokens, ...overrides: Array<Partial<Tokens> | undefin
     if ((o as any).shadows) (out as any).shadows = { ...(out as any).shadows, ...(o as any).shadows };
     if ((o as any).gradients) (out as any).gradients = { ...(out as any).gradients, ...(o as any).gradients };
     if ((o as any).typeScale) (out as any).typeScale = { ...(out as any).typeScale, ...(o as any).typeScale };
+    if ((o as any).fontFaces?.length) {
+      const existing = new Set(((out as any).fontFaces ?? []).map((face: any) => face.family));
+      (out as any).fontFaces = [
+        ...((out as any).fontFaces ?? []),
+        ...((o as any).fontFaces ?? []).filter((face: any) => !existing.has(face.family)),
+      ];
+    }
   }
   return out;
 }

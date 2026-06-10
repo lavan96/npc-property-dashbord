@@ -68,12 +68,29 @@ export function BulkEditBar({
         </PopoverTrigger>
         <PopoverContent className="w-56 p-3 space-y-2">
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Text colour</Label>
-          <Input
-            type="color"
-            defaultValue="#111111"
-            onChange={(e) => onSetColor(e.target.value)}
-            className="h-8 p-0.5"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              type="color"
+              defaultValue="#111111"
+              onChange={(e) => onSetColor(e.target.value)}
+              className="h-8 w-11 p-0.5"
+            />
+            <Input
+              placeholder="#hex / rgba() / token:primary"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const value = (e.currentTarget as HTMLInputElement).value.trim();
+                  if (value) onSetColor(value);
+                }
+              }}
+              onBlur={(e) => {
+                const value = e.currentTarget.value.trim();
+                if (value) onSetColor(value);
+              }}
+              className="h-8 text-[11px] font-mono"
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">Accepts #RRGGBB, #RRGGBBAA, rgb(), rgba(), hsl(), or token:name.</p>
           <div className="grid grid-cols-6 gap-1 pt-1">
             {['#0D0D0D', '#FFFFFF', '#BF9B50', '#1F2937', '#94A3B8', 'token:primary', 'token:text', 'token:muted'].map((c) => (
               <button
