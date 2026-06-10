@@ -16,6 +16,13 @@ import type { ReportTemplate, Page, Block, Overlay } from '@/lib/reportTemplate/
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
+import {
+  decodeConstructPath,
+  extractVectorOverlays,
+  type DrawCommand,
+  type Matrix,
+  type PathOpCodes,
+} from './vectorExtract';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -52,6 +59,7 @@ export interface ImportResult {
     rasterizedPages: number;
     textBlocks: number;
     images: number;
+    vectors: number;
     fontsSubstituted: string[];
   };
 }
@@ -90,6 +98,76 @@ function colorFromArray(rgb: number[] | undefined): string {
   return `#${h(norm(r))}${h(norm(g))}${h(norm(b))}`;
 }
 
+// ─── vector geometry (R2) ──────────────────────────────────────────────────────
+
+const hex2 = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+
+/** A pdf.js colour-op argument list (RGB) → hex, tolerating 0-1 or 0-255 ranges. */
+function rgbArgsToHex(args: any): string {
+  let r: number, g: number, b: number;
+  if (Array.isArray(args) && args.length >= 3 && typeof args[0] === 'number') {
+    [r, g, b] = args as number[];
+  } else if (args && (Array.isArray(args[0]) || ArrayBuffer.isView(args[0]))) {
+    const a = args[0] as ArrayLike<number>;
+    r = a[0]; g = a[1]; b = a[2];
+  } else {
+    return '#000000';
+  }
+  if (Math.max(r, g, b) <= 1) { r *= 255; g *= 255; b *= 255; }
+  return `#${hex2(r)}${hex2(g)}${hex2(b)}`;
+}
+
+const grayToHex = (g: number): string => { const v = g <= 1 ? g * 255 : g; return `#${hex2(v)}${hex2(v)}${hex2(v)}`; };
+
+function cmykToHex(args: any): string {
+  const a = Array.isArray(args) && Array.isArray(args[0]) ? args[0] : args;
+  const c = a?.[0] ?? 0, m = a?.[1] ?? 0, y = a?.[2] ?? 0, k = a?.[3] ?? 0;
+  return `#${hex2(255 * (1 - c) * (1 - k))}${hex2(255 * (1 - m) * (1 - k))}${hex2(255 * (1 - y) * (1 - k))}`;
+}
+
+/**
+ * Translate a pdf.js operator list into the abstract `DrawCommand[]` stream the
+ * pure `vectorExtract` interpreter understands. Defensive: any op pdf.js doesn't
+ * expose in this version is simply skipped (its OPS code is `undefined`).
+ */
+function operatorListToDrawCommands(opList: any, OPS: any): DrawCommand[] {
+  const codes: PathOpCodes = {
+    moveTo: OPS.moveTo, lineTo: OPS.lineTo, curveTo: OPS.curveTo,
+    curveTo2: OPS.curveTo2, curveTo3: OPS.curveTo3, rectangle: OPS.rectangle, closePath: OPS.closePath,
+  };
+  const fnArray: number[] = opList.fnArray ?? [];
+  const argsArray: any[] = opList.argsArray ?? [];
+  const cmds: DrawCommand[] = [];
+  for (let i = 0; i < fnArray.length; i++) {
+    const fn = fnArray[i];
+    const args = argsArray[i];
+    switch (fn) {
+      case OPS.save: cmds.push({ op: 'save' }); break;
+      case OPS.restore: cmds.push({ op: 'restore' }); break;
+      case OPS.transform: cmds.push({ op: 'transform', m: args as Matrix }); break;
+      case OPS.constructPath: cmds.push({ op: 'constructPath', segments: decodeConstructPath(args[0], args[1], codes) }); break;
+      case OPS.setLineWidth: cmds.push({ op: 'setLineWidth', width: Number(args[0]) || 0 }); break;
+      case OPS.setFillRGBColor: cmds.push({ op: 'setFillColor', color: rgbArgsToHex(args) }); break;
+      case OPS.setStrokeRGBColor: cmds.push({ op: 'setStrokeColor', color: rgbArgsToHex(args) }); break;
+      case OPS.setFillGray: cmds.push({ op: 'setFillColor', color: grayToHex(Number(args[0])) }); break;
+      case OPS.setStrokeGray: cmds.push({ op: 'setStrokeColor', color: grayToHex(Number(args[0])) }); break;
+      case OPS.setFillCMYKColor: cmds.push({ op: 'setFillColor', color: cmykToHex(args) }); break;
+      case OPS.setStrokeCMYKColor: cmds.push({ op: 'setStrokeColor', color: cmykToHex(args) }); break;
+      case OPS.fill: cmds.push({ op: 'fill', rule: 'nonzero' }); break;
+      case OPS.eoFill: cmds.push({ op: 'fill', rule: 'evenodd' }); break;
+      case OPS.stroke: cmds.push({ op: 'stroke' }); break;
+      case OPS.closeStroke: cmds.push({ op: 'stroke' }); break;
+      case OPS.fillStroke: cmds.push({ op: 'fillStroke', rule: 'nonzero' }); break;
+      case OPS.eoFillStroke: cmds.push({ op: 'fillStroke', rule: 'evenodd' }); break;
+      case OPS.closeFillStroke: cmds.push({ op: 'fillStroke', rule: 'nonzero' }); break;
+      case OPS.closeEOFillStroke: cmds.push({ op: 'fillStroke', rule: 'evenodd' }); break;
+      case OPS.endPath: cmds.push({ op: 'endPath' }); break;
+      default: break;
+    }
+  }
+  return cmds;
+}
+
 // ─── main ────────────────────────────────────────────────────────────────────
 
 export async function extractPdfToTemplate(
@@ -121,6 +199,7 @@ export async function extractPdfToTemplate(
   const fontsSubstituted = new Set<string>();
   let textBlocks = 0;
   let imagesFound = 0;
+  let vectorCount = 0;
   let rasterized = 0;
   let semantic = 0;
 
@@ -140,6 +219,32 @@ export async function extractPdfToTemplate(
       } else if (mode === 'pixel') {
         // Pixel-perfect (non-editable): raster only, emitted as the page background below.
       } else {
+        // Track A·vectors (R2): capture painted vector geometry (logos, icons,
+        // dividers, fills) as editable SVG-path overlays — emitted FIRST so the
+        // text overlays below stack on top. Best-effort: a parse failure on one
+        // page just means that page has no vector overlays.
+        try {
+          const opList = await page.getOperatorList();
+          const initialCtm = (viewport as any).transform as Matrix;
+          const commands = operatorListToDrawCommands(opList, (pdfjsLib as any).OPS);
+          const vectorOverlays = extractVectorOverlays(commands, { initialCtm });
+          for (const v of vectorOverlays) {
+            overlays.push({
+              id: crypto.randomUUID(),
+              type: 'vector',
+              x: v.x, y: v.y, width: v.width, height: v.height,
+              rotation: 0,
+              opacity: 1,
+              viewBox: v.viewBox,
+              preserveAspectRatio: 'xMidYMid meet',
+              paths: v.paths,
+            } as Overlay);
+            vectorCount++;
+          }
+        } catch (err) {
+          console.warn('[vector] extraction failed on page', pageIndex, err);
+        }
+
         // Track A (R1): collect raw spans, then merge into correctly-positioned,
         // non-overlapping lines via the pure textLayout pipeline.
         const content = await page.getTextContent({ includeMarkedContent: false } as any);
@@ -344,6 +449,7 @@ export async function extractPdfToTemplate(
         rasterizedPages: rasterized,
         textBlocks,
         images: imagesFound,
+        vectors: vectorCount,
         fontsSubstituted: Array.from(fontsSubstituted),
       },
     };

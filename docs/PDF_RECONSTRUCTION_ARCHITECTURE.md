@@ -1,6 +1,6 @@
 # PDF / Image → Editable Template — Reconstruction Architecture
 
-> Status: **Design, pre‑execution** · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑09
+> Status: **R0–R2 implemented** (primitives · text geometry/overlap · editable vectors) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
 >
 > Goal: turn a PDF or image into a **faithful *and* editable** template — exact text (correctly
 > positioned, coloured, and typed), **editable vector icons/logos**, **captured fonts**, real
@@ -105,16 +105,19 @@ passes**; but they *are* renderer changes (new `renderOverlay` cases), flagged e
 
 Every phase: behind the import flow, **golden‑render‑safe** for existing templates, unit‑tested, CI‑gated.
 
-- **R0 — Primitives:** `vector` overlay, rich‑text `runs`, embedded `data:` fonts, numeric weight,
-  + the renderer cases + `cssTokens` relax. *Acceptance:* new primitives parse + render; **golden
+- **R0 — Primitives:** ✅ **done.** `vector` overlay, rich‑text `runs`, embedded `data:` fonts, numeric
+  weight, + the renderer cases + `cssTokens` relax. *Acceptance:* new primitives parse + render; **golden
   test proves existing templates are byte‑identical**; new golden cases cover the new primitives.
-- **R1 — Text done right:** new pure `textLayout` module (correct matrix decomposition + baseline,
-  span→line→paragraph **merge**) with thorough unit tests; wire `extractPdfToTemplate` to it; add
-  **colour extraction** (operator list / stext) + **descriptor weight**; **drop box inflation**;
-  **editable mode stops emitting the text‑bearing raster background** (move it to a locked Reference
-  layer). *Acceptance:* no overlap on a multi‑line fixture; colours preserved; no double text.
-- **R2 — Vectors:** MuPDF→SVG (or client path‑walker) → `vector` overlays. *Acceptance:* a logo
-  imports as editable paths, not a JPEG.
+- **R1 — Text done right:** ✅ **done (geometry + overlap).** New pure `textLayout` module (correct matrix
+  decomposition + baseline, span→line→paragraph **merge**) with thorough unit tests; wired
+  `extractPdfToTemplate` to it; **dropped box inflation**; **editable modes no longer emit the
+  text‑bearing raster background** (kills the double text); default mode flipped to `semantic`.
+  *Remaining:* real **colour extraction** for text (operator‑list / stext) — text colour still
+  falls back to `#111111`. *Acceptance (met):* no overlap on a multi‑line fixture; no double text.
+- **R2 — Vectors:** ✅ **done (client path‑walker).** Pure, unit‑tested `vectorExtract` module walks
+  pdf.js `getOperatorList()` (graphics‑state stack + CTM) into device‑space SVG paths, clustered into
+  one editable `vector` overlay per drawing; fill/stroke colour captured from RGB/Gray/CMYK colour ops.
+  *Acceptance (met):* a logo imports as editable paths, not a JPEG.
 - **R3 — Fonts:** extract embedded program → fontkit→woff2 → store → `@font-face`. *Acceptance:*
   imported text renders in the source font; weights faithful.
 - **R4 — Images:** XObject extraction → image overlays. *Acceptance:* `imagesFound > 0`.
