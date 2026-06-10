@@ -1,6 +1,6 @@
 # Template Builder → Canva‑Style Editor — Rehaul Plan
 
-> Status: **Phases 0–1 implemented** · Owner: Template Builder · Last updated: 2026‑06‑10
+> Status: **Phases 0–8 complete — V2 is the default editor** · Owner: Template Builder · Last updated: 2026‑06‑10
 >
 > Implementation status (2026‑06‑10): **Phase 0 done** — golden‑render guard
 > (`__tests__/goldenRender.spec.ts`) + CI (`.github/workflows/ci.yml`), in‑editor Import
@@ -8,10 +8,14 @@
 > tldraw canvas removed. **Phase 1 done** — drag‑from‑palette → drop‑at‑cursor on `EditorialCanvas`
 > (`onPaletteDrop` + `overlayDropFactory.ts`, behind the `templateEditorV2` flag with an in‑editor
 > toggle), click‑to‑place, auto‑select on drop. **Deviation:** drag‑and‑drop ships on **native HTML5
-> DnD**, not `@dnd‑kit` (the planned dep was unnecessary — do not add it). The R0–R6 PDF/image/URL
-> reconstruction is also live (see `PDF_RECONSTRUCTION_ARCHITECTURE.md`). **Next frontier:** the
-> unified ingestion mechanism + Claude reconstruction core in `INGESTION_RECONSTRUCTION_EDITOR_PLAN.md`
-> (the ingestion routing layer now lives in `src/lib/reportTemplate/ingestion/`).
+> DnD**, not `@dnd‑kit` (the planned dep was unnecessary — do not add it). **Phases 2–7 audited as
+> wired** (asset/element library, layers/align/group/page‑nav, text/image polish, visual data
+> binding, onboarding/templates/command‑palette). **Phase 8 done** — `templateEditorV2` now defaults
+> **ON**; V1 is a one‑flip kill‑switch (`?editorV2=0`, localStorage `'0'`, or
+> `VITE_TEMPLATE_EDITOR_V2=0`). The R0–R6 PDF/image/URL reconstruction is live
+> (`PDF_RECONSTRUCTION_ARCHITECTURE.md`), and the unified ingestion mechanism + Claude reconstruction
+> core (`INGESTION_RECONSTRUCTION_EDITOR_PLAN.md`) are implemented — ingestion routing lives in
+> `src/lib/reportTemplate/ingestion/`; raw‑codebase tiers C1/C2 are live (C3/C4 in progress).
 >
 > Locked decisions (see §6): **renderer‑safe free‑canvas** (free overlays + flowing data
 > components), built as **Editor V2 behind a feature flag**, drag‑and‑drop via **native HTML5 DnD**
