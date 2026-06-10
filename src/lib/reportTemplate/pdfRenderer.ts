@@ -206,7 +206,11 @@ function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
       break;
     }
     case 'shape': {
-      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, 'transparent') : null;
+      // jsPDF cannot paint CSS gradients — approximate with the first stop.
+      const rawFill = typeof overlay.fill === 'string' && /(?:linear|radial|conic)-gradient\(/i.test(overlay.fill)
+        ? (/(?:rgba?\([^)]*\)|#[0-9a-f]{3,8})/i.exec(overlay.fill)?.[0] ?? overlay.fill)
+        : overlay.fill;
+      const fill = rawFill ? resolveBindableColor(rawFill, ctx, 'transparent') : null;
       const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, 'transparent') : null;
       const hasFill = !isTransparentColor(fill);
       const hasStroke = !isTransparentColor(stroke) && (overlay.strokeWidth ?? 0) > 0;

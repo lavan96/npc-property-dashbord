@@ -38,6 +38,8 @@ import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSam
 import { imageRectFromCtm } from './imageExtract';
 import { buildEmbeddedFontFace, type EmbeddedFontResult } from './fontFaceBuilder';
 import { deriveTokensFromExtraction, pickInkColor, type TextObservation, type FillObservation } from './tokenDerivation';
+import { parseShadingIR, shadingToOverlaySpec, pathPointsToPageBBox, type ShadingOverlaySpec } from './shadingExtract';
+import { applyAlphaToColor } from '@/lib/reportTemplate/cssColor';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -161,6 +163,9 @@ function cmykToHex(args: any): string {
  * Translate a pdf.js operator list into the abstract `DrawCommand[]` stream the
  * pure `vectorExtract` interpreter understands. Defensive: any op pdf.js doesn't
  * expose in this version is simply skipped (its OPS code is `undefined`).
+ *
+ * ExtGState fill/stroke alpha (`ca`/`CA`) is folded into the emitted colour as
+ * 8-digit hex — without it a 10%-white "glass" panel imported as opaque white.
  */
 function operatorListToDrawCommands(opList: any, OPS: any): DrawCommand[] {
   const codes: PathOpCodes = {
@@ -170,21 +175,44 @@ function operatorListToDrawCommands(opList: any, OPS: any): DrawCommand[] {
   const fnArray: number[] = opList.fnArray ?? [];
   const argsArray: any[] = opList.argsArray ?? [];
   const cmds: DrawCommand[] = [];
+  // Alpha is part of the graphics state, so it must mirror save/restore.
+  let gs = { fill: '#000000', stroke: '#000000', ca: 1, CA: 1 };
+  const gsStack: Array<typeof gs> = [];
+  const emitFill = () => cmds.push({ op: 'setFillColor', color: gs.ca < 1 ? applyAlphaToColor(gs.fill, gs.ca) : gs.fill });
+  const emitStroke = () => cmds.push({ op: 'setStrokeColor', color: gs.CA < 1 ? applyAlphaToColor(gs.stroke, gs.CA) : gs.stroke });
   for (let i = 0; i < fnArray.length; i++) {
     const fn = fnArray[i];
     const args = argsArray[i];
     switch (fn) {
-      case OPS.save: cmds.push({ op: 'save' }); break;
-      case OPS.restore: cmds.push({ op: 'restore' }); break;
+      case OPS.save: gsStack.push({ ...gs }); cmds.push({ op: 'save' }); break;
+      case OPS.restore: {
+        const prev = gsStack.pop();
+        if (prev) gs = prev;
+        cmds.push({ op: 'restore' });
+        break;
+      }
       case OPS.transform: cmds.push({ op: 'transform', m: args as Matrix }); break;
       case OPS.constructPath: cmds.push({ op: 'constructPath', segments: decodeConstructPath(args[0], args[1], codes) }); break;
       case OPS.setLineWidth: cmds.push({ op: 'setLineWidth', width: Number(args[0]) || 0 }); break;
-      case OPS.setFillRGBColor: cmds.push({ op: 'setFillColor', color: rgbArgsToHex(args) }); break;
-      case OPS.setStrokeRGBColor: cmds.push({ op: 'setStrokeColor', color: rgbArgsToHex(args) }); break;
-      case OPS.setFillGray: cmds.push({ op: 'setFillColor', color: grayToHex(Number(args[0])) }); break;
-      case OPS.setStrokeGray: cmds.push({ op: 'setStrokeColor', color: grayToHex(Number(args[0])) }); break;
-      case OPS.setFillCMYKColor: cmds.push({ op: 'setFillColor', color: cmykToHex(args) }); break;
-      case OPS.setStrokeCMYKColor: cmds.push({ op: 'setStrokeColor', color: cmykToHex(args) }); break;
+      case OPS.setFillRGBColor: gs.fill = rgbArgsToHex(args); emitFill(); break;
+      case OPS.setStrokeRGBColor: gs.stroke = rgbArgsToHex(args); emitStroke(); break;
+      case OPS.setFillGray: gs.fill = grayToHex(Number(args[0])); emitFill(); break;
+      case OPS.setStrokeGray: gs.stroke = grayToHex(Number(args[0])); emitStroke(); break;
+      case OPS.setFillCMYKColor: gs.fill = cmykToHex(args); emitFill(); break;
+      case OPS.setStrokeCMYKColor: gs.stroke = cmykToHex(args); emitStroke(); break;
+      case OPS.setGState: {
+        // args = [[['ca', 0.1], ['CA', 1], …]] — fold alpha into colours.
+        const states = Array.isArray(args?.[0]) ? args[0] : [];
+        let fillChanged = false, strokeChanged = false;
+        for (const entry of states) {
+          if (!Array.isArray(entry) || entry.length < 2) continue;
+          if (entry[0] === 'ca' && Number.isFinite(Number(entry[1]))) { gs.ca = Number(entry[1]); fillChanged = true; }
+          if (entry[0] === 'CA' && Number.isFinite(Number(entry[1]))) { gs.CA = Number(entry[1]); strokeChanged = true; }
+        }
+        if (fillChanged) emitFill();
+        if (strokeChanged) emitStroke();
+        break;
+      }
       case OPS.fill: cmds.push({ op: 'fill', rule: 'nonzero' }); break;
       case OPS.eoFill: cmds.push({ op: 'fill', rule: 'evenodd' }); break;
       case OPS.stroke: cmds.push({ op: 'stroke' }); break;
@@ -198,6 +226,79 @@ function operatorListToDrawCommands(opList: any, OPS: any): DrawCommand[] {
     }
   }
   return cmds;
+}
+
+/**
+ * Walk the operator list for `shadingFill` ops (axial/radial/mesh gradients —
+ * how designed covers paint their backgrounds), tracking the CTM and an
+ * approximate clip rect so each shading maps to its page-space extent.
+ */
+function collectShadingOverlaySpecs(
+  opList: any,
+  OPS: any,
+  viewportCtm: Matrix,
+  pageWidth: number,
+  pageHeight: number,
+): ShadingOverlaySpec[] {
+  const codes: PathOpCodes = {
+    moveTo: OPS.moveTo, lineTo: OPS.lineTo, curveTo: OPS.curveTo,
+    curveTo2: OPS.curveTo2, curveTo3: OPS.curveTo3, rectangle: OPS.rectangle, closePath: OPS.closePath,
+  };
+  const fnArray: number[] = opList.fnArray ?? [];
+  const argsArray: any[] = opList.argsArray ?? [];
+  type Clip = { x: number; y: number; width: number; height: number } | null;
+  let ctm: Matrix = [1, 0, 0, 1, 0, 0];
+  let clip: Clip = null;
+  let lastPathPoints: Array<[number, number]> = [];
+  const stack: Array<{ ctm: Matrix; clip: Clip }> = [];
+  const out: ShadingOverlaySpec[] = [];
+
+  const segPoints = (segments: Array<{ type: string; coords: number[] }>): Array<[number, number]> => {
+    const pts: Array<[number, number]> = [];
+    for (const seg of segments) {
+      const c = seg.coords;
+      if (seg.type === 're') {
+        pts.push([c[0], c[1]], [c[0] + c[2], c[1] + c[3]]);
+      } else {
+        for (let i = 0; i + 1 < c.length; i += 2) pts.push([c[i], c[i + 1]]);
+      }
+    }
+    return pts;
+  };
+
+  for (let i = 0; i < fnArray.length && out.length < 40; i++) {
+    const fn = fnArray[i];
+    const args = argsArray[i];
+    if (fn === OPS.save) stack.push({ ctm: [...ctm] as Matrix, clip });
+    else if (fn === OPS.restore) { const s = stack.pop(); if (s) { ctm = s.ctm; clip = s.clip; } }
+    else if (fn === OPS.transform) ctm = matMul(ctm, args as Matrix);
+    else if (fn === OPS.constructPath) {
+      try { lastPathPoints = segPoints(decodeConstructPath(args[0], args[1], codes)); } catch { lastPathPoints = []; }
+    } else if (fn === OPS.clip || fn === OPS.eoClip) {
+      const box = pathPointsToPageBBox(lastPathPoints, ctm, viewportCtm);
+      if (box) {
+        clip = clip
+          ? (() => {
+              const x = Math.max(clip.x, box.x);
+              const y = Math.max(clip.y, box.y);
+              const r = Math.min(clip.x + clip.width, box.x + box.width);
+              const b = Math.min(clip.y + clip.height, box.y + box.height);
+              return r > x && b > y ? { x, y, width: r - x, height: b - y } : clip;
+            })()
+          : box;
+      }
+    } else if (fn === OPS.shadingFill) {
+      try {
+        const parsed = parseShadingIR(args?.[0]);
+        if (parsed) {
+          out.push(shadingToOverlaySpec({ parsed, ctm: [...ctm] as Matrix, viewportCtm, pageWidth, pageHeight, clip }));
+        }
+      } catch (err) {
+        console.warn('[shading] failed to reconstruct shading fill', err);
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -448,6 +549,32 @@ export async function extractPdfToTemplate(
           opList = await page.getOperatorList();
         } catch (err) {
           console.warn('[reconstruct] operator list failed on page', pageIndex, err);
+        }
+
+        // Shading fills (axial/radial/mesh gradients) — these paint the page
+        // backgrounds of designed covers and were previously dropped entirely,
+        // importing as a blank white page behind (often white) text.
+        if (opList) {
+          try {
+            for (const spec of collectShadingOverlaySpecs(opList, OPS, initialCtm, pageWidth, pageHeight)) {
+              overlays.push({
+                id: crypto.randomUUID(),
+                type: 'shape',
+                shape: 'rect',
+                name: 'Background gradient',
+                x: spec.x, y: spec.y, width: spec.width, height: spec.height,
+                rotation: 0,
+                opacity: 1,
+                fill: spec.fill,
+                strokeWidth: 0,
+                borderRadius: 0,
+              } as Overlay);
+              vectorCount++;
+              fillObs.push({ color: spec.averageColor, area: spec.width * spec.height });
+            }
+          } catch (err) {
+            console.warn('[shading] extraction failed on page', pageIndex, err);
+          }
         }
 
         // R2 — editable vector geometry (logos, icons, dividers, fills).

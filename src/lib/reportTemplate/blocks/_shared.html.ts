@@ -238,7 +238,12 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       return `<img src="${esc(src)}" style="${base}object-fit:${fit};"/>`;
     }
     case 'shape': {
-      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, 'transparent') : 'transparent';
+      // Gradient fills (captured from PDF shading ops / DOM computed styles)
+      // pass through verbatim — resolveBindableColor would reject them.
+      const isGradientFill = typeof overlay.fill === 'string' && /(?:linear|radial|conic)-gradient\(/i.test(overlay.fill);
+      const fill = isGradientFill
+        ? String(overlay.fill)
+        : overlay.fill ? resolveBindableColor(overlay.fill, ctx, 'transparent') : 'transparent';
       const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, 'transparent') : 'transparent';
       const sw = overlay.strokeWidth || 0;
       const radius = overlay.shape === 'ellipse' ? '50%' : `${overlay.borderRadius || 0}pt`;

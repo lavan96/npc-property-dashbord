@@ -1,5 +1,6 @@
 import { parseTemplate, type Block, type Overlay, type ReportTemplate } from '../../templateSchema';
 import { deriveTokensFromExtraction, type FillObservation, type TextObservation } from '../../pdfImport/tokenDerivation';
+import { firstGradientStop, isCssGradient } from '../../cssColor';
 import { ensureCatalogFontFaces } from '../../fontCatalog';
 import type { CdirDocument, CdirLayer, CdirPage } from './schema';
 import { parseCdirDocument } from './validate';
@@ -55,6 +56,12 @@ function layerToOverlay(layer: Exclude<CdirLayer, { kind: 'group' }>, doc: CdirD
     };
   }
   if (layer.kind === 'shape') {
+    const effects = layer.blur || layer.shadow
+      ? {
+          ...(layer.blur ? { blur: Math.min(48, layer.blur) } : {}),
+          ...(layer.shadow ? { shadow: layer.shadow } : {}),
+        }
+      : undefined;
     return {
       ...base,
       type: 'shape',
@@ -63,6 +70,7 @@ function layerToOverlay(layer: Exclude<CdirLayer, { kind: 'group' }>, doc: CdirD
       stroke: layer.stroke,
       strokeWidth: layer.strokeWidth ?? 0,
       borderRadius: layer.borderRadius ?? 0,
+      ...(effects ? { effects } : {}),
     };
   }
   if (layer.kind === 'vector') {
@@ -187,7 +195,10 @@ function collectTokenObservations(
   }
   if (layer.kind === 'shape') {
     const area = layer.bounds.width * layer.bounds.height;
-    if (layer.fill) fills.push({ color: layer.fill, area });
+    if (layer.fill) {
+      const flat = isCssGradient(layer.fill) ? firstGradientStop(layer.fill) : layer.fill;
+      if (flat) fills.push({ color: flat, area });
+    }
     if (layer.stroke) fills.push({ color: layer.stroke, area: Math.max(1, area * 0.05) });
   }
 }

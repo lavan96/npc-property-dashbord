@@ -44,6 +44,7 @@ import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTempla
 import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
 import { pickInkColor } from '@/lib/reportTemplate/pdfImport/tokenDerivation';
+import { extractMakeAssets, isFigmaMakeFile, MAKE_NO_RASTER_GUIDANCE } from '@/lib/reportTemplate/ingestion/makeImport';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
 import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
@@ -474,12 +475,58 @@ export function ReferenceImportDialog({
     }
   }, [codeText, codeSourceName, codeSourceFlavor, applyCodeImportResult]);
 
+  // Figma Make / local-Figma exports (.make/.fig): unpack the ZIP, pick the
+  // largest bundled page raster, and hand it to the standard faithful image
+  // pipeline (mode chooser included). The binary canvas.fig itself is not
+  // decodable, so a rasterless export gets explicit guidance instead.
+  const onMakeFile = useCallback(async (f: File) => {
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      setStage('Unpacking Figma export…');
+      const assets = await extractMakeAssets(new Uint8Array(await f.arrayBuffer()));
+      // Validate candidates by decoded pixel area — exports often bundle a
+      // useless 1×1 thumbnail that must not win.
+      let best: { file: File; area: number } | null = null;
+      for (const img of assets.images) {
+        try {
+          const candidate = new File([img.bytes.slice().buffer as ArrayBuffer], img.name.split('/').pop() || 'page.png', { type: img.mime });
+          const url = URL.createObjectURL(candidate);
+          const area = await new Promise<number>((resolve) => {
+            const image = new Image();
+            image.onload = () => resolve(image.naturalWidth * image.naturalHeight);
+            image.onerror = () => resolve(0);
+            image.src = url;
+          });
+          URL.revokeObjectURL(url);
+          if (area >= 64 * 64 && (!best || area > best.area)) best = { file: candidate, area };
+        } catch { /* skip undecodable entries */ }
+      }
+      if (!best) {
+        setError(MAKE_NO_RASTER_GUIDANCE);
+        return;
+      }
+      toast.success(`Loaded the export's page raster${assets.title ? ` from “${assets.title}”` : ''} — choose a reconstruction mode.`);
+      onFile(best.file);
+    } catch (e) {
+      setError(`Couldn't unpack the Figma export: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [onFile]);
+
+  /** Primary drop-zone router: Figma exports are unpacked, all else flows to PDF/image detection. */
+  const onAnyFile = useCallback((f: File | null) => {
+    if (f && isFigmaMakeFile(f.name)) { void onMakeFile(f); return; }
+    onFile(f);
+  }, [onFile, onMakeFile]);
+
   // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
   // .zip project is built + imported immediately.
   const onCodeFile = useCallback(async (f: File | null) => {
     if (!f) return;
+    if (isFigmaMakeFile(f.name)) { await onMakeFile(f); return; }
     const flavor = codeFlavorForFile(f.name);
-    if (!flavor) { toast.error('Drop a .html/.css/.js/.jsx/.ts/.tsx file or a .zip project.'); return; }
+    if (!flavor) { toast.error('Drop a .html/.css/.js/.jsx/.ts/.tsx file, a .zip project, or a Figma .make/.fig export.'); return; }
     if (flavor !== 'zip') {
       try { setCodeText(await f.text()); setCodeSourceName(f.name); setCodeSourceFlavor(flavor); setError(null); setDone(null); } catch { /* ignore */ }
       return;
@@ -501,7 +548,7 @@ export function ReferenceImportDialog({
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [applyCodeImportResult]);
+  }, [applyCodeImportResult, onMakeFile]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -511,9 +558,10 @@ export function ReferenceImportDialog({
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, paste a link,
-            or use the dedicated <strong>Code / ZIP template import</strong> section below. PDFs are re-synced with selectable
-            fidelity; images are faithfully reconstructed; code/ZIP imports are rendered through CDIR into editable pages.
+            Drop a <strong>PDF</strong>, an <strong>image / screenshot</strong>, or a <strong>Figma .make/.fig export</strong>,
+            paste an image or a link, or use the dedicated <strong>Code / ZIP template import</strong> section below. PDFs are
+            re-synced with selectable fidelity; images and Figma exports are faithfully reconstructed; code/ZIP imports are
+            rendered through CDIR into editable pages.
           </DialogDescription>
         </DialogHeader>
 
@@ -529,7 +577,7 @@ export function ReferenceImportDialog({
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
-              onDrop={(e) => { e.preventDefault(); setDragging(false); onFile(e.dataTransfer.files?.[0] ?? null); }}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); onAnyFile(e.dataTransfer.files?.[0] ?? null); }}
               role="button"
               tabIndex={0}
               onClick={() => !busy && fileRef.current?.click()}
@@ -550,9 +598,9 @@ export function ReferenceImportDialog({
               <input
                 ref={fileRef}
                 type="file"
-                accept="application/pdf,image/*"
+                accept="application/pdf,image/*,.make,.fig"
                 className="hidden"
-                onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => onAnyFile(e.target.files?.[0] ?? null)}
               />
             </div>
 
@@ -597,8 +645,8 @@ export function ReferenceImportDialog({
                       <Badge variant="outline" className="text-[10px]">beta</Badge>
                     </Label>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Upload a .zip project or paste a URL, HTML, CSS, JSX, TSX, Vue, or Svelte source. We render it, measure the DOM,
-                      and import editable CDIR pages with trace rasters for review.
+                      Upload a .zip project, a Figma .make/.fig export, or paste a URL, HTML, CSS, JSX, TSX, Vue, or Svelte source.
+                      We render it, measure the DOM, and import editable CDIR pages with trace rasters for review.
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
@@ -621,7 +669,7 @@ export function ReferenceImportDialog({
                 <input
                   ref={codeFileRef}
                   type="file"
-                  accept=".html,.htm,.css,.js,.jsx,.ts,.tsx,.vue,.svelte,.zip,text/html,text/css,application/javascript,text/javascript,application/zip"
+                  accept=".html,.htm,.css,.js,.jsx,.ts,.tsx,.vue,.svelte,.zip,.make,.fig,text/html,text/css,application/javascript,text/javascript,application/zip"
                   className="hidden"
                   onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
                 />

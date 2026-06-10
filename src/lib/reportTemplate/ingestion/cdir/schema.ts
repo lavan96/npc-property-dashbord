@@ -107,10 +107,20 @@ export const CdirTextLayerSchema = CdirLayerBaseSchema.extend({
 export const CdirShapeLayerSchema = CdirLayerBaseSchema.extend({
   kind: z.literal('shape'),
   shape: z.enum(['rect', 'line', 'ellipse']).default('rect'),
+  /** Flat colour OR a raw CSS gradient string (renderer passes gradients through). */
   fill: z.string().optional(),
   stroke: z.string().optional(),
   strokeWidth: z.number().min(0).optional(),
   borderRadius: z.number().min(0).optional(),
+  /** CSS blur radius in page points (glow orbs / soft accents). */
+  blur: z.number().min(0).optional(),
+  shadow: z.object({
+    x: z.number().default(0),
+    y: z.number().default(2),
+    blur: z.number().min(0).default(8),
+    spread: z.number().default(0),
+    color: z.string().default('rgba(0,0,0,0.25)'),
+  }).optional(),
 });
 
 export const CdirVectorLayerSchema = CdirLayerBaseSchema.extend({

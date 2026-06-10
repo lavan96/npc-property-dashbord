@@ -1,9 +1,27 @@
 import type { DomBoxTree } from '../../codeGrounding';
 import { groundDomBoxTree, harvestTokensFromBoxTree } from '../../codeGrounding';
 import type { GroundedReference } from '../../imageGrounding';
+import { toRendererHex } from '../../cssColor';
 import type { Block, Overlay, Page, ReportTemplate } from '../../templateSchema';
 import type { CdirDocument, CdirLayer, CdirPage, CdirSourceKind } from './schema';
 import { parseCdirDocument } from './validate';
+
+/** Parse a computed CSS box-shadow (colour-first form) into the CDIR shape shadow. */
+export function parseBoxShadow(raw: string | undefined, scale = 1): { x: number; y: number; blur: number; spread: number; color: string } | undefined {
+  const s = String(raw ?? '').trim();
+  if (!s || s === 'none') return undefined;
+  // Computed style emits: "rgba(10, 37, 64, 0.18) 0px 8px 32px 0px" (first shadow only).
+  const m = /^(rgba?\([^)]*\)|#[0-9a-f]{3,8})\s+(-?[\d.]+)px\s+(-?[\d.]+)px(?:\s+(-?[\d.]+)px)?(?:\s+(-?[\d.]+)px)?/i.exec(s);
+  if (!m) return undefined;
+  const r2 = (n: number) => Math.round(n * scale * 100) / 100;
+  return {
+    color: m[1],
+    x: r2(Number(m[2]) || 0),
+    y: r2(Number(m[3]) || 0),
+    blur: Math.max(0, r2(Number(m[4]) || 0)),
+    spread: r2(Number(m[5]) || 0),
+  };
+}
 
 interface AdapterSourceMeta {
   kind: CdirSourceKind;
@@ -113,18 +131,23 @@ export function domBoxTreeToCdir(
         width: Math.max(1, round(s.width * scaleX)),
         height: Math.max(1, round(s.height * scaleY)),
       };
-      // A gradient fill degrades to its raw value being unusable in a plain
-      // shape; approximate with the border/background colour when present.
       const isFullBleed = bounds.width * bounds.height >= pageArea * 0.92;
+      // Gradient backgrounds pass through as raw CSS (the renderer emits them
+      // verbatim); flat colours normalise to 8-digit hex so rgba() ALPHA
+      // survives the renderer's colour normaliser (glass panels stayed opaque).
+      const fill = s.gradient ?? (s.backgroundColor ? toRendererHex(s.backgroundColor) : undefined);
       return {
         id: `dom_shape_${index + 1}`,
         kind: 'shape' as const,
         name: isFullBleed ? 'Page background fill' : `Section fill ${index + 1}`,
         shape: 'rect' as const,
-        fill: s.backgroundColor,
-        stroke: s.borderColor,
+        fill,
+        stroke: s.borderColor ? toRendererHex(s.borderColor) : undefined,
         strokeWidth: s.borderWidthPx != null ? round(s.borderWidthPx * scaleX) : undefined,
         borderRadius: s.borderRadiusPx ? round(s.borderRadiusPx * scaleX) : undefined,
+        ...(s.blurPx ? { blur: Math.max(0, Math.min(48, round(s.blurPx * scaleX))) } : {}),
+        ...(s.boxShadow ? (() => { const shadow = parseBoxShadow(s.boxShadow, scaleX); return shadow ? { shadow } : {}; })() : {}),
+        ...(s.opacity != null && s.opacity < 1 ? { opacity: s.opacity } : {}),
         bounds,
         zIndex: -100_000 + (s.domOrder ?? index),
         confidence: 0.9,
@@ -135,18 +158,25 @@ export function domBoxTreeToCdir(
     ...doc,
     pages: [{
       ...doc.pages[0],
-      background: tree.background ? { color: tree.background } : undefined,
+      // toRendererHex drops fully-transparent body backgrounds (the renderer's
+      // normaliser would have collapsed `rgba(0,0,0,0)` to opaque BLACK).
+      background: (() => { const bg = toRendererHex(tree.background); return bg ? { color: bg } : undefined; })(),
       layers: [...shapeLayers, ...doc.pages[0].layers.map((layer, index) => {
         if (layer.kind !== 'text') return layer;
         const sourceBox = textBoxesInGroundedOrder[index];
+        const lineHeight = sourceBox?.lineHeightPx && sourceBox.fontSizePx
+          ? Math.max(0.9, Math.min(3, Math.round((sourceBox.lineHeightPx / sourceBox.fontSizePx) * 100) / 100))
+          : undefined;
         return {
           ...layer,
           fontFamily: sourceBox?.fontFamily,
           fontWeight: sourceBox?.fontWeight,
           fontStyle: sourceBox?.italic ? 'italic' : 'normal',
-          color: sourceBox?.color ?? layer.color,
+          color: (sourceBox?.color ? toRendererHex(sourceBox.color) : undefined) ?? layer.color,
           ...(sourceBox?.textAlign ? { align: sourceBox.textAlign } : {}),
           ...(sourceBox?.letterSpacingPx != null ? { letterSpacing: round(sourceBox.letterSpacingPx * scaleX) } : {}),
+          ...(lineHeight ? { lineHeight } : {}),
+          ...(sourceBox?.opacity != null && sourceBox.opacity < 1 ? { opacity: sourceBox.opacity } : {}),
           confidence: 0.95,
           provenance: { extractor: 'dom-box-tree' },
         };

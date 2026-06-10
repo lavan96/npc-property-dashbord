@@ -440,7 +440,7 @@ Schema vocabulary you must respect:
 - Block = { id, type, props, overlays[] }. Use exact block types: free, cover, hero, kpi-grid, data-table, chart, image, text-block, footer, disclaimer, divider, callout, two-column, gallery, page-number, spacer, qr, badge-list, toc, auto-toc, signature, slot, scorecard, risk-register, infra-timeline, amenity-matrix, planning-table, dd-checklist, decision-box, strengths-watch.
 - Overlay = text | image | shape, each with x,y (top-left origin), width, height, rotation, opacity.
   - text: content, fontFamily, fontSize, fontWeight ("normal", "bold", or a numeric 100–900 weight), fontStyle, color (#hex or "token:primary"), align, lineHeight.
-  - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius.
+  - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius. `fill` accepts a flat colour OR a raw CSS gradient string (e.g. "linear-gradient(135deg, #0A2540 0%, #1A3A5A 100%)") — use a gradient when the source background is a gradient, never flatten it to one colour.
   - image: src, fit='cover'|'contain'|'fill'.
 - Tokens: colors{}, fonts{}, spacing{}. Reference via "token:<key>" in any color or string.
 - Bindings: "{{path.to.data}}" anywhere a string is allowed; do not invent paths.
