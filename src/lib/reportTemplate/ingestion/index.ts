@@ -20,3 +20,9 @@ export { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 export type { PdfReconstructArgs, PdfReconstructResult } from './pdfDocumentReconstruct';
 export { groundDomBoxTree, harvestTokensFromBoxTree } from '../codeGrounding';
 export type { DomBoxTree, DomTextBox, DomImageBox, CodeGroundOptions } from '../codeGrounding';
+
+// Canonical Design IR (CDIR) — Phase 1 adapter bridge.
+export * from './cdir';
+export * from './fidelity';
+export * from './review';
+export * from './importArtifacts';
