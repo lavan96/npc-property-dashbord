@@ -198,14 +198,14 @@ function scorePage(page: CdirPage, opts: Required<Pick<CdirFidelityOptions, 'nat
   const pageArea = Math.max(1, page.width * page.height);
   const editableLayers = flat.filter(isNativeEditable);
   const fallbackLayers = flat.filter(isFallbackRaster);
-  const nativeCoverage = round3(clamp01(unionArea(editableLayers.map((layer) => layer.bounds)) / pageArea));
-  const rasterFallbackCoverage = round3(clamp01(unionArea(fallbackLayers.map((layer) => layer.bounds)) / pageArea));
+  const nativeCoverage = round3(clamp01(unionArea(editableLayers.map((layer) => layer.bounds as any)) / pageArea));
+  const rasterFallbackCoverage = round3(clamp01(unionArea(fallbackLayers.map((layer) => layer.bounds as any)) / pageArea));
   const expected = pageExpectation(page, opts.expectedText ?? []);
   const accuracy = expected === null ? null : textAccuracy(pageText(page), expected);
   const boundsById = new Map(flat.map((layer) => [layer.id, layer.bounds]));
   const drifts = (opts.expectedBounds ?? [])
     .filter((item) => item.pageId === page.id && boundsById.has(item.layerId))
-    .map((item) => boundsDrift(boundsById.get(item.layerId)!, item.bounds));
+    .map((item) => boundsDrift(boundsById.get(item.layerId)! as any, item.bounds));
   const medianPositionDrift = percentile(drifts, 50);
   const p95PositionDrift = percentile(drifts, 95);
   const warnings: FidelityWarning[] = [];
