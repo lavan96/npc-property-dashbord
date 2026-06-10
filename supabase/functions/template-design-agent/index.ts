@@ -13,6 +13,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
 import { callClaudeReconstruct } from '../_shared/claudeReconstruct.ts';
+import { expandIconOverlay, ICON_NAMES } from '../_shared/iconPack.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
@@ -310,7 +311,7 @@ function applyOps(schema: any, ops: Op[]): { schema: any; summaries: string[]; w
           const p = findPage(s, op.pageId);
           const b = p && findBlock(p, op.blockId);
           if (!b) { warnings.push(`add_overlay: target not found`); break; }
-          const overlay = { id: uid(), rotation: 0, opacity: 1, ...op.overlay };
+          const overlay = expandIconOverlay({ id: uid(), rotation: 0, opacity: 1, ...op.overlay });
           b.overlays = b.overlays || [];
           b.overlays.push(overlay);
           summaries.push(`added ${overlay.type} overlay → block ${b.id}`);
@@ -322,6 +323,7 @@ function applyOps(schema: any, ops: Op[]): { schema: any; summaries: string[]; w
           const o = b && (b.overlays || []).find((x: any) => x.id === op.overlayId);
           if (!o) { warnings.push(`update_overlay: ${op.overlayId} not found`); break; }
           Object.assign(o, deepMerge(o, op.patch || {}));
+          if ((o as any).icon) Object.assign(o, expandIconOverlay(o));
           summaries.push(`updated overlay ${op.overlayId}`);
           break;
         }
@@ -442,6 +444,7 @@ Schema vocabulary you must respect:
   - text: content, fontFamily, fontSize, fontWeight ("normal", "bold", or a numeric 100–900 weight), fontStyle, color (#hex or "token:primary"), align, lineHeight.
   - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius. 'fill' accepts a flat colour OR a raw CSS gradient string (e.g. "linear-gradient(135deg, #0A2540 0%, #1A3A5A 100%)") — use a gradient when the source background is a gradient, never flatten it to one colour.
   - image: src, fit='cover'|'contain'|'fill'.
+  - vector ICON: { type:'vector', icon:'<name>', color:'#hex', x,y,width,height } — the server expands the named glyph from the built-in icon pack (24×24 stroke icons). NEVER invent svg path data; only use pack names. Available names: ${ICON_NAMES.join(', ')}.
 - Tokens: colors{}, fonts{}, spacing{}. Reference via "token:<key>" in any color or string.
 - Bindings: "{{path.to.data}}" anywhere a string is allowed; do not invent paths.
 
@@ -606,6 +609,7 @@ Recreate the attached reference on the active page (id=${activePageId}) as nativ
 - TEXT IS GROUND TRUTH. ${groundingBlock ? 'Use the MEASURED TEXT ELEMENTS below as the source of truth: transcribe each element\'s text EXACTLY (fix only obvious OCR garbles) and place ONE text overlay at its given x/y/width/height.' : 'Transcribe text verbatim from the image and place it where it appears.'} Do NOT invent, summarise, rewrite, translate, or pad copy. Do NOT replace real text with "Lorem ipsum" or generic placeholders.
 - You MAY classify each text element's role (heading / subhead / body / label / price) to choose a sensible fontWeight and size, but keep its position and exact words from the measurements/image.
 - From the IMAGE, reproduce only NON-TEXT design: background and section fills, accent shapes/rules/dividers, and image regions — at their observed positions. Prefer tokens for colour, else hex.
+- ICONS ARE FIRST-CLASS. When the source shows a small pictogram (location pin, calendar, building, phone, chart, checkmark…), place a matching icon overlay { type:'vector', icon:'<pack name>', color } at its observed position and colour — do NOT approximate icons with circles/rects, draw them as text glyphs, or silently drop them.
 - COLOUR IS GROUND TRUTH. Do not default to black-and-white unless the source is actually monochrome. Use exact observed colours for page.background.color, text.color, shape.fill, shape.stroke, table/header fills, and border rules. If a colour is translucent, use rgba(...) or #RRGGBBAA. When a measured element carries a color= field, copy it onto that overlay verbatim.
 - FONT IS GROUND TRUTH. Match each text element's typeface to the source: when a measured element carries a font= field, set fontFamily to that exact family; otherwise judge from the image (serif vs sans vs slab vs mono vs script) and pick the closest family from this list — Sans: Inter, Manrope, DM Sans, Work Sans, Lato, Open Sans, Roboto, Montserrat, Poppins, Helvetica, Arial. Serif: Playfair Display, Fraunces, Cormorant Garamond, Lora, Merriweather, EB Garamond, Georgia, Times New Roman. Slab: Roboto Slab, Zilla Slab, Arvo. Display: Bebas Neue, Abril Fatface, Cinzel, Syne. Mono: JetBrains Mono, IBM Plex Mono, Courier New. Script: Dancing Script, Great Vibes, Caveat. Never leave every overlay on the default Helvetica when the source clearly uses another style; carry weight= as the numeric fontWeight and italic as fontStyle:"italic".
 ${designBrief?.palette?.length ? `- STRUCTURED VISION PALETTE (authoritative): ${designBrief.palette.map((p) => `${p.role}=${p.hex}${p.label ? ` (${p.label})` : ''}`).join('; ')}. These are also installed server-side as token:brief.bg / token:brief.text / token:brief.accent when present; use those token references or the exact hex/rgba values directly when matching source elements.` : ''}
@@ -691,7 +695,7 @@ ACTIVE SELECTION:
     }
     if (usePdfDocument && activePageId) {
       modeAddendum += `\n\n[PDF DOCUMENT MODE — FAITHFUL RECONSTRUCTION]
-A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Preserve observed colours for page backgrounds, text, fills, strokes, borders, and accents; use rgba(...) or #RRGGBBAA for translucency. Match each text run's typeface: read the PDF's font names/styles and set fontFamily to the same family (or the closest of: Inter, Lato, Open Sans, Roboto, Montserrat, Helvetica, Playfair Display, Lora, Merriweather, EB Garamond, Georgia, Times New Roman, Roboto Slab, JetBrains Mono, Courier New), with the numeric fontWeight and italic style it uses. Do NOT redesign, summarise, translate, or use placeholders.`;
+A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Preserve observed colours for page backgrounds, text, fills, strokes, borders, and accents; use rgba(...) or #RRGGBBAA for translucency. Reproduce source pictograms as icon-pack vector overlays ({ type:'vector', icon:'<name>', color }) rather than dropping them. Match each text run's typeface: read the PDF's font names/styles and set fontFamily to the same family (or the closest of: Inter, Lato, Open Sans, Roboto, Montserrat, Helvetica, Playfair Display, Lora, Merriweather, EB Garamond, Georgia, Times New Roman, Roboto Slab, JetBrains Mono, Courier New), with the numeric fontWeight and italic style it uses. Do NOT redesign, summarise, translate, or use placeholders.`;
     }
 
     // Brief pipeline runs synthesis on text-only context (image already digested

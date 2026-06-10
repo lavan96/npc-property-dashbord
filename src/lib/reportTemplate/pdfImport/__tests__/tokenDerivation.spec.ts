@@ -3,7 +3,7 @@
  * observations (replacing the old hard-coded gold/white/Helvetica tokens).
  */
 import { describe, it, expect } from 'vitest';
-import { deriveTokensFromExtraction, pickInkColor, type FillObservation, type TextObservation } from '../tokenDerivation';
+import { deriveTokensFromExtraction, pickInkColor, dominantEdgeColor, isNearWhite, type FillObservation, type TextObservation } from '../tokenDerivation';
 
 const A4_AREA = 595 * 842;
 
@@ -104,5 +104,42 @@ describe('pickInkColor', () => {
 
   it('returns undefined when there are too few opaque pixels', () => {
     expect(pickInkColor([0, 0, 0, 0, 255, 255, 255, 255])).toBeUndefined();
+  });
+});
+
+describe('dominantEdgeColor', () => {
+  const page = (w: number, h: number, edge: [number, number, number], center: [number, number, number]) => {
+    const px = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const ring = x < 2 || y < 2 || x >= w - 2 || y >= h - 2;
+        const [r, g, b] = ring ? edge : center;
+        const i = (y * w + x) * 4;
+        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = 255;
+      }
+    }
+    return px;
+  };
+
+  it('returns the border colour, ignoring busy page content', () => {
+    // Navy page edge, white content area — the edge wins.
+    const px = page(40, 56, [10, 37, 64], [255, 255, 255]);
+    expect(dominantEdgeColor(px, 40, 56)).toBe('#0A2540');
+  });
+
+  it('returns undefined for degenerate sizes', () => {
+    expect(dominantEdgeColor(new Uint8ClampedArray(0), 2, 2)).toBeUndefined();
+  });
+});
+
+describe('isNearWhite', () => {
+  it('treats white and near-white as not worth setting', () => {
+    expect(isNearWhite('#FFFFFF')).toBe(true);
+    expect(isNearWhite('#FBFAF9')).toBe(true);
+    expect(isNearWhite(undefined)).toBe(true);
+  });
+  it('keeps real tints', () => {
+    expect(isNearWhite('#F6F1E7')).toBe(false);
+    expect(isNearWhite('#0A2540')).toBe(false);
   });
 });

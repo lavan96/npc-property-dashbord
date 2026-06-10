@@ -37,7 +37,7 @@ import {
 import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSample } from './textColor';
 import { imageRectFromCtm } from './imageExtract';
 import { buildEmbeddedFontFace, type EmbeddedFontResult } from './fontFaceBuilder';
-import { deriveTokensFromExtraction, pickInkColor, type TextObservation, type FillObservation } from './tokenDerivation';
+import { deriveTokensFromExtraction, pickInkColor, dominantEdgeColor, isNearWhite, type TextObservation, type FillObservation } from './tokenDerivation';
 import { parseShadingIR, shadingToOverlaySpec, pathPointsToPageBBox, type ShadingOverlaySpec } from './shadingExtract';
 import { applyAlphaToColor } from '@/lib/reportTemplate/cssColor';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
@@ -859,6 +859,63 @@ export async function extractPdfToTemplate(
         }
       }
 
+      // ── Page background colour ───────────────────────────────────────────
+      // 1) Promote a full-bleed SOLID paint (shading/vector rect that covers
+      //    the page) to page.background.color — the editor then treats it as a
+      //    real page background instead of a giant locked rectangle, and new
+      //    elements inherit sensible contrast.
+      // 2) Otherwise sample the page-edge pixels from a raster (reusing the
+      //    full raster when one exists, else a cheap 0.2× render) so pages
+      //    whose background comes from flattened art still import tinted
+      //    rather than stark white.
+      let backgroundColor: string | undefined;
+      if (mode !== 'pixel') {
+        const pageArea = pageWidth * pageHeight;
+        const isFullBleed = (o: any) =>
+          (Number(o.width) * Number(o.height)) >= pageArea * 0.92
+          && Number(o.x) <= pageWidth * 0.04 && Number(o.y) <= pageHeight * 0.04;
+        for (let oi = 0; oi < overlays.length; oi++) {
+          const o: any = overlays[oi];
+          if (o.hidden) continue;
+          if (o.type === 'shape' && isFullBleed(o) && typeof o.fill === 'string' && o.fill && !/gradient\(/i.test(o.fill)) {
+            backgroundColor = o.fill;
+            overlays.splice(oi, 1); // the colour replaces the rectangle
+            break;
+          }
+          if (o.type === 'vector' && isFullBleed(o) && Array.isArray(o.paths) && o.paths.length === 1
+              && o.paths[0]?.fill && o.paths[0].fill !== 'none' && !o.paths[0].stroke) {
+            backgroundColor = o.paths[0].fill;
+            overlays.splice(oi, 1);
+            break;
+          }
+        }
+        if (!backgroundColor) {
+          try {
+            let sampleCanvas = rasterCanvas;
+            let owned = false;
+            if (!sampleCanvas) {
+              const vpS = page.getViewport({ scale: 0.2 });
+              sampleCanvas = document.createElement('canvas');
+              sampleCanvas.width = Math.max(8, Math.floor(vpS.width));
+              sampleCanvas.height = Math.max(8, Math.floor(vpS.height));
+              const sctx = sampleCanvas.getContext('2d')!;
+              await page.render({ canvasContext: sctx, viewport: vpS } as any).promise;
+              owned = true;
+            }
+            const sctx2 = sampleCanvas.getContext('2d', { willReadFrequently: true });
+            if (sctx2) {
+              const px = sctx2.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
+              const sampled = dominantEdgeColor(px.data, sampleCanvas.width, sampleCanvas.height);
+              if (!isNearWhite(sampled)) backgroundColor = sampled;
+            }
+            if (owned && sampleCanvas) { sampleCanvas.width = 0; sampleCanvas.height = 0; }
+          } catch (err) {
+            console.warn('[background] edge sampling failed on page', pageIndex, err);
+          }
+        }
+        if (backgroundColor) fillObs.push({ color: backgroundColor, area: pageArea });
+      }
+
       if (rasterCanvas) {
         rasterCanvas.width = 0;
         rasterCanvas.height = 0;
@@ -894,7 +951,9 @@ export async function extractPdfToTemplate(
         id: newPageId,
         name: `Page ${pageIndex}`,
         size: { width: pageWidth, height: pageHeight },
-        background: backgroundImageUrl ? { imageUrl: backgroundImageUrl } : {},
+        background: backgroundImageUrl
+          ? { imageUrl: backgroundImageUrl }
+          : backgroundColor ? { color: backgroundColor } : {},
         blocks: [freeBlock],
       };
       pages.push(newPage);

@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { describeAuthError } from '@/lib/secureInvoke';
+import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
 import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
@@ -75,15 +76,15 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setBusy(true);
     setProgress({ phase: 'reading' });
     try {
-      const res = await extractPdfToTemplate(file, {
-        mode,
+      const outcome = await runReferenceImport({ kind: 'pdf', file, mode }, {
         templateName: file.name.replace(/\.pdf$/i, ''),
         userId: user?.id ?? null,
         onProgress: setProgress,
       });
-      setResult(res);
+      if (outcome.type !== 'persisted') throw new Error('Unexpected import outcome.');
+      setResult(outcome.result);
       setRecordedDecision(null);
-      toast.success(`Imported ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}.`);
+      toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'}.`);
     } catch (err) {
       toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
     } finally {
