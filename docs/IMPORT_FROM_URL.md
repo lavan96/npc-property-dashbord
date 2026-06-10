@@ -21,8 +21,9 @@ Paste a share/view link and reconstruct it into an editable template — no manu
 | **Dropbox** | content host + `dl=1` |
 | **OneDrive / SharePoint** | `?download=1` (best‑effort; link must be "anyone with the link") |
 | **Generic `.pdf` / image URL** | fetched directly |
-| **Figma** | exported via the Figma REST API when `FIGMA_TOKEN` is set; else guidance to export PDF |
-| **Canva / Gamma** | no public file URL → guidance to export PDF and paste that link |
+| **Figma** | Figma REST API frame export when `FIGMA_TOKEN` is set → else headless **page render** of the public embed → else guidance |
+| **Canva / Gamma** | headless **page render** of the public view when the render service is configured → else guidance to export PDF |
+| **Any interactive page** (HTML response) | headless **page render** → image |
 
 ## Security
 - All fetching is **server‑side**; `isLikelyPrivateHost` (mirrored in the edge function) blocks
@@ -30,8 +31,14 @@ Paste a share/view link and reconstruct it into an editable template — no manu
 - Redirects are followed **manually** so every hop is re‑validated (defeats public→internal redirects).
 - Only `http(s)`; size + timeout capped.
 
+## Headless render (Figma / Canva / Gamma / any page)
+Interactive "code‑built" designs have no file to fetch, so they're **rendered to an image** by the
+`services/page-render` microservice (Node + Playwright/Chromium) and then run through the OCR‑grounded
+reconstruct path. The `import-from-url` function calls it when `RENDER_SERVICE_URL` (+ `RENDER_API_KEY`)
+are configured; Figma additionally tries the REST‑API frame export first when `FIGMA_TOKEN` is set.
+Deploy/config: see `services/page-render/README.md`. Without the service, these links fall back to
+"export to PDF" guidance.
+
 ## Not yet
-- **Headless render of interactive app pages** (Figma without a token, Canva, Gamma "code‑built"
-  designs). True fidelity for those needs a browser‑render microservice (same pattern as the WeasyPrint
-  service) → screenshot → the R5 OCR‑grounded reconstruct path. Until then we guide the user to export PDF.
-- DNS‑rebinding is mitigated at the hostname level only (no IP pinning in the edge runtime).
+- Per‑slide/per‑frame splitting of multi‑page decks (currently a single capped‑height capture).
+- DNS‑rebinding is mitigated at the hostname level only (no IP pinning) — pair with egress firewalling.

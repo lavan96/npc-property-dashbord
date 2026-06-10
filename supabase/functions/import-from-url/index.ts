@@ -126,6 +126,42 @@ async function figmaExport(key: string, cors: Record<string, string>): Promise<R
   }
 }
 
+/** Screenshot an interactive page via the headless render microservice. */
+async function renderViaService(url: string, cors: Record<string, string>): Promise<Response | null> {
+  const base = Deno.env.get('RENDER_SERVICE_URL');
+  if (!base) return null;
+  try {
+    assertFetchable(url); // defence-in-depth before handing the URL off
+  } catch {
+    return null;
+  }
+  try {
+    const key = Deno.env.get('RENDER_API_KEY');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45000);
+    let r: Response;
+    try {
+      r = await fetch(base.replace(/\/$/, '') + '/render', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...(key ? { 'x-render-key': key } : {}) },
+        body: JSON.stringify({ url, width: 1280, scale: 2, waitMs: 3500 }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => null);
+    if (!j?.dataBase64) return null;
+    return json({
+      kind: 'image', provider: 'render', contentType: j.contentType || 'image/png',
+      filename: 'render.png', dataBase64: j.dataBase64,
+    }, 200, cors);
+  } catch (_e) {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') || '';
   const cors = createCorsHeaders(origin);
@@ -140,15 +176,28 @@ Deno.serve(async (req) => {
     const provider: string = String(body.provider || 'generic');
     const fetchUrl: string = String(body.fetchUrl || body.url || '').trim();
     const resourceId: string = String(body.resourceId || '');
+    const renderUrl: string = String(body.renderUrl || fetchUrl).trim();
     if (!fetchUrl) return json({ error: 'Missing url' }, 400, cors);
 
-    // Figma: try a programmatic export first (falls through to guidance).
+    // Figma: programmatic frame export (token) → headless render → guidance.
     if (provider === 'figma') {
       const exported = await figmaExport(resourceId, cors);
       if (exported) return exported;
+      const rendered = await renderViaService(renderUrl, cors);
+      if (rendered) return rendered;
       return json({
         kind: 'needs_export', provider,
-        guidance: 'This Figma link needs an export. Configure a FIGMA_TOKEN to import frames automatically, or use File → Export → PDF and paste that link.',
+        guidance: 'This Figma link couldn’t be imported automatically. Set FIGMA_TOKEN (frame export) or RENDER_SERVICE_URL (page render), or use File → Export → PDF and paste that link. The file must be shared as “Anyone with the link”.',
+      }, 200, cors);
+    }
+
+    // Canva / Gamma have no public file — render the public page to an image.
+    if (provider === 'canva' || provider === 'gamma') {
+      const rendered = await renderViaService(renderUrl, cors);
+      if (rendered) return rendered;
+      return json({
+        kind: 'needs_export', provider,
+        guidance: `${provider === 'canva' ? 'Canva' : 'Gamma'} has no public file link and page rendering isn’t configured. Export to PDF (or PNG) and paste that link, or drop the file.`,
       }, 200, cors);
     }
 
@@ -169,8 +218,10 @@ Deno.serve(async (req) => {
       return json({ error: `File too large (${Math.round(lenHeader / 1024 / 1024)} MB, max 30 MB).` }, 400, cors);
     }
 
-    // A login/preview wall returns HTML instead of the file.
+    // A web page (not a file) — render it to an image if the service is configured.
     if (contentType.includes('text/html')) {
+      const rendered = await renderViaService(finalUrl.toString(), cors);
+      if (rendered) return rendered;
       return json({
         kind: 'needs_export', provider,
         finalUrl: finalUrl.toString(),

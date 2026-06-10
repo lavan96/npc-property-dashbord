@@ -90,7 +90,7 @@ interface Props {
 }
 
 const PDF_MAX = 50 * 1024 * 1024;
-const IMG_MAX = 6 * 1024 * 1024;
+const IMG_MAX = 25 * 1024 * 1024; // generous: rendered full-page screenshots can be large
 
 export function ReferenceImportDialog({
   open,
@@ -224,15 +224,14 @@ export function ReferenceImportDialog({
     const raw = url.trim();
     if (!isHttpUrl(raw)) { setError('Enter a valid http(s) link.'); return; }
     const norm = normalizeImportUrl(raw);
-    if ((norm.provider === 'canva' || norm.provider === 'gamma') && norm.needsExport) {
-      setError(norm.guidance ?? 'This app has no public file link — export to PDF and paste that link.');
-      return;
-    }
     setUrlBusy(true); setError(null);
     try {
+      // Figma/Canva/Gamma have no file URL — the function renders the public
+      // page to an image (when a render service is configured) and returns that.
       const { data, error: invErr } = await invokeSecureFunction('import-from-url', {
-        url: raw, fetchUrl: norm.fetchUrl, provider: norm.provider, resourceId: norm.resourceId, expectedKind: norm.expectedKind,
-      });
+        url: raw, fetchUrl: norm.fetchUrl, provider: norm.provider, resourceId: norm.resourceId,
+        expectedKind: norm.expectedKind, renderUrl: norm.renderUrl, render: norm.canRender === true,
+      }, { timeoutMs: 90000 });
       if (invErr) throw new Error(invErr.message);
       const d = data as any;
       if (d?.error) throw new Error(d.error);
@@ -324,7 +323,7 @@ export function ReferenceImportDialog({
                 {urlInfo && urlInfo.provider !== 'generic' && (
                   <p className="text-[11px] text-muted-foreground pl-1">
                     Detected <span className="font-medium capitalize">{urlInfo.provider.replace(/-/g, ' ')}</span>
-                    {urlInfo.needsExport ? ' — needs a PDF/PNG export (we’ll guide you).'
+                    {urlInfo.canRender ? ' — we’ll render the public page to an image (must be shared publicly).'
                       : urlInfo.expectedKind === 'pdf' ? ' — exports to PDF.' : ''}
                   </p>
                 )}
