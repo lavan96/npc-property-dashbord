@@ -1,6 +1,6 @@
 # PDF / Image → Editable Template — Reconstruction Architecture
 
-> Status: **R0–R2 + R4 implemented** (primitives · text geometry/overlap/colour · editable vectors · images) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
+> Status: **R0–R4 implemented** (primitives · text geometry/overlap/colour · editable vectors · embedded fonts · images) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
 >
 > Goal: turn a PDF or image into a **faithful *and* editable** template — exact text (correctly
 > positioned, coloured, and typed), **editable vector icons/logos**, **captured fonts**, real
@@ -120,7 +120,15 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
   pdf.js `getOperatorList()` (graphics‑state stack + CTM) into device‑space SVG paths, clustered into
   one editable `vector` overlay per drawing; fill/stroke colour captured from RGB/Gray/CMYK colour ops.
   *Acceptance (met):* a logo imports as editable paths, not a JPEG.
-- **R3 — Fonts:** extract embedded program → fontkit→woff2 → store → `@font-face`. *Acceptance:*
+- **R3 — Fonts:** ✅ **done (embedded sfnt → `data:` `@font-face`).** `getDocument({ fontExtraProperties:true })`
+  keeps the reconstructed embedded font bytes on the main thread; the extractor pulls each font from
+  `commonObjs`, and the pure, unit‑tested `fontFaceBuilder` turns it into a `tokens.fontFaces` entry with a
+  CSS‑safe **unique family per program**, a `data:` URL, and a derived weight/style. Each text span is
+  mapped to its embedded family (numeric weight → `fontWeightNumeric`), so `renderTemplateToHtml`
+  (editor preview **and** PDF export, both inject `tokensToFontFaceCss`) renders the **source glyphs** with
+  no synthetic bolding. Per‑font 2 MB + 6 MB total budget guards schema size. *Deviation:* embeds the
+  sfnt directly as a `data:` URL rather than re‑encoding to woff2 (no client‑side woff2 encoder; sfnt
+  `@font-face` is universally supported and avoids any cross‑origin/CORS dependency). *Acceptance (met):*
   imported text renders in the source font; weights faithful.
 - **R4 — Images:** ✅ **done.** One shared operator‑list walk collects image XObject + inline‑image
   paints with their CTM; pure `imageExtract.imageRectFromCtm` maps each to a device rect; the decoder

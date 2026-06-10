@@ -12,7 +12,7 @@
  *     page in the editor.
  */
 import * as pdfjsLib from 'pdfjs-dist';
-import type { ReportTemplate, Page, Block, Overlay } from '@/lib/reportTemplate/templateSchema';
+import type { ReportTemplate, Page, Block, Overlay, FontFace as FontFaceToken } from '@/lib/reportTemplate/templateSchema';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
@@ -26,6 +26,7 @@ import {
 } from './vectorExtract';
 import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSample } from './textColor';
 import { imageRectFromCtm } from './imageExtract';
+import { buildEmbeddedFontFace, type EmbeddedFontResult } from './fontFaceBuilder';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -63,6 +64,7 @@ export interface ImportResult {
     textBlocks: number;
     images: number;
     vectors: number;
+    fontsEmbedded: number;
     fontsSubstituted: string[];
   };
 }
@@ -288,6 +290,35 @@ async function pdfImageToPngBase64(img: any): Promise<string | null> {
   }
 }
 
+/**
+ * Resolve a pdf.js embedded font (by loadedName) into an `@font-face` build +
+ * its byte length, or null when the font has no usable embedded program (a
+ * standard/substituted font — the caller falls back to the web-stack resolver).
+ */
+async function extractEmbeddedFont(
+  commonObjs: any,
+  loadedName: string,
+  psName: string,
+): Promise<{ build: EmbeddedFontResult; byteLength: number } | null> {
+  const fontObj: any = await getPdfObj(commonObjs, loadedName);
+  if (!fontObj) return null;
+  const raw = fontObj.data ?? fontObj._data ?? null;
+  let bytes: Uint8Array | null = null;
+  if (raw instanceof Uint8Array) bytes = raw;
+  else if (raw instanceof ArrayBuffer) bytes = new Uint8Array(raw);
+  else if (raw && typeof raw.length === 'number') bytes = Uint8Array.from(raw as ArrayLike<number>);
+  if (!bytes || !bytes.length) return null;
+  const build = buildEmbeddedFontFace({
+    loadedName,
+    postscriptName: (fontObj.name as string) || psName,
+    base64: bytesToBase64(bytes),
+    mimetype: fontObj.mimetype as string | undefined,
+    bold: !!fontObj.bold,
+    italic: !!fontObj.italic,
+  });
+  return { build, byteLength: bytes.length };
+}
+
 // ─── main ────────────────────────────────────────────────────────────────────
 
 export async function extractPdfToTemplate(
@@ -300,7 +331,9 @@ export async function extractPdfToTemplate(
 
   onProgress({ phase: 'reading', message: 'Reading PDF…' });
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf, useSystemFonts: true }).promise;
+  // fontExtraProperties keeps the reconstructed embedded-font bytes available on
+  // the main thread (commonObjs) so R3 can capture them as @font-face entries.
+  const pdf = await pdfjsLib.getDocument({ data: buf, useSystemFonts: true, fontExtraProperties: true } as any).promise;
   const totalPages = pdf.numPages;
 
   // Register import row
@@ -322,6 +355,34 @@ export async function extractPdfToTemplate(
   let vectorCount = 0;
   let rasterized = 0;
   let semantic = 0;
+
+  // R3 — embedded fonts captured as @font-face entries (deduped by loadedName).
+  type EmbeddedRef = { family: string; weight: number; style: 'normal' | 'italic' };
+  const embeddedFaces: FontFaceToken[] = [];
+  const embeddedByLoaded = new Map<string, EmbeddedRef | null>();
+  let embeddedBytesTotal = 0;
+  const PER_FONT_CAP = 2_000_000;       // skip an individual font larger than ~2 MB
+  const FONT_BYTE_BUDGET = 6_000_000;   // total embedded-font budget per template
+
+  const resolveEmbeddedFont = async (commonObjs: any, loadedName: string, psName: string): Promise<EmbeddedRef | null> => {
+    if (!loadedName) return null;
+    if (embeddedByLoaded.has(loadedName)) return embeddedByLoaded.get(loadedName)!;
+    let ref: EmbeddedRef | null = null;
+    try {
+      if (embeddedBytesTotal < FONT_BYTE_BUDGET) {
+        const ex = await extractEmbeddedFont(commonObjs, loadedName, psName);
+        if (ex && ex.byteLength <= PER_FONT_CAP && embeddedBytesTotal + ex.byteLength <= FONT_BYTE_BUDGET) {
+          embeddedBytesTotal += ex.byteLength;
+          embeddedFaces.push(ex.build.face as unknown as FontFaceToken);
+          ref = { family: ex.build.family, weight: ex.build.weight, style: ex.build.style };
+        }
+      }
+    } catch (err) {
+      console.warn('[font] embed failed on', loadedName, err);
+    }
+    embeddedByLoaded.set(loadedName, ref);
+    return ref;
+  };
 
   try {
     for (let pageIndex = 1; pageIndex <= totalPages; pageIndex++) {
@@ -430,17 +491,19 @@ export async function extractPdfToTemplate(
           if (!(item.str as string).trim()) continue;
           const styles = (content.styles as Record<string, any>) || {};
           const psName = styles[item.fontName]?.fontFamily || item.fontName || 'Helvetica';
+          // R3: prefer the actual embedded font program; else fall back to a web stack.
+          const embedded = await resolveEmbeddedFont(page.commonObjs, item.fontName, psName);
           const resolved = resolveFontFamily(psName);
           fontsUsed.add(psName);
-          if (resolved.substituted) fontsSubstituted.add(psName);
+          if (!embedded && resolved.substituted) fontsSubstituted.add(psName);
           const t = item.transform as number[];
           spans.push({
             text: item.str as string,
             transform: t,
             width: item.width as number,
-            fontFamily: resolved.family,
-            fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
-            fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
+            fontFamily: embedded ? embedded.family : resolved.family,
+            fontWeight: embedded ? embedded.weight : (/bold|black|heavy/i.test(psName) ? 'bold' : 'normal'),
+            fontStyle: embedded ? embedded.style : (/italic|oblique/i.test(psName) ? 'italic' : 'normal'),
             color: colorSamples.length ? nearestColor(colorSamples, t[4], t[5]) : undefined,
           });
         }
@@ -457,7 +520,11 @@ export async function extractPdfToTemplate(
             content: spec.content,
             fontFamily: spec.fontFamily ?? 'Helvetica',
             fontSize: spec.fontSize,
-            fontWeight: spec.fontWeight ?? 'normal',
+            // Numeric weight (from an embedded font) goes to fontWeightNumeric so
+            // the renderer emits it exactly; fontWeight keeps the enum the browser
+            // uses to match the single embedded face (no synthetic bolding).
+            fontWeight: typeof spec.fontWeight === 'number' ? (spec.fontWeight >= 600 ? 'bold' : 'normal') : (spec.fontWeight ?? 'normal'),
+            ...(typeof spec.fontWeight === 'number' ? { fontWeightNumeric: spec.fontWeight } : {}),
             fontStyle: spec.fontStyle ?? 'normal',
             color: spec.color ?? '#111111',
             align: spec.align,
@@ -591,6 +658,8 @@ export async function extractPdfToTemplate(
         colors: { primary: '#BF9B50', bg: '#FFFFFF', text: '#111111', muted: '#666666' },
         fonts: { heading: 'Helvetica', body: 'Helvetica' },
         spacing: { gutter: 16 },
+        // R3 — embedded fonts captured from the source so text renders faithfully.
+        ...(embeddedFaces.length ? { fontFaces: embeddedFaces } : {}),
       },
       pages,
       slots: {},
@@ -628,6 +697,7 @@ export async function extractPdfToTemplate(
         textBlocks,
         images: imagesFound,
         vectors: vectorCount,
+        fontsEmbedded: embeddedFaces.length,
         fontsSubstituted: Array.from(fontsSubstituted),
       },
     };
