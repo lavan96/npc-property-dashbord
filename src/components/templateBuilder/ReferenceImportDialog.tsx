@@ -42,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
-import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
+import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
 import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
 import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
@@ -130,6 +130,7 @@ export function ReferenceImportDialog({
   const [url, setUrl] = useState('');
   const [urlBusy, setUrlBusy] = useState(false);
   const [codeText, setCodeText] = useState('');
+  const [codeSourceName, setCodeSourceName] = useState<string | null>(null);
   const [codeBusy, setCodeBusy] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
@@ -137,7 +138,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false); setPdfClaude(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeBusy(false); setPdfClaude(false);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -284,9 +285,23 @@ export function ReferenceImportDialog({
     }
   }, [url, onFile]);
 
-  // Raw-codebase reconstruct (plan WS1): render HTML/CSS or a live URL via the
-  // render-source service, ground the DOM box tree, then reuse the exact
-  // `screenshot_to_block` path the image reconstruct uses (zero new pipeline).
+  // Raw-codebase import (plan WS1): render HTML/CSS/URL/JSX/ZIP via the
+  // render-source service, then apply the editable CDIR → ReportTemplate result
+  // directly. This keeps code/zip imports multi-page and editable-first instead
+  // of flattening the rendered output back through a one-page screenshot prompt.
+  const applyCodeImportResult = useCallback((result: CodeIngestResult, label: string) => {
+    const validation = validateReconstructedSchema(result.editableTemplate);
+    if (!validation.ok) throw new Error(`Code import was not usable: ${validation.errors.join(' ')}`);
+    onApplySchema?.(result.editableTemplate);
+    const fidelity = result.cdirFidelity;
+    const score = Math.round(fidelity.overallScore * 100);
+    const traceNote = fidelity.rasterFallbackCoverage > 0
+      ? ` Trace rasters retained for review (${Math.round(fidelity.rasterFallbackCoverage * 100)}% fallback coverage).`
+      : '';
+    const warnings = fidelity.warnings.length ? ` ${fidelity.warnings.length} fidelity warning(s) — review imported layers before saving.` : '';
+    setDone(`Imported ${validation.pageCount} editable page${validation.pageCount === 1 ? '' : 's'} from ${label} · fidelity ${score}%.${traceNote}${warnings}`);
+  }, [onApplySchema]);
+
   const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
     const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
     const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
@@ -317,29 +332,29 @@ export function ReferenceImportDialog({
     if (!raw) return;
     const asUrl = isHttpUrl(raw);
     const isJsx = !asUrl && looksLikeJsx(raw);
-    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw } : { html: raw };
+    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw, sourceFilename: codeSourceName ?? undefined } : { html: raw, sourceFilename: codeSourceName ?? undefined };
     setCodeBusy(true); setError(null); setDone(null);
     try {
       setStage(asUrl ? 'Rendering page…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
-      const { rasterDataUrl, grounded } = await renderAndGroundCode(input, invokeRenderSource);
-      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered — check the input.');
-      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
-      await reconstructFromScreenshot(rasterDataUrl, grounded);
+      const result = await renderAndGroundCode(input, invokeRenderSource);
+      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered — check the input.');
+      setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
+      applyCodeImportResult(result, codeSourceName ?? (asUrl ? 'URL' : isJsx ? 'JSX' : 'HTML'));
     } catch (e) {
-      setError(`Couldn't reconstruct from code: ${(e as Error).message}`);
+      setError(`Couldn't import from code: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [codeText, reconstructFromScreenshot]);
+  }, [codeText, codeSourceName, applyCodeImportResult]);
 
   // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
-  // .zip project is built + reconstructed immediately.
+  // .zip project is built + imported immediately.
   const onCodeFile = useCallback(async (f: File | null) => {
     if (!f) return;
     const flavor = codeFlavorForFile(f.name);
     if (!flavor) { toast.error('Drop a .html/.css/.jsx/.tsx file or a .zip project.'); return; }
     if (flavor !== 'zip') {
-      try { setCodeText(await f.text()); setError(null); setDone(null); } catch { /* ignore */ }
+      try { setCodeText(await f.text()); setCodeSourceName(f.name); setError(null); setDone(null); } catch { /* ignore */ }
       return;
     }
     setCodeBusy(true); setError(null); setDone(null);
@@ -347,16 +362,16 @@ export function ReferenceImportDialog({
       setStage('Building project…');
       const dataUrl = await fileToDataUrl(f);
       const zipBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-      const { rasterDataUrl, grounded } = await renderAndGroundCode({ zipBase64 }, invokeRenderSource);
-      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered from the project.');
-      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
-      await reconstructFromScreenshot(rasterDataUrl, grounded);
+      const result = await renderAndGroundCode({ zipBase64, sourceFilename: f.name }, invokeRenderSource);
+      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered from the project.');
+      setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
+      applyCodeImportResult(result, f.name);
     } catch (e) {
-      setError(`Couldn't reconstruct project: ${(e as Error).message}`);
+      setError(`Couldn't import project: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [reconstructFromScreenshot]);
+  }, [applyCodeImportResult]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -448,11 +463,17 @@ export function ReferenceImportDialog({
                 </Label>
                 <Textarea
                   value={codeText}
-                  onChange={(e) => setCodeText(e.target.value)}
+                  onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); }}
                   placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component — or use “File…” for a .jsx/.tsx/.html or a .zip project."
                   className="text-xs font-mono min-h-[64px]"
                   disabled={codeBusy || busy}
                 />
+                {codeSourceName && (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Badge variant="secondary" className="text-[10px]">Loaded file</Badge>
+                    <span className="truncate">{codeSourceName}</span>
+                  </div>
+                )}
                 <input
                   ref={codeFileRef}
                   type="file"
@@ -462,14 +483,14 @@ export function ReferenceImportDialog({
                 />
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] text-muted-foreground pl-1">
-                    render-source renders it (C1 HTML/CSS · C2 URL · C3 JSX · C4 zip), measures the DOM, then reconstructs faithfully.
+                    render-source renders it (C1 HTML/CSS · C2 URL · C3 JSX · C4 zip), measures the DOM, then imports editable CDIR pages with trace rasters for review.
                   </p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
                       <Upload className="h-4 w-4 mr-1" /> File…
                     </Button>
                     <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
-                      {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & reconstruct</>}
+                      {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & import</>}
                     </Button>
                   </div>
                 </div>
