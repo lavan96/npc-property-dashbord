@@ -1,6 +1,6 @@
 # PDF / Image → Editable Template — Reconstruction Architecture
 
-> Status: **R0–R4 implemented** (primitives · text geometry/overlap/colour · editable vectors · embedded fonts · images) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
+> Status: **R0–R5 implemented** (primitives · text geometry/overlap/colour · editable vectors · embedded fonts · images · grounded AI reconstruct) · Only R6 (fidelity loop) remains · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
 >
 > Goal: turn a PDF or image into a **faithful *and* editable** template — exact text (correctly
 > positioned, coloured, and typed), **editable vector icons/logos**, **captured fonts**, real
@@ -135,8 +135,15 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
   resolves the pdf.js image object (bitmap or raw kind+data), rasterises to PNG, uploads via the import
   edge function and emits an `image` overlay. `imagesFound` now reflects real extracted images.
   *Acceptance (met):* `imagesFound > 0`.
-- **R5 — AI reconstruct mode:** grounded semantic classification/mapping (no geometry invention);
-  split "redesign" off. *Acceptance:* image import preserves measured layout, never fabricates copy.
+- **R5 — AI reconstruct mode:** ✅ **done.** **Split:** `screenshot_to_block` no longer routes into the
+  design‑brief pipeline (line 494) — that pipeline is now explicitly the *redesign‑from‑inspiration* path
+  (`mode:'design'` / `'brief'`), surfaced as a distinct "Redesign" choice in the import dialog. **Grounding:**
+  the faithful path OCRs the image (Tesseract) into MEASURED text elements via the pure, unit‑tested
+  `imageGrounding` module (words→lines, scaled to a proportional page, stable ids) and passes them to the
+  agent as authoritative ground truth; the rewritten `screenshot_to_block` prompt forbids inventing /
+  rewriting / placeholdering copy and instructs the model to transcribe + place measured elements and only
+  *classify* their role. *Acceptance (met):* image import preserves measured layout and copy; redesign is
+  opt‑in. *Follow‑up:* the agent still 6pt‑grid‑snaps applied ops (minor); could be relaxed for faithful mode.
 - **R6 — Fidelity loop:** render‑diff + per‑region confidence + repair, via `PdfFidelityDiff`.
 
 ## 7. Trade‑offs & risks
