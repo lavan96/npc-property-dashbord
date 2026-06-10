@@ -416,6 +416,7 @@ verify_jwt = true
 
 [functions.manage-templates]
 verify_jwt = true
+request_timeout = 1500
 
 [functions.import-from-url]
 verify_jwt = true
