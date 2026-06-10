@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   extractPdfToTemplate,
@@ -60,6 +59,31 @@ function base64ToFile(b64: string, filename: string, type: string): File {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new File([bytes], filename, { type });
+}
+
+/** Downscale large screenshots before sending them to the design agent. */
+async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1800, jpegQuality = 0.86): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('image load failed'));
+    image.src = dataUrl;
+  });
+  const longest = Math.max(img.naturalWidth, img.naturalHeight);
+  if (!longest || (longest <= maxLongEdge && dataUrl.length < 3_500_000)) return dataUrl;
+
+  const scale = Math.min(1, maxLongEdge / longest);
+  const width = Math.max(1, Math.round(img.naturalWidth * scale));
+  const height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', jpegQuality);
 }
 
 /** Impure OCR pass: read measured text boxes from an image (R5 grounding). */
@@ -194,6 +218,8 @@ export function ReferenceImportDialog({
       } else {
         setStage('Reading image…');
         const dataUrl = await fileToDataUrl(file);
+        setStage('Optimising image for reconstruction…');
+        const agentImageDataUrl = await prepareImageForDesignAgent(dataUrl);
 
         // R5 — FAITHFUL path grounds the agent on measured OCR text so it
         // transcribes/places real copy instead of re-inventing it from a brief.
@@ -201,7 +227,7 @@ export function ReferenceImportDialog({
         let groundedReference: GroundedReference | undefined;
         if (imageMode === 'faithful') {
           setStage('Measuring text (OCR)…');
-          const ocr = await ocrImageWords(dataUrl);
+          const ocr = await ocrImageWords(agentImageDataUrl);
           if (ocr && ocr.words.length) groundedReference = groundOcrWords(ocr.words, ocr.width, ocr.height);
         }
 
@@ -212,18 +238,16 @@ export function ReferenceImportDialog({
           ? `Reconstructing faithfully…${groundedReference ? ` (${groundedReference.elements.length} measured elements)` : ''}`
           : 'Redesigning with AI… this can take ~20–40s');
 
-        const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
-          body: {
-            schema,
-            messages: [{ role: 'user', content: instruction }],
-            instruction,
-            activePageId,
-            mode: imageMode === 'faithful' ? 'screenshot_to_block' : 'design',
-            imageDataUrl: dataUrl,
-            ...(groundedReference ? { groundedReference } : {}),
-            sampleData,
-          },
-        });
+        const { data, error: invokeError } = await invokeSecureFunction('template-design-agent', {
+          schema,
+          messages: [{ role: 'user', content: instruction }],
+          instruction,
+          activePageId,
+          mode: imageMode === 'faithful' ? 'screenshot_to_block' : 'design',
+          imageDataUrl: agentImageDataUrl,
+          ...(groundedReference ? { groundedReference } : {}),
+          sampleData,
+        }, { timeoutMs: 180000 });
         if (invokeError) throw new Error(invokeError.message);
         if ((data as any)?.error) throw new Error((data as any).error);
         const reconstructed = (data as any)?.schema;
@@ -304,18 +328,16 @@ export function ReferenceImportDialog({
 
   const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
     const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
-    const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
-      body: {
-        schema,
-        messages: [{ role: 'user', content: instruction }],
-        instruction,
-        activePageId,
-        mode: 'screenshot_to_block',
-        imageDataUrl: dataUrl,
-        groundedReference: grounded,
-        sampleData,
-      },
-    });
+    const { data, error: invokeError } = await invokeSecureFunction('template-design-agent', {
+      schema,
+      messages: [{ role: 'user', content: instruction }],
+      instruction,
+      activePageId,
+      mode: 'screenshot_to_block',
+      imageDataUrl: dataUrl,
+      groundedReference: grounded,
+      sampleData,
+    }, { timeoutMs: 180000 });
     if (invokeError) throw new Error(invokeError.message);
     if ((data as any)?.error) throw new Error((data as any).error);
     const reconstructed = (data as any)?.schema;
@@ -375,16 +397,15 @@ export function ReferenceImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, or
-            <strong> paste a link</strong> (Google Drive, Docs/Slides, Dropbox, OneDrive, Figma…). PDFs are
-            re-synced with selectable fidelity; images are <strong>faithfully reconstructed</strong> (OCR-grounded, keeps your
-            copy) or redesigned from inspiration. The result is validated before it touches your template.
+            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, paste a link,
+            or use the dedicated <strong>Code / ZIP template import</strong> section below. PDFs are re-synced with selectable
+            fidelity; images are faithfully reconstructed; code/ZIP imports are rendered through CDIR into editable pages.
           </DialogDescription>
         </DialogHeader>
 
@@ -456,16 +477,31 @@ export function ReferenceImportDialog({
             )}
 
             {!file && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Code2 className="h-3.5 w-3.5" /> …or reconstruct a web page, component, or project
-                  <Badge variant="outline" className="text-[10px]">beta</Badge>
-                </Label>
+              <Card
+                className="space-y-3 border-primary/25 bg-primary/5 p-4"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); onCodeFile(e.dataTransfer.files?.[0] ?? null); }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <Code2 className="h-4 w-4 text-primary" /> Code / ZIP template import
+                      <Badge variant="outline" className="text-[10px]">beta</Badge>
+                    </Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Upload a .zip project or paste a URL, HTML, CSS, JSX, TSX, Vue, or Svelte source. We render it, measure the DOM,
+                      and import editable CDIR pages with trace rasters for review.
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
+                    <Upload className="h-4 w-4 mr-1" /> Upload code / ZIP
+                  </Button>
+                </div>
                 <Textarea
                   value={codeText}
                   onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); }}
-                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component — or use “File…” for a .jsx/.tsx/.html or a .zip project."
-                  className="text-xs font-mono min-h-[64px]"
+                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component. For multi-page projects, upload a .zip."
+                  className="text-xs font-mono min-h-[84px] bg-background"
                   disabled={codeBusy || busy}
                 />
                 {codeSourceName && (
@@ -481,20 +517,15 @@ export function ReferenceImportDialog({
                   className="hidden"
                   onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
                 />
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] text-muted-foreground pl-1">
-                    render-source renders it (C1 HTML/CSS · C2 URL · C3 JSX · C4 zip), measures the DOM, then imports editable CDIR pages with trace rasters for review.
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: drag a project ZIP onto this panel to import multiple rendered pages instead of copy-pasting one page of code.
                   </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
-                      <Upload className="h-4 w-4 mr-1" /> File…
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
-                      {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & import</>}
-                    </Button>
-                  </div>
+                  <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
+                    {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & import</>}
+                  </Button>
                 </div>
-              </div>
+              </Card>
             )}
 
             {file && kind === 'pdf' && (
