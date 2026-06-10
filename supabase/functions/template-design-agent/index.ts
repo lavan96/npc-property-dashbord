@@ -487,12 +487,21 @@ Deno.serve(async (req) => {
     // Re-roll support: client can pass a cached brief to skip the vision stage.
     const incomingBrief: DesignBrief | null = body.brief && typeof body.brief === 'object' ? body.brief : null;
     const briefStage: 'analyze_only' | 'synthesize_only' | 'full' = body.briefStage || 'full';
+    // R5 — measured OCR ground truth for a FAITHFUL screenshot reconstruction.
+    const groundedReference: { pageWidth?: number; pageHeight?: number; elements?: any[] } | null =
+      body.groundedReference && typeof body.groundedReference === 'object' && Array.isArray(body.groundedReference.elements)
+        ? body.groundedReference
+        : null;
 
     // Decide whether to run the Design Brief pipeline.
-    // Default: any time an image is attached (unless caller explicitly picked another mode).
+    // R5 split: the brief pipeline is the REDESIGN path (it reinterprets a
+    // reference into a new layout). Faithful reconstruction ('screenshot_to_block')
+    // must NOT route here — it would discard measured text/positions and let the
+    // model re-invent copy. Only explicit 'brief'/'design'-with-image redesigns,
+    // or a re-roll of a cached brief, use the brief pipeline.
     const useBriefPipeline =
       mode === 'brief' || incomingBrief !== null ||
-      (!!imageDataUrl && (mode === 'design' || mode === 'screenshot_to_block'));
+      (!!imageDataUrl && mode === 'design');
 
     // Diagnostic logging for image/vision flow.
     const imgKb = imageDataUrl ? Math.round(imageDataUrl.length / 1024) : 0;
@@ -514,9 +523,22 @@ Deno.serve(async (req) => {
 You are doing a DECISIVE polish pass on the active page (id=${activePageId}).
 Improve in place: refine typographic hierarchy, fix alignment to a 12pt grid, tighten spacing, ensure colour harmony via tokens, upgrade copywriting clarity. PREFER update_block / update_overlay on existing elements. Only add new elements if a genuine gap exists (e.g. missing section title, missing accent rule). Do NOT duplicate elements that already exist. Cap at ~15 ops. Do NOT ask the user — just execute.`;
     } else if (mode === 'screenshot_to_block') {
-      modeAddendum = `\n\n[SCREENSHOT-TO-BLOCK MODE]
-The user has attached an image showing a design they want recreated as native blocks/overlays on the active page (id=${activePageId}).
-FIRST emit a 'clear_page' op for page ${activePageId} to remove any existing blocks (the screenshot replaces them). THEN analyse the image: identify sections, headings, body copy, KPI numbers, accent shapes, images. Recreate the layout faithfully using add_block / add_overlay operations. Match colours via tokens when possible, otherwise hex. Approximate positions in PDF points on a 595×842 canvas (or the active page's actual size). Aim for 1:1 visual parity; ignore content you cannot make out.`;
+      // R5 — FAITHFUL reconstruction. This is a transcription/placement task, NOT
+      // a redesign: text content + positions come from measurement, never invention.
+      const groundingBlock = groundedReference && groundedReference.elements!.length
+        ? `\n\nMEASURED TEXT ELEMENTS — OCR ground truth on a ${groundedReference.pageWidth ?? '?'}×${groundedReference.pageHeight ?? '?'}pt page (top-left origin). These are AUTHORITATIVE for text and position:\n${
+            groundedReference.elements!.slice(0, 160).map((e: any) =>
+              `[${e.id}] x=${e.x} y=${e.y} w=${e.width} h=${e.height} size≈${e.fontSize}pt :: ${JSON.stringify(String(e.text ?? '')).slice(0, 240)}`,
+            ).join('\n')
+          }`
+        : '';
+      modeAddendum = `\n\n[SCREENSHOT-TO-BLOCK MODE — FAITHFUL RECONSTRUCTION]
+Recreate the attached reference on the active page (id=${activePageId}) as native editable blocks/overlays. This is a FAITHFUL reconstruction, NOT a redesign.
+- FIRST emit a 'clear_page' op for page ${activePageId} (the reference replaces existing blocks).
+- TEXT IS GROUND TRUTH. ${groundingBlock ? 'Use the MEASURED TEXT ELEMENTS below as the source of truth: transcribe each element\'s text EXACTLY (fix only obvious OCR garbles) and place ONE text overlay at its given x/y/width/height.' : 'Transcribe text verbatim from the image and place it where it appears.'} Do NOT invent, summarise, rewrite, translate, or pad copy. Do NOT replace real text with "Lorem ipsum" or generic placeholders.
+- You MAY classify each text element's role (heading / subhead / body / label / price) to choose a sensible fontWeight and size, but keep its position and exact words from the measurements/image.
+- From the IMAGE, reproduce only NON-TEXT design: background and section fills, accent shapes/rules/dividers, and image regions — at their observed positions. Prefer tokens for colour, else hex.
+- Canvas is the active page's actual size${groundedReference?.pageWidth ? ` (${groundedReference.pageWidth}×${groundedReference.pageHeight}pt)` : ''}. Aim for 1:1 visual parity. Ignore only genuinely illegible marks; never fabricate to fill space.${groundingBlock}`;
     } else if (mode === 'inline_text') {
       modeAddendum = `\n\n[INLINE TEXT MODE]
 Modify ONLY the selected text overlay (overlay id=${selectedOverlayId}, block id=${selectedBlockId}, page id=${activePageId}). Emit exactly one update_overlay operation patching the "content" field. Do not change anything else. Preserve bindings ({{...}} tokens) unless the user explicitly asks to remove them.`;

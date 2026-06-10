@@ -29,7 +29,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<FidelityMode>('hybrid');
+  const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -208,6 +208,9 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <Stat label="Pages" value={result.pageCount} />
                 <Stat label="Text overlays" value={result.fidelityReport.textBlocks} />
+                <Stat label="Vector groups" value={result.fidelityReport.vectors} />
+                <Stat label="Images" value={result.fidelityReport.images} />
+                <Stat label="Fonts embedded" value={result.fidelityReport.fontsEmbedded} />
                 <Stat label="Rasterised" value={result.fidelityReport.rasterizedPages} />
                 <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
               </div>
