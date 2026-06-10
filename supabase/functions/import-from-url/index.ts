@@ -92,42 +92,63 @@ async function safeFetch(startUrl: string): Promise<{ res: Response; finalUrl: U
   throw new Error('Too many redirects');
 }
 
-/** Best-effort Figma → PNG export of the first page (needs FIGMA_TOKEN). */
-async function figmaExport(key: string, cors: Record<string, string>): Promise<Response | null> {
+interface RenderImage { dataBase64: string; contentType: string }
+
+/** Export every top-level Figma frame as its own PNG (needs FIGMA_TOKEN). */
+async function figmaExportImages(key: string): Promise<RenderImage[] | null> {
   const token = Deno.env.get('FIGMA_TOKEN');
   if (!token || !key) return null;
   try {
-    const fileRes = await fetch(`https://api.figma.com/v1/files/${key}?depth=1`, { headers: { 'X-Figma-Token': token } });
+    const fileRes = await fetch(`https://api.figma.com/v1/files/${key}?depth=2`, { headers: { 'X-Figma-Token': token } });
     if (!fileRes.ok) return null;
     const file = await fileRes.json();
-    const firstPage = file?.document?.children?.[0];
-    const nodeId: string | undefined = firstPage?.id;
-    const name: string = file?.name || 'Figma import';
-    if (!nodeId) return null;
-    const imgRes = await fetch(`https://api.figma.com/v1/images/${key}?ids=${encodeURIComponent(nodeId)}&format=png&scale=2`, { headers: { 'X-Figma-Token': token } });
+    const pages: any[] = file?.document?.children ?? [];
+    const frameTypes = new Set(['FRAME', 'COMPONENT', 'COMPONENT_SET', 'SECTION']);
+    const ids: string[] = [];
+    for (const pg of pages) {
+      for (const node of (pg?.children ?? [])) {
+        if (node?.id && frameTypes.has(node.type)) ids.push(node.id);
+      }
+    }
+    const targetIds = (ids.length ? ids : pages.map((p) => p?.id).filter(Boolean)).slice(0, 60);
+    if (!targetIds.length) return null;
+    const imgRes = await fetch(`https://api.figma.com/v1/images/${key}?ids=${encodeURIComponent(targetIds.join(','))}&format=png&scale=2`, { headers: { 'X-Figma-Token': token } });
     if (!imgRes.ok) return null;
-    const imgJson = await imgRes.json();
-    const imageUrl: string | undefined = imgJson?.images?.[nodeId];
-    if (!imageUrl) return null;
-    const { res, finalUrl } = await safeFetch(imageUrl);
-    if (!res.ok) return null;
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.byteLength > MAX_BYTES) return null;
-    return json({
-      kind: 'image',
-      provider: 'figma',
-      contentType: res.headers.get('content-type') || 'image/png',
-      filename: `${name}.png`,
-      dataBase64: base64(buf),
-      finalUrl: finalUrl.toString(),
-    }, 200, cors);
+    const map = (await imgRes.json())?.images ?? {};
+    const out: RenderImage[] = [];
+    for (const id of targetIds) {
+      const u: string | undefined = map[id];
+      if (!u) continue;
+      try {
+        const { res } = await safeFetch(u);
+        if (!res.ok) continue;
+        const buf = new Uint8Array(await res.arrayBuffer());
+        if (buf.byteLength > MAX_BYTES) continue;
+        out.push({ dataBase64: base64(buf), contentType: res.headers.get('content-type') || 'image/png' });
+      } catch { /* skip frame */ }
+    }
+    return out.length ? out : null;
   } catch (_e) {
     return null;
   }
 }
 
-/** Screenshot an interactive page via the headless render microservice. */
-async function renderViaService(url: string, cors: Record<string, string>): Promise<Response | null> {
+/** Best-effort slide selectors per provider (env-overridable, comma-separated). */
+function selectorsFor(provider: string): string[] {
+  const env = (k: string) => (Deno.env.get(k) || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (provider === 'canva') {
+    const e = env('RENDER_SELECTORS_CANVA');
+    return e.length ? e : ['[data-slide]', '[aria-roledescription="slide"]', '[class*="slide" i]'];
+  }
+  if (provider === 'gamma') {
+    const e = env('RENDER_SELECTORS_GAMMA');
+    return e.length ? e : ['[data-card-id]', '[class*="card" i]', 'main section'];
+  }
+  return [];
+}
+
+/** Screenshot an interactive page (optionally split into slides) via the render service. */
+async function renderImages(url: string, selectors: string[]): Promise<RenderImage[] | null> {
   const base = Deno.env.get('RENDER_SERVICE_URL');
   if (!base) return null;
   try {
@@ -138,25 +159,23 @@ async function renderViaService(url: string, cors: Record<string, string>): Prom
   try {
     const key = Deno.env.get('RENDER_API_KEY');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 45000);
+    const timer = setTimeout(() => controller.abort(), 75000);
     let r: Response;
     try {
       r = await fetch(base.replace(/\/$/, '') + '/render', {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json', ...(key ? { 'x-render-key': key } : {}) },
-        body: JSON.stringify({ url, width: 1280, scale: 2, waitMs: 3500 }),
+        body: JSON.stringify({ url, width: 1280, scale: 2, waitMs: 3500, selectors }),
       });
     } finally {
       clearTimeout(timer);
     }
     if (!r.ok) return null;
     const j = await r.json().catch(() => null);
-    if (!j?.dataBase64) return null;
-    return json({
-      kind: 'image', provider: 'render', contentType: j.contentType || 'image/png',
-      filename: 'render.png', dataBase64: j.dataBase64,
-    }, 200, cors);
+    const imgs: any[] = Array.isArray(j?.images) ? j.images : [];
+    const out = imgs.filter((i) => i?.dataBase64).map((i) => ({ dataBase64: String(i.dataBase64), contentType: i.contentType || 'image/png' }));
+    return out.length ? out : null;
   } catch (_e) {
     return null;
   }
@@ -179,22 +198,22 @@ Deno.serve(async (req) => {
     const renderUrl: string = String(body.renderUrl || fetchUrl).trim();
     if (!fetchUrl) return json({ error: 'Missing url' }, 400, cors);
 
-    // Figma: programmatic frame export (token) → headless render → guidance.
+    // Figma: per-frame export (token) → headless render → guidance.
     if (provider === 'figma') {
-      const exported = await figmaExport(resourceId, cors);
-      if (exported) return exported;
-      const rendered = await renderViaService(renderUrl, cors);
-      if (rendered) return rendered;
+      const figImgs = await figmaExportImages(resourceId);
+      if (figImgs) return json({ kind: 'image', provider, images: figImgs, filename: 'figma.png' }, 200, cors);
+      const rendered = await renderImages(renderUrl, []);
+      if (rendered) return json({ kind: 'image', provider, images: rendered, filename: 'figma.png' }, 200, cors);
       return json({
         kind: 'needs_export', provider,
         guidance: 'This Figma link couldn’t be imported automatically. Set FIGMA_TOKEN (frame export) or RENDER_SERVICE_URL (page render), or use File → Export → PDF and paste that link. The file must be shared as “Anyone with the link”.',
       }, 200, cors);
     }
 
-    // Canva / Gamma have no public file — render the public page to an image.
+    // Canva / Gamma have no public file — render the public page, split into slides.
     if (provider === 'canva' || provider === 'gamma') {
-      const rendered = await renderViaService(renderUrl, cors);
-      if (rendered) return rendered;
+      const rendered = await renderImages(renderUrl, selectorsFor(provider));
+      if (rendered) return json({ kind: 'image', provider, images: rendered, filename: `${provider}.png` }, 200, cors);
       return json({
         kind: 'needs_export', provider,
         guidance: `${provider === 'canva' ? 'Canva' : 'Gamma'} has no public file link and page rendering isn’t configured. Export to PDF (or PNG) and paste that link, or drop the file.`,
@@ -220,8 +239,8 @@ Deno.serve(async (req) => {
 
     // A web page (not a file) — render it to an image if the service is configured.
     if (contentType.includes('text/html')) {
-      const rendered = await renderViaService(finalUrl.toString(), cors);
-      if (rendered) return rendered;
+      const rendered = await renderImages(finalUrl.toString(), []);
+      if (rendered) return json({ kind: 'image', provider, images: rendered, filename: 'page.png' }, 200, cors);
       return json({
         kind: 'needs_export', provider,
         finalUrl: finalUrl.toString(),

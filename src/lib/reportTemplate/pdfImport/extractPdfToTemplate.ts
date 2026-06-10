@@ -553,7 +553,10 @@ export async function extractPdfToTemplate(
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
         rasterCanvas = canvas;
 
-        if (mode === 'pixel') {
+        // Keep the rasterised page as the background for both pixel and OCR
+        // modes — so OCR pages (scanned PDFs, rendered decks) show the original
+        // image *and* carry editable recognised-text overlays, not blank pages.
+        if (mode === 'pixel' || mode === 'ocr') {
           const blob: Blob = await new Promise((resolve) =>
             canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
           );

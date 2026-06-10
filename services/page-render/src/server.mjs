@@ -31,6 +31,47 @@ async function getBrowser() {
   return browserPromise;
 }
 
+/** One capped-height capture of the whole page (the fallback / single mode). */
+async function captureSingle(page, opts) {
+  const scrollH = await page.evaluate(() => Math.max(
+    document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0, 900,
+  )).catch(() => 900);
+  const height = Math.min(scrollH, opts.maxHeight);
+  await page.setViewportSize({ width: opts.width, height });
+  await page.waitForTimeout(250);
+  const buf = await page.screenshot({ type: 'png', fullPage: false });
+  return { dataBase64: buf.toString('base64'), width: opts.width, height };
+}
+
+/** Screenshot each slide-sized element matching the selectors → one image each. */
+async function captureSegments(page, opts) {
+  const vp = page.viewportSize() || { width: opts.width, height: 900 };
+  const found = [];
+  const seen = new Set();
+  for (const sel of opts.selectors) {
+    let handles = [];
+    try { handles = await page.$$(sel); } catch { continue; }
+    for (const h of handles) {
+      if (found.length >= opts.maxSegments) break;
+      const box = await h.boundingBox().catch(() => null);
+      if (!box) continue;
+      // Keep only slide-sized blocks (avoids matching tiny chrome/labels).
+      if (box.width < vp.width * 0.4 || box.height < 140) continue;
+      const key = `${Math.round(box.x)}|${Math.round(box.y)}|${Math.round(box.width)}|${Math.round(box.height)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try {
+        await h.scrollIntoViewIfNeeded({ timeout: 3000 });
+        const buf = await h.screenshot({ type: 'png' });
+        found.push({ y: box.y, dataBase64: buf.toString('base64'), width: Math.round(box.width), height: Math.round(box.height) });
+      } catch { /* skip this element */ }
+    }
+    if (found.length >= opts.maxSegments) break;
+  }
+  found.sort((a, b) => a.y - b.y); // reading order, top → bottom
+  return found.map(({ y, ...rest }) => rest);
+}
+
 async function renderPage(rawUrl, opts) {
   const target = assertPublicHttpUrl(rawUrl);
   const browser = await getBrowser();
@@ -60,16 +101,12 @@ async function renderPage(rawUrl, opts) {
     }
     if (opts.waitMs) await page.waitForTimeout(opts.waitMs);
 
-    // Cap the captured height so a long page can't produce a huge image.
-    const scrollH = await page.evaluate(() => Math.max(
-      document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0, 900,
-    )).catch(() => 900);
-    const height = Math.min(scrollH, opts.maxHeight);
-    await page.setViewportSize({ width: opts.width, height });
-    await page.waitForTimeout(250);
-
-    const buf = await page.screenshot({ type: 'png', fullPage: false });
-    return { buf, width: opts.width, height };
+    // Slide/frame splitting: capture each matching element; else one page.
+    if (opts.selectors.length) {
+      const segs = await captureSegments(page, opts);
+      if (segs.length >= 1) return { images: segs, mode: 'segments' };
+    }
+    return { images: [await captureSingle(page, opts)], mode: 'single' };
   } finally {
     await context.close().catch(() => {});
   }
@@ -99,8 +136,8 @@ const server = http.createServer((req, res) => {
     let opts;
     try { opts = parseOptions(parsed); } catch (e) { return send(res, 400, { error: String(e?.message || e) }); }
     try {
-      const { buf, width, height } = await renderPage(parsed.url, opts);
-      return send(res, 200, { dataBase64: buf.toString('base64'), contentType: 'image/png', width, height });
+      const { images, mode } = await renderPage(parsed.url, opts);
+      return send(res, 200, { images, mode, contentType: 'image/png' });
     } catch (e) {
       return send(res, 400, { error: String(e?.message || e) });
     }

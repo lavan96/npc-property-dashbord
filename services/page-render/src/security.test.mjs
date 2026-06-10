@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { isPrivateHost, assertPublicHttpUrl, parseOptions } from './security.mjs';
+import { isPrivateHost, assertPublicHttpUrl, parseOptions, sanitizeSelectors } from './security.mjs';
 
 test('isPrivateHost blocks local/private/reserved', () => {
   for (const h of ['localhost', '127.0.0.1', '10.1.2.3', '192.168.0.1', '172.20.0.1', '169.254.169.254', '0.0.0.0', '::1', 'svc.internal', 'box.local']) {
@@ -23,7 +23,16 @@ test('assertPublicHttpUrl rejects non-http and private', () => {
 });
 
 test('parseOptions clamps to safe bounds with defaults', () => {
-  assert.deepEqual(parseOptions({}), { width: 1280, scale: 2, waitMs: 3000, maxHeight: 12000 });
-  assert.deepEqual(parseOptions({ width: 99999, scale: 99, waitMs: -5, maxHeight: 999999 }), { width: 2000, scale: 3, waitMs: 0, maxHeight: 20000 });
-  assert.deepEqual(parseOptions({ width: 50, maxHeight: 100 }), { width: 320, scale: 2, waitMs: 3000, maxHeight: 600 });
+  assert.deepEqual(parseOptions({}), { width: 1280, scale: 2, waitMs: 3000, maxHeight: 12000, selectors: [], maxSegments: 60 });
+  assert.deepEqual(parseOptions({ width: 99999, scale: 99, waitMs: -5, maxHeight: 999999, maxSegments: 9999 }),
+    { width: 2000, scale: 3, waitMs: 0, maxHeight: 20000, selectors: [], maxSegments: 80 });
+  assert.deepEqual(parseOptions({ width: 50, maxHeight: 100 }),
+    { width: 320, scale: 2, waitMs: 3000, maxHeight: 600, selectors: [], maxSegments: 60 });
+});
+
+test('sanitizeSelectors filters junk and caps count', () => {
+  assert.deepEqual(sanitizeSelectors(['.slide', '[data-slide]', '  section  ']), ['.slide', '[data-slide]', 'section']);
+  assert.deepEqual(sanitizeSelectors(['<script>', '{bad}', '', 123, null]), []);
+  assert.equal(sanitizeSelectors(Array.from({ length: 30 }, (_, i) => `.s${i}`)).length, 12);
+  assert.deepEqual(sanitizeSelectors('not-array'), []);
 });

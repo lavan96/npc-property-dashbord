@@ -39,6 +39,17 @@ are configured; Figma additionally tries the REST‑API frame export first when 
 Deploy/config: see `services/page-render/README.md`. Without the service, these links fall back to
 "export to PDF" guidance.
 
+## Multi‑page decks
+Decks import as **one page per slide**, not one tall image:
+- **Figma** (with `FIGMA_TOKEN`) exports each top‑level frame as its own image.
+- **Canva/Gamma/any page** are split by the render service capturing each *slide‑sized* element that
+  matches the provider selectors (env‑overridable: `RENDER_SELECTORS_CANVA`, `RENDER_SELECTORS_GAMMA`);
+  if nothing matches it falls back to a single capture.
+- The client assembles the slide images into a multi‑page PDF (`pdf-lib`, one image per page) and runs
+  it through `extractPdfToTemplate`; **OCR mode** is auto‑selected so each page keeps the slide image as
+  its background *and* gets editable recognised‑text overlays.
+
 ## Not yet
-- Per‑slide/per‑frame splitting of multi‑page decks (currently a single capped‑height capture).
+- Canva/Gamma slide selectors are best‑effort heuristics (their DOM is obfuscated) — tune via the
+  `RENDER_SELECTORS_*` env vars if a particular deck doesn't split cleanly.
 - DNS‑rebinding is mitigated at the hostname level only (no IP pinning) — pair with egress firewalling.

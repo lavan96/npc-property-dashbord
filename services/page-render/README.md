@@ -11,9 +11,12 @@ Supabase Deno edge function (no headless browser), so it deploys as its own cont
 ## API
 - `GET /health` → `{ ok: true }`
 - `POST /render` (header `x-render-key: $RENDER_API_KEY`)
-  - body: `{ "url": "https://…", "width"?: 1280, "scale"?: 2, "waitMs"?: 3000, "maxHeight"?: 12000 }`
-  - 200: `{ "dataBase64": "…", "contentType": "image/png", "width": 1280, "height": 5400 }`
+  - body: `{ "url": "https://…", "width"?: 1280, "scale"?: 2, "waitMs"?: 3000, "maxHeight"?: 12000, "selectors"?: string[], "maxSegments"?: 60 }`
+  - 200: `{ "images": [{ "dataBase64": "…", "width": 1280, "height": 720 }, …], "mode": "single" | "segments", "contentType": "image/png" }`
   - 4xx: `{ "error": "…" }`
+  - **Slide splitting:** when `selectors` are supplied, each *slide-sized* element matching them is
+    captured as its own image (reading order), so a deck imports as one page per slide. If nothing
+    matches, it falls back to a single capped-height capture.
 
 ## Security
 - **Shared-secret auth** via `x-render-key` (`RENDER_API_KEY`).

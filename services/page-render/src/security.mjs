@@ -41,6 +41,15 @@ const clampNum = (v, lo, hi, dflt) => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
 };
 
+/** Keep only safe-looking CSS selectors (no angle brackets/braces), capped. */
+export function sanitizeSelectors(v) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((s) => typeof s === 'string' && s.trim().length > 0 && s.length <= 200 && !/[<>{}]/.test(s))
+    .map((s) => s.trim())
+    .slice(0, 12);
+}
+
 /** Clamp render options into safe bounds. */
 export function parseOptions(body) {
   const b = body || {};
@@ -49,5 +58,7 @@ export function parseOptions(body) {
     scale: clampNum(b.scale, 1, 3, 2),
     waitMs: clampInt(b.waitMs, 0, 15000, 3000),
     maxHeight: clampInt(b.maxHeight, 600, 20000, 12000),
+    selectors: sanitizeSelectors(b.selectors),
+    maxSegments: clampInt(b.maxSegments, 1, 80, 60),
   };
 }
