@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2,
+  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -39,8 +39,10 @@ import {
 } from '@/lib/reportTemplate/referenceImport';
 import { groundOcrWords, type GroundedReference, type OcrWord } from '@/lib/reportTemplate/imageGrounding';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
+import { renderAndGroundCode } from '@/lib/reportTemplate/ingestion/codeIngest';
 
 type ImageMode = 'faithful' | 'redesign';
 
@@ -117,15 +119,17 @@ export function ReferenceImportDialog({
   const [dragging, setDragging] = useState(false);
   const [url, setUrl] = useState('');
   const [urlBusy, setUrlBusy] = useState(false);
+  const [codeText, setCodeText] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
 
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false);
   };
-  const handleClose = (v: boolean) => { if (busy) return; if (!v) reset(); onOpenChange(v); };
+  const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
   const onFile = useCallback((f: File | null) => {
     if (!f) return;
@@ -249,6 +253,54 @@ export function ReferenceImportDialog({
     }
   }, [url, onFile]);
 
+  // Raw-codebase reconstruct (plan WS1): render HTML/CSS or a live URL via the
+  // render-source service, ground the DOM box tree, then reuse the exact
+  // `screenshot_to_block` path the image reconstruct uses (zero new pipeline).
+  const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
+    const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
+    const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
+      body: {
+        schema,
+        messages: [{ role: 'user', content: instruction }],
+        instruction,
+        activePageId,
+        mode: 'screenshot_to_block',
+        imageDataUrl: dataUrl,
+        groundedReference: grounded,
+        sampleData,
+      },
+    });
+    if (invokeError) throw new Error(invokeError.message);
+    if ((data as any)?.error) throw new Error((data as any).error);
+    const reconstructed = (data as any)?.schema;
+    const validation = validateReconstructedSchema(reconstructed);
+    if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
+    onApplySchema?.(parseTemplate(reconstructed));
+    const warnings: string[] = (data as any)?.warnings ?? [];
+    setDone(`Reconstructed ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'} from ${grounded.elements.length} measured element(s).${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
+  }, [schema, activePageId, sampleData, onApplySchema]);
+
+  const startCodeReconstruct = useCallback(async () => {
+    const raw = codeText.trim();
+    if (!raw) return;
+    const asUrl = isHttpUrl(raw);
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      setStage(asUrl ? 'Rendering page…' : 'Rendering HTML…');
+      const { rasterDataUrl, grounded } = await renderAndGroundCode(
+        asUrl ? { url: raw } : { html: raw },
+        (name, payload) => invokeSecureFunction(name, payload as any) as Promise<{ data: any; error: { message: string } | null }>,
+      );
+      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered — check the URL/HTML.');
+      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
+      await reconstructFromScreenshot(rasterDataUrl, grounded);
+    } catch (e) {
+      setError(`Couldn't reconstruct from code: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [codeText, reconstructFromScreenshot]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
@@ -328,6 +380,30 @@ export function ReferenceImportDialog({
                       : urlInfo.expectedKind === 'pdf' ? ' — exports to PDF.' : ''}
                   </p>
                 )}
+              </div>
+            )}
+
+            {!file && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Code2 className="h-3.5 w-3.5" /> …or reconstruct a web page / HTML
+                  <Badge variant="outline" className="text-[10px]">beta</Badge>
+                </Label>
+                <Textarea
+                  value={codeText}
+                  onChange={(e) => setCodeText(e.target.value)}
+                  placeholder="Paste a live page URL (https://…) or raw HTML/CSS — rendered headless, then reconstructed like a screenshot."
+                  className="text-xs font-mono min-h-[64px]"
+                  disabled={codeBusy || busy}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground pl-1">
+                    Renders via render-source (C1 HTML/CSS · C2 live URL), measures the DOM, then reconstructs faithfully.
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
+                    {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & reconstruct</>}
+                  </Button>
+                </div>
               </div>
             )}
 

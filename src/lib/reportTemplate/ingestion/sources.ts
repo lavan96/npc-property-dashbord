@@ -77,9 +77,11 @@ export const codeSource: IngestionSource = {
       kind: 'code',
       strategy: 'render-source',
       codeTier,
-      // The render-source headless service is not built yet (plan WS1 §3.2).
+      // The render-source service + edge function are shipped; runtime
+      // availability depends on RENDER_SOURCE_URL/TOKEN being configured, which
+      // this pure planner can't see — callers detect the 503 at invoke time.
       available: false,
-      note: `Raw-codebase ingestion (${codeTier}) renders to a page + DOM box tree via the render-source service, then reuses the image grounded-classify pipeline. Pending: render-source.`,
+      note: `Raw-codebase ingestion (${codeTier}) renders to a page + DOM box tree via the render-source service, then reuses the image grounded-classify pipeline. Enable by deploying render-source and setting RENDER_SOURCE_URL/TOKEN.`,
     };
   },
 };
