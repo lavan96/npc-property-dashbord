@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2,
+  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -39,10 +39,20 @@ import {
 } from '@/lib/reportTemplate/referenceImport';
 import { groundOcrWords, type GroundedReference, type OcrWord } from '@/lib/reportTemplate/imageGrounding';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
+import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
+import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
+import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
+import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
+import { groundDomBoxTree } from '@/lib/reportTemplate/codeGrounding';
 
 type ImageMode = 'faithful' | 'redesign';
+
+/** Adapter: secureInvoke → the InvokeFn shape renderAndGroundCode expects. */
+const invokeRenderSource = (name: string, payload: unknown) =>
+  invokeSecureFunction(name, payload as any) as Promise<{ data: any; error: { message: string } | null }>;
 
 /** base64 → File (for documents fetched by URL via the import-from-url function). */
 function base64ToFile(b64: string, filename: string, type: string): File {
@@ -105,10 +115,12 @@ export function ReferenceImportDialog({
 }: Props) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const codeFileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<ReferenceKind>('unsupported');
   const [mode, setMode] = useState<FidelityMode>('hybrid');
   const [imageMode, setImageMode] = useState<ImageMode>('faithful'); // R5: faithful reconstruct by default
+  const [pdfClaude, setPdfClaude] = useState(false); // §7a: route the PDF straight to Claude
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [stage, setStage] = useState<string | null>(null);
@@ -117,15 +129,17 @@ export function ReferenceImportDialog({
   const [dragging, setDragging] = useState(false);
   const [url, setUrl] = useState('');
   const [urlBusy, setUrlBusy] = useState(false);
+  const [codeText, setCodeText] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
 
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false); setPdfClaude(false);
   };
-  const handleClose = (v: boolean) => { if (busy) return; if (!v) reset(); onOpenChange(v); };
+  const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
   const onFile = useCallback((f: File | null) => {
     if (!f) return;
@@ -157,7 +171,15 @@ export function ReferenceImportDialog({
     if (!file) return;
     setBusy(true); setError(null);
     try {
-      if (kind === 'pdf') {
+      if (kind === 'pdf' && pdfClaude) {
+        // §7a — send the PDF straight to Claude (best for scanned/image-only PDFs).
+        setStage('Reading the PDF with Claude…');
+        const dataUrl = await fileToDataUrl(file);
+        const pdfBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+        const res = await reconstructPdfWithClaude({ pdfBase64, schema, activePageId, sampleData }, invokeRenderSource);
+        onApplySchema?.(res.schema);
+        setDone(`Reconstructed ${res.pageCount} page${res.pageCount === 1 ? '' : 's'} from the PDF${res.modelUsed ? ` · ${res.modelUsed}` : ''}.${res.warnings.length ? ` ${res.warnings.length} warning(s).` : ''}`);
+      } else if (kind === 'pdf') {
         setStage('Reading PDF…');
         await extractPdfToTemplate(file, {
           mode,
@@ -208,15 +230,16 @@ export function ReferenceImportDialog({
         if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
         onApplySchema?.(parseTemplate(reconstructed));
         const warnings: string[] = (data as any)?.warnings ?? [];
+        const modelUsed = (data as any)?.modelUsed;
         const measured = groundedReference ? ` from ${groundedReference.elements.length} measured text element(s)` : '';
-        setDone(`${imageMode === 'faithful' ? 'Reconstructed' : 'Redesigned'} ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'}${measured}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
+        setDone(`${imageMode === 'faithful' ? 'Reconstructed' : 'Redesigned'} ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'}${measured}${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
       }
     } catch (e) {
       setError((e as Error).message || 'Import failed.');
     } finally {
       setBusy(false); setStage(null); setProgress(null);
     }
-  }, [file, kind, mode, imageMode, templateName, templateId, user?.id, schema, activePageId, sampleData, onResynced, onApplySchema]);
+  }, [file, kind, mode, imageMode, pdfClaude, templateName, templateId, user?.id, schema, activePageId, sampleData, onResynced, onApplySchema]);
 
   // Import by link: normalise the share URL (tested), fetch server-side (CORS +
   // SSRF), then drop the returned PDF/image into the normal file flow.
@@ -238,6 +261,18 @@ export function ReferenceImportDialog({
       if (d?.error) throw new Error(d.error);
       if (d?.kind === 'needs_export') { setError(d.guidance ?? 'This link needs a PDF/image export.'); return; }
       if (!d?.dataBase64) throw new Error('No file returned from that link.');
+      // §7d — Figma: ground on the real node tree (hierarchy-accurate) when present.
+      if (d.provider === 'figma' && d.figmaFrame) {
+        try {
+          const grounded = groundDomBoxTree(figmaNodesToBoxTree(d.figmaFrame));
+          if (grounded.elements.length) {
+            const pngDataUrl = `data:${d.contentType || 'image/png'};base64,${d.dataBase64}`;
+            setUrl('');
+            await reconstructFromScreenshot(pngDataUrl, grounded);
+            return;
+          }
+        } catch (e) { console.warn('[figma] hierarchy grounding failed; using image flow', e); }
+      }
       const ext = d.kind === 'pdf' ? 'pdf' : 'png';
       const name = d.filename || `${suggestedName(raw, norm.provider)}.${ext}`;
       const f = base64ToFile(d.dataBase64, name, d.contentType || (d.kind === 'pdf' ? 'application/pdf' : 'image/png'));
@@ -248,6 +283,80 @@ export function ReferenceImportDialog({
       setUrlBusy(false);
     }
   }, [url, onFile]);
+
+  // Raw-codebase reconstruct (plan WS1): render HTML/CSS or a live URL via the
+  // render-source service, ground the DOM box tree, then reuse the exact
+  // `screenshot_to_block` path the image reconstruct uses (zero new pipeline).
+  const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
+    const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
+    const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
+      body: {
+        schema,
+        messages: [{ role: 'user', content: instruction }],
+        instruction,
+        activePageId,
+        mode: 'screenshot_to_block',
+        imageDataUrl: dataUrl,
+        groundedReference: grounded,
+        sampleData,
+      },
+    });
+    if (invokeError) throw new Error(invokeError.message);
+    if ((data as any)?.error) throw new Error((data as any).error);
+    const reconstructed = (data as any)?.schema;
+    const validation = validateReconstructedSchema(reconstructed);
+    if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
+    onApplySchema?.(parseTemplate(reconstructed));
+    const warnings: string[] = (data as any)?.warnings ?? [];
+    const modelUsed = (data as any)?.modelUsed;
+    setDone(`Reconstructed ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'} from ${grounded.elements.length} measured element(s)${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
+  }, [schema, activePageId, sampleData, onApplySchema]);
+
+  const startCodeReconstruct = useCallback(async () => {
+    const raw = codeText.trim();
+    if (!raw) return;
+    const asUrl = isHttpUrl(raw);
+    const isJsx = !asUrl && looksLikeJsx(raw);
+    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw } : { html: raw };
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      setStage(asUrl ? 'Rendering page…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
+      const { rasterDataUrl, grounded } = await renderAndGroundCode(input, invokeRenderSource);
+      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered — check the input.');
+      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
+      await reconstructFromScreenshot(rasterDataUrl, grounded);
+    } catch (e) {
+      setError(`Couldn't reconstruct from code: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [codeText, reconstructFromScreenshot]);
+
+  // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
+  // .zip project is built + reconstructed immediately.
+  const onCodeFile = useCallback(async (f: File | null) => {
+    if (!f) return;
+    const flavor = codeFlavorForFile(f.name);
+    if (!flavor) { toast.error('Drop a .html/.css/.jsx/.tsx file or a .zip project.'); return; }
+    if (flavor !== 'zip') {
+      try { setCodeText(await f.text()); setError(null); setDone(null); } catch { /* ignore */ }
+      return;
+    }
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      setStage('Building project…');
+      const dataUrl = await fileToDataUrl(f);
+      const zipBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      const { rasterDataUrl, grounded } = await renderAndGroundCode({ zipBase64 }, invokeRenderSource);
+      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered from the project.');
+      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
+      await reconstructFromScreenshot(rasterDataUrl, grounded);
+    } catch (e) {
+      setError(`Couldn't reconstruct project: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [reconstructFromScreenshot]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -331,8 +440,55 @@ export function ReferenceImportDialog({
               </div>
             )}
 
+            {!file && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Code2 className="h-3.5 w-3.5" /> …or reconstruct a web page, component, or project
+                  <Badge variant="outline" className="text-[10px]">beta</Badge>
+                </Label>
+                <Textarea
+                  value={codeText}
+                  onChange={(e) => setCodeText(e.target.value)}
+                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component — or use “File…” for a .jsx/.tsx/.html or a .zip project."
+                  className="text-xs font-mono min-h-[64px]"
+                  disabled={codeBusy || busy}
+                />
+                <input
+                  ref={codeFileRef}
+                  type="file"
+                  accept=".html,.htm,.css,.jsx,.tsx,.vue,.svelte,.zip,text/html,application/zip"
+                  className="hidden"
+                  onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground pl-1">
+                    render-source renders it (C1 HTML/CSS · C2 URL · C3 JSX · C4 zip), measures the DOM, then reconstructs faithfully.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
+                      <Upload className="h-4 w-4 mr-1" /> File…
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
+                      {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & reconstruct</>}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {file && kind === 'pdf' && (
               <div>
+                <Card className={`p-3 cursor-pointer mb-2 ${pdfClaude ? 'border-primary/40 bg-primary/5' : ''}`} onClick={() => !busy && setPdfClaude((v) => !v)}>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={pdfClaude} onChange={() => setPdfClaude((v) => !v)} className="mt-1" disabled={busy} />
+                    <div className="flex-1">
+                      <Label className="font-medium cursor-pointer flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" /> Reconstruct with Claude (reads the PDF directly)
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">Best for scanned / image-only PDFs. Skips the fidelity modes below.</p>
+                    </div>
+                  </div>
+                </Card>
                 <Label className="text-sm font-medium">Fidelity mode</Label>
                 <RadioGroup value={mode} onValueChange={(v) => setMode(v as FidelityMode)} className="mt-2 space-y-2" disabled={busy}>
                   {([

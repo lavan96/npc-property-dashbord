@@ -1,0 +1,84 @@
+/**
+ * Raw-codebase ingestion orchestrator contract (plan WS1 §3.2).
+ *
+ * Locks `renderAndGroundCode`: input validation, the render-source call shape,
+ * error propagation, data:URL normalisation, and grounding wire-through — all via
+ * a stubbed invoke (no Supabase, no browser).
+ */
+import { describe, it, expect, vi } from 'vitest';
+import { renderAndGroundCode, looksLikeJsx, type InvokeFn } from '../ingestion/codeIngest';
+import type { DomBoxTree } from '../codeGrounding';
+
+const BOX_TREE: DomBoxTree = {
+  pageWidthPx: 1280,
+  pageHeightPx: 1600,
+  textBoxes: [{ text: 'Headline', x: 100, y: 100, width: 300, height: 50, fontSizePx: 40 }],
+};
+
+const ok = (data: any): InvokeFn => vi.fn().mockResolvedValue({ data, error: null });
+
+describe('renderAndGroundCode', () => {
+  it('requires at least one input', async () => {
+    await expect(renderAndGroundCode({}, ok({}))).rejects.toThrow(/Provide a URL/);
+  });
+
+  it('forwards JSX (C3) and zip (C4) inputs to render-source', async () => {
+    const invoke1 = ok({ raster: 'AAAA', boxTree: BOX_TREE });
+    await renderAndGroundCode({ jsx: 'export default () => <h1>Hi</h1>', entry: 'App' }, invoke1);
+    expect(invoke1).toHaveBeenCalledWith('render-source', expect.objectContaining({
+      jsx: 'export default () => <h1>Hi</h1>', entry: 'App',
+    }));
+
+    const invoke2 = ok({ raster: 'AAAA', boxTree: BOX_TREE });
+    await renderAndGroundCode({ zipBase64: 'UEsDBA==' }, invoke2);
+    expect(invoke2).toHaveBeenCalledWith('render-source', expect.objectContaining({ zipBase64: 'UEsDBA==' }));
+  });
+
+  it('calls render-source with the rendered input and grounds the box tree', async () => {
+    const invoke = ok({ raster: 'AAAA', boxTree: BOX_TREE });
+    const res = await renderAndGroundCode({ url: 'https://example.com' }, invoke);
+
+    expect(invoke).toHaveBeenCalledWith('render-source', expect.objectContaining({
+      url: 'https://example.com', width: 1280, height: 1600,
+    }));
+    expect(res.rasterDataUrl).toBe('data:image/png;base64,AAAA');
+    expect(res.grounded.elements).toHaveLength(1);
+    expect(res.grounded.elements[0].text).toBe('Headline');
+    expect(res.pageWidth).toBe(res.grounded.pageWidth);
+  });
+
+  it('passes through an existing data: raster unchanged', async () => {
+    const res = await renderAndGroundCode(
+      { html: '<h1>Hi</h1>' },
+      ok({ raster: 'data:image/png;base64,ZZZZ', boxTree: BOX_TREE }),
+    );
+    expect(res.rasterDataUrl).toBe('data:image/png;base64,ZZZZ');
+  });
+
+  it('propagates invoke errors', async () => {
+    const invoke: InvokeFn = vi.fn().mockResolvedValue({ data: null, error: { message: 'render-source not configured' } });
+    await expect(renderAndGroundCode({ url: 'https://x' }, invoke)).rejects.toThrow(/not configured/);
+  });
+
+  it('propagates a data-level error', async () => {
+    await expect(renderAndGroundCode({ url: 'https://x' }, ok({ error: 'boom' }))).rejects.toThrow(/boom/);
+  });
+
+  it('errors when the render is incomplete', async () => {
+    await expect(renderAndGroundCode({ url: 'https://x' }, ok({ raster: 'AAAA' }))).rejects.toThrow(/no render/);
+  });
+});
+
+describe('looksLikeJsx', () => {
+  it('treats component-ish source as JSX (C3)', () => {
+    expect(looksLikeJsx('export default function App(){ return <div/> }')).toBe(true);
+    expect(looksLikeJsx("import React from 'react';\nexport const Card = () => <div/>;")).toBe(true);
+    expect(looksLikeJsx('const App = () => (<h1>Hi</h1>)')).toBe(true);
+  });
+
+  it('treats plain HTML as not-JSX (C1)', () => {
+    expect(looksLikeJsx('<!doctype html><html><body><h1>Hi</h1></body></html>')).toBe(false);
+    expect(looksLikeJsx('<div class="card"><p>Hello</p></div>')).toBe(false);
+    expect(looksLikeJsx('')).toBe(false);
+  });
+});

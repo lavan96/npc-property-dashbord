@@ -92,7 +92,12 @@ async function safeFetch(startUrl: string): Promise<{ res: Response; finalUrl: U
   throw new Error('Too many redirects');
 }
 
-/** Best-effort Figma → PNG export of the first page (needs FIGMA_TOKEN). */
+/**
+ * Best-effort Figma export (needs FIGMA_TOKEN). Returns the first frame as a PNG
+ * AND its node subtree (`figmaFrame`) so the client can ground on the exact
+ * text/positions/colours (§7d) instead of flattening to a raster. The PNG fields
+ * stay for backwards compatibility (older clients use the image flow).
+ */
 async function figmaExport(key: string, cors: Record<string, string>): Promise<Response | null> {
   const token = Deno.env.get('FIGMA_TOKEN');
   if (!token || !key) return null;
@@ -101,13 +106,27 @@ async function figmaExport(key: string, cors: Record<string, string>): Promise<R
     if (!fileRes.ok) return null;
     const file = await fileRes.json();
     const firstPage = file?.document?.children?.[0];
-    const nodeId: string | undefined = firstPage?.id;
+    const pageId: string | undefined = firstPage?.id;
     const name: string = file?.name || 'Figma import';
-    if (!nodeId) return null;
-    const imgRes = await fetch(`https://api.figma.com/v1/images/${key}?ids=${encodeURIComponent(nodeId)}&format=png&scale=2`, { headers: { 'X-Figma-Token': token } });
+    if (!pageId) return null;
+
+    // Deep-fetch the page subtree → ground on the first frame's real nodes.
+    let figmaFrame: unknown = null;
+    let exportNodeId = pageId;
+    try {
+      const nodesRes = await fetch(`https://api.figma.com/v1/files/${key}/nodes?ids=${encodeURIComponent(pageId)}`, { headers: { 'X-Figma-Token': token } });
+      if (nodesRes.ok) {
+        const nodesJson = await nodesRes.json();
+        const pageNode = nodesJson?.nodes?.[pageId]?.document;
+        const firstFrame = pageNode?.children?.find((c: any) => c?.type === 'FRAME');
+        if (firstFrame) { figmaFrame = firstFrame; exportNodeId = firstFrame.id; }
+      }
+    } catch { /* grounding is best-effort; PNG path still works */ }
+
+    const imgRes = await fetch(`https://api.figma.com/v1/images/${key}?ids=${encodeURIComponent(exportNodeId)}&format=png&scale=2`, { headers: { 'X-Figma-Token': token } });
     if (!imgRes.ok) return null;
     const imgJson = await imgRes.json();
-    const imageUrl: string | undefined = imgJson?.images?.[nodeId];
+    const imageUrl: string | undefined = imgJson?.images?.[exportNodeId];
     if (!imageUrl) return null;
     const { res, finalUrl } = await safeFetch(imageUrl);
     if (!res.ok) return null;
@@ -120,6 +139,7 @@ async function figmaExport(key: string, cors: Record<string, string>): Promise<R
       filename: `${name}.png`,
       dataBase64: base64(buf),
       finalUrl: finalUrl.toString(),
+      figmaFrame, // §7d — node tree for hierarchy-accurate grounding (client converts)
     }, 200, cors);
   } catch (_e) {
     return null;

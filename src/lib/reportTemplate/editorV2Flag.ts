@@ -1,9 +1,10 @@
 /**
  * Feature flag for the Template Builder "V2" Canva-style editor (rehaul Phase 1).
  *
- * V2 behaviour (drag-and-drop, new affordances) is OFF by default — V1 stays the
- * default experience until rollout. The flag can be enabled per-browser
- * (localStorage), per-visit (`?editorV2=1`), or per-build (`VITE_TEMPLATE_EDITOR_V2`).
+ * V2 behaviour (drag-and-drop, new affordances) is ON by default (rehaul Phase 8).
+ * V1 remains available as a one-flip kill-switch: `?editorV2=0` per visit,
+ * localStorage `template-editor-v2='0'` per browser, or `VITE_TEMPLATE_EDITOR_V2=0`
+ * per build.
  *
  * `resolveEditorV2Flag` is a pure function so the precedence is unit-testable;
  * `isTemplateEditorV2Enabled` wires it to the live browser environment.
@@ -29,10 +30,11 @@ export function resolveEditorV2Flag(input: {
   // Then a sticky per-browser preference.
   if (storageValue === '1' || storageValue === 'true') return true;
   if (storageValue === '0' || storageValue === 'false') return false;
-  // Then the build-time default.
+  // Then the build-time override (can force on OR off).
   if (envValue === true || envValue === '1' || envValue === 'true') return true;
+  if (envValue === false || envValue === '0' || envValue === 'false') return false;
 
-  return false; // default OFF — V1 remains the default editor
+  return true; // default ON — V2 is the default editor (rehaul Phase 8)
 }
 
 export function isTemplateEditorV2Enabled(): boolean {

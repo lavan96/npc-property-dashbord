@@ -33,11 +33,18 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      # Scoped to the Template Builder test surface (golden-render isolation guard
-      # + all editor logic). The wider repo has pre-existing failing/flaky suites
-      # (e.g. src/utils finance scenario tests) unrelated to this rehaul; `npm run
-      # build` below still type-checks the entire app, including the editor edits.
-      - name: Unit tests (incl. golden-render isolation guard)
+      # Golden-render isolation guard, run as its own step so a renderer
+      # regression (anything that changes the WeasyPrint/jsPDF output, incl. the
+      # reconstruction primitives: vector/table/runs/numeric-weight/@font-face)
+      # is attributed clearly instead of buried in the broader suite.
+      - name: Golden-render isolation guard (renderers must stay byte-stable)
+        run: npx vitest run src/lib/reportTemplate/__tests__/goldenRender.spec.ts
+
+      # Scoped to the Template Builder test surface (all editor logic). The wider
+      # repo has pre-existing failing/flaky suites (e.g. src/utils finance scenario
+      # tests) unrelated to this rehaul; `npm run build` below still type-checks the
+      # entire app, including the editor edits.
+      - name: Unit tests (Template Builder surface)
         run: npx vitest run src/lib/reportTemplate
 
       - name: Build
