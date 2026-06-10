@@ -44,6 +44,9 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
+import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
+import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
+import { groundDomBoxTree } from '@/lib/reportTemplate/codeGrounding';
 
 type ImageMode = 'faithful' | 'redesign';
 
@@ -117,6 +120,7 @@ export function ReferenceImportDialog({
   const [kind, setKind] = useState<ReferenceKind>('unsupported');
   const [mode, setMode] = useState<FidelityMode>('hybrid');
   const [imageMode, setImageMode] = useState<ImageMode>('faithful'); // R5: faithful reconstruct by default
+  const [pdfClaude, setPdfClaude] = useState(false); // §7a: route the PDF straight to Claude
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [stage, setStage] = useState<string | null>(null);
@@ -133,7 +137,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false); setPdfClaude(false);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -167,7 +171,15 @@ export function ReferenceImportDialog({
     if (!file) return;
     setBusy(true); setError(null);
     try {
-      if (kind === 'pdf') {
+      if (kind === 'pdf' && pdfClaude) {
+        // §7a — send the PDF straight to Claude (best for scanned/image-only PDFs).
+        setStage('Reading the PDF with Claude…');
+        const dataUrl = await fileToDataUrl(file);
+        const pdfBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+        const res = await reconstructPdfWithClaude({ pdfBase64, schema, activePageId, sampleData }, invokeRenderSource);
+        onApplySchema?.(res.schema);
+        setDone(`Reconstructed ${res.pageCount} page${res.pageCount === 1 ? '' : 's'} from the PDF${res.modelUsed ? ` · ${res.modelUsed}` : ''}.${res.warnings.length ? ` ${res.warnings.length} warning(s).` : ''}`);
+      } else if (kind === 'pdf') {
         setStage('Reading PDF…');
         await extractPdfToTemplate(file, {
           mode,
@@ -218,15 +230,16 @@ export function ReferenceImportDialog({
         if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
         onApplySchema?.(parseTemplate(reconstructed));
         const warnings: string[] = (data as any)?.warnings ?? [];
+        const modelUsed = (data as any)?.modelUsed;
         const measured = groundedReference ? ` from ${groundedReference.elements.length} measured text element(s)` : '';
-        setDone(`${imageMode === 'faithful' ? 'Reconstructed' : 'Redesigned'} ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'}${measured}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
+        setDone(`${imageMode === 'faithful' ? 'Reconstructed' : 'Redesigned'} ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'}${measured}${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
       }
     } catch (e) {
       setError((e as Error).message || 'Import failed.');
     } finally {
       setBusy(false); setStage(null); setProgress(null);
     }
-  }, [file, kind, mode, imageMode, templateName, templateId, user?.id, schema, activePageId, sampleData, onResynced, onApplySchema]);
+  }, [file, kind, mode, imageMode, pdfClaude, templateName, templateId, user?.id, schema, activePageId, sampleData, onResynced, onApplySchema]);
 
   // Import by link: normalise the share URL (tested), fetch server-side (CORS +
   // SSRF), then drop the returned PDF/image into the normal file flow.
@@ -248,6 +261,18 @@ export function ReferenceImportDialog({
       if (d?.error) throw new Error(d.error);
       if (d?.kind === 'needs_export') { setError(d.guidance ?? 'This link needs a PDF/image export.'); return; }
       if (!d?.dataBase64) throw new Error('No file returned from that link.');
+      // §7d — Figma: ground on the real node tree (hierarchy-accurate) when present.
+      if (d.provider === 'figma' && d.figmaFrame) {
+        try {
+          const grounded = groundDomBoxTree(figmaNodesToBoxTree(d.figmaFrame));
+          if (grounded.elements.length) {
+            const pngDataUrl = `data:${d.contentType || 'image/png'};base64,${d.dataBase64}`;
+            setUrl('');
+            await reconstructFromScreenshot(pngDataUrl, grounded);
+            return;
+          }
+        } catch (e) { console.warn('[figma] hierarchy grounding failed; using image flow', e); }
+      }
       const ext = d.kind === 'pdf' ? 'pdf' : 'png';
       const name = d.filename || `${suggestedName(raw, norm.provider)}.${ext}`;
       const f = base64ToFile(d.dataBase64, name, d.contentType || (d.kind === 'pdf' ? 'application/pdf' : 'image/png'));
@@ -283,7 +308,8 @@ export function ReferenceImportDialog({
     if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
     onApplySchema?.(parseTemplate(reconstructed));
     const warnings: string[] = (data as any)?.warnings ?? [];
-    setDone(`Reconstructed ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'} from ${grounded.elements.length} measured element(s).${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
+    const modelUsed = (data as any)?.modelUsed;
+    setDone(`Reconstructed ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'} from ${grounded.elements.length} measured element(s)${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
   }, [schema, activePageId, sampleData, onApplySchema]);
 
   const startCodeReconstruct = useCallback(async () => {
@@ -452,6 +478,17 @@ export function ReferenceImportDialog({
 
             {file && kind === 'pdf' && (
               <div>
+                <Card className={`p-3 cursor-pointer mb-2 ${pdfClaude ? 'border-primary/40 bg-primary/5' : ''}`} onClick={() => !busy && setPdfClaude((v) => !v)}>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={pdfClaude} onChange={() => setPdfClaude((v) => !v)} className="mt-1" disabled={busy} />
+                    <div className="flex-1">
+                      <Label className="font-medium cursor-pointer flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" /> Reconstruct with Claude (reads the PDF directly)
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">Best for scanned / image-only PDFs. Skips the fidelity modes below.</p>
+                    </div>
+                  </div>
+                </Card>
                 <Label className="text-sm font-medium">Fidelity mode</Label>
                 <RadioGroup value={mode} onValueChange={(v) => setMode(v as FidelityMode)} className="mt-2 space-y-2" disabled={busy}>
                   {([

@@ -479,8 +479,9 @@ Deno.serve(async (req) => {
     const activePageId: string | undefined = body.activePageId;
     const selectedBlockId: string | undefined = body.selectedBlockId;
     const selectedOverlayId: string | undefined = body.selectedOverlayId;
-    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' | 'brief' = body.mode || 'design';
+    const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' | 'brief' | 'pdf_document' = body.mode || 'design';
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
+    const pdfBase64: string | undefined = typeof body.pdfBase64 === 'string' ? body.pdfBase64 : undefined; // §7a native PDF
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
     const replaceMode: boolean = body.replaceMode === true;
@@ -617,6 +618,16 @@ ${outline(schema, activePageId)}
 ACTIVE SELECTION:
   page=${activePageId ?? '-'} block=${selectedBlockId ?? '-'} overlay=${selectedOverlayId ?? '-'}${memoryBlock}`;
 
+    // §7a — native PDF reconstruction: send the document straight to Claude.
+    const usePdfDocument = mode === 'pdf_document' && !!pdfBase64;
+    if (usePdfDocument && !USE_CLAUDE) {
+      return json({ error: 'PDF document reconstruction requires Claude (set ANTHROPIC_API_KEY).' }, 400);
+    }
+    if (usePdfDocument && activePageId) {
+      modeAddendum += `\n\n[PDF DOCUMENT MODE — FAITHFUL RECONSTRUCTION]
+A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Do NOT redesign, summarise, translate, or use placeholders.`;
+    }
+
     // Brief pipeline runs synthesis on text-only context (image already digested
     // into the brief). Other image-attached flows keep multimodal.
     const useVision = !!imageDataUrl && !useBriefPipeline;
@@ -650,7 +661,7 @@ ACTIVE SELECTION:
     const callGateway = async (toolChoice: any, modelOverride?: string) => {
       // Route through Claude for brief-synthesis & vision flows when the
       // ANTHROPIC_API_KEY is configured. Other modes still use the Lovable AI Gateway.
-      const preferClaude = USE_CLAUDE && (useBriefPipeline || useVision);
+      const preferClaude = USE_CLAUDE && (useBriefPipeline || useVision || usePdfDocument);
       if (preferClaude) {
         const r = await callClaudeReconstruct({
           apiKey: ANTHROPIC_API_KEY!,
@@ -659,6 +670,7 @@ ACTIVE SELECTION:
           tools: [TOOL as any],
           tool_choice: toolChoice,
           max_tokens: 8192,
+          documents: usePdfDocument ? [{ base64: pdfBase64!, mediaType: 'application/pdf' }] : undefined,
         });
         if (!r.ok) {
           return new Response(r.errorText || 'anthropic error', { status: r.status });
@@ -681,7 +693,7 @@ ACTIVE SELECTION:
 
     // Vision multimodal: 'required'. Brief synthesis + text: explicit function choice.
     let aiResp = await callGateway(
-      useVision ? 'required' : { type: 'function', function: { name: 'apply_changes' } },
+      (useVision || usePdfDocument) ? 'required' : { type: 'function', function: { name: 'apply_changes' } },
     );
 
     if (!aiResp.ok) {
@@ -696,7 +708,7 @@ ACTIVE SELECTION:
 
     // Vision retry: if the model replied with text only, retry once with an
     // explicit nudge to call apply_changes.
-    if (!toolCall && useVision) {
+    if (!toolCall && (useVision || usePdfDocument)) {
       console.warn('[design-agent] vision pass returned no tool_call — retrying with explicit nudge');
       messages.push({
         role: 'user',
@@ -791,6 +803,7 @@ ACTIVE SELECTION:
       briefPairings,
       briefTokenPatch,
       pipeline: useBriefPipeline ? 'brief' : 'ops',
+      modelUsed: aiData?.model ?? null,
     });
   } catch (e) {
     console.error('template-design-agent error', e);

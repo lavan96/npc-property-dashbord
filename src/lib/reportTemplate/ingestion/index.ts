@@ -14,5 +14,9 @@ export { resolveSource, planIngestion, planIngestionOrThrow } from './registry';
 // Raw-codebase ingestion (C1/C2): render-source → grounded reference.
 export { renderAndGroundCode, looksLikeJsx } from './codeIngest';
 export type { CodeRenderInput, CodeIngestResult, InvokeFn } from './codeIngest';
+
+// Native-PDF-to-Claude reconstruction (§7a).
+export { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
+export type { PdfReconstructArgs, PdfReconstructResult } from './pdfDocumentReconstruct';
 export { groundDomBoxTree, harvestTokensFromBoxTree } from '../codeGrounding';
 export type { DomBoxTree, DomTextBox, DomImageBox, CodeGroundOptions } from '../codeGrounding';
