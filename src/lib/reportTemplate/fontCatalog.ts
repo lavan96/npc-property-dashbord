@@ -19,11 +19,13 @@ export interface CatalogFont {
   notes?: string;
 }
 
-const g = (family: string, weightSpec = 'wght@300;400;500;600;700;800', italics = false): string => {
-  const fam = family.replace(/ /g, '+');
+export const googleFontsCssUrl = (family: string, weightSpec = 'wght@300;400;500;600;700;800', italics = false): string => {
+  const fam = encodeURIComponent(family.trim().replace(/\s+/g, ' ')).replace(/%20/g, '+');
   const spec = italics ? `ital,${weightSpec.replace('wght@', 'wght@0,')};1,${weightSpec.split('@')[1] ?? ''}` : weightSpec;
   return `https://fonts.googleapis.com/css2?family=${fam}:${spec}&display=swap`;
 };
+
+const g = googleFontsCssUrl;
 
 export const FONT_CATALOG: CatalogFont[] = [
   // ── Sans ────────────────────────────────────────────────────────────────────

@@ -13,6 +13,8 @@
  * network or a browser.
  */
 import type { ReportTemplate } from '../templateSchema';
+import type { CdirDocument } from './cdir/schema';
+import type { CdirFidelityReport } from './fidelity';
 
 /** The pipelines an input can be routed to. */
 export type SourceKind = 'pdf' | 'image' | 'url' | 'code';
@@ -52,6 +54,10 @@ export interface IngestionContext {
 export interface ExtractionResult {
   kind: SourceKind;
   template?: ReportTemplate;
+  /** Phase 1 CDIR bridge: source-normalized editable design IR before template mapping. */
+  cdir?: CdirDocument;
+  /** Phase 2 shared quality contract for CDIR/native editability. */
+  fidelity?: CdirFidelityReport;
   pages?: Array<{ width: number; height: number; elements: unknown[]; rasterUrl?: string }>;
   warnings?: string[];
   meta?: Record<string, unknown>;

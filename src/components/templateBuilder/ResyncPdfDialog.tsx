@@ -5,7 +5,7 @@
  * `id`, name, themes, page masters, and a snapshot of the previous version
  * is recorded in `report_template_versions`.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -24,6 +24,9 @@ import {
   type ImportResult,
 } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
 import { useAuth } from '@/hooks/useAuth';
+import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
+import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import { ImportReviewDialog } from './ImportReviewDialog';
 
 interface Props {
   open: boolean;
@@ -41,15 +44,17 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
 
-  const reset = () => { setFile(null); setProgress(null); setBusy(false); setResult(null); };
+  const reset = () => { setFile(null); setProgress(null); setBusy(false); setResult(null); setReviewOpen(false); setRecordedDecision(null); };
   const handleClose = (v: boolean) => { if (busy) return; if (!v) reset(); onOpenChange(v); };
 
   const onFile = (f: File | null) => {
     if (!f) return;
     if (!/\.pdf$/i.test(f.name)) { toast.error('Only PDF files are supported.'); return; }
     if (f.size > 50 * 1024 * 1024) { toast.error('Max 50 MB.'); return; }
-    setFile(f); setResult(null);
+    setFile(f); setResult(null); setRecordedDecision(null);
   };
 
   const start = useCallback(async () => {
@@ -65,6 +70,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
         onProgress: setProgress,
       });
       setResult(res);
+      setRecordedDecision(null);
       toast.success(`Re-synced ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}. Previous version snapshotted.`);
       onResynced?.(res);
     } catch (err) {
@@ -78,6 +84,15 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
     if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
     return Math.round((progress.page / progress.totalPages) * 95);
   })();
+
+  const reviewDraft = useMemo(() => {
+    if (!result?.cdir) return null;
+    return buildImportReviewDraft({
+      id: `review_${result.importId}`,
+      cdir: result.cdir,
+      fidelity: result.cdirFidelity,
+    });
+  }, [result]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -183,6 +198,26 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
               Replaced {result.pageCount} page{result.pageCount === 1 ? '' : 's'} with{' '}
               {result.fidelityReport.textBlocks} text overlay{result.fidelityReport.textBlocks === 1 ? '' : 's'}.
             </p>
+            {result.cdirFidelity && (
+              <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
+                <div className="flex items-center justify-between gap-2 font-medium">
+                  <span>Editable fidelity score</span>
+                  <Badge variant={result.cdirFidelity.warnings.length ? 'secondary' : 'default'}>
+                    {Math.round(result.cdirFidelity.overallScore * 100)}%
+                  </Badge>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <span className="text-muted-foreground">Native {Math.round(result.cdirFidelity.nativeCoverage * 100)}%</span>
+                  <span className="text-muted-foreground">Raster fallback {Math.round(result.cdirFidelity.rasterFallbackCoverage * 100)}%</span>
+                </div>
+                {result.cdirFidelity.warnings.length > 0 && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {result.cdirFidelity.warnings[0].message}
+                    {result.cdirFidelity.warnings.length > 1 ? ` +${result.cdirFidelity.warnings.length - 1} more warning(s).` : ''}
+                  </p>
+                )}
+              </div>
+            )}
           </Card>
         )}
 
@@ -195,10 +230,29 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
               </Button>
             </>
           ) : (
-            <Button onClick={() => handleClose(false)}>Close & reload</Button>
+            <>
+              {reviewDraft && <Button variant="secondary" onClick={() => setReviewOpen(true)}>Review quality</Button>}
+              <Button onClick={() => handleClose(false)}>Close & reload</Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
+      <ImportReviewDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        draft={reviewDraft}
+        onRetry={() => { setReviewOpen(false); setResult(null); }}
+        recordedDecision={recordedDecision}
+        onRecordDecision={result ? async (decision: ImportReviewDecision, note?: string) => {
+          try {
+            const saved = await saveImportReviewDecision({ importId: result.importId, decision, note });
+            setRecordedDecision(saved.decision);
+            toast.success('Import review decision saved.');
+          } catch (err) {
+            toast.error(`Could not save review decision: ${(err as Error).message}`);
+          }
+        } : undefined}
+      />
     </Dialog>
   );
 }

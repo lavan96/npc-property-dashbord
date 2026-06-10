@@ -27,6 +27,45 @@ export interface RenderOptions {
   tokenOverrides?: Partial<ReportTemplate['tokens']>;
 }
 
+
+function overlayPaintOrder(overlay: Overlay, index: number): number {
+  const z = Number((overlay as any).zIndex);
+  if (Number.isFinite(z)) return z * 1000 + index;
+  const area = Math.max(0, Number(overlay.width) || 0) * Math.max(0, Number(overlay.height) || 0);
+  const isBackdropShape = overlay.type === 'shape' && area > 120_000 && !((overlay as any).strokeWidth);
+  if (isBackdropShape) return -1_000_000 + index;
+  if (overlay.type === 'shape') return -100_000 + index;
+  if (overlay.type === 'image') return -10_000 + index;
+  if ((overlay as any).type === 'table') return 100_000 + index;
+  if (overlay.type === 'text' || (overlay as any).type === 'textOnPath') return 200_000 + index;
+  return index;
+}
+
+function sortOverlaysForPaint(overlays: Overlay[] = []): Overlay[] {
+  return overlays
+    .map((overlay, index) => ({ overlay, order: overlayPaintOrder(overlay, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.overlay);
+}
+
+
+function blockPaintOrder(block: any, index: number): number {
+  const z = Number(block?.style?.zIndex);
+  if (Number.isFinite(z)) return z * 1_000_000 + index;
+  const overlays = Array.isArray(block?.overlays) ? block.overlays : [];
+  if (block?.type === 'free' && overlays.length) {
+    return Math.min(...overlays.map((overlay: Overlay, overlayIndex: number) => overlayPaintOrder(overlay, overlayIndex))) + index / 10_000;
+  }
+  return index;
+}
+
+function sortBlocksForPaint(blocks: any[] = []): any[] {
+  return blocks
+    .map((block, index) => ({ block, order: blockPaintOrder(block, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.block);
+}
+
 /** Render a template to a Blob (PDF). */
 export function renderTemplateToBlob(
   rawTemplate: ReportTemplate | unknown,
@@ -120,7 +159,7 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
   };
 
   // Blocks
-  for (const block of page.blocks) {
+  for (const block of sortBlocksForPaint(page.blocks)) {
     if (!evalConditional(block.conditional, ctxBase)) continue;
     const renderer = getBlockRenderer(block.type);
     if (renderer) {
@@ -129,11 +168,15 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
       console.warn(`[pdfRenderer] No renderer for block type "${block.type}"`);
     }
     // Overlays sit on top of the block
-    for (const overlay of block.overlays) {
+    for (const overlay of sortOverlaysForPaint(block.overlays)) {
       if (!evalConditional(overlay.conditional, ctxBase)) continue;
       drawOverlay(doc, overlay, ctxBase);
     }
   }
+}
+
+function isTransparentColor(color: string | null | undefined): boolean {
+  return !color || color.toLowerCase() === 'transparent';
 }
 
 function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
@@ -163,18 +206,21 @@ function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
       break;
     }
     case 'shape': {
-      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, '#000000') : null;
-      const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, '#000000') : null;
-      if (fill) {
-        const { r, g, b } = hexToRgb(fill);
+      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, 'transparent') : null;
+      const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, 'transparent') : null;
+      const hasFill = !isTransparentColor(fill);
+      const hasStroke = !isTransparentColor(stroke) && (overlay.strokeWidth ?? 0) > 0;
+      if (hasFill) {
+        const { r, g, b } = hexToRgb(fill!);
         doc.setFillColor(r, g, b);
       }
-      if (stroke) {
-        const { r, g, b } = hexToRgb(stroke);
+      if (hasStroke) {
+        const { r, g, b } = hexToRgb(stroke!);
         doc.setDrawColor(r, g, b);
         doc.setLineWidth(overlay.strokeWidth || 1);
       }
-      const style = fill && stroke ? 'FD' : fill ? 'F' : 'S';
+      const style = hasFill && hasStroke ? 'FD' : hasFill ? 'F' : hasStroke ? 'S' : null;
+      if (!style) return;
       if (overlay.shape === 'ellipse') {
         doc.ellipse(
           overlay.x + overlay.width / 2,
@@ -218,8 +264,9 @@ function mapFontFamily(family: string): string {
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  let h = hex.replace('#', '').trim();
+  let h = String(hex || '').replace('#', '').trim();
   if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length === 8) h = h.slice(0, 6);
   const num = parseInt(h, 16);
   if (Number.isNaN(num)) return { r: 0, g: 0, b: 0 };
   return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };

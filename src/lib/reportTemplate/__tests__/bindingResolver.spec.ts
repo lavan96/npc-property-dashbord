@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveBindable, resolveBindableNumber } from '../bindingResolver';
+import { resolveBindable, resolveBindableColor, resolveBindableNumber } from '../bindingResolver';
 
 const ctx = (data: any, tokens: any = { colors: {}, fonts: {}, spacing: {} }) => ({ data, tokens });
 
@@ -50,5 +50,19 @@ describe('bindingResolver — expressions safety', () => {
     // The evaluator is sandboxed by a character whitelist; anything rejected
     // must not throw and must not leak globals.
     expect(resolveBindable('{{= window.location }}', ctx({}))).toBe('');
+  });
+});
+
+
+describe('bindingResolver — colours', () => {
+  it('normalises CSS colour forms emitted by image/code reconstruction', () => {
+    expect(resolveBindableColor('rgb(20, 40, 60)', ctx({}))).toBe('#14283c');
+    expect(resolveBindableColor('rgba(255, 128, 0, 0.5)', ctx({}))).toBe('#ff8000');
+    expect(resolveBindableColor('hsl(210, 50%, 40%)', ctx({}))).toBe('#336699');
+    expect(resolveBindableColor('white', ctx({}))).toBe('#ffffff');
+  });
+
+  it('keeps transparent explicit for renderer skip logic', () => {
+    expect(resolveBindableColor('transparent', ctx({}), 'transparent')).toBe('transparent');
   });
 });
