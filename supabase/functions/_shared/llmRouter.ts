@@ -14,6 +14,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { convertContent, anthropicRejectsSampling } from './claudeReconstruct.pure.ts';
 
 export type LLMRoute = 'gateway' | 'native' | 'openrouter';
 export type LLMMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_call_id?: string; name?: string };
@@ -264,7 +265,9 @@ async function callAnthropicNative(model: string, messages: LLMMessage[], opts: 
   const systemMsg = messages.filter((m) => m.role === 'system').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n\n');
   const userMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({
     role: m.role === 'assistant' ? 'assistant' : 'user',
-    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+    // Preserve multimodal content (image_url → base64 image blocks) instead of
+    // stringifying it — so the native Anthropic path actually supports vision.
+    content: convertContent(m.content),
   }));
 
   const body: any = {
@@ -273,7 +276,8 @@ async function callAnthropicNative(model: string, messages: LLMMessage[], opts: 
     messages: userMsgs,
   };
   if (systemMsg) body.system = systemMsg;
-  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  // Opus 4.7+/Fable reject `temperature` (400); older Claude models still accept it.
+  if (opts.temperature !== undefined && !anthropicRejectsSampling(model)) body.temperature = opts.temperature;
 
   const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',

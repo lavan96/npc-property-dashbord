@@ -11,7 +11,7 @@
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
-import { callAnthropic } from '../_shared/anthropicAdapter.ts';
+import { callClaudeReconstruct } from '../_shared/claudeReconstruct.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
@@ -21,7 +21,7 @@ const DEFAULT_MODEL = 'openai/gpt-5.5';
 // Synthesis model — strong reasoning + tool calling. Vision lives in designBrief.ts.
 const SYNTHESIS_MODEL = 'openai/gpt-5';
 const VISION_MODEL = 'openai/gpt-5';
-const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-5';
+const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-8';
 
 
 const json = (b: unknown, status = 200) =>
@@ -652,7 +652,7 @@ ACTIVE SELECTION:
       // ANTHROPIC_API_KEY is configured. Other modes still use the Lovable AI Gateway.
       const preferClaude = USE_CLAUDE && (useBriefPipeline || useVision);
       if (preferClaude) {
-        const r = await callAnthropic({
+        const r = await callClaudeReconstruct({
           apiKey: ANTHROPIC_API_KEY!,
           model: CLAUDE_MODEL,
           messages: messages as any,
