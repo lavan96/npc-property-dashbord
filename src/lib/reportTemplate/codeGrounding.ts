@@ -20,12 +20,15 @@ export interface DomTextBox {
   width: number;
   height: number;
   fontSizePx: number;
+  lineHeightPx?: number;
   fontWeight?: number;
   fontFamily?: string;
   color?: string;
   italic?: boolean;
   letterSpacingPx?: number;
   textAlign?: 'center' | 'right' | 'justify';
+  /** Effective opacity (own × ancestors), present only when < 1. */
+  opacity?: number;
 }
 
 export interface DomImageBox {
@@ -47,6 +50,10 @@ export interface DomShapeBox {
   borderColor?: string;
   borderWidthPx?: number;
   borderRadiusPx?: number;
+  blurPx?: number;         // CSS filter: blur(Npx) — glow orbs / soft accents
+  boxShadow?: string;      // raw computed box-shadow
+  /** Effective opacity (own × ancestors), present only when < 1. */
+  opacity?: number;
   domOrder?: number;
 }
 

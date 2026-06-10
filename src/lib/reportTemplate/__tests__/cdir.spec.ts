@@ -82,9 +82,9 @@ describe('CDIR adapters', () => {
     expect(doc.source.kind).toBe('html');
     expect(doc.fonts).toEqual([{ family: 'Inter' }]);
     expect(doc.meta?.palette).toEqual(['#ffffff', '#cc0000']);
-    expect(doc.pages[0].background?.color).toBe('#ffffff');
+    expect(doc.pages[0].background?.color).toBe('#FFFFFF');
     expect(doc.pages[0].layers.map((layer) => layer.kind)).toEqual(['text', 'image']);
-    expect(doc.pages[0].layers[0]).toMatchObject({ fontFamily: 'Inter', fontWeight: 700, color: '#cc0000' });
+    expect(doc.pages[0].layers[0]).toMatchObject({ fontFamily: 'Inter', fontWeight: 700, color: '#CC0000' });
   });
 
   it('converts painted DOM element boxes into editable shape layers beneath text', () => {
@@ -106,10 +106,10 @@ describe('CDIR adapters', () => {
 
     const kinds = doc.pages[0].layers.map((layer) => layer.kind);
     expect(kinds).toEqual(['shape', 'shape', 'text']);
-    expect(doc.pages[0].layers[0]).toMatchObject({ name: 'Page background fill', fill: 'rgb(246, 241, 231)' });
+    expect(doc.pages[0].layers[0]).toMatchObject({ name: 'Page background fill', fill: '#F6F1E7' });
     expect(doc.pages[0].layers[1]).toMatchObject({
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(204, 0, 0)',
+      fill: '#FFFFFF',
+      stroke: '#CC0000',
     });
     // Shapes paint beneath text (negative zIndex preserves DOM order).
     expect((doc.pages[0].layers[0] as any).zIndex).toBeLessThan(0);
