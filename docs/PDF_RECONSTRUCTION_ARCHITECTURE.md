@@ -143,7 +143,7 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
   agent as authoritative ground truth; the rewritten `screenshot_to_block` prompt forbids inventing /
   rewriting / placeholdering copy and instructs the model to transcribe + place measured elements and only
   *classify* their role. *Acceptance (met):* image import preserves measured layout and copy; redesign is
-  opt‑in. *Follow‑up:* the agent still 6pt‑grid‑snaps applied ops (minor); could be relaxed for faithful mode.
+  opt‑in. *Follow‑up (resolved in R7):* the agent no longer grid‑snaps applied ops in faithful modes.
 - **R6 — Fidelity loop:** ✅ **done.** Pure, unit‑tested `fidelityMetrics` module computes **per‑region SSIM**
   (means/variances/covariance with the standard constants) over a normalised comparison raster, bands each
   grid cell high/medium/low, and aggregates an overall confidence score. `PdfFidelityDiffDialog` now scores
@@ -152,8 +152,29 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
   low‑confidence regions: it merges them into page‑point rects (`lowRegionsToPageRects`), builds a grounded,
   region‑scoped instruction (`buildRepairInstruction`), sends it with the source image to the design agent
   (`art_director`), applies the result and re‑scores. *Acceptance (met):* drift is measured per region,
-  surfaced, and repairable. *Follow‑ups still open:* true vector/image paint‑order z‑indexing; relax the
-  agent's 6pt grid‑snap for faithful mode.
+  surfaced, and repairable. *Follow‑ups still open:* true vector/image paint‑order z‑indexing.
+- **R7 — Fidelity + auth hardening (2026‑06):** ✅ **done.**
+  - **Tokens derived from the source** (`pdfImport/tokenDerivation.ts`): `tokens.colors`/`tokens.fonts`
+    are computed from measured text colours (glyph‑weighted), vector fills (area‑weighted), and font
+    usage — replacing the hard‑coded gold/white/Helvetica defaults.
+  - **Hybrid mode rebuilt:** semantic extraction + the page raster attached as a **locked, hidden
+    "Source reference" overlay** (renderers skip hidden overlays — no ghosted double text, raster
+    stays available for tracing). OCR mode samples each word's **ink colour** from the raster
+    (`pickInkColor`).
+  - **Loadable fonts:** `fontCatalog.ensureCatalogFontFaces` attaches Google‑Fonts `cssUrl` faces for
+    every catalog‑known family an import references, so the editor preview AND the WeasyPrint export
+    render the real typeface instead of silently falling back.
+  - **Agent faithfulness:** no 6pt grid‑snap in faithful modes (positions are measured), numeric font
+    weights preserved (`fontWeightNumeric`), 32K output budget for reconstruction calls (8K truncated
+    dense pages), and measured colour/font ground truth forwarded from grounding into the prompt with
+    explicit font‑matching instructions.
+  - **Code imports:** `render-source` returns painted element boxes (`shapeBoxes`) → editable shape
+    layers carry section fills/borders/radii natively; trace rasters attach as hidden locked overlays
+    instead of page backgrounds (visible only when a page has no editable layers at all).
+  - **Auth:** `render-source`/`template-import-pdf`/`template-design-agent` verify the custom session
+    in‑function (`_shared/auth.verifyAuth`) with `verify_jwt = false` pinned in `config.toml`; upstream
+    render‑service credential failures map to 502 `render_source_auth_misconfigured` (never a
+    user‑facing 401); all template‑builder clients invoke through `invokeSecureFunction`.
 
 ## 7. Trade‑offs & risks
 

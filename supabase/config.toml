@@ -744,3 +744,21 @@ request_timeout = 120
 [functions.message-governance]
 verify_jwt = false
 request_timeout = 60
+
+[functions.render-source]
+# Auth is verified inside the function (verifyAuth: custom session tokens +
+# custom HS256 JWTs). Gateway JWT verification must stay OFF — the app's custom
+# auth tokens are not always valid Supabase JWTs (e.g. after the 24h access-token
+# expiry) and the gateway would 401 before in-function session auth can run.
+verify_jwt = false
+request_timeout = 300
+
+[functions.template-import-pdf]
+# Uses custom session tokens verified inside the function (verifyAuth).
+verify_jwt = false
+request_timeout = 120
+
+[functions.template-design-agent]
+# Uses custom session tokens verified inside the function (verifyAuth).
+verify_jwt = false
+request_timeout = 300

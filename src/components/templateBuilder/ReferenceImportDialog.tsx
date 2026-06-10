@@ -43,6 +43,8 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
 import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
+import { pickInkColor } from '@/lib/reportTemplate/pdfImport/tokenDerivation';
+import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
 import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
 import { groundDomBoxTree } from '@/lib/reportTemplate/codeGrounding';
@@ -155,9 +157,37 @@ async function ocrImageWords(dataUrl: string): Promise<{ words: OcrWord[]; width
     const worker = await tess.createWorker('eng');
     const { data } = await worker.recognize(dataUrl);
     await worker.terminate();
+
+    // Sample each word's ink colour from the source pixels so the agent gets
+    // colour ground truth alongside text + position (OCR alone is colour-blind).
+    let sampleCtx: CanvasRenderingContext2D | null = null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      sampleCtx = canvas.getContext('2d', { willReadFrequently: true });
+      sampleCtx?.drawImage(img, 0, 0);
+    } catch { /* colour sampling is best-effort */ }
+    const sampleInk = (x0: number, y0: number, x1: number, y1: number): string | undefined => {
+      if (!sampleCtx) return undefined;
+      try {
+        const px = sampleCtx.getImageData(
+          Math.max(0, Math.floor(x0)),
+          Math.max(0, Math.floor(y0)),
+          Math.max(1, Math.ceil(x1 - x0)),
+          Math.max(1, Math.ceil(y1 - y0)),
+        );
+        return pickInkColor(px.data);
+      } catch { return undefined; }
+    };
+
     const words: OcrWord[] = (data?.words ?? [])
       .filter((w: any) => w?.text?.trim())
-      .map((w: any) => ({ text: w.text, x0: w.bbox?.x0 ?? 0, y0: w.bbox?.y0 ?? 0, x1: w.bbox?.x1 ?? 0, y1: w.bbox?.y1 ?? 0 }));
+      .map((w: any) => {
+        const x0 = w.bbox?.x0 ?? 0, y0 = w.bbox?.y0 ?? 0, x1 = w.bbox?.x1 ?? 0, y1 = w.bbox?.y1 ?? 0;
+        const color = sampleInk(x0, y0, x1, y1);
+        return { text: w.text, x0, y0, x1, y1, ...(color ? { color } : {}) };
+      });
     return { words, width: img.naturalWidth, height: img.naturalHeight };
   } catch (e) {
     console.warn('[reconstruct] OCR grounding failed', e);
@@ -259,7 +289,7 @@ export function ReferenceImportDialog({
         const dataUrl = await fileToDataUrl(file);
         const pdfBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
         const res = await reconstructPdfWithClaude({ pdfBase64, schema, activePageId, sampleData }, invokeRenderSource);
-        onApplySchema?.(res.schema);
+        onApplySchema?.(ensureCatalogFontFaces(res.schema));
         setDone(`Reconstructed ${res.pageCount} page${res.pageCount === 1 ? '' : 's'} from the PDF${res.modelUsed ? ` · ${res.modelUsed}` : ''}.${res.warnings.length ? ` ${res.warnings.length} warning(s).` : ''}`);
       } else if (kind === 'pdf') {
         setStage('Reading PDF…');
@@ -315,7 +345,7 @@ export function ReferenceImportDialog({
         const reconstructed = (data as any)?.schema;
         const validation = validateReconstructedSchema(reconstructed);
         if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
-        onApplySchema?.(parseTemplate(reconstructed));
+        onApplySchema?.(ensureCatalogFontFaces(parseTemplate(reconstructed)));
         const warnings: string[] = (data as any)?.warnings ?? [];
         const modelUsed = (data as any)?.modelUsed;
         const measured = groundedReference ? ` from ${groundedReference.elements.length} measured text element(s)` : '';
@@ -411,7 +441,7 @@ export function ReferenceImportDialog({
     const reconstructed = (data as any)?.schema;
     const validation = validateReconstructedSchema(reconstructed);
     if (!validation.ok) throw new Error(`Reconstruction was not usable: ${validation.errors.join(' ')}`);
-    onApplySchema?.(parseTemplate(reconstructed));
+    onApplySchema?.(ensureCatalogFontFaces(parseTemplate(reconstructed)));
     const warnings: string[] = (data as any)?.warnings ?? [];
     const modelUsed = (data as any)?.modelUsed;
     setDone(`Reconstructed ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'} from ${grounded.elements.length} measured element(s)${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
@@ -622,9 +652,9 @@ export function ReferenceImportDialog({
                 <Label className="text-sm font-medium">Fidelity mode</Label>
                 <RadioGroup value={mode} onValueChange={(v) => setMode(v as FidelityMode)} className="mt-2 space-y-2" disabled={busy}>
                   {([
-                    ['hybrid', 'Hybrid', 'Raster backdrop + editable text overlays.', true],
-                    ['semantic', 'Semantic', 'Editable text overlays only, no raster.', false],
-                    ['pixel', 'Pixel-perfect', 'High-DPI rasterised page as background.', false],
+                    ['hybrid', 'Hybrid', 'Editable extraction + hidden source raster per page for tracing.', true],
+                    ['semantic', 'Semantic', 'Editable text, vectors, and images at source colours/fonts. No raster.', false],
+                    ['pixel', 'Pixel-perfect', 'High-DPI rasterised page as background. Exact look, not editable.', false],
                   ] as const).map(([val, label, desc, rec]) => (
                     <Card key={val} className={`p-3 cursor-pointer ${rec ? 'border-primary/30' : ''}`} onClick={() => !busy && setMode(val)}>
                       <div className="flex items-start gap-3">

@@ -24,7 +24,7 @@ import { Loader2, FileText, GitCompareArrows, Wand2, Gauge } from 'lucide-react'
 import { toast } from 'sonner';
 import { parseTemplate, type ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import {
   buildFidelityReport,
   lowRegionsToPageRects,
@@ -198,17 +198,15 @@ export function PdfFidelityDiffDialog({ open, onOpenChange, template, sampleData
     setRepairing(true);
     const t = toast.loading(`Repairing ${rects.length} area(s) with AI…`);
     try {
-      const { data, error } = await supabase.functions.invoke('template-design-agent', {
-        body: {
-          schema: template,
-          instruction,
-          messages: [{ role: 'user', content: instruction }],
-          activePageId: pageId,
-          mode: 'art_director',
-          imageDataUrl: pdfPages[pageIndex],
-          sampleData,
-        },
-      });
+      const { data, error } = await invokeSecureFunction('template-design-agent', {
+        schema: template,
+        instruction,
+        messages: [{ role: 'user', content: instruction }],
+        activePageId: pageId,
+        mode: 'art_director',
+        imageDataUrl: pdfPages[pageIndex],
+        sampleData,
+      }, { timeoutMs: 180000 });
       if (error) throw new Error(error.message);
       if ((data as any)?.error) throw new Error((data as any).error);
       const next = parseTemplate((data as any).schema);

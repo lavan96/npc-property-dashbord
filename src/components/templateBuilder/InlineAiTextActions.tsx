@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import type { Overlay, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 
 const QUICK = [
@@ -41,17 +41,15 @@ export function InlineAiTextActions({ template, overlay, pageId, blockId, onPatc
   const run = async (instruction: string, label: string) => {
     setBusy(label);
     try {
-      const { data, error } = await supabase.functions.invoke('template-design-agent', {
-        body: {
-          schema: template,
-          messages: [{ role: 'user', content: instruction }],
-          instruction,
-          activePageId: pageId,
-          selectedBlockId: blockId,
-          selectedOverlayId: overlay.id,
-          mode: 'inline_text',
-        },
-      });
+      const { data, error } = await invokeSecureFunction('template-design-agent', {
+        schema: template,
+        messages: [{ role: 'user', content: instruction }],
+        instruction,
+        activePageId: pageId,
+        selectedBlockId: blockId,
+        selectedOverlayId: overlay.id,
+        mode: 'inline_text',
+      }, { timeoutMs: 120000 });
       if (error) throw new Error(error.message);
       if ((data as any)?.error) throw new Error((data as any).error);
       const ops: any[] = (data as any).raw_ops || [];

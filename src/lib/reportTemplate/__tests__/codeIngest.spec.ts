@@ -49,7 +49,9 @@ describe('renderAndGroundCode', () => {
     expect(res.cdir.source.kind).toBe('url');
     expect(res.cdir.pages[0].traceRasterAssetId).toBe('page_1_trace_raster');
     expect(res.cdirFidelity.textAccuracy).toBe(1);
-    expect(res.editableTemplate.pages[0].background?.imageUrl).toBe('data:image/png;base64,AAAA');
+    const trace0 = res.editableTemplate.pages[0].blocks[0].overlays[0] as any;
+    expect(trace0).toMatchObject({ type: 'image', src: 'data:image/png;base64,AAAA', hidden: true, locked: true });
+    expect(res.editableTemplate.pages[0].background?.imageUrl).toBeUndefined();
     expect(res.pageWidth).toBe(res.grounded.pageWidth);
   });
 
@@ -74,7 +76,8 @@ describe('renderAndGroundCode', () => {
     expect(res.rasterDataUrls).toEqual(['data:image/png;base64,AAAA', 'data:image/png;base64,BBBB']);
     expect(res.groundedPages).toHaveLength(2);
     expect(res.editableTemplate.pages).toHaveLength(2);
-    expect(res.editableTemplate.pages[1].background?.imageUrl).toBe('data:image/png;base64,BBBB');
+    const trace1 = res.editableTemplate.pages[1].blocks[0].overlays[0] as any;
+    expect(trace1).toMatchObject({ type: 'image', src: 'data:image/png;base64,BBBB', hidden: true, locked: true });
     expect(res.cdirFidelity.pages.map((page) => page.textAccuracy)).toEqual([1, 1]);
   });
 
@@ -102,7 +105,9 @@ describe('renderAndGroundCode', () => {
       ok({ raster: 'AAAA', pageWidthPx: 900, pageHeightPx: 1200 }),
     );
     expect(res.groundedPages[0].elements).toHaveLength(0);
-    expect(res.editableTemplate.pages[0].background?.imageUrl).toBe('data:image/png;base64,AAAA');
+    // No editable layers at all → the raster IS the page, so it stays visible.
+    const traceOnly = res.editableTemplate.pages[0].blocks[0].overlays[0] as any;
+    expect(traceOnly).toMatchObject({ type: 'image', src: 'data:image/png;base64,AAAA', hidden: false, locked: true });
     expect(res.cdir.pages[0].layers).toHaveLength(0);
   });
 

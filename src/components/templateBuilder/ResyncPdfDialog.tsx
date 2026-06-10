@@ -152,7 +152,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
                     <RadioGroupItem value="semantic" id="r-semantic" className="mt-1" />
                     <div className="flex-1">
                       <Label htmlFor="r-semantic" className="font-medium cursor-pointer">Semantic</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">Editable text overlays only, no raster.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Editable text, vectors, and images at source colours/fonts. No raster.</p>
                     </div>
                   </div>
                 </Card>
@@ -163,7 +163,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
                       <Label htmlFor="r-hybrid" className="font-medium cursor-pointer flex items-center gap-2">
                         Hybrid <Badge variant="default" className="text-[10px]">Recommended</Badge>
                       </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">Raster backdrop + editable text overlays.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Editable extraction + hidden source raster per page for tracing.</p>
                     </div>
                   </div>
                 </Card>
@@ -172,7 +172,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
                     <RadioGroupItem value="pixel" id="r-pixel" className="mt-1" />
                     <div className="flex-1">
                       <Label htmlFor="r-pixel" className="font-medium cursor-pointer">Pixel-perfect</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">High-DPI rasterised page as background.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">High-DPI rasterised page as background. Exact look, not editable.</p>
                     </div>
                   </div>
                 </Card>

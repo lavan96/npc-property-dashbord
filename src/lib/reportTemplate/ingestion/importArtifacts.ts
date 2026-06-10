@@ -5,7 +5,7 @@
  * module gives the editor a small, injectable client that restores an
  * `ImportReviewDraft` from an import id without exposing private bucket paths.
  */
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { parseCdirDocument, type CdirDocument } from './cdir';
 import { buildImportReviewDraft, type ImportReviewArtifact, type ImportReviewDecision, type ImportReviewDraft } from './review';
 import type { CdirFidelityReport } from './fidelity';
@@ -63,7 +63,11 @@ export interface LoadImportReviewDraftResult {
   artifactPaths: { cdir?: string | null; cdirFidelity?: string | null };
 }
 
-const defaultInvoke: ImportArtifactInvoke = (functionName, args) => supabase.functions.invoke(functionName, args) as any;
+// Default transport: invokeSecureFunction (attaches the custom-auth session
+// token the secured edge function verifies); keeps the supabase-style
+// `(name, { body })` signature so injected test doubles stay unchanged.
+const defaultInvoke: ImportArtifactInvoke = (functionName, args) =>
+  invokeSecureFunction(functionName, args.body) as any;
 
 export function readImportReviewDecision(meta: Record<string, unknown> | null | undefined): ImportReviewDecisionRecord | null {
   const raw = meta?.import_review_decision;
@@ -110,7 +114,7 @@ export async function saveImportReviewDecision(options: {
   note?: string;
   invoke?: ImportReviewDecisionInvoke;
 }): Promise<SaveImportReviewDecisionResult> {
-  const invoke = options.invoke ?? ((functionName, args) => supabase.functions.invoke(functionName, args) as any);
+  const invoke = options.invoke ?? ((functionName, args) => invokeSecureFunction(functionName, args.body) as any);
   const { data, error } = await invoke('template-import-pdf', {
     body: {
       operation: 'record_review_decision',
