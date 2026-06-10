@@ -1,0 +1,125 @@
+/**
+ * Client helpers for loading persisted import-review artifacts.
+ *
+ * The edge function keeps CDIR/fidelity JSON in a private storage bucket. This
+ * module gives the editor a small, injectable client that restores an
+ * `ImportReviewDraft` from an import id without exposing private bucket paths.
+ */
+import { supabase } from '@/integrations/supabase/client';
+import { parseCdirDocument, type CdirDocument } from './cdir';
+import { buildImportReviewDraft, type ImportReviewArtifact, type ImportReviewDecision, type ImportReviewDraft } from './review';
+import type { CdirFidelityReport } from './fidelity';
+import type { ReportTemplate } from '../templateSchema';
+
+export interface PersistedImportRecord {
+  id: string;
+  user_id: string | null;
+  status: string;
+  created_template_id: string | null;
+  page_count: number | null;
+  source_filename: string | null;
+  meta: Record<string, unknown> | null;
+}
+
+export interface ImportArtifactsPayload {
+  record: PersistedImportRecord;
+  cdir: unknown;
+  cdirFidelity: CdirFidelityReport | null;
+  artifactPaths?: { cdir?: string | null; cdirFidelity?: string | null };
+}
+
+export type ImportArtifactInvoke = (
+  functionName: 'template-import-pdf',
+  args: { body: { operation: 'get_artifacts'; import_id: string } },
+) => Promise<{ data: ImportArtifactsPayload | null; error: { message: string } | null }>;
+
+export interface ImportReviewDecisionRecord {
+  decision: ImportReviewDecision;
+  note: string | null;
+  decided_at: string;
+  decided_by: string;
+}
+
+export interface SaveImportReviewDecisionResult {
+  record: { id: string; meta: Record<string, unknown> | null };
+  decision: ImportReviewDecisionRecord;
+}
+
+export type ImportReviewDecisionInvoke = (
+  functionName: 'template-import-pdf',
+  args: { body: { operation: 'record_review_decision'; import_id: string; decision: ImportReviewDecision; note?: string } },
+) => Promise<{ data: SaveImportReviewDecisionResult | null; error: { message: string } | null }>;
+
+export interface LoadImportReviewDraftOptions {
+  importId: string;
+  template?: ReportTemplate;
+  artifacts?: ImportReviewArtifact[];
+  invoke?: ImportArtifactInvoke;
+}
+
+export interface LoadImportReviewDraftResult {
+  record: PersistedImportRecord;
+  draft: ImportReviewDraft;
+  artifactPaths: { cdir?: string | null; cdirFidelity?: string | null };
+}
+
+const defaultInvoke: ImportArtifactInvoke = (functionName, args) => supabase.functions.invoke(functionName, args) as any;
+
+export function readImportReviewDecision(meta: Record<string, unknown> | null | undefined): ImportReviewDecisionRecord | null {
+  const raw = meta?.import_review_decision;
+  if (!raw || typeof raw !== 'object') return null;
+  const item = raw as Partial<ImportReviewDecisionRecord>;
+  if (!item.decision || !['accept', 'accept_with_trace', 'retry', 'manual_edit'].includes(item.decision)) return null;
+  return {
+    decision: item.decision,
+    note: typeof item.note === 'string' ? item.note : null,
+    decided_at: typeof item.decided_at === 'string' ? item.decided_at : '',
+    decided_by: typeof item.decided_by === 'string' ? item.decided_by : '',
+  };
+}
+
+
+export async function loadImportReviewDraft(options: LoadImportReviewDraftOptions): Promise<LoadImportReviewDraftResult> {
+  const invoke = options.invoke ?? defaultInvoke;
+  const { data, error } = await invoke('template-import-pdf', {
+    body: { operation: 'get_artifacts', import_id: options.importId },
+  });
+  if (error) throw new Error(error.message || 'Could not load import artifacts.');
+  if (!data?.record) throw new Error('Import artifact response did not include an import record.');
+  if (!data.cdir) throw new Error('This import does not have a persisted CDIR artifact yet.');
+
+  const cdir: CdirDocument = parseCdirDocument(data.cdir);
+  const draft = buildImportReviewDraft({
+    id: `review_${data.record.id}`,
+    cdir,
+    template: options.template,
+    fidelity: data.cdirFidelity ?? undefined,
+    artifacts: options.artifacts ?? [],
+  });
+
+  return {
+    record: data.record,
+    draft,
+    artifactPaths: data.artifactPaths ?? {},
+  };
+}
+
+export async function saveImportReviewDecision(options: {
+  importId: string;
+  decision: ImportReviewDecision;
+  note?: string;
+  invoke?: ImportReviewDecisionInvoke;
+}): Promise<SaveImportReviewDecisionResult> {
+  const invoke = options.invoke ?? ((functionName, args) => supabase.functions.invoke(functionName, args) as any);
+  const { data, error } = await invoke('template-import-pdf', {
+    body: {
+      operation: 'record_review_decision',
+      import_id: options.importId,
+      decision: options.decision,
+      ...(options.note ? { note: options.note } : {}),
+    },
+  });
+  if (error) throw new Error(error.message || 'Could not save import review decision.');
+  if (!data?.decision) throw new Error('Review decision response did not include a decision.');
+  return data;
+}

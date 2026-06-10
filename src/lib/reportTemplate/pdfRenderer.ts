@@ -136,6 +136,10 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
   }
 }
 
+function isTransparentColor(color: string | null | undefined): boolean {
+  return !color || color.toLowerCase() === 'transparent';
+}
+
 function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
   switch (overlay.type) {
     case 'text': {
@@ -163,18 +167,21 @@ function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
       break;
     }
     case 'shape': {
-      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, '#000000') : null;
-      const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, '#000000') : null;
-      if (fill) {
-        const { r, g, b } = hexToRgb(fill);
+      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, 'transparent') : null;
+      const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, 'transparent') : null;
+      const hasFill = !isTransparentColor(fill);
+      const hasStroke = !isTransparentColor(stroke) && (overlay.strokeWidth ?? 0) > 0;
+      if (hasFill) {
+        const { r, g, b } = hexToRgb(fill!);
         doc.setFillColor(r, g, b);
       }
-      if (stroke) {
-        const { r, g, b } = hexToRgb(stroke);
+      if (hasStroke) {
+        const { r, g, b } = hexToRgb(stroke!);
         doc.setDrawColor(r, g, b);
         doc.setLineWidth(overlay.strokeWidth || 1);
       }
-      const style = fill && stroke ? 'FD' : fill ? 'F' : 'S';
+      const style = hasFill && hasStroke ? 'FD' : hasFill ? 'F' : hasStroke ? 'S' : null;
+      if (!style) return;
       if (overlay.shape === 'ellipse') {
         doc.ellipse(
           overlay.x + overlay.width / 2,
@@ -218,8 +225,9 @@ function mapFontFamily(family: string): string {
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  let h = hex.replace('#', '').trim();
+  let h = String(hex || '').replace('#', '').trim();
   if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length === 8) h = h.slice(0, 6);
   const num = parseInt(h, 16);
   if (Number.isNaN(num)) return { r: 0, g: 0, b: 0 };
   return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };

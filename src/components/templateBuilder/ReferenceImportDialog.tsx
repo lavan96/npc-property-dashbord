@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   extractPdfToTemplate,
@@ -42,7 +41,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
-import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
+import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
 import { reconstructPdfWithClaude } from '@/lib/reportTemplate/ingestion/pdfDocumentReconstruct';
 import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
@@ -60,6 +59,83 @@ function base64ToFile(b64: string, filename: string, type: string): File {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new File([bytes], filename, { type });
+}
+
+/** Downscale large screenshots before sending them to the design agent. */
+async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1800, jpegQuality = 0.86): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('image load failed'));
+    image.src = dataUrl;
+  });
+  const longest = Math.max(img.naturalWidth, img.naturalHeight);
+  if (!longest || (longest <= maxLongEdge && dataUrl.length < 3_500_000)) return dataUrl;
+
+  const scale = Math.min(1, maxLongEdge / longest);
+  const width = Math.max(1, Math.round(img.naturalWidth * scale));
+  const height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', jpegQuality);
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('')}`;
+}
+
+async function extractImagePalette(dataUrl: string, maxColors = 8): Promise<string[]> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('image load failed'));
+      image.src = dataUrl;
+    });
+    const canvas = document.createElement('canvas');
+    const sample = 96;
+    const scale = Math.min(1, sample / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return [];
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const buckets = new Map<string, { count: number; r: number; g: number; b: number; sat: number }>();
+    for (let i = 0; i < pixels.length; i += 16) {
+      const a = pixels[i + 3];
+      if (a < 32) continue;
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      if ((lum > 0.96 || lum < 0.04) && sat < 0.12) continue;
+      const key = `${Math.round(r / 24)}:${Math.round(g / 24)}:${Math.round(b / 24)}`;
+      const bucket = buckets.get(key) ?? { count: 0, r: 0, g: 0, b: 0, sat: 0 };
+      bucket.count += 1;
+      bucket.r += r;
+      bucket.g += g;
+      bucket.b += b;
+      bucket.sat += sat;
+      buckets.set(key, bucket);
+    }
+    return Array.from(buckets.values())
+      .sort((a, b) => (b.count * (1 + b.sat / Math.max(1, b.count))) - (a.count * (1 + a.sat / Math.max(1, a.count))))
+      .slice(0, maxColors)
+      .map((bucket) => rgbToHex(bucket.r / bucket.count, bucket.g / bucket.count, bucket.b / bucket.count));
+  } catch (e) {
+    console.warn('[reconstruct] palette extraction failed', e);
+    return [];
+  }
 }
 
 /** Impure OCR pass: read measured text boxes from an image (R5 grounding). */
@@ -130,6 +206,7 @@ export function ReferenceImportDialog({
   const [url, setUrl] = useState('');
   const [urlBusy, setUrlBusy] = useState(false);
   const [codeText, setCodeText] = useState('');
+  const [codeSourceName, setCodeSourceName] = useState<string | null>(null);
   const [codeBusy, setCodeBusy] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
@@ -137,7 +214,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeBusy(false); setPdfClaude(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeBusy(false); setPdfClaude(false);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -193,6 +270,9 @@ export function ReferenceImportDialog({
       } else {
         setStage('Reading image…');
         const dataUrl = await fileToDataUrl(file);
+        setStage('Optimising image for reconstruction…');
+        const agentImageDataUrl = await prepareImageForDesignAgent(dataUrl);
+        const colorPalette = await extractImagePalette(agentImageDataUrl);
 
         // R5 — FAITHFUL path grounds the agent on measured OCR text so it
         // transcribes/places real copy instead of re-inventing it from a brief.
@@ -200,29 +280,30 @@ export function ReferenceImportDialog({
         let groundedReference: GroundedReference | undefined;
         if (imageMode === 'faithful') {
           setStage('Measuring text (OCR)…');
-          const ocr = await ocrImageWords(dataUrl);
+          const ocr = await ocrImageWords(agentImageDataUrl);
           if (ocr && ocr.words.length) groundedReference = groundOcrWords(ocr.words, ocr.width, ocr.height);
         }
 
+        const paletteInstruction = colorPalette.length
+          ? ` Dominant source colours detected: ${colorPalette.join(', ')}. Use these exact hex colours for backgrounds, fills, accents, borders, and text where they match the image; do not default to black and white.`
+          : '';
         const instruction = imageMode === 'faithful'
-          ? 'Reconstruct this reference faithfully as editable native blocks on the active page. Transcribe the text exactly and keep the measured positions — do not redesign or rewrite.'
-          : 'Use this reference as inspiration to (re)design the active page.';
+          ? `Reconstruct this reference faithfully as editable native blocks on the active page. Transcribe the text exactly and keep the measured positions — do not redesign or rewrite.${paletteInstruction}`
+          : `Use this reference as inspiration to (re)design the active page.${paletteInstruction}`;
         setStage(imageMode === 'faithful'
           ? `Reconstructing faithfully…${groundedReference ? ` (${groundedReference.elements.length} measured elements)` : ''}`
           : 'Redesigning with AI… this can take ~20–40s');
 
-        const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
-          body: {
-            schema,
-            messages: [{ role: 'user', content: instruction }],
-            instruction,
-            activePageId,
-            mode: imageMode === 'faithful' ? 'screenshot_to_block' : 'design',
-            imageDataUrl: dataUrl,
-            ...(groundedReference ? { groundedReference } : {}),
-            sampleData,
-          },
-        });
+        const { data, error: invokeError } = await invokeSecureFunction('template-design-agent', {
+          schema,
+          messages: [{ role: 'user', content: instruction }],
+          instruction,
+          activePageId,
+          mode: imageMode === 'faithful' ? 'screenshot_to_block' : 'design',
+          imageDataUrl: agentImageDataUrl,
+          ...(groundedReference ? { groundedReference } : {}),
+          sampleData,
+        }, { timeoutMs: 180000 });
         if (invokeError) throw new Error(invokeError.message);
         if ((data as any)?.error) throw new Error((data as any).error);
         const reconstructed = (data as any)?.schema;
@@ -284,23 +365,35 @@ export function ReferenceImportDialog({
     }
   }, [url, onFile]);
 
-  // Raw-codebase reconstruct (plan WS1): render HTML/CSS or a live URL via the
-  // render-source service, ground the DOM box tree, then reuse the exact
-  // `screenshot_to_block` path the image reconstruct uses (zero new pipeline).
+  // Raw-codebase import (plan WS1): render HTML/CSS/URL/JSX/ZIP via the
+  // render-source service, then apply the editable CDIR → ReportTemplate result
+  // directly. This keeps code/zip imports multi-page and editable-first instead
+  // of flattening the rendered output back through a one-page screenshot prompt.
+  const applyCodeImportResult = useCallback((result: CodeIngestResult, label: string) => {
+    const validation = validateReconstructedSchema(result.editableTemplate);
+    if (!validation.ok) throw new Error(`Code import was not usable: ${validation.errors.join(' ')}`);
+    onApplySchema?.(result.editableTemplate);
+    const fidelity = result.cdirFidelity;
+    const score = Math.round(fidelity.overallScore * 100);
+    const traceNote = fidelity.rasterFallbackCoverage > 0
+      ? ` Trace rasters retained for review (${Math.round(fidelity.rasterFallbackCoverage * 100)}% fallback coverage).`
+      : '';
+    const warnings = fidelity.warnings.length ? ` ${fidelity.warnings.length} fidelity warning(s) — review imported layers before saving.` : '';
+    setDone(`Imported ${validation.pageCount} editable page${validation.pageCount === 1 ? '' : 's'} from ${label} · fidelity ${score}%.${traceNote}${warnings}`);
+  }, [onApplySchema]);
+
   const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
     const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
-    const { data, error: invokeError } = await supabase.functions.invoke('template-design-agent', {
-      body: {
-        schema,
-        messages: [{ role: 'user', content: instruction }],
-        instruction,
-        activePageId,
-        mode: 'screenshot_to_block',
-        imageDataUrl: dataUrl,
-        groundedReference: grounded,
-        sampleData,
-      },
-    });
+    const { data, error: invokeError } = await invokeSecureFunction('template-design-agent', {
+      schema,
+      messages: [{ role: 'user', content: instruction }],
+      instruction,
+      activePageId,
+      mode: 'screenshot_to_block',
+      imageDataUrl: dataUrl,
+      groundedReference: grounded,
+      sampleData,
+    }, { timeoutMs: 180000 });
     if (invokeError) throw new Error(invokeError.message);
     if ((data as any)?.error) throw new Error((data as any).error);
     const reconstructed = (data as any)?.schema;
@@ -317,29 +410,29 @@ export function ReferenceImportDialog({
     if (!raw) return;
     const asUrl = isHttpUrl(raw);
     const isJsx = !asUrl && looksLikeJsx(raw);
-    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw } : { html: raw };
+    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw, sourceFilename: codeSourceName ?? undefined } : { html: raw, sourceFilename: codeSourceName ?? undefined };
     setCodeBusy(true); setError(null); setDone(null);
     try {
       setStage(asUrl ? 'Rendering page…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
-      const { rasterDataUrl, grounded } = await renderAndGroundCode(input, invokeRenderSource);
-      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered — check the input.');
-      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
-      await reconstructFromScreenshot(rasterDataUrl, grounded);
+      const result = await renderAndGroundCode(input, invokeRenderSource);
+      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered — check the input.');
+      setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
+      applyCodeImportResult(result, codeSourceName ?? (asUrl ? 'URL' : isJsx ? 'JSX' : 'HTML'));
     } catch (e) {
-      setError(`Couldn't reconstruct from code: ${(e as Error).message}`);
+      setError(`Couldn't import from code: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [codeText, reconstructFromScreenshot]);
+  }, [codeText, codeSourceName, applyCodeImportResult]);
 
   // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
-  // .zip project is built + reconstructed immediately.
+  // .zip project is built + imported immediately.
   const onCodeFile = useCallback(async (f: File | null) => {
     if (!f) return;
     const flavor = codeFlavorForFile(f.name);
     if (!flavor) { toast.error('Drop a .html/.css/.jsx/.tsx file or a .zip project.'); return; }
     if (flavor !== 'zip') {
-      try { setCodeText(await f.text()); setError(null); setDone(null); } catch { /* ignore */ }
+      try { setCodeText(await f.text()); setCodeSourceName(f.name); setError(null); setDone(null); } catch { /* ignore */ }
       return;
     }
     setCodeBusy(true); setError(null); setDone(null);
@@ -347,29 +440,28 @@ export function ReferenceImportDialog({
       setStage('Building project…');
       const dataUrl = await fileToDataUrl(f);
       const zipBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-      const { rasterDataUrl, grounded } = await renderAndGroundCode({ zipBase64 }, invokeRenderSource);
-      if (!grounded.elements.length) throw new Error('Nothing measurable was rendered from the project.');
-      setStage(`Reconstructing… (${grounded.elements.length} measured elements)`);
-      await reconstructFromScreenshot(rasterDataUrl, grounded);
+      const result = await renderAndGroundCode({ zipBase64, sourceFilename: f.name }, invokeRenderSource);
+      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered from the project.');
+      setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
+      applyCodeImportResult(result, f.name);
     } catch (e) {
-      setError(`Couldn't reconstruct project: ${(e as Error).message}`);
+      setError(`Couldn't import project: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [reconstructFromScreenshot]);
+  }, [applyCodeImportResult]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, or
-            <strong> paste a link</strong> (Google Drive, Docs/Slides, Dropbox, OneDrive, Figma…). PDFs are
-            re-synced with selectable fidelity; images are <strong>faithfully reconstructed</strong> (OCR-grounded, keeps your
-            copy) or redesigned from inspiration. The result is validated before it touches your template.
+            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, paste a link,
+            or use the dedicated <strong>Code / ZIP template import</strong> section below. PDFs are re-synced with selectable
+            fidelity; images are faithfully reconstructed; code/ZIP imports are rendered through CDIR into editable pages.
           </DialogDescription>
         </DialogHeader>
 
@@ -441,18 +533,39 @@ export function ReferenceImportDialog({
             )}
 
             {!file && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Code2 className="h-3.5 w-3.5" /> …or reconstruct a web page, component, or project
-                  <Badge variant="outline" className="text-[10px]">beta</Badge>
-                </Label>
+              <Card
+                className="space-y-3 border-primary/25 bg-primary/5 p-4"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); onCodeFile(e.dataTransfer.files?.[0] ?? null); }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <Code2 className="h-4 w-4 text-primary" /> Code / ZIP template import
+                      <Badge variant="outline" className="text-[10px]">beta</Badge>
+                    </Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Upload a .zip project or paste a URL, HTML, CSS, JSX, TSX, Vue, or Svelte source. We render it, measure the DOM,
+                      and import editable CDIR pages with trace rasters for review.
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
+                    <Upload className="h-4 w-4 mr-1" /> Upload code / ZIP
+                  </Button>
+                </div>
                 <Textarea
                   value={codeText}
-                  onChange={(e) => setCodeText(e.target.value)}
-                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component — or use “File…” for a .jsx/.tsx/.html or a .zip project."
-                  className="text-xs font-mono min-h-[64px]"
+                  onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); }}
+                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component. For multi-page projects, upload a .zip."
+                  className="text-xs font-mono min-h-[84px] bg-background"
                   disabled={codeBusy || busy}
                 />
+                {codeSourceName && (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Badge variant="secondary" className="text-[10px]">Loaded file</Badge>
+                    <span className="truncate">{codeSourceName}</span>
+                  </div>
+                )}
                 <input
                   ref={codeFileRef}
                   type="file"
@@ -460,20 +573,15 @@ export function ReferenceImportDialog({
                   className="hidden"
                   onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
                 />
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] text-muted-foreground pl-1">
-                    render-source renders it (C1 HTML/CSS · C2 URL · C3 JSX · C4 zip), measures the DOM, then reconstructs faithfully.
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: drag a project ZIP onto this panel to import multiple rendered pages instead of copy-pasting one page of code.
                   </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
-                      <Upload className="h-4 w-4 mr-1" /> File…
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
-                      {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & reconstruct</>}
-                    </Button>
-                  </div>
+                  <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
+                    {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & import</>}
+                  </Button>
                 </div>
-              </div>
+              </Card>
             )}
 
             {file && kind === 'pdf' && (
