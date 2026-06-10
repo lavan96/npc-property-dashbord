@@ -9,9 +9,9 @@
  * The reconstructed schema is validated BEFORE it is applied, so a broken
  * result can't corrupt the working template. Renderer code is untouched.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2,
+  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -38,8 +38,19 @@ import {
   type ReferenceKind,
 } from '@/lib/reportTemplate/referenceImport';
 import { groundOcrWords, type GroundedReference, type OcrWord } from '@/lib/reportTemplate/imageGrounding';
+import { Input } from '@/components/ui/input';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
 
 type ImageMode = 'faithful' | 'redesign';
+
+/** base64 → File (for documents fetched by URL via the import-from-url function). */
+function base64ToFile(b64: string, filename: string, type: string): File {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], filename, { type });
+}
 
 /** Impure OCR pass: read measured text boxes from an image (R5 grounding). */
 async function ocrImageWords(dataUrl: string): Promise<{ words: OcrWord[]; width: number; height: number } | null> {
@@ -104,10 +115,15 @@ export function ReferenceImportDialog({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [url, setUrl] = useState('');
+  const [urlBusy, setUrlBusy] = useState(false);
+
+  const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
 
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
+    setUrl(''); setUrlBusy(false);
   };
   const handleClose = (v: boolean) => { if (busy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -202,6 +218,37 @@ export function ReferenceImportDialog({
     }
   }, [file, kind, mode, imageMode, templateName, templateId, user?.id, schema, activePageId, sampleData, onResynced, onApplySchema]);
 
+  // Import by link: normalise the share URL (tested), fetch server-side (CORS +
+  // SSRF), then drop the returned PDF/image into the normal file flow.
+  const fetchUrlImport = useCallback(async () => {
+    const raw = url.trim();
+    if (!isHttpUrl(raw)) { setError('Enter a valid http(s) link.'); return; }
+    const norm = normalizeImportUrl(raw);
+    if ((norm.provider === 'canva' || norm.provider === 'gamma') && norm.needsExport) {
+      setError(norm.guidance ?? 'This app has no public file link — export to PDF and paste that link.');
+      return;
+    }
+    setUrlBusy(true); setError(null);
+    try {
+      const { data, error: invErr } = await invokeSecureFunction('import-from-url', {
+        url: raw, fetchUrl: norm.fetchUrl, provider: norm.provider, resourceId: norm.resourceId, expectedKind: norm.expectedKind,
+      });
+      if (invErr) throw new Error(invErr.message);
+      const d = data as any;
+      if (d?.error) throw new Error(d.error);
+      if (d?.kind === 'needs_export') { setError(d.guidance ?? 'This link needs a PDF/image export.'); return; }
+      if (!d?.dataBase64) throw new Error('No file returned from that link.');
+      const ext = d.kind === 'pdf' ? 'pdf' : 'png';
+      const name = d.filename || `${suggestedName(raw, norm.provider)}.${ext}`;
+      const f = base64ToFile(d.dataBase64, name, d.contentType || (d.kind === 'pdf' ? 'application/pdf' : 'image/png'));
+      onFile(f);
+    } catch (e) {
+      setError(`Couldn't import from link: ${(e as Error).message}`);
+    } finally {
+      setUrlBusy(false);
+    }
+  }, [url, onFile]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
@@ -210,7 +257,8 @@ export function ReferenceImportDialog({
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong> (or paste an image). PDFs are
+            Drop a <strong>PDF</strong> or an <strong>image / screenshot</strong>, paste an image, or
+            <strong> paste a link</strong> (Google Drive, Docs/Slides, Dropbox, OneDrive, Figma…). PDFs are
             re-synced with selectable fidelity; images are <strong>faithfully reconstructed</strong> (OCR-grounded, keeps your
             copy) or redesigned from inspiration. The result is validated before it touches your template.
           </DialogDescription>
@@ -254,6 +302,34 @@ export function ReferenceImportDialog({
                 onChange={(e) => onFile(e.target.files?.[0] ?? null)}
               />
             </div>
+
+            {!file && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') fetchUrlImport(); }}
+                      placeholder="…or paste a link — Google Drive, Docs/Slides, Dropbox, OneDrive, Figma…"
+                      className="pl-8"
+                      disabled={urlBusy || busy}
+                    />
+                  </div>
+                  <Button variant="secondary" onClick={fetchUrlImport} disabled={!url.trim() || urlBusy || busy}>
+                    {urlBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Fetching…</> : 'Fetch'}
+                  </Button>
+                </div>
+                {urlInfo && urlInfo.provider !== 'generic' && (
+                  <p className="text-[11px] text-muted-foreground pl-1">
+                    Detected <span className="font-medium capitalize">{urlInfo.provider.replace(/-/g, ' ')}</span>
+                    {urlInfo.needsExport ? ' — needs a PDF/PNG export (we’ll guide you).'
+                      : urlInfo.expectedKind === 'pdf' ? ' — exports to PDF.' : ''}
+                  </p>
+                )}
+              </div>
+            )}
 
             {file && kind === 'pdf' && (
               <div>
