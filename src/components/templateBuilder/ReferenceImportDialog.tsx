@@ -302,6 +302,7 @@ export function ReferenceImportDialog({
           mode: imageMode === 'faithful' ? 'screenshot_to_block' : 'design',
           imageDataUrl: agentImageDataUrl,
           ...(groundedReference ? { groundedReference } : {}),
+          sourcePalette: colorPalette,
           sampleData,
         }, { timeoutMs: 180000 });
         if (invokeError) throw new Error(invokeError.message);
@@ -383,15 +384,21 @@ export function ReferenceImportDialog({
   }, [onApplySchema]);
 
   const reconstructFromScreenshot = useCallback(async (dataUrl: string, grounded: GroundedReference) => {
-    const instruction = 'Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.';
+    const preparedDataUrl = await prepareImageForDesignAgent(dataUrl);
+    const sourcePalette = await extractImagePalette(preparedDataUrl);
+    const paletteInstruction = sourcePalette.length
+      ? ` Source colours detected: ${sourcePalette.join(', ')}. Preserve these exact colours for text, fills, background, borders, and accents.`
+      : '';
+    const instruction = `Reconstruct this rendered design faithfully as editable native blocks on the active page. Transcribe text exactly and keep the measured positions — do not redesign.${paletteInstruction}`;
     const { data, error: invokeError } = await invokeSecureFunction('template-design-agent', {
       schema,
       messages: [{ role: 'user', content: instruction }],
       instruction,
       activePageId,
       mode: 'screenshot_to_block',
-      imageDataUrl: dataUrl,
+      imageDataUrl: preparedDataUrl,
       groundedReference: grounded,
+      sourcePalette,
       sampleData,
     }, { timeoutMs: 180000 });
     if (invokeError) throw new Error(invokeError.message);

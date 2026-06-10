@@ -126,6 +126,7 @@ import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialo
 import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
 import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
 import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
+import { EnhancedColorPicker } from '@/components/templateBuilder/EnhancedColorPicker';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
@@ -3424,19 +3425,14 @@ function TokensEditor({
                   <div key={k} className="flex items-center gap-2">
                     <Input value={k} disabled className="w-32 h-8 text-xs font-mono" />
                     {group === 'colors' ? (
-                      <>
-                        <input
-                          type="color"
-                          value={typeof v === 'string' && v.startsWith('#') ? v : '#000000'}
-                          onChange={(e) => updateGroup(group, k, e.target.value)}
-                          className="h-8 w-10 rounded border bg-transparent cursor-pointer"
-                        />
-                        <Input
+                      <div className="flex-1">
+                        <EnhancedColorPicker
                           value={String(v)}
-                          onChange={(e) => updateGroup(group, k, e.target.value)}
-                          className="h-8 text-xs font-mono"
+                          onChange={(next) => updateGroup(group, k, next)}
+                          template={template}
+                          allowEmpty
                         />
-                      </>
+                      </div>
                     ) : group === 'spacing' ? (
                       <Input
                         type="number"
@@ -3462,7 +3458,7 @@ function TokensEditor({
         );
       })}
       <p className="text-[11px] text-muted-foreground">
-        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc.
+        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc. Color values accept <code>#RRGGBB</code>, <code>#RRGGBBAA</code>, <code>rgb()</code>, <code>rgba()</code>, <code>hsl()</code>, and <code>token:name</code>.
       </p>
     </div>
   );
