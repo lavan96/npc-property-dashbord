@@ -175,6 +175,26 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
     in‑function (`_shared/auth.verifyAuth`) with `verify_jwt = false` pinned in `config.toml`; upstream
     render‑service credential failures map to 502 `render_source_auth_misconfigured` (never a
     user‑facing 401); all template‑builder clients invoke through `invokeSecureFunction`.
+- **R8 — Exact-source fidelity (2026‑06, corpus: designed PDF cover · single-file TSX · Figma .make):** ✅ **done.**
+  - **PDF shading fills** (`pdfImport/shadingExtract.ts`): axial/radial shadings (the gradient page
+    backgrounds of designed covers, previously dropped → blank white pages) reconstruct as editable
+    shape overlays with CSS `linear/radial-gradient` fills; mesh shadings flatten to their average
+    colour; clip rects are tracked through save/restore so partial-page shadings keep their extent.
+  - **PDF ExtGState alpha** (`ca`/`CA`) folds into vector colours as 8-digit hex — 10%-white "glass"
+    panels no longer import opaque. Shared helpers in `cssColor.ts` (`toRendererHex` keeps alpha that
+    the renderer's `normaliseCssColor` would strip; gradients pass through the shape renderer verbatim,
+    with a first-stop fallback in the legacy jsPDF engine).
+  - **C3 TSX harness** (`render-source/server.js`): explicit `Babel.transform` with
+    `typescript {isTSX}` (the declarative preset attribute could not parse real .tsx at all), React
+    hooks exposed as globals (stripped imports), the Tailwind Play CDN (exported components are
+    routinely Tailwind-styled), and a `document.fonts.ready` settle before measuring/screenshotting.
+  - **DOM extraction v2:** effective opacity (ancestor product), painted-colour resolution for
+    gradient-clipped (`bg-clip:text`) transparent text, line-height capture, gradient/blur/box-shadow/
+    %-radius capture on shape boxes → CDIR shape layers carry `blur`/`shadow` into overlay `effects`.
+  - **Figma `.make`/`.fig` ingestion** (`ingestion/makeImport.ts`): dependency-free ZIP reader
+    (central directory + `DecompressionStream`), recovers the export's bundled page rasters and routes
+    the largest through the faithful image pipeline; canvas-only exports get explicit guidance instead
+    of a generic rejection.
 
 ## 7. Trade‑offs & risks
 
