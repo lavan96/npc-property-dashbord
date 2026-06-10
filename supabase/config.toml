@@ -756,14 +756,26 @@ request_timeout = 60
 # auth tokens are not always valid Supabase JWTs (e.g. after the 24h access-token
 # expiry) and the gateway would 401 before in-function session auth can run.
 verify_jwt = false
-request_timeout = 300
+request_timeout = 1500
 
 [functions.template-import-pdf]
 # Uses custom session tokens verified inside the function (verifyAuth).
 verify_jwt = false
-request_timeout = 120
+request_timeout = 1500
 
 [functions.template-design-agent]
 # Uses custom session tokens verified inside the function (verifyAuth).
 verify_jwt = false
-request_timeout = 300
+request_timeout = 1500
+
+[functions.render-template-pdf]
+verify_jwt = false
+request_timeout = 1500
+
+[functions.figma-template-sync]
+verify_jwt = false
+request_timeout = 1500
+
+[functions.finance-portal-templates]
+verify_jwt = false
+request_timeout = 1500
