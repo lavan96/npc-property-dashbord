@@ -86,6 +86,58 @@ async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1800, j
   return canvas.toDataURL('image/jpeg', jpegQuality);
 }
 
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('')}`;
+}
+
+async function extractImagePalette(dataUrl: string, maxColors = 8): Promise<string[]> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('image load failed'));
+      image.src = dataUrl;
+    });
+    const canvas = document.createElement('canvas');
+    const sample = 96;
+    const scale = Math.min(1, sample / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return [];
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const buckets = new Map<string, { count: number; r: number; g: number; b: number; sat: number }>();
+    for (let i = 0; i < pixels.length; i += 16) {
+      const a = pixels[i + 3];
+      if (a < 32) continue;
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      if ((lum > 0.96 || lum < 0.04) && sat < 0.12) continue;
+      const key = `${Math.round(r / 24)}:${Math.round(g / 24)}:${Math.round(b / 24)}`;
+      const bucket = buckets.get(key) ?? { count: 0, r: 0, g: 0, b: 0, sat: 0 };
+      bucket.count += 1;
+      bucket.r += r;
+      bucket.g += g;
+      bucket.b += b;
+      bucket.sat += sat;
+      buckets.set(key, bucket);
+    }
+    return Array.from(buckets.values())
+      .sort((a, b) => (b.count * (1 + b.sat / Math.max(1, b.count))) - (a.count * (1 + a.sat / Math.max(1, a.count))))
+      .slice(0, maxColors)
+      .map((bucket) => rgbToHex(bucket.r / bucket.count, bucket.g / bucket.count, bucket.b / bucket.count));
+  } catch (e) {
+    console.warn('[reconstruct] palette extraction failed', e);
+    return [];
+  }
+}
+
 /** Impure OCR pass: read measured text boxes from an image (R5 grounding). */
 async function ocrImageWords(dataUrl: string): Promise<{ words: OcrWord[]; width: number; height: number } | null> {
   try {
@@ -220,6 +272,7 @@ export function ReferenceImportDialog({
         const dataUrl = await fileToDataUrl(file);
         setStage('Optimising image for reconstruction…');
         const agentImageDataUrl = await prepareImageForDesignAgent(dataUrl);
+        const colorPalette = await extractImagePalette(agentImageDataUrl);
 
         // R5 — FAITHFUL path grounds the agent on measured OCR text so it
         // transcribes/places real copy instead of re-inventing it from a brief.
@@ -231,9 +284,12 @@ export function ReferenceImportDialog({
           if (ocr && ocr.words.length) groundedReference = groundOcrWords(ocr.words, ocr.width, ocr.height);
         }
 
+        const paletteInstruction = colorPalette.length
+          ? ` Dominant source colours detected: ${colorPalette.join(', ')}. Use these exact hex colours for backgrounds, fills, accents, borders, and text where they match the image; do not default to black and white.`
+          : '';
         const instruction = imageMode === 'faithful'
-          ? 'Reconstruct this reference faithfully as editable native blocks on the active page. Transcribe the text exactly and keep the measured positions — do not redesign or rewrite.'
-          : 'Use this reference as inspiration to (re)design the active page.';
+          ? `Reconstruct this reference faithfully as editable native blocks on the active page. Transcribe the text exactly and keep the measured positions — do not redesign or rewrite.${paletteInstruction}`
+          : `Use this reference as inspiration to (re)design the active page.${paletteInstruction}`;
         setStage(imageMode === 'faithful'
           ? `Reconstructing faithfully…${groundedReference ? ` (${groundedReference.elements.length} measured elements)` : ''}`
           : 'Redesigning with AI… this can take ~20–40s');
