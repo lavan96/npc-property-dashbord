@@ -209,6 +209,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 <Stat label="Pages" value={result.pageCount} />
                 <Stat label="Text overlays" value={result.fidelityReport.textBlocks} />
                 <Stat label="Vector groups" value={result.fidelityReport.vectors} />
+                <Stat label="Images" value={result.fidelityReport.images} />
                 <Stat label="Rasterised" value={result.fidelityReport.rasterizedPages} />
                 <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
               </div>

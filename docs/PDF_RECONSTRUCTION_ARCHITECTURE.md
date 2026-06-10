@@ -1,6 +1,6 @@
 # PDF / Image → Editable Template — Reconstruction Architecture
 
-> Status: **R0–R2 implemented** (primitives · text geometry/overlap · editable vectors) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
+> Status: **R0–R2 + R4 implemented** (primitives · text geometry/overlap/colour · editable vectors · images) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
 >
 > Goal: turn a PDF or image into a **faithful *and* editable** template — exact text (correctly
 > positioned, coloured, and typed), **editable vector icons/logos**, **captured fonts**, real
@@ -108,19 +108,25 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
 - **R0 — Primitives:** ✅ **done.** `vector` overlay, rich‑text `runs`, embedded `data:` fonts, numeric
   weight, + the renderer cases + `cssTokens` relax. *Acceptance:* new primitives parse + render; **golden
   test proves existing templates are byte‑identical**; new golden cases cover the new primitives.
-- **R1 — Text done right:** ✅ **done (geometry + overlap).** New pure `textLayout` module (correct matrix
-  decomposition + baseline, span→line→paragraph **merge**) with thorough unit tests; wired
-  `extractPdfToTemplate` to it; **dropped box inflation**; **editable modes no longer emit the
-  text‑bearing raster background** (kills the double text); default mode flipped to `semantic`.
-  *Remaining:* real **colour extraction** for text (operator‑list / stext) — text colour still
-  falls back to `#111111`. *Acceptance (met):* no overlap on a multi‑line fixture; no double text.
+- **R1 — Text done right:** ✅ **done (geometry + overlap + colour).** New pure `textLayout` module
+  (correct matrix decomposition + baseline, span→line→paragraph **merge**) with thorough unit tests;
+  wired `extractPdfToTemplate` to it; **dropped box inflation**; **editable modes no longer emit the
+  text‑bearing raster background** (kills the double text); default mode flipped to `semantic`. Plus
+  **colour recovery**: pure `textColor` module replays the colour/text‑matrix ops (CTM + fill through
+  save/restore) into positioned samples, matched to each span by `nearestColor`; mixed‑colour lines
+  become rich‑text `runs`. *Acceptance (met):* no overlap on a multi‑line fixture; no double text;
+  source colours preserved (default `#111111` only when no sample exists).
 - **R2 — Vectors:** ✅ **done (client path‑walker).** Pure, unit‑tested `vectorExtract` module walks
   pdf.js `getOperatorList()` (graphics‑state stack + CTM) into device‑space SVG paths, clustered into
   one editable `vector` overlay per drawing; fill/stroke colour captured from RGB/Gray/CMYK colour ops.
   *Acceptance (met):* a logo imports as editable paths, not a JPEG.
 - **R3 — Fonts:** extract embedded program → fontkit→woff2 → store → `@font-face`. *Acceptance:*
   imported text renders in the source font; weights faithful.
-- **R4 — Images:** XObject extraction → image overlays. *Acceptance:* `imagesFound > 0`.
+- **R4 — Images:** ✅ **done.** One shared operator‑list walk collects image XObject + inline‑image
+  paints with their CTM; pure `imageExtract.imageRectFromCtm` maps each to a device rect; the decoder
+  resolves the pdf.js image object (bitmap or raw kind+data), rasterises to PNG, uploads via the import
+  edge function and emits an `image` overlay. `imagesFound` now reflects real extracted images.
+  *Acceptance (met):* `imagesFound > 0`.
 - **R5 — AI reconstruct mode:** grounded semantic classification/mapping (no geometry invention);
   split "redesign" off. *Acceptance:* image import preserves measured layout, never fabricates copy.
 - **R6 — Fidelity loop:** render‑diff + per‑region confidence + repair, via `PdfFidelityDiff`.

@@ -19,10 +19,13 @@ import { spansToTextOverlays, type RawSpan } from './textLayout';
 import {
   decodeConstructPath,
   extractVectorOverlays,
+  matMul,
   type DrawCommand,
   type Matrix,
   type PathOpCodes,
 } from './vectorExtract';
+import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSample } from './textColor';
+import { imageRectFromCtm } from './imageExtract';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -168,6 +171,123 @@ function operatorListToDrawCommands(opList: any, OPS: any): DrawCommand[] {
   return cmds;
 }
 
+/**
+ * Translate the colour/text-matrix slice of a pdf.js operator list into the
+ * abstract `TextColorCommand` stream `collectColorSamples` consumes (R1 colour).
+ */
+function operatorListToTextColorCommands(opList: any, OPS: any): TextColorCommand[] {
+  const fnArray: number[] = opList.fnArray ?? [];
+  const argsArray: any[] = opList.argsArray ?? [];
+  const cmds: TextColorCommand[] = [];
+  for (let i = 0; i < fnArray.length; i++) {
+    const fn = fnArray[i];
+    const args = argsArray[i];
+    if (fn === OPS.save) cmds.push({ op: 'save' });
+    else if (fn === OPS.restore) cmds.push({ op: 'restore' });
+    else if (fn === OPS.transform) cmds.push({ op: 'transform', m: args as Matrix });
+    else if (fn === OPS.setFillRGBColor) cmds.push({ op: 'setFillColor', color: rgbArgsToHex(args) });
+    else if (fn === OPS.setFillGray) cmds.push({ op: 'setFillColor', color: grayToHex(Number(args[0])) });
+    else if (fn === OPS.setFillCMYKColor) cmds.push({ op: 'setFillColor', color: cmykToHex(args) });
+    else if (fn === OPS.beginText) cmds.push({ op: 'beginText' });
+    else if (fn === OPS.setTextMatrix) cmds.push({ op: 'setTextMatrix', m: args as Matrix });
+    else if (fn === OPS.setLeading) cmds.push({ op: 'setLeading', leading: Number(args[0]) || 0 });
+    else if (fn === OPS.moveText) cmds.push({ op: 'moveText', tx: Number(args[0]) || 0, ty: Number(args[1]) || 0 });
+    else if (fn === OPS.moveTextSetLeading) {
+      cmds.push({ op: 'setLeading', leading: -(Number(args[1]) || 0) });
+      cmds.push({ op: 'moveText', tx: Number(args[0]) || 0, ty: Number(args[1]) || 0 });
+    } else if (fn === OPS.nextLine) cmds.push({ op: 'nextLine' });
+    else if (fn === OPS.showText || fn === OPS.showSpacedText) cmds.push({ op: 'showText' });
+    else if (fn === OPS.nextLineShowText || fn === OPS.nextLineSetSpacingShowText) {
+      cmds.push({ op: 'nextLine' });
+      cmds.push({ op: 'showText' });
+    }
+  }
+  return cmds;
+}
+
+interface ImageDraw { objId?: string; inline?: any; ctm: Matrix; }
+
+/** Walk the operator list tracking the CTM and capture each image-paint with it. */
+function collectImageDraws(opList: any, OPS: any): ImageDraw[] {
+  const fnArray: number[] = opList.fnArray ?? [];
+  const argsArray: any[] = opList.argsArray ?? [];
+  let ctm: Matrix = [1, 0, 0, 1, 0, 0];
+  const stack: Matrix[] = [];
+  const out: ImageDraw[] = [];
+  for (let i = 0; i < fnArray.length; i++) {
+    const fn = fnArray[i];
+    const args = argsArray[i];
+    if (fn === OPS.save) stack.push([...ctm] as Matrix);
+    else if (fn === OPS.restore) { const m = stack.pop(); if (m) ctm = m; }
+    else if (fn === OPS.transform) ctm = matMul(ctm, args as Matrix);
+    else if (fn === OPS.paintImageXObject || fn === OPS.paintJpegXObject) out.push({ objId: args[0] as string, ctm: [...ctm] as Matrix });
+    else if (fn === OPS.paintInlineImageXObject) out.push({ inline: args[0], ctm: [...ctm] as Matrix });
+  }
+  return out;
+}
+
+/** Resolve a pdf.js page object (image) by id; null if it never becomes ready. */
+function getPdfObj(objs: any, id: string, timeoutMs = 3000): Promise<any> {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = (v: any) => { if (!done) { done = true; resolve(v); } };
+    try {
+      if (objs && typeof objs.has === 'function' && objs.has(id)) { fin(objs.get(id)); return; }
+      if (objs && typeof objs.get === 'function') objs.get(id, fin);
+      else fin(null);
+    } catch { fin(null); }
+    setTimeout(() => fin(null), timeoutMs);
+  });
+}
+
+/** Decode a pdf.js image object (bitmap or raw kind+data) to a base64 PNG. */
+async function pdfImageToPngBase64(img: any): Promise<string | null> {
+  if (!img) return null;
+  const width = img.width | 0;
+  const height = img.height | 0;
+  if (width <= 0 || height <= 0 || width * height > 40_000_000) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  try {
+    if (img.bitmap) {
+      ctx.drawImage(img.bitmap, 0, 0);
+    } else if (img.data) {
+      const out = ctx.createImageData(width, height);
+      const dst = out.data;
+      const src: any = img.data;
+      const px = width * height;
+      if (img.kind === 3 || src.length >= px * 4) {
+        dst.set(src.subarray(0, dst.length));
+      } else if (img.kind === 2 || src.length >= px * 3) {
+        for (let i = 0, j = 0; i < px; i++) { dst[j++] = src[i * 3]; dst[j++] = src[i * 3 + 1]; dst[j++] = src[i * 3 + 2]; dst[j++] = 255; }
+      } else if (img.kind === 1) {
+        const rowBytes = (width + 7) >> 3;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const bit = (src[y * rowBytes + (x >> 3)] >> (7 - (x & 7))) & 1;
+            const v = bit ? 255 : 0;
+            const j = (y * width + x) * 4;
+            dst[j] = v; dst[j + 1] = v; dst[j + 2] = v; dst[j + 3] = 255;
+          }
+        }
+      } else {
+        return null;
+      }
+      ctx.putImageData(out, 0, 0);
+    } else {
+      return null;
+    }
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), 'image/png'));
+    return blob ? await blobToBase64(blob) : null;
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
 // ─── main ────────────────────────────────────────────────────────────────────
 
 export async function extractPdfToTemplate(
@@ -219,34 +339,90 @@ export async function extractPdfToTemplate(
       } else if (mode === 'pixel') {
         // Pixel-perfect (non-editable): raster only, emitted as the page background below.
       } else {
-        // Track A·vectors (R2): capture painted vector geometry (logos, icons,
-        // dividers, fills) as editable SVG-path overlays — emitted FIRST so the
-        // text overlays below stack on top. Best-effort: a parse failure on one
-        // page just means that page has no vector overlays.
+        // A single operator-list walk powers three reconstruction tracks:
+        //   R2 vectors · R4 images · R1 text colour.
+        // Stacking order (bottom→top): vectors, images, text. This favours the
+        // common case (a background fill behind a photo behind labels); precise
+        // per-element paint-order z-indexing is deferred to the R6 fidelity loop.
+        const OPS = (pdfjsLib as any).OPS;
+        const initialCtm = (viewport as any).transform as Matrix;
+        let opList: any = null;
         try {
-          const opList = await page.getOperatorList();
-          const initialCtm = (viewport as any).transform as Matrix;
-          const commands = operatorListToDrawCommands(opList, (pdfjsLib as any).OPS);
-          const vectorOverlays = extractVectorOverlays(commands, { initialCtm });
-          for (const v of vectorOverlays) {
-            overlays.push({
-              id: crypto.randomUUID(),
-              type: 'vector',
-              x: v.x, y: v.y, width: v.width, height: v.height,
-              rotation: 0,
-              opacity: 1,
-              viewBox: v.viewBox,
-              preserveAspectRatio: 'xMidYMid meet',
-              paths: v.paths,
-            } as Overlay);
-            vectorCount++;
-          }
+          opList = await page.getOperatorList();
         } catch (err) {
-          console.warn('[vector] extraction failed on page', pageIndex, err);
+          console.warn('[reconstruct] operator list failed on page', pageIndex, err);
         }
 
-        // Track A (R1): collect raw spans, then merge into correctly-positioned,
-        // non-overlapping lines via the pure textLayout pipeline.
+        // R2 — editable vector geometry (logos, icons, dividers, fills).
+        if (opList) {
+          try {
+            const commands = operatorListToDrawCommands(opList, OPS);
+            for (const v of extractVectorOverlays(commands, { initialCtm })) {
+              overlays.push({
+                id: crypto.randomUUID(),
+                type: 'vector',
+                x: v.x, y: v.y, width: v.width, height: v.height,
+                rotation: 0,
+                opacity: 1,
+                viewBox: v.viewBox,
+                preserveAspectRatio: 'xMidYMid meet',
+                paths: v.paths,
+              } as Overlay);
+              vectorCount++;
+            }
+          } catch (err) {
+            console.warn('[vector] extraction failed on page', pageIndex, err);
+          }
+        }
+
+        // R4 — embedded raster images (XObjects + inline) as image overlays.
+        if (opList) {
+          try {
+            let seq = 0;
+            for (const draw of collectImageDraws(opList, OPS)) {
+              const place = imageRectFromCtm(draw.ctm, initialCtm);
+              if (place.width < 3 || place.height < 3) continue; // skip slivers / spacer pixels
+              const imgObj = draw.inline ?? (draw.objId ? await getPdfObj(page.objs, draw.objId) : null);
+              const b64 = await pdfImageToPngBase64(imgObj);
+              if (!b64) continue;
+              onProgress({ phase: 'uploading', page: pageIndex, totalPages });
+              const up = await invokeImport({
+                operation: 'upload_asset',
+                import_id: importId,
+                kind: 'image',
+                page_index: pageIndex,
+                seq: seq++,
+                content_type: 'image/png',
+                data_base64: b64,
+              });
+              overlays.push({
+                id: crypto.randomUUID(),
+                type: 'image',
+                x: place.x, y: place.y, width: place.width, height: place.height,
+                rotation: 0,
+                opacity: 1,
+                src: up.url,
+                fit: 'fill',
+              } as Overlay);
+              imagesFound++;
+            }
+          } catch (err) {
+            console.warn('[image] extraction failed on page', pageIndex, err);
+          }
+        }
+
+        // R1 — recover per-glyph fill colour from the same operator list.
+        let colorSamples: ColorSample[] = [];
+        if (opList) {
+          try {
+            colorSamples = collectColorSamples(operatorListToTextColorCommands(opList, OPS));
+          } catch (err) {
+            console.warn('[textcolor] sampling failed on page', pageIndex, err);
+          }
+        }
+
+        // Track A (R1): collect raw spans (now colour-tagged), then merge into
+        // correctly-positioned, non-overlapping lines via the textLayout pipeline.
         const content = await page.getTextContent({ includeMarkedContent: false } as any);
         const spans: RawSpan[] = [];
         for (const item of content.items as any[]) {
@@ -257,13 +433,15 @@ export async function extractPdfToTemplate(
           const resolved = resolveFontFamily(psName);
           fontsUsed.add(psName);
           if (resolved.substituted) fontsSubstituted.add(psName);
+          const t = item.transform as number[];
           spans.push({
             text: item.str as string,
-            transform: item.transform as number[],
+            transform: t,
             width: item.width as number,
             fontFamily: resolved.family,
             fontWeight: /bold|black|heavy/i.test(psName) ? 'bold' : 'normal',
             fontStyle: /italic|oblique/i.test(psName) ? 'italic' : 'normal',
+            color: colorSamples.length ? nearestColor(colorSamples, t[4], t[5]) : undefined,
           });
         }
         for (const spec of spansToTextOverlays(spans, pageHeight)) {
