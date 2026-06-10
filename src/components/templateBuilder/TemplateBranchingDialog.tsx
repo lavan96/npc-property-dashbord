@@ -15,6 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { GitBranch, GitMerge, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -43,6 +45,7 @@ export function TemplateBranchingDialog({
   open, onOpenChange, templateId, templateName, parentTemplateId, isDraft, onMerged,
 }: TemplateBranchingDialogProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [branchLabel, setBranchLabel] = useState('');
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [creating, setCreating] = useState(false);
@@ -87,15 +90,24 @@ export function TemplateBranchingDialog({
         locked_at: null,
         locked_by: null,
         version: 1,
+        // Own the branch as the current user so it satisfies the RLS insert
+        // check (was inheriting the source's created_by → blocked when branching
+        // a seeded/other-owned template).
+        created_by: user?.id ?? src.created_by ?? null,
         created_at: undefined,
         updated_at: undefined,
       };
-      const { data: created, error } = await supabase
-        .from('report_templates')
-        .insert(insert)
-        .select()
-        .single();
-      if (error) throw error;
+      // Route through the service-role manage-templates function (the app's
+      // canonical, permission-checked template write path) instead of a direct
+      // RLS-gated insert.
+      const { data: resp, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'insert',
+        table: 'report_templates',
+        data: insert,
+      });
+      if (error) throw new Error(error.message || 'Branch insert failed');
+      const created = (resp as any)?.record;
+      if (!created?.id) throw new Error('Branch insert returned no record');
 
       await logTemplateAudit(templateId, 'branch_created', `Branched as "${insert.name}"`, { branch_id: created.id });
       toast.success('Draft branch created');
@@ -128,20 +140,26 @@ export function TemplateBranchingDialog({
         if (!ok) return;
       }
 
-      // snapshot old parent version
+      // snapshot old parent version (service-role write path — RLS-safe)
       const nextVersion = (parent.version ?? 1) + 1;
       try {
-        await supabase.from('report_template_versions' as any).insert({
-          template_id: parentTemplateId,
-          version: parent.version ?? 1,
-          schema: parent.schema,
-          note: 'Pre-merge snapshot',
+        await invokeSecureFunction('manage-templates', {
+          operation: 'insert',
+          table: 'report_template_versions',
+          data: {
+            template_id: parentTemplateId,
+            version: parent.version ?? 1,
+            schema: parent.schema,
+            note: 'Pre-merge snapshot',
+          },
         });
       } catch { /* ignore */ }
 
-      const { error: upErr } = await supabase
-        .from('report_templates')
-        .update({
+      const { error: upErr } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_templates',
+        recordId: parentTemplateId,
+        data: {
           schema: draft.schema,
           custom_css: draft.custom_css,
           version: nextVersion,
@@ -149,16 +167,20 @@ export function TemplateBranchingDialog({
           locked_for_review: false,
           is_active: false,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', parentTemplateId);
-      if (upErr) throw upErr;
+        },
+      });
+      if (upErr) throw new Error(upErr.message || 'Merge update failed');
 
       try {
-        await supabase.from('report_template_versions' as any).insert({
-          template_id: parentTemplateId,
-          version: nextVersion,
-          schema: draft.schema,
-          note: `Merged from draft "${draft.name}"`,
+        await invokeSecureFunction('manage-templates', {
+          operation: 'insert',
+          table: 'report_template_versions',
+          data: {
+            template_id: parentTemplateId,
+            version: nextVersion,
+            schema: draft.schema,
+            note: `Merged from draft "${draft.name}"`,
+          },
         });
       } catch { /* ignore */ }
 
