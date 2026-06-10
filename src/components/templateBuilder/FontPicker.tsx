@@ -14,7 +14,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, ChevronDown, Search, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  BUILT_IN_FAMILIES, FONT_CATALOG, FONT_CATEGORIES, FONT_PAIR_PRESETS, findCatalogFont,
+  BUILT_IN_FAMILIES,
+  FONT_CATALOG,
+  FONT_CATEGORIES,
+  FONT_PAIR_PRESETS,
+  findCatalogFont,
+  googleFontsCssUrl,
   type FontCategory,
 } from '@/lib/reportTemplate/fontCatalog';
 import type { FontFace, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
@@ -32,6 +37,7 @@ export function FontPicker({ value, weight, template, onChange, onWeightChange, 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'All' | FontCategory>('All');
+  const [customGoogleFamily, setCustomGoogleFamily] = useState('');
   const faces: FontFace[] = (template.tokens as any).fontFaces ?? [];
 
   // Ensure preview fonts are actually loaded in the editor doc.
@@ -40,6 +46,11 @@ export function FontPicker({ value, weight, template, onChange, onWeightChange, 
     const toLoad = FONT_CATALOG.filter((f) => category === 'All' || f.category === category);
     toLoad.slice(0, 40).forEach((f) => ensureFontLink(f.cssUrl));
   }, [open, category]);
+
+  useEffect(() => {
+    if (!open || !customGoogleFamily.trim()) return;
+    ensureFontLink(findCatalogFont(customGoogleFamily.trim())?.cssUrl ?? googleFontsCssUrl(customGoogleFamily.trim()));
+  }, [open, customGoogleFamily]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -61,6 +72,25 @@ export function FontPicker({ value, weight, template, onChange, onWeightChange, 
     onChange(family);
     setOpen(false);
     toast.success(`${family} applied`);
+  };
+
+  const addPublicGoogleFont = () => {
+    const family = customGoogleFamily.trim().replace(/\s+/g, ' ');
+    if (!family) return;
+    const cssUrl = findCatalogFont(family)?.cssUrl ?? googleFontsCssUrl(family);
+    ensureFontLink(cssUrl);
+    const isBuiltIn = BUILT_IN_FAMILIES.some((builtIn) => builtIn.toLowerCase() === family.toLowerCase());
+    const isInstalled = faces.some((f) => f.family.toLowerCase() === family.toLowerCase());
+    if (onTemplateChange && !isInstalled && !isBuiltIn) {
+      onTemplateChange({
+        ...template,
+        tokens: { ...template.tokens, fontFaces: [...faces, { family, cssUrl }] } as any,
+      });
+    }
+    onChange(family);
+    setCustomGoogleFamily('');
+    setOpen(false);
+    toast.success(`${family} added from Google Fonts`);
   };
 
   const applyPair = (heading: string, body: string) => {
@@ -103,8 +133,9 @@ export function FontPicker({ value, weight, template, onChange, onWeightChange, 
         </PopoverTrigger>
         <PopoverContent align="start" className="w-[420px] p-0">
           <Tabs defaultValue="browse" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 rounded-none">
+            <TabsList className="grid w-full grid-cols-3 rounded-none">
               <TabsTrigger value="browse" className="text-xs">Browse</TabsTrigger>
+              <TabsTrigger value="google" className="text-xs">Google</TabsTrigger>
               <TabsTrigger value="pairs" className="text-xs gap-1">
                 <Sparkles className="h-3 w-3" /> Pairings
               </TabsTrigger>
@@ -165,6 +196,33 @@ export function FontPicker({ value, weight, template, onChange, onWeightChange, 
                   )}
                 </div>
               </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="google" className="p-3 space-y-3 m-0">
+              <div className="space-y-1">
+                <Label className="text-xs">Public Google Font family</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={customGoogleFamily}
+                    onChange={(e) => setCustomGoogleFamily(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addPublicGoogleFont(); }}
+                    placeholder="e.g. Roboto, Noto Sans, Playfair Display"
+                    className="h-8 text-xs"
+                  />
+                  <Button size="sm" className="h-8" onClick={addPublicGoogleFont} disabled={!customGoogleFamily.trim()}>Add</Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Uses the public Google Fonts CSS2 endpoint and stores the face in this template’s fontFaces so preview/export can load it.
+                </p>
+              </div>
+              {customGoogleFamily.trim() && (
+                <div className="rounded-md border p-3">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Preview</div>
+                  <div className="mt-1 text-xl" style={{ fontFamily: customGoogleFamily }}>
+                    {customGoogleFamily.trim()} — The quick brown fox
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="pairs" className="p-2 space-y-1 m-0">

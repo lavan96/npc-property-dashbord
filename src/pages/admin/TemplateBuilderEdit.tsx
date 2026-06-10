@@ -757,10 +757,21 @@ export default function TemplateBuilderEdit() {
     setTemplate((t) => ({
       ...t,
       tokens: {
+        ...t.tokens,
         colors: { ...t.tokens.colors, ...preset.tokens.colors },
         fonts: { ...t.tokens.fonts, ...preset.tokens.fonts },
         spacing: { ...t.tokens.spacing, ...preset.tokens.spacing },
-      },
+        radii: { ...((t.tokens as any).radii ?? {}), ...((preset.tokens as any).radii ?? {}) },
+        shadows: { ...((t.tokens as any).shadows ?? {}), ...((preset.tokens as any).shadows ?? {}) },
+        gradients: { ...((t.tokens as any).gradients ?? {}), ...((preset.tokens as any).gradients ?? {}) },
+        typeScale: { ...((t.tokens as any).typeScale ?? {}), ...((preset.tokens as any).typeScale ?? {}) },
+        fontFaces: [
+          ...(((t.tokens as any).fontFaces ?? []) as any[]),
+          ...(((preset.tokens as any).fontFaces ?? []) as any[]).filter((face) =>
+            !(((t.tokens as any).fontFaces ?? []) as any[]).some((existing) => existing.family === face.family),
+          ),
+        ],
+      } as any,
     }));
     toast.success(`Theme applied: ${preset.label}`);
   };
@@ -3596,7 +3607,7 @@ function ThemePresetsGallery({
             <Wand2 className="h-3.5 w-3.5" /> Theme presets
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            One-click brand identities. Applies colors, fonts, and spacing on top of the existing token map.
+            One-click brand and design-system identities (Material, Fluent, Bootstrap, Ant Design included). Applies colors, fonts, spacing, radii, shadows, and Google font faces on top of the existing token map.
           </p>
         </div>
       </div>
