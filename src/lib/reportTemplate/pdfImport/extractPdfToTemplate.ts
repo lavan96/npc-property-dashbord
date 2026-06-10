@@ -741,8 +741,8 @@ export async function extractPdfToTemplate(
       // Wrap overlays in a single 'free' block so they are positioned absolutely
       const newPageId = crypto.randomUUID();
       const textForPage = extractedPageText || overlays
-        .filter((overlay): overlay is Extract<Overlay, { type: 'text' }> => overlay.type === 'text')
-        .map((overlay) => overlay.content)
+        .filter((overlay) => overlay.type === 'text')
+        .map((overlay) => (overlay as any).content)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
