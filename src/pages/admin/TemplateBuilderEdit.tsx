@@ -3184,6 +3184,7 @@ export default function TemplateBuilderEdit() {
         template={template}
         sampleData={sampleData}
         customCss={customCss || undefined}
+        onApplySchema={(s) => { setTemplate(s); toast.success('Fidelity repair applied — review and Save'); }}
       />
       <FindReplaceDialog
         open={findReplaceOpen}

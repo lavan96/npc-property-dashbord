@@ -1,6 +1,6 @@
 # PDF / Image → Editable Template — Reconstruction Architecture
 
-> Status: **R0–R5 implemented** (primitives · text geometry/overlap/colour · editable vectors · embedded fonts · images · grounded AI reconstruct) · Only R6 (fidelity loop) remains · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
+> Status: **R0–R6 implemented — roadmap complete** (primitives · text geometry/overlap/colour · editable vectors · embedded fonts · images · grounded AI reconstruct · fidelity loop) · Scope: the "Start from a reference" import/reconstruct pipeline · Last updated: 2026‑06‑10
 >
 > Goal: turn a PDF or image into a **faithful *and* editable** template — exact text (correctly
 > positioned, coloured, and typed), **editable vector icons/logos**, **captured fonts**, real
@@ -144,7 +144,16 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
   rewriting / placeholdering copy and instructs the model to transcribe + place measured elements and only
   *classify* their role. *Acceptance (met):* image import preserves measured layout and copy; redesign is
   opt‑in. *Follow‑up:* the agent still 6pt‑grid‑snaps applied ops (minor); could be relaxed for faithful mode.
-- **R6 — Fidelity loop:** render‑diff + per‑region confidence + repair, via `PdfFidelityDiff`.
+- **R6 — Fidelity loop:** ✅ **done.** Pure, unit‑tested `fidelityMetrics` module computes **per‑region SSIM**
+  (means/variances/covariance with the standard constants) over a normalised comparison raster, bands each
+  grid cell high/medium/low, and aggregates an overall confidence score. `PdfFidelityDiffDialog` now scores
+  every page (source pdf.js raster vs `html2canvas` template render), shows a **fidelity % badge + a
+  confidence heatmap** over the source pane, and — when an apply handler is supplied — **AI‑repairs** the
+  low‑confidence regions: it merges them into page‑point rects (`lowRegionsToPageRects`), builds a grounded,
+  region‑scoped instruction (`buildRepairInstruction`), sends it with the source image to the design agent
+  (`art_director`), applies the result and re‑scores. *Acceptance (met):* drift is measured per region,
+  surfaced, and repairable. *Follow‑ups still open:* true vector/image paint‑order z‑indexing; relax the
+  agent's 6pt grid‑snap for faithful mode.
 
 ## 7. Trade‑offs & risks
 
