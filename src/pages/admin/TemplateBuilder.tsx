@@ -6,16 +6,23 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers, Upload } from 'lucide-react';
+import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers, Upload, History, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReportTemplates, useReportTemplateMutations } from '@/hooks/useReportTemplates';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
+import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
+import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   listAdapters().map((adapter) => [adapter.reportType, adapter.label]),
@@ -26,9 +33,15 @@ export default function TemplateBuilder() {
   const { data: templates = [], isLoading } = useReportTemplates();
   const { create, remove } = useReportTemplateMutations();
   const { canEdit, canDelete } = usePermissions();
+  const { user } = useAuth();
   const canEditTemplates = canEdit('templates');
   const canDeleteTemplates = canDelete('templates');
   const [importOpen, setImportOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState<ImportReviewDraft | null>(null);
+  const [reviewLoadingId, setReviewLoadingId] = useState<string | null>(null);
+  const [reviewImportId, setReviewImportId] = useState<string | null>(null);
+  const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
 
   const handleCreate = () => {
     if (!canEditTemplates) return;
@@ -40,6 +53,39 @@ export default function TemplateBuilder() {
         },
       },
     );
+  };
+
+
+  const { data: recentImports = [], isLoading: importsLoading, refetch: refetchRecentImports } = useQuery({
+    queryKey: ['template-imports', 'recent', user?.id],
+    enabled: !!user?.id && canEditTemplates,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('template_imports')
+        .select('id,source_filename,page_count,status,created_template_id,created_at,meta')
+        .eq('user_id', user!.id)
+        .eq('status', 'completed')
+        .not('meta->>cdir_artifact_path', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const openPersistedReview = async (importId: string) => {
+    setReviewLoadingId(importId);
+    try {
+      const { draft, record } = await loadImportReviewDraft({ importId });
+      setReviewDraft(draft);
+      setReviewImportId(importId);
+      setRecordedDecision(readImportReviewDecision(record.meta));
+      setReviewOpen(true);
+    } catch (err) {
+      toast.error(`Could not load import review: ${(err as Error).message}`);
+    } finally {
+      setReviewLoadingId(null);
+    }
   };
 
   return (
@@ -71,6 +117,64 @@ export default function TemplateBuilder() {
         </div>
       </div>
       <ImportPdfDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ImportReviewDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        draft={reviewDraft}
+        recordedDecision={recordedDecision}
+        onRecordDecision={reviewImportId ? async (decision: ImportReviewDecision, note?: string) => {
+          try {
+            const saved = await saveImportReviewDecision({ importId: reviewImportId, decision, note });
+            setRecordedDecision(saved.decision);
+            toast.success('Import review decision saved.');
+            refetchRecentImports();
+          } catch (err) {
+            toast.error(`Could not save review decision: ${(err as Error).message}`);
+          }
+        } : undefined}
+      />
+
+      {canEditTemplates && (importsLoading || recentImports.length > 0) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" /> Recent import reviews
+            </CardTitle>
+            <CardDescription>
+              Reopen persisted CDIR/fidelity reviews for recent PDF imports.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {importsLoading ? (
+              <Skeleton className="h-10" />
+            ) : recentImports.map((imp: any) => {
+              const summary = (imp.meta as any)?.cdir_fidelity_summary ?? {};
+              const savedDecision = readImportReviewDecision(imp.meta as any);
+              return (
+                <div key={imp.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{imp.source_filename || 'Imported PDF'}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {imp.page_count ?? 0} page{imp.page_count === 1 ? '' : 's'} · score {summary.overallScore == null ? '—' : `${Math.round(summary.overallScore * 100)}%`}
+                      {savedDecision ? ` · ${savedDecision.decision.replace(/_/g, ' ')}` : ''}
+                    </div>
+                    {savedDecision?.note && <div className="text-[11px] text-muted-foreground line-clamp-1">Note: {savedDecision.note}</div>}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => openPersistedReview(imp.id)}
+                    disabled={reviewLoadingId === imp.id}
+                  >
+                    {reviewLoadingId === imp.id ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <History className="h-3.5 w-3.5 mr-1" />}
+                    Review
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
