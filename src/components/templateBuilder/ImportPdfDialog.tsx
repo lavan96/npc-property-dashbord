@@ -5,7 +5,7 @@
  * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
  * progress + a fidelity report card when finished.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +18,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
 import { useAuth } from '@/hooks/useAuth';
+import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
+import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import { ImportReviewDialog } from './ImportReviewDialog';
 
 interface Props {
   open: boolean;
@@ -33,12 +36,16 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
 
   const reset = () => {
     setFile(null);
     setProgress(null);
     setBusy(false);
     setResult(null);
+    setReviewOpen(false);
+    setRecordedDecision(null);
   };
 
   const handleClose = (v: boolean) => {
@@ -59,6 +66,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     }
     setFile(f);
     setResult(null);
+    setRecordedDecision(null);
   };
 
   const start = useCallback(async () => {
@@ -73,6 +81,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         onProgress: setProgress,
       });
       setResult(res);
+      setRecordedDecision(null);
       toast.success(`Imported ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}.`);
     } catch (err) {
       toast.error(`Import failed: ${(err as Error).message}`);
@@ -85,6 +94,15 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
     return Math.round((progress.page / progress.totalPages) * 95);
   })();
+
+  const reviewDraft = useMemo(() => {
+    if (!result?.cdir) return null;
+    return buildImportReviewDraft({
+      id: `review_${result.importId}`,
+      cdir: result.cdir,
+      fidelity: result.cdirFidelity,
+    });
+  }, [result]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -223,6 +241,33 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                   </div>
                 </div>
               )}
+
+              {result.cdirFidelity && (
+                <div className="mt-4 rounded-md border bg-background/70 p-3">
+                  <div className="flex items-center justify-between gap-2 text-xs font-medium">
+                    <span>Editable fidelity score</span>
+                    <Badge variant={result.cdirFidelity.warnings.length ? 'secondary' : 'default'}>
+                      {Math.round(result.cdirFidelity.overallScore * 100)}%
+                    </Badge>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <PercentStat label="Native coverage" value={result.cdirFidelity.nativeCoverage} />
+                    <PercentStat label="Raster fallback" value={result.cdirFidelity.rasterFallbackCoverage} />
+                    {result.cdirFidelity.textAccuracy !== null && (
+                      <PercentStat label="Text accuracy" value={result.cdirFidelity.textAccuracy} />
+                    )}
+                    {result.cdirFidelity.medianPositionDrift !== null && (
+                      <Stat label="Median drift" value={Math.round(result.cdirFidelity.medianPositionDrift)} />
+                    )}
+                  </div>
+                  {result.cdirFidelity.warnings.length > 0 && (
+                    <div className="mt-2 text-[11px] text-muted-foreground">
+                      {result.cdirFidelity.warnings.slice(0, 2).map((warning) => warning.message).join(' ')}
+                      {result.cdirFidelity.warnings.length > 2 ? ` +${result.cdirFidelity.warnings.length - 2} more warning(s).` : ''}
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           </div>
         )}
@@ -238,6 +283,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           ) : (
             <>
               <Button variant="ghost" onClick={() => handleClose(false)}>Close</Button>
+              {reviewDraft && <Button variant="secondary" onClick={() => setReviewOpen(true)}>Review quality</Button>}
               <Button onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }}>
                 Open in editor
               </Button>
@@ -245,15 +291,36 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           )}
         </DialogFooter>
       </DialogContent>
+      <ImportReviewDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        draft={reviewDraft}
+        onRetry={() => { setReviewOpen(false); setResult(null); }}
+        onOpenTemplate={result ? () => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); } : undefined}
+        recordedDecision={recordedDecision}
+        onRecordDecision={result ? async (decision: ImportReviewDecision, note?: string) => {
+          try {
+            const saved = await saveImportReviewDecision({ importId: result.importId, decision, note });
+            setRecordedDecision(saved.decision);
+            toast.success('Import review decision saved.');
+          } catch (err) {
+            toast.error(`Could not save review decision: ${(err as Error).message}`);
+          }
+        } : undefined}
+      />
     </Dialog>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function PercentStat({ label, value }: { label: string; value: number }) {
+  return <Stat label={label} value={Math.round(value * 100)} suffix="%" />;
+}
+
+function Stat({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
   return (
     <div className="flex justify-between border-b border-border/40 pb-1">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums">{value}</span>
+      <span className="font-medium tabular-nums">{value}{suffix}</span>
     </div>
   );
 }

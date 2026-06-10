@@ -250,12 +250,99 @@ export function resolveBindableNumber(input: unknown, ctx: ResolveContext, fallb
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Resolve a colour, returning a normalised hex. */
+function clampByte(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+function byteToHex(n: number): string {
+  return clampByte(n).toString(16).padStart(2, '0');
+}
+
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  const hue = (((h % 360) + 360) % 360) / 360;
+  const sat = Math.max(0, Math.min(1, s));
+  const light = Math.max(0, Math.min(1, l));
+  if (sat === 0) {
+    const v = clampByte(light * 255);
+    return { r: v, g: v, b: v };
+  }
+  const q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat;
+  const p = 2 * light - q;
+  const channel = (t0: number) => {
+    let t = t0;
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return { r: clampByte(channel(hue + 1 / 3) * 255), g: clampByte(channel(hue) * 255), b: clampByte(channel(hue - 1 / 3) * 255) };
+}
+
+const NAMED_COLORS: Record<string, string> = {
+  black: '#000000',
+  white: '#ffffff',
+  transparent: 'transparent',
+  red: '#ff0000',
+  green: '#008000',
+  blue: '#0000ff',
+  yellow: '#ffff00',
+  orange: '#ffa500',
+  purple: '#800080',
+  pink: '#ffc0cb',
+  gray: '#808080',
+  grey: '#808080',
+  navy: '#000080',
+  teal: '#008080',
+  cyan: '#00ffff',
+  magenta: '#ff00ff',
+  brown: '#a52a2a',
+};
+
+function normaliseCssColor(value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  const lower = v.toLowerCase();
+  if (NAMED_COLORS[lower]) return NAMED_COLORS[lower];
+  if (v.startsWith('#')) {
+    const h = v.slice(1);
+    if (/^[0-9a-fA-F]{3,8}$/.test(h)) return `#${h}`;
+    return null;
+  }
+  if (/^[0-9a-fA-F]{3,8}$/.test(v)) return `#${v}`;
+
+  const rgb = lower.match(/^rgba?\(([^)]+)\)$/);
+  if (rgb) {
+    const parts = rgb[1].split(/[\s,\/]+/).filter(Boolean);
+    if (parts.length >= 3) {
+      const nums = parts.slice(0, 3).map((part) => part.endsWith('%') ? Number(part.slice(0, -1)) * 2.55 : Number(part));
+      if (nums.every(Number.isFinite)) return `#${byteToHex(nums[0])}${byteToHex(nums[1])}${byteToHex(nums[2])}`;
+    }
+  }
+
+  const hsl = lower.match(/^hsla?\(([^)]+)\)$/);
+  if (hsl) {
+    const parts = hsl[1].split(/[\s,\/]+/).filter(Boolean);
+    if (parts.length >= 3) {
+      const h = Number(parts[0].replace(/deg$/, ''));
+      const sat = parts[1].endsWith('%') ? Number(parts[1].slice(0, -1)) / 100 : Number(parts[1]);
+      const light = parts[2].endsWith('%') ? Number(parts[2].slice(0, -1)) / 100 : Number(parts[2]);
+      if ([h, sat, light].every(Number.isFinite)) {
+        const { r, g, b } = hslToRgb(h, sat, light);
+        return `#${byteToHex(r)}${byteToHex(g)}${byteToHex(b)}`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Resolve a colour, accepting hex plus common CSS rgb/rgba/hsl/named forms and returning a renderer-safe value. */
 export function resolveBindableColor(input: unknown, ctx: ResolveContext, fallback = '#000000'): string {
   const v = resolveBindable(input, ctx);
   if (!v) return fallback;
-  if (v.startsWith('#')) return v;
-  return /^#?[0-9a-fA-F]{3,8}$/.test(v) ? (v.startsWith('#') ? v : `#${v}`) : fallback;
+  return normaliseCssColor(v) ?? fallback;
 }
 
 // ─── Conditional expressions ──────────────────────────────────────────────────

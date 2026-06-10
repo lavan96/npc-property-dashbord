@@ -517,6 +517,38 @@ Deno.serve(async (req) => {
       return json({ error: 'Brief pipeline needs an active page — select a page first.' }, 400);
     }
 
+    let designBrief: DesignBrief | null = incomingBrief;
+    let briefSwaps: string[] = [];
+    let briefPairings: { bg: string; text: string; ratio: number; swapped: boolean }[] = [];
+    let briefTokenPatch: Record<string, string> = {};
+
+    const clientPalette: string[] = Array.isArray(body.sourcePalette)
+      ? body.sourcePalette.filter((c: unknown) => typeof c === 'string' && /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(c)).slice(0, 12)
+      : [];
+
+    // Faithful screenshot reconstruction still runs a structured vision pass for
+    // colour/layout semantics. The direct multimodal op call receives the image
+    // too, but this brief makes palette roles explicit so the model does not
+    // collapse references into black-and-white defaults.
+    if (mode === 'screenshot_to_block' && imageDataUrl && !designBrief) {
+      const visionResult = await analyzeReferenceImage(
+        imageDataUrl,
+        LOVABLE_API_KEY!,
+        `${userInstruction || 'Faithfully reconstruct this image.'}
+Focus especially on exact palette roles (background, surface, text, accent, muted), section fills, borders, and any coloured text.`,
+      );
+      if ('error' in visionResult) {
+        console.warn('[design-agent] screenshot colour vision failed:', visionResult.error);
+      } else {
+        designBrief = visionResult.brief;
+        const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
+        briefTokenPatch = integrated.tokenPatch;
+        briefSwaps = integrated.swaps;
+        briefPairings = integrated.pairings;
+        console.log(`[design-agent] screenshot vision palette=${designBrief.palette.map((p) => `${p.role}:${p.hex}`).join(',')} clientPalette=${clientPalette.join(',')}`);
+      }
+    }
+
     // Mode-specific system addendum
     let modeAddendum = '';
     if (mode === 'art_director') {
@@ -539,6 +571,9 @@ Recreate the attached reference on the active page (id=${activePageId}) as nativ
 - TEXT IS GROUND TRUTH. ${groundingBlock ? 'Use the MEASURED TEXT ELEMENTS below as the source of truth: transcribe each element\'s text EXACTLY (fix only obvious OCR garbles) and place ONE text overlay at its given x/y/width/height.' : 'Transcribe text verbatim from the image and place it where it appears.'} Do NOT invent, summarise, rewrite, translate, or pad copy. Do NOT replace real text with "Lorem ipsum" or generic placeholders.
 - You MAY classify each text element's role (heading / subhead / body / label / price) to choose a sensible fontWeight and size, but keep its position and exact words from the measurements/image.
 - From the IMAGE, reproduce only NON-TEXT design: background and section fills, accent shapes/rules/dividers, and image regions — at their observed positions. Prefer tokens for colour, else hex.
+- COLOUR IS GROUND TRUTH. Do not default to black-and-white unless the source is actually monochrome. Use exact observed colours for page.background.color, text.color, shape.fill, shape.stroke, table/header fills, and border rules. If a colour is translucent, use rgba(...) or #RRGGBBAA.
+${designBrief?.palette?.length ? `- STRUCTURED VISION PALETTE (authoritative): ${designBrief.palette.map((p) => `${p.role}=${p.hex}${p.label ? ` (${p.label})` : ''}`).join('; ')}. These are also installed server-side as token:brief.bg / token:brief.text / token:brief.accent when present; use those token references or the exact hex/rgba values directly when matching source elements.` : ''}
+${clientPalette.length ? `- CLIENT-SAMPLED DOMINANT COLOURS: ${clientPalette.join(', ')}.` : ''}
 - Canvas is the active page's actual size${groundedReference?.pageWidth ? ` (${groundedReference.pageWidth}×${groundedReference.pageHeight}pt)` : ''}. Aim for 1:1 visual parity. Ignore only genuinely illegible marks; never fabricate to fill space.${groundingBlock}`;
     } else if (mode === 'inline_text') {
       modeAddendum = `\n\n[INLINE TEXT MODE]
@@ -559,11 +594,6 @@ The designer has explicitly enabled "Replace page contents" for page ${activePag
     }
 
     // ─── Brief pipeline orchestration ───────────────────────────────────────
-    let designBrief: DesignBrief | null = incomingBrief;
-    let briefSwaps: string[] = [];
-    let briefPairings: { bg: string; text: string; ratio: number; swapped: boolean }[] = [];
-    let briefTokenPatch: Record<string, string> = {};
-
     if (useBriefPipeline) {
       // Stage 1 — Vision Analysis (skipped on re-roll when brief is supplied)
       if (!designBrief && imageDataUrl) {
@@ -582,8 +612,8 @@ The designer has explicitly enabled "Replace page contents" for page ${activePag
 
       // Stage 2 — token integration + contrast guard
       const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
-      briefTokenPatch = integrated.tokenPatch;
-      briefSwaps = integrated.swaps;
+      briefTokenPatch = { ...briefTokenPatch, ...integrated.tokenPatch };
+      briefSwaps = [...briefSwaps, ...integrated.swaps];
       briefPairings = integrated.pairings;
       console.log(`[design-agent] brief tokens=${Object.keys(briefTokenPatch).length} swaps=${briefSwaps.length}`);
 
@@ -625,7 +655,7 @@ ACTIVE SELECTION:
     }
     if (usePdfDocument && activePageId) {
       modeAddendum += `\n\n[PDF DOCUMENT MODE — FAITHFUL RECONSTRUCTION]
-A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Do NOT redesign, summarise, translate, or use placeholders.`;
+A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Preserve observed colours for page backgrounds, text, fills, strokes, borders, and accents; use rgba(...) or #RRGGBBAA for translucency. Do NOT redesign, summarise, translate, or use placeholders.`;
     }
 
     // Brief pipeline runs synthesis on text-only context (image already digested
@@ -779,6 +809,11 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
     }
 
     const { schema: appliedSchema, summaries, warnings } = applyOps(schema, parsed.operations || []);
+    if (Object.keys(briefTokenPatch).length) {
+      appliedSchema.tokens = appliedSchema.tokens || { colors: {}, fonts: {}, spacing: {} };
+      appliedSchema.tokens.colors = { ...(appliedSchema.tokens.colors || {}), ...briefTokenPatch };
+      summaries.push(`installed ${Object.keys(briefTokenPatch).length} reference colour token(s)`);
+    }
     console.log(`[design-agent] applied summaries=${summaries.length} warnings=${warnings.length} ${warnings.length ? JSON.stringify(warnings).slice(0,300) : ''}`);
 
     // Post-op cleanup: 6pt grid snap + canvas clamp + dedupe identical text overlays.

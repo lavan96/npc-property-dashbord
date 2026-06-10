@@ -126,6 +126,7 @@ import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialo
 import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
 import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
 import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
+import { EnhancedColorPicker } from '@/components/templateBuilder/EnhancedColorPicker';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
@@ -757,10 +758,21 @@ export default function TemplateBuilderEdit() {
     setTemplate((t) => ({
       ...t,
       tokens: {
+        ...t.tokens,
         colors: { ...t.tokens.colors, ...preset.tokens.colors },
         fonts: { ...t.tokens.fonts, ...preset.tokens.fonts },
         spacing: { ...t.tokens.spacing, ...preset.tokens.spacing },
-      },
+        radii: { ...((t.tokens as any).radii ?? {}), ...((preset.tokens as any).radii ?? {}) },
+        shadows: { ...((t.tokens as any).shadows ?? {}), ...((preset.tokens as any).shadows ?? {}) },
+        gradients: { ...((t.tokens as any).gradients ?? {}), ...((preset.tokens as any).gradients ?? {}) },
+        typeScale: { ...((t.tokens as any).typeScale ?? {}), ...((preset.tokens as any).typeScale ?? {}) },
+        fontFaces: [
+          ...(((t.tokens as any).fontFaces ?? []) as any[]),
+          ...(((preset.tokens as any).fontFaces ?? []) as any[]).filter((face) =>
+            !(((t.tokens as any).fontFaces ?? []) as any[]).some((existing) => existing.family === face.family),
+          ),
+        ],
+      } as any,
     }));
     toast.success(`Theme applied: ${preset.label}`);
   };
@@ -3413,19 +3425,14 @@ function TokensEditor({
                   <div key={k} className="flex items-center gap-2">
                     <Input value={k} disabled className="w-32 h-8 text-xs font-mono" />
                     {group === 'colors' ? (
-                      <>
-                        <input
-                          type="color"
-                          value={typeof v === 'string' && v.startsWith('#') ? v : '#000000'}
-                          onChange={(e) => updateGroup(group, k, e.target.value)}
-                          className="h-8 w-10 rounded border bg-transparent cursor-pointer"
-                        />
-                        <Input
+                      <div className="flex-1">
+                        <EnhancedColorPicker
                           value={String(v)}
-                          onChange={(e) => updateGroup(group, k, e.target.value)}
-                          className="h-8 text-xs font-mono"
+                          onChange={(next) => updateGroup(group, k, next)}
+                          template={template}
+                          allowEmpty
                         />
-                      </>
+                      </div>
                     ) : group === 'spacing' ? (
                       <Input
                         type="number"
@@ -3451,7 +3458,7 @@ function TokensEditor({
         );
       })}
       <p className="text-[11px] text-muted-foreground">
-        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc.
+        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc. Color values accept <code>#RRGGBB</code>, <code>#RRGGBBAA</code>, <code>rgb()</code>, <code>rgba()</code>, <code>hsl()</code>, and <code>token:name</code>.
       </p>
     </div>
   );
@@ -3596,7 +3603,7 @@ function ThemePresetsGallery({
             <Wand2 className="h-3.5 w-3.5" /> Theme presets
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            One-click brand identities. Applies colors, fonts, and spacing on top of the existing token map.
+            One-click brand and design-system identities (Material, Fluent, Bootstrap, Ant Design included). Applies colors, fonts, spacing, radii, shadows, and Google font faces on top of the existing token map.
           </p>
         </div>
       </div>
