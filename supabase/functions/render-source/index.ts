@@ -101,6 +101,18 @@ Deno.serve(async (req) => {
     let payload: unknown = null;
     try { payload = text ? JSON.parse(text) : null; } catch { /* wrap non-JSON below */ }
     if (!upstream.ok) {
+      // NEVER forward upstream 401/403 to the browser: the caller already passed
+      // verifyAuth above, so an auth failure here means OUR service credential
+      // (RENDER_SOURCE_TOKEN) is wrong — not the user's session. Forwarding it
+      // surfaced as a bogus "unauthorized" import error and tripped the client's
+      // auth circuit breaker (which clears the user's login tokens).
+      if (upstream.status === 401 || upstream.status === 403) {
+        console.error('[render-source] upstream rejected RENDER_SOURCE_TOKEN — service credentials are misconfigured', { kind: renderKind, status: upstream.status });
+        return json({
+          error: 'The render service rejected this deployment\'s credentials. Ask an administrator to re-sync the RENDER_SOURCE_TOKEN secret with the render-source service.',
+          code: 'render_source_auth_misconfigured',
+        }, 502, cors);
+      }
       const errorPayload = payload && typeof payload === 'object'
         ? payload
         : { error: text || `render service returned HTTP ${upstream.status}`, code: 'render_source_upstream_error', status: upstream.status };

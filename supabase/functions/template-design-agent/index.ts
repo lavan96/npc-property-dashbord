@@ -9,7 +9,8 @@
 // page/block/overlay plus the active selection, lets the model issue many
 // operations in a single turn.
 
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
 import { callClaudeReconstruct } from '../_shared/claudeReconstruct.ts';
 
@@ -23,12 +24,6 @@ const SYNTHESIS_MODEL = 'openai/gpt-5';
 const VISION_MODEL = 'openai/gpt-5';
 const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-8';
 
-
-const json = (b: unknown, status = 200) =>
-  new Response(JSON.stringify(b), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
 
 // ─── helpers: outline + uuid ──────────────────────────────────────────────────
 function uid() { return crypto.randomUUID(); }
@@ -82,6 +77,11 @@ function normaliseSchemaForClient(schema: any): any {
         overlay.opacity = Math.min(1, Math.max(0, Number(overlay.opacity ?? 1)));
         if (overlay.type === 'text') {
           const weight = Number(overlay.fontWeight);
+          // Keep the exact numeric weight (renderer emits fontWeightNumeric);
+          // quantizing to bold/normal loses 300/500/600 weights from references.
+          if (Number.isFinite(weight) && weight >= 100 && weight <= 1000 && overlay.fontWeightNumeric == null) {
+            overlay.fontWeightNumeric = weight;
+          }
           overlay.fontWeight = overlay.fontWeight === 'bold' || (Number.isFinite(weight) && weight >= 600) ? 'bold' : 'normal';
           overlay.fontStyle = overlay.fontStyle === 'italic' ? 'italic' : 'normal';
           overlay.align = ['left', 'center', 'right', 'justify'].includes(overlay.align) ? overlay.align : 'left';
@@ -439,7 +439,7 @@ Schema vocabulary you must respect:
 - Page = { id, name, size{width,height}, background{color,imageUrl}, blocks[] }.
 - Block = { id, type, props, overlays[] }. Use exact block types: free, cover, hero, kpi-grid, data-table, chart, image, text-block, footer, disclaimer, divider, callout, two-column, gallery, page-number, spacer, qr, badge-list, toc, auto-toc, signature, slot, scorecard, risk-register, infra-timeline, amenity-matrix, planning-table, dd-checklist, decision-box, strengths-watch.
 - Overlay = text | image | shape, each with x,y (top-left origin), width, height, rotation, opacity.
-  - text: content, fontFamily, fontSize, fontWeight (ONLY "normal" or "bold"), fontStyle, color (#hex or "token:primary"), align, lineHeight.
+  - text: content, fontFamily, fontSize, fontWeight ("normal", "bold", or a numeric 100–900 weight), fontStyle, color (#hex or "token:primary"), align, lineHeight.
   - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius.
   - image: src, fit='cover'|'contain'|'fill'.
 - Tokens: colors{}, fonts{}, spacing{}. Reference via "token:<key>" in any color or string.
@@ -479,11 +479,23 @@ CONVERSATIONAL RULES:
 - If the request is ambiguous, make the most tasteful interpretation and proceed; ask only when you genuinely cannot proceed.`;
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const cors = createCorsHeaders(req.headers.get('origin'));
+  const json = (b: unknown, status = 200) =>
+    new Response(JSON.stringify(b), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (!LOVABLE_API_KEY && !ANTHROPIC_API_KEY) return json({ error: 'No AI provider configured (set LOVABLE_API_KEY or ANTHROPIC_API_KEY).' }, 500);
 
   try {
     const body = await req.json();
+
+    // Custom-auth verification (session token or custom HS256 JWT) — this agent
+    // spends AI credits and must not be publicly invokable.
+    const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const auth = await verifyAuth(supabaseAdmin, req.headers, body);
+    if (auth.error) return createUnauthorizedResponse(auth.error, cors);
     const schema = body.schema || { version: 1, pages: [], tokens: {}, slots: {} };
     const history: Array<{ role: 'user' | 'assistant'; content: string }> = body.messages || [];
     const userInstruction: string = body.instruction || (history[history.length - 1]?.content ?? '');
@@ -573,10 +585,18 @@ Improve in place: refine typographic hierarchy, fix alignment to a 12pt grid, ti
     } else if (mode === 'screenshot_to_block') {
       // R5 — FAITHFUL reconstruction. This is a transcription/placement task, NOT
       // a redesign: text content + positions come from measurement, never invention.
+      const describeElementStyle = (e: any): string => {
+        const parts: string[] = [];
+        if (e.color) parts.push(`color=${e.color}`);
+        if (e.fontFamily) parts.push(`font=${JSON.stringify(String(e.fontFamily))}`);
+        if (e.fontWeight != null) parts.push(`weight=${e.fontWeight}`);
+        if (e.italic) parts.push('italic');
+        return parts.length ? ` ${parts.join(' ')}` : '';
+      };
       const groundingBlock = groundedReference && groundedReference.elements!.length
-        ? `\n\nMEASURED TEXT ELEMENTS — OCR ground truth on a ${groundedReference.pageWidth ?? '?'}×${groundedReference.pageHeight ?? '?'}pt page (top-left origin). These are AUTHORITATIVE for text and position:\n${
+        ? `\n\nMEASURED TEXT ELEMENTS — measured ground truth on a ${groundedReference.pageWidth ?? '?'}×${groundedReference.pageHeight ?? '?'}pt page (top-left origin). These are AUTHORITATIVE for text, position, and any style fields present:\n${
             groundedReference.elements!.slice(0, 160).map((e: any) =>
-              `[${e.id}] x=${e.x} y=${e.y} w=${e.width} h=${e.height} size≈${e.fontSize}pt :: ${JSON.stringify(String(e.text ?? '')).slice(0, 240)}`,
+              `[${e.id}] x=${e.x} y=${e.y} w=${e.width} h=${e.height} size≈${e.fontSize}pt${describeElementStyle(e)} :: ${JSON.stringify(String(e.text ?? '')).slice(0, 240)}`,
             ).join('\n')
           }`
         : '';
@@ -586,7 +606,8 @@ Recreate the attached reference on the active page (id=${activePageId}) as nativ
 - TEXT IS GROUND TRUTH. ${groundingBlock ? 'Use the MEASURED TEXT ELEMENTS below as the source of truth: transcribe each element\'s text EXACTLY (fix only obvious OCR garbles) and place ONE text overlay at its given x/y/width/height.' : 'Transcribe text verbatim from the image and place it where it appears.'} Do NOT invent, summarise, rewrite, translate, or pad copy. Do NOT replace real text with "Lorem ipsum" or generic placeholders.
 - You MAY classify each text element's role (heading / subhead / body / label / price) to choose a sensible fontWeight and size, but keep its position and exact words from the measurements/image.
 - From the IMAGE, reproduce only NON-TEXT design: background and section fills, accent shapes/rules/dividers, and image regions — at their observed positions. Prefer tokens for colour, else hex.
-- COLOUR IS GROUND TRUTH. Do not default to black-and-white unless the source is actually monochrome. Use exact observed colours for page.background.color, text.color, shape.fill, shape.stroke, table/header fills, and border rules. If a colour is translucent, use rgba(...) or #RRGGBBAA.
+- COLOUR IS GROUND TRUTH. Do not default to black-and-white unless the source is actually monochrome. Use exact observed colours for page.background.color, text.color, shape.fill, shape.stroke, table/header fills, and border rules. If a colour is translucent, use rgba(...) or #RRGGBBAA. When a measured element carries a color= field, copy it onto that overlay verbatim.
+- FONT IS GROUND TRUTH. Match each text element's typeface to the source: when a measured element carries a font= field, set fontFamily to that exact family; otherwise judge from the image (serif vs sans vs slab vs mono vs script) and pick the closest family from this list — Sans: Inter, Manrope, DM Sans, Work Sans, Lato, Open Sans, Roboto, Montserrat, Poppins, Helvetica, Arial. Serif: Playfair Display, Fraunces, Cormorant Garamond, Lora, Merriweather, EB Garamond, Georgia, Times New Roman. Slab: Roboto Slab, Zilla Slab, Arvo. Display: Bebas Neue, Abril Fatface, Cinzel, Syne. Mono: JetBrains Mono, IBM Plex Mono, Courier New. Script: Dancing Script, Great Vibes, Caveat. Never leave every overlay on the default Helvetica when the source clearly uses another style; carry weight= as the numeric fontWeight and italic as fontStyle:"italic".
 ${designBrief?.palette?.length ? `- STRUCTURED VISION PALETTE (authoritative): ${designBrief.palette.map((p) => `${p.role}=${p.hex}${p.label ? ` (${p.label})` : ''}`).join('; ')}. These are also installed server-side as token:brief.bg / token:brief.text / token:brief.accent when present; use those token references or the exact hex/rgba values directly when matching source elements.` : ''}
 ${clientPalette.length ? `- CLIENT-SAMPLED DOMINANT COLOURS: ${clientPalette.join(', ')}.` : ''}
 - Canvas is the active page's actual size${groundedReference?.pageWidth ? ` (${groundedReference.pageWidth}×${groundedReference.pageHeight}pt)` : ''}. Aim for 1:1 visual parity. Ignore only genuinely illegible marks; never fabricate to fill space.${groundingBlock}`;
@@ -670,7 +691,7 @@ ACTIVE SELECTION:
     }
     if (usePdfDocument && activePageId) {
       modeAddendum += `\n\n[PDF DOCUMENT MODE — FAITHFUL RECONSTRUCTION]
-A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Preserve observed colours for page backgrounds, text, fills, strokes, borders, and accents; use rgba(...) or #RRGGBBAA for translucency. Do NOT redesign, summarise, translate, or use placeholders.`;
+A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as native editable blocks. FIRST emit a 'clear_page' for ${activePageId}. Read the PDF directly: transcribe text EXACTLY at its real positions (page is PDF points, top-left origin) and reproduce non-text design (background/section fills, accent shapes/rules, image regions). Preserve observed colours for page backgrounds, text, fills, strokes, borders, and accents; use rgba(...) or #RRGGBBAA for translucency. Match each text run's typeface: read the PDF's font names/styles and set fontFamily to the same family (or the closest of: Inter, Lato, Open Sans, Roboto, Montserrat, Helvetica, Playfair Display, Lora, Merriweather, EB Garamond, Georgia, Times New Roman, Roboto Slab, JetBrains Mono, Courier New), with the numeric fontWeight and italic style it uses. Do NOT redesign, summarise, translate, or use placeholders.`;
     }
 
     // Brief pipeline runs synthesis on text-only context (image already digested
@@ -708,13 +729,18 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
       // ANTHROPIC_API_KEY is configured. Other modes still use the Lovable AI Gateway.
       const preferClaude = USE_CLAUDE && (useBriefPipeline || useVision || usePdfDocument);
       if (preferClaude) {
+        // Faithful reconstructions emit one op per measured element — a dense page
+        // produces a large op list. 8K output tokens truncated the tool-call JSON
+        // mid-stream (malformed args / silently dropped overlays), so give the
+        // reconstruction modes real headroom.
+        const reconstructing = usePdfDocument || mode === 'screenshot_to_block';
         const r = await callClaudeReconstruct({
           apiKey: ANTHROPIC_API_KEY!,
           model: CLAUDE_MODEL,
           messages: messages as any,
           tools: [TOOL as any],
           tool_choice: toolChoice,
-          max_tokens: 8192,
+          max_tokens: reconstructing ? 32768 : 8192,
           documents: usePdfDocument ? [{ base64: pdfBase64!, mediaType: 'application/pdf' }] : undefined,
         });
         if (r.ok) {
@@ -837,14 +863,17 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
     }
     console.log(`[design-agent] applied summaries=${summaries.length} warnings=${warnings.length} ${warnings.length ? JSON.stringify(warnings).slice(0,300) : ''}`);
 
-    // Post-op cleanup: 6pt grid snap + canvas clamp + dedupe identical text overlays.
+    // Post-op cleanup: grid snap + canvas clamp + dedupe identical text overlays.
     // Only clamp pages we actually touched to avoid disturbing untouched layouts.
+    // FAITHFUL reconstruction modes get NO grid snap: positions are measured from
+    // the source (OCR/PDF/DOM) and snapping them drifts the layout by up to 3pt.
+    const faithfulMode = mode === 'screenshot_to_block' || mode === 'pdf_document';
     const touchedPages = new Set<string>();
     for (const op of parsed.operations || []) {
       if (op.pageId) touchedPages.add(String(op.pageId));
     }
     const { schema: cleanedSchema, fixes } = cleanupSchema(appliedSchema, {
-      grid: 6,
+      grid: faithfulMode ? 0 : 6,
       clampPages: touchedPages.size ? touchedPages : undefined,
     });
 

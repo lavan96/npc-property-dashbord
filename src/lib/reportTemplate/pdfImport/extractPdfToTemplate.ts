@@ -1,15 +1,17 @@
 /**
  * Client-side PDF → ReportTemplate converter.
  *
- * Two fidelity modes:
- *   - 'semantic': Extracts text runs + images at exact coordinates as
- *     editable overlays. Best for digital-native PDFs.
- *   - 'pixel':    Rasterises each page at high DPI as a page background,
- *     then places transparent / coloured text overlays on top so the
- *     output is visually identical AND still editable. Best for heavily
- *     designed brochures or PDFs with embedded custom fonts.
- *   - 'hybrid':   Both — raster background + text overlays. Toggle bg per
- *     page in the editor.
+ * Fidelity modes:
+ *   - 'semantic': Extracts text runs + vectors + images at exact coordinates
+ *     as editable overlays. Best for digital-native PDFs.
+ *   - 'hybrid':   Semantic extraction PLUS the page raster attached as a
+ *     locked, hidden "Source reference" overlay per page — toggle it visible
+ *     in the editor to trace against the original. Hidden overlays are never
+ *     rendered, so there is no ghosted double text.
+ *   - 'pixel':    Rasterises each page at high DPI as the page background.
+ *     Visually identical to the source, but not editable.
+ *   - 'ocr':      Rasterises and runs Tesseract for scanned/image-only PDFs;
+ *     word colours are sampled from the raster.
  */
 import * as pdfjsLib from 'pdfjs-dist';
 import type { ReportTemplate, Page, Block, Overlay, FontFace as FontFaceToken } from '@/lib/reportTemplate/templateSchema';
@@ -21,7 +23,7 @@ import {
   type SourceBoundsExpectation,
   type SourceTextExpectation,
 } from '@/lib/reportTemplate/ingestion/fidelity';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
 import {
@@ -35,6 +37,8 @@ import {
 import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSample } from './textColor';
 import { imageRectFromCtm } from './imageExtract';
 import { buildEmbeddedFontFace, type EmbeddedFontResult } from './fontFaceBuilder';
+import { deriveTokensFromExtraction, pickInkColor, type TextObservation, type FillObservation } from './tokenDerivation';
+import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -83,7 +87,10 @@ export interface ImportResult {
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 async function invokeImport(body: any) {
-  const { data, error } = await supabase.functions.invoke('template-import-pdf', { body });
+  // invokeSecureFunction attaches the custom-auth session token; the edge
+  // function now verifies it (supabase.functions.invoke only carries the anon
+  // key for this app, which the secured function rejects).
+  const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 120000 });
   if (error) throw new Error(error.message || 'template-import-pdf failed');
   if (data?.error) throw new Error(data.error);
   return data;
@@ -372,6 +379,10 @@ export async function extractPdfToTemplate(
   const pages: Page[] = [];
   const fontsUsed = new Set<string>();
   const fontsSubstituted = new Set<string>();
+  // Observations feeding document-level token derivation (colors/fonts from the
+  // SOURCE, replacing the old hard-coded gold/Helvetica defaults).
+  const textObs: TextObservation[] = [];
+  const fillObs: FillObservation[] = [];
   let textBlocks = 0;
   let imagesFound = 0;
   let vectorCount = 0;
@@ -455,6 +466,10 @@ export async function extractPdfToTemplate(
                 paths: v.paths,
               } as Overlay);
               vectorCount++;
+              const fills = (v.paths ?? []).filter((p: any) => p.fill && p.fill !== 'none');
+              for (const p of fills) {
+                fillObs.push({ color: p.fill as string, area: (v.width * v.height) / fills.length });
+              }
             }
           } catch (err) {
             console.warn('[vector] extraction failed on page', pageIndex, err);
@@ -536,6 +551,23 @@ export async function extractPdfToTemplate(
         }
         extractedPageText = pageTextParts.join(' ').replace(/\s+/g, ' ').trim();
         for (const spec of spansToTextOverlays(spans, pageHeight)) {
+          if (spec.runs?.length) {
+            for (const run of spec.runs) {
+              textObs.push({
+                color: run.color,
+                fontFamily: run.fontFamily,
+                fontSize: run.fontSize ?? spec.fontSize,
+                chars: String(run.text ?? '').length,
+              });
+            }
+          } else {
+            textObs.push({
+              color: spec.color,
+              fontFamily: spec.fontFamily,
+              fontSize: spec.fontSize,
+              chars: String(spec.content ?? '').length,
+            });
+          }
           overlays.push({
             id: crypto.randomUUID(),
             type: 'text',
@@ -566,9 +598,11 @@ export async function extractPdfToTemplate(
 
       // Optional Track B raster (also used for OCR mode as the source image)
       let backgroundImageUrl: string | undefined;
-      // R1: editable modes (semantic/hybrid) no longer bake a text-bearing raster
-      // behind live text. Only 'pixel' (non-editable trace) and 'ocr' rasterize.
-      const needRaster = mode === 'pixel' || mode === 'ocr';
+      // R1: editable modes no longer bake a text-bearing raster BEHIND live text
+      // (that double-paints every glyph). 'pixel' keeps the raster as the page
+      // background; 'hybrid' rasterizes too but attaches it as a HIDDEN, locked
+      // reference overlay for tracing — excluded from preview/export render.
+      const needRaster = mode === 'pixel' || mode === 'ocr' || mode === 'hybrid';
       let rasterCanvas: HTMLCanvasElement | null = null;
       if (needRaster) {
         onProgress({ phase: 'rasterizing', page: pageIndex, totalPages });
@@ -581,13 +615,13 @@ export async function extractPdfToTemplate(
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
         rasterCanvas = canvas;
 
-        if (mode === 'pixel') {
+        if (mode === 'pixel' || mode === 'hybrid') {
           const blob: Blob = await new Promise((resolve) =>
             canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
           );
           const b64 = await blobToBase64(blob);
           onProgress({ phase: 'uploading', page: pageIndex, totalPages });
-          await invokeImport({
+          const up = await invokeImport({
             operation: 'upload_asset',
             import_id: importId,
             kind: 'page',
@@ -596,12 +630,31 @@ export async function extractPdfToTemplate(
             content_type: 'image/jpeg',
             data_base64: b64,
           });
-          // Pixel-perfect mode must be self-contained for both iframe preview and
-          // WeasyPrint. Public storage URLs can be misconfigured or unavailable to
-          // the render service, which produced blank white pages; embedding the
-          // page raster as a data URL guarantees the raster is present at render.
-          backgroundImageUrl = `data:image/jpeg;base64,${b64}`;
-          rasterized++;
+          if (mode === 'pixel') {
+            // Pixel-perfect mode must be self-contained for both iframe preview and
+            // WeasyPrint. Public storage URLs can be misconfigured or unavailable to
+            // the render service, which produced blank white pages; embedding the
+            // page raster as a data URL guarantees the raster is present at render.
+            backgroundImageUrl = `data:image/jpeg;base64,${b64}`;
+            rasterized++;
+          } else {
+            // Hybrid: keep the source raster available as a locked, hidden trace
+            // layer (renderers skip hidden overlays, so no ghosted double text).
+            overlays.unshift({
+              id: crypto.randomUUID(),
+              type: 'image',
+              name: 'Source reference (hidden)',
+              x: 0, y: 0, width: pageWidth, height: pageHeight,
+              rotation: 0,
+              opacity: 1,
+              src: up.url,
+              fit: 'fill',
+              hidden: true,
+              locked: true,
+              zIndex: -1_000_000,
+            } as Overlay);
+            semantic++;
+          }
         } else {
           semantic++;
         }
@@ -620,6 +673,7 @@ export async function extractPdfToTemplate(
           const ratio = pageWidth / rasterCanvas.width; // pt per px
           const words: any[] = data?.words ?? [];
           const ocrTextParts: string[] = [];
+          const rasterCtx = rasterCanvas.getContext('2d', { willReadFrequently: true });
           for (const w of words) {
             if (!w?.text?.trim()) continue;
             const bbox = w.bbox || {};
@@ -629,6 +683,20 @@ export async function extractPdfToTemplate(
             const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
             const fontSize = Math.max(8, hh * 0.85);
             ocrTextParts.push(w.text);
+            // Sample the word's actual ink colour from the raster instead of
+            // hard-coding near-black for every recognised word.
+            let inkColor: string | undefined;
+            try {
+              if (rasterCtx) {
+                const px = rasterCtx.getImageData(
+                  Math.max(0, Math.floor(bbox.x0 ?? 0)),
+                  Math.max(0, Math.floor(bbox.y0 ?? 0)),
+                  Math.max(1, Math.ceil((bbox.x1 ?? 0) - (bbox.x0 ?? 0))),
+                  Math.max(1, Math.ceil((bbox.y1 ?? 0) - (bbox.y0 ?? 0))),
+                );
+                inkColor = pickInkColor(px.data);
+              }
+            } catch { /* sampling is best-effort */ }
             overlays.push({
               id: crypto.randomUUID(),
               type: 'text',
@@ -642,11 +710,12 @@ export async function extractPdfToTemplate(
               fontSize,
               fontWeight: 'normal',
               fontStyle: 'normal',
-              color: '#111111',
+              color: inkColor ?? '#111111',
               align: 'left',
               lineHeight: 1.2,
               letterSpacing: 0,
             } as Overlay);
+            textObs.push({ color: inkColor, fontFamily: 'Helvetica', fontSize, chars: String(w.text).length });
             textBlocks++;
           }
           extractedPageText = ocrTextParts.join(' ').replace(/\s+/g, ' ').trim();
@@ -679,6 +748,7 @@ export async function extractPdfToTemplate(
         .trim();
       if (textForPage) expectedText.push({ pageId: newPageId, text: textForPage });
       for (const overlay of overlays) {
+        if ((overlay as any).hidden) continue; // trace layers are not part of the rendered output
         expectedBounds.push({
           pageId: newPageId,
           layerId: overlay.id,
@@ -703,11 +773,22 @@ export async function extractPdfToTemplate(
       pages.push(newPage);
     }
 
-    const template: ReportTemplate = {
+    // Document-level tokens derived from what extraction actually measured —
+    // colours weighted by glyph count / painted area, fonts by usage — so the
+    // template's token-driven styling matches the reference instead of the old
+    // hard-coded gold/white/Helvetica defaults.
+    const derivedTokens = deriveTokensFromExtraction(textObs, fillObs, {
+      pageArea: pages.length ? pages[0].size.width * pages[0].size.height : undefined,
+    });
+
+    // ensureCatalogFontFaces makes every catalog-known family referenced by the
+    // import (e.g. a substituted "Roboto" or "Playfair Display") actually load
+    // in the editor preview AND the WeasyPrint export via a Google Fonts cssUrl.
+    const template: ReportTemplate = ensureCatalogFontFaces({
       version: 1,
       tokens: {
-        colors: { primary: '#BF9B50', bg: '#FFFFFF', text: '#111111', muted: '#666666' },
-        fonts: { heading: 'Helvetica', body: 'Helvetica' },
+        colors: derivedTokens.colors,
+        fonts: derivedTokens.fonts,
         spacing: { gutter: 16 },
         // R3 — embedded fonts captured from the source so text renders faithfully.
         ...(embeddedFaces.length ? { fontFaces: embeddedFaces } : {}),
@@ -715,7 +796,7 @@ export async function extractPdfToTemplate(
       pages,
       slots: {},
       meta: { title: options.templateName ?? file.name.replace(/\.pdf$/i, '') },
-    };
+    } as ReportTemplate);
 
     const cdir = reportTemplateToCdir(template, {
       kind: 'pdf',

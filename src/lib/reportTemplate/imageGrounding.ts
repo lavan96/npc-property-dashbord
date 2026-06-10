@@ -13,6 +13,8 @@
 export interface OcrWord {
   text: string;
   x0: number; y0: number; x1: number; y1: number; // pixel bbox (top-left origin)
+  /** Optional ink colour sampled from the source raster at this word's bbox. */
+  color?: string;
 }
 
 export interface GroundedElement {
@@ -20,6 +22,11 @@ export interface GroundedElement {
   text: string;
   x: number; y: number; width: number; height: number; // page points (top-left)
   fontSize: number;
+  /** Optional measured style ground truth (DOM grounding / raster sampling). */
+  color?: string;
+  fontFamily?: string;
+  fontWeight?: number;
+  italic?: boolean;
 }
 
 export interface GroundedReference {
@@ -74,6 +81,13 @@ function mergeLine(line: OcrWord[], scale: number): Omit<GroundedElement, 'id'> 
   const y1 = Math.max(...line.map((w) => w.y1));
   const text = line.map((w) => w.text.trim()).filter(Boolean).join(' ');
   const heightPx = Math.max(1, y1 - y0);
+  // Majority ink colour across the line's words (when sampling supplied one).
+  const colorVotes = new Map<string, number>();
+  for (const w of line) {
+    if (!w.color) continue;
+    colorVotes.set(w.color, (colorVotes.get(w.color) ?? 0) + Math.max(1, w.text.trim().length));
+  }
+  const lineColor = Array.from(colorVotes.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
   return {
     text,
     x: round(x0 * scale),
@@ -81,6 +95,7 @@ function mergeLine(line: OcrWord[], scale: number): Omit<GroundedElement, 'id'> 
     width: round((x1 - x0) * scale),
     height: round(heightPx * scale),
     fontSize: Math.max(6, round(heightPx * scale * 0.82)),
+    ...(lineColor ? { color: lineColor } : {}),
   };
 }
 

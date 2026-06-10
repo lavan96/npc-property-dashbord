@@ -8,19 +8,12 @@
 // JSON artifacts in `template-import-artifacts` when supplied by the client.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const ASSET_BUCKET = 'template-import-assets';
 const ARTIFACT_BUCKET = 'template-import-artifacts';
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
 
 function logDbError(operation: string, error: { message?: string; details?: string | null; hint?: string | null; code?: string | null } | null) {
   if (!error) return;
@@ -135,24 +128,26 @@ async function readJsonArtifact(admin: ReturnType<typeof createClient>, path: st
   }
 }
 
-async function getAuthedUserId(req: Request): Promise<string | null> {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !ANON_KEY) return null;
-  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data, error } = await userClient.auth.getUser();
-  if (error) return null;
-  return data.user?.id ?? null;
-}
-
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const cors = createCorsHeaders(req.headers.get('origin'));
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const body = await req.json().catch(() => ({}));
     const operation = body.operation as string;
-    const userId = body.user_id ?? null;
+
+    // Custom-auth verification (session token or custom HS256 JWT). The old
+    // implementation used supabase.auth.getUser(), which can NEVER succeed for
+    // this app's custom_users accounts — every authed operation 401'd.
+    const auth = await verifyAuth(admin, req.headers, body);
+    if (auth.error) return createUnauthorizedResponse(auth.error, cors);
+    const authedUserId = auth.userId && auth.userId !== 'service_role' ? auth.userId : null;
+    const userId = authedUserId ?? body.user_id ?? null;
 
     if (operation === 'create_import') {
       const { data, error } = await admin
@@ -294,8 +289,7 @@ Deno.serve(async (req) => {
     if (operation === 'get_artifacts') {
       const importId = body.import_id as string;
       if (!importId) return json({ error: 'import_id required' }, 400);
-      const authedUserId = await getAuthedUserId(req);
-      if (!authedUserId) return json({ error: 'unauthorized' }, 401);
+      if (!authedUserId && auth.userId !== 'service_role') return json({ error: 'unauthorized' }, 401);
 
       const { data: record, error: getErr } = await admin
         .from('template_imports')
@@ -303,7 +297,7 @@ Deno.serve(async (req) => {
         .eq('id', importId)
         .single();
       if (getErr) return json({ error: getErr.message }, 404);
-      if (record?.user_id !== authedUserId) return json({ error: 'forbidden' }, 403);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId) return json({ error: 'forbidden' }, 403);
 
       const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
       const cdir = await readJsonArtifact(admin, meta.cdir_artifact_path);
@@ -325,7 +319,6 @@ Deno.serve(async (req) => {
       const allowed = ['accept', 'accept_with_trace', 'retry', 'manual_edit'];
       if (!importId) return json({ error: 'import_id required' }, 400);
       if (!allowed.includes(decision)) return json({ error: 'invalid decision' }, 400);
-      const authedUserId = await getAuthedUserId(req);
       if (!authedUserId) return json({ error: 'unauthorized' }, 401);
 
       const { data: record, error: getErr } = await admin
@@ -334,7 +327,7 @@ Deno.serve(async (req) => {
         .eq('id', importId)
         .single();
       if (getErr) return json({ error: getErr.message }, 404);
-      if (record?.user_id !== authedUserId) return json({ error: 'forbidden' }, 403);
+      if (record?.user_id && record.user_id !== authedUserId) return json({ error: 'forbidden' }, 403);
 
       const currentMeta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
       const reviewDecision = {

@@ -160,7 +160,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     <div className="flex-1">
                       <Label htmlFor="m-semantic" className="font-medium cursor-pointer">Semantic (Track A)</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Extract text runs + images at exact coordinates as editable overlays. Smallest file size, best for digital-native PDFs.
+                        Extract text, vectors, and images at exact coordinates and source colours/fonts as editable overlays. Smallest file size, best for digital-native PDFs.
                       </p>
                     </div>
                   </div>
@@ -171,7 +171,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     <div className="flex-1">
                       <Label htmlFor="m-pixel" className="font-medium cursor-pointer">Pixel-perfect (Track B)</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Rasterise each page at 180 DPI as the background, overlay editable text on top. Looks identical to the source.
+                        Rasterise each page at 180 DPI as the page background. Looks identical to the source, but is not editable.
                       </p>
                     </div>
                   </div>
@@ -184,7 +184,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                         Hybrid <Badge variant="default" className="text-[10px]">Recommended</Badge>
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Raster background + editable overlays. Toggle the raster off per page once you've replaced the content.
+                        Editable extraction + a hidden, locked source raster per page. Toggle it visible in the Layers panel to trace against the original.
                       </p>
                     </div>
                   </div>

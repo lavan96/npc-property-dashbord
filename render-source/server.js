@@ -171,8 +171,47 @@ function extractBoxTree() {
       fontFamily: (cs.fontFamily || '').split(',')[0].replace(/["']/g, '').trim() || undefined,
       color: cs.color || undefined,
       italic: cs.fontStyle === 'italic' || undefined,
+      letterSpacingPx: cs.letterSpacing && cs.letterSpacing !== 'normal' ? parseFloat(cs.letterSpacing) || undefined : undefined,
+      textAlign: ['center', 'right', 'justify'].includes(cs.textAlign) ? cs.textAlign : undefined,
     });
   }
+
+  // Painted element boxes (section fills, cards, buttons, rules, borders) —
+  // without these the editable import is text-on-white and every background
+  // colour from the source is lost.
+  const TRANSPARENT = /^(transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i;
+  const shapeBoxes = [];
+  const all = document.body.querySelectorAll('*');
+  for (let i = 0; i < all.length && shapeBoxes.length < 400; i++) {
+    const el = all[i];
+    if (el.tagName === 'IMG' || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue;
+    const bg = cs.backgroundColor || '';
+    const bgImage = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage : '';
+    const bw = parseFloat(cs.borderTopWidth) || 0;
+    const borderColor = cs.borderTopColor || '';
+    const hasBg = bg && !TRANSPARENT.test(bg);
+    const hasBorder = bw > 0 && borderColor && !TRANSPARENT.test(borderColor) && cs.borderTopStyle !== 'none';
+    const hasGradient = /gradient\(/.test(bgImage);
+    if (!hasBg && !hasBorder && !hasGradient) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 1) continue;
+    shapeBoxes.push({
+      x: r.left + window.scrollX,
+      y: r.top + window.scrollY,
+      width: r.width,
+      height: r.height,
+      backgroundColor: hasBg ? bg : undefined,
+      gradient: hasGradient ? bgImage : undefined,
+      borderColor: hasBorder ? borderColor : undefined,
+      borderWidthPx: hasBorder ? bw : undefined,
+      borderRadiusPx: parseFloat(cs.borderTopLeftRadius) || 0,
+      // DOM order ≈ paint order for non-positioned content.
+      domOrder: i,
+    });
+  }
+
   const imageBoxes = Array.from(document.images)
     .map((img) => {
       const r = img.getBoundingClientRect();
@@ -180,12 +219,22 @@ function extractBoxTree() {
     })
     .filter((b) => b.width > 0 && b.height > 0 && b.src);
 
+  // Token hints: deduped font families and a palette of observed colours.
+  const fontSet = [];
+  const colorSet = [];
+  const pushUnique = (arr, v, cap) => { if (v && arr.indexOf(v) < 0 && arr.length < cap) arr.push(v); };
+  for (const t of textBoxes) { pushUnique(fontSet, t.fontFamily, 8); pushUnique(colorSet, t.color, 16); }
+  for (const s of shapeBoxes) { pushUnique(colorSet, s.backgroundColor, 16); pushUnique(colorSet, s.borderColor, 16); }
+
   return {
     pageWidthPx: Math.max(document.documentElement.scrollWidth, window.innerWidth),
     pageHeightPx: Math.max(document.documentElement.scrollHeight, window.innerHeight),
     textBoxes,
+    shapeBoxes,
     imageBoxes,
     background: getComputedStyle(document.body).backgroundColor,
+    fonts: fontSet,
+    palette: colorSet,
   };
 }
 

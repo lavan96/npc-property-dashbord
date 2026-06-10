@@ -39,7 +39,12 @@ export function groundedReferenceToCdir(
       text: el.text,
       bounds: { x: el.x, y: el.y, width: Math.max(1, el.width), height: Math.max(1, el.height) },
       fontSize: el.fontSize,
-      color: '#000000',
+      // Measured style ground truth when grounding supplied it (DOM box trees,
+      // raster ink sampling); near-black only as the last resort.
+      color: el.color ?? '#000000',
+      ...(el.fontFamily ? { fontFamily: el.fontFamily } : {}),
+      ...(el.fontWeight != null ? { fontWeight: el.fontWeight } : {}),
+      ...(el.italic ? { fontStyle: 'italic' as const } : {}),
       confidence: 0.75,
       provenance: { extractor: 'grounded-reference' },
     })),
@@ -93,12 +98,45 @@ export function domBoxTreeToCdir(
     confidence: 0.9,
     provenance: { extractor: 'dom-box-tree' },
   }));
+  // Painted element boxes → editable shape layers BENEATH text/images. These
+  // carry the source's section fills, cards, buttons, and borders — without
+  // them the editable result is text-on-white and the reference colours only
+  // survive inside the (non-exporting) trace raster.
+  const pageArea = doc.pages[0].width * doc.pages[0].height;
+  const shapeLayers: CdirLayer[] = (tree.shapeBoxes ?? [])
+    .filter((s) => s && s.width > 0 && s.height > 0 && (s.backgroundColor || s.borderColor || s.gradient))
+    .slice(0, 400)
+    .map((s, index) => {
+      const bounds = {
+        x: round(s.x * scaleX),
+        y: round(s.y * scaleY),
+        width: Math.max(1, round(s.width * scaleX)),
+        height: Math.max(1, round(s.height * scaleY)),
+      };
+      // A gradient fill degrades to its raw value being unusable in a plain
+      // shape; approximate with the border/background colour when present.
+      const isFullBleed = bounds.width * bounds.height >= pageArea * 0.92;
+      return {
+        id: `dom_shape_${index + 1}`,
+        kind: 'shape' as const,
+        name: isFullBleed ? 'Page background fill' : `Section fill ${index + 1}`,
+        shape: 'rect' as const,
+        fill: s.backgroundColor,
+        stroke: s.borderColor,
+        strokeWidth: s.borderWidthPx != null ? round(s.borderWidthPx * scaleX) : undefined,
+        borderRadius: s.borderRadiusPx ? round(s.borderRadiusPx * scaleX) : undefined,
+        bounds,
+        zIndex: -100_000 + (s.domOrder ?? index),
+        confidence: 0.9,
+        provenance: { extractor: 'dom-box-tree' },
+      };
+    });
   return parseCdirDocument({
     ...doc,
     pages: [{
       ...doc.pages[0],
       background: tree.background ? { color: tree.background } : undefined,
-      layers: [...doc.pages[0].layers.map((layer, index) => {
+      layers: [...shapeLayers, ...doc.pages[0].layers.map((layer, index) => {
         if (layer.kind !== 'text') return layer;
         const sourceBox = textBoxesInGroundedOrder[index];
         return {
@@ -107,6 +145,8 @@ export function domBoxTreeToCdir(
           fontWeight: sourceBox?.fontWeight,
           fontStyle: sourceBox?.italic ? 'italic' : 'normal',
           color: sourceBox?.color ?? layer.color,
+          ...(sourceBox?.textAlign ? { align: sourceBox.textAlign } : {}),
+          ...(sourceBox?.letterSpacingPx != null ? { letterSpacing: round(sourceBox.letterSpacingPx * scaleX) } : {}),
           confidence: 0.95,
           provenance: { extractor: 'dom-box-tree' },
         };

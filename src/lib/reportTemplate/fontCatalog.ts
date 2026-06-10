@@ -98,6 +98,83 @@ export function findCatalogFont(family: string): CatalogFont | undefined {
   return FONT_CATALOG.find((f) => f.family === family);
 }
 
+/** First family of a CSS font stack, unquoted: `"Open Sans", sans-serif` → `Open Sans`. */
+export function primaryFamily(stack: string): string {
+  return String(stack ?? '').split(',')[0].replace(/["']/g, '').trim();
+}
+
+function findCatalogFontLoose(family: string): CatalogFont | undefined {
+  const fam = primaryFamily(family).toLowerCase();
+  if (!fam) return undefined;
+  return FONT_CATALOG.find((f) => f.family.toLowerCase() === fam);
+}
+
+function collectFamilies(template: any): Set<string> {
+  const found = new Set<string>();
+  const add = (v: unknown) => {
+    const fam = typeof v === 'string' ? primaryFamily(v) : '';
+    if (fam) found.add(fam);
+  };
+  for (const v of Object.values(template?.tokens?.fonts ?? {})) add(v);
+  for (const page of template?.pages ?? []) {
+    for (const block of page?.blocks ?? []) {
+      for (const overlay of block?.overlays ?? []) {
+        add(overlay?.fontFamily);
+        for (const run of overlay?.runs ?? []) add(run?.fontFamily);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Make every catalog-known font family used by a template actually loadable:
+ * append a `cssUrl` (Google Fonts) `fontFaces` entry for each referenced family
+ * that has no face yet. Without this, imported templates name fonts like
+ * "Inter" or "Playfair Display" but neither the editor preview nor the
+ * WeasyPrint export has any @font-face for them — text silently falls back to
+ * the engine default and the reference typography is lost.
+ *
+ * Pure (returns a new template object); built-ins (Helvetica/Arial/…) and
+ * families already covered by an embedded/declared face are left untouched.
+ */
+export function ensureCatalogFontFaces<T extends { tokens?: any }>(template: T): T {
+  const families = collectFamilies(template);
+  const existingFaces: any[] = template?.tokens?.fontFaces ?? [];
+  // Only a face that can actually LOAD (cssUrl or src) covers a family; bare
+  // `{ family }` placeholders (e.g. harvested DOM font names) must still be
+  // upgraded to a loadable catalog face.
+  const covered = new Set(
+    existingFaces
+      .filter((f: any) => f?.cssUrl || f?.src)
+      .map((f: any) => primaryFamily(String(f?.family ?? '')).toLowerCase()),
+  );
+  for (const f of existingFaces) if (f?.family) families.add(primaryFamily(String(f.family)));
+  if (!families.size) return template;
+  const additions: Array<{ family: string; cssUrl: string }> = [];
+  for (const family of families) {
+    const lower = family.toLowerCase();
+    if (covered.has(lower)) continue;
+    if (BUILT_IN_FAMILIES.some((b) => b.toLowerCase() === lower)) continue;
+    const cat = findCatalogFontLoose(family);
+    if (!cat) continue;
+    additions.push({ family: cat.family, cssUrl: cat.cssUrl });
+    covered.add(lower);
+  }
+  if (!additions.length) return template;
+  // Drop unloadable placeholder faces that the catalog now covers.
+  const additionFamilies = new Set(additions.map((a) => a.family.toLowerCase()));
+  const keptFaces = existingFaces.filter((f: any) =>
+    f?.cssUrl || f?.src || !additionFamilies.has(primaryFamily(String(f?.family ?? '')).toLowerCase()));
+  return {
+    ...template,
+    tokens: {
+      ...(template.tokens ?? {}),
+      fontFaces: [...keptFaces, ...additions],
+    },
+  };
+}
+
 /** Curated pairing presets — one click sets a heading + body family. */
 export interface FontPairPreset {
   id: string;

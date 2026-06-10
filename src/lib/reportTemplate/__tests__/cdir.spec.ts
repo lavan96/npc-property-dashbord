@@ -87,6 +87,36 @@ describe('CDIR adapters', () => {
     expect(doc.pages[0].layers[0]).toMatchObject({ fontFamily: 'Inter', fontWeight: 700, color: '#cc0000' });
   });
 
+  it('converts painted DOM element boxes into editable shape layers beneath text', () => {
+    const doc = domBoxTreeToCdir({
+      pageWidthPx: 1000,
+      pageHeightPx: 1000,
+      background: 'rgb(255, 255, 255)',
+      textBoxes: [{
+        text: 'Card title', x: 120, y: 120, width: 300, height: 40,
+        fontSizePx: 28, fontFamily: 'Inter', color: 'rgb(20, 20, 20)',
+        letterSpacingPx: 2, textAlign: 'center',
+      }],
+      shapeBoxes: [
+        // Full-bleed page fill, then a rounded card with a border.
+        { x: 0, y: 0, width: 1000, height: 1000, backgroundColor: 'rgb(246, 241, 231)', borderRadiusPx: 0, domOrder: 1 },
+        { x: 100, y: 100, width: 400, height: 240, backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(204, 0, 0)', borderWidthPx: 2, borderRadiusPx: 12, domOrder: 5 },
+      ],
+    }, { kind: 'html', checksum: 'sha256:dom-shapes' });
+
+    const kinds = doc.pages[0].layers.map((layer) => layer.kind);
+    expect(kinds).toEqual(['shape', 'shape', 'text']);
+    expect(doc.pages[0].layers[0]).toMatchObject({ name: 'Page background fill', fill: 'rgb(246, 241, 231)' });
+    expect(doc.pages[0].layers[1]).toMatchObject({
+      fill: 'rgb(255, 255, 255)',
+      stroke: 'rgb(204, 0, 0)',
+    });
+    // Shapes paint beneath text (negative zIndex preserves DOM order).
+    expect((doc.pages[0].layers[0] as any).zIndex).toBeLessThan(0);
+    // Text alignment + letter spacing measured from the DOM survive into CDIR.
+    expect(doc.pages[0].layers[2]).toMatchObject({ align: 'center' });
+  });
+
 
   it('preserves multi-page DOM/code renders with stable page and layer provenance', () => {
     const doc = domBoxTreesToCdir([
@@ -184,9 +214,20 @@ describe('CDIR → ReportTemplate mapper', () => {
     const template = cdirToReportTemplate(doc, { includeTraceLayers: true, templateName: 'Brochure' });
 
     expect(template.meta?.title).toBe('Brochure');
-    expect(template.pages[0].background.imageUrl).toBe('https://example.test/trace.png');
+    // Trace rasters ride along as a LOCKED, HIDDEN reference overlay (renderers
+    // skip hidden overlays) — never as the page background, which would
+    // double-paint the source behind the live editable layers.
+    expect(template.pages[0].background.imageUrl).toBeUndefined();
     expect(template.pages[0].blocks[0].type).toBe('free');
-    expect(template.pages[0].blocks[0].overlays.map((overlay) => overlay.type)).toEqual(['shape', 'text', 'image']);
-    expect(template.pages[0].blocks[0].overlays[1]).toMatchObject({ fontWeight: 'bold', fontWeightNumeric: 700 });
+    expect(template.pages[0].blocks[0].overlays.map((overlay) => overlay.type)).toEqual(['image', 'shape', 'text', 'image']);
+    expect(template.pages[0].blocks[0].overlays[0]).toMatchObject({
+      src: 'https://example.test/trace.png',
+      hidden: true,
+      locked: true,
+    });
+    expect(template.pages[0].blocks[0].overlays[2]).toMatchObject({ fontWeight: 'bold', fontWeightNumeric: 700 });
+    // Catalog-known families referenced by the import gain a loadable cssUrl face.
+    const interFace = (template.tokens.fontFaces ?? []).find((face) => face.family === 'Inter');
+    expect(interFace?.cssUrl).toContain('fonts.googleapis.com');
   });
 });

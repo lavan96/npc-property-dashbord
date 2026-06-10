@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import ReactMarkdown from 'react-markdown';
 import { DesignBriefCard, type DesignBriefView, type BriefPairing } from './DesignBriefCard';
@@ -222,22 +222,20 @@ export function TemplateDesignAgentPanel({
     setMessages(nextMsgs);
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('template-design-agent', {
-        body: {
-          schema: template,
-          messages: nextMsgs.map((m) => ({ role: m.role, content: m.content })),
-          instruction: userMsg.content,
-          activePageId,
-          selectedBlockId,
-          selectedOverlayId,
-          mode,
-          imageDataUrl: image?.dataUrl,
-          brief: cachedBrief,
-          memoryFacts,
-          sampleData: mode === 'auto_fill' ? sampleData : undefined,
-          replaceMode: replaceMode && (mode === 'design' || mode === 'art_director'),
-        },
-      });
+      const { data, error } = await invokeSecureFunction('template-design-agent', {
+        schema: template,
+        messages: nextMsgs.map((m) => ({ role: m.role, content: m.content })),
+        instruction: userMsg.content,
+        activePageId,
+        selectedBlockId,
+        selectedOverlayId,
+        mode,
+        imageDataUrl: image?.dataUrl,
+        brief: cachedBrief,
+        memoryFacts,
+        sampleData: mode === 'auto_fill' ? sampleData : undefined,
+        replaceMode: replaceMode && (mode === 'design' || mode === 'art_director'),
+      }, { timeoutMs: 180000 });
       if (error) throw new Error(error.message);
       if ((data as any)?.error) throw new Error((data as any).error);
       const reply: string = data.reply || 'Done.';

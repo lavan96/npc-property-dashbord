@@ -1,9 +1,17 @@
 import { parseTemplate, type Block, type Overlay, type ReportTemplate } from '../../templateSchema';
+import { deriveTokensFromExtraction, type FillObservation, type TextObservation } from '../../pdfImport/tokenDerivation';
+import { ensureCatalogFontFaces } from '../../fontCatalog';
 import type { CdirDocument, CdirLayer, CdirPage } from './schema';
 import { parseCdirDocument } from './validate';
 
 export interface CdirToTemplateOptions {
   templateName?: string;
+  /**
+   * Keep the source screenshot available for review. It is attached as a
+   * LOCKED, HIDDEN "Source reference" overlay (renderers skip hidden overlays)
+   * — never as the page background, which double-painted every glyph behind
+   * the live text in the final render.
+   */
   includeTraceLayers?: boolean;
 }
 
@@ -106,37 +114,102 @@ function flattenLayers(layers: CdirLayer[], doc: CdirDocument, groupId?: string)
   return out.sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
 }
 
-function pageToBlock(page: CdirPage, doc: CdirDocument): Block {
+function traceOverlay(page: CdirPage, doc: CdirDocument, visible: boolean): Overlay | null {
+  const traceUrl = assetUrl(doc, page.traceRasterAssetId);
+  if (!traceUrl) return null;
+  return {
+    id: `${page.id}_trace_reference`,
+    type: 'image',
+    name: visible ? 'Source raster (fallback)' : 'Source reference (hidden)',
+    x: 0,
+    y: 0,
+    width: page.width,
+    height: page.height,
+    rotation: 0,
+    opacity: 1,
+    src: traceUrl,
+    fit: 'fill',
+    // Pages with editable layers hide the trace (no double-painted source
+    // behind live content); raster-only pages keep it visible — it IS the page.
+    hidden: !visible,
+    locked: true,
+    zIndex: -1_000_000,
+  } as Overlay;
+}
+
+function pageToBlock(page: CdirPage, doc: CdirDocument, includeTraceLayers: boolean): Block {
+  const editable = flattenLayers(page.layers, doc);
+  const trace = includeTraceLayers ? traceOverlay(page, doc, editable.length === 0) : null;
   return {
     id: `${page.id}_cdir_freeform`,
     type: 'free',
     name: 'Imported editable layers',
     props: {},
-    overlays: flattenLayers(page.layers, doc),
+    overlays: [...(trace ? [trace] : []), ...editable],
   };
 }
 
-function pageBackground(page: CdirPage, doc: CdirDocument, includeTraceLayers: boolean) {
-  const traceUrl = includeTraceLayers ? assetUrl(doc, page.traceRasterAssetId) : undefined;
+function pageBackground(page: CdirPage) {
   return {
     color: page.background?.color,
     opacity: page.background?.opacity,
     gradient: page.background?.gradient,
-    imageUrl: traceUrl,
   };
 }
 
-function tokensFromCdir(doc: CdirDocument): ReportTemplate['tokens'] {
-  const colors: Record<string, string> = {};
-  const fonts: Record<string, string> = {};
-  for (const page of doc.pages) {
-    if (page.background?.color) colors[`page_${page.id}_bg`] = page.background.color;
-    for (const layer of page.layers) collectLayerTokens(layer, colors, fonts);
+function collectTokenObservations(
+  layer: CdirLayer,
+  texts: TextObservation[],
+  fills: FillObservation[],
+) {
+  if (layer.kind === 'group') {
+    layer.children.forEach((child) => collectTokenObservations(child, texts, fills));
+    return;
   }
-  doc.fonts.forEach((font, i) => { fonts[`imported_${i + 1}`] = font.family; });
+  if (layer.kind === 'text') {
+    if (layer.runs?.length) {
+      for (const run of layer.runs) {
+        texts.push({
+          color: run.color ?? layer.color,
+          fontFamily: run.fontFamily ?? layer.fontFamily,
+          fontSize: run.fontSize ?? layer.fontSize ?? Math.max(6, layer.bounds.height * 0.72),
+          chars: String(run.text ?? '').length,
+        });
+      }
+    } else {
+      texts.push({
+        color: layer.color,
+        fontFamily: layer.fontFamily,
+        fontSize: layer.fontSize ?? Math.max(6, layer.bounds.height * 0.72),
+        chars: String(layer.text ?? '').length,
+      });
+    }
+  }
+  if (layer.kind === 'shape') {
+    const area = layer.bounds.width * layer.bounds.height;
+    if (layer.fill) fills.push({ color: layer.fill, area });
+    if (layer.stroke) fills.push({ color: layer.stroke, area: Math.max(1, area * 0.05) });
+  }
+}
+
+/**
+ * Canonical document tokens derived from the measured layers (colours weighted
+ * by glyph count / painted area, fonts by usage) — replaces the old per-layer
+ * token spam (`text_<uuid>`, `fill_<uuid>` …) that buried the real palette.
+ */
+function tokensFromCdir(doc: CdirDocument): ReportTemplate['tokens'] {
+  const texts: TextObservation[] = [];
+  const fills: FillObservation[] = [];
+  let pageArea: number | undefined;
+  for (const page of doc.pages) {
+    pageArea = pageArea ?? page.width * page.height;
+    if (page.background?.color) fills.push({ color: page.background.color, area: page.width * page.height });
+    for (const layer of page.layers) collectTokenObservations(layer, texts, fills);
+  }
+  const derived = deriveTokensFromExtraction(texts, fills, { pageArea });
   return {
-    colors,
-    fonts,
+    colors: derived.colors,
+    fonts: derived.fonts,
     spacing: {},
     fontFaces: doc.fonts.map((font) => ({
       family: font.family,
@@ -148,32 +221,19 @@ function tokensFromCdir(doc: CdirDocument): ReportTemplate['tokens'] {
   };
 }
 
-function collectLayerTokens(layer: CdirLayer, colors: Record<string, string>, fonts: Record<string, string>) {
-  if (layer.kind === 'group') {
-    layer.children.forEach((child) => collectLayerTokens(child, colors, fonts));
-    return;
-  }
-  if (layer.kind === 'text') {
-    if (layer.color) colors[`text_${layer.id}`] = layer.color;
-    if (layer.fontFamily) fonts[`font_${layer.id}`] = layer.fontFamily;
-  }
-  if (layer.kind === 'shape') {
-    if (layer.fill) colors[`fill_${layer.id}`] = layer.fill;
-    if (layer.stroke) colors[`stroke_${layer.id}`] = layer.stroke;
-  }
-}
-
 export function cdirToReportTemplate(input: CdirDocument | unknown, opts: CdirToTemplateOptions = {}): ReportTemplate {
   const doc = parseCdirDocument(input);
-  return parseTemplate({
+  // ensureCatalogFontFaces attaches Google Fonts cssUrl faces for catalog-known
+  // families so the imported typography loads in the preview AND the export.
+  return parseTemplate(ensureCatalogFontFaces({
     version: 1,
     tokens: tokensFromCdir(doc),
     pages: doc.pages.map((page, index) => ({
       id: page.id,
       name: page.label || `Imported Page ${index + 1}`,
       size: { width: page.width, height: page.height },
-      background: pageBackground(page, doc, opts.includeTraceLayers ?? false),
-      blocks: [pageToBlock(page, doc)],
+      background: pageBackground(page),
+      blocks: [pageToBlock(page, doc, opts.includeTraceLayers ?? false)],
     })),
     slots: {},
     meta: {
@@ -181,5 +241,5 @@ export function cdirToReportTemplate(input: CdirDocument | unknown, opts: CdirTo
       creator: 'Template Builder CDIR importer',
       keywords: `source:${doc.source.kind}`,
     },
-  });
+  }));
 }
