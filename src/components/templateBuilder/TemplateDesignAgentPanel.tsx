@@ -94,7 +94,7 @@ async function fileToDataUrl(file: File): Promise<string> {
       i.onerror = rej;
       i.src = raw;
     });
-    const MAX = 1600;
+    const MAX = 2200; // Opus 4.8 reads high-res (up to 2576px) — keep detail for fidelity
     const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
@@ -166,6 +166,8 @@ export function TemplateDesignAgentPanel({
   const [pending, setPending] = useState<Pending | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
   const [memoryFacts, setMemoryFacts] = useState<string[]>([]);
+  const [effort, setEffort] = useState<'high' | 'xhigh' | 'max'>('high');
+  const [lastModel, setLastModel] = useState<string | null>(null);
   const [newFact, setNewFact] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -236,6 +238,7 @@ export function TemplateDesignAgentPanel({
           memoryFacts,
           sampleData: mode === 'auto_fill' ? sampleData : undefined,
           replaceMode: replaceMode && (mode === 'design' || mode === 'art_director'),
+          effort,
         },
       });
       if (error) throw new Error(error.message);
@@ -248,6 +251,7 @@ export function TemplateDesignAgentPanel({
       const briefPairings: BriefPairing[] | undefined = data.briefPairings || undefined;
       const briefSwaps: string[] | undefined = data.briefSwaps || undefined;
       const pipeline: 'brief' | 'ops' = data.pipeline || 'ops';
+      if ((data as any)?.modelUsed) setLastModel((data as any).modelUsed);
       // Reference image URL — only attach when we have one this turn so users
       // can re-render the side-by-side after an apply.
       const referenceImageUrl = image?.dataUrl;
@@ -337,7 +341,17 @@ export function TemplateDesignAgentPanel({
         <SheetHeader className="px-5 py-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" /> Design Agent
-            <Badge variant="outline" className="ml-2 text-[10px]">Vision GPT-5 · Layout GPT-5</Badge>
+            <Badge variant="outline" className="ml-2 text-[10px]" title="Model actually used by the reconstruction backend (from the last response)">
+              {lastModel ?? 'Claude Opus 4.8'}
+            </Badge>
+            <Badge
+              variant="secondary"
+              className="text-[10px] cursor-pointer select-none"
+              title="Reasoning effort — click to cycle (higher = better quality, more tokens)"
+              onClick={() => setEffort((e) => (e === 'high' ? 'xhigh' : e === 'xhigh' ? 'max' : 'high'))}
+            >
+              effort: {effort}
+            </Badge>
             {messages.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">turn {Math.ceil(messages.length / 2)}</Badge>
             )}

@@ -17,6 +17,8 @@ export interface PdfReconstructArgs {
   activePageId?: string | null;
   sampleData?: unknown;
   instruction?: string;
+  /** Reasoning effort for Claude (low|medium|high|xhigh|max). */
+  effort?: string;
 }
 
 export interface PdfReconstructResult {
@@ -42,6 +44,7 @@ export async function reconstructPdfWithClaude(
     mode: 'pdf_document',
     pdfBase64: args.pdfBase64,
     sampleData: args.sampleData,
+    effort: args.effort,
   });
   if (error) throw new Error(error.message || 'Reconstruction failed');
   if (data?.error) throw new Error(String(data.error));

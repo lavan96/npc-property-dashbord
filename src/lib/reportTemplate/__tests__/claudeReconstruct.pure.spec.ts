@@ -64,11 +64,14 @@ describe('claudeReconstruct.pure — tool choice + reasoning', () => {
     expect(mapToolChoice(undefined)).toEqual({ value: undefined, forced: false });
   });
 
-  it('omits thinking when a tool is forced; enables adaptive thinking + effort otherwise', () => {
-    expect(buildReasoning({ thinking: true, effort: 'high' } as ClaudeReconstructArgs, true)).toEqual({});
+  it('keeps effort when a tool is forced (drops only thinking); enables adaptive thinking otherwise', () => {
+    expect(buildReasoning({ thinking: true, effort: 'max' } as ClaudeReconstructArgs, true)).toEqual({
+      output_config: { effort: 'max' }, // effort kept, thinking dropped
+    });
     expect(buildReasoning({ thinking: true, effort: 'xhigh' } as ClaudeReconstructArgs, false)).toEqual({
       thinking: { type: 'adaptive' }, output_config: { effort: 'xhigh' },
     });
+    expect(buildReasoning({} as ClaudeReconstructArgs, true)).toEqual({});
     expect(buildReasoning({} as ClaudeReconstructArgs, false)).toEqual({});
   });
 

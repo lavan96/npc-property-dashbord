@@ -110,12 +110,15 @@ export function mapToolChoice(tc: ClaudeReconstructArgs['tool_choice']): { value
  */
 export function buildReasoning(args: ClaudeReconstructArgs, toolForced: boolean): Record<string, any> {
   const out: Record<string, any> = {};
+  // `effort` is independent of the forced-tool restriction — keep it either way.
+  if (args.effort) out.output_config = { effort: args.effort };
   if (toolForced) {
+    // The Messages API rejects forcing a specific tool together with thinking,
+    // so when a tool is forced we drop only `thinking` (effort still applies).
     if (args.thinking) console.warn('[claudeReconstruct] thinking disabled: cannot force a tool and think simultaneously');
     return out;
   }
   if (args.thinking) out.thinking = { type: 'adaptive' };
-  if (args.effort) out.output_config = { effort: args.effort };
   return out;
 }
 

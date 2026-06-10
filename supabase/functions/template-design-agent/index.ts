@@ -482,6 +482,9 @@ Deno.serve(async (req) => {
     const mode: 'design' | 'art_director' | 'screenshot_to_block' | 'inline_text' | 'auto_fill' | 'brief' | 'pdf_document' = body.mode || 'design';
     const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
     const pdfBase64: string | undefined = typeof body.pdfBase64 === 'string' ? body.pdfBase64 : undefined; // §7a native PDF
+    // Reasoning effort for Claude reconstruction (client-tunable; defaults to high).
+    const RECON_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+    const effort: string = RECON_EFFORTS.includes(body.effort) ? body.effort : 'high';
     const memoryFacts: string[] = Array.isArray(body.memoryFacts) ? body.memoryFacts : [];
     const sampleData: any = body.sampleData ?? null;
     const replaceMode: boolean = body.replaceMode === true;
@@ -670,6 +673,7 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
           tools: [TOOL as any],
           tool_choice: toolChoice,
           max_tokens: 8192,
+          effort: effort as any,
           documents: usePdfDocument ? [{ base64: pdfBase64!, mediaType: 'application/pdf' }] : undefined,
         });
         if (!r.ok) {
@@ -804,6 +808,7 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
       briefTokenPatch,
       pipeline: useBriefPipeline ? 'brief' : 'ops',
       modelUsed: aiData?.model ?? null,
+      effort,
     });
   } catch (e) {
     console.error('template-design-agent error', e);

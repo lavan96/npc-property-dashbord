@@ -121,6 +121,7 @@ export function ReferenceImportDialog({
   const [mode, setMode] = useState<FidelityMode>('hybrid');
   const [imageMode, setImageMode] = useState<ImageMode>('faithful'); // R5: faithful reconstruct by default
   const [pdfClaude, setPdfClaude] = useState(false); // §7a: route the PDF straight to Claude
+  const [effort, setEffort] = useState<'high' | 'xhigh' | 'max'>('high');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [stage, setStage] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export function ReferenceImportDialog({
         setStage('Reading the PDF with Claude…');
         const dataUrl = await fileToDataUrl(file);
         const pdfBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-        const res = await reconstructPdfWithClaude({ pdfBase64, schema, activePageId, sampleData }, invokeRenderSource);
+        const res = await reconstructPdfWithClaude({ pdfBase64, schema, activePageId, sampleData, effort }, invokeRenderSource);
         onApplySchema?.(res.schema);
         setDone(`Reconstructed ${res.pageCount} page${res.pageCount === 1 ? '' : 's'} from the PDF${res.modelUsed ? ` · ${res.modelUsed}` : ''}.${res.warnings.length ? ` ${res.warnings.length} warning(s).` : ''}`);
       } else if (kind === 'pdf') {
@@ -221,6 +222,7 @@ export function ReferenceImportDialog({
             imageDataUrl: dataUrl,
             ...(groundedReference ? { groundedReference } : {}),
             sampleData,
+            effort,
           },
         });
         if (invokeError) throw new Error(invokeError.message);
@@ -299,6 +301,7 @@ export function ReferenceImportDialog({
         imageDataUrl: dataUrl,
         groundedReference: grounded,
         sampleData,
+        effort,
       },
     });
     if (invokeError) throw new Error(invokeError.message);
@@ -442,9 +445,14 @@ export function ReferenceImportDialog({
 
             {!file && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Code2 className="h-3.5 w-3.5" /> …or reconstruct a web page, component, or project
-                  <Badge variant="outline" className="text-[10px]">beta</Badge>
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">or</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <Code2 className="h-4 w-4 text-primary" /> Reconstruct from code or a web page
+                  <Badge variant="outline" className="text-[10px]">HTML · JSX · URL · zip</Badge>
                 </Label>
                 <Textarea
                   value={codeText}
@@ -545,6 +553,22 @@ export function ReferenceImportDialog({
                 </RadioGroup>
               </div>
             )}
+
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground pt-1">
+              <span>Reasoning effort:</span>
+              {(['high', 'xhigh', 'max'] as const).map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  onClick={() => setEffort(lvl)}
+                  disabled={busy || codeBusy}
+                  className={`px-2 py-0.5 rounded border ${effort === lvl ? 'border-primary bg-primary/10 text-foreground font-medium' : 'border-border hover:bg-muted'}`}
+                >
+                  {lvl === 'xhigh' ? 'X-High' : lvl[0].toUpperCase() + lvl.slice(1)}
+                </button>
+              ))}
+              <span className="ml-auto font-medium text-foreground/70">Powered by Claude Opus 4.8</span>
+            </div>
 
             {(stage || progress) && (
               <div className="space-y-1.5">
