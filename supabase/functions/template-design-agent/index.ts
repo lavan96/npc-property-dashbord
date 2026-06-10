@@ -10,7 +10,7 @@
 // operations in a single turn.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
 import { callClaudeReconstruct } from '../_shared/claudeReconstruct.ts';
 
@@ -440,7 +440,7 @@ Schema vocabulary you must respect:
 - Block = { id, type, props, overlays[] }. Use exact block types: free, cover, hero, kpi-grid, data-table, chart, image, text-block, footer, disclaimer, divider, callout, two-column, gallery, page-number, spacer, qr, badge-list, toc, auto-toc, signature, slot, scorecard, risk-register, infra-timeline, amenity-matrix, planning-table, dd-checklist, decision-box, strengths-watch.
 - Overlay = text | image | shape, each with x,y (top-left origin), width, height, rotation, opacity.
   - text: content, fontFamily, fontSize, fontWeight ("normal", "bold", or a numeric 100–900 weight), fontStyle, color (#hex or "token:primary"), align, lineHeight.
-  - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius. `fill` accepts a flat colour OR a raw CSS gradient string (e.g. "linear-gradient(135deg, #0A2540 0%, #1A3A5A 100%)") — use a gradient when the source background is a gradient, never flatten it to one colour.
+  - shape: shape='rect'|'line'|'ellipse', fill, stroke, strokeWidth, borderRadius. 'fill' accepts a flat colour OR a raw CSS gradient string (e.g. "linear-gradient(135deg, #0A2540 0%, #1A3A5A 100%)") — use a gradient when the source background is a gradient, never flatten it to one colour.
   - image: src, fit='cover'|'contain'|'fill'.
 - Tokens: colors{}, fonts{}, spacing{}. Reference via "token:<key>" in any color or string.
 - Bindings: "{{path.to.data}}" anywhere a string is allowed; do not invent paths.
@@ -479,7 +479,7 @@ CONVERSATIONAL RULES:
 - If the request is ambiguous, make the most tasteful interpretation and proceed; ask only when you genuinely cannot proceed.`;
 
 Deno.serve(async (req) => {
-  const cors = createCorsHeaders(req.headers.get('origin'));
+  const cors = createTokenAuthCorsHeaders();
   const json = (b: unknown, status = 200) =>
     new Response(JSON.stringify(b), {
       status,
@@ -494,7 +494,7 @@ Deno.serve(async (req) => {
     // Custom-auth verification (session token or custom HS256 JWT) — this agent
     // spends AI credits and must not be publicly invokable.
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const auth = await verifyAuth(supabaseAdmin, req.headers, body);
+    const auth = await verifyAuthOrNativeUser(supabaseAdmin, req, body);
     if (auth.error) return createUnauthorizedResponse(auth.error, cors);
     const schema = body.schema || { version: 1, pages: [], tokens: {}, slots: {} };
     const history: Array<{ role: 'user' | 'assistant'; content: string }> = body.messages || [];

@@ -39,7 +39,7 @@ import {
 import { groundOcrWords, type GroundedReference, type OcrWord } from '@/lib/reportTemplate/imageGrounding';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTemplate/importUrl';
 import { renderAndGroundCode, looksLikeJsx, type CodeIngestResult, type CodeRenderInput } from '@/lib/reportTemplate/ingestion/codeIngest';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
@@ -353,7 +353,7 @@ export function ReferenceImportDialog({
         setDone(`${imageMode === 'faithful' ? 'Reconstructed' : 'Redesigned'} ${validation.pageCount} page${validation.pageCount === 1 ? '' : 's'}${measured}${modelUsed ? ` · ${modelUsed}` : ''}.${warnings.length ? ` ${warnings.length} warning(s) — review in the Design Agent.` : ''}`);
       }
     } catch (e) {
-      setError((e as Error).message || 'Import failed.');
+      setError(describeAuthError((e as Error).message) ?? ((e as Error).message || 'Import failed.'));
     } finally {
       setBusy(false); setStage(null); setProgress(null);
     }
@@ -396,7 +396,7 @@ export function ReferenceImportDialog({
       const f = base64ToFile(d.dataBase64, name, d.contentType || (d.kind === 'pdf' ? 'application/pdf' : 'image/png'));
       onFile(f);
     } catch (e) {
-      setError(`Couldn't import from link: ${(e as Error).message}`);
+      setError(describeAuthError((e as Error).message) ?? `Couldn't import from link: ${(e as Error).message}`);
     } finally {
       setUrlBusy(false);
     }
@@ -469,7 +469,7 @@ export function ReferenceImportDialog({
       setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
       applyCodeImportResult(result, codeSourceName ?? (asUrl ? 'URL' : isJsx ? 'JSX' : 'HTML'));
     } catch (e) {
-      setError(`Couldn't import from code: ${(e as Error).message}`);
+      setError(describeAuthError((e as Error).message) ?? `Couldn't import from code: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }
@@ -544,7 +544,7 @@ export function ReferenceImportDialog({
       setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
       applyCodeImportResult(result, f.name);
     } catch (e) {
-      setError(`Couldn't import project: ${(e as Error).message}`);
+      setError(describeAuthError((e as Error).message) ?? `Couldn't import project: ${(e as Error).message}`);
     } finally {
       setCodeBusy(false); setStage(null);
     }

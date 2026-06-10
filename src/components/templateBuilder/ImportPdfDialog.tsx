@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { describeAuthError } from '@/lib/secureInvoke';
 import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
@@ -84,7 +85,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       setRecordedDecision(null);
       toast.success(`Imported ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}.`);
     } catch (err) {
-      toast.error(`Import failed: ${(err as Error).message}`);
+      toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }

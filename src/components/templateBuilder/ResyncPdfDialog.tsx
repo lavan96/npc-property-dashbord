@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { describeAuthError } from '@/lib/secureInvoke';
 import {
   extractPdfToTemplate,
   type FidelityMode,
@@ -74,7 +75,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
       toast.success(`Re-synced ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}. Previous version snapshotted.`);
       onResynced?.(res);
     } catch (err) {
-      toast.error(`Re-sync failed: ${(err as Error).message}`);
+      toast.error(describeAuthError((err as Error).message) ?? `Re-sync failed: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }

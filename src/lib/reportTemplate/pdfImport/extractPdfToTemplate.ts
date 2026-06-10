@@ -23,7 +23,7 @@ import {
   type SourceBoundsExpectation,
   type SourceTextExpectation,
 } from '@/lib/reportTemplate/ingestion/fidelity';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
 import {
@@ -93,8 +93,8 @@ async function invokeImport(body: any) {
   // function now verifies it (supabase.functions.invoke only carries the anon
   // key for this app, which the secured function rejects).
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 120000 });
-  if (error) throw new Error(error.message || 'template-import-pdf failed');
-  if (data?.error) throw new Error(data.error);
+  if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
+  if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
   return data;
 }
 

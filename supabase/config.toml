@@ -419,7 +419,10 @@ verify_jwt = true
 request_timeout = 1500
 
 [functions.import-from-url]
-verify_jwt = true
+# Auth verified in-function (verifyAuthOrNativeUser). Gateway JWT must stay OFF:
+# expired custom HS256 access tokens 401 at the gateway before the function's
+# session-token auth can run — URL imports failed with opaque auth errors.
+verify_jwt = false
 
 [functions.get-system-logs]
 verify_jwt = true

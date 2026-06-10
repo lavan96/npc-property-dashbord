@@ -9,7 +9,7 @@
 // and returns the bytes as base64 (or guidance when the link isn't a file).
 // Figma links are exported via the Figma API when FIGMA_TOKEN is configured.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const MAX_BYTES = 30 * 1024 * 1024; // 30 MB
 const MAX_REDIRECTS = 5;
@@ -147,14 +147,13 @@ async function figmaExport(key: string, cors: Record<string, string>): Promise<R
 }
 
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin') || '';
-  const cors = createCorsHeaders(origin);
+  const cors = createTokenAuthCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const body = await req.json().catch(() => ({}));
-    const { error: authError } = await verifyAuth(supabase, req.headers, body);
+    const { error: authError } = await verifyAuthOrNativeUser(supabase, req, body);
     if (authError) return createUnauthorizedResponse(authError, cors);
 
     const provider: string = String(body.provider || 'generic');
