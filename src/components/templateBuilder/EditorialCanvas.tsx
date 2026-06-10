@@ -38,6 +38,20 @@ interface FlatOverlay {
   blockId: string;
 }
 
+
+function overlayPaintOrder(overlay: Overlay, index: number): number {
+  const z = Number((overlay as any).zIndex);
+  if (Number.isFinite(z)) return z * 1000 + index;
+  const area = Math.max(0, Number(overlay.width) || 0) * Math.max(0, Number(overlay.height) || 0);
+  const isBackdropShape = overlay.type === 'shape' && area > 120_000 && !((overlay as any).strokeWidth);
+  if (isBackdropShape) return -1_000_000 + index;
+  if (overlay.type === 'shape') return -100_000 + index;
+  if (overlay.type === 'image') return -10_000 + index;
+  if ((overlay as any).type === 'table') return 100_000 + index;
+  if (overlay.type === 'text' || (overlay as any).type === 'textOnPath') return 200_000 + index;
+  return index;
+}
+
 interface CommentAnchor {
   id: string;
   pageId?: string | null;
@@ -105,7 +119,10 @@ export function EditorialCanvas({
     for (const b of page.blocks) {
       for (const o of b.overlays) out.push({ overlay: o, blockId: b.id });
     }
-    return out;
+    return out
+      .map((entry, index) => ({ entry, order: overlayPaintOrder(entry.overlay, index) }))
+      .sort((a, b) => a.order - b.order)
+      .map(({ entry }) => entry);
   }, [page]);
 
   // Apply in-flight drag/resize patches so the canvas reflects live state
@@ -600,6 +617,7 @@ export function EditorialCanvas({
                       : '1px dashed transparent',
                     outlineOffset: 0,
                     background: sel ? 'hsl(45 95% 50% / 0.04)' : 'transparent',
+                    zIndex: Number.isFinite(Number((o as any).zIndex)) ? Number((o as any).zIndex) : undefined,
                   }}
                   onMouseEnter={(e) => {
                     if (!sel) (e.currentTarget as HTMLElement).style.outline = '1px dashed hsl(45 80% 50% / 0.7)';

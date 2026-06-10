@@ -120,7 +120,10 @@ function buildEffectStyle(o: any): string {
 export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
   if (!evalConditional(overlay.conditional, ctx)) return '';
   const fx = buildEffectStyle(overlay as any);
-  const base = `position:absolute;left:${overlay.x}pt;top:${overlay.y}pt;width:${overlay.width}pt;height:${overlay.height}pt;opacity:${overlay.opacity};transform:rotate(${overlay.rotation}deg);transform-origin:top left;${fx}`;
+  const z = Number.isFinite(Number((overlay as any).zIndex)) ? `z-index:${Number((overlay as any).zIndex)};` : '';
+  const opacity = Number.isFinite(Number(overlay.opacity)) ? Number(overlay.opacity) : 1;
+  const rotation = Number.isFinite(Number(overlay.rotation)) ? Number(overlay.rotation) : 0;
+  const base = `position:absolute;left:${overlay.x}pt;top:${overlay.y}pt;width:${overlay.width}pt;height:${overlay.height}pt;opacity:${opacity};transform:rotate(${rotation}deg);transform-origin:top left;${z}${fx}`;
   switch (overlay.type) {
     case 'text': {
       const raw = overlay as any;

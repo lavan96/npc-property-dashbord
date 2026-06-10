@@ -27,6 +27,45 @@ export interface RenderOptions {
   tokenOverrides?: Partial<ReportTemplate['tokens']>;
 }
 
+
+function overlayPaintOrder(overlay: Overlay, index: number): number {
+  const z = Number((overlay as any).zIndex);
+  if (Number.isFinite(z)) return z * 1000 + index;
+  const area = Math.max(0, Number(overlay.width) || 0) * Math.max(0, Number(overlay.height) || 0);
+  const isBackdropShape = overlay.type === 'shape' && area > 120_000 && !((overlay as any).strokeWidth);
+  if (isBackdropShape) return -1_000_000 + index;
+  if (overlay.type === 'shape') return -100_000 + index;
+  if (overlay.type === 'image') return -10_000 + index;
+  if ((overlay as any).type === 'table') return 100_000 + index;
+  if (overlay.type === 'text' || (overlay as any).type === 'textOnPath') return 200_000 + index;
+  return index;
+}
+
+function sortOverlaysForPaint(overlays: Overlay[] = []): Overlay[] {
+  return overlays
+    .map((overlay, index) => ({ overlay, order: overlayPaintOrder(overlay, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.overlay);
+}
+
+
+function blockPaintOrder(block: any, index: number): number {
+  const z = Number(block?.style?.zIndex);
+  if (Number.isFinite(z)) return z * 1_000_000 + index;
+  const overlays = Array.isArray(block?.overlays) ? block.overlays : [];
+  if (block?.type === 'free' && overlays.length) {
+    return Math.min(...overlays.map((overlay: Overlay, overlayIndex: number) => overlayPaintOrder(overlay, overlayIndex))) + index / 10_000;
+  }
+  return index;
+}
+
+function sortBlocksForPaint(blocks: any[] = []): any[] {
+  return blocks
+    .map((block, index) => ({ block, order: blockPaintOrder(block, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.block);
+}
+
 /** Render a template to a Blob (PDF). */
 export function renderTemplateToBlob(
   rawTemplate: ReportTemplate | unknown,
@@ -120,7 +159,7 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
   };
 
   // Blocks
-  for (const block of page.blocks) {
+  for (const block of sortBlocksForPaint(page.blocks)) {
     if (!evalConditional(block.conditional, ctxBase)) continue;
     const renderer = getBlockRenderer(block.type);
     if (renderer) {
@@ -129,7 +168,7 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
       console.warn(`[pdfRenderer] No renderer for block type "${block.type}"`);
     }
     // Overlays sit on top of the block
-    for (const overlay of block.overlays) {
+    for (const overlay of sortOverlaysForPaint(block.overlays)) {
       if (!evalConditional(overlay.conditional, ctxBase)) continue;
       drawOverlay(doc, overlay, ctxBase);
     }

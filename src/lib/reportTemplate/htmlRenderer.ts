@@ -103,6 +103,7 @@ html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-col
 body { font-family: var(--font-body, 'Helvetica', sans-serif); color: var(--color-text, #111); }
 .tpl-page {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   page-break-after: always;
   break-after: page;
@@ -280,10 +281,48 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
   return ` id="${anchorId}" style="bookmark-label:'${String(label).replace(/'/g, "\\'")}';bookmark-level:${level};"`;
 }
 
+
+function overlayPaintOrder(overlay: any, index: number): number {
+  if (Number.isFinite(Number(overlay?.zIndex))) return Number(overlay.zIndex) * 1000 + index;
+  const area = Math.max(0, Number(overlay?.width) || 0) * Math.max(0, Number(overlay?.height) || 0);
+  const isBackdropShape = overlay?.type === 'shape' && area > 120_000 && !overlay?.strokeWidth;
+  if (isBackdropShape) return -1_000_000 + index;
+  if (overlay?.type === 'shape') return -100_000 + index;
+  if (overlay?.type === 'image') return -10_000 + index;
+  if (overlay?.type === 'table') return 100_000 + index;
+  if (overlay?.type === 'text' || overlay?.type === 'textOnPath') return 200_000 + index;
+  return index;
+}
+
+function sortOverlaysForPaint(overlays: any[] = []): any[] {
+  return overlays
+    .map((overlay, index) => ({ overlay, order: overlayPaintOrder(overlay, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.overlay);
+}
+
+
+function blockPaintOrder(block: any, index: number): number {
+  const z = Number(block?.style?.zIndex);
+  if (Number.isFinite(z)) return z * 1_000_000 + index;
+  const overlays = Array.isArray(block?.overlays) ? block.overlays : [];
+  if (block?.type === 'free' && overlays.length) {
+    return Math.min(...overlays.map((overlay: any, overlayIndex: number) => overlayPaintOrder(overlay, overlayIndex))) + index / 10_000;
+  }
+  return index;
+}
+
+function sortBlocksForPaint(blocks: any[] = []): any[] {
+  return blocks
+    .map((block, index) => ({ block, order: blockPaintOrder(block, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.block);
+}
+
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
-  const overlays = (block.overlays ?? []).filter((o: any) => !o?.hidden).map((o: any) => renderOverlay(o, ctxBase)).join('');
+  const overlays = sortOverlaysForPaint((block.overlays ?? []).filter((o: any) => !o?.hidden)).map((o: any) => renderOverlay(o, ctxBase)).join('');
   const backdrop = decorationBackdrop(block, ctxBase);
   const s = block.style ?? {};
   const opacity = s.opacity != null ? Number(s.opacity) : 1;
@@ -391,7 +430,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
   }
 
   const blocks: string[] = [];
-  for (const block of page.blocks) {
+  for (const block of sortBlocksForPaint(page.blocks)) {
     if (block.hidden) continue;
     if (!evalConditional(block.conditional, ctxBase)) continue;
     if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
