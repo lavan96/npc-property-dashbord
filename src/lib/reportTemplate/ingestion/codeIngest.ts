@@ -169,7 +169,7 @@ function normalizeRenderPages(data: any): Array<DomBoxTreePage & { rasterDataUrl
       rasterDataUrl: normalizeRaster(String(raster)),
       traceOnly: !renderTree(data, page, index),
     };
-  }).filter((page): page is DomBoxTreePage & { rasterDataUrl: string; traceOnly?: boolean } => Boolean(page));
+  }).filter((page): page is any => Boolean(page));
 }
 
 function renderSourceErrorMessage(value: unknown): string {
