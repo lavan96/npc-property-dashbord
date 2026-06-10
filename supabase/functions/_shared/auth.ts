@@ -206,6 +206,53 @@ export async function verifyAuth(
 }
 
 /**
+ * Verify the caller as EITHER a custom-auth user (session token / custom HS256
+ * JWT → `custom_users`) OR a native Supabase Auth user (JWT verified against
+ * the Auth server). The template-builder endpoints authenticate real humans
+ * from both systems; accepting only one of them locked out the other and
+ * surfaced as blanket "Authentication required" errors on every import.
+ */
+export async function verifyAuthOrNativeUser(
+  supabase: any,
+  req: Request,
+  body?: { session_token?: string; command_centre_session_token?: string }
+): Promise<SessionValidationResult> {
+  const custom = await verifyAuth(supabase, req.headers, body);
+  if (!custom.error) return custom;
+
+  // Fallback: a native Supabase Auth user (verify the JWT with the Auth server).
+  try {
+    const authHeader = req.headers.get('authorization');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    if (authHeader?.startsWith('Bearer ') && anonKey && supabaseUrl) {
+      const jwt = authHeader.substring(7).trim();
+      // The anon key itself is not a user.
+      if (jwt && jwt !== anonKey.trim()) {
+        const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { Authorization: `Bearer ${jwt}`, apikey: anonKey },
+        });
+        if (resp.ok) {
+          const user = await resp.json();
+          if (user?.id) {
+            console.log('[verifyAuthOrNativeUser] Native Supabase Auth user verified:', String(user.id).substring(0, 8) + '...');
+            return {
+              error: null,
+              userId: String(user.id),
+              username: user.email ?? null,
+              authMethod: 'jwt',
+            };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.log('[verifyAuthOrNativeUser] Native auth fallback failed:', err);
+  }
+  return custom; // original custom-auth error (message + null user)
+}
+
+/**
  * Parse cookies from Cookie header
  */
 export function parseCookies(cookieHeader: string | null): Record<string, string> {
@@ -366,6 +413,25 @@ export function createCorsHeaders(origin: string | null = null): Record<string, 
 }
 
 /**
+ * CORS headers for TOKEN-authenticated endpoints (no cookies involved — the
+ * app calls them with `credentials: 'omit'` and auth travels in the
+ * Authorization header / `session_token` body field).
+ *
+ * Wildcard origin is deliberate: the origin-allowlist variant returned a
+ * mismatched `Access-Control-Allow-Origin` for any origin missing from
+ * `ALLOWED_ORIGINS`, which the browser surfaces as an opaque
+ * "Failed to fetch" hard error on EVERY call — indistinguishable from an
+ * outage. Authentication is enforced in-function, not by CORS.
+ */
+export function createTokenAuthCorsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+  };
+}
+
+/**
  * Create session cookie header for login response
  */
 export function createSessionCookie(
@@ -402,7 +468,9 @@ export function createUnauthorizedResponse(
   corsHeaders: Record<string, string> = createCorsHeaders()
 ): Response {
   return new Response(
-    JSON.stringify({ error: message, success: false }),
+    // `code` lets clients distinguish a real sign-in problem from other
+    // failures and show actionable guidance instead of a raw 401.
+    JSON.stringify({ error: message, code: 'auth_required', success: false }),
     {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

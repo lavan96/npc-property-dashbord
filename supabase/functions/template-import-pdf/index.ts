@@ -8,7 +8,7 @@
 // JSON artifacts in `template-import-artifacts` when supplied by the client.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -129,7 +129,7 @@ async function readJsonArtifact(admin: ReturnType<typeof createClient>, path: st
 }
 
 Deno.serve(async (req) => {
-  const cors = createCorsHeaders(req.headers.get('origin'));
+  const cors = createTokenAuthCorsHeaders();
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     // Custom-auth verification (session token or custom HS256 JWT). The old
     // implementation used supabase.auth.getUser(), which can NEVER succeed for
     // this app's custom_users accounts — every authed operation 401'd.
-    const auth = await verifyAuth(admin, req.headers, body);
+    const auth = await verifyAuthOrNativeUser(admin, req, body);
     if (auth.error) return createUnauthorizedResponse(auth.error, cors);
     const authedUserId = auth.userId && auth.userId !== 'service_role' ? auth.userId : null;
     const userId = authedUserId ?? body.user_id ?? null;
