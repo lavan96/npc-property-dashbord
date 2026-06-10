@@ -111,7 +111,7 @@ export function TemplateBranchingDialog({
       await logTemplateAudit(templateId, 'branch_created', `Branched as "${insert.name}"`, { branch_id: created.id });
       toast.success('Draft branch created');
       onOpenChange(false);
-      navigate(`/admin/templates/${created.id}/edit`);
+      navigate(`/admin/template-builder/${created.id}`);
     } catch (e: any) {
       toast.error(`Branch failed: ${e?.message ?? e}`);
     } finally {
@@ -251,7 +251,7 @@ export function TemplateBranchingDialog({
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px]">{b.approval_status}</Badge>
-                        <Button size="sm" variant="ghost" onClick={() => { onOpenChange(false); navigate(`/admin/templates/${b.id}/edit`); }}>
+                        <Button size="sm" variant="ghost" onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${b.id}`); }}>
                           Open
                         </Button>
                       </div>
