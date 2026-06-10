@@ -176,7 +176,7 @@ export const CdirLayerSchema: z.ZodType<CdirLayer> = z.lazy(() => z.discriminate
     children: z.array(CdirLayerSchema).default([]),
     role: z.enum(['header', 'footer', 'card', 'hero', 'kpi', 'table', 'unknown']).optional(),
   }),
-]));
+])) as unknown as z.ZodType<CdirLayer>;
 
 export const CdirPageSchema = z.object({
   id: z.string().min(1),
