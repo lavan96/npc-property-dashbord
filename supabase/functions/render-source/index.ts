@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     const jsx = typeof body.jsx === 'string' ? body.jsx : undefined;       // C3
     const entry = typeof body.entry === 'string' ? body.entry : undefined;  // C3 component name
     const zipBase64 = typeof body.zipBase64 === 'string' ? body.zipBase64 : undefined; // C4
+    const sourceFilename = typeof body.sourceFilename === 'string' ? body.sourceFilename : undefined;
     if (!url && !jsx && !zipBase64 && (!html || !html.trim())) {
       return json({ error: 'Provide `html`, `url`, `jsx`, or `zipBase64`.' }, 400, cors);
     }
@@ -68,6 +69,15 @@ Deno.serve(async (req) => {
 
     const width = Math.min(MAX_DIM, Math.max(320, Number(body.width) || 1280));
     const height = Math.min(MAX_DIM, Math.max(320, Number(body.height) || 1600));
+    const renderKind = zipBase64 ? 'zip' : jsx ? 'jsx' : url ? 'url' : 'html';
+    console.info('[render-source] render request', {
+      kind: renderKind,
+      width,
+      height,
+      hasCss: Boolean(css),
+      sourceFilename,
+      zipBytes: zipBase64 ? Math.round((zipBase64.length * 3) / 4) : 0,
+    });
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), RENDER_TIMEOUT_MS);
@@ -76,18 +86,32 @@ Deno.serve(async (req) => {
       upstream = await fetch(`${serviceUrl}/render`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${serviceToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, css, url, jsx, entry, zipBase64, width, height, fullPage: body.fullPage !== false }),
+        body: JSON.stringify({ html, css, url, jsx, entry, zipBase64, sourceFilename, width, height, fullPage: body.fullPage !== false }),
         signal: controller.signal,
       });
     } catch (e) {
       const aborted = (e as { name?: string })?.name === 'AbortError';
+      console.warn('[render-source] upstream fetch failed', { kind: renderKind, aborted, message: String(e) });
       return json({ error: aborted ? 'Render timed out.' : `render-source unreachable: ${String(e)}` }, 502, cors);
     } finally {
       clearTimeout(timer);
     }
 
     const text = await upstream.text();
-    return new Response(text, { status: upstream.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    let payload: unknown = null;
+    try { payload = text ? JSON.parse(text) : null; } catch { /* wrap non-JSON below */ }
+    if (!upstream.ok) {
+      const errorPayload = payload && typeof payload === 'object'
+        ? payload
+        : { error: text || `render service returned HTTP ${upstream.status}`, code: 'render_source_upstream_error', status: upstream.status };
+      console.warn('[render-source] upstream non-2xx', { kind: renderKind, status: upstream.status, sourceFilename });
+      return json(errorPayload, upstream.status, cors);
+    }
+    if (!payload || typeof payload !== 'object') {
+      console.warn('[render-source] upstream returned invalid JSON', { kind: renderKind, status: upstream.status, bytes: text.length });
+      return json({ error: 'render-source returned invalid JSON.', code: 'render_source_invalid_json' }, 502, cors);
+    }
+    return json(payload, upstream.status, cors);
   } catch (e) {
     return json({ error: (e as Error)?.message ?? String(e) }, 500, cors);
   }

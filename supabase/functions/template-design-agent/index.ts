@@ -41,6 +41,17 @@ function ensureIds(node: any): any {
   return node;
 }
 
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 function normaliseSchemaForClient(schema: any): any {
   const s = JSON.parse(JSON.stringify(schema || {}));
   s.version = 1;
@@ -469,7 +480,7 @@ CONVERSATIONAL RULES:
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (!LOVABLE_API_KEY) return json({ error: 'LOVABLE_API_KEY missing' }, 500);
+  if (!LOVABLE_API_KEY && !ANTHROPIC_API_KEY) return json({ error: 'No AI provider configured (set LOVABLE_API_KEY or ANTHROPIC_API_KEY).' }, 500);
 
   try {
     const body = await req.json();
@@ -531,21 +542,25 @@ Deno.serve(async (req) => {
     // too, but this brief makes palette roles explicit so the model does not
     // collapse references into black-and-white defaults.
     if (mode === 'screenshot_to_block' && imageDataUrl && !designBrief) {
-      const visionResult = await analyzeReferenceImage(
-        imageDataUrl,
-        LOVABLE_API_KEY!,
-        `${userInstruction || 'Faithfully reconstruct this image.'}
+      try {
+        const visionResult = await withTimeout(analyzeReferenceImage(
+          imageDataUrl,
+          LOVABLE_API_KEY || '',
+          `${userInstruction || 'Faithfully reconstruct this image.'}
 Focus especially on exact palette roles (background, surface, text, accent, muted), section fills, borders, and any coloured text.`,
-      );
-      if ('error' in visionResult) {
-        console.warn('[design-agent] screenshot colour vision failed:', visionResult.error);
-      } else {
-        designBrief = visionResult.brief;
-        const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
-        briefTokenPatch = integrated.tokenPatch;
-        briefSwaps = integrated.swaps;
-        briefPairings = integrated.pairings;
-        console.log(`[design-agent] screenshot vision palette=${designBrief.palette.map((p) => `${p.role}:${p.hex}`).join(',')} clientPalette=${clientPalette.join(',')}`);
+        ), 30_000, 'screenshot colour vision');
+        if ('error' in visionResult) {
+          console.warn('[design-agent] screenshot colour vision failed:', visionResult.error);
+        } else {
+          designBrief = visionResult.brief;
+          const integrated = integrateBriefTokens(schema.tokens || {}, designBrief);
+          briefTokenPatch = integrated.tokenPatch;
+          briefSwaps = integrated.swaps;
+          briefPairings = integrated.pairings;
+          console.log(`[design-agent] screenshot vision palette=${designBrief.palette.map((p) => `${p.role}:${p.hex}`).join(',')} clientPalette=${clientPalette.join(',')}`);
+        }
+      } catch (error) {
+        console.warn('[design-agent] screenshot colour vision skipped:', String((error as Error).message ?? error));
       }
     }
 
@@ -702,10 +717,16 @@ A PDF is attached. Reconstruct it on the active page (id=${activePageId}) as nat
           max_tokens: 8192,
           documents: usePdfDocument ? [{ base64: pdfBase64!, mediaType: 'application/pdf' }] : undefined,
         });
-        if (!r.ok) {
+        if (r.ok) {
+          return new Response(JSON.stringify(r.data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (!LOVABLE_API_KEY) {
           return new Response(r.errorText || 'anthropic error', { status: r.status });
         }
-        return new Response(JSON.stringify(r.data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        console.warn('[design-agent] Claude failed; falling back to Lovable gateway', r.status, String(r.errorText || '').slice(0, 240));
+      }
+      if (!LOVABLE_API_KEY) {
+        return new Response('LOVABLE_API_KEY missing and Claude route is unavailable for this request', { status: 500 });
       }
       const resp = await fetch(GATEWAY_URL, {
         method: 'POST',

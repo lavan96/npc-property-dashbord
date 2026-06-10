@@ -587,7 +587,7 @@ export async function extractPdfToTemplate(
           );
           const b64 = await blobToBase64(blob);
           onProgress({ phase: 'uploading', page: pageIndex, totalPages });
-          const up = await invokeImport({
+          await invokeImport({
             operation: 'upload_asset',
             import_id: importId,
             kind: 'page',
@@ -596,7 +596,11 @@ export async function extractPdfToTemplate(
             content_type: 'image/jpeg',
             data_base64: b64,
           });
-          backgroundImageUrl = up.url;
+          // Pixel-perfect mode must be self-contained for both iframe preview and
+          // WeasyPrint. Public storage URLs can be misconfigured or unavailable to
+          // the render service, which produced blank white pages; embedding the
+          // page raster as a data URL guarantees the raster is present at render.
+          backgroundImageUrl = `data:image/jpeg;base64,${b64}`;
           rasterized++;
         } else {
           semantic++;

@@ -68,6 +68,7 @@ export interface CodeIngestResult {
 export type InvokeFn = (
   name: string,
   body: unknown,
+  options?: { timeoutMs?: number },
 ) => Promise<{ data: any; error: { message: string } | null }>;
 
 
@@ -76,7 +77,15 @@ interface RenderSourcePagePayload {
   label?: string;
   route?: string;
   raster?: string;
+  screenshot?: string;
+  screenshotDataUrl?: string;
+  image?: string;
+  imageDataUrl?: string;
   boxTree?: DomBoxTree;
+  domBoxTree?: DomBoxTree;
+  tree?: DomBoxTree;
+  pageWidthPx?: number;
+  pageHeightPx?: number;
 }
 
 function stableChecksum(input: CodeRenderInput): string {
@@ -99,31 +108,80 @@ function normalizeRaster(raster: string): string {
   return raster.startsWith('data:') ? raster : `data:image/png;base64,${raster}`;
 }
 
-function normalizeRenderPages(data: any): Array<DomBoxTreePage & { rasterDataUrl: string }> {
-  const explicitPages = Array.isArray(data?.pages)
-    ? data.pages.map((page: RenderSourcePagePayload, index: number) => ({
-      id: page.id,
-      label: page.label,
-      route: page.route,
-      tree: page.boxTree,
-      raster: page.raster ?? (Array.isArray(data.rasters) ? data.rasters[index] : undefined) ?? (index === 0 ? data.raster : undefined),
-    }))
-    : [];
-  const boxTreePages = !explicitPages.length && Array.isArray(data?.boxTrees)
-    ? data.boxTrees.map((tree: DomBoxTree, index: number) => ({
-      id: `page_${index + 1}`,
-      label: `Rendered page ${index + 1}`,
-      tree,
-      raster: Array.isArray(data.rasters) ? data.rasters[index] : (index === 0 ? data.raster : undefined),
-    }))
-    : [];
-  const singlePage = !explicitPages.length && !boxTreePages.length && data?.boxTree
-    ? [{ id: 'page_1', label: 'Rendered page 1', tree: data.boxTree as DomBoxTree, raster: data.raster }]
-    : [];
+function firstString(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
 
-  return [...explicitPages, ...boxTreePages, ...singlePage]
-    .filter((page) => page.tree && page.raster)
-    .map((page) => ({ ...page, tree: page.tree as DomBoxTree, rasterDataUrl: normalizeRaster(String(page.raster)) }));
+function renderRaster(data: any, page: RenderSourcePagePayload | undefined, index: number): string | undefined {
+  return firstString(
+    page?.raster,
+    page?.screenshot,
+    page?.screenshotDataUrl,
+    page?.imageDataUrl,
+    page?.image,
+    Array.isArray(data?.rasters) ? data.rasters[index] : undefined,
+    Array.isArray(data?.screenshots) ? data.screenshots[index] : undefined,
+    index === 0 ? data?.raster : undefined,
+    index === 0 ? data?.screenshot : undefined,
+    index === 0 ? data?.screenshotDataUrl : undefined,
+  );
+}
+
+function renderTree(data: any, page: RenderSourcePagePayload | undefined, index: number): DomBoxTree | undefined {
+  return (page?.boxTree ?? page?.domBoxTree ?? page?.tree
+    ?? (Array.isArray(data?.boxTrees) ? data.boxTrees[index] : undefined)
+    ?? (Array.isArray(data?.domBoxTrees) ? data.domBoxTrees[index] : undefined)
+    ?? (index === 0 ? data?.boxTree ?? data?.domBoxTree ?? data?.tree : undefined)) as DomBoxTree | undefined;
+}
+
+function syntheticTree(data: any, page: RenderSourcePagePayload | undefined): DomBoxTree {
+  return {
+    pageWidthPx: Math.max(1, Number(page?.pageWidthPx ?? data?.pageWidthPx ?? data?.width ?? 1280) || 1280),
+    pageHeightPx: Math.max(1, Number(page?.pageHeightPx ?? data?.pageHeightPx ?? data?.height ?? 1600) || 1600),
+    textBoxes: [],
+    background: typeof data?.background === 'string' ? data.background : undefined,
+    palette: Array.isArray(data?.palette) ? data.palette : undefined,
+    fonts: Array.isArray(data?.fonts) ? data.fonts : undefined,
+  };
+}
+
+function normalizeRenderPages(data: any): Array<DomBoxTreePage & { rasterDataUrl: string; traceOnly?: boolean }> {
+  const explicitPages: RenderSourcePagePayload[] = Array.isArray(data?.pages) ? data.pages : [];
+  const pageCount = Math.max(
+    explicitPages.length,
+    Array.isArray(data?.boxTrees) ? data.boxTrees.length : 0,
+    Array.isArray(data?.domBoxTrees) ? data.domBoxTrees.length : 0,
+    Array.isArray(data?.rasters) ? data.rasters.length : 0,
+    Array.isArray(data?.screenshots) ? data.screenshots.length : 0,
+    data?.boxTree || data?.domBoxTree || data?.tree || data?.raster || data?.screenshot || data?.screenshotDataUrl ? 1 : 0,
+  );
+
+  return Array.from({ length: pageCount }, (_, index) => {
+    const page = explicitPages[index];
+    const raster = renderRaster(data, page, index);
+    if (!raster) return null;
+    const tree = renderTree(data, page, index) ?? syntheticTree(data, page);
+    return {
+      id: page?.id ?? `page_${index + 1}`,
+      label: page?.label ?? page?.route ?? `Rendered page ${index + 1}`,
+      route: page?.route,
+      tree,
+      rasterDataUrl: normalizeRaster(String(raster)),
+      traceOnly: !renderTree(data, page, index),
+    };
+  }).filter((page): page is DomBoxTreePage & { rasterDataUrl: string; traceOnly?: boolean } => Boolean(page));
+}
+
+function renderSourceErrorMessage(value: unknown): string {
+  if (!value) return 'render-source failed';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const message = firstString(record.message, record.error, record.detail, record.code);
+    if (message) return message;
+    try { return JSON.stringify(value); } catch { /* ignore */ }
+  }
+  return String(value);
 }
 
 function expectedTextForPage(page: DomBoxTreePage, pageId: string) {
@@ -167,14 +225,15 @@ export async function renderAndGroundCode(
     jsx: input.jsx,
     entry: input.entry,
     zipBase64: input.zipBase64,
+    sourceFilename: input.sourceFilename,
     width: input.width ?? 1280,
     height: input.height ?? 1600,
-  });
+  }, { timeoutMs: input.zipBase64 ? 240000 : 180000 });
   if (error) throw new Error(error.message || 'render-source failed');
-  if (data?.error) throw new Error(String(data.error));
+  if (data?.error) throw new Error(renderSourceErrorMessage(data.error));
 
   const renderedPages = normalizeRenderPages(data);
-  if (!renderedPages.length) throw new Error('render-source returned no render.');
+  if (!renderedPages.length) throw new Error(renderSourceErrorMessage(data?.message ?? 'render-source returned no screenshot or DOM box tree.'));
 
   const rasterDataUrls = renderedPages.map((page) => page.rasterDataUrl);
   const groundedPages = renderedPages.map((page) => groundDomBoxTree(page.tree));

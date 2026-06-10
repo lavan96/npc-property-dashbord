@@ -34,7 +34,17 @@ function logDbError(operation: string, error: { message?: string; details?: stri
 
 async function ensureAssetBucket(admin: ReturnType<typeof createClient>) {
   const { data } = await admin.storage.getBucket(ASSET_BUCKET);
-  if (data) return;
+  if (data) {
+    if (!data.public) {
+      const { error } = await admin.storage.updateBucket(ASSET_BUCKET, {
+        public: true,
+        fileSizeLimit: 25 * 1024 * 1024,
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+      });
+      if (error) logDbError('ensure_asset_bucket.update_public', error);
+    }
+    return;
+  }
   await admin.storage.createBucket(ASSET_BUCKET, {
     public: true,
     fileSizeLimit: 25 * 1024 * 1024,

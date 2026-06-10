@@ -48,10 +48,14 @@ import { figmaNodesToBoxTree } from '@/lib/reportTemplate/figmaGrounding';
 import { groundDomBoxTree } from '@/lib/reportTemplate/codeGrounding';
 
 type ImageMode = 'faithful' | 'redesign';
+type CodeSourceFlavor = ReturnType<typeof codeFlavorForFile>;
+
+const MAX_CODE_ZIP_BYTES = 18 * 1024 * 1024;
+const CSS_SAMPLE_HTML = '<!doctype html><html><body><main class="template-builder-css-sample"><section class="hero"><p class="eyebrow">CSS preview</p><h1>Template style sample</h1><p>Upload paired HTML or a project ZIP for exact content reconstruction.</p><button>Sample CTA</button></section></main></body></html>';
 
 /** Adapter: secureInvoke → the InvokeFn shape renderAndGroundCode expects. */
-const invokeRenderSource = (name: string, payload: unknown) =>
-  invokeSecureFunction(name, payload as any) as Promise<{ data: any; error: { message: string } | null }>;
+const invokeRenderSource = (name: string, payload: unknown, options?: { timeoutMs?: number }) =>
+  invokeSecureFunction(name, payload as any, { timeoutMs: options?.timeoutMs ?? 180000 }) as Promise<{ data: any; error: { message: string } | null }>;
 
 /** base64 → File (for documents fetched by URL via the import-from-url function). */
 function base64ToFile(b64: string, filename: string, type: string): File {
@@ -62,7 +66,7 @@ function base64ToFile(b64: string, filename: string, type: string): File {
 }
 
 /** Downscale large screenshots before sending them to the design agent. */
-async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1800, jpegQuality = 0.86): Promise<string> {
+async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1600, jpegQuality = 0.78): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -70,7 +74,7 @@ async function prepareImageForDesignAgent(dataUrl: string, maxLongEdge = 1800, j
     image.src = dataUrl;
   });
   const longest = Math.max(img.naturalWidth, img.naturalHeight);
-  if (!longest || (longest <= maxLongEdge && dataUrl.length < 3_500_000)) return dataUrl;
+  if (!longest || (longest <= maxLongEdge && dataUrl.length < 1_500_000)) return dataUrl;
 
   const scale = Math.min(1, maxLongEdge / longest);
   const width = Math.max(1, Math.round(img.naturalWidth * scale));
@@ -207,6 +211,7 @@ export function ReferenceImportDialog({
   const [urlBusy, setUrlBusy] = useState(false);
   const [codeText, setCodeText] = useState('');
   const [codeSourceName, setCodeSourceName] = useState<string | null>(null);
+  const [codeSourceFlavor, setCodeSourceFlavor] = useState<CodeSourceFlavor>(null);
   const [codeBusy, setCodeBusy] = useState(false);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
@@ -214,7 +219,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeBusy(false); setPdfClaude(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeSourceFlavor(null); setCodeBusy(false); setPdfClaude(false);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -416,13 +421,20 @@ export function ReferenceImportDialog({
     const raw = codeText.trim();
     if (!raw) return;
     const asUrl = isHttpUrl(raw);
-    const isJsx = !asUrl && looksLikeJsx(raw);
-    const input: CodeRenderInput = asUrl ? { url: raw } : isJsx ? { jsx: raw, sourceFilename: codeSourceName ?? undefined } : { html: raw, sourceFilename: codeSourceName ?? undefined };
+    const flavor = codeSourceFlavor ?? (codeSourceName ? codeFlavorForFile(codeSourceName) : null);
+    const isCssOnly = !asUrl && flavor === 'css';
+    const isJsx = !asUrl && !isCssOnly && (looksLikeJsx(raw) || flavor === 'jsx' || flavor === 'tsx');
+    const input: CodeRenderInput = asUrl
+      ? { url: raw }
+      : isCssOnly
+        ? { html: CSS_SAMPLE_HTML, css: raw, sourceFilename: codeSourceName ?? 'style.css' }
+        : isJsx
+          ? { jsx: raw, sourceFilename: codeSourceName ?? undefined }
+          : { html: raw, sourceFilename: codeSourceName ?? undefined };
     setCodeBusy(true); setError(null); setDone(null);
     try {
-      setStage(asUrl ? 'Rendering page…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
+      setStage(asUrl ? 'Rendering page…' : isCssOnly ? 'Rendering CSS preview…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
       const result = await renderAndGroundCode(input, invokeRenderSource);
-      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered — check the input.');
       setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
       applyCodeImportResult(result, codeSourceName ?? (asUrl ? 'URL' : isJsx ? 'JSX' : 'HTML'));
     } catch (e) {
@@ -430,16 +442,20 @@ export function ReferenceImportDialog({
     } finally {
       setCodeBusy(false); setStage(null);
     }
-  }, [codeText, codeSourceName, applyCodeImportResult]);
+  }, [codeText, codeSourceName, codeSourceFlavor, applyCodeImportResult]);
 
   // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
   // .zip project is built + imported immediately.
   const onCodeFile = useCallback(async (f: File | null) => {
     if (!f) return;
     const flavor = codeFlavorForFile(f.name);
-    if (!flavor) { toast.error('Drop a .html/.css/.jsx/.tsx file or a .zip project.'); return; }
+    if (!flavor) { toast.error('Drop a .html/.css/.js/.jsx/.ts/.tsx file or a .zip project.'); return; }
     if (flavor !== 'zip') {
-      try { setCodeText(await f.text()); setCodeSourceName(f.name); setError(null); setDone(null); } catch { /* ignore */ }
+      try { setCodeText(await f.text()); setCodeSourceName(f.name); setCodeSourceFlavor(flavor); setError(null); setDone(null); } catch { /* ignore */ }
+      return;
+    }
+    if (f.size > MAX_CODE_ZIP_BYTES) {
+      setError(`Project ZIP is too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Remove node_modules/build artifacts and keep the upload under ${(MAX_CODE_ZIP_BYTES / 1024 / 1024).toFixed(0)} MB.`);
       return;
     }
     setCodeBusy(true); setError(null); setDone(null);
@@ -448,7 +464,6 @@ export function ReferenceImportDialog({
       const dataUrl = await fileToDataUrl(f);
       const zipBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       const result = await renderAndGroundCode({ zipBase64, sourceFilename: f.name }, invokeRenderSource);
-      if (!result.groundedPages.some((page) => page.elements.length)) throw new Error('Nothing measurable was rendered from the project.');
       setStage(`Building editable template… (${result.cdir.pages.length} page${result.cdir.pages.length === 1 ? '' : 's'})`);
       applyCodeImportResult(result, f.name);
     } catch (e) {
@@ -562,7 +577,7 @@ export function ReferenceImportDialog({
                 </div>
                 <Textarea
                   value={codeText}
-                  onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); }}
+                  onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); setCodeSourceFlavor(null); }}
                   placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component. For multi-page projects, upload a .zip."
                   className="text-xs font-mono min-h-[84px] bg-background"
                   disabled={codeBusy || busy}
@@ -576,7 +591,7 @@ export function ReferenceImportDialog({
                 <input
                   ref={codeFileRef}
                   type="file"
-                  accept=".html,.htm,.css,.jsx,.tsx,.vue,.svelte,.zip,text/html,application/zip"
+                  accept=".html,.htm,.css,.js,.jsx,.ts,.tsx,.vue,.svelte,.zip,text/html,text/css,application/javascript,text/javascript,application/zip"
                   className="hidden"
                   onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
                 />
