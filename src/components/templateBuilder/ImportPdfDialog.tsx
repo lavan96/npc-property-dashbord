@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
+import { prepareImportFileAsPdf } from '@/lib/reportTemplate/pdfImport/prepareImportFile';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
@@ -47,18 +48,29 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     onOpenChange(v);
   };
 
-  const onFile = (f: File | null) => {
+  const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!/\.pdf$/i.test(f.name)) {
-      toast.error('Only PDF files are supported.');
+    if (f.size > 100 * 1024 * 1024) {
+      toast.error('Max 100 MB.');
       return;
     }
-    if (f.size > 50 * 1024 * 1024) {
-      toast.error('Max 50 MB.');
-      return;
-    }
-    setFile(f);
     setResult(null);
+    // Accept ANY file: detect + convert (office/image/svg/…) into a PDF we can import.
+    if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+      setFile(f);
+      return;
+    }
+    setBusy(true);
+    setProgress({ phase: 'reading', message: 'Preparing file…' });
+    try {
+      const pdf = await prepareImportFileAsPdf(f);
+      setFile(pdf);
+    } catch (err) {
+      toast.error(`Couldn't read this file: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
   };
 
   const start = useCallback(async () => {
@@ -115,13 +127,12 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">
-                  Click to select a PDF (max 50 MB)
+                  Click to select any file — PDF, image, Word/PowerPoint/Excel, RTF, HTML, Markdown… (max 100 MB)
                 </div>
               )}
               <input
                 ref={fileRef}
                 type="file"
-                accept="application/pdf"
                 className="hidden"
                 onChange={(e) => onFile(e.target.files?.[0] ?? null)}
               />
