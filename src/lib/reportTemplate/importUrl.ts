@@ -34,6 +34,10 @@ export interface NormalizedImport {
   expectedKind: ImportKind;
   /** True when the provider has no public file URL — needs a manual export. */
   needsExport: boolean;
+  /** True when the page can be screenshotted by the headless render service. */
+  canRender?: boolean;
+  /** The URL the render service should load (e.g. a Figma public embed). */
+  renderUrl?: string;
   /** Human guidance shown when export is needed or handling is special. */
   guidance?: string;
   /** Provider resource id/key when extractable (Drive id, Figma key, …). */
@@ -89,6 +93,24 @@ const googleId = (url: string): string | undefined =>
 
 const figmaKey = (url: string): string | undefined =>
   firstMatch(url, [/figma\.com\/(?:file|design|proto|board)\/([a-zA-Z0-9]{10,})/i]);
+
+/** Providers that are interactive web pages we can screenshot for fidelity. */
+export function isRenderableProvider(provider: ImportProvider): boolean {
+  return provider === 'figma' || provider === 'canva' || provider === 'gamma';
+}
+
+/**
+ * The URL the headless render service should load. Figma file/design links only
+ * render publicly through the embed wrapper; everything else renders as-is.
+ */
+export function renderTargetUrl(rawUrl: string, provider?: ImportProvider): string {
+  const url = rawUrl.trim();
+  const p = provider ?? detectProvider(url);
+  if (p === 'figma') {
+    return `https://www.figma.com/embed?embed_host=npc-importer&url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 /**
  * Normalise a share/view link into a fetchable URL + expectations. Unknown
@@ -153,18 +175,21 @@ export function normalizeImportUrl(rawUrl: string): NormalizedImport {
       const key = figmaKey(url);
       return {
         provider, resourceId: key, fetchUrl: url, expectedKind: 'html', needsExport: true,
-        guidance: 'Figma designs are rendered, not files. If a Figma access token is configured we export the frames automatically; otherwise use File → Export → PDF and paste that link.',
+        canRender: true, renderUrl: renderTargetUrl(url, 'figma'),
+        guidance: 'Figma has no public file link. We render the public design to an image (or export frames if a Figma token is set). The file must be shared as “Anyone with the link”.',
       };
     }
     case 'canva':
       return {
         provider, fetchUrl: url, expectedKind: 'html', needsExport: true,
-        guidance: 'Canva has no public file link. Use Share → Download → PDF, then paste that download link (or drop the file).',
+        canRender: true, renderUrl: renderTargetUrl(url, 'canva'),
+        guidance: 'Canva has no public file link. We render the public view to an image — make sure the link is set to “Anyone with the link”.',
       };
     case 'gamma':
       return {
         provider, fetchUrl: url, expectedKind: 'html', needsExport: true,
-        guidance: 'Gamma has no public file link. Export to PDF (or PNG) and paste that link, or drop the file.',
+        canRender: true, renderUrl: renderTargetUrl(url, 'gamma'),
+        guidance: 'Gamma has no public file link. We render the public page to an image — make sure the share link is public.',
       };
     default:
       return { provider: 'generic', fetchUrl: url, expectedKind: kindFromExtension(pathname), needsExport: false };

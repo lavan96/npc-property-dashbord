@@ -44,12 +44,33 @@ import { normalizeImportUrl, isHttpUrl, suggestedName } from '@/lib/reportTempla
 
 type ImageMode = 'faithful' | 'redesign';
 
-/** base64 → File (for documents fetched by URL via the import-from-url function). */
-function base64ToFile(b64: string, filename: string, type: string): File {
+function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new File([bytes], filename, { type });
+  return bytes;
+}
+
+/** base64 → File (for documents fetched by URL via the import-from-url function). */
+function base64ToFile(b64: string, filename: string, type: string): File {
+  return new File([base64ToBytes(b64)], filename, { type });
+}
+
+/** Assemble rendered slide images into one multi-page PDF (one image per page). */
+async function imagesToPdfFile(images: { dataBase64: string }[], name: string): Promise<File> {
+  const { PDFDocument } = await import('pdf-lib');
+  const doc = await PDFDocument.create();
+  for (const img of images) {
+    const bytes = base64ToBytes(img.dataBase64);
+    let embedded: any = null;
+    try { embedded = await doc.embedPng(bytes); }
+    catch { try { embedded = await doc.embedJpg(bytes); } catch { embedded = null; } }
+    if (!embedded) continue;
+    const page = doc.addPage([embedded.width, embedded.height]);
+    page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+  }
+  const pdfBytes = await doc.save();
+  return new File([pdfBytes], name, { type: 'application/pdf' });
 }
 
 /** Impure OCR pass: read measured text boxes from an image (R5 grounding). */
@@ -90,7 +111,7 @@ interface Props {
 }
 
 const PDF_MAX = 50 * 1024 * 1024;
-const IMG_MAX = 6 * 1024 * 1024;
+const IMG_MAX = 25 * 1024 * 1024; // generous: rendered full-page screenshots can be large
 
 export function ReferenceImportDialog({
   open,
@@ -224,19 +245,35 @@ export function ReferenceImportDialog({
     const raw = url.trim();
     if (!isHttpUrl(raw)) { setError('Enter a valid http(s) link.'); return; }
     const norm = normalizeImportUrl(raw);
-    if ((norm.provider === 'canva' || norm.provider === 'gamma') && norm.needsExport) {
-      setError(norm.guidance ?? 'This app has no public file link — export to PDF and paste that link.');
-      return;
-    }
     setUrlBusy(true); setError(null);
     try {
+      // Figma/Canva/Gamma have no file URL — the function renders the public
+      // page to an image (when a render service is configured) and returns that.
       const { data, error: invErr } = await invokeSecureFunction('import-from-url', {
-        url: raw, fetchUrl: norm.fetchUrl, provider: norm.provider, resourceId: norm.resourceId, expectedKind: norm.expectedKind,
-      });
+        url: raw, fetchUrl: norm.fetchUrl, provider: norm.provider, resourceId: norm.resourceId,
+        expectedKind: norm.expectedKind, renderUrl: norm.renderUrl, render: norm.canRender === true,
+      }, { timeoutMs: 90000 });
       if (invErr) throw new Error(invErr.message);
       const d = data as any;
       if (d?.error) throw new Error(d.error);
       if (d?.kind === 'needs_export') { setError(d.guidance ?? 'This link needs a PDF/image export.'); return; }
+
+      // Rendered/exported pages come back as an images array; a direct file comes
+      // back as `dataBase64`. Multiple slides → one multi-page PDF (each slide a page).
+      const images: { dataBase64: string; contentType?: string }[] | null =
+        Array.isArray(d?.images) ? d.images.filter((i: any) => i?.dataBase64) : null;
+      if (images && images.length) {
+        if (images.length === 1) {
+          onFile(base64ToFile(images[0].dataBase64, `${suggestedName(raw, norm.provider)}.png`, images[0].contentType || 'image/png'));
+        } else {
+          const f = await imagesToPdfFile(images, `${suggestedName(raw, norm.provider)}.pdf`);
+          onFile(f);
+          setMode('ocr'); // decks: OCR keeps per-page text editable
+          toast.message(`${images.length} slides → ${images.length}-page PDF. OCR is selected to keep text editable.`);
+        }
+        return;
+      }
+
       if (!d?.dataBase64) throw new Error('No file returned from that link.');
       const ext = d.kind === 'pdf' ? 'pdf' : 'png';
       const name = d.filename || `${suggestedName(raw, norm.provider)}.${ext}`;
@@ -324,7 +361,7 @@ export function ReferenceImportDialog({
                 {urlInfo && urlInfo.provider !== 'generic' && (
                   <p className="text-[11px] text-muted-foreground pl-1">
                     Detected <span className="font-medium capitalize">{urlInfo.provider.replace(/-/g, ' ')}</span>
-                    {urlInfo.needsExport ? ' — needs a PDF/PNG export (we’ll guide you).'
+                    {urlInfo.canRender ? ' — we’ll render the public page to an image (must be shared publicly).'
                       : urlInfo.expectedKind === 'pdf' ? ' — exports to PDF.' : ''}
                   </p>
                 )}
@@ -339,6 +376,7 @@ export function ReferenceImportDialog({
                     ['hybrid', 'Hybrid', 'Raster backdrop + editable text overlays.', true],
                     ['semantic', 'Semantic', 'Editable text overlays only, no raster.', false],
                     ['pixel', 'Pixel-perfect', 'High-DPI rasterised page as background.', false],
+                    ['ocr', 'OCR (scanned / rendered)', 'Recognise text on each page — best for screenshots and rendered decks.', false],
                   ] as const).map(([val, label, desc, rec]) => (
                     <Card key={val} className={`p-3 cursor-pointer ${rec ? 'border-primary/30' : ''}`} onClick={() => !busy && setMode(val)}>
                       <div className="flex items-start gap-3">

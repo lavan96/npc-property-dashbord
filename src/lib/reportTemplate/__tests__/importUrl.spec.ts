@@ -5,6 +5,8 @@ import {
   isHttpUrl,
   isLikelyPrivateHost,
   suggestedName,
+  renderTargetUrl,
+  isRenderableProvider,
 } from '../importUrl';
 
 describe('detectProvider', () => {
@@ -47,13 +49,17 @@ describe('normalizeImportUrl', () => {
     expect(n.expectedKind).toBe('pdf');
   });
 
-  it('flags Figma/Canva/Gamma as export-needed with guidance', () => {
+  it('flags Figma/Canva/Gamma as export-needed but renderable, with guidance', () => {
     const fig = normalizeImportUrl('https://www.figma.com/design/AbCdEf123456/My-File?node-id=0-1');
     expect(fig.needsExport).toBe(true);
+    expect(fig.canRender).toBe(true);
     expect(fig.resourceId).toBe('AbCdEf123456');
     expect(fig.guidance).toMatch(/Figma/i);
-    expect(normalizeImportUrl('https://www.canva.com/design/DA123/view').needsExport).toBe(true);
-    expect(normalizeImportUrl('https://gamma.app/docs/Deck-abc').needsExport).toBe(true);
+    expect(fig.renderUrl).toContain('figma.com/embed');
+    const canva = normalizeImportUrl('https://www.canva.com/design/DA123/view');
+    expect(canva.needsExport).toBe(true);
+    expect(canva.canRender).toBe(true);
+    expect(normalizeImportUrl('https://gamma.app/docs/Deck-abc').canRender).toBe(true);
   });
 
   it('passes generic file links through, guessing kind from the extension', () => {
@@ -84,6 +90,22 @@ describe('isLikelyPrivateHost (SSRF guard)', () => {
     for (const h of ['drive.google.com', 'example.com', '8.8.8.8', '1.1.1.1', 'dl.dropboxusercontent.com']) {
       expect(isLikelyPrivateHost(h)).toBe(false);
     }
+  });
+});
+
+describe('renderTargetUrl / isRenderableProvider', () => {
+  it('wraps a Figma link in the public embed and renders others as-is', () => {
+    const fig = renderTargetUrl('https://www.figma.com/design/AbCdEf123456/My-File');
+    expect(fig.startsWith('https://www.figma.com/embed?embed_host=')).toBe(true);
+    expect(fig).toContain(encodeURIComponent('https://www.figma.com/design/AbCdEf123456/My-File'));
+    expect(renderTargetUrl('https://gamma.app/docs/Deck-abc')).toBe('https://gamma.app/docs/Deck-abc');
+  });
+  it('marks figma/canva/gamma renderable, others not', () => {
+    expect(isRenderableProvider('figma')).toBe(true);
+    expect(isRenderableProvider('canva')).toBe(true);
+    expect(isRenderableProvider('gamma')).toBe(true);
+    expect(isRenderableProvider('google-drive')).toBe(false);
+    expect(isRenderableProvider('generic')).toBe(false);
   });
 });
 
