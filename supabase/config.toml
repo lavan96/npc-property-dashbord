@@ -413,6 +413,9 @@ verify_jwt = true
 [functions.manage-templates]
 verify_jwt = true
 
+[functions.import-from-url]
+verify_jwt = true
+
 [functions.get-system-logs]
 verify_jwt = true
 
