@@ -16,8 +16,24 @@ export interface CodeRenderInput {
   html?: string;
   /** Optional CSS to inject alongside `html`. */
   css?: string;
+  /** Single-file React/JSX component source (C3). */
+  jsx?: string;
+  /** C3: component name to mount (defaults to the default export / `App`). */
+  entry?: string;
+  /** Base64 project archive (C4) — extracted, optionally built, then served. */
+  zipBase64?: string;
   width?: number;
   height?: number;
+}
+
+/** Heuristic: does pasted text look like a React/JSX component (vs plain HTML)? */
+export function looksLikeJsx(src: string): boolean {
+  const s = String(src || '').trim();
+  if (/^<!doctype|^<html|^<head|^<body/i.test(s)) return false; // clearly HTML
+  if (/\bimport\s|\bexport\s+default\b|\bexport\s/.test(s)) return true;
+  if (/\b(function|const|let)\s+[A-Z]\w*/.test(s)) return true; // Capitalised component decl
+  if (/=>\s*[(<]/.test(s)) return true; // arrow returning JSX / paren
+  return false;
 }
 
 export interface CodeIngestResult {
@@ -39,13 +55,16 @@ export async function renderAndGroundCode(
   input: CodeRenderInput,
   invoke: InvokeFn,
 ): Promise<CodeIngestResult> {
-  if (!input.url && !input.html) {
-    throw new Error('Provide a URL or HTML to reconstruct.');
+  if (!input.url && !input.html && !input.jsx && !input.zipBase64) {
+    throw new Error('Provide a URL, HTML, JSX, or a project zip to reconstruct.');
   }
   const { data, error } = await invoke('render-source', {
     url: input.url,
     html: input.html,
     css: input.css,
+    jsx: input.jsx,
+    entry: input.entry,
+    zipBase64: input.zipBase64,
     width: input.width ?? 1280,
     height: input.height ?? 1600,
   });

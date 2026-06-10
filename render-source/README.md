@@ -1,11 +1,12 @@
 # render-source — headless render microservice
 
-Renders **HTML/CSS** (tier C1) or a **live URL** (tier C2) with Playwright/Chromium
-and returns a **screenshot** + a **DOM box tree** (computed positions/styles in CSS
-px). The client grounds that box tree into the same `GroundedReference` that OCR
-image import produces (`src/lib/reportTemplate/codeGrounding.ts`), then reconstructs
-it through the existing `screenshot_to_block` pipeline — so raw-codebase ingestion
-reuses the whole reconstruction path unchanged.
+Renders **HTML/CSS** (C1), a **live URL** (C2), a **React/JSX component** (C3), or a
+**project zip** (C4) with Playwright/Chromium and returns a **screenshot** + a **DOM
+box tree** (computed positions/styles in CSS px). The client grounds that box tree
+into the same `GroundedReference` that OCR image import produces
+(`src/lib/reportTemplate/codeGrounding.ts`), then reconstructs it through the existing
+`screenshot_to_block` pipeline — so raw-codebase ingestion reuses the whole
+reconstruction path unchanged.
 
 Mirrors the `weasyprint-service/` pattern: a standalone container fronted by an
 SSRF/auth-guarded Supabase edge function (`supabase/functions/render-source`).
@@ -13,9 +14,14 @@ SSRF/auth-guarded Supabase edge function (`supabase/functions/render-source`).
 ## Endpoints
 
 - `GET  /healthz` — liveness probe.
-- `POST /render` — `Authorization: Bearer $RENDER_SOURCE_TOKEN`, JSON body
-  `{ "html"?: "...", "css"?: "...", "url"?: "https://...", "width"?: 1280, "height"?: 1600, "fullPage"?: true }`,
-  returns `{ raster: "<base64 png>", boxTree, pageWidthPx, pageHeightPx }`.
+- `POST /render` — `Authorization: Bearer $RENDER_SOURCE_TOKEN`, JSON body with one of
+  `html` (+`css`) · `url` · `jsx` (+`entry`) · `zipBase64`, plus optional
+  `width`/`height`/`fullPage`. Returns `{ raster: "<base64 png>", boxTree, pageWidthPx, pageHeightPx }`.
+  - **C3 (jsx):** a single-file React component (default export or `App`) is mounted in a
+    Babel-standalone harness (React via CDN); `entry` overrides the component name.
+  - **C4 (zipBase64):** the archive is extracted (zip-slip-guarded, size-capped) and served
+    statically; if no `index.html` is present and `RENDER_SOURCE_ALLOW_BUILD=1`, it runs
+    `npm install && npm run build` first and serves `dist`/`build`/`out`/`public`.
 
 ## Local run
 
@@ -61,6 +67,8 @@ surfaces cleanly (raw-codebase ingestion stays "pending" until deployed).
 
 - **Fail-closed auth:** no `RENDER_SOURCE_TOKEN` ⇒ every request is `401`.
 - **SSRF:** private/reserved hosts are blocked in *both* the edge function and here.
-- Runs Chromium with `--no-sandbox` as the non-root `pwuser`; deploy on an isolated
-  service. For untrusted repo/zip builds (C4), build in a separate sandbox and only
-  pass the built URL/HTML here.
+- Runs Chromium with `--no-sandbox` as the non-root `pwuser`; deploy on an isolated service.
+- **C4 builds run untrusted code and are OFF by default** — the default serves only static/
+  exported zips. Set `RENDER_SOURCE_ALLOW_BUILD=1` **only** on an isolated, egress-restricted
+  sandbox (the build runs `npm install` + the project's build script). Caps:
+  `MAX_UNZIP_BYTES` (200 MB), `BUILD_TIMEOUT_MS` (180 s).

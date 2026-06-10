@@ -12,6 +12,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "express": "^4.19.2",
     "playwright": "^1.49.0"
   }

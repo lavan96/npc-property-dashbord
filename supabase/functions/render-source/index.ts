@@ -6,7 +6,8 @@
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-const RENDER_TIMEOUT_MS = 60000;
+// Generous enough for C4 (zip) builds; static/HTML/JSX/URL renders return far sooner.
+const RENDER_TIMEOUT_MS = 120000;
 const MAX_DIM = 4000;
 
 function json(body: unknown, status: number, cors: Record<string, string>): Response {
@@ -55,7 +56,12 @@ Deno.serve(async (req) => {
     const html = typeof body.html === 'string' ? body.html : undefined;
     const css = typeof body.css === 'string' ? body.css : undefined;
     const url = typeof body.url === 'string' ? body.url : undefined;
-    if (!url && (!html || !html.trim())) return json({ error: 'Provide `html` or `url`.' }, 400, cors);
+    const jsx = typeof body.jsx === 'string' ? body.jsx : undefined;       // C3
+    const entry = typeof body.entry === 'string' ? body.entry : undefined;  // C3 component name
+    const zipBase64 = typeof body.zipBase64 === 'string' ? body.zipBase64 : undefined; // C4
+    if (!url && !jsx && !zipBase64 && (!html || !html.trim())) {
+      return json({ error: 'Provide `html`, `url`, `jsx`, or `zipBase64`.' }, 400, cors);
+    }
     if (url) {
       try { assertFetchable(url); } catch (e) { return json({ error: (e as Error).message }, 400, cors); }
     }
@@ -70,7 +76,7 @@ Deno.serve(async (req) => {
       upstream = await fetch(`${serviceUrl}/render`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${serviceToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, css, url, width, height, fullPage: body.fullPage !== false }),
+        body: JSON.stringify({ html, css, url, jsx, entry, zipBase64, width, height, fullPage: body.fullPage !== false }),
         signal: controller.signal,
       });
     } catch (e) {

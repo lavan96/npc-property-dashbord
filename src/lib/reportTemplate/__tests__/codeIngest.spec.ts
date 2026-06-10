@@ -6,7 +6,7 @@
  * a stubbed invoke (no Supabase, no browser).
  */
 import { describe, it, expect, vi } from 'vitest';
-import { renderAndGroundCode, type InvokeFn } from '../ingestion/codeIngest';
+import { renderAndGroundCode, looksLikeJsx, type InvokeFn } from '../ingestion/codeIngest';
 import type { DomBoxTree } from '../codeGrounding';
 
 const BOX_TREE: DomBoxTree = {
@@ -18,8 +18,20 @@ const BOX_TREE: DomBoxTree = {
 const ok = (data: any): InvokeFn => vi.fn().mockResolvedValue({ data, error: null });
 
 describe('renderAndGroundCode', () => {
-  it('requires a url or html', async () => {
-    await expect(renderAndGroundCode({}, ok({}))).rejects.toThrow(/URL or HTML/);
+  it('requires at least one input', async () => {
+    await expect(renderAndGroundCode({}, ok({}))).rejects.toThrow(/Provide a URL/);
+  });
+
+  it('forwards JSX (C3) and zip (C4) inputs to render-source', async () => {
+    const invoke1 = ok({ raster: 'AAAA', boxTree: BOX_TREE });
+    await renderAndGroundCode({ jsx: 'export default () => <h1>Hi</h1>', entry: 'App' }, invoke1);
+    expect(invoke1).toHaveBeenCalledWith('render-source', expect.objectContaining({
+      jsx: 'export default () => <h1>Hi</h1>', entry: 'App',
+    }));
+
+    const invoke2 = ok({ raster: 'AAAA', boxTree: BOX_TREE });
+    await renderAndGroundCode({ zipBase64: 'UEsDBA==' }, invoke2);
+    expect(invoke2).toHaveBeenCalledWith('render-source', expect.objectContaining({ zipBase64: 'UEsDBA==' }));
   });
 
   it('calls render-source with the rendered input and grounds the box tree', async () => {
@@ -54,5 +66,19 @@ describe('renderAndGroundCode', () => {
 
   it('errors when the render is incomplete', async () => {
     await expect(renderAndGroundCode({ url: 'https://x' }, ok({ raster: 'AAAA' }))).rejects.toThrow(/no render/);
+  });
+});
+
+describe('looksLikeJsx', () => {
+  it('treats component-ish source as JSX (C3)', () => {
+    expect(looksLikeJsx('export default function App(){ return <div/> }')).toBe(true);
+    expect(looksLikeJsx("import React from 'react';\nexport const Card = () => <div/>;")).toBe(true);
+    expect(looksLikeJsx('const App = () => (<h1>Hi</h1>)')).toBe(true);
+  });
+
+  it('treats plain HTML as not-JSX (C1)', () => {
+    expect(looksLikeJsx('<!doctype html><html><body><h1>Hi</h1></body></html>')).toBe(false);
+    expect(looksLikeJsx('<div class="card"><p>Hello</p></div>')).toBe(false);
+    expect(looksLikeJsx('')).toBe(false);
   });
 });
