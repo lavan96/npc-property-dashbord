@@ -22,6 +22,8 @@ import {
 import { getHtmlBlockRenderer, renderUnsupportedHtml, type HtmlBlockContext } from './blocks/html';
 import { renderOverlay } from './blocks/_shared.html';
 import { tokensToCssVariables, tokensToFontFaceCss } from './cssTokens';
+import { sortBlocksForPaint, sortOverlaysForPaint } from './paintOrder';
+import { stableJson, templateMetaKey } from './previewCache';
 
 export interface HtmlRenderOptions {
   data?: Record<string, any>;
@@ -36,6 +38,15 @@ export interface HtmlRenderOptions {
    * messages to the parent window and accepts selection highlighting.
    */
   editorMode?: boolean;
+  /**
+   * Optional per-page section cache for repeated document renders (rehaul
+   * Phase 3). Pass a caller-owned Map that persists across calls: pages whose
+   * content AND cross-page context (index, page count, page ids/names, TOC,
+   * data, tokens/themes/slots) are unchanged reuse their rendered section
+   * instead of re-rendering, so editing one page re-renders only that page.
+   * The renderer prunes stale entries automatically.
+   */
+  pageCache?: Map<string, string>;
 }
 
 export interface HtmlRenderResult {
@@ -282,43 +293,6 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
 }
 
 
-function overlayPaintOrder(overlay: any, index: number): number {
-  if (Number.isFinite(Number(overlay?.zIndex))) return Number(overlay.zIndex) * 1000 + index;
-  const area = Math.max(0, Number(overlay?.width) || 0) * Math.max(0, Number(overlay?.height) || 0);
-  const isBackdropShape = overlay?.type === 'shape' && area > 120_000 && !overlay?.strokeWidth;
-  if (isBackdropShape) return -1_000_000 + index;
-  if (overlay?.type === 'shape') return -100_000 + index;
-  if (overlay?.type === 'image') return -10_000 + index;
-  if (overlay?.type === 'table') return 100_000 + index;
-  if (overlay?.type === 'text' || overlay?.type === 'textOnPath') return 200_000 + index;
-  return index;
-}
-
-function sortOverlaysForPaint(overlays: any[] = []): any[] {
-  return overlays
-    .map((overlay, index) => ({ overlay, order: overlayPaintOrder(overlay, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry) => entry.overlay);
-}
-
-
-function blockPaintOrder(block: any, index: number): number {
-  const z = Number(block?.style?.zIndex);
-  if (Number.isFinite(z)) return z * 1_000_000 + index;
-  const overlays = Array.isArray(block?.overlays) ? block.overlays : [];
-  if (block?.type === 'free' && overlays.length) {
-    return Math.min(...overlays.map((overlay: any, overlayIndex: number) => overlayPaintOrder(overlay, overlayIndex))) + index / 10_000;
-  }
-  return index;
-}
-
-function sortBlocksForPaint(blocks: any[] = []): any[] {
-  return blocks
-    .map((block, index) => ({ block, order: blockPaintOrder(block, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry) => entry.block);
-}
-
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
@@ -481,6 +455,23 @@ export function renderTemplateToHtml(
     }
   });
 
+  // Rehaul Phase 3 — per-page section cache. A page section's HTML depends on
+  // its own content plus this cross-page context; everything is folded into
+  // the cache key so a hit is always byte-identical to a fresh render.
+  const pageCache = options.pageCache;
+  const docContextSig = pageCache
+    ? [
+        templateMetaKey(template),
+        stableJson(options.data ?? {}),
+        stableJson(options.tokenOverrides ?? null),
+        String(!!options.editorMode),
+        String(visiblePages.length),
+        visiblePages.map((p) => `${p.id}\u0000${p.name}`).join('\u0001'),
+        JSON.stringify(tocEntries),
+      ].join('\u0002')
+    : '';
+  const liveCacheKeys = pageCache ? new Set<string>() : null;
+
   // Phase 10 — per-page theme delta CSS (only emitted when page.themeId set).
   const perPageThemeCss: string[] = [];
   const pageHtml = visiblePages.map((page, idx) => {
@@ -488,15 +479,33 @@ export function renderTemplateToHtml(
     const pageTheme = pageThemeId && themes ? themes[pageThemeId] : null;
     const pageTokens = pageTheme ? mergeTokens(baseTokens, pageTheme.tokens) : baseTokens;
     if (pageTheme) {
+      // Cheap (token diff only) — always computed, even on a section cache hit,
+      // because this CSS lives in the document head, not in the section.
       const css = themeOverrideCss(idx, baseTokens, pageTokens);
       if (css) perPageThemeCss.push(css);
+    }
+    const cacheKey = pageCache ? `${stableJson(page)}\u0002${idx}\u0002${docContextSig}` : '';
+    if (pageCache) {
+      liveCacheKeys!.add(cacheKey);
+      const hit = pageCache.get(cacheKey);
+      if (hit !== undefined) return hit;
     }
     const pageCtx: ResolveContext = {
       tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
-    return renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
+    const rendered = renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
+    if (pageCache) pageCache.set(cacheKey, rendered);
+    return rendered;
   }).join('\n');
+
+  // Prune entries that no longer correspond to a live page/context so the
+  // caller-owned cache cannot grow unboundedly across edits.
+  if (pageCache && liveCacheKeys) {
+    for (const key of Array.from(pageCache.keys())) {
+      if (!liveCacheKeys.has(key)) pageCache.delete(key);
+    }
+  }
 
 
   const editorCss = options.editorMode ? `

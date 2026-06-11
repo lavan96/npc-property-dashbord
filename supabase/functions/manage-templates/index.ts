@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createForbiddenResponse } from '../_shared/auth.ts';
+import { TemplateSchemaVersionError, validateAndMigrateTemplateSchemaVersion } from '../_shared/templateSchemaVersion.ts';
 
 type TableName = 'report_structure_templates' | 'client_branding_profiles' | 'integration_configs' | 'depreciation_comps' | 'depreciation_estimator_runs' | 'charts' | 'chart_analysis' | 'chart_configurations' | 'global_report_settings' | 'finance_agent_contacts' | 'bulk_generation_jobs' | 'property_comparisons' | 'portfolio_analysis_templates' | 'checklist_templates' | 'checklist_template_sections' | 'checklist_template_items' | 'checklist_instances' | 'checklist_instance_items' | 'game_plans' | 'game_plan_phases' | 'game_plan_milestones' | 'game_plan_kpis' | 'game_plan_notes' | 'game_plan_actions' | 'custom_users' | 'cover_page_overlays' | 'report_templates' | 'report_template_versions' | 'comparison_analysis_templates';
 
@@ -73,7 +74,9 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
 function normaliseTemplateSchema(schema: any): any {
   if (!schema || typeof schema !== 'object') return schema;
   const s = JSON.parse(JSON.stringify(schema));
-  s.version = 1;
+  // Phase 4: validate + migrate explicitly instead of stamping version=1.
+  // Throws TemplateSchemaVersionError for invalid/future versions (→ 422).
+  validateAndMigrateTemplateSchemaVersion(s);
   s.tokens = s.tokens && typeof s.tokens === 'object' ? s.tokens : { colors: {}, fonts: {}, spacing: {} };
   s.tokens.colors = s.tokens.colors && typeof s.tokens.colors === 'object' ? s.tokens.colors : {};
   s.tokens.fonts = s.tokens.fonts && typeof s.tokens.fonts === 'object' ? s.tokens.fonts : {};
@@ -462,7 +465,15 @@ Deno.serve(async (req) => {
     console.log(`[manage-templates] Authenticated user ${userId}, operation: ${body.operation}, table: ${body.table}`);
 
     const { operation, table, recordId, listOptions = {}, onConflict, rpcName, rpcParams } = body;
-    const data = normaliseTemplatePayload(table, body.data);
+    let data: any;
+    try {
+      data = normaliseTemplatePayload(table, body.data);
+    } catch (schemaError) {
+      if (schemaError instanceof TemplateSchemaVersionError) {
+        return jsonResponse({ error: schemaError.message, code: 'unsupported_schema_version' }, 422, corsHeaders);
+      }
+      throw schemaError;
+    }
 
     // Validate table
     const validTables: TableName[] = ['report_structure_templates', 'client_branding_profiles', 'integration_configs', 'depreciation_comps', 'depreciation_estimator_runs', 'charts', 'chart_analysis', 'chart_configurations', 'global_report_settings', 'finance_agent_contacts', 'bulk_generation_jobs', 'property_comparisons', 'portfolio_analysis_templates', 'checklist_templates', 'checklist_template_sections', 'checklist_template_items', 'checklist_instances', 'checklist_instance_items', 'game_plans', 'game_plan_phases', 'game_plan_milestones', 'game_plan_kpis', 'game_plan_notes', 'game_plan_actions', 'custom_users', 'cover_page_overlays', 'report_templates', 'report_template_versions', 'comparison_analysis_templates'];

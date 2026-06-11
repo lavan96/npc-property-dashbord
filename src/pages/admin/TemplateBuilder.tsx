@@ -2,7 +2,8 @@
  * Template Builder — admin landing page (Phase 1).
  *
  * Lists report templates and lets superadmins create new ones.
- * The visual editor (tldraw canvas) lives at /admin/template-builder/:id (Phase 2).
+ * The visual editor (EditorialCanvas WYSIWYG surface) lives at
+ * /admin/template-builder/:id.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

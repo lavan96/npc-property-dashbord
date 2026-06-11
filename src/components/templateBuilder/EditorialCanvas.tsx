@@ -18,11 +18,13 @@
  * Template JSON remains the single source of truth; this surface only mutates
  * overlay x/y/width/height/rotation/content via the supplied callbacks.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
-import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag, type BuiltPaletteItem } from '@/lib/reportTemplate/overlayDropFactory';
+import { overlayPaintOrder } from '@/lib/reportTemplate/paintOrder';
+import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag } from '@/lib/reportTemplate/overlayDropFactory';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { templateEditorActions, useEditorTemplate, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { Button } from '@/components/ui/button';
 import { FloatingTextToolbar } from '@/components/templateBuilder/FloatingTextToolbar';
 import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
@@ -38,20 +40,6 @@ interface FlatOverlay {
   blockId: string;
 }
 
-
-function overlayPaintOrder(overlay: Overlay, index: number): number {
-  const z = Number((overlay as any).zIndex);
-  if (Number.isFinite(z)) return z * 1000 + index;
-  const area = Math.max(0, Number(overlay.width) || 0) * Math.max(0, Number(overlay.height) || 0);
-  const isBackdropShape = overlay.type === 'shape' && area > 120_000 && !((overlay as any).strokeWidth);
-  if (isBackdropShape) return -1_000_000 + index;
-  if (overlay.type === 'shape') return -100_000 + index;
-  if (overlay.type === 'image') return -10_000 + index;
-  if ((overlay as any).type === 'table') return 100_000 + index;
-  if (overlay.type === 'text' || (overlay as any).type === 'textOnPath') return 200_000 + index;
-  return index;
-}
-
 interface CommentAnchor {
   id: string;
   pageId?: string | null;
@@ -60,21 +48,15 @@ interface CommentAnchor {
   resolved?: boolean;
 }
 
+// Template, selection, and mutators come straight from templateEditorStore
+// (slice subscriptions, rehaul Phase 2). The page stays a prop: the parent
+// guarantees it is non-null and keys the canvas by page id for clean remounts.
 interface Props {
-  template: ReportTemplate;
   page: Page;
   sampleData: Record<string, any>;
   customCss?: string;
-  selectedOverlayId: string | null;
-  multiOverlayIds: Set<string>;
-  onSelectOverlay: (id: string | null, additive: boolean) => void;
-  onUpdateOverlay: (overlay: Overlay) => void;
-  onUpdateOverlaysBulk: (patches: Array<{ id: string; patch: Partial<Overlay> }>) => void;
-  onDeleteOverlay: (id: string) => void;
-  onDuplicateOverlay: (id: string) => void;
-  onSelectBlock: (blockId: string | null) => void;
-  /** V2 drop-to-place: a palette item (overlay or block) was dropped at `point`. */
-  onPaletteDrop?: (item: BuiltPaletteItem, point: { x: number; y: number }) => void;
+  /** V2 drop-to-place: allow palette items (overlay or block) to be dropped. */
+  enablePaletteDrop?: boolean;
   /** V2: show a floating quick-style toolbar above a selected text overlay. */
   enableTextToolbar?: boolean;
   commentAnchors?: CommentAnchor[];
@@ -84,23 +66,27 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 const SNAP_THRESHOLD = 4; // pt
 
-export function EditorialCanvas({
-  template,
+function EditorialCanvasImpl({
   page,
   sampleData,
   customCss,
-  selectedOverlayId,
-  multiOverlayIds,
-  onSelectOverlay,
-  onUpdateOverlay,
-  onUpdateOverlaysBulk,
-  onDeleteOverlay,
-  onDuplicateOverlay,
-  onSelectBlock,
-  onPaletteDrop,
+  enablePaletteDrop = false,
   enableTextToolbar = false,
   commentAnchors = [],
 }: Props) {
+  const template = useEditorTemplate();
+  const selectedOverlayId = useTemplateEditorStore((s) => s.selectedOverlayId);
+  const multiOverlayIds = useTemplateEditorStore((s) => s.multiOverlayIds);
+  const {
+    handleCanvasSelectOverlay: onSelectOverlay,
+    updateOverlay: onUpdateOverlay,
+    handleOverlaysBulkPatch: onUpdateOverlaysBulk,
+    deleteOverlay: onDeleteOverlay,
+    duplicateOverlay: onDuplicateOverlay,
+    setSelectedBlockId: onSelectBlock,
+    handlePaletteDrop,
+  } = templateEditorActions();
+  const onPaletteDrop = enablePaletteDrop ? handlePaletteDrop : undefined;
   const pageW = page.size.width || 595;
   const pageH = page.size.height || 842;
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -190,7 +176,7 @@ export function EditorialCanvas({
     }
     // template/page/sampleData/customCss are encoded in renderKey (overlays
     // excluded on purpose); depend on it alone to reuse the cached HTML.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [renderKey]);
 
   // ── Zoom controls ─────────────────────────────────────────────────────────
@@ -830,3 +816,10 @@ function previewCssColor(value: unknown, tokenColors: Record<string, string>, fa
   if (/^\{\{/.test(raw)) return fallback;
   return raw;
 }
+
+/**
+ * Memoized: the canvas hosts an iframe + O(overlays) handle layer; memo keeps
+ * unrelated editor state changes (dialogs, presence, save status, …) from
+ * re-rendering it. Callers must pass useCallback-stable handlers.
+ */
+export const EditorialCanvas = memo(EditorialCanvasImpl);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,15 +43,17 @@ export function TemplateBuilder({ template: initialTemplate, onBack }: TemplateB
   const [cronExpression, setCronExpression] = useState(template.cron_expression || '');
   const [cronDesc, setCronDesc] = useState(template.cron_description || '');
 
-  // Keep local cron state in sync with server data
-  const prevCronExpr = template.cron_expression || '';
-  const prevCronDesc = template.cron_description || '';
-  if (prevCronExpr && !cronExpression && prevCronExpr !== cronExpression) {
-    setCronExpression(prevCronExpr);
-  }
-  if (prevCronDesc && !cronDesc && prevCronDesc !== cronDesc) {
-    setCronDesc(prevCronDesc);
-  }
+  // Backfill local cron state once server data arrives, without clobbering
+  // in-progress user input (only fills empty fields). Runs as an effect —
+  // setState during render is illegal and tears with concurrent rendering.
+  const serverCronExpr = template.cron_expression || '';
+  const serverCronDesc = template.cron_description || '';
+  useEffect(() => {
+    if (serverCronExpr) setCronExpression((cur) => cur || serverCronExpr);
+  }, [serverCronExpr]);
+  useEffect(() => {
+    if (serverCronDesc) setCronDesc((cur) => cur || serverCronDesc);
+  }, [serverCronDesc]);
 
   const toggleSection = (id: string) => {
     const next = new Set(openSections);

@@ -7,105 +7,68 @@
  * thrash. The injected runtime in `renderTemplateToHtml({ editorMode: true })`
  * posts `select` messages back via window.postMessage.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
-import { makePreviewKey } from '@/lib/reportTemplate/previewCache';
-import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { makePreviewKey, stableJson, templateMetaKey } from '@/lib/reportTemplate/previewCache';
+import { templateEditorActions, useEditorTemplate, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { Button } from '@/components/ui/button';
 import { Eye, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
-interface SelectPayload {
-  blockId: string | null;
-  pageId: string | null;
-  pageIndex: number | null;
-  blockType?: string | null;
-}
-
-
 const MAX_PAGE_HTML_CACHE_ENTRIES = 16;
 
-function stableStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-function makePreviewCacheKey(input: {
-  page: unknown;
-  templateContext: unknown;
-  sampleData: Record<string, any>;
-  customCss?: string;
-}): string {
-  return stableStringify({
-    page: input.page,
-    templateContext: input.templateContext,
-    sampleData: input.sampleData,
-    customCss: input.customCss ?? '',
-  });
-}
-
+// Template + selection come straight from templateEditorStore (slice
+// subscriptions, rehaul Phase 2); only preview-specific inputs remain props.
 interface Props {
-  template: ReportTemplate;
   sampleData: Record<string, any>;
   customCss?: string;
-  activePageId: string | null;
-  selectedBlockId: string | null;
-  onSelect: (payload: SelectPayload) => void;
   /** Show only the active page, or the whole document. */
   scope?: 'page' | 'document';
   onScopeChange?: (s: 'page' | 'document') => void;
 }
 
-export function LiveHtmlPreview({
-  template,
+function LiveHtmlPreviewImpl({
   sampleData,
   customCss,
-  activePageId,
-  selectedBlockId,
-  onSelect,
   scope = 'page',
   onScopeChange,
 }: Props) {
+  const template = useEditorTemplate();
+  const activePageId = useTemplateEditorStore((s) => s.activePageId);
+  const selectedBlockId = useTemplateEditorStore((s) => s.selectedBlockId);
+  const { handlePreviewSelect: onSelect } = templateEditorActions();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(1);
 
+  // Page-scope fast path: full HTML documents cached by content key.
   const pageHtmlCacheRef = useRef<Map<string, string>>(new Map());
+  // Document-scope: per-page *section* cache owned here, consumed inside
+  // renderTemplateToHtml — editing one page re-renders only that page's
+  // section; the rest of the document is stitched from cache (rehaul Phase 3).
+  const documentPageCacheRef = useRef<Map<string, string>>(new Map());
 
-  // Optionally restrict render to active page only. Page preview is the default
-  // fast path, so cache its rendered HTML by page/data/CSS signature. Document
-  // preview still renders the whole template on demand because page wrappers and
-  // cross-page runtime hooks are produced by the renderer as one document.
   const activePage = useMemo(
     () => template.pages.find((p) => p.id === activePageId) ?? null,
     [template.pages, activePageId],
   );
-  const templateContext = useMemo(() => {
-    const context: Record<string, unknown> = { ...template };
-    delete context.pages;
-    return context;
-  }, [template]);
 
-  // Re-render only when the rendered *content* actually changes. `visible`,
-  // `sampleData` and `customCss` change reference on every edit (even when their
-  // bytes are identical — e.g. editing a different page), so keying on a content
-  // signature avoids needless renderer runs and iframe srcDoc churn.
-  const visible = useMemo(
-    () => (scope === 'page' && activePage ? { ...template, pages: [activePage] } : template),
-    [scope, activePage, template],
-  );
+  // Re-render only when the rendered *content* actually changes. The template
+  // changes reference on every edit (even when the rendered bytes are identical
+  // — e.g. editing a different page in page scope), so keying on a content
+  // signature avoids needless renderer runs and iframe srcDoc churn. Key
+  // computation is cheap: serialization is identity-memoized in previewCache.
   const renderKey = useMemo(
-    () => makePreviewKey(visible, sampleData, customCss),
-    [visible, sampleData, customCss],
+    () =>
+      scope === 'page' && activePage
+        ? `pg\u0000${stableJson(activePage)}\u0000${templateMetaKey(template)}\u0000${stableJson(sampleData)}\u0000${customCss ?? ''}`
+        : `doc\u0000${makePreviewKey(template, sampleData, customCss)}`,
+    [scope, activePage, template, sampleData, customCss],
   );
 
   const html = useMemo(() => {
     try {
       if (scope === 'page' && activePage) {
-        const cacheKey = makePreviewCacheKey({ page: activePage, templateContext, sampleData, customCss });
-        const cached = pageHtmlCacheRef.current.get(cacheKey);
+        const cached = pageHtmlCacheRef.current.get(renderKey);
         if (cached) return cached;
 
         const { html: rendered } = renderTemplateToHtml({ ...template, pages: [activePage] }, {
@@ -115,7 +78,7 @@ export function LiveHtmlPreview({
         });
 
         const cache = pageHtmlCacheRef.current;
-        cache.set(cacheKey, rendered);
+        cache.set(renderKey, rendered);
         if (cache.size > MAX_PAGE_HTML_CACHE_ENTRIES) {
           const firstKey = cache.keys().next().value;
           if (firstKey) cache.delete(firstKey);
@@ -127,14 +90,15 @@ export function LiveHtmlPreview({
         data: sampleData,
         customCss,
         editorMode: true,
+        pageCache: documentPageCacheRef.current,
       });
       return rendered;
     } catch (e) {
       return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#b91c1c">Preview error: ${String((e as any)?.message ?? e)}</body></html>`;
     }
-    // `visible`/`sampleData`/`customCss` are fully encoded in `renderKey`; depend
-    // on it alone so identical content reuses the cached HTML string.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // All render inputs are fully encoded in `renderKey`; depend on it alone
+    // so identical content reuses the cached HTML string.
+     
   }, [renderKey]);
 
   // Listen for selection messages from inside the iframe
@@ -228,3 +192,10 @@ export function LiveHtmlPreview({
     </div>
   );
 }
+
+/**
+ * Memoized: rendering already reuses HTML via content keys, but memo also
+ * skips the React pass (and iframe prop diffing) when unrelated editor state
+ * changes. Callers must pass useCallback-stable handlers.
+ */
+export const LiveHtmlPreview = memo(LiveHtmlPreviewImpl);

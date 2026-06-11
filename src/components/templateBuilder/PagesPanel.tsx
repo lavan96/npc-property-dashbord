@@ -10,13 +10,14 @@ import {
   Gauge, ShieldAlert, Milestone, Grid3x3, ClipboardList, CheckSquare, Lightbulb, ThumbsUp,
   Search, Star, Sparkles, Box, MousePointer2, Database,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import type { Block, Overlay, Page } from '@/lib/reportTemplate/templateSchema';
 import { BLOCK_DEFS } from '@/lib/reportTemplate/blocks';
 import { serializePaletteDrag, PALETTE_DRAG_MIME } from '@/lib/reportTemplate/overlayDropFactory';
+import { templateEditorActions, useEditorPages, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { cn } from '@/lib/utils';
 
 interface CommentAnchor {
@@ -27,19 +28,10 @@ interface CommentAnchor {
   resolved?: boolean;
 }
 
+// Pages, selection, and all mutators come straight from templateEditorStore
+// (slice subscriptions, rehaul Phase 2) — only editor-agnostic inputs remain
+// as props.
 interface Props {
-  template: ReportTemplate;
-  activePageId: string | null;
-  onSelectPage: (id: string) => void;
-  onAddPage: () => void;
-  onDuplicatePage: (id: string) => void;
-  onDeletePage: (id: string) => void;
-  onMovePage?: (id: string, dir: -1 | 1) => void;
-  onAddBlock: (block: Block) => void;
-  onAddOverlay: (overlay: Overlay) => void;
-  selectedBlockId?: string | null;
-  onSelectBlock?: (id: string | null) => void;
-  onReorderBlocks?: (fromIndex: number, toIndex: number) => void;
   /** V2: make overlay palette items draggable onto the canvas (drop-to-place). */
   enableCanvasDrag?: boolean;
   commentAnchors?: CommentAnchor[];
@@ -240,23 +232,28 @@ const categoryIcon = (category: PaletteCategory) => {
   return Box;
 };
 
-export function PagesPanel({
-  template,
-  activePageId,
-  onSelectPage,
-  onAddPage,
-  onDuplicatePage,
-  onDeletePage,
-  onMovePage,
-  onAddBlock,
-  onAddOverlay,
-  selectedBlockId,
-  onSelectBlock,
-  onReorderBlocks,
+function PagesPanelImpl({
   enableCanvasDrag = false,
   commentAnchors = [],
 }: Props) {
-  const activePage = template.pages.find((p) => p.id === activePageId) || null;
+  // Slice subscriptions: this panel only re-renders when the pages array or
+  // the page/block selection changes — token edits, dialog state, presence,
+  // save status, etc. never touch it.
+  const pages = useEditorPages();
+  const activePageId = useTemplateEditorStore((s) => s.activePageId);
+  const selectedBlockId = useTemplateEditorStore((s) => s.selectedBlockId);
+  const {
+    selectPage: onSelectPage,
+    addPage: onAddPage,
+    duplicatePage: onDuplicatePage,
+    deletePage: onDeletePage,
+    movePage: onMovePage,
+    addBlockToActivePage: onAddBlock,
+    addOverlayToActivePage: onAddOverlay,
+    selectBlockClearOverlay: onSelectBlock,
+    reorderBlocks: onReorderBlocks,
+  } = templateEditorActions();
+  const activePage = pages.find((p) => p.id === activePageId) || null;
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [insertSearch, setInsertSearch] = useState('');
@@ -324,10 +321,10 @@ export function PagesPanel({
       </div>
       <ScrollArea className="flex-1 max-h-[40%]">
         <div className="px-2 pb-2 space-y-1">
-          {template.pages.length === 0 && (
+          {pages.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-4">No pages yet</p>
           )}
-          {template.pages.map((page, i) => (
+          {pages.map((page, i) => (
             <button
               key={page.id}
               onClick={() => onSelectPage(page.id)}
@@ -359,7 +356,7 @@ export function PagesPanel({
                   <ArrowUp className="h-3 w-3" />
                 </span>
               )}
-              {onMovePage && i < template.pages.length - 1 && (
+              {onMovePage && i < pages.length - 1 && (
                 <span
                   onClick={(e) => { e.stopPropagation(); onMovePage(page.id, 1); }}
                   className="opacity-0 group-hover:opacity-100 hover:text-foreground"
@@ -560,3 +557,10 @@ export function PagesPanel({
     </div>
   );
 }
+
+/**
+ * Memoized: the editor page re-renders on every keystroke/dialog toggle, but
+ * this panel only depends on the template, selection, and stable callbacks.
+ * Callers must pass useCallback-stable handlers for the memo to be effective.
+ */
+export const PagesPanel = memo(PagesPanelImpl);

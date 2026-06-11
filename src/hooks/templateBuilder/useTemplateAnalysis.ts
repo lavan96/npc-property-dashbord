@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collectTemplateIssues, type TemplateIssue } from '@/lib/reportTemplate/bindingValidation';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import type { Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import {
+  buildAnalysisRequest,
+  createWorkerKnownState,
+  rememberAnalysisRequest,
+  type AnalysisResponse,
+  type WorkerKnownState,
+} from './templateAnalysisProtocol';
 
 interface TemplateAnalysisResult {
   bindingIssues: TemplateIssue[];
@@ -10,21 +17,6 @@ interface TemplateAnalysisResult {
   activePageLintIssues: LintIssue[];
   isCheckingFullDocument: boolean;
 }
-
-interface AnalysisWorkerSuccess {
-  requestId: number;
-  ok: true;
-  bindingIssues: TemplateIssue[];
-  lintIssues: LintIssue[];
-}
-
-interface AnalysisWorkerFailure {
-  requestId: number;
-  ok: false;
-  error: string;
-}
-
-type AnalysisWorkerMessage = AnalysisWorkerSuccess | AnalysisWorkerFailure;
 
 const FULL_ANALYSIS_DEBOUNCE_MS = 180;
 const IDLE_TIMEOUT_MS = 700;
@@ -106,6 +98,9 @@ export function useTemplateAnalysis(
   const [isCheckingFullDocument, setIsCheckingFullDocument] = useState(false);
   const generationRef = useRef(0);
   const workerRef = useRef<Worker | null>(null);
+  // What the current worker holds (per-page content keys + sample data key) —
+  // lets each request ship only the changed pages (rehaul Phase 3).
+  const workerKnownRef = useRef<WorkerKnownState>(createWorkerKnownState());
 
   useEffect(() => () => {
     workerRef.current?.terminate();
@@ -138,10 +133,18 @@ export function useTemplateAnalysis(
       try {
         if (!workerRef.current) {
           workerRef.current = new Worker(new URL('./templateAnalysis.worker.ts', import.meta.url), { type: 'module' });
+          // Fresh worker holds nothing — first request ships full payloads.
+          workerKnownRef.current = createWorkerKnownState();
         }
 
         const worker = workerRef.current;
-        worker.onmessage = (event: MessageEvent<AnalysisWorkerMessage>) => {
+        const post = (full: boolean) => {
+          if (full) workerKnownRef.current = createWorkerKnownState();
+          const request = buildAnalysisRequest(requestId, template, sampleData, workerKnownRef.current);
+          worker.postMessage(request);
+          rememberAnalysisRequest(request, workerKnownRef.current);
+        };
+        worker.onmessage = (event: MessageEvent<AnalysisResponse>) => {
           const message = event.data;
           if (cancelled || message.requestId !== requestId || generationRef.current !== requestId) return;
 
@@ -154,15 +157,23 @@ export function useTemplateAnalysis(
             return;
           }
 
+          if (message.needsFullPayload) {
+            // Worker lacks pages we stubbed (restart/desync) — resend in full.
+            // A full request always assembles, so this cannot loop.
+            post(true);
+            return;
+          }
+
           finishWithLocalAnalysis();
         };
         worker.onerror = () => {
           if (cancelled || generationRef.current !== requestId) return;
           workerRef.current?.terminate();
           workerRef.current = null;
+          workerKnownRef.current = createWorkerKnownState();
           finishWithLocalAnalysis();
         };
-        worker.postMessage({ requestId, template, sampleData });
+        post(false);
       } catch {
         finishWithLocalAnalysis();
       }

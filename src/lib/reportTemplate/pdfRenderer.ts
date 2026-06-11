@@ -19,51 +19,13 @@ import {
   evalConditional,
 } from './bindingResolver';
 import { getBlockRenderer, type BlockRenderContext } from './blocks';
+import { sortBlocksForPaint, sortOverlaysForPaint } from './paintOrder';
 
 export interface RenderOptions {
   /** Sample / live data the template binds against. */
   data?: Record<string, any>;
   /** Override tokens on top of `template.tokens` (e.g. white-label brand). */
   tokenOverrides?: Partial<ReportTemplate['tokens']>;
-}
-
-
-function overlayPaintOrder(overlay: Overlay, index: number): number {
-  const z = Number((overlay as any).zIndex);
-  if (Number.isFinite(z)) return z * 1000 + index;
-  const area = Math.max(0, Number(overlay.width) || 0) * Math.max(0, Number(overlay.height) || 0);
-  const isBackdropShape = overlay.type === 'shape' && area > 120_000 && !((overlay as any).strokeWidth);
-  if (isBackdropShape) return -1_000_000 + index;
-  if (overlay.type === 'shape') return -100_000 + index;
-  if (overlay.type === 'image') return -10_000 + index;
-  if ((overlay as any).type === 'table') return 100_000 + index;
-  if (overlay.type === 'text' || (overlay as any).type === 'textOnPath') return 200_000 + index;
-  return index;
-}
-
-function sortOverlaysForPaint(overlays: Overlay[] = []): Overlay[] {
-  return overlays
-    .map((overlay, index) => ({ overlay, order: overlayPaintOrder(overlay, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry) => entry.overlay);
-}
-
-
-function blockPaintOrder(block: any, index: number): number {
-  const z = Number(block?.style?.zIndex);
-  if (Number.isFinite(z)) return z * 1_000_000 + index;
-  const overlays = Array.isArray(block?.overlays) ? block.overlays : [];
-  if (block?.type === 'free' && overlays.length) {
-    return Math.min(...overlays.map((overlay: Overlay, overlayIndex: number) => overlayPaintOrder(overlay, overlayIndex))) + index / 10_000;
-  }
-  return index;
-}
-
-function sortBlocksForPaint(blocks: any[] = []): any[] {
-  return blocks
-    .map((block, index) => ({ block, order: blockPaintOrder(block, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry) => entry.block);
 }
 
 /** Render a template to a Blob (PDF). */

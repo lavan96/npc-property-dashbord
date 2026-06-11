@@ -2,7 +2,7 @@
  * PropertiesInspector — right rail. Edits the currently-selected overlay,
  * or page-level settings if none is selected.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,7 @@ import {
 } from '@/lib/reportTemplate/bindingValidation';
 import { BLOCK_DEFS, type BlockField } from '@/lib/reportTemplate/blocks';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { templateEditorActions, useActivePage, useEditorTemplate, useSelectedOverlay, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { BlockStylePanel, BlockVisibilityPanel, BlockRepeatPanel, BlockAlignmentPanel, BlockInteractionsPanel } from './BlockStylePanels';
 import { TypographyPanel, FontLibraryPopover } from './TypographyPanel';
 import { InlineAiTextActions } from './InlineAiTextActions';
@@ -54,41 +55,30 @@ import { TextRhythmControl } from './TextRhythmControl';
 import { PalettePresets } from './PalettePresets';
 
 
+// Template, active page, selection, and mutators come straight from
+// templateEditorStore (slice subscriptions, rehaul Phase 2) — only the
+// template id (route param) remains a prop.
 interface Props {
-  template: ReportTemplate;
   templateId?: string;
-  page: Page | null;
-  overlay: Overlay | null;
-  selectedBlockId?: string | null;
-  onUpdateOverlay: (next: Overlay) => void;
-  onDeleteOverlay: (id: string) => void;
-  onDuplicateOverlay: (id: string) => void;
-  onUpdatePage: (next: Page) => void;
-  onSelectBlock?: (blockId: string | null) => void;
-  onUpdateBlock?: (next: Block) => void;
-  onDeleteBlock?: (blockId: string) => void;
-  onDuplicateBlock?: (blockId: string) => void;
-  onMoveBlock?: (blockId: string, dir: -1 | 1) => void;
-  onUpdateTemplate?: (next: ReportTemplate) => void;
 }
 
-export function PropertiesInspector({
-  template,
-  templateId,
-  page,
-  overlay,
-  selectedBlockId,
-  onUpdateOverlay,
-  onDeleteOverlay,
-  onDuplicateOverlay,
-  onUpdatePage,
-  onSelectBlock,
-  onUpdateBlock,
-  onDeleteBlock,
-  onDuplicateBlock,
-  onMoveBlock,
-  onUpdateTemplate,
-}: Props) {
+function PropertiesInspectorImpl({ templateId }: Props) {
+  const template = useEditorTemplate();
+  const page = useActivePage();
+  const overlay = useSelectedOverlay();
+  const selectedBlockId = useTemplateEditorStore((s) => s.selectedBlockId);
+  const {
+    updateOverlay: onUpdateOverlay,
+    deleteOverlay: onDeleteOverlay,
+    duplicateOverlay: onDuplicateOverlay,
+    updatePage: onUpdatePage,
+    setSelectedBlockId: onSelectBlock,
+    updateBlock: onUpdateBlock,
+    deleteBlock: onDeleteBlock,
+    duplicateBlock: onDuplicateBlock,
+    moveBlock: onMoveBlock,
+    setTemplate: onUpdateTemplate,
+  } = templateEditorActions();
   const selectedBlock =
     page && selectedBlockId
       ? page.blocks.find((b) => b.id === selectedBlockId) ?? null
@@ -146,6 +136,13 @@ export function PropertiesInspector({
     </ScrollArea>
   );
 }
+
+/**
+ * Memoized: at 1,600+ lines of editors this is the most expensive panel in the
+ * editor; memo skips it when unrelated editor state (dialogs, presence, save
+ * status, …) changes. Callers must pass useCallback-stable handlers.
+ */
+export const PropertiesInspector = memo(PropertiesInspectorImpl);
 
 // ─────────────────────────────────────────────────────────────────────────────
 

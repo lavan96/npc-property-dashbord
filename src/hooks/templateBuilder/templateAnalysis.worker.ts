@@ -1,40 +1,51 @@
-import { collectTemplateIssues, type TemplateIssue } from '@/lib/reportTemplate/bindingValidation';
-import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
-import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
-
-interface AnalysisRequest {
-  requestId: number;
-  template: ReportTemplate;
-  sampleData: Record<string, any>;
-}
-
-interface AnalysisSuccess {
-  requestId: number;
-  ok: true;
-  bindingIssues: TemplateIssue[];
-  lintIssues: LintIssue[];
-}
-
-interface AnalysisFailure {
-  requestId: number;
-  ok: false;
-  error: string;
-}
+/**
+ * templateAnalysis.worker — full-document binding + lint analysis off the main
+ * thread.
+ *
+ * Rehaul Phase 3: requests arrive as per-page payloads/stubs (see
+ * templateAnalysisProtocol) instead of a full template clone — the worker
+ * keeps previously-received pages and reassembles the document, so a one-page
+ * edit ships one page across the thread boundary, not the whole document.
+ */
+import { collectTemplateIssues } from '@/lib/reportTemplate/bindingValidation';
+import { lintTemplate } from '@/lib/reportTemplate/lintTemplate';
+import {
+  assembleAnalysisInput,
+  createAnalysisWorkerState,
+  type AnalysisRequest,
+  type AnalysisResponse,
+} from './templateAnalysisProtocol';
 
 const workerScope = self as unknown as {
   onmessage: ((event: MessageEvent<AnalysisRequest>) => void) | null;
-  postMessage: (message: AnalysisSuccess | AnalysisFailure) => void;
+  postMessage: (message: AnalysisResponse) => void;
 };
 
+const state = createAnalysisWorkerState();
+
 workerScope.onmessage = (event) => {
-  const { requestId, template, sampleData } = event.data;
+  const request = event.data;
+  const { requestId } = request;
+
+  const input = assembleAnalysisInput(state, request);
+  if (!input) {
+    // We were asked to reuse a page/data version we don't hold (e.g. this
+    // worker was just spawned). The main thread resends full payloads.
+    workerScope.postMessage({
+      requestId,
+      ok: false,
+      error: 'analysis worker cache miss',
+      needsFullPayload: true,
+    });
+    return;
+  }
 
   try {
     workerScope.postMessage({
       requestId,
       ok: true,
-      bindingIssues: collectTemplateIssues(template),
-      lintIssues: lintTemplate(template, sampleData),
+      bindingIssues: collectTemplateIssues(input.template),
+      lintIssues: lintTemplate(input.template, input.sampleData),
     });
   } catch (error) {
     workerScope.postMessage({

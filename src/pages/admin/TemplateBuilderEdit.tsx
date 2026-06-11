@@ -8,7 +8,7 @@
  * overlays (position, size, text content); blocks and bindings are edited in
  * the inspector / page panel. Live PDF regenerates on a 500ms debounce.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout,
@@ -17,32 +17,42 @@ import {
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
   ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
 } from 'lucide-react';
-import { ResyncPdfDialog } from '@/components/templateBuilder/ResyncPdfDialog';
-import { ReferenceImportDialog } from '@/components/templateBuilder/ReferenceImportDialog';
-import { PdfFidelityDiffDialog } from '@/components/templateBuilder/PdfFidelityDiffDialog';
-import { TemplateBranchingDialog } from '@/components/templateBuilder/TemplateBranchingDialog';
+// Always-mounted editor chrome stays eagerly imported; the heavy on-demand
+// dialogs below are React.lazy + MountOnFirstOpen so they're code-split out of
+// the editor chunk and cost nothing until first opened (rehaul Phase 2).
 import { SaveConflictDialog } from '@/components/templateBuilder/SaveConflictDialog';
 import { DraftRecoveryDialog } from '@/components/templateBuilder/DraftRecoveryDialog';
-import { TemplateApprovalDialog } from '@/components/templateBuilder/TemplateApprovalDialog';
-import { TemplateAuditLogDialog } from '@/components/templateBuilder/TemplateAuditLogDialog';
-import { PageTemplatesMarketplaceDialog } from '@/components/templateBuilder/PageTemplatesMarketplaceDialog';
 import { BulkEditBar } from '@/components/templateBuilder/BulkEditBar';
 import { CommandPalette } from '@/components/templateBuilder/CommandPalette';
 import { BindingPathsPopover } from '@/components/templateBuilder/BindingPathsPopover';
 import { ComputedFieldsDialog } from '@/components/templateBuilder/ComputedFieldsDialog';
 import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialog';
 import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
-import { ExportPipelineDialog } from '@/components/templateBuilder/ExportPipelineDialog';
-import { TemplateCommentsPanel } from '@/components/templateBuilder/TemplateCommentsPanel';
-import { ShareLinksDialog } from '@/components/templateBuilder/ShareLinksDialog';
-import { VersionHistoryDialog } from '@/components/templateBuilder/VersionHistoryDialog';
-import { TemplateAnalyticsDialog } from '@/components/templateBuilder/TemplateAnalyticsDialog';
-import { TemplateAIAuthorDialog } from '@/components/templateBuilder/TemplateAIAuthorDialog';
-import { TemplateDesignAgentPanel } from '@/components/templateBuilder/TemplateDesignAgentPanel';
-import { PreviewQADialog } from '@/components/templateBuilder/PreviewQADialog';
-import { ComponentLibraryDialog } from '@/components/templateBuilder/ComponentLibraryDialog';
-import { SpellCheckDialog } from '@/components/templateBuilder/SpellCheckDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
+import { MountOnFirstOpen } from '@/components/templateBuilder/MountOnFirstOpen';
+
+const ResyncPdfDialog = lazy(() => import('@/components/templateBuilder/ResyncPdfDialog').then((m) => ({ default: m.ResyncPdfDialog })));
+const ReferenceImportDialog = lazy(() => import('@/components/templateBuilder/ReferenceImportDialog').then((m) => ({ default: m.ReferenceImportDialog })));
+const PdfFidelityDiffDialog = lazy(() => import('@/components/templateBuilder/PdfFidelityDiffDialog').then((m) => ({ default: m.PdfFidelityDiffDialog })));
+const TemplateBranchingDialog = lazy(() => import('@/components/templateBuilder/TemplateBranchingDialog').then((m) => ({ default: m.TemplateBranchingDialog })));
+const TemplateApprovalDialog = lazy(() => import('@/components/templateBuilder/TemplateApprovalDialog').then((m) => ({ default: m.TemplateApprovalDialog })));
+const TemplateAuditLogDialog = lazy(() => import('@/components/templateBuilder/TemplateAuditLogDialog').then((m) => ({ default: m.TemplateAuditLogDialog })));
+const PageTemplatesMarketplaceDialog = lazy(() => import('@/components/templateBuilder/PageTemplatesMarketplaceDialog').then((m) => ({ default: m.PageTemplatesMarketplaceDialog })));
+const ExportPipelineDialog = lazy(() => import('@/components/templateBuilder/ExportPipelineDialog').then((m) => ({ default: m.ExportPipelineDialog })));
+const TemplateCommentsPanel = lazy(() => import('@/components/templateBuilder/TemplateCommentsPanel').then((m) => ({ default: m.TemplateCommentsPanel })));
+const ShareLinksDialog = lazy(() => import('@/components/templateBuilder/ShareLinksDialog').then((m) => ({ default: m.ShareLinksDialog })));
+const VersionHistoryDialog = lazy(() => import('@/components/templateBuilder/VersionHistoryDialog').then((m) => ({ default: m.VersionHistoryDialog })));
+const TemplateAnalyticsDialog = lazy(() => import('@/components/templateBuilder/TemplateAnalyticsDialog').then((m) => ({ default: m.TemplateAnalyticsDialog })));
+const TemplateAIAuthorDialog = lazy(() => import('@/components/templateBuilder/TemplateAIAuthorDialog').then((m) => ({ default: m.TemplateAIAuthorDialog })));
+const TemplateDesignAgentPanel = lazy(() => import('@/components/templateBuilder/TemplateDesignAgentPanel').then((m) => ({ default: m.TemplateDesignAgentPanel })));
+const PreviewQADialog = lazy(() => import('@/components/templateBuilder/PreviewQADialog').then((m) => ({ default: m.PreviewQADialog })));
+const ComponentLibraryDialog = lazy(() => import('@/components/templateBuilder/ComponentLibraryDialog').then((m) => ({ default: m.ComponentLibraryDialog })));
+const SpellCheckDialog = lazy(() => import('@/components/templateBuilder/SpellCheckDialog').then((m) => ({ default: m.SpellCheckDialog })));
+const SnippetLibraryDialog = lazy(() => import('@/components/templateBuilder/SnippetLibraryDialog').then((m) => ({ default: m.SnippetLibraryDialog })));
+const FindReplaceDialog = lazy(() => import('@/components/templateBuilder/FindReplaceDialog').then((m) => ({ default: m.FindReplaceDialog })));
+const AssetLibraryDialog = lazy(() => import('@/components/templateBuilder/AssetLibraryDialog').then((m) => ({ default: m.AssetLibraryDialog })));
+const TextStylesDialog = lazy(() => import('@/components/templateBuilder/TextStylesDialog').then((m) => ({ default: m.TextStylesDialog })));
+const TableEditorDialog = lazy(() => import('@/components/templateBuilder/TableEditorDialog').then((m) => ({ default: m.TableEditorDialog })));
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar, type PresenceUser } from '@/components/templateBuilder/TemplatePresenceBar';
@@ -61,9 +71,8 @@ import * as editorActions from '@/lib/reportTemplate/editorActions';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
-import { SnippetLibraryDialog } from '@/components/templateBuilder/SnippetLibraryDialog';
 import { getSnippet } from '@/lib/reportTemplate/snippetLibrary';
-import { THEME_PRESETS, getThemePreset } from '@/lib/reportTemplate/themePresets';
+import { getThemePreset } from '@/lib/reportTemplate/themePresets';
 import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
 import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
 import { Button } from '@/components/ui/button';
@@ -94,27 +103,23 @@ import {
   type Overlay,
   type Page,
   type ReportTemplate,
-  makeBlankTemplate,
 } from '@/lib/reportTemplate/templateSchema';
 // jsPDF preview retired — PDF tab now renders via WeasyPrint for production parity.
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { renderHtmlToPdfUrl, pdfFileNameFor } from '@/lib/reportTemplate/weasyRenderClient';
 import { supabase } from '@/integrations/supabase/client';
-import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { useTemplateAnalysis } from '@/hooks/templateBuilder/useTemplateAnalysis';
-import {
-  applyTemplatePatches,
-  diffTemplateValues,
-  invertTemplatePatches,
-  type TemplatePatch,
-} from '@/lib/reportTemplate/templateHistory';
+import { useTemplateHistory } from '@/hooks/templateBuilder/useTemplateHistory';
+import { useTemplateMutators } from '@/hooks/templateBuilder/useTemplateMutators';
+import { templateEditorActions, useTemplateEditorStore } from '@/stores/templateEditorStore';
+import { useEditorKeyboardShortcuts } from '@/hooks/templateBuilder/useEditorKeyboardShortcuts';
+import { useWeasyPdfPreview } from '@/hooks/templateBuilder/useWeasyPdfPreview';
 import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
 import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
-import { isOverlayPayload, positionOverlayAtPoint } from '@/lib/reportTemplate/overlayDropFactory';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
@@ -122,11 +127,9 @@ import { BrandKitPanel } from '@/components/admin/template-builder/BrandKitPanel
 import { CanvasChrome } from '@/components/templateBuilder/CanvasChrome';
 import { OutlinePanel } from '@/components/templateBuilder/OutlinePanel';
 import { AlignDistributeBar } from '@/components/templateBuilder/AlignDistributeBar';
-import { FindReplaceDialog } from '@/components/templateBuilder/FindReplaceDialog';
-import { AssetLibraryDialog } from '@/components/templateBuilder/AssetLibraryDialog';
-import { TextStylesDialog } from '@/components/templateBuilder/TextStylesDialog';
-import { TableEditorDialog } from '@/components/templateBuilder/TableEditorDialog';
-import { EnhancedColorPicker } from '@/components/templateBuilder/EnhancedColorPicker';
+import { TokensEditor } from '@/components/templateBuilder/TokensEditor';
+import { SlotsEditor } from '@/components/templateBuilder/SlotsEditor';
+import { ThemePresetsGallery } from '@/components/templateBuilder/ThemePresetsGallery';
 import * as layoutActions from '@/lib/reportTemplate/editorActions.layout';
 
 
@@ -205,7 +208,8 @@ export default function TemplateBuilderEdit() {
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
   const [showReferenceImport, setShowReferenceImport] = useState(false);
-  // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. OFF by default.
+  // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. ON by
+  // default since rehaul Phase 8; `?editorV2=0` / localStorage is the kill-switch.
   const editorV2 = useMemo(() => isTemplateEditorV2Enabled(), []);
   // First-run coachmark for the new V2 drag-and-drop (dismiss persists per-browser).
   const [showV2Hint, setShowV2Hint] = useState(() => {
@@ -227,11 +231,24 @@ export default function TemplateBuilderEdit() {
   const [variant, setVariant] = useState<string>(''); // '' = any
   const [scope, setScope] = useState<string>('global');
   const [priority, setPriority] = useState<number>(0);
-  const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
+  // ── Template document + undo/redo history + governance guard ───────────────
+  // Owned by templateEditorStore via the useTemplateHistory façade (rehaul
+  // Phase 2). Mounting the hook starts a fresh editor session, so it must run
+  // before the selection subscriptions below.
+  const { template, setTemplate, loadTemplate, undo, redo, setGovernanceReadOnly } = useTemplateHistory();
   const brand = useBrand();
-  const [activePageId, setActivePageId] = useState<string | null>(null);
-  const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  // ── Selection (store slices + permanently stable actions) ──────────────────
+  const activePageId = useTemplateEditorStore((s) => s.activePageId);
+  const selectedOverlayId = useTemplateEditorStore((s) => s.selectedOverlayId);
+  const selectedBlockId = useTemplateEditorStore((s) => s.selectedBlockId);
+  const multiOverlayIds = useTemplateEditorStore((s) => s.multiOverlayIds);
+  const {
+    setActivePageId,
+    setSelectedOverlayId,
+    setSelectedBlockId,
+    setMultiOverlayIds,
+    clearMultiSelect,
+  } = templateEditorActions();
   const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'canvas' | 'pdf'>('canvas');
   const [activeMainTab, setActiveMainTab] = useState('visual');
   const [previewScope, setPreviewScope] = useState<'page' | 'document'>('page');
@@ -246,53 +263,6 @@ export default function TemplateBuilderEdit() {
   const [draftRecovery, setDraftRecovery] = useState<TemplateDraft | null>(null);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
   const [staleDraftBase, setStaleDraftBase] = useState(false);
-
-  // ── Undo / redo history ────────────────────────────────────────────────────
-  const historyRef = useRef<{
-    past: Array<{ undo: TemplatePatch[]; redo: TemplatePatch[] }>;
-    future: Array<{ undo: TemplatePatch[]; redo: TemplatePatch[] }>;
-  }>({ past: [], future: [] });
-  const skipHistoryRef = useRef(false);
-  const governanceReadOnlyRef = useRef(false);
-  const setTemplate = useCallback((updater: ReportTemplate | ((prev: ReportTemplate) => ReportTemplate)) => {
-    _setTemplate((prev) => {
-      if (governanceReadOnlyRef.current && !skipHistoryRef.current) {
-        toast.error('Approved templates are read-only. Create a branch before editing.');
-        return prev;
-      }
-      const next = typeof updater === 'function' ? (updater as (p: ReportTemplate) => ReportTemplate)(prev) : updater;
-      if (!skipHistoryRef.current && next !== prev) {
-        const redo = diffTemplateValues(prev, next);
-        if (redo.length > 0) {
-          historyRef.current.past.push({ undo: invertTemplatePatches(redo), redo });
-          if (historyRef.current.past.length > 80) historyRef.current.past.shift();
-          historyRef.current.future = [];
-        }
-      }
-      skipHistoryRef.current = false;
-      return next;
-    });
-  }, []);
-  const undo = useCallback(() => {
-    const h = historyRef.current;
-    const entry = h.past.pop();
-    if (!entry) { toast('Nothing to undo'); return; }
-    _setTemplate((cur) => {
-      h.future.push(entry);
-      return applyTemplatePatches(cur, entry.undo);
-    });
-    skipHistoryRef.current = true;
-  }, []);
-  const redo = useCallback(() => {
-    const h = historyRef.current;
-    const entry = h.future.pop();
-    if (!entry) { toast('Nothing to redo'); return; }
-    _setTemplate((cur) => {
-      h.past.push(entry);
-      return applyTemplatePatches(cur, entry.redo);
-    });
-    skipHistoryRef.current = true;
-  }, []);
 
   // ── Sample data (editable in the Data tab, used for live preview) ───────────
   const [sampleDataText, setSampleDataText] = useState(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2));
@@ -342,16 +312,6 @@ export default function TemplateBuilderEdit() {
   const overlayClipboardRef = useRef<Overlay[] | null>(null);
   // ── Shortcuts help dialog ───────────────────────────────────────────────────
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  // ── Multi-select (overlay ids on active page) ───────────────────────────────
-  const [multiOverlayIds, setMultiOverlayIds] = useState<Set<string>>(new Set());
-  const toggleMultiOverlay = useCallback((oid: string) => {
-    setMultiOverlayIds((prev) => {
-      const n = new Set(prev);
-      n.has(oid) ? n.delete(oid) : n.add(oid);
-      return n;
-    });
-  }, []);
-  const clearMultiSelect = useCallback(() => setMultiOverlayIds(new Set()), []);
   // ── Page templates marketplace dialog ───────────────────────────────────────
   const [showPageMarket, setShowPageMarket] = useState(false);
   // Track which (id, version) we've already hydrated local state from so that
@@ -396,8 +356,7 @@ export default function TemplateBuilderEdit() {
       is_default: !!(tplRow as any).is_default,
     });
     const parsed = parseTemplate(tplRow.schema);
-    skipHistoryRef.current = true;
-    setTemplate(parsed);
+    loadTemplate(parsed);
     setLastSavedSignature(makeTemplateEditSignature({
       name: tplRow.name || '',
       description: tplRow.description || '',
@@ -412,11 +371,11 @@ export default function TemplateBuilderEdit() {
     setLastSavedAt(new Date().toISOString());
     setSaveConflict(null);
     setActivePageId((prev) => parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null);
-  }, [tplRow, setTemplate]);
+  }, [tplRow, loadTemplate]);
 
   useEffect(() => {
-    governanceReadOnlyRef.current = (tplMeta?.approval_status === 'approved' && !tplMeta?.is_draft) || false;
-  }, [tplMeta?.approval_status, tplMeta?.is_draft]);
+    setGovernanceReadOnly((tplMeta?.approval_status === 'approved' && !tplMeta?.is_draft) || false);
+  }, [tplMeta?.approval_status, tplMeta?.is_draft, setGovernanceReadOnly]);
 
   useEffect(() => {
     if (!template.pages.length) {
@@ -562,11 +521,10 @@ export default function TemplateBuilderEdit() {
     setCustomCss(draft.customCss || '');
     if (typeof draft.sampleDataText === 'string') setSampleDataText(draft.sampleDataText);
     const parsed = parseTemplate(draft.schema);
-    skipHistoryRef.current = true;
-    setTemplate(parsed);
+    loadTemplate(parsed);
     setActivePageId((prev) => (parsed.pages.some((p) => p.id === prev) ? prev : parsed.pages[0]?.id ?? null));
     setLastLocalSaveAt(draft.savedAt);
-  }, [setTemplate, setLastLocalSaveAt]);
+  }, [loadTemplate, setLastLocalSaveAt]);
 
   const handleRestoreDraft = useCallback(() => {
     if (!draftRecovery) return;
@@ -630,116 +588,21 @@ export default function TemplateBuilderEdit() {
     };
   }, [tplRow, id]);
 
-  // ── Mutators ────────────────────────────────────────────────────────────────
-  // Handlers below own React state / selection / toasts; the schema transforms
-  // are delegated to the pure, unit-tested `editorActions` module (Phase 4.2).
-  const updatePage = (next: Page) => {
-    setTemplate((t) => editorActions.replacePage(t, next));
-  };
-  const setActivePageOverlays = (overlays: Overlay[]) => {
-    if (!activePage) return;
-    updatePage(editorActions.distributeOverlays(activePage, overlays));
-  };
-  const updateOverlay = (next: Overlay) => {
-    if (!activePage) return;
-    updatePage(editorActions.updateOverlay(activePage, next));
-  };
-  const deleteOverlay = (oid: string) => {
-    if (!activePage) return;
-    // Snapshot the page so the user can undo within a few seconds.
-    const pageSnapshot: Page = JSON.parse(JSON.stringify(activePage));
-    updatePage(editorActions.removeOverlay(activePage, oid));
-    setSelectedOverlayId(null);
-    toast('Overlay deleted', {
-      description: 'You can restore it within 8 seconds.',
-      duration: 8000,
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          setTemplate((t) => editorActions.replacePage(t, pageSnapshot));
-          setSelectedOverlayId(oid);
-          toast.success('Overlay restored');
-        },
-      },
-    });
-  };
-  const duplicateOverlay = (oid: string) => {
-    if (!activePage) return;
-    const { page, newOverlayId } = editorActions.duplicateOverlay(activePage, oid);
-    updatePage(page);
-    if (newOverlayId) setSelectedOverlayId(newOverlayId);
-  };
-  const addOverlayToActivePage = (overlay: Overlay) => {
-    if (!activePage) return;
-    updatePage(editorActions.addOverlay(activePage, overlay));
-    setSelectedOverlayId(overlay.id);
-  };
-  const addBlockToActivePage = (block: Block) => {
-    if (!activePage) return;
-    updatePage(editorActions.appendBlock(activePage, block));
-    setSelectedBlockId(block.id);
-    setSelectedOverlayId(null);
-  };
-  const updateBlock = (next: Block) => {
-    if (!activePage) return;
-    updatePage(editorActions.updateBlock(activePage, next));
-  };
-  const deleteBlock = (bid: string) => {
-    if (!activePage) return;
-    const snapshot: Page = JSON.parse(JSON.stringify(activePage));
-    updatePage(editorActions.removeBlock(activePage, bid));
-    if (selectedBlockId === bid) setSelectedBlockId(null);
-    toast('Block deleted', {
-      description: 'You can restore it within 8 seconds.',
-      duration: 8000,
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          setTemplate((t) => editorActions.replacePage(t, snapshot));
-          toast.success('Block restored');
-        },
-      },
-    });
-  };
-  const duplicateBlock = (bid: string) => {
-    if (!activePage) return;
-    const result = editorActions.duplicateBlock(activePage, bid);
-    if (!result) return;
-    updatePage(result.page);
-    setSelectedBlockId(result.newBlockId);
-  };
-  const moveBlock = (bid: string, dir: -1 | 1) => {
-    if (!activePage) return;
-    const next = editorActions.moveBlock(activePage, bid, dir);
-    if (next !== activePage) updatePage(next);
-  };
-  const reorderBlocks = (from: number, to: number) => {
-    if (!activePage) return;
-    const next = editorActions.reorderBlocks(activePage, from, to);
-    if (next !== activePage) updatePage(next);
-  };
-
-  const addPage = () => {
-    const page = editorActions.makeNewPage(template.pages.length);
-    setTemplate((t) => editorActions.appendPage(t, page));
-    setActivePageId(page.id);
-  };
-  const duplicatePage = (pid: string) => {
-    const result = editorActions.duplicatePage(template, pid);
-    if (!result) return;
-    setTemplate((t) => ({ ...t, pages: result.pages }));
-    setActivePageId(result.newPageId);
-  };
-  const deletePage = (pid: string) => {
-    setTemplate((t) => editorActions.removePage(t, pid));
-    if (activePageId === pid) {
-      const remaining = template.pages.filter((p) => p.id !== pid);
-      setActivePageId(remaining[0]?.id ?? null);
-    }
-  };
-  const movePage = (pid: string, dir: -1 | 1) => {
-    setTemplate((t) => editorActions.movePage(t, pid, dir));
-  };
+  // ── Mutators + stable selection handlers ────────────────────────────────────
+  // Store-backed (rehaul Phase 2 / state refactor): every handler is
+  // permanently identity-stable (actions read fresh state via get()), so the
+  // memoized editor surfaces never re-render because a handler changed.
+  // Only the handlers this page itself still calls — the editor panels
+  // (PagesPanel, EditorialCanvas, PropertiesInspector, OutlinePanel,
+  // LiveHtmlPreview) now pull their mutators straight from the store.
+  const {
+    updatePage,
+    updateOverlay,
+    duplicateOverlay,
+    addBlockToActivePage,
+    duplicateBlock,
+    addPage,
+  } = useTemplateMutators();
 
   // ── Starter page presets / theme presets / sample-data presets ──────────────
   const addStarterPage = (presetId: string) => {
@@ -1215,104 +1078,51 @@ export default function TemplateBuilderEdit() {
   }, [activePage, setTemplate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      const isField = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
-      const meta = e.metaKey || e.ctrlKey;
-      const k = e.key.toLowerCase();
-      const hasOverlaySel = !!selectedOverlayId || multiOverlayIds.size > 0;
-
-      // ⌘K opens palette from anywhere (including fields)
-      if (meta && k === 'k') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
-      // `?` shows shortcut cheat sheet (outside fields)
-      if (!meta && !isField && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
-        e.preventDefault(); setShortcutsOpen(true); return;
-      }
-      if (!meta) return;
-
-      // ── File / history ────────────────────────────────────────────────
-      if (k === 's') { e.preventDefault(); handleSave(false); return; }
-      if (k === 'z' && !e.shiftKey) { if (isField) return; e.preventDefault(); undo(); return; }
-      if ((k === 'z' && e.shiftKey) || k === 'y') { if (isField) return; e.preventDefault(); redo(); return; }
-
-      // ── Selection ─────────────────────────────────────────────────────
-      if (k === 'a' && !isField) { e.preventDefault(); selectAllOverlays(); return; }
-
-      // ── Page management ───────────────────────────────────────────────
-      if (k === 'n' && !isField) { e.preventDefault(); addPage(); return; }
-
-      // ── Style clipboard (Alt+C / Alt+V) ───────────────────────────────
-      if (e.altKey && k === 'c' && !isField) {
-        e.preventDefault();
-        if (selectedOverlay) copyOverlayStyle(selectedOverlay);
-        else if (selectedBlockId) copyBlock(selectedBlockId);
+  // Extracted to useEditorKeyboardShortcuts (rehaul Phase 2): attaches one
+  // window listener and dispatches via the "latest ref" pattern, so the
+  // bindings object below can be rebuilt fresh on every render with no
+  // stale-closure hazard and no listener re-binding.
+  // Latest-ref: the PDF preview hook is declared further down (it needs sample
+  // data), but the shortcut bindings are wired here.
+  const refreshPdfPreviewRef = useRef<() => Promise<void> | void>(() => {});
+  useEditorKeyboardShortcuts({
+    selectedOverlayId,
+    selectedBlockId,
+    selectedOverlay,
+    multiOverlayIds,
+    hasStyleClipboard,
+    // Getter, not value: copying overlays mutates a ref without re-rendering,
+    // so this must be evaluated at keydown time.
+    hasOverlayClipboard: () => !!overlayClipboardRef.current && overlayClipboardRef.current.length > 0,
+    togglePalette: () => setPaletteOpen((o) => !o),
+    openShortcuts: () => setShortcutsOpen(true),
+    save: () => handleSave(false),
+    undo,
+    redo,
+    selectAllOverlays,
+    addPage,
+    copyOverlayStyle,
+    copyBlock,
+    pasteOverlayStyleToIds,
+    pasteBlock,
+    copySelectedOverlays,
+    cutSelectedOverlays,
+    pasteOverlays,
+    duplicateSelectedOverlays,
+    duplicateBlock,
+    toggleTextStyle,
+    shiftZOrder,
+    refreshPreview: () => {
+      // PDF tab is render-on-demand (rehaul Phase 3): re-render it in place.
+      if (workspaceMode === 'pdf') {
+        void refreshPdfPreviewRef.current();
+        toast('Rendering PDF…');
         return;
       }
-      if (e.altKey && k === 'v' && !isField) {
-        e.preventDefault();
-        const ids = multiOverlayIds.size > 0
-          ? Array.from(multiOverlayIds)
-          : selectedOverlayId ? [selectedOverlayId] : [];
-        if (hasStyleClipboard && ids.length > 0) pasteOverlayStyleToIds(ids);
-        else pasteBlock();
-        return;
-      }
-
-      // ── Overlay clipboard: Ctrl/⌘ + C / X / V ─────────────────────────
-      if (k === 'c' && !isField) {
-        if (hasOverlaySel) { e.preventDefault(); copySelectedOverlays(); return; }
-        if (selectedBlockId) { e.preventDefault(); copyBlock(selectedBlockId); return; }
-      }
-      if (k === 'x' && !isField) {
-        if (hasOverlaySel) { e.preventDefault(); cutSelectedOverlays(); return; }
-      }
-      if (k === 'v' && !isField) {
-        e.preventDefault();
-        if (overlayClipboardRef.current && overlayClipboardRef.current.length > 0) pasteOverlays();
-        else pasteBlock();
-        return;
-      }
-
-      // ── Duplicate ─────────────────────────────────────────────────────
-      if (k === 'd' && !isField) {
-        e.preventDefault();
-        if (hasOverlaySel) duplicateSelectedOverlays();
-        else if (selectedBlockId) duplicateBlock(selectedBlockId);
-        return;
-      }
-
-      // ── Text styling (only meaningful for text overlays) ──────────────
-      if (k === 'b' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('fontWeight'); return; }
-      if (k === 'i' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('fontStyle'); return; }
-      if (k === 'u' && !isField && hasOverlaySel) { e.preventDefault(); toggleTextStyle('textDecoration'); return; }
-
-      // ── Z-order: Ctrl+] / Ctrl+[ (Shift = front/back) ─────────────────
-      if (e.key === ']' && hasOverlaySel && !isField) {
-        e.preventDefault(); shiftZOrder(e.shiftKey ? 'front' : 'forward'); return;
-      }
-      if (e.key === '[' && hasOverlaySel && !isField) {
-        e.preventDefault(); shiftZOrder(e.shiftKey ? 'back' : 'backward'); return;
-      }
-
-      // ── R: refresh / reload preview (don't fall through to browser reload) ─
-      if (k === 'r' && !isField) {
-        e.preventDefault();
-        // Re-render PDF preview if open; otherwise bounce active page id.
-        if (workspaceMode === 'pdf') setWorkspaceMode('preview');
-        setActivePageId((prev) => prev);
-        toast('Preview refreshed');
-        return;
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedBlockId, activePage, selectedOverlay, selectedOverlayId, multiOverlayIds,
-    hasStyleClipboard, selectAllOverlays, copySelectedOverlays, cutSelectedOverlays,
-    pasteOverlays, duplicateSelectedOverlays, toggleTextStyle, shiftZOrder, workspaceMode,
-  ]);
+      setActivePageId((prev) => prev);
+      toast('Preview refreshed');
+    },
+  });
 
   // ── Idle/debounced analysis keeps large templates responsive while typing/dragging.
   // Active-page analysis updates immediately; full-document analysis settles after idle.
@@ -1397,61 +1207,24 @@ export default function TemplateBuilderEdit() {
     return true;
   }, [sampleData, template]);
 
-  // ── Live PDF preview ────────────────────────────────────────────────────────
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewing, setPreviewing] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const blobRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (workspaceMode !== 'pdf') return;
-    setPreviewing(true);
-    setPreviewError(null);
-    let cancelled = false;
-    const handle = setTimeout(async () => {
-      try {
-        const prepared = await preloadImages(template);
-        if (cancelled) return;
-        // Production parity: render via WeasyPrint (same engine as final PDFs).
-        const { html } = renderTemplateToHtml(prepared, {
-          data: sampleData,
-          title: name || 'Template Preview',
-          customCss: customCss || undefined,
-        });
-        const { data: sess } = await supabase.auth.getSession();
-        const token = sess?.session?.access_token;
-        const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
-        const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            html,
-            fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}-preview.pdf`,
-            templateId: id,
-            mode: 'preview',
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-        if (cancelled) return;
-        setPreviewUrl(json.url as string);
-      } catch (e: any) {
-        if (!cancelled) setPreviewError(e?.message ?? 'Render failed');
-      } finally {
-        if (!cancelled) setPreviewing(false);
-      }
-    }, 1500);
-    return () => { cancelled = true; clearTimeout(handle); };
-  }, [template, sampleData, workspaceMode, customCss, name, id]);
-
-  useEffect(() => () => {
-    if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-  }, []);
+  // ── PDF preview (render-on-demand, rehaul Phase 3) ──────────────────────────
+  // Renders once when the Final PDF tab opens; edits flip `pdfStale` and the
+  // user re-renders explicitly. The live HTML preview is the realtime surface.
+  const {
+    previewUrl,
+    previewing,
+    previewError,
+    stale: pdfStale,
+    refresh: refreshPdfPreview,
+  } = useWeasyPdfPreview({
+    enabled: workspaceMode === 'pdf',
+    template,
+    sampleData,
+    customCss: customCss || undefined,
+    name,
+    templateId: id,
+  });
+  refreshPdfPreviewRef.current = refreshPdfPreview;
 
   // ── Save ────────────────────────────────────────────────────────────────────
   const buildSavePatch = () => ({
@@ -1634,19 +1407,21 @@ export default function TemplateBuilderEdit() {
           openBindingFixer: () => setFixerOpen(true),
         }}
       />
-      <SnippetLibraryDialog
-        open={snippetsOpen}
-        onOpenChange={setSnippetsOpen}
-        onInsert={(block) => {
-          if (!activePage) { toast.error('No active page'); return; }
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
-          }));
-          setSelectedBlockId(block.id);
-          setSelectedOverlayId(null);
-        }}
-      />
+      <MountOnFirstOpen open={snippetsOpen}>
+        <SnippetLibraryDialog
+          open={snippetsOpen}
+          onOpenChange={setSnippetsOpen}
+          onInsert={(block) => {
+            if (!activePage) { toast.error('No active page'); return; }
+            setTemplate((t) => ({
+              ...t,
+              pages: t.pages.map((p) => (p.id === activePage.id ? { ...p, blocks: [...p.blocks, block] } : p)),
+            }));
+            setSelectedBlockId(block.id);
+            setSelectedOverlayId(null);
+          }}
+        />
+      </MountOnFirstOpen>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b bg-background/95 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
@@ -1931,27 +1706,13 @@ export default function TemplateBuilderEdit() {
                       title: name || 'Template Preview',
                       customCss: customCss || undefined,
                     });
-                    const { data: sess } = await supabase.auth.getSession();
-                    const token = sess?.session?.access_token;
-                    const projectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID;
-                    const url = `https://${projectId}.supabase.co/functions/v1/render-template-pdf`;
-                    const res = await fetch(url, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        apikey: (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY,
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                      body: JSON.stringify({
-                        html,
-                        fileName: `${(name || 'template').replace(/[^a-z0-9]+/gi, '-')}.pdf`,
-                        templateId: id,
-                        mode: 'preview',
-                      }),
+                    const url = await renderHtmlToPdfUrl({
+                      html,
+                      fileName: pdfFileNameFor(name),
+                      templateId: id,
+                      mode: 'preview',
                     });
-                    const json = await res.json();
-                    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-                    window.open(json.url, '_blank', 'noopener');
+                    window.open(url, '_blank', 'noopener');
                     toast.success('WeasyPrint render ready', { id: toastId });
                   } catch (e: any) {
                     toast.error(`WeasyPrint failed: ${e?.message ?? e}`, { id: toastId });
@@ -2246,36 +2007,17 @@ export default function TemplateBuilderEdit() {
             }}
           >
             <PagesPanel
-              template={template}
-              activePageId={activePageId}
-              onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
-              onAddPage={addPage}
-              onDuplicatePage={duplicatePage}
-              onDeletePage={deletePage}
-              onMovePage={movePage}
-              onAddBlock={addBlockToActivePage}
-              onAddOverlay={addOverlayToActivePage}
               enableCanvasDrag={editorV2}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
-              onReorderBlocks={reorderBlocks}
               commentAnchors={commentAnchors}
             />
 
             <div className="relative bg-muted/30 min-h-0">
               {workspaceMode === 'preview' ? (
                 <LiveHtmlPreview
-                  template={template}
                   sampleData={sampleData}
                   customCss={customCss || undefined}
-                  activePageId={activePageId}
-                  selectedBlockId={selectedBlockId}
                   scope={previewScope}
                   onScopeChange={setPreviewScope}
-                  onSelect={({ blockId, pageId }) => {
-                    if (pageId && pageId !== activePageId) setActivePageId(pageId);
-                    if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
-                  }}
                 />
               ) : workspaceMode === 'pdf' ? (
                 <div className="absolute inset-0 flex flex-col bg-background">
@@ -2283,6 +2025,22 @@ export default function TemplateBuilderEdit() {
                     <Eye className="h-3.5 w-3.5 text-primary" />
                     <span className="font-medium">PDF preview</span>
                     {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                    {pdfStale && !previewing && (
+                      <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                        Out of date — template changed
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto h-6 px-2 text-[11px]"
+                      onClick={() => void refreshPdfPreview()}
+                      disabled={previewing}
+                      title="Re-render the PDF with the current template (Weasyprint round-trip)"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${previewing ? 'animate-spin' : ''}`} />
+                      {previewing ? 'Rendering…' : pdfStale ? 'Render latest' : 'Re-render'}
+                    </Button>
                   </div>
                   <div className="flex-1 min-h-0 p-3">
                     {previewError ? (
@@ -2305,46 +2063,11 @@ export default function TemplateBuilderEdit() {
                 <>
                   <EditorialCanvas
                     key={activePage.id}
-                    template={template}
                     page={activePage}
                     sampleData={sampleData}
                     customCss={customCss || undefined}
-                    onPaletteDrop={editorV2 ? (item, point) => {
-                      if (isOverlayPayload(item)) addOverlayToActivePage(positionOverlayAtPoint(item.overlay, point));
-                      else addBlockToActivePage(item as Block);
-                    } : undefined}
+                    enablePaletteDrop={editorV2}
                     enableTextToolbar={editorV2}
-                    selectedOverlayId={selectedOverlayId}
-                    multiOverlayIds={multiOverlayIds}
-                    onSelectOverlay={(oid, additive) => {
-                      if (!oid) { setSelectedOverlayId(null); clearMultiSelect(); return; }
-                      if (additive) {
-                        toggleMultiOverlay(oid);
-                        setSelectedOverlayId(oid);
-                        setSelectedBlockId(null);
-                      } else {
-                        setSelectedOverlayId(oid);
-                        setSelectedBlockId(null);
-                        clearMultiSelect();
-                      }
-                    }}
-                    onUpdateOverlay={updateOverlay}
-                    onUpdateOverlaysBulk={(patches) => {
-                      if (!activePage) return;
-                      const map = new Map(patches.map((p) => [p.id, p.patch]));
-                      updatePage({
-                        ...activePage,
-                        blocks: activePage.blocks.map((b) => ({
-                          ...b,
-                          overlays: b.overlays.map((o) =>
-                            map.has(o.id) ? ({ ...o, ...map.get(o.id) } as Overlay) : o,
-                          ),
-                        })),
-                      });
-                    }}
-                    onDeleteOverlay={deleteOverlay}
-                    onDuplicateOverlay={duplicateOverlay}
-                    onSelectBlock={(bid) => { setSelectedBlockId(bid); }}
                     commentAnchors={activePageCommentAnchors}
                   />
                   <CanvasChrome
@@ -2389,23 +2112,7 @@ export default function TemplateBuilderEdit() {
 
 
             <div className="border-l bg-background min-h-0">
-              <PropertiesInspector
-                template={template}
-                templateId={id}
-                page={activePage}
-                overlay={selectedOverlay}
-                selectedBlockId={selectedBlockId}
-                onUpdateOverlay={updateOverlay}
-                onDeleteOverlay={deleteOverlay}
-                onDuplicateOverlay={duplicateOverlay}
-                onUpdatePage={updatePage}
-                onSelectBlock={setSelectedBlockId}
-                onUpdateBlock={updateBlock}
-                onDeleteBlock={deleteBlock}
-                onDuplicateBlock={duplicateBlock}
-                onMoveBlock={moveBlock}
-                onUpdateTemplate={setTemplate}
-              />
+              <PropertiesInspector templateId={id} />
             </div>
 
           </div>
@@ -2415,37 +2122,10 @@ export default function TemplateBuilderEdit() {
         <TabsContent value="outline" className="flex-1 min-h-0 mt-2">
           <div className="grid h-full" style={{ gridTemplateColumns: '320px minmax(0, 1fr)' }}>
             <div className="border-r bg-background min-h-0">
-              <OutlinePanel
-                template={template}
-                activePageId={activePageId}
-                selectedBlockId={selectedBlockId}
-                selectedOverlayId={selectedOverlayId}
-                onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
-                onSelectBlock={(bid) => { setSelectedBlockId(bid); if (bid) setSelectedOverlayId(null); }}
-                onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
-                onChangeTemplate={setTemplate}
-                multiOverlayIds={multiOverlayIds}
-                onToggleMultiOverlay={toggleMultiOverlay}
-              />
+              <OutlinePanel />
             </div>
             <div className="border-l bg-background min-h-0">
-              <PropertiesInspector
-                template={template}
-                templateId={id}
-                page={activePage}
-                overlay={selectedOverlay}
-                selectedBlockId={selectedBlockId}
-                onUpdateOverlay={updateOverlay}
-                onDeleteOverlay={deleteOverlay}
-                onDuplicateOverlay={duplicateOverlay}
-                onUpdatePage={updatePage}
-                onSelectBlock={setSelectedBlockId}
-                onUpdateBlock={updateBlock}
-                onDeleteBlock={deleteBlock}
-                onDuplicateBlock={duplicateBlock}
-                onMoveBlock={moveBlock}
-                onUpdateTemplate={setTemplate}
-              />
+              <PropertiesInspector templateId={id} />
             </div>
           </div>
         </TabsContent>
@@ -2993,45 +2673,51 @@ export default function TemplateBuilderEdit() {
           )}
         </TabsContent>
       </Tabs>
-      <ExportPipelineDialog
-        open={showExportDialog}
-        onOpenChange={setShowExportDialog}
-        template={template}
-        templateId={id}
-        templateName={name}
-        sampleData={sampleData}
-        customCss={customCss || undefined}
-        onTemplateChange={(next) => setTemplate(next)}
-      />
-      {id && (
-        <ShareLinksDialog
-          open={showShareDialog}
-          onOpenChange={setShowShareDialog}
-          templateId={id}
+      <MountOnFirstOpen open={showExportDialog}>
+        <ExportPipelineDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
           template={template}
-          currentUserId={user?.id ?? null}
+          templateId={id}
+          templateName={name}
+          sampleData={sampleData}
+          customCss={customCss || undefined}
+          onTemplateChange={(next) => setTemplate(next)}
         />
+      </MountOnFirstOpen>
+      {id && (
+        <MountOnFirstOpen open={showShareDialog}>
+          <ShareLinksDialog
+            open={showShareDialog}
+            onOpenChange={setShowShareDialog}
+            templateId={id}
+            template={template}
+            currentUserId={user?.id ?? null}
+          />
+        </MountOnFirstOpen>
       )}
       {id && (
-        <VersionHistoryDialog
-          open={showHistoryDialog}
-          onOpenChange={setShowHistoryDialog}
-          templateId={id}
-          currentTemplate={template}
-          onLoad={(schema) => setTemplate(schema)}
-          onRestore={(v) => {
-            const restored = parseTemplate(v.schema);
-            setTemplate(restored);
-            update.mutate(
-              { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
-              { onSuccess: () => {
-                toast.success(`Restored v${v.version}`);
-                setShowHistoryDialog(false);
-                logTemplateEvent({ templateId: id, eventType: 'edit_restore', metadata: { fromVersion: v.version } });
-              } },
-            );
-          }}
-        />
+        <MountOnFirstOpen open={showHistoryDialog}>
+          <VersionHistoryDialog
+            open={showHistoryDialog}
+            onOpenChange={setShowHistoryDialog}
+            templateId={id}
+            currentTemplate={template}
+            onLoad={(schema) => setTemplate(schema)}
+            onRestore={(v) => {
+              const restored = parseTemplate(v.schema);
+              setTemplate(restored);
+              update.mutate(
+                { id, snapshot: true, note: `Restored from v${v.version}`, patch: { schema: restored } as any },
+                { onSuccess: () => {
+                  toast.success(`Restored v${v.version}`);
+                  setShowHistoryDialog(false);
+                  logTemplateEvent({ templateId: id, eventType: 'edit_restore', metadata: { fromVersion: v.version } });
+                } },
+              );
+            }}
+          />
+        </MountOnFirstOpen>
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       {showV2Hint && (
@@ -3067,573 +2753,238 @@ export default function TemplateBuilderEdit() {
         onSaveAsBranch={handleDraftSaveAsBranch}
       />
       {id && (
-        <TemplateAnalyticsDialog
-          open={showAnalyticsDialog}
-          onOpenChange={setShowAnalyticsDialog}
-          templateId={id}
-          template={template}
-        />
+        <MountOnFirstOpen open={showAnalyticsDialog}>
+          <TemplateAnalyticsDialog
+            open={showAnalyticsDialog}
+            onOpenChange={setShowAnalyticsDialog}
+            templateId={id}
+            template={template}
+          />
+        </MountOnFirstOpen>
       )}
-      <TemplateAIAuthorDialog
-        open={showAIAuthor}
-        onOpenChange={setShowAIAuthor}
-        template={template}
-        activePage={activePage ?? null}
-        tier={tier}
-        onAddPage={(page, rationale) => {
-          setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
-          setActivePageId(page.id);
-          toast.success(`Added "${page.name}"${rationale ? '' : ''}`);
-        }}
-        onUpdateOverlayText={(pageId, overlayId, nextText) => {
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => p.id !== pageId ? p : ({
-              ...p,
-              blocks: p.blocks.map((b) => ({
-                ...b,
-                overlays: b.overlays.map((o) => o.id === overlayId && o.type === 'text' ? ({ ...o, content: nextText } as any) : o),
+      <MountOnFirstOpen open={showAIAuthor}>
+        <TemplateAIAuthorDialog
+          open={showAIAuthor}
+          onOpenChange={setShowAIAuthor}
+          template={template}
+          activePage={activePage ?? null}
+          tier={tier}
+          onAddPage={(page, rationale) => {
+            setTemplate((t) => ({ ...t, pages: [...t.pages, page] }));
+            setActivePageId(page.id);
+            toast.success(`Added "${page.name}"${rationale ? '' : ''}`);
+          }}
+          onUpdateOverlayText={(pageId, overlayId, nextText) => {
+            setTemplate((t) => ({
+              ...t,
+              pages: t.pages.map((p) => p.id !== pageId ? p : ({
+                ...p,
+                blocks: p.blocks.map((b) => ({
+                  ...b,
+                  overlays: b.overlays.map((o) => o.id === overlayId && o.type === 'text' ? ({ ...o, content: nextText } as any) : o),
+                })),
               })),
-            })),
-          }));
-        }}
-        onApplyName={(n, d) => { setName(n); setDescription(d); }}
-      />
-      <TemplateDesignAgentPanel
-        open={showDesignAgent}
-        onOpenChange={setShowDesignAgent}
-        template={template}
-        setTemplate={(next) => setTemplate(next)}
-        activePageId={activePageId}
-        selectedBlockId={selectedBlockId}
-        selectedOverlayId={selectedOverlayId}
-        templateId={id}
-        sampleData={sampleData}
-      />
-      <PageTemplatesMarketplaceDialog
-        open={showPageMarket}
-        onOpenChange={setShowPageMarket}
-        onInsert={(presetId) => { addStarterPage(presetId); }}
-      />
-      <PreviewQADialog
-        open={showPreviewQA}
-        onOpenChange={setShowPreviewQA}
-        template={template}
-        sampleData={sampleData}
-        customCss={customCss || undefined}
-      />
-      <SpellCheckDialog
-        open={showSpellCheck}
-        onOpenChange={setShowSpellCheck}
-        template={template}
-        onJumpTo={(pageId, blockId, overlayId) => {
-          setActivePageId(pageId);
-          setSelectedBlockId(blockId);
-          setSelectedOverlayId(overlayId);
-        }}
-      />
-      <ComponentLibraryDialog
-        open={showComponentLib}
-        onOpenChange={setShowComponentLib}
-        template={template}
-        activePage={activePage ?? null}
-        selectedBlockId={selectedBlockId}
-        onInsertBlocks={(blocks) => {
-          if (!activePage) return;
-          setTemplate((t) => ({
-            ...t,
-            pages: t.pages.map((p) => p.id !== activePage.id ? p : ({ ...p, blocks: [...p.blocks, ...blocks] })),
-          }));
-        }}
-      />
+            }));
+          }}
+          onApplyName={(n, d) => { setName(n); setDescription(d); }}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={showDesignAgent}>
+        <TemplateDesignAgentPanel
+          open={showDesignAgent}
+          onOpenChange={setShowDesignAgent}
+          template={template}
+          setTemplate={(next) => setTemplate(next)}
+          activePageId={activePageId}
+          selectedBlockId={selectedBlockId}
+          selectedOverlayId={selectedOverlayId}
+          templateId={id}
+          sampleData={sampleData}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={showPageMarket}>
+        <PageTemplatesMarketplaceDialog
+          open={showPageMarket}
+          onOpenChange={setShowPageMarket}
+          onInsert={(presetId) => { addStarterPage(presetId); }}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={showPreviewQA}>
+        <PreviewQADialog
+          open={showPreviewQA}
+          onOpenChange={setShowPreviewQA}
+          template={template}
+          sampleData={sampleData}
+          customCss={customCss || undefined}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={showSpellCheck}>
+        <SpellCheckDialog
+          open={showSpellCheck}
+          onOpenChange={setShowSpellCheck}
+          template={template}
+          onJumpTo={(pageId, blockId, overlayId) => {
+            setActivePageId(pageId);
+            setSelectedBlockId(blockId);
+            setSelectedOverlayId(overlayId);
+          }}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={showComponentLib}>
+        <ComponentLibraryDialog
+          open={showComponentLib}
+          onOpenChange={setShowComponentLib}
+          template={template}
+          activePage={activePage ?? null}
+          selectedBlockId={selectedBlockId}
+          onInsertBlocks={(blocks) => {
+            if (!activePage) return;
+            setTemplate((t) => ({
+              ...t,
+              pages: t.pages.map((p) => p.id !== activePage.id ? p : ({ ...p, blocks: [...p.blocks, ...blocks] })),
+            }));
+          }}
+        />
+      </MountOnFirstOpen>
       {id && showComments && (
         <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] bg-card border-l shadow-lg flex flex-col">
-          <TemplateCommentsPanel
-            templateId={id}
-            activePage={activePage}
-            selectedBlock={selectedBlock}
-            selectedOverlay={selectedOverlay}
-            selectedOverlayBlockId={selectedOverlayBlockId}
-            currentUserId={user?.id ?? null}
-            currentUserName={user?.username ?? null}
-            onRowsChange={(rows) => setCommentRows(rows)}
-            onJumpToAnchor={({ pageId, blockId, overlayId }) => {
-              if (pageId) setActivePageId(pageId);
-              if (overlayId) { setSelectedOverlayId(overlayId); setSelectedBlockId(null); }
-              else if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
-            }}
-          />
+          <MountOnFirstOpen open={showComments}>
+            <TemplateCommentsPanel
+              templateId={id}
+              activePage={activePage}
+              selectedBlock={selectedBlock}
+              selectedOverlay={selectedOverlay}
+              selectedOverlayBlockId={selectedOverlayBlockId}
+              currentUserId={user?.id ?? null}
+              currentUserName={user?.username ?? null}
+              onRowsChange={(rows) => setCommentRows(rows)}
+              onJumpToAnchor={({ pageId, blockId, overlayId }) => {
+                if (pageId) setActivePageId(pageId);
+                if (overlayId) { setSelectedOverlayId(overlayId); setSelectedBlockId(null); }
+                else if (blockId) { setSelectedBlockId(blockId); setSelectedOverlayId(null); }
+              }}
+            />
+          </MountOnFirstOpen>
         </aside>
       )}
       {id && (
-        <ResyncPdfDialog
-          open={showResync}
-          onOpenChange={setShowResync}
-          templateId={id}
-          templateName={name}
-          onResynced={() => {
-            // Force the editor to reload the freshly resynced template.
-            window.location.reload();
+        <MountOnFirstOpen open={showResync}>
+          <ResyncPdfDialog
+            open={showResync}
+            onOpenChange={setShowResync}
+            templateId={id}
+            templateName={name}
+            onResynced={() => {
+              // Force the editor to reload the freshly resynced template.
+              window.location.reload();
+            }}
+          />
+        </MountOnFirstOpen>
+      )}
+      {id && (
+        <MountOnFirstOpen open={showReferenceImport}>
+          <ReferenceImportDialog
+            open={showReferenceImport}
+            onOpenChange={setShowReferenceImport}
+            templateId={id}
+            templateName={name}
+            schema={template}
+            activePageId={activePageId}
+            sampleData={sampleData}
+            onResynced={() => window.location.reload()}
+            onApplySchema={(s) => { setTemplate(s); toast.success('Reconstruction applied — review and Save'); }}
+          />
+        </MountOnFirstOpen>
+      )}
+      <MountOnFirstOpen open={showDiff}>
+        <PdfFidelityDiffDialog
+          open={showDiff}
+          onOpenChange={setShowDiff}
+          template={template}
+          sampleData={sampleData}
+          customCss={customCss || undefined}
+          onApplySchema={(s) => { setTemplate(s); toast.success('Fidelity repair applied — review and Save'); }}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={findReplaceOpen}>
+        <FindReplaceDialog
+          open={findReplaceOpen}
+          onOpenChange={setFindReplaceOpen}
+          template={template}
+          activePageId={activePageId}
+          onApplyTemplate={(next) => setTemplate(next)}
+          onGoTo={(pid, oid) => {
+            setActivePageId(pid);
+            setSelectedOverlayId(oid);
+            setSelectedBlockId(null);
+            clearMultiSelect();
           }}
         />
-      )}
-      {id && (
-        <ReferenceImportDialog
-          open={showReferenceImport}
-          onOpenChange={setShowReferenceImport}
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={assetLibraryOpen}>
+        <AssetLibraryDialog
+          open={assetLibraryOpen}
+          onOpenChange={setAssetLibraryOpen}
           templateId={id}
-          templateName={name}
-          schema={template}
-          activePageId={activePageId}
-          sampleData={sampleData}
-          onResynced={() => window.location.reload()}
-          onApplySchema={(s) => { setTemplate(s); toast.success('Reconstruction applied — review and Save'); }}
+          pageWidth={activePage?.size.width ?? 595}
+          pageHeight={activePage?.size.height ?? 842}
+          onInsert={insertImageFromLibrary}
         />
-      )}
-      <PdfFidelityDiffDialog
-        open={showDiff}
-        onOpenChange={setShowDiff}
-        template={template}
-        sampleData={sampleData}
-        customCss={customCss || undefined}
-        onApplySchema={(s) => { setTemplate(s); toast.success('Fidelity repair applied — review and Save'); }}
-      />
-      <FindReplaceDialog
-        open={findReplaceOpen}
-        onOpenChange={setFindReplaceOpen}
-        template={template}
-        activePageId={activePageId}
-        onApplyTemplate={(next) => setTemplate(next)}
-        onGoTo={(pid, oid) => {
-          setActivePageId(pid);
-          setSelectedOverlayId(oid);
-          setSelectedBlockId(null);
-          clearMultiSelect();
-        }}
-      />
-      <AssetLibraryDialog
-        open={assetLibraryOpen}
-        onOpenChange={setAssetLibraryOpen}
-        templateId={id}
-        pageWidth={activePage?.size.width ?? 595}
-        pageHeight={activePage?.size.height ?? 842}
-        onInsert={insertImageFromLibrary}
-      />
-      <TextStylesDialog
-        open={textStylesOpen}
-        onOpenChange={setTextStylesOpen}
-        template={template}
-        onChange={(next) => setTemplate(next)}
-      />
-      <TableEditorDialog
-        open={tableEditorOpen}
-        onOpenChange={setTableEditorOpen}
-        overlay={selectedOverlay?.type === 'table' ? (selectedOverlay as any) : null}
-        onChange={(next) => {
-          if (!activePage) return;
-          updatePage(editorActions.updateOverlay(activePage, next as Overlay));
-        }}
-      />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={textStylesOpen}>
+        <TextStylesDialog
+          open={textStylesOpen}
+          onOpenChange={setTextStylesOpen}
+          template={template}
+          onChange={(next) => setTemplate(next)}
+        />
+      </MountOnFirstOpen>
+      <MountOnFirstOpen open={tableEditorOpen}>
+        <TableEditorDialog
+          open={tableEditorOpen}
+          onOpenChange={setTableEditorOpen}
+          overlay={selectedOverlay?.type === 'table' ? (selectedOverlay as any) : null}
+          onChange={(next) => {
+            if (!activePage) return;
+            updatePage(editorActions.updateOverlay(activePage, next as Overlay));
+          }}
+        />
+      </MountOnFirstOpen>
       {id && (
         <>
-          <TemplateBranchingDialog
-            open={showBranches}
-            onOpenChange={setShowBranches}
-            templateId={id}
-            templateName={name}
-            parentTemplateId={tplMeta?.parent_template_id ?? null}
-            isDraft={tplMeta?.is_draft ?? false}
-            onMerged={reloadTplMeta}
-          />
-          <TemplateApprovalDialog
-            open={showApproval}
-            onOpenChange={setShowApproval}
-            templateId={id}
-            templateName={name}
-            approvalStatus={tplMeta?.approval_status ?? null}
-            locked={tplMeta?.locked_for_review ?? false}
-            onChanged={reloadTplMeta}
-          />
-          <TemplateAuditLogDialog
-            open={showAudit}
-            onOpenChange={setShowAudit}
-            templateId={id}
-            templateName={name}
-          />
+          <MountOnFirstOpen open={showBranches}>
+            <TemplateBranchingDialog
+              open={showBranches}
+              onOpenChange={setShowBranches}
+              templateId={id}
+              templateName={name}
+              parentTemplateId={tplMeta?.parent_template_id ?? null}
+              isDraft={tplMeta?.is_draft ?? false}
+              onMerged={reloadTplMeta}
+            />
+          </MountOnFirstOpen>
+          <MountOnFirstOpen open={showApproval}>
+            <TemplateApprovalDialog
+              open={showApproval}
+              onOpenChange={setShowApproval}
+              templateId={id}
+              templateName={name}
+              approvalStatus={tplMeta?.approval_status ?? null}
+              locked={tplMeta?.locked_for_review ?? false}
+              onChanged={reloadTplMeta}
+            />
+          </MountOnFirstOpen>
+          <MountOnFirstOpen open={showAudit}>
+            <TemplateAuditLogDialog
+              open={showAudit}
+              onOpenChange={setShowAudit}
+              templateId={id}
+              templateName={name}
+            />
+          </MountOnFirstOpen>
         </>
       )}
     </div>
   );
 }
 
-// ─── Tokens editor ────────────────────────────────────────────────────────────
-function TokensEditor({
-  template,
-  onChange,
-}: {
-  template: ReportTemplate;
-  onChange: (tokens: ReportTemplate['tokens']) => void;
-}) {
-  const tokens = template.tokens;
-  const updateGroup = (
-    group: 'colors' | 'fonts' | 'spacing',
-    key: string,
-    value: string | number,
-  ) => {
-    const next = { ...tokens, [group]: { ...tokens[group], [key]: value } };
-    onChange(next);
-  };
-  const removeKey = (group: 'colors' | 'fonts' | 'spacing', key: string) => {
-    const copy = { ...tokens[group] } as Record<string, any>;
-    delete copy[key];
-    onChange({ ...tokens, [group]: copy });
-  };
-  const addKey = (group: 'colors' | 'fonts' | 'spacing') => {
-    const key = window.prompt(`New ${group} token key (e.g. "primary")`)?.trim();
-    if (!key) return;
-    const def = group === 'colors' ? '#000000' : group === 'fonts' ? 'Helvetica' : 0;
-    updateGroup(group, key, def as any);
-  };
-
-  // ── Import / export tokens (share brand themes between templates) ──────────
-  const fileRef = useRef<HTMLInputElement | null>(null);
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(tokens, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'brand-tokens.json';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success('Tokens exported');
-  };
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(tokens, null, 2));
-      toast.success('Tokens copied to clipboard');
-    } catch { toast.error('Copy failed'); }
-  };
-  const applyImport = (raw: unknown, mode: 'merge' | 'replace') => {
-    if (!raw || typeof raw !== 'object') {
-      toast.error('Invalid token JSON: expected an object');
-      return;
-    }
-    const incoming = raw as Partial<ReportTemplate['tokens']>;
-    const sanitised = {
-      colors: incoming.colors && typeof incoming.colors === 'object' ? incoming.colors : {},
-      fonts: incoming.fonts && typeof incoming.fonts === 'object' ? incoming.fonts : {},
-      spacing: incoming.spacing && typeof incoming.spacing === 'object' ? incoming.spacing : {},
-    };
-    if (mode === 'replace') {
-      onChange(sanitised as ReportTemplate['tokens']);
-    } else {
-      onChange({
-        colors: { ...tokens.colors, ...sanitised.colors },
-        fonts: { ...tokens.fonts, ...sanitised.fonts },
-        spacing: { ...tokens.spacing, ...sanitised.spacing },
-      });
-    }
-    const total =
-      Object.keys(sanitised.colors).length +
-      Object.keys(sanitised.fonts).length +
-      Object.keys(sanitised.spacing).length;
-    toast.success(`Imported ${total} token${total === 1 ? '' : 's'} (${mode})`);
-  };
-  const handleImportFile = (file: File) => {
-    const mode: 'merge' | 'replace' = window.confirm(
-      'Replace all existing tokens with the imported file?\n\nOK = Replace, Cancel = Merge (keep existing keys, overwrite matches).',
-    ) ? 'replace' : 'merge';
-    const reader = new FileReader();
-    reader.onload = () => {
-      try { applyImport(JSON.parse(String(reader.result)), mode); }
-      catch (e: any) { toast.error(`Import failed: ${e?.message ?? 'invalid JSON'}`); }
-    };
-    reader.readAsText(file);
-  };
-  const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      applyImport(JSON.parse(text), 'merge');
-    } catch (e: any) { toast.error(`Paste failed: ${e?.message ?? 'invalid JSON'}`); }
-  };
-
-  // ── Sync from current brand (BrandProvider / whitelabel_settings) ──────────
-  const brand = useBrand();
-  const handleSyncBrand = () => {
-    const themeCfg = brand?.settings?.themeConfig;
-    const primary = themeCfg?.primaryColor || brand?.settings?.primaryColor;
-    const accent = themeCfg?.accentColor || brand?.settings?.accentColor;
-    const incoming: Record<string, string> = {};
-    if (primary) incoming.primary = primary;
-    if (accent) incoming.accent = accent;
-    if (Object.keys(incoming).length === 0) {
-      toast.info('No brand colours configured to sync');
-      return;
-    }
-    onChange({ ...tokens, colors: { ...tokens.colors, ...incoming } });
-    toast.success(`Synced ${Object.keys(incoming).length} brand colour${Object.keys(incoming).length === 1 ? '' : 's'}`);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2 pb-3 border-b">
-        <Label className="text-xs text-muted-foreground mr-auto">
-          Share brand themes between templates by exporting / importing this token set.
-        </Label>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleImportFile(f);
-            e.target.value = '';
-          }}
-        />
-        <Button size="sm" variant="default" onClick={handleSyncBrand} title="Pull primary/accent from brand settings">
-          <Sparkles className="h-3.5 w-3.5 mr-1" /> Sync from brand
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-          <Upload className="h-3.5 w-3.5 mr-1" /> Import
-        </Button>
-        <Button size="sm" variant="outline" onClick={handlePaste} title="Import tokens from clipboard">
-          Paste
-        </Button>
-        <Button size="sm" variant="outline" onClick={handleCopy}>
-          <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
-        </Button>
-        <Button size="sm" variant="outline" onClick={handleExport}>
-          <Download className="h-3.5 w-3.5 mr-1" /> Export
-        </Button>
-      </div>
-      {(['colors', 'fonts', 'spacing'] as const).map((group) => {
-        const entries = Object.entries(tokens[group] || {});
-        return (
-          <section key={group}>
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">{group}</Label>
-              <Button size="sm" variant="ghost" onClick={() => addKey(group)}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
-              </Button>
-            </div>
-            {entries.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No {group} tokens.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {entries.map(([k, v]) => (
-                  <div key={k} className="flex items-center gap-2">
-                    <Input value={k} disabled className="w-32 h-8 text-xs font-mono" />
-                    {group === 'colors' ? (
-                      <div className="flex-1">
-                        <EnhancedColorPicker
-                          value={String(v)}
-                          onChange={(next) => updateGroup(group, k, next)}
-                          template={template}
-                          allowEmpty
-                        />
-                      </div>
-                    ) : group === 'spacing' ? (
-                      <Input
-                        type="number"
-                        value={Number(v)}
-                        onChange={(e) => updateGroup(group, k, Number(e.target.value))}
-                        className="h-8 text-xs"
-                      />
-                    ) : (
-                      <Input
-                        value={String(v)}
-                        onChange={(e) => updateGroup(group, k, e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeKey(group, k)} title="Remove">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        );
-      })}
-      <p className="text-[11px] text-muted-foreground">
-        Reference tokens in any block field via <code>token:primary</code>, <code>token:heading</code>, etc. Color values accept <code>#RRGGBB</code>, <code>#RRGGBBAA</code>, <code>rgb()</code>, <code>rgba()</code>, <code>hsl()</code>, and <code>token:name</code>.
-      </p>
-    </div>
-  );
-}
-
-// ─── Slots editor ─────────────────────────────────────────────────────────────
-// Reusable component slots (Header / Footer / etc). A slot is just a Block
-// definition stored on the template; pages reference it via a `slot` block
-// with props.slotKey matching the slot's key.
-function SlotsEditor({
-  template,
-  onChange,
-}: {
-  template: ReportTemplate;
-  onChange: (slots: Record<string, Block>) => void;
-}) {
-  const slots = template.slots ?? {};
-  const entries = Object.entries(slots);
-
-  const addSlot = () => {
-    const key = window.prompt('New slot key (e.g. "header", "footer")')?.trim();
-    if (!key) return;
-    if (slots[key]) { toast.error(`Slot "${key}" already exists`); return; }
-    const block: Block = {
-      id: crypto.randomUUID(),
-      type: 'footer',
-      props: { text: 'Edit this slot in the Slots tab', bg: 'token:bg', color: 'token:muted', align: 'center', height: 28 },
-      overlays: [],
-    };
-    onChange({ ...slots, [key]: block });
-    toast.success(`Slot "${key}" created`);
-  };
-
-  const renameSlot = (oldKey: string) => {
-    const newKey = window.prompt('Rename slot key', oldKey)?.trim();
-    if (!newKey || newKey === oldKey) return;
-    if (slots[newKey]) { toast.error(`Slot "${newKey}" already exists`); return; }
-    const next = { ...slots };
-    next[newKey] = next[oldKey];
-    delete next[oldKey];
-    onChange(next);
-  };
-
-  const removeSlot = (key: string) => {
-    if (!confirm(`Delete slot "${key}"? Pages referencing it will show a missing-slot warning.`)) return;
-    const next = { ...slots };
-    delete next[key];
-    onChange(next);
-  };
-
-  const setSlotType = (key: string, type: string) => {
-    onChange({ ...slots, [key]: { ...slots[key], type, props: BLOCK_DEFS[type]?.defaultProps() ?? {} } });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between border-b pb-3">
-        <div>
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reusable component slots</Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            Define a Header / Footer / etc. once, then drop a <code className="font-mono">slot</code> block on any page
-            with the matching key. Editing here updates every page that references it.
-          </p>
-        </div>
-        <Button size="sm" variant="default" onClick={addSlot}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> New slot
-        </Button>
-      </div>
-
-      {entries.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic text-center py-6">
-          No slots yet. Click "New slot" to create your first reusable component.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {entries.map(([key, block]) => (
-            <li key={key} className="border rounded-md p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{`{{slot:${key}}}`}</code>
-                <span className="text-[10px] text-muted-foreground">key:</span>
-                <code className="text-xs font-mono">{key}</code>
-                <div className="ml-auto flex items-center gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => renameSlot(key)}>Rename</Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeSlot(key)} title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-[10px] text-muted-foreground w-16">Block type</Label>
-                <select
-                  value={block.type}
-                  onChange={(e) => setSlotType(key, e.target.value)}
-                  className="h-8 text-xs border rounded px-2 bg-background flex-1"
-                >
-                  {Object.values(BLOCK_DEFS)
-                    .filter((d) => d.type !== 'free' && d.type !== 'slot')
-                    .map((d) => (
-                      <option key={d.type} value={d.type}>{d.label} ({d.type})</option>
-                    ))}
-                </select>
-              </div>
-              <Textarea
-                value={JSON.stringify(block.props, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const props = JSON.parse(e.target.value);
-                    onChange({ ...slots, [key]: { ...block, props } });
-                  } catch { /* keep typing */ }
-                }}
-                spellCheck={false}
-                className="font-mono text-[11px] h-32 resize-none"
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ─── Theme presets gallery ────────────────────────────────────────────────────
-function ThemePresetsGallery({
-  activeTokens,
-  onApply,
-}: {
-  activeTokens: ReportTemplate['tokens'];
-  onApply: (presetId: string) => void;
-}) {
-  // Identify the closest preset (matches by primary + bg colour)
-  const activeId = (() => {
-    const p = activeTokens.colors?.primary;
-    const b = activeTokens.colors?.bg;
-    return THEME_PRESETS.find((t) => t.tokens.colors.primary === p && t.tokens.colors.bg === b)?.id ?? null;
-  })();
-
-  return (
-    <section className="border-b pb-5">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Wand2 className="h-3.5 w-3.5" /> Theme presets
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            One-click brand and design-system identities (Material, Fluent, Bootstrap, Ant Design included). Applies colors, fonts, spacing, radii, shadows, and Google font faces on top of the existing token map.
-          </p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {THEME_PRESETS.map((p) => {
-          const isActive = p.id === activeId;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onApply(p.id)}
-              className={`text-left rounded-md border p-2.5 transition-colors hover:border-primary/60 ${
-                isActive ? 'border-primary ring-1 ring-primary' : 'border-border'
-              }`}
-              title={p.description}
-            >
-              <div className="flex gap-1 mb-2">
-                {p.swatch.map((c) => (
-                  <span key={c} className="h-5 flex-1 rounded-sm border border-border/40" style={{ background: c }} />
-                ))}
-              </div>
-              <div className="text-xs font-medium leading-tight">{p.label}</div>
-              <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{p.description}</div>
-              {isActive && (
-                <div className="mt-1.5 text-[9px] uppercase tracking-wider text-primary font-semibold">Active</div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}

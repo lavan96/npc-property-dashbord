@@ -40,8 +40,10 @@ export default function TemplateSharePreview() {
       });
   }, [token]);
 
-  const html = useMemo(() => {
-    if (!template) return '';
+  // Pure render pass — failures are returned as data and surfaced below.
+  // Never call setState here: this runs during render.
+  const rendered = useMemo<{ html: string; error: string | null }>(() => {
+    if (!template) return { html: '', error: null };
     try {
       const sample = (meta?.sample_data && typeof meta.sample_data === 'object')
         ? meta.sample_data
@@ -51,11 +53,9 @@ export default function TemplateSharePreview() {
         title: meta?.name || 'Template Preview',
         customCss: meta?.custom_css || undefined,
       });
-      return html;
+      return { html, error: null };
     } catch (e: any) {
-      setError(e?.message || 'Render failed');
-      setState('error');
-      return '';
+      return { html: '', error: e?.message || 'Render failed' };
     }
   }, [template, meta]);
 
@@ -69,12 +69,12 @@ export default function TemplateSharePreview() {
     );
   }
 
-  if (state === 'error') {
+  if (state === 'error' || rendered.error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
         <FileWarning className="h-12 w-12 text-destructive mb-4" />
         <h1 className="text-lg font-semibold">Cannot open share link</h1>
-        <p className="text-sm text-muted-foreground mt-1">{error}</p>
+        <p className="text-sm text-muted-foreground mt-1">{error ?? rendered.error}</p>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function TemplateSharePreview() {
       </header>
       <iframe
         title="Shared template"
-        srcDoc={html}
+        srcDoc={rendered.html}
         className="flex-1 w-full bg-white"
         style={{ minHeight: 'calc(100vh - 49px)' }}
       />

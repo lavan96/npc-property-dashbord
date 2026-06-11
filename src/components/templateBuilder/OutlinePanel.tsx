@@ -18,46 +18,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronRight, ChevronDown, FileText, Square, Type, ImageIcon, Save, Layers, Bookmark } from 'lucide-react';
-import type { ReportTemplate, Overlay } from '@/lib/reportTemplate/templateSchema';
+import type { Overlay } from '@/lib/reportTemplate/templateSchema';
+import { templateEditorActions, useEditorTemplate, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { toast } from 'sonner';
 
-interface Props {
-  template: ReportTemplate;
-  activePageId: string | null;
-  selectedBlockId: string | null;
-  selectedOverlayId: string | null;
-  onSelectPage: (pageId: string) => void;
-  onSelectBlock: (blockId: string | null) => void;
-  onSelectOverlay: (overlayId: string | null) => void;
-  onChangeTemplate: (next: ReportTemplate) => void;
-  multiOverlayIds?: Set<string>;
-  onToggleMultiOverlay?: (overlayId: string) => void;
-}
+// Template, selection, and mutators come straight from templateEditorStore
+// (slice subscriptions, rehaul Phase 2) — the panel takes no props.
+export function OutlinePanel() {
+  const template = useEditorTemplate();
+  const activePageId = useTemplateEditorStore((s) => s.activePageId);
+  const selectedBlockId = useTemplateEditorStore((s) => s.selectedBlockId);
+  const selectedOverlayId = useTemplateEditorStore((s) => s.selectedOverlayId);
+  const multiOverlayIds = useTemplateEditorStore((s) => s.multiOverlayIds);
+  const {
+    selectPage: onSelectPage,
+    selectBlockClearOverlay: onSelectBlock,
+    setSelectedOverlayId,
+    setSelectedBlockId,
+    setTemplate: onChangeTemplate,
+    toggleMultiOverlay: onToggleMultiOverlay,
+  } = templateEditorActions();
+  const onSelectOverlay = (overlayId: string | null) => {
+    setSelectedOverlayId(overlayId);
+    if (overlayId) setSelectedBlockId(null);
+  };
 
-export function OutlinePanel({
-  template,
-  activePageId,
-  selectedBlockId,
-  selectedOverlayId,
-  onSelectPage,
-  onSelectBlock,
-  onSelectOverlay,
-  onChangeTemplate,
-  multiOverlayIds,
-  onToggleMultiOverlay,
-}: Props) {
   const [openPages, setOpenPages] = useState<Set<string>>(new Set([activePageId ?? '']));
   const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
   const [newSelName, setNewSelName] = useState('');
 
   const togglePage = (id: string) => {
     const next = new Set(openPages);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id); else next.add(id);
     setOpenPages(next);
   };
   const toggleBlock = (id: string) => {
     const next = new Set(openBlocks);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id); else next.add(id);
     setOpenBlocks(next);
   };
 

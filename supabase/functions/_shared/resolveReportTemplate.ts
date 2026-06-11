@@ -1,15 +1,19 @@
 /**
- * Edge mirror of src/lib/reportTemplate/resolveTemplate.ts
- * KEEP IN SYNC.
- *
- * Resolves the most-specific active `report_templates` row for a given
- * report_type + variant + scope context. First match wins:
+ * Edge resolver for the most-specific active `report_templates` row for a
+ * given report_type + variant + scope context. Precedence (first wins):
  *   1. scope=user    + owner_user_id + variant match
  *   2. scope=agency  + agency_id     + variant match
  *   3. scope=global  + exact variant match
  *   4. scope=global  + variant IS NULL  (catch-all)
+ * Ties break by priority DESC, then updated_at DESC.
  *
- * Filtered by is_active=true, ordered by priority DESC, updated_at DESC.
+ * Phase 4: ranking now lives in the `resolve_report_template` SQL function
+ * (single source of truth — see migration 20260611120000). This module calls
+ * the RPC first and only falls back to the local JS ranking when the
+ * function is unavailable (pre-migration deployments).
+ *
+ * The JS fallback mirrors src/lib/reportTemplate/resolveTemplate.ts and is
+ * locked together by src/lib/reportTemplate/__tests__/resolveTemplateParity.spec.ts.
  *
  * Designed for use by edge generators (render-investment-report-pdf,
  * fork-investment-report, …) so they can route through the Template Builder
@@ -34,28 +38,21 @@ export interface ResolvedTemplate {
 
 const ORDER = ['user', 'agency', 'global-variant', 'global-any'] as const;
 
-export async function resolveReportTemplate(
-  supabase: SupabaseClient,
+/**
+ * Pure ranking over already-fetched rows. Exported for the client/edge
+ * parity test; must stay behaviourally identical to the SQL function and
+ * the client fallback.
+ */
+export function rankReportTemplates(
+  rows: any[],
   opts: ResolveOpts,
-): Promise<ResolvedTemplate | null> {
-  const reportType = (opts.reportType || '').toLowerCase();
-  if (!reportType) return null;
-
-  const { data, error } = await supabase
-    .from('report_templates')
-    .select('*')
-    .eq('report_type', reportType)
-    .eq('is_active', true)
-    .order('updated_at', { ascending: false })
-    .limit(200);
-  if (error || !data?.length) return null;
-
+): { source: ResolvedTemplate['source']; row: any } | null {
   const variant = opts.variant ?? null;
   const agencyId = opts.agencyId ?? null;
   const userId = opts.userId ?? null;
 
   const candidates: Array<{ source: ResolvedTemplate['source']; row: any }> = [];
-  for (const r of data as any[]) {
+  for (const r of rows) {
     const rScope = r.scope ?? 'global';
     const rVariant = r.variant ?? null;
     const variantOk = rVariant === null || rVariant === variant;
@@ -84,7 +81,50 @@ export async function resolveReportTemplate(
     );
   });
 
-  const winner = candidates[0];
-  const engine = (winner.row.engine ?? 'jspdf') as 'jspdf' | 'weasyprint';
-  return { template: winner.row, engine, source: winner.source };
+  return candidates[0];
+}
+
+function toResolved(row: any, source: ResolvedTemplate['source']): ResolvedTemplate {
+  const engine = (row.engine ?? 'jspdf') as 'jspdf' | 'weasyprint';
+  return { template: row, engine, source };
+}
+
+export async function resolveReportTemplate(
+  supabase: SupabaseClient,
+  opts: ResolveOpts,
+): Promise<ResolvedTemplate | null> {
+  const reportType = (opts.reportType || '').toLowerCase();
+  if (!reportType) return null;
+
+  // 1) SQL ranking (authoritative). Empty result = authoritative no-match.
+  try {
+    const { data, error } = await supabase.rpc('resolve_report_template', {
+      p_report_type: reportType,
+      p_variant: opts.variant ?? null,
+      p_agency_id: opts.agencyId ?? null,
+      p_user_id: opts.userId ?? null,
+    });
+    if (!error) {
+      const hit = Array.isArray(data) ? data[0] : data;
+      if (!hit?.template) return null;
+      return toResolved(hit.template, hit.source as ResolvedTemplate['source']);
+    }
+    console.warn('[resolveReportTemplate] RPC unavailable, using JS fallback:', error.message);
+  } catch (e) {
+    console.warn('[resolveReportTemplate] RPC threw, using JS fallback:', e);
+  }
+
+  // 2) Fallback: pull a superset of active templates and rank locally.
+  const { data, error } = await supabase
+    .from('report_templates')
+    .select('*')
+    .eq('report_type', reportType)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(200);
+  if (error || !data?.length) return null;
+
+  const winner = rankReportTemplates(data as any[], opts);
+  if (!winner) return null;
+  return toResolved(winner.row, winner.source);
 }

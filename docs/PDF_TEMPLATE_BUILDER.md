@@ -10,14 +10,15 @@ A visual editor for all PDF reports. The same `ReportTemplate` JSON drives the l
 4. Bind any field to live data with `{{property.address}}` or to a brand token with `token:primary`.
 5. Use ⌘Z / ⌘⇧Z to undo/redo, ⌘C / ⌘V / ⌘D to copy/paste/duplicate the selected block.
 
-## V2 editor — Canva-style drag-and-drop (behind a flag)
+## V2 editor — Canva-style drag-and-drop (default ON)
 
-A drag-and-drop editing experience layered on the existing canvas, gated by the
-`templateEditorV2` flag so the classic editor (V1) stays the default until rollout.
+A drag-and-drop editing experience layered on the existing canvas. Since rehaul
+Phase 8, V2 is the **default** editor; the `templateEditorV2` flag remains as a
+one-flip kill-switch back to the classic (V1) experience.
 
-**Enable it:** Advanced menu → **Enable drag & drop (beta)**, or `?editorV2=1`, or set
-`VITE_TEMPLATE_EDITOR_V2=1` at build time. **Kill-switch / rollback** is a single flag:
-`?editorV2=0`, the Advanced toggle, or unsetting the env.
+**Disable it (rollback):** `?editorV2=0` per visit, the Advanced menu toggle
+(localStorage `template-editor-v2='0'`) per browser, or `VITE_TEMPLATE_EDITOR_V2=0`
+at build time. `?editorV2=1` / `=1` values force it on regardless of other settings.
 
 What V2 adds (all renderer-safe — it only authors the same `ReportTemplate` JSON):
 
@@ -37,9 +38,9 @@ snapshot test (`goldenRender.spec.ts`) runs in CI and fails if renderer output c
 and V2 produce byte-identical output for the same template. CI (`.github/workflows/ci.yml`)
 runs the Template Builder test suite + `npm run build` on every PR.
 
-**Rollout (Phase 8):** after live validation, flip the default by setting
-`VITE_TEMPLATE_EDITOR_V2=1` (or changing the `resolveEditorV2Flag` default in
-`editorV2Flag.ts`), keeping the kill-switch for one release. Full design + phase history:
+**Rollout (Phase 8 — done):** the default was flipped ON in
+`resolveEditorV2Flag` (`editorV2Flag.ts`); the kill-switch above remains available.
+Full design + phase history:
 [`TEMPLATE_BUILDER_REHAUL_PLAN.md`](./TEMPLATE_BUILDER_REHAUL_PLAN.md).
 
 ## Bindings
@@ -136,9 +137,37 @@ Templates locked for review cannot be edited, snapshotted, or deleted until unlo
 
 The editor is tuned to stay responsive on large, multi-page templates:
 
-- **Deferred analysis** — binding/print-safety/renderer linting runs against a `useDeferredValue` copy of the template and sample data, so typing and dragging are never blocked by validation. Issue panels show an "Updating…" state while analysis catches up; activation/export pre-flight always runs against the live state.
-- **Content-keyed previews** — both the live HTML preview and the editorial canvas render their iframe `srcDoc` through a render that is memoized on a *content* signature (`makePreviewKey` / `makeCanvasRenderKey` in `previewCache.ts`), not object identity. Editing one page no longer re-renders the others.
+- **Deferred analysis with per-page payloads** — active-page binding/lint checks run synchronously, while full-document analysis is debounced (180ms) into a Web Worker with an idle-callback fallback (`useTemplateAnalysis`), so typing and dragging are never blocked by validation. Requests use the `templateAnalysisProtocol` wire format (rehaul Phase 3): only pages whose content changed are shipped to the worker — unchanged pages travel as tiny stubs and the worker reassembles the document from its cache, so a one-page edit clones one page across the thread boundary instead of the whole template. Issue panels show an "Updating…" state while analysis catches up; activation/export pre-flight always runs against the live state.
+- **Content-keyed previews, O(changed) keys** — both the live HTML preview and the editorial canvas render their iframe `srcDoc` through a render that is memoized on a *content* signature (`makePreviewKey` / `makeCanvasRenderKey` in `previewCache.ts`), not object identity. Since rehaul Phase 3, serialization behind these keys is identity-memoized (`stableJson`, WeakMap): the store's immutable updates structurally share unchanged pages, so an edit re-serializes only the changed page/field instead of `JSON.stringify`-ing the whole document on every keystroke.
+- **Per-page section cache for the document preview** — in "All pages" scope, `renderTemplateToHtml` accepts a caller-owned `pageCache`: page sections whose content and cross-page context (index, page count, ids/names, TOC, data, tokens) are unchanged are stitched from cache, so editing one page re-renders only that page's section. Pinned byte-identical to uncached renders by `htmlRendererPageCache.spec.ts`.
 - **Overlay drags don't reload the canvas** — the canvas hides overlays and draws its own handles, so its render key deliberately excludes overlay geometry. Moving/resizing/adding/removing an overlay updates only the React handle layer; the page-background iframe is not rebuilt on every pointer tick.
+- **PDF tab renders on demand** — the WeasyPrint round-trip is expensive, so the "Final PDF" tab renders once on open and then only when explicitly refreshed (`useWeasyPdfPreview`). Edits flip a cheap content-key `stale` flag that surfaces an "Out of date" badge + "Render latest" button; the live HTML preview is the realtime surface.
+- **Memoized panels + slice subscriptions** — `PagesPanel`, `EditorialCanvas`, `PropertiesInspector`, `OutlinePanel`, and `LiveHtmlPreview` subscribe to store slices (`templateEditorStore`) instead of receiving the document through props, and every mutator is a permanently identity-stable store action. Unrelated editor state (dialogs, presence, save status) never re-renders the heavy surfaces, and `PagesPanel` only re-renders when `template.pages` itself changes.
+- **Lazy dialogs** — the ~20 heavy dialogs (Export pipeline, AI author, Design agent, Reference import, version history, …) are `React.lazy` behind `MountOnFirstOpen`: they're code-split out of the editor chunk and mount only on first open (then stay mounted so their internal state survives close/re-open).
+
+### Editor state (rehaul Phase 2)
+
+The document state machine lives in **`src/stores/templateEditorStore.ts`** (zustand):
+
+- **State**: `template`, `activePageId`, `selectedBlockId`, `selectedOverlayId`, `multiOverlayIds`. Undo/redo stacks and the governance flag are non-reactive closure state (history bookkeeping never triggers renders).
+- **Actions**: `setTemplate` (records patch-based history, capped at 80 entries, rejected with a toast while governance-locked), `loadTemplate` (silent hydration — clears history), `undo`/`redo`, every page/block/overlay mutator, and all selection handlers. Actions read fresh state via `get()`, so they are **permanently identity-stable** — no `useCallback` dependency churn, no stale-closure bugs.
+- **Slice hooks**: `useEditorTemplate`, `useEditorPages`, `useActivePage`, `useSelectedOverlay` return reference-stable selections; `templateEditorActions()` hands out the stable action bundle without subscribing.
+- **Single instance**: one editor session at a time; `resetTemplateEditor()` runs on editor mount (via `useTemplateHistory`).
+- Contracts are pinned by `src/stores/__tests__/templateEditorStore.spec.ts`.
+
+`TemplateBuilderEdit` composes façade hooks from `src/hooks/templateBuilder/`:
+
+- **`useTemplateHistory`** — store façade: template + undo/redo + governance guard (starts a fresh session on mount).
+- **`useTemplateMutators`** — store façade: the subset of mutators the page itself still calls; panels pull theirs straight from the store.
+- **`useEditorKeyboardShortcuts`** — single window keydown listener dispatching via the latest-ref pattern (no stale closures, no re-binding).
+- **`useWeasyPdfPreview`** — render-on-demand production-parity PDF preview through the shared `weasyRenderClient` (same client the Export menu uses): renders once on tab open, then flags `stale` on edits and re-renders only on explicit refresh.
+
+## Output quality hardening (rehaul Phase 4)
+
+- **Per-format export capability warnings** — `exportCapability.ts` analyzes what each lossy export will actually drop: DOCX carries text overlays only, PPTX carries text/image/shape overlays, and both omit structured block bodies; legacy jsPDF renders HTML-first blocks as placeholders and unregistered blocks not at all. `ExportPipelineDialog` shows the per-format findings above the download buttons and itemizes them in a format-specific confirm before DOCX/PPTX downloads (errors block, warnings prompt). Pinned by `exportCapability.spec.ts`.
+- **Resolver ranking lives in SQL** — `resolve_report_template(p_report_type, p_variant, p_agency_id, p_user_id)` (migration `20260611120000`) ranks active `report_templates` rows by scope precedence (user > agency > global-variant > global-any), `priority DESC`, `updated_at DESC` and returns the single winner + source label. Both the client resolver (`src/lib/reportTemplate/resolveTemplate.ts`) and the edge resolver (`supabase/functions/_shared/resolveReportTemplate.ts`) call the RPC first; an empty RPC result is an authoritative no-match. The previous JS ranking survives only as a fallback for pre-migration deployments (and unlike the SQL path, it ranks at most the 200 most recently updated rows).
+- **Client/edge resolver parity is mechanical** — the old "KEEP IN SYNC" comments are replaced by `resolveTemplateParity.spec.ts`, which runs both `rankReportTemplates` implementations over a fixed scenario matrix plus 250 seeded randomized row sets, and exercises the full resolve flows (RPC-first, authoritative no-match, fallback parity).
+- **Schema versions are validated, not clobbered** — server-side writes no longer stamp `schema.version = 1` blindly. `supabase/functions/_shared/templateSchemaVersion.ts` validates the declared version and applies explicit stepwise migrations up to the supported version; missing/null versions are treated as legacy v1, while future or malformed versions are rejected (`manage-templates` returns a 422 with code `unsupported_schema_version`). Pinned by `templateSchemaVersion.spec.ts`.
 
 ## Architecture
 

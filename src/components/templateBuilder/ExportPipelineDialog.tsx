@@ -19,6 +19,7 @@ import { downloadTemplateAsPptx } from '@/lib/reportTemplate/pptxExporter';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { preloadImages } from '@/lib/reportTemplate/imagePreloader';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
+import { analyzeExportCapability, type ExportCapabilityReport } from '@/lib/reportTemplate/exportCapability';
 import type { ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -145,6 +146,21 @@ export function ExportPipelineDialog({
   const rendererErrorCount = rendererIssues.filter((issue) => issue.severity === 'error').length;
   const rendererNoteCount = rendererIssues.length - rendererErrorCount;
 
+  // Per-format capability reports (rehaul Phase 4): what each structured
+  // export will actually lose, surfaced before the download starts.
+  const docxCapability = useMemo(
+    () => analyzeExportCapability(buildTemplateForExport(), 'docx'),
+    [buildTemplateForExport],
+  );
+  const pptxCapability = useMemo(
+    () => analyzeExportCapability(buildTemplateForExport(), 'pptx'),
+    [buildTemplateForExport],
+  );
+  const capabilityReports = useMemo(
+    () => [docxCapability, pptxCapability].filter((report) => report.issues.length > 0),
+    [docxCapability, pptxCapability],
+  );
+
   const confirmRendererPreflight = (actionLabel: string): boolean => {
     if (rendererErrorCount > 0) {
       toast.error(`Resolve ${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'} before ${actionLabel}.`);
@@ -153,6 +169,22 @@ export function ExportPipelineDialog({
     if (rendererNoteCount > 0) {
       return window.confirm(
         `This export has ${rendererNoteCount} renderer compatibility note${rendererNoteCount === 1 ? '' : 's'} (for example legacy jsPDF placeholders). Production HTML/WeasyPrint output is still supported. Continue to ${actionLabel}?`,
+      );
+    }
+    return true;
+  };
+
+  /** Format-specific preflight: blocks on errors, itemizes warnings. */
+  const confirmCapabilityPreflight = (report: ExportCapabilityReport, actionLabel: string): boolean => {
+    if (report.errorCount > 0) {
+      toast.error(report.issues.filter((i) => i.severity === 'error').map((i) => i.message).join('\n'));
+      return false;
+    }
+    if (report.issues.length > 0) {
+      return window.confirm(
+        `Before you ${actionLabel}:\n\n` +
+        report.issues.map((i) => `• ${i.message}`).join('\n\n') +
+        '\n\nContinue?',
       );
     }
     return true;
@@ -175,7 +207,7 @@ export function ExportPipelineDialog({
   };
 
   const handleDownloadDocx = async () => {
-    if (!confirmRendererPreflight('download DOCX')) return;
+    if (!confirmCapabilityPreflight(docxCapability, 'download DOCX')) return;
     const id = toast.loading('Building DOCX…');
     try {
       await downloadTemplateAsDocx(buildTemplateForExport(), `${templateName || 'template'}.docx`, {
@@ -187,7 +219,7 @@ export function ExportPipelineDialog({
   };
 
   const handleDownloadPptx = async () => {
-    if (!confirmRendererPreflight('download PPTX')) return;
+    if (!confirmCapabilityPreflight(pptxCapability, 'download PPTX')) return;
     const id = toast.loading('Building PPTX…');
     try {
       await downloadTemplateAsPptx(buildTemplateForExport(), `${templateName || 'template'}.pptx`, {
@@ -467,6 +499,20 @@ export function ExportPipelineDialog({
             </section>
           </div>
         </ScrollArea>
+
+        {capabilityReports.length > 0 && (
+          <div className="px-6 pt-3 border-t space-y-1.5">
+            {capabilityReports.map((report) => (
+              <div key={report.format} className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                <FileWarning className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                <div className="min-w-0">
+                  <span className="font-medium uppercase text-foreground mr-1">{report.format}</span>
+                  {report.issues.map((issue) => issue.message).join(' ')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <DialogFooter className="px-6 pb-6 pt-3 border-t flex-wrap gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>

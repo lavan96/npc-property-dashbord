@@ -13,6 +13,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { analyzeReferenceImage, integrateBriefTokens, synthesisSystemAddendum, validateBriefSynthesis, type DesignBrief } from '../_shared/designBrief.ts';
 import { callClaudeReconstruct } from '../_shared/claudeReconstruct.ts';
+import { validateAndMigrateTemplateSchemaVersion } from '../_shared/templateSchemaVersion.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
@@ -49,7 +50,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 function normaliseSchemaForClient(schema: any): any {
   const s = JSON.parse(JSON.stringify(schema || {}));
-  s.version = 1;
+  // Phase 4: validate + migrate explicitly instead of stamping version=1.
+  validateAndMigrateTemplateSchemaVersion(s);
   s.tokens = s.tokens && typeof s.tokens === 'object' ? s.tokens : { colors: {}, fonts: {}, spacing: {} };
   s.tokens.colors = s.tokens.colors && typeof s.tokens.colors === 'object' ? s.tokens.colors : {};
   s.tokens.fonts = s.tokens.fonts && typeof s.tokens.fonts === 'object' ? s.tokens.fonts : {};
