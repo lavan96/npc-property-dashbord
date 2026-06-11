@@ -915,6 +915,28 @@ export default function TemplateBuilderEdit() {
       })),
     });
   };
+  /** Merge the multi-selected TEXT overlays into one (import cleanup). */
+  const bulkMergeText = () => {
+    if (!activePage || multiOverlayIds.size < 2) return;
+    const { page: merged, mergedId } = editorActions.mergeTextOverlays(activePage, [...multiOverlayIds]);
+    if (!mergedId) { toast.info('Select at least two unlocked text overlays to merge.'); return; }
+    updatePage(merged);
+    clearMultiSelect();
+    setSelectedOverlayId(mergedId);
+    toast.success('Merged text overlays into one block.');
+  };
+
+  const canMergeText = (() => {
+    if (!activePage || multiOverlayIds.size < 2) return false;
+    let textCount = 0;
+    for (const b of activePage.blocks) {
+      for (const o of b.overlays) {
+        if (multiOverlayIds.has(o.id) && o.type === 'text' && !o.locked && !o.hidden) textCount++;
+      }
+    }
+    return textCount >= 2;
+  })();
+
   const bulkDeleteOverlays = () => {
     if (!activePage || multiOverlayIds.size === 0) return;
     const n = multiOverlayIds.size;
@@ -2364,6 +2386,8 @@ export default function TemplateBuilderEdit() {
                     onCopyStyle={bulkCopyStyleFromFirst}
                     onPasteStyle={bulkPasteStyle}
                     hasStyleClipboard={hasStyleClipboard}
+                    onMergeText={bulkMergeText}
+                    canMergeText={canMergeText}
                   />
                   <AlignDistributeBar
                     count={multiOverlayIds.size}

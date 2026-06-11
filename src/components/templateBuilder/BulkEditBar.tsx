@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Type, Palette, Trash2, AlignLeft, AlignCenter, AlignRight, X, Layers, Copy as CopyIcon,
+  Type, Palette, Trash2, AlignLeft, AlignCenter, AlignRight, X, Layers, Copy as CopyIcon, Combine,
 } from 'lucide-react';
 
 interface Props {
@@ -25,6 +25,9 @@ interface Props {
   onCopyStyle: () => void;
   onPasteStyle: () => void;
   hasStyleClipboard: boolean;
+  /** Merge the selected text overlays into one (import cleanup). */
+  onMergeText?: () => void;
+  canMergeText?: boolean;
 }
 
 const FONT_FAMILIES = [
@@ -39,6 +42,7 @@ const FONT_FAMILIES = [
 export function BulkEditBar({
   count, onClear, onDelete, onAlign, onSetColor, onSetFontSize,
   onSetFontFamily, onSetOpacity, onCopyStyle, onPasteStyle, hasStyleClipboard,
+  onMergeText, canMergeText,
 }: Props) {
   if (count < 2) return null;
   return (
@@ -57,6 +61,19 @@ export function BulkEditBar({
       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAlign('right')} title="Align right">
         <AlignRight className="h-3.5 w-3.5" />
       </Button>
+
+      {onMergeText && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onMergeText}
+          disabled={!canMergeText}
+          title="Merge selected text overlays into one block"
+        >
+          <Combine className="h-3.5 w-3.5" />
+        </Button>
+      )}
 
       <span className="w-px h-4 bg-border mx-1" />
 

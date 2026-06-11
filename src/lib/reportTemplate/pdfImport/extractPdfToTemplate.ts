@@ -568,6 +568,7 @@ export async function extractPdfToTemplate(
                 fill: spec.fill,
                 strokeWidth: 0,
                 borderRadius: 0,
+                confidence: 0.85,
               } as Overlay);
               vectorCount++;
               fillObs.push({ color: spec.averageColor, area: spec.width * spec.height });
@@ -591,6 +592,7 @@ export async function extractPdfToTemplate(
                 viewBox: v.viewBox,
                 preserveAspectRatio: 'xMidYMid meet',
                 paths: v.paths,
+                confidence: 0.9,
               } as Overlay);
               vectorCount++;
               const fills = (v.paths ?? []).filter((p: any) => p.fill && p.fill !== 'none');
@@ -631,6 +633,7 @@ export async function extractPdfToTemplate(
                 opacity: 1,
                 src: up.url,
                 fit: 'fill',
+                confidence: 0.9,
               } as Overlay);
               imagesFound++;
             }
@@ -717,6 +720,7 @@ export async function extractPdfToTemplate(
             align: spec.align,
             lineHeight: spec.lineHeight,
             letterSpacing: 0,
+            confidence: 0.97,
             ...(spec.runs ? { runs: spec.runs } : {}),
           } as Overlay);
           textBlocks++;
@@ -809,6 +813,10 @@ export async function extractPdfToTemplate(
             const ww = ((bbox.x1 ?? 0) - (bbox.x0 ?? 0)) * ratio;
             const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
             const fontSize = Math.max(8, hh * 0.85);
+            // Tesseract reports per-word confidence (0-100).
+            const wordConfidence = Number.isFinite(Number(w.confidence))
+              ? Math.max(0, Math.min(1, Number(w.confidence) / 100))
+              : 0.6;
             ocrTextParts.push(w.text);
             // Sample the word's actual ink colour from the raster instead of
             // hard-coding near-black for every recognised word.
@@ -841,6 +849,8 @@ export async function extractPdfToTemplate(
               align: 'left',
               lineHeight: 1.2,
               letterSpacing: 0,
+              confidence: wordConfidence,
+              ...(wordConfidence < 0.5 ? { locked: true } : {}),
             } as Overlay);
             textObs.push({ color: inkColor, fontFamily: 'Helvetica', fontSize, chars: String(w.text).length });
             textBlocks++;
