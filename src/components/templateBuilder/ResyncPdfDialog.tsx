@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { describeAuthError } from '@/lib/secureInvoke';
+import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
 import {
   extractPdfToTemplate,
   type FidelityMode,
@@ -62,19 +64,19 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
     setBusy(true);
     setProgress({ phase: 'reading' });
     try {
-      const res = await extractPdfToTemplate(file, {
-        mode,
+      const outcome = await runReferenceImport({ kind: 'pdf', file, mode }, {
         templateName,
+        templateId,
         userId: user?.id ?? null,
-        targetTemplateId: templateId,
         onProgress: setProgress,
       });
-      setResult(res);
+      if (outcome.type !== 'persisted') throw new Error('Unexpected import outcome.');
+      setResult(outcome.result);
       setRecordedDecision(null);
-      toast.success(`Re-synced ${res.pageCount} page${res.pageCount === 1 ? '' : 's'}. Previous version snapshotted.`);
-      onResynced?.(res);
+      toast.success(`Re-synced ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'}. Previous version snapshotted.`);
+      onResynced?.(outcome.result);
     } catch (err) {
-      toast.error(`Re-sync failed: ${(err as Error).message}`);
+      toast.error(describeAuthError((err as Error).message) ?? `Re-sync failed: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }

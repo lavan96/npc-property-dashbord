@@ -175,6 +175,35 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
     in‑function (`_shared/auth.verifyAuth`) with `verify_jwt = false` pinned in `config.toml`; upstream
     render‑service credential failures map to 502 `render_source_auth_misconfigured` (never a
     user‑facing 401); all template‑builder clients invoke through `invokeSecureFunction`.
+- **R9 — Consolidated import system + background/icon fidelity (2026‑06):** ✅ **done.**
+  - **One orchestrator** (`ingestion/importOrchestrator.ts`): every import source (PDF · image ·
+    code/ZIP · live URL · Figma `.make`/`.fig`) routes through `runReferenceImport` with one
+    classifier, shared staging/validation/error handling, the render‑service local fallback, and
+    catalog font loading. `ReferenceImportDialog`, `ImportPdfDialog`, and `ResyncPdfDialog` are now
+    UI‑only shells over it.
+  - **Page background colours:** full‑bleed solid paints (shading or single‑path vector rects)
+    promote to `page.background.color` (the giant locked rectangle disappears); otherwise the page
+    edge is sampled from a low‑DPI raster (`dominantEdgeColor`) so pages whose background lives in
+    flattened art import tinted instead of stark white. Sampled/promoted colours feed token
+    derivation.
+  - **Icon pack:** curated 24×24 stroke icon vocabulary (`iconPack.ts`, ~49 glyphs; Deno twin in
+    `_shared/iconPack.ts`). The design agent places icons BY NAME (`{ type:'vector', icon:'map-pin',
+    color }`) and the edge function expands them into schema‑valid vector overlays — pictograms in
+    references are reproduced from the pack instead of being approximated with crude shapes,
+    drawn as text, or dropped; the model never emits raw path data.
+- **R10 — Advisor‑plan gap closure (2026‑06):** ✅ **done.**
+  - **Image "Place as background"** import tier: the safest‑MVP mode — the image becomes the active
+    page's locked background at its true aspect ratio, zero AI (`buildImageBackgroundSchema`).
+  - **Per‑element extraction confidence:** overlays carry `confidence` (0–1) from every pipeline
+    (pdf.js text 0.97 · vectors/images 0.9 · shading 0.85 · OCR = Tesseract's own per‑word score);
+    elements below 0.5 arrive **locked**; the Layers panel shows amber/red confidence badges.
+  - **Merge selected text boxes** (`editorActions.mergeTextOverlays` + BulkEditBar button): fragments
+    join in reading order (space same‑line, newline across lines), union bbox, mixed styles preserved
+    as rich‑text runs, lowest confidence kept.
+  - **Phase 4 semantic placeholder detection** (`ingestion/placeholderDetect.ts`): imported text is
+    scanned for NPC report values (address · suburb · weekly rent · purchase price · yield ·
+    [Client Name]) against the canonical sample‑data paths; the import dialog offers one‑click
+    "Convert to dynamic bindings" so an imported design becomes a reusable report template.
 - **R8 — Exact-source fidelity (2026‑06, corpus: designed PDF cover · single-file TSX · Figma .make):** ✅ **done.**
   - **PDF shading fills** (`pdfImport/shadingExtract.ts`): axial/radial shadings (the gradient page
     backgrounds of designed covers, previously dropped → blank white pages) reconstruct as editable

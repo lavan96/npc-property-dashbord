@@ -12,7 +12,7 @@
 import type { DomBoxTree, DomTextBox, DomImageBox } from './codeGrounding';
 
 export interface FigmaColor { r: number; g: number; b: number; a?: number }
-export interface FigmaFill { type: string; color?: FigmaColor; opacity?: number }
+export interface FigmaFill { type: string; color?: FigmaColor; opacity?: number; visible?: boolean }
 export interface FigmaNode {
   type: string;
   name?: string;

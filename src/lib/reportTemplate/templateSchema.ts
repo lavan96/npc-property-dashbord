@@ -162,6 +162,32 @@ export const OverlayEffectsSchema = z.object({
 }).optional();
 export type OverlayEffects = z.infer<typeof OverlayEffectsSchema>;
 
+
+// ─── Report cascade anchors ───────────────────────────────────────────────────
+// Semantic mapping between a report-structure section/field and the visual
+// landing point in the PDF design. These are optional and additive: existing
+// templates without anchors parse exactly as before, while new templates can
+// explain how generated report output cascades into pages/blocks/overlays.
+export const ReportAnchorSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['section', 'field', 'repeat', 'slot', 'diagnostic']).default('field'),
+  structureTemplateId: z.string().optional(),
+  sectionId: z.string().optional(),
+  fieldPath: z.string().optional(),
+  bindingPath: z.string().optional(),
+  label: z.string().optional(),
+  required: z.boolean().optional(),
+  qaStatus: z.enum(['unreviewed', 'approved', 'needs_changes', 'rejected']).optional(),
+  qaOwner: z.string().optional(),
+  qaNote: z.string().optional(),
+  qaReviewedAt: z.string().optional(),
+  renderMode: z.enum(['replace', 'append', 'overlay', 'repeat', 'conditional']).optional(),
+  visibility: z.enum(['designer', 'debug_pdf', 'hidden_final']).optional(),
+}).refine((a) => Boolean(a.sectionId || a.fieldPath || a.bindingPath), {
+  message: 'Anchor must reference a sectionId, fieldPath, or bindingPath',
+});
+export type ReportAnchor = z.infer<typeof ReportAnchorSchema>;
+
 // ─── Overlays (free-floating shapes inside a page) ────────────────────────────
 const BaseOverlay = z.object({
   id: z.string(),
@@ -174,12 +200,17 @@ const BaseOverlay = z.object({
   conditional: z.string().optional(),  // e.g. "tier === 'compass'"
   link: LinkSchema,
   bookmark: BookmarkSchema,
+  anchors: z.array(ReportAnchorSchema).optional(),
   // Layout & Structure (Sections 1+2) — editor-only flags, additive/optional
   locked: z.boolean().optional(),         // selectable but immovable
   hidden: z.boolean().optional(),         // skip render + hide in canvas
   groupId: z.string().optional(),         // overlays sharing groupId move together
   zIndex: z.number().int().optional(),    // overlay stacking within its block
   name: z.string().optional(),            // designer label (Layers panel)
+  // Import extraction confidence (0–1). Set by the import pipelines; low-
+  // confidence elements arrive locked so unreliable extractions cannot be
+  // nudged accidentally — unlock from the Layers panel to edit anyway.
+  confidence: z.number().min(0).max(1).optional(),
   effects: OverlayEffectsSchema,
   constraints: z.object({                 // pinning for responsive paper-size changes
     left: z.boolean().optional(),
@@ -431,6 +462,7 @@ export const BlockSchema = z.object({
   // Phase 8 — block-level interactions / outline
   link: LinkSchema,
   bookmark: BookmarkSchema,
+  anchors: z.array(ReportAnchorSchema).optional(),
 });
 
 

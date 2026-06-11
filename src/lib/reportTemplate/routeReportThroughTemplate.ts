@@ -55,6 +55,7 @@ export async function routeReportThroughTemplate(
         data: bindingData,
         customCss: tplRow.custom_css ?? undefined,
         title: `${tplRow.name} — ${routing.title ?? ''}`.trim(),
+        cascadeMetadata: true,
       });
 
       const safeLabel = String(routing.fileLabel ?? routing.title ?? routing.reportType ?? 'report')

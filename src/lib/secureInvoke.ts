@@ -39,6 +39,33 @@ const COMMAND_CENTRE_MESSAGING_FUNCTIONS = new Set([
   'finance-portal-messages',
 ]);
 
+// Template-builder endpoints read the session token from the request BODY
+// (shared extractSessionToken), so the custom `x-session-token` header is
+// redundant for them — and a custom header forces a CORS preflight that hard-
+// fails ("Failed to fetch") against any function deployment whose CORS
+// allowlist predates the header. Token-in-body keeps the preflight to plain
+// authorization/apikey/content-type, which every deployment accepts.
+const BODY_TOKEN_FUNCTIONS = new Set([
+  'template-import-pdf',
+  'template-design-agent',
+  'render-source',
+  'import-from-url',
+]);
+
+/** Human-readable guidance for auth failures from secured edge functions. */
+export function describeAuthError(message: string | undefined | null): string | null {
+  const m = String(message ?? '').toLowerCase();
+  if (
+    m.includes('authentication required')
+    || m.includes('invalid or expired session')
+    || m.includes('session not found')
+    || m === 'unauthorized'
+  ) {
+    return 'Your sign-in session has expired. Sign out, sign back in, and retry the import.';
+  }
+  return null;
+}
+
 export interface InvokeResult<T = any> {
   data: T | null;
   error: { message: string } | null;
@@ -79,10 +106,20 @@ export async function invokeSecureFunction<T = any>(
 ): Promise<InvokeResult<T>> {
   try {
     const sessionToken = getSessionToken();
-    const accessToken = getAccessToken();
+    let accessToken = getAccessToken();
+    // Native Supabase Auth fallback: users signed in through supabase-js keep
+    // their JWT in the client's own storage, not under our custom keys — for
+    // them the old code silently sent the ANON key and secured functions 401'd.
+    if (!accessToken) {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        accessToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+      } catch { /* native session lookup is best-effort */ }
+    }
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
-    
+
     const isCommandCentreMessagingFunction = COMMAND_CENTRE_MESSAGING_FUNCTIONS.has(functionName);
+    const tokenInBodyOnly = BODY_TOKEN_FUNCTIONS.has(functionName);
     const requestBody = body 
       ? {
         ...body,
@@ -104,7 +141,7 @@ export async function invokeSecureFunction<T = any>(
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${bearerToken}`,
-        ...(sessionToken ? {
+        ...(sessionToken && !tokenInBodyOnly ? {
           'x-session-token': sessionToken,
           ...(isCommandCentreMessagingFunction ? { 'x-command-centre-session-token': sessionToken } : {}),
         } : {}),

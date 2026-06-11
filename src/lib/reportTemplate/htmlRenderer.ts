@@ -47,6 +47,10 @@ export interface HtmlRenderOptions {
    * The renderer prunes stale entries automatically.
    */
   pageCache?: Map<string, string>;
+  /** Emit non-visual data-cascade-* attributes on anchored blocks/overlays. */
+  cascadeMetadata?: boolean;
+  /** Render visible designer proof tags near anchored blocks/overlays. */
+  cascadeDebug?: boolean;
 }
 
 export interface HtmlRenderResult {
@@ -123,6 +127,11 @@ body { font-family: var(--font-body, 'Helvetica', sans-serif); color: var(--colo
 img { max-width: 100%; }
 table { border-collapse: collapse; }
 h1, h2, h3, h4 { font-family: var(--font-heading, var(--font-body, 'Helvetica', sans-serif)); }
+.tpl-cascade-index th, .tpl-cascade-index td { border:0.5pt solid #cbd5e1; padding:4pt 5pt; vertical-align:top; overflow-wrap:anywhere; }
+.tpl-cascade-index th { text-align:left; font-weight:700; }
+.tpl-cascade-index tbody tr:nth-child(even) { background:#eef2f7; }
+.tpl-cascade-index span { color:#64748b; font-size:6.5pt; }
+.tpl-cascade-index code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:6.8pt; }
 `;
 }
 
@@ -293,6 +302,33 @@ function bookmarkAttrs(bm: any, ctxBase: ResolveContext): string {
 }
 
 
+// Overlay/block stacking comes from the shared paintOrder module
+// (sortOverlaysForPaint / sortBlocksForPaint imports) — never re-implement.
+
+function cascadeAttrs(node: { anchors?: any[] }, ctxBase: ResolveContext): string {
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length || !((ctxBase as any)._cascadeMetadata || (ctxBase as any)._cascadeDebug || (ctxBase as any)._editorMode)) return '';
+  const primary = anchors[0] ?? {};
+  return [
+    `data-cascade-anchor-id="${escapeHtml(String(primary.id || ''))}"`,
+    primary.kind ? `data-cascade-kind="${escapeHtml(String(primary.kind))}"` : '',
+    primary.sectionId ? `data-cascade-section-id="${escapeHtml(String(primary.sectionId))}"` : '',
+    primary.fieldPath ? `data-cascade-field-path="${escapeHtml(String(primary.fieldPath))}"` : '',
+    primary.bindingPath ? `data-cascade-binding-path="${escapeHtml(String(primary.bindingPath))}"` : '',
+    primary.qaStatus ? `data-cascade-qa-status="${escapeHtml(String(primary.qaStatus))}"` : '',
+    primary.qaOwner ? `data-cascade-qa-owner="${escapeHtml(String(primary.qaOwner))}"` : '',
+    `data-cascade-anchor-count="${anchors.length}"`,
+  ].filter(Boolean).join(' ');
+}
+
+function cascadeDebugBadge(node: { anchors?: any[] }, ctxBase: ResolveContext): string {
+  if (!(ctxBase as any)._cascadeDebug) return '';
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length) return '';
+  const label = anchors[0]?.label || anchors[0]?.fieldPath || anchors[0]?.sectionId || anchors[0]?.id || 'cascade anchor';
+  return `<span style="position:absolute;left:0;top:-12pt;z-index:999999;background:#0f172a;color:#f8fafc;border:0.5pt solid #fbbf24;border-radius:3pt;padding:1pt 3pt;font:7pt ui-monospace,monospace;line-height:1;white-space:nowrap;max-width:260pt;overflow:hidden;text-overflow:ellipsis;">§ ${escapeHtml(String(label))}</span>`;
+}
+
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
@@ -327,6 +363,11 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   // If we have a bookmark, attach the id to a wrapping span so anchor jumps work
   if (bmAttrs) {
     content = `<span${bmAttrs}>${content}</span>`;
+  }
+  const cAttrs = cascadeAttrs(block, ctxBase);
+  const cBadge = cascadeDebugBadge(block, ctxBase);
+  if (cAttrs || cBadge) {
+    content = `<span ${cAttrs} style="display:contents">${cBadge}${content}</span>`;
   }
   let out = wrap(content);
   if (editorMode && block.id) {
@@ -424,6 +465,100 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
   const dataAttrs = editorMode ? ` data-page-id="${escapeHtml(String(page.id))}" data-page-index="${pageIndex}"` : '';
   return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}"${dataAttrs} style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
+interface CascadeIndexEntry {
+  pageIndex: number;
+  pageName: string;
+  blockId: string;
+  blockName?: string;
+  blockType?: string;
+  overlayId?: string;
+  overlayType?: string;
+  anchor: any;
+}
+
+function collectCascadeIndexEntries(pages: Page[], ctxBase: ResolveContext): CascadeIndexEntry[] {
+  const entries: CascadeIndexEntry[] = [];
+  pages.forEach((page, pageIndex) => {
+    if (!evalConditional(page.conditional, ctxBase)) return;
+    for (const block of page.blocks) {
+      if (block.hidden) continue;
+      if (!evalConditional(block.conditional, ctxBase)) continue;
+      if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
+      for (const anchor of (((block as any).anchors ?? []) as any[])) {
+        entries.push({
+          pageIndex,
+          pageName: page.name,
+          blockId: block.id,
+          blockName: block.name,
+          blockType: block.type,
+          anchor,
+        });
+      }
+      for (const overlay of block.overlays ?? []) {
+        if ((overlay as any).hidden) continue;
+        if (!evalConditional((overlay as any).conditional, ctxBase)) continue;
+        for (const anchor of ((((overlay as any).anchors ?? []) as any[]))) {
+          entries.push({
+            pageIndex,
+            pageName: page.name,
+            blockId: block.id,
+            blockName: block.name,
+            blockType: block.type,
+            overlayId: overlay.id,
+            overlayType: overlay.type,
+            anchor,
+          });
+        }
+      }
+    }
+  });
+  return entries;
+}
+
+function renderCascadeDebugIndexPage(template: ReportTemplate, pages: Page[], ctxBase: ResolveContext): string {
+  const entries = collectCascadeIndexEntries(pages, ctxBase);
+  if (!entries.length) return '';
+  const firstPage = pages[0];
+  const width = firstPage?.size?.width ?? 595;
+  const height = firstPage?.size?.height ?? 842;
+  const rows = entries.map((entry, index) => {
+    const label = entry.anchor?.label || entry.anchor?.fieldPath || entry.anchor?.sectionId || entry.anchor?.id || 'Cascade anchor';
+    const target = entry.overlayId
+      ? `block ${entry.blockId} / overlay ${entry.overlayId}`
+      : `block ${entry.blockId}`;
+    const path = entry.anchor?.fieldPath || entry.anchor?.bindingPath || entry.anchor?.sectionId || '';
+    const qa = [entry.anchor?.qaStatus || 'unreviewed', entry.anchor?.qaOwner].filter(Boolean).join(' · ');
+    return `<tr>
+      <td>${index + 1}</td>
+      <td>Page ${entry.pageIndex + 1}<br/><span>${escapeHtml(entry.pageName || '')}</span></td>
+      <td>${escapeHtml(String(label))}<br/><span>${escapeHtml(String(entry.anchor?.kind || 'field'))}</span></td>
+      <td><code>${escapeHtml(String(path))}</code></td>
+      <td>${escapeHtml(target)}<br/><span>${escapeHtml(entry.overlayType || entry.blockType || '')}</span></td>
+      <td>${escapeHtml(qa)}${entry.anchor?.qaNote ? `<br/><span>${escapeHtml(String(entry.anchor.qaNote))}</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+  return `<section class="tpl-page tpl-cascade-index" style="width:${width}pt;height:${height}pt;padding:28pt;background:#f8fafc;color:#0f172a;overflow:hidden;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18pt;margin-bottom:14pt;border-bottom:1pt solid #cbd5e1;padding-bottom:10pt;">
+      <div>
+        <div style="font:700 18pt var(--font-heading, var(--font-body, Helvetica, sans-serif));">Cascade anchor index</div>
+        <div style="margin-top:3pt;font:9pt var(--font-body, Helvetica, sans-serif);color:#475569;">Debug-only page generated when Cascade tags are enabled.</div>
+      </div>
+      <div style="text-align:right;font:8pt ui-monospace, SFMono-Regular, Menlo, monospace;color:#475569;">
+        ${entries.length} anchor${entries.length === 1 ? '' : 's'}<br/>${escapeHtml(String((template as any).meta?.title || 'Template preview'))}
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font:7.5pt var(--font-body, Helvetica, sans-serif);table-layout:fixed;">
+      <thead>
+        <tr style="background:#0f172a;color:#f8fafc;">
+          <th style="width:24pt;">#</th><th style="width:72pt;">Page</th><th style="width:128pt;">Anchor</th><th>Section / field / binding</th><th style="width:125pt;">Target</th><th style="width:110pt;">QA</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </section>`;
+}
+
+
 
 /** Compile a template + data into a print-ready HTML document. */
 export function renderTemplateToHtml(
@@ -465,6 +600,8 @@ export function renderTemplateToHtml(
         stableJson(options.data ?? {}),
         stableJson(options.tokenOverrides ?? null),
         String(!!options.editorMode),
+        String(!!options.cascadeMetadata),
+        String(!!options.cascadeDebug),
         String(visiblePages.length),
         visiblePages.map((p) => `${p.id}\u0000${p.name}`).join('\u0001'),
         JSON.stringify(tocEntries),
@@ -494,10 +631,14 @@ export function renderTemplateToHtml(
       tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
     };
+    (pageCtx as any)._cascadeMetadata = !!options.cascadeMetadata;
+    (pageCtx as any)._cascadeDebug = !!options.cascadeDebug;
+    (pageCtx as any)._editorMode = !!options.editorMode;
     const rendered = renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
     if (pageCache) pageCache.set(cacheKey, rendered);
     return rendered;
   }).join('\n');
+  const cascadeDebugIndexHtml = options.cascadeDebug ? renderCascadeDebugIndexPage(template, visiblePages, ctxBase) : '';
 
   // Prune entries that no longer correspond to a live page/context so the
   // caller-owned cache cannot grow unboundedly across edits.
@@ -514,6 +655,7 @@ export function renderTemplateToHtml(
 [data-block-id] > * { cursor: pointer; }
 [data-block-id].__tpl-hover { outline: 1.5pt dashed hsl(45 80% 50% / 0.7); outline-offset: 2pt; }
 [data-block-id].__tpl-selected { outline: 2pt solid hsl(45 95% 50%); outline-offset: 2pt; box-shadow: 0 0 0 4pt hsl(45 95% 50% / 0.18); }
+[data-cascade-anchor-id] { outline: 1pt dashed hsl(217 91% 60% / 0.55); outline-offset: 1pt; }
 ` : '';
 
   const css = [
@@ -588,6 +730,7 @@ ${metaTags}
 </head>
 <body>
 ${pageHtml}
+${cascadeDebugIndexHtml}
 ${editorRuntime}
 </body>
 </html>`;

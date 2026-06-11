@@ -23,7 +23,7 @@ import {
   type SourceBoundsExpectation,
   type SourceTextExpectation,
 } from '@/lib/reportTemplate/ingestion/fidelity';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { resolveFontFamily } from './fontResolver';
 import { spansToTextOverlays, type RawSpan } from './textLayout';
 import {
@@ -37,7 +37,7 @@ import {
 import { collectColorSamples, nearestColor, type TextColorCommand, type ColorSample } from './textColor';
 import { imageRectFromCtm } from './imageExtract';
 import { buildEmbeddedFontFace, type EmbeddedFontResult } from './fontFaceBuilder';
-import { deriveTokensFromExtraction, pickInkColor, type TextObservation, type FillObservation } from './tokenDerivation';
+import { deriveTokensFromExtraction, pickInkColor, dominantEdgeColor, isNearWhite, type TextObservation, type FillObservation } from './tokenDerivation';
 import { parseShadingIR, shadingToOverlaySpec, pathPointsToPageBBox, type ShadingOverlaySpec } from './shadingExtract';
 import { applyAlphaToColor } from '@/lib/reportTemplate/cssColor';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
@@ -93,8 +93,8 @@ async function invokeImport(body: any) {
   // function now verifies it (supabase.functions.invoke only carries the anon
   // key for this app, which the secured function rejects).
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 120000 });
-  if (error) throw new Error(error.message || 'template-import-pdf failed');
-  if (data?.error) throw new Error(data.error);
+  if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
+  if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
   return data;
 }
 
@@ -568,6 +568,7 @@ export async function extractPdfToTemplate(
                 fill: spec.fill,
                 strokeWidth: 0,
                 borderRadius: 0,
+                confidence: 0.85,
               } as Overlay);
               vectorCount++;
               fillObs.push({ color: spec.averageColor, area: spec.width * spec.height });
@@ -591,6 +592,7 @@ export async function extractPdfToTemplate(
                 viewBox: v.viewBox,
                 preserveAspectRatio: 'xMidYMid meet',
                 paths: v.paths,
+                confidence: 0.9,
               } as Overlay);
               vectorCount++;
               const fills = (v.paths ?? []).filter((p: any) => p.fill && p.fill !== 'none');
@@ -631,6 +633,7 @@ export async function extractPdfToTemplate(
                 opacity: 1,
                 src: up.url,
                 fit: 'fill',
+                confidence: 0.9,
               } as Overlay);
               imagesFound++;
             }
@@ -717,6 +720,7 @@ export async function extractPdfToTemplate(
             align: spec.align,
             lineHeight: spec.lineHeight,
             letterSpacing: 0,
+            confidence: 0.97,
             ...(spec.runs ? { runs: spec.runs } : {}),
           } as Overlay);
           textBlocks++;
@@ -809,6 +813,10 @@ export async function extractPdfToTemplate(
             const ww = ((bbox.x1 ?? 0) - (bbox.x0 ?? 0)) * ratio;
             const hh = ((bbox.y1 ?? 0) - (bbox.y0 ?? 0)) * ratio;
             const fontSize = Math.max(8, hh * 0.85);
+            // Tesseract reports per-word confidence (0-100).
+            const wordConfidence = Number.isFinite(Number(w.confidence))
+              ? Math.max(0, Math.min(1, Number(w.confidence) / 100))
+              : 0.6;
             ocrTextParts.push(w.text);
             // Sample the word's actual ink colour from the raster instead of
             // hard-coding near-black for every recognised word.
@@ -841,6 +849,8 @@ export async function extractPdfToTemplate(
               align: 'left',
               lineHeight: 1.2,
               letterSpacing: 0,
+              confidence: wordConfidence,
+              ...(wordConfidence < 0.5 ? { locked: true } : {}),
             } as Overlay);
             textObs.push({ color: inkColor, fontFamily: 'Helvetica', fontSize, chars: String(w.text).length });
             textBlocks++;
@@ -859,6 +869,63 @@ export async function extractPdfToTemplate(
         }
       }
 
+      // ── Page background colour ───────────────────────────────────────────
+      // 1) Promote a full-bleed SOLID paint (shading/vector rect that covers
+      //    the page) to page.background.color — the editor then treats it as a
+      //    real page background instead of a giant locked rectangle, and new
+      //    elements inherit sensible contrast.
+      // 2) Otherwise sample the page-edge pixels from a raster (reusing the
+      //    full raster when one exists, else a cheap 0.2× render) so pages
+      //    whose background comes from flattened art still import tinted
+      //    rather than stark white.
+      let backgroundColor: string | undefined;
+      if (mode !== 'pixel') {
+        const pageArea = pageWidth * pageHeight;
+        const isFullBleed = (o: any) =>
+          (Number(o.width) * Number(o.height)) >= pageArea * 0.92
+          && Number(o.x) <= pageWidth * 0.04 && Number(o.y) <= pageHeight * 0.04;
+        for (let oi = 0; oi < overlays.length; oi++) {
+          const o: any = overlays[oi];
+          if (o.hidden) continue;
+          if (o.type === 'shape' && isFullBleed(o) && typeof o.fill === 'string' && o.fill && !/gradient\(/i.test(o.fill)) {
+            backgroundColor = o.fill;
+            overlays.splice(oi, 1); // the colour replaces the rectangle
+            break;
+          }
+          if (o.type === 'vector' && isFullBleed(o) && Array.isArray(o.paths) && o.paths.length === 1
+              && o.paths[0]?.fill && o.paths[0].fill !== 'none' && !o.paths[0].stroke) {
+            backgroundColor = o.paths[0].fill;
+            overlays.splice(oi, 1);
+            break;
+          }
+        }
+        if (!backgroundColor) {
+          try {
+            let sampleCanvas = rasterCanvas;
+            let owned = false;
+            if (!sampleCanvas) {
+              const vpS = page.getViewport({ scale: 0.2 });
+              sampleCanvas = document.createElement('canvas');
+              sampleCanvas.width = Math.max(8, Math.floor(vpS.width));
+              sampleCanvas.height = Math.max(8, Math.floor(vpS.height));
+              const sctx = sampleCanvas.getContext('2d')!;
+              await page.render({ canvasContext: sctx, viewport: vpS } as any).promise;
+              owned = true;
+            }
+            const sctx2 = sampleCanvas.getContext('2d', { willReadFrequently: true });
+            if (sctx2) {
+              const px = sctx2.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
+              const sampled = dominantEdgeColor(px.data, sampleCanvas.width, sampleCanvas.height);
+              if (!isNearWhite(sampled)) backgroundColor = sampled;
+            }
+            if (owned && sampleCanvas) { sampleCanvas.width = 0; sampleCanvas.height = 0; }
+          } catch (err) {
+            console.warn('[background] edge sampling failed on page', pageIndex, err);
+          }
+        }
+        if (backgroundColor) fillObs.push({ color: backgroundColor, area: pageArea });
+      }
+
       if (rasterCanvas) {
         rasterCanvas.width = 0;
         rasterCanvas.height = 0;
@@ -868,8 +935,8 @@ export async function extractPdfToTemplate(
       // Wrap overlays in a single 'free' block so they are positioned absolutely
       const newPageId = crypto.randomUUID();
       const textForPage = extractedPageText || overlays
-        .filter((overlay): overlay is Extract<Overlay, { type: 'text' }> => overlay.type === 'text')
-        .map((overlay) => overlay.content)
+        .filter((overlay) => overlay.type === 'text')
+        .map((overlay) => (overlay as any).content)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -894,7 +961,9 @@ export async function extractPdfToTemplate(
         id: newPageId,
         name: `Page ${pageIndex}`,
         size: { width: pageWidth, height: pageHeight },
-        background: backgroundImageUrl ? { imageUrl: backgroundImageUrl } : {},
+        background: backgroundImageUrl
+          ? { imageUrl: backgroundImageUrl }
+          : backgroundColor ? { color: backgroundColor } : {},
         blocks: [freeBlock],
       };
       pages.push(newPage);

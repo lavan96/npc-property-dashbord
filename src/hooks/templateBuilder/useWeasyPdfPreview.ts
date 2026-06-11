@@ -23,9 +23,13 @@ interface Args {
   customCss?: string;
   name: string;
   templateId?: string;
+  /** Emit non-visual data-cascade-* attributes on anchored blocks/overlays. */
+  cascadeMetadata?: boolean;
+  /** Render visible designer proof tags near anchored blocks/overlays. */
+  cascadeDebug?: boolean;
 }
 
-export function useWeasyPdfPreview({ enabled, template, sampleData, customCss, name, templateId }: Args) {
+export function useWeasyPdfPreview({ enabled, template, sampleData, customCss, name, templateId, cascadeMetadata, cascadeDebug }: Args) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -33,16 +37,17 @@ export function useWeasyPdfPreview({ enabled, template, sampleData, customCss, n
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
 
   // Cheap: serialization inside makePreviewKey is identity-memoized.
-  const contentKey = `${makePreviewKey(template, sampleData, customCss)}\u0000${name}`;
+  // Cascade flags change the rendered HTML, so they participate in staleness.
+  const contentKey = `${makePreviewKey(template, sampleData, customCss)}\u0000${name}\u0000${!!cascadeMetadata}\u0000${!!cascadeDebug}`;
   const stale = renderedKey !== null && renderedKey !== contentKey;
 
   // Latest-ref so refresh() is identity-stable and always renders current state.
-  const argsRef = useRef({ template, sampleData, customCss, name, templateId, contentKey });
-  argsRef.current = { template, sampleData, customCss, name, templateId, contentKey };
+  const argsRef = useRef({ template, sampleData, customCss, name, templateId, contentKey, cascadeMetadata, cascadeDebug });
+  argsRef.current = { template, sampleData, customCss, name, templateId, contentKey, cascadeMetadata, cascadeDebug };
   const runIdRef = useRef(0);
 
   const refresh = useCallback(async () => {
-    const { template, sampleData, customCss, name, templateId, contentKey } = argsRef.current;
+    const { template, sampleData, customCss, name, templateId, contentKey, cascadeMetadata, cascadeDebug } = argsRef.current;
     const runId = ++runIdRef.current;
     setPreviewing(true);
     setPreviewError(null);
@@ -56,6 +61,8 @@ export function useWeasyPdfPreview({ enabled, template, sampleData, customCss, n
         data: sampleData,
         title: name || 'Template Preview',
         customCss: customCss || undefined,
+        cascadeMetadata,
+        cascadeDebug,
       });
       const url = await renderHtmlToPdfUrl({
         html,

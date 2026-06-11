@@ -3,7 +3,7 @@
 // SSRF guard for URL renders, caps time, and proxies to RENDER_SOURCE_URL. Returns
 // `{ raster, boxTree, pageWidthPx, pageHeightPx }`, or a clean 503 when the service
 // is not configured (raw-codebase ingestion stays "pending" until deployed).
-import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // Generous enough for C4 (zip) builds; static/HTML/JSX/URL renders return far sooner.
@@ -34,14 +34,13 @@ function assertFetchable(rawUrl: string): void {
 }
 
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const cors = createCorsHeaders(origin);
+  const cors = createTokenAuthCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
     const body = await req.json().catch(() => ({}));
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { error: authError } = await verifyAuth(supabase, req.headers, body);
+    const { error: authError } = await verifyAuthOrNativeUser(supabase, req, body);
     if (authError) return createUnauthorizedResponse(authError, cors);
 
     const serviceUrl = (Deno.env.get('RENDER_SOURCE_URL') || '').replace(/\/$/, '');

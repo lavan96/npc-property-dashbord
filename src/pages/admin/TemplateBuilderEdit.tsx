@@ -15,7 +15,7 @@ import {
   Download, Copy as CopyIcon, CheckCircle2, Undo2, Redo2, Upload, Palette, Database, Plus, Trash2,
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
-  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon,
+  ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon, MapPinned,
 } from 'lucide-react';
 // Always-mounted editor chrome stays eagerly imported; the heavy on-demand
 // dialogs below are React.lazy + MountOnFirstOpen so they're code-split out of
@@ -53,6 +53,7 @@ const FindReplaceDialog = lazy(() => import('@/components/templateBuilder/FindRe
 const AssetLibraryDialog = lazy(() => import('@/components/templateBuilder/AssetLibraryDialog').then((m) => ({ default: m.AssetLibraryDialog })));
 const TextStylesDialog = lazy(() => import('@/components/templateBuilder/TextStylesDialog').then((m) => ({ default: m.TextStylesDialog })));
 const TableEditorDialog = lazy(() => import('@/components/templateBuilder/TableEditorDialog').then((m) => ({ default: m.TableEditorDialog })));
+import { CascadeMapPanel } from '@/components/templateBuilder/CascadeMapPanel';
 import { logTemplateEvent } from '@/lib/reportTemplate/analyticsClient';
 import { logTemplateAudit } from '@/lib/reportTemplate/templateAuditLog';
 import { TemplatePresenceBar, type PresenceUser } from '@/components/templateBuilder/TemplatePresenceBar';
@@ -68,7 +69,7 @@ import {
   type TemplateDraft,
 } from '@/lib/reportTemplate/templateDraftStore';
 import * as editorActions from '@/lib/reportTemplate/editorActions';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { BindingFixerPopover } from '@/components/templateBuilder/BindingFixerPopover';
 import { getSnippet } from '@/lib/reportTemplate/snippetLibrary';
@@ -107,6 +108,15 @@ import {
 // jsPDF preview retired — PDF tab now renders via WeasyPrint for production parity.
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { renderHtmlToPdfUrl, pdfFileNameFor } from '@/lib/reportTemplate/weasyRenderClient';
+import {
+  buildCascadeActivationReadiness,
+  buildCascadeAnchorSuggestions,
+  buildCascadeMap,
+  contractFromStructureTemplate,
+  selectStructureTemplate,
+  type ReportStructureTemplateLike,
+} from '@/lib/reportTemplate/cascadeMap';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { useTemplateAnalysis } from '@/hooks/templateBuilder/useTemplateAnalysis';
@@ -223,6 +233,8 @@ export default function TemplateBuilderEdit() {
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [cascadeCompareLeftId, setCascadeCompareLeftId] = useState('working');
+  const [cascadeCompareRightId, setCascadeCompareRightId] = useState('');
   const [tplMeta, setTplMeta] = useState<TemplateMeta | null>(null);
   const [customCss, setCustomCss] = useState<string>('');
   const { user } = useAuth();
@@ -459,6 +471,70 @@ export default function TemplateBuilderEdit() {
   const adapterOptions = useMemo(() => listAdapters(), []);
   const reportTypeAdapter = useMemo(() => getAdapter(reportType), [reportType]);
   const isProductionReportType = !!reportTypeAdapter?.supportsProduction;
+  const { data: cascadeStructureRows = [] } = useQuery({
+    queryKey: ['report-structure-templates', 'activation-cascade', reportType || '', tier || ''],
+    enabled: !!reportType,
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'report_structure_templates',
+        listOptions: {
+          select: 'id,name,parsed_content,report_tier,report_category,priority,is_active,template_type',
+          orderBy: 'priority',
+          orderAsc: false,
+          filters: { template_type: 'ai_structure', is_active: true },
+        },
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records ?? []) as ReportStructureTemplateLike[];
+    },
+  });
+  const cascadeStructure = useMemo(
+    () => selectStructureTemplate(cascadeStructureRows, { tier: tier || null, category: reportType || null }),
+    [cascadeStructureRows, tier, reportType],
+  );
+  const cascadeContract = useMemo(
+    () => contractFromStructureTemplate(cascadeStructure, { reportType: reportType || null, tier: tier || null, category: reportType || null }),
+    [cascadeStructure, reportType, tier],
+  );
+  const cascadeMap = useMemo(
+    () => buildCascadeMap(template, cascadeContract, { data: sampleData, templateId: id }),
+    [template, cascadeContract, sampleData, id],
+  );
+  const cascadeAnchorSuggestions = useMemo(
+    () => buildCascadeAnchorSuggestions(template, cascadeContract),
+    [template, cascadeContract],
+  );
+  const cascadeReadiness = useMemo(
+    () => buildCascadeActivationReadiness(cascadeMap, cascadeAnchorSuggestions, { requireQaApproved: true }),
+    [cascadeMap, cascadeAnchorSuggestions],
+  );
+  const cascadeSnapshotNote = useMemo(
+    () => `Cascade: ${cascadeReadiness.mappedRequiredSections}/${cascadeReadiness.requiredSections} required sections mapped; ${cascadeReadiness.totalAnchors} anchor${cascadeReadiness.totalAnchors === 1 ? '' : 's'}; ${cascadeReadiness.blockerCount} blocker${cascadeReadiness.blockerCount === 1 ? '' : 's'}; ${cascadeReadiness.qaApprovedRequiredSections}/${cascadeReadiness.requiredSections} QA-approved; ${cascadeReadiness.autoMapSuggestionCount} auto-map suggestion${cascadeReadiness.autoMapSuggestionCount === 1 ? '' : 's'}.`,
+    [cascadeReadiness],
+  );
+  const cascadeCompareOptions = useMemo(() => [
+    { id: 'working', label: 'Working draft', schema: template },
+    ...versions.map((version) => ({ id: version.id, label: `v${version.version}`, schema: parseTemplate(version.schema) })),
+  ], [template, versions]);
+  useEffect(() => {
+    if (!cascadeCompareRightId && versions[0]?.id) setCascadeCompareRightId(versions[0].id);
+    if (!cascadeCompareOptions.some((option) => option.id === cascadeCompareLeftId)) setCascadeCompareLeftId('working');
+    if (cascadeCompareRightId && !cascadeCompareOptions.some((option) => option.id === cascadeCompareRightId)) setCascadeCompareRightId(versions[0]?.id ?? '');
+  }, [cascadeCompareLeftId, cascadeCompareOptions, cascadeCompareRightId, versions]);
+  const cascadeVersionCompare = useMemo(() => {
+    const left = cascadeCompareOptions.find((option) => option.id === cascadeCompareLeftId);
+    const right = cascadeCompareOptions.find((option) => option.id === cascadeCompareRightId);
+    if (!left || !right) return null;
+    const summarize = (schema: ReportTemplate) => {
+      const map = buildCascadeMap(schema, cascadeContract, { data: sampleData, templateId: id });
+      const suggestions = buildCascadeAnchorSuggestions(schema, cascadeContract);
+      return buildCascadeActivationReadiness(map, suggestions, { requireQaApproved: true });
+    };
+    const leftReadiness = summarize(left.schema);
+    const rightReadiness = summarize(right.schema);
+    return { left, right, leftReadiness, rightReadiness };
+  }, [cascadeCompareLeftId, cascadeCompareOptions, cascadeCompareRightId, cascadeContract, id, sampleData]);
 
   const currentSignature = useMemo(() => makeTemplateEditSignature({
     name,
@@ -778,6 +854,28 @@ export default function TemplateBuilderEdit() {
       })),
     });
   };
+  /** Merge the multi-selected TEXT overlays into one (import cleanup). */
+  const bulkMergeText = () => {
+    if (!activePage || multiOverlayIds.size < 2) return;
+    const { page: merged, mergedId } = editorActions.mergeTextOverlays(activePage, [...multiOverlayIds]);
+    if (!mergedId) { toast.info('Select at least two unlocked text overlays to merge.'); return; }
+    updatePage(merged);
+    clearMultiSelect();
+    setSelectedOverlayId(mergedId);
+    toast.success('Merged text overlays into one block.');
+  };
+
+  const canMergeText = (() => {
+    if (!activePage || multiOverlayIds.size < 2) return false;
+    let textCount = 0;
+    for (const b of activePage.blocks) {
+      for (const o of b.overlays) {
+        if (multiOverlayIds.has(o.id) && o.type === 'text' && !o.locked && !o.hidden) textCount++;
+      }
+    }
+    return textCount >= 2;
+  })();
+
   const bulkDeleteOverlays = () => {
     if (!activePage || multiOverlayIds.size === 0) return;
     const n = multiOverlayIds.size;
@@ -1174,8 +1272,9 @@ export default function TemplateBuilderEdit() {
     if (bindingIssues.length > 0) blockers.push(`Resolve ${bindingIssues.length} binding issue${bindingIssues.length === 1 ? '' : 's'}.`);
     if (rendererErrorCount > 0) blockers.push(`Resolve ${rendererErrorCount} production renderer blocker${rendererErrorCount === 1 ? '' : 's'}.`);
     if (printErrorCount > 0) blockers.push(`Resolve ${printErrorCount} print-safety error${printErrorCount === 1 ? '' : 's'}.`);
+    if (reportType && cascadeStructure && cascadeReadiness.blockerCount > 0) blockers.push(`Resolve ${cascadeReadiness.blockerCount} Cascade activation blocker${cascadeReadiness.blockerCount === 1 ? '' : 's'} in the Cascade tab.`);
     return blockers;
-  }, [bindingIssues.length, isDirty, isProductionReportType, isSuperadmin, printErrorCount, rendererErrorCount, reportType, tplMeta?.approval_status]);
+  }, [bindingIssues.length, cascadeReadiness.blockerCount, cascadeStructure, isDirty, isProductionReportType, isSuperadmin, printErrorCount, rendererErrorCount, reportType, tplMeta?.approval_status]);
   const canActivateTemplate = activationBlockers.length === 0;
   const onboardingChecklist = useMemo(() => [
     { label: 'Set report type', done: !!reportType },
@@ -1184,12 +1283,13 @@ export default function TemplateBuilderEdit() {
     { label: 'Add at least one page', done: template.pages.length > 0 },
     { label: 'Add blocks or overlays', done: template.pages.some((page) => page.blocks.length > 0) },
     { label: 'Resolve binding issues', done: bindingIssues.length === 0 },
+    { label: 'Map and QA-approve required report sections', done: !reportType || !cascadeStructure || cascadeReadiness.blockerCount === 0 },
     { label: 'Resolve print/render blockers', done: rendererErrorCount === 0 && printErrorCount === 0 },
     { label: 'Preview final PDF', done: workspaceMode === 'pdf' },
     { label: 'Snapshot a version', done: versions.length > 0 },
     { label: 'Submit/review approval', done: ['in_review', 'approved'].includes(tplMeta?.approval_status ?? '') },
     { label: 'Activate when ready', done: !!tplMeta?.is_active },
-  ], [bindingIssues.length, isProductionReportType, printErrorCount, rendererErrorCount, reportType, template.pages, tplMeta?.approval_status, tplMeta?.is_active, versions.length, workspaceMode]);
+  ], [bindingIssues.length, cascadeReadiness.blockerCount, cascadeStructure, isProductionReportType, printErrorCount, rendererErrorCount, reportType, template.pages, tplMeta?.approval_status, tplMeta?.is_active, versions.length, workspaceMode]);
   const onboardingDoneCount = onboardingChecklist.filter((item) => item.done).length;
   const confirmRendererPreflight = useCallback((actionLabel: string): boolean => {
     const currentRendererIssues = lintTemplate(template, sampleData).filter(isRendererIssue);
@@ -1210,6 +1310,7 @@ export default function TemplateBuilderEdit() {
   // ── PDF preview (render-on-demand, rehaul Phase 3) ──────────────────────────
   // Renders once when the Final PDF tab opens; edits flip `pdfStale` and the
   // user re-renders explicitly. The live HTML preview is the realtime surface.
+  const [cascadeDebugPdf, setCascadeDebugPdf] = useState(false);
   const {
     previewUrl,
     previewing,
@@ -1223,6 +1324,8 @@ export default function TemplateBuilderEdit() {
     customCss: customCss || undefined,
     name,
     templateId: id,
+    cascadeMetadata: true,
+    cascadeDebug: cascadeDebugPdf,
   });
   refreshPdfPreviewRef.current = refreshPdfPreview;
 
@@ -1256,6 +1359,7 @@ export default function TemplateBuilderEdit() {
       {
         id,
         snapshot,
+        note: snapshot ? cascadeSnapshotNote : undefined,
         expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
         patch: buildSavePatch(),
       },
@@ -1282,9 +1386,29 @@ export default function TemplateBuilderEdit() {
             metadata: {
               pages: template.pages.length,
               blocks: template.pages.reduce((n, p: any) => n + (p.blocks?.length || 0), 0),
+              cascade: {
+                requiredSections: cascadeReadiness.requiredSections,
+                mappedRequiredSections: cascadeReadiness.mappedRequiredSections,
+                totalAnchors: cascadeReadiness.totalAnchors,
+                blockerCount: cascadeReadiness.blockerCount,
+                autoMapSuggestionCount: cascadeReadiness.autoMapSuggestionCount,
+                qaApprovedRequiredSections: cascadeReadiness.qaApprovedRequiredSections,
+                qaApprovalRequiredCount: cascadeReadiness.qaApprovalRequiredCount,
+              },
             },
           });
-          void logTemplateAudit(id, snapshot ? 'version_created' : 'schema_saved', snapshot ? 'Saved as new version' : 'Schema saved');
+          void logTemplateAudit(id, snapshot ? 'version_created' : 'schema_saved', snapshot ? 'Saved as new version' : 'Schema saved', {
+            cascade: {
+              note: cascadeSnapshotNote,
+              requiredSections: cascadeReadiness.requiredSections,
+              mappedRequiredSections: cascadeReadiness.mappedRequiredSections,
+              totalAnchors: cascadeReadiness.totalAnchors,
+              blockerCount: cascadeReadiness.blockerCount,
+              autoMapSuggestionCount: cascadeReadiness.autoMapSuggestionCount,
+              qaApprovedRequiredSections: cascadeReadiness.qaApprovedRequiredSections,
+              qaApprovalRequiredCount: cascadeReadiness.qaApprovalRequiredCount,
+            },
+          });
         },
         onError: (error: Error & { code?: string; currentVersion?: number | null }) => {
           if (error.code === 'version_conflict') {
@@ -1337,6 +1461,15 @@ export default function TemplateBuilderEdit() {
     if (nextActive && !canActivateTemplate) {
       toast.error(activationBlockers[0] || 'Template is not ready to activate.');
       return;
+    }
+    if (nextActive && cascadeReadiness.autoMapSuggestionCount > 0) {
+      const proceed = window.confirm(
+        `Cascade found ${cascadeReadiness.autoMapSuggestionCount} existing report binding${cascadeReadiness.autoMapSuggestionCount === 1 ? '' : 's'} that can still be auto-mapped. Activate anyway?`,
+      );
+      if (!proceed) {
+        setActiveMainTab('cascade');
+        return;
+      }
     }
     if (nextActive && !confirmRendererPreflight('activate this template')) return;
     const expectedVersion = Number(tplRow?.version ?? 1);
@@ -1705,6 +1838,8 @@ export default function TemplateBuilderEdit() {
                       data: sampleData,
                       title: name || 'Template Preview',
                       customCss: customCss || undefined,
+                      cascadeMetadata: true,
+                      cascadeDebug: cascadeDebugPdf,
                     });
                     const url = await renderHtmlToPdfUrl({
                       html,
@@ -1902,8 +2037,49 @@ export default function TemplateBuilderEdit() {
                       )}
                     </div>
                     <div className="rounded border p-2"><div className="text-muted-foreground">Renderer</div><div className="font-medium">{rendererIssueCount === 0 ? 'OK' : rendererErrorCount > 0 ? `${rendererErrorCount} blocker${rendererErrorCount === 1 ? '' : 's'}` : `${rendererIssueCount} note${rendererIssueCount === 1 ? '' : 's'}`}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">Cascade</div><div className="font-medium">{cascadeReadiness.blockerCount === 0 ? `${cascadeReadiness.mappedRequiredSections}/${cascadeReadiness.requiredSections} mapped` : `${cascadeReadiness.blockerCount} blocker${cascadeReadiness.blockerCount === 1 ? '' : 's'}`}</div></div>
+                    <div className="rounded border p-2"><div className="text-muted-foreground">QA approved</div><div className="font-medium">{cascadeReadiness.qaApprovedRequiredSections}/{cascadeReadiness.requiredSections}</div></div>
                     <div className="rounded border p-2"><div className="text-muted-foreground">Print errors</div><div className="font-medium">{printErrorCount === 0 ? 'OK' : printErrorCount}</div></div>
                   </div>
+                  <div className="rounded border p-2 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold flex items-center gap-1"><MapPinned className="h-3.5 w-3.5" /> Cascade activation map</div>
+                        <div className="text-[11px] text-muted-foreground">{cascadeStructure?.name || 'Fallback structure contract'}</div>
+                      </div>
+                      <span className={cascadeReadiness.status === 'ready' ? 'text-success' : 'text-destructive'}>
+                        {cascadeReadiness.status === 'ready' ? 'Ready' : `${cascadeReadiness.blockerCount} blocker${cascadeReadiness.blockerCount === 1 ? '' : 's'}`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="rounded bg-muted/40 p-1.5"><div className="text-muted-foreground">Required</div><div className="font-medium">{cascadeReadiness.mappedRequiredSections}/{cascadeReadiness.requiredSections}</div></div>
+                      <div className="rounded bg-muted/40 p-1.5"><div className="text-muted-foreground">QA approved</div><div className="font-medium">{cascadeReadiness.qaApprovedRequiredSections}/{cascadeReadiness.requiredSections}</div></div>
+                      <div className="rounded bg-muted/40 p-1.5"><div className="text-muted-foreground">Anchors</div><div className="font-medium">{cascadeReadiness.totalAnchors}</div></div>
+                      <div className="rounded bg-muted/40 p-1.5"><div className="text-muted-foreground">Auto-map</div><div className="font-medium">{cascadeReadiness.autoMapSuggestionCount}</div></div>
+                    </div>
+                    {cascadeReadiness.blockers.length > 0 && (
+                      <ul className="space-y-1 text-destructive">
+                        {cascadeReadiness.blockers.slice(0, 4).map((item) => <li key={`${item.code}-${item.sectionId || item.fieldPath || item.message}`}>• {item.message}</li>)}
+                        {cascadeReadiness.blockers.length > 4 && <li>• +{cascadeReadiness.blockers.length - 4} more cascade blocker{cascadeReadiness.blockers.length === 5 ? '' : 's'}</li>}
+                      </ul>
+                    )}
+                    {cascadeReadiness.nextActions.length > 0 && (
+                      <ul className="space-y-1 text-muted-foreground">
+                        {cascadeReadiness.nextActions.slice(0, 3).map((action) => <li key={action}>→ {action}</li>)}
+                      </ul>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setActiveMainTab('cascade')}>
+                        Open Cascade tab
+                      </Button>
+                      {cascadeReadiness.autoMapSuggestionCount > 0 && (
+                        <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => setActiveMainTab('cascade')}>
+                          <Wand2 className="h-3.5 w-3.5 mr-1" /> Review auto-map
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   {!tplMeta?.is_active && activationBlockers.length > 0 ? (
                     <ul className="space-y-1 text-destructive">
                       {activationBlockers.map((b) => <li key={b}>• {b}</li>)}
@@ -1993,6 +2169,7 @@ export default function TemplateBuilderEdit() {
           <TabsTrigger value="brand"><Palette className="h-3.5 w-3.5 mr-1" /> Brand kit</TabsTrigger>
           <TabsTrigger value="slots"><Component className="h-3.5 w-3.5 mr-1" /> Slots ({Object.keys(template.slots ?? {}).length})</TabsTrigger>
           <TabsTrigger value="compatibility"><ShieldAlert className="h-3.5 w-3.5 mr-1" /> Compatibility</TabsTrigger>
+          <TabsTrigger value="cascade"><MapPinned className="h-3.5 w-3.5 mr-1" /> Cascade</TabsTrigger>
           <TabsTrigger value="data"><Database className="h-3.5 w-3.5 mr-1" /> Sample data</TabsTrigger>
           <TabsTrigger value="json"><Code2 className="h-3.5 w-3.5 mr-1" /> JSON</TabsTrigger>
           <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
@@ -2024,6 +2201,9 @@ export default function TemplateBuilderEdit() {
                   <div className="px-3 py-2 border-b flex items-center gap-2 text-xs">
                     <Eye className="h-3.5 w-3.5 text-primary" />
                     <span className="font-medium">PDF preview</span>
+                    <Button size="sm" variant={cascadeDebugPdf ? 'default' : 'outline'} className="ml-auto h-7 px-2 text-[11px]" onClick={() => setCascadeDebugPdf((v) => !v)}>
+                      <MapPinned className="h-3 w-3 mr-1" /> Cascade tags
+                    </Button>
                     {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                     {pdfStale && !previewing && (
                       <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
@@ -2087,6 +2267,8 @@ export default function TemplateBuilderEdit() {
                     onCopyStyle={bulkCopyStyleFromFirst}
                     onPasteStyle={bulkPasteStyle}
                     hasStyleClipboard={hasStyleClipboard}
+                    onMergeText={bulkMergeText}
+                    canMergeText={canMergeText}
                   />
                   <AlignDistributeBar
                     count={multiOverlayIds.size}
@@ -2116,6 +2298,26 @@ export default function TemplateBuilderEdit() {
             </div>
 
           </div>
+        </TabsContent>
+
+        <TabsContent value="cascade" className="flex-1 min-h-0 mt-2">
+          <CascadeMapPanel
+            template={template}
+            templateId={id}
+            reportType={reportType || null}
+            tier={tier || null}
+            sampleData={sampleData}
+            selectedBlockId={selectedBlockId}
+            selectedOverlayId={selectedOverlayId}
+            onUpdateTemplate={setTemplate}
+            onSelectTarget={({ pageId, blockId, overlayId }) => {
+              setActivePageId(pageId);
+              setSelectedBlockId(blockId ?? null);
+              setSelectedOverlayId(overlayId ?? null);
+              if (overlayId) setSelectedBlockId(null);
+              setActiveMainTab('visual');
+            }}
+          />
         </TabsContent>
 
         {/* Outline — Phase 2 */}
@@ -2578,7 +2780,57 @@ export default function TemplateBuilderEdit() {
         </TabsContent>
 
         {/* Version history */}
-        <TabsContent value="versions" className="px-4 py-4 max-w-2xl">
+        <TabsContent value="versions" className="px-4 py-4 max-w-2xl space-y-3">
+          {versions.length > 0 && cascadeVersionCompare && (
+            <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold flex items-center gap-1"><MapPinned className="h-3.5 w-3.5 text-primary" /> Cascade version compare</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">Compare required mapping, QA approval, blockers, and auto-map opportunities across saved schemas.</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Left</span>
+                  <select className="h-8 w-full rounded border bg-background px-2 text-xs" value={cascadeCompareLeftId} onChange={(event) => setCascadeCompareLeftId(event.currentTarget.value)}>
+                    {cascadeCompareOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Right</span>
+                  <select className="h-8 w-full rounded border bg-background px-2 text-xs" value={cascadeCompareRightId} onChange={(event) => setCascadeCompareRightId(event.currentTarget.value)}>
+                    {cascadeCompareOptions.filter((option) => option.id !== 'working').map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded border bg-background p-2">
+                  <div className="font-medium">{cascadeVersionCompare.left.label}</div>
+                  <div className="mt-1 text-muted-foreground">Required: {cascadeVersionCompare.leftReadiness.mappedRequiredSections}/{cascadeVersionCompare.leftReadiness.requiredSections}</div>
+                  <div className="text-muted-foreground">QA: {cascadeVersionCompare.leftReadiness.qaApprovedRequiredSections}/{cascadeVersionCompare.leftReadiness.requiredSections}</div>
+                  <div className="text-muted-foreground">Blockers: {cascadeVersionCompare.leftReadiness.blockerCount}</div>
+                </div>
+                <div className="rounded border bg-background p-2">
+                  <div className="font-medium">Δ left vs right</div>
+                  <div className={(cascadeVersionCompare.leftReadiness.mappedRequiredSections - cascadeVersionCompare.rightReadiness.mappedRequiredSections) >= 0 ? 'mt-1 text-success' : 'mt-1 text-destructive'}>
+                    Required {cascadeVersionCompare.leftReadiness.mappedRequiredSections - cascadeVersionCompare.rightReadiness.mappedRequiredSections >= 0 ? '+' : ''}{cascadeVersionCompare.leftReadiness.mappedRequiredSections - cascadeVersionCompare.rightReadiness.mappedRequiredSections}
+                  </div>
+                  <div className={(cascadeVersionCompare.leftReadiness.qaApprovedRequiredSections - cascadeVersionCompare.rightReadiness.qaApprovedRequiredSections) >= 0 ? 'text-success' : 'text-destructive'}>
+                    QA {cascadeVersionCompare.leftReadiness.qaApprovedRequiredSections - cascadeVersionCompare.rightReadiness.qaApprovedRequiredSections >= 0 ? '+' : ''}{cascadeVersionCompare.leftReadiness.qaApprovedRequiredSections - cascadeVersionCompare.rightReadiness.qaApprovedRequiredSections}
+                  </div>
+                  <div className={(cascadeVersionCompare.leftReadiness.blockerCount - cascadeVersionCompare.rightReadiness.blockerCount) <= 0 ? 'text-success' : 'text-destructive'}>
+                    Blockers {cascadeVersionCompare.leftReadiness.blockerCount - cascadeVersionCompare.rightReadiness.blockerCount >= 0 ? '+' : ''}{cascadeVersionCompare.leftReadiness.blockerCount - cascadeVersionCompare.rightReadiness.blockerCount}
+                  </div>
+                </div>
+                <div className="rounded border bg-background p-2">
+                  <div className="font-medium">{cascadeVersionCompare.right.label}</div>
+                  <div className="mt-1 text-muted-foreground">Required: {cascadeVersionCompare.rightReadiness.mappedRequiredSections}/{cascadeVersionCompare.rightReadiness.requiredSections}</div>
+                  <div className="text-muted-foreground">QA: {cascadeVersionCompare.rightReadiness.qaApprovedRequiredSections}/{cascadeVersionCompare.rightReadiness.requiredSections}</div>
+                  <div className="text-muted-foreground">Blockers: {cascadeVersionCompare.rightReadiness.blockerCount}</div>
+                </div>
+              </div>
+            </div>
+          )}
           {versions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
               No saved versions yet.
@@ -2594,6 +2846,9 @@ export default function TemplateBuilderEdit() {
                 const prev = versions[i + 1] ? parseTemplate(versions[i + 1].schema) : null;
                 const prevBlocks = prev ? prev.pages.reduce((a, p) => a + p.blocks.length, 0) : null;
                 const blockDiff = prevBlocks != null ? blockCount - prevBlocks : null;
+                const versionCascadeMap = buildCascadeMap(parsed, cascadeContract, { data: sampleData, templateId: id });
+                const versionCascadeSuggestions = buildCascadeAnchorSuggestions(parsed, cascadeContract);
+                const versionCascadeReadiness = buildCascadeActivationReadiness(versionCascadeMap, versionCascadeSuggestions, { requireQaApproved: true });
                 return (
                 <li key={v.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm gap-2">
                   <div className="min-w-0">
@@ -2611,6 +2866,22 @@ export default function TemplateBuilderEdit() {
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
                       {pageCount} page{pageCount === 1 ? '' : 's'} · {blockCount} block{blockCount === 1 ? '' : 's'} · {overlayCount} overlay{overlayCount === 1 ? '' : 's'}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                      <span className={`rounded px-1.5 py-0.5 ${versionCascadeReadiness.status === 'ready' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                        Cascade {versionCascadeReadiness.mappedRequiredSections}/{versionCascadeReadiness.requiredSections} required
+                      </span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                        QA {versionCascadeReadiness.qaApprovedRequiredSections}/{versionCascadeReadiness.requiredSections}
+                      </span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                        {versionCascadeReadiness.totalAnchors} anchor{versionCascadeReadiness.totalAnchors === 1 ? '' : 's'}
+                      </span>
+                      {versionCascadeReadiness.autoMapSuggestionCount > 0 && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                          {versionCascadeReadiness.autoMapSuggestionCount} auto-map
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">

@@ -173,8 +173,53 @@ export function deriveTokensFromExtraction(
 }
 
 /**
+ * Dominant page-edge colour from raw RGBA pixels (a low-DPI page raster):
+ * sample the border ring — the page background dominates there — bucket the
+ * colours coarsely, and return the winner. Used to give imported pages a real
+ * `background.color` when the source paints its background in ways the
+ * deterministic extractors can't recover (flattened art, exotic paint ops).
+ */
+export function dominantEdgeColor(
+  pixels: Uint8ClampedArray | number[],
+  width: number,
+  height: number,
+  opts: { ring?: number } = {},
+): string | undefined {
+  if (width < 4 || height < 4) return undefined;
+  const ring = Math.max(1, Math.min(opts.ring ?? Math.ceil(Math.min(width, height) * 0.06), 8));
+  const buckets = new Map<string, { count: number; r: number; g: number; b: number }>();
+  const sample = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    if (i + 3 >= pixels.length || pixels[i + 3] < 200) return;
+    const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+    const key = `${r >> 4}:${g >> 4}:${b >> 4}`;
+    const bucket = buckets.get(key) ?? { count: 0, r: 0, g: 0, b: 0 };
+    bucket.count++; bucket.r += r; bucket.g += g; bucket.b += b;
+    buckets.set(key, bucket);
+  };
+  for (let y = 0; y < height; y++) {
+    const isEdgeRow = y < ring || y >= height - ring;
+    for (let x = 0; x < width; x++) {
+      if (isEdgeRow || x < ring || x >= width - ring) sample(x, y);
+    }
+  }
+  const best = Array.from(buckets.values()).sort((a, b) => b.count - a.count)[0];
+  if (!best || best.count < 16) return undefined;
+  const h = (n: number) => Math.round(n / best.count).toString(16).padStart(2, '0');
+  return `#${h(best.r)}${h(best.g)}${h(best.b)}`.toUpperCase();
+}
+
+/** Is this background close enough to plain white that setting it adds nothing? */
+export function isNearWhite(hex: string | undefined): boolean {
+  if (!hex) return true;
+  const c = parseHex(hex);
+  if (!c) return true;
+  return c.r > 246 && c.g > 246 && c.b > 246;
+}
+
+/**
  * Pick the "ink" colour of a text region from raw RGBA pixels: the average of
- * the darkest third of opaque pixels (background pixels are the light
+ * the pixels on the dark side of the luminance split (paper is the light
  * majority; glyph pixels are the dark minority). Used by OCR mode to stop
  * hard-coding every recognised word to near-black.
  */
