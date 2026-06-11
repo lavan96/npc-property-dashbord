@@ -10,8 +10,9 @@
  * result can't corrupt the working template. Renderer code is untouched.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import JSZip from 'jszip';
 import {
-  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2,
+  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2, FolderOpen,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -34,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { normalizeImportUrl } from '@/lib/reportTemplate/importUrl';
 import { codeFlavorForFile } from '@/lib/reportTemplate/ingestion/detect';
+import { summarizeCodeIntake, formatBytes, type CodeIntakeSummary } from '@/lib/reportTemplate/ingestion/codeIntake';
 import { isFigmaMakeFile } from '@/lib/reportTemplate/ingestion/makeImport';
 import {
   runReferenceImport,
@@ -84,6 +86,7 @@ export function ReferenceImportDialog({
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const codeFileRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<ReferenceKind>('unsupported');
   const [mode, setMode] = useState<FidelityMode>('hybrid');
@@ -101,6 +104,7 @@ export function ReferenceImportDialog({
   const [codeSourceName, setCodeSourceName] = useState<string | null>(null);
   const [codeSourceFlavor, setCodeSourceFlavor] = useState<CodeSourceFlavor>(null);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [codeIntake, setCodeIntake] = useState<CodeIntakeSummary | null>(null);
   // Phase 4: dynamic-field candidates detected in the applied import.
   const [bindingCandidates, setBindingCandidates] = useState<{ schema: ReportTemplate; suggestions: PlaceholderSuggestion[] } | null>(null);
 
@@ -111,7 +115,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeSourceFlavor(null); setCodeBusy(false); setPdfClaude(false); setBindingCandidates(null);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeSourceFlavor(null); setCodeBusy(false); setCodeIntake(null); setPdfClaude(false); setBindingCandidates(null);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -135,6 +139,16 @@ export function ReferenceImportDialog({
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [open, onFile]);
+
+
+  // React's DOM types do not expose the Chromium directory picker attributes;
+  // set them imperatively so users can upload a project folder, not just a zip.
+  useEffect(() => {
+    const el = folderRef.current;
+    if (!el) return;
+    el.setAttribute('webkitdirectory', '');
+    el.setAttribute('directory', '');
+  }, [open]);
 
   const pdfPercent = (() => {
     if (!progress?.page || !progress?.totalPages) return progress ? 8 : 0;
@@ -204,6 +218,35 @@ export function ReferenceImportDialog({
     }
   }, [url, importCtx, handleOutcome]);
 
+
+  const importFolderFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return;
+    const summary = summarizeCodeIntake(files);
+    setCodeIntake(summary);
+    if (summary.totalBytes > MAX_CODE_ZIP_BYTES) {
+      setError(`Project folder is too large (${formatBytes(summary.totalBytes)}). Remove node_modules/build artifacts and keep the upload under ${formatBytes(MAX_CODE_ZIP_BYTES)}.`);
+      return;
+    }
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      setStage('Packing folder for project import…');
+      const zip = new JSZip();
+      for (const file of files) {
+        const path = file.webkitRelativePath || file.name;
+        if (!path || /(^|\/)node_modules\//.test(path)) continue;
+        zip.file(path, file);
+      }
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      const name = `${summary.rootName || 'uploaded-project'}.zip`;
+      const zipFile = new File([blob], name, { type: 'application/zip' });
+      handleOutcome(await runReferenceImport({ kind: 'code', zipFile }, importCtx()));
+    } catch (e) {
+      setError(`Couldn't import folder: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [importCtx, handleOutcome]);
+
   const startCodeReconstruct = useCallback(async () => {
     if (!codeText.trim()) return;
     setCodeBusy(true); setError(null); setDone(null);
@@ -245,9 +288,10 @@ export function ReferenceImportDialog({
   // .zip project is built + imported immediately.
   const onCodeFile = useCallback(async (f: File | null) => {
     if (!f) return;
+    setCodeIntake(summarizeCodeIntake([f]));
     if (isFigmaMakeFile(f.name)) { await onMakeFile(f); return; }
     const flavor = codeFlavorForFile(f.name);
-    if (!flavor) { toast.error('Drop a .html/.css/.js/.jsx/.ts/.tsx file, a .zip project, or a Figma .make/.fig export.'); return; }
+    if (!flavor) { toast.error('Drop a web/source file, a .zip project, a project folder, or a Figma .make/.fig export.'); return; }
     if (flavor !== 'zip') {
       try { setCodeText(await f.text()); setCodeSourceName(f.name); setCodeSourceFlavor(flavor); setError(null); setDone(null); } catch { /* ignore */ }
       return;
@@ -374,7 +418,12 @@ export function ReferenceImportDialog({
               <Card
                 className="space-y-3 border-primary/25 bg-primary/5 p-4"
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); onCodeFile(e.dataTransfer.files?.[0] ?? null); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const files = Array.from(e.dataTransfer.files ?? []);
+                  if (files.length > 1 || files.some((f) => f.webkitRelativePath)) void importFolderFiles(files);
+                  else onCodeFile(files[0] ?? null);
+                }}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -383,18 +432,23 @@ export function ReferenceImportDialog({
                       <Badge variant="outline" className="text-[10px]">beta</Badge>
                     </Label>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Upload a .zip project, a Figma .make/.fig export, or paste a URL, HTML, CSS, JSX, TSX, Vue, or Svelte source.
+                      Upload a project folder/ZIP, a Figma .make/.fig export, or paste a URL, HTML, CSS, JSX, TSX, Vue, Svelte, Markdown, JSON, or SVG source.
                       We render it, measure the DOM, and import editable CDIR pages with trace rasters for review.
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
-                    <Upload className="h-4 w-4 mr-1" /> Upload code / ZIP
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => codeFileRef.current?.click()} disabled={codeBusy || busy}>
+                      <Upload className="h-4 w-4 mr-1" /> Upload file / ZIP
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => folderRef.current?.click()} disabled={codeBusy || busy}>
+                      <FolderOpen className="h-4 w-4 mr-1" /> Upload folder
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   value={codeText}
                   onChange={(e) => { setCodeText(e.target.value); setCodeSourceName(null); setCodeSourceFlavor(null); }}
-                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, or a React/JSX component. For multi-page projects, upload a .zip."
+                  placeholder="Paste a live page URL (https://…), raw HTML/CSS, Markdown/JSON/SVG, or a React/JSX component. For multi-page projects, upload a folder or .zip."
                   className="text-xs font-mono min-h-[84px] bg-background"
                   disabled={codeBusy || busy}
                 />
@@ -407,13 +461,41 @@ export function ReferenceImportDialog({
                 <input
                   ref={codeFileRef}
                   type="file"
-                  accept=".html,.htm,.css,.js,.jsx,.ts,.tsx,.vue,.svelte,.zip,.make,.fig,text/html,text/css,application/javascript,text/javascript,application/zip"
+                  accept=".html,.htm,.css,.scss,.sass,.less,.js,.mjs,.cjs,.jsx,.ts,.tsx,.vue,.svelte,.astro,.md,.markdown,.json,.yaml,.yml,.svg,.zip,.make,.fig,text/html,text/css,text/markdown,application/json,application/javascript,text/javascript,application/zip"
                   className="hidden"
                   onChange={(e) => { onCodeFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
                 />
+
+                <input
+                  ref={folderRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { void importFolderFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+                />
+                {codeIntake && (
+                  <div className="rounded-md border bg-background/80 p-3 text-xs">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px]">{codeIntake.mode === 'folder' ? 'Folder/project' : 'Detected file'}</Badge>
+                      <span className="font-medium">{codeIntake.rootName || codeSourceName || 'Code source'}</span>
+                      <span className="text-muted-foreground">{codeIntake.fileCount} file{codeIntake.fileCount === 1 ? '' : 's'} · {formatBytes(codeIntake.totalBytes)} · {codeIntake.primary.label}</span>
+                    </div>
+                    {codeIntake.entryCandidates.length > 0 && (
+                      <p className="mb-2 text-[11px] text-muted-foreground">Entry candidates: {codeIntake.entryCandidates.join(', ')}</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {codeIntake.breakdown.slice(0, 8).map((item) => (
+                        <Badge key={item.extension} variant="outline" className="text-[10px]">
+                          .{item.extension} · {item.count} · {formatBytes(item.bytes)}
+                        </Badge>
+                      ))}
+                      {codeIntake.breakdown.length > 8 && <Badge variant="outline" className="text-[10px]">+{codeIntake.breakdown.length - 8} more</Badge>}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] text-muted-foreground">
-                    Tip: drag a project ZIP onto this panel to import multiple rendered pages instead of copy-pasting one page of code.
+                    Tip: drag a project folder/ZIP onto this panel to see type and size breakdowns, then import editable pages from the rendered design.
                   </p>
                   <Button variant="secondary" size="sm" onClick={startCodeReconstruct} disabled={!codeText.trim() || codeBusy || busy}>
                     {codeBusy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rendering…</> : <><Code2 className="h-4 w-4 mr-1" /> Render & import</>}
