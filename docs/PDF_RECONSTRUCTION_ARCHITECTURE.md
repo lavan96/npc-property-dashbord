@@ -191,6 +191,19 @@ Every phase: behind the import flow, **golden‑render‑safe** for existing tem
     color }`) and the edge function expands them into schema‑valid vector overlays — pictograms in
     references are reproduced from the pack instead of being approximated with crude shapes,
     drawn as text, or dropped; the model never emits raw path data.
+- **R10 — Advisor‑plan gap closure (2026‑06):** ✅ **done.**
+  - **Image "Place as background"** import tier: the safest‑MVP mode — the image becomes the active
+    page's locked background at its true aspect ratio, zero AI (`buildImageBackgroundSchema`).
+  - **Per‑element extraction confidence:** overlays carry `confidence` (0–1) from every pipeline
+    (pdf.js text 0.97 · vectors/images 0.9 · shading 0.85 · OCR = Tesseract's own per‑word score);
+    elements below 0.5 arrive **locked**; the Layers panel shows amber/red confidence badges.
+  - **Merge selected text boxes** (`editorActions.mergeTextOverlays` + BulkEditBar button): fragments
+    join in reading order (space same‑line, newline across lines), union bbox, mixed styles preserved
+    as rich‑text runs, lowest confidence kept.
+  - **Phase 4 semantic placeholder detection** (`ingestion/placeholderDetect.ts`): imported text is
+    scanned for NPC report values (address · suburb · weekly rent · purchase price · yield ·
+    [Client Name]) against the canonical sample‑data paths; the import dialog offers one‑click
+    "Convert to dynamic bindings" so an imported design becomes a reusable report template.
 - **R8 — Exact-source fidelity (2026‑06, corpus: designed PDF cover · single-file TSX · Figma .make):** ✅ **done.**
   - **PDF shading fills** (`pdfImport/shadingExtract.ts`): axial/radial shadings (the gradient page
     backgrounds of designed covers, previously dropped → blank white pages) reconstruct as editable
