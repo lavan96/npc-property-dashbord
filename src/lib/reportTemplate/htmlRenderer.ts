@@ -36,6 +36,10 @@ export interface HtmlRenderOptions {
    * messages to the parent window and accepts selection highlighting.
    */
   editorMode?: boolean;
+  /** Emit non-visual data-cascade-* attributes on anchored blocks/overlays. */
+  cascadeMetadata?: boolean;
+  /** Render visible designer proof tags near anchored blocks/overlays. */
+  cascadeDebug?: boolean;
 }
 
 export interface HtmlRenderResult {
@@ -319,6 +323,28 @@ function sortBlocksForPaint(blocks: any[] = []): any[] {
     .map((entry) => entry.block);
 }
 
+function cascadeAttrs(node: { anchors?: any[] }, ctxBase: ResolveContext): string {
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length || !((ctxBase as any)._cascadeMetadata || (ctxBase as any)._cascadeDebug || (ctxBase as any)._editorMode)) return '';
+  const primary = anchors[0] ?? {};
+  return [
+    `data-cascade-anchor-id="${escapeHtml(String(primary.id || ''))}"`,
+    primary.kind ? `data-cascade-kind="${escapeHtml(String(primary.kind))}"` : '',
+    primary.sectionId ? `data-cascade-section-id="${escapeHtml(String(primary.sectionId))}"` : '',
+    primary.fieldPath ? `data-cascade-field-path="${escapeHtml(String(primary.fieldPath))}"` : '',
+    primary.bindingPath ? `data-cascade-binding-path="${escapeHtml(String(primary.bindingPath))}"` : '',
+    `data-cascade-anchor-count="${anchors.length}"`,
+  ].filter(Boolean).join(' ');
+}
+
+function cascadeDebugBadge(node: { anchors?: any[] }, ctxBase: ResolveContext): string {
+  if (!(ctxBase as any)._cascadeDebug) return '';
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length) return '';
+  const label = anchors[0]?.label || anchors[0]?.fieldPath || anchors[0]?.sectionId || anchors[0]?.id || 'cascade anchor';
+  return `<span style="position:absolute;left:0;top:-12pt;z-index:999999;background:#0f172a;color:#f8fafc;border:0.5pt solid #fbbf24;border-radius:3pt;padding:1pt 3pt;font:7pt ui-monospace,monospace;line-height:1;white-space:nowrap;max-width:260pt;overflow:hidden;text-overflow:ellipsis;">§ ${escapeHtml(String(label))}</span>`;
+}
+
 function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBlockContext, pages: Page[], editorMode = false): string {
   const renderer = getHtmlBlockRenderer(block.type);
   const body = renderer ? renderer(block, blockCtx) : renderUnsupportedHtml(block, blockCtx);
@@ -353,6 +379,11 @@ function renderBlockOnce(block: any, ctxBase: ResolveContext, blockCtx: HtmlBloc
   // If we have a bookmark, attach the id to a wrapping span so anchor jumps work
   if (bmAttrs) {
     content = `<span${bmAttrs}>${content}</span>`;
+  }
+  const cAttrs = cascadeAttrs(block, ctxBase);
+  const cBadge = cascadeDebugBadge(block, ctxBase);
+  if (cAttrs || cBadge) {
+    content = `<span ${cAttrs} style="display:contents">${cBadge}${content}</span>`;
   }
   let out = wrap(content);
   if (editorMode && block.id) {
@@ -494,7 +525,10 @@ export function renderTemplateToHtml(
     const pageCtx: ResolveContext = {
       tokens: pageTokens,
       data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length, __tocEntries: tocEntries },
-    };
+    } as any;
+    (pageCtx as any)._cascadeMetadata = !!options.cascadeMetadata;
+    (pageCtx as any)._cascadeDebug = !!options.cascadeDebug;
+    (pageCtx as any)._editorMode = !!options.editorMode;
     return renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
   }).join('\n');
 
@@ -505,6 +539,7 @@ export function renderTemplateToHtml(
 [data-block-id] > * { cursor: pointer; }
 [data-block-id].__tpl-hover { outline: 1.5pt dashed hsl(45 80% 50% / 0.7); outline-offset: 2pt; }
 [data-block-id].__tpl-selected { outline: 2pt solid hsl(45 95% 50%); outline-offset: 2pt; box-shadow: 0 0 0 4pt hsl(45 95% 50% / 0.18); }
+[data-cascade-anchor-id] { outline: 1pt dashed hsl(217 91% 60% / 0.55); outline-offset: 1pt; }
 ` : '';
 
   const css = [
