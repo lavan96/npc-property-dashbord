@@ -56,6 +56,15 @@ Every text/image/colour field accepts:
 
 Open the **bindings popover** in the header to see every unresolved binding and click to jump straight to the offending block.
 
+
+## Report cascade anchors
+
+The Template Builder can map the configured report-generation structure to exact visual targets in the final PDF. Use the **Cascade** tab to load the active `report_structure_templates` AI-structure guide for the template's report type/tier, then assign section or field anchors to the currently selected block or overlay. If the design already contains `{{sections.*}}` bindings, the tab suggests matching anchors and can auto-map them in bulk before manual cleanup; designers can also opt into anchoring repeated uses of the same generated field when every repeated occurrence should be traceable.
+
+Anchors are stored in the template schema on blocks/overlays as optional `anchors[]` metadata. They do not replace normal `{{binding.path}}` values; they explain which report-structure section/field owns a visual region and let the builder warn about required sections with no landing point, bindings outside the selected structure, duplicate anchors, and generated data that is not used in the design.
+
+In final PDF preview, enable **Cascade tags** to render visible proof labels and append a debug-only Cascade anchor index page. Normal client PDFs remain clean, while the WeasyPrint HTML render can still emit non-visual `data-cascade-*` metadata for traceability. Activation readiness includes cascade coverage and QA approval, so approved templates cannot be activated while required report-structure sections have no mapped, QA-approved PDF anchor. The activation popover also summarizes Cascade coverage, missing required sections, and outstanding auto-map suggestions before activation. Selected blocks/overlays expose a **Cascade anchors** editor for reviewing, removing, manually adjusting mappings created from the Cascade tab, and recording QA owner/status/notes for signoff. The Cascade tab can also bulk-update QA status for filtered anchors, assign reviewer ownership/notes, copy a JSON manifest, or download JSON/CSV diagnostics that list every configured structure section, field, mapped page/block/overlay target, and activation issue for QA handoff. Version snapshots record a concise Cascade readiness note and the Versions tab recomputes Cascade coverage/QA chips plus a side-by-side comparison for saved schemas so reviewers can compare mapping health across revisions.
+
 ## Block library
 
 Cover · Hero · KPI grid · Data table · Chart · Image · Text · Footer · Disclaimer · Divider · Callout · Two-column · Gallery · Page number · Spacer · QR code · Badge list · Contents (TOC) · Signature · Slot · Free overlays.

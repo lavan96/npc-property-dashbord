@@ -3,7 +3,7 @@
  * or page-level settings if none is selected.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import { Trash2, Sparkles, Copy, Upload, Loader2, AlertTriangle, X, Maximize2, ChevronUp, ChevronDown, Plus, MapPinned } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { toast } from 'sonner';
-import type { Block, Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import type { Block, Overlay, Page, ReportAnchor, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import {
   buildSuggestions,
   validateBindable,
@@ -52,6 +52,7 @@ import { EffectsPanel } from './EffectsPanel';
 import { AlignmentGrid } from './AlignmentGrid';
 import { TextRhythmControl } from './TextRhythmControl';
 import { PalettePresets } from './PalettePresets';
+import { Badge } from '@/components/ui/badge';
 
 
 interface Props {
@@ -149,6 +150,139 @@ export function PropertiesInspector({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+function makeManualAnchor(targetId: string): ReportAnchor {
+  return {
+    id: `anchor_${targetId}_${Date.now().toString(36)}`,
+    kind: 'field',
+    label: 'New cascade anchor',
+    fieldPath: 'sections.example.body',
+    bindingPath: 'sections.example.body',
+    visibility: 'designer',
+    renderMode: 'replace',
+    qaStatus: 'unreviewed',
+  };
+}
+
+function CascadeAnchorEditor({
+  targetId,
+  anchors,
+  onChange,
+}: {
+  targetId: string;
+  anchors?: ReportAnchor[];
+  onChange: (anchors: ReportAnchor[] | undefined) => void;
+}) {
+  const list = Array.isArray(anchors) ? anchors : [];
+  const update = (index: number, patch: Partial<ReportAnchor>) => {
+    onChange(list.map((anchor, i) => (i === index ? { ...anchor, ...patch } : anchor)));
+  };
+  const updateQaStatus = (index: number, status: NonNullable<ReportAnchor['qaStatus']>) => {
+    update(index, {
+      qaStatus: status,
+      qaReviewedAt: status === 'unreviewed' ? undefined : new Date().toISOString(),
+    });
+  };
+  const remove = (index: number) => {
+    const next = list.filter((_, i) => i !== index);
+    onChange(next.length ? next : undefined);
+  };
+
+  return (
+    <div className="space-y-2 rounded border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <Label className="text-xs font-semibold flex items-center gap-1.5">
+            <MapPinned className="h-3.5 w-3.5 text-primary" /> Cascade anchors
+          </Label>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Map this design target to a report-structure section or generated field.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange([...list, makeManualAnchor(targetId)])}>
+          <Plus className="h-3 w-3 mr-1" /> Add
+        </Button>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">No cascade anchors assigned. Use the Cascade tab for structure-aware mapping, or add one manually here.</p>
+      ) : (
+        <div className="space-y-2">
+          {list.map((anchor, index) => (
+            <div key={`${anchor.id}-${index}`} className="rounded border bg-background p-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="secondary" className="text-[10px]">{anchor.kind}</Badge>
+                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => remove(index)} title="Remove anchor">
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Kind</Label>
+                  <Select value={anchor.kind ?? 'field'} onValueChange={(v) => update(index, { kind: v as ReportAnchor['kind'] })}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="section">section</SelectItem>
+                      <SelectItem value="field">field</SelectItem>
+                      <SelectItem value="repeat">repeat</SelectItem>
+                      <SelectItem value="slot">slot</SelectItem>
+                      <SelectItem value="diagnostic">diagnostic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Required</Label>
+                  <Select value={anchor.required ? 'yes' : 'no'} onValueChange={(v) => update(index, { required: v === 'yes' })}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="no">No</SelectItem><SelectItem value="yes">Yes</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Label</Label>
+                <Input className="h-8 text-xs" value={anchor.label ?? ''} onChange={(e) => update(index, { label: e.target.value || undefined })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Section ID</Label>
+                <Input className="h-8 text-xs font-mono" placeholder="executive_summary" value={anchor.sectionId ?? ''} onChange={(e) => update(index, { sectionId: e.target.value || undefined })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Field path</Label>
+                <Input className="h-8 text-xs font-mono" placeholder="sections.executive_summary.body" value={anchor.fieldPath ?? ''} onChange={(e) => update(index, { fieldPath: e.target.value || undefined, bindingPath: anchor.bindingPath || e.target.value || undefined })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Binding path override</Label>
+                <Input className="h-8 text-xs font-mono" placeholder="defaults to field path" value={anchor.bindingPath ?? ''} onChange={(e) => update(index, { bindingPath: e.target.value || undefined })} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA status</Label>
+                  <Select value={anchor.qaStatus ?? 'unreviewed'} onValueChange={(v) => updateQaStatus(index, v as NonNullable<ReportAnchor['qaStatus']>)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unreviewed">Unreviewed</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="needs_changes">Needs changes</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA owner</Label>
+                  <Input className="h-8 text-xs" placeholder="Reviewer" value={anchor.qaOwner ?? ''} onChange={(e) => update(index, { qaOwner: e.target.value || undefined })} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA note</Label>
+                <Textarea className="min-h-16 text-xs" placeholder="Why this generated field lands here; review notes for repeated uses." value={anchor.qaNote ?? ''} onChange={(e) => update(index, { qaNote: e.target.value || undefined })} />
+                {anchor.qaReviewedAt && <div className="mt-1 text-[10px] text-muted-foreground">Reviewed {new Date(anchor.qaReviewedAt).toLocaleString()}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OverlayEditor({
   template,
   templateId,
@@ -207,6 +341,12 @@ function OverlayEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CascadeAnchorEditor
+        targetId={overlay.id}
+        anchors={(overlay as any).anchors}
+        onChange={(anchors) => patch({ anchors } as any)}
+      />
 
       {/* Position / size */}
       <div className="grid grid-cols-2 gap-2">
@@ -810,6 +950,13 @@ function BlockEditor({
           No editor schema for block type "{block.type}". Edit via JSON tab.
         </p>
       )}
+
+      <Separator />
+      <CascadeAnchorEditor
+        targetId={block.id}
+        anchors={(block as any).anchors}
+        onChange={(anchors) => onChange({ ...block, anchors } as any)}
+      />
 
       <Separator />
       <BlockAlignmentPanel block={block} page={page} onChange={onChange} />

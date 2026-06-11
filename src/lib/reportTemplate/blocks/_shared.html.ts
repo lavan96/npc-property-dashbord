@@ -116,6 +116,40 @@ function buildEffectStyle(o: any): string {
   return parts.length ? parts.join(';') + ';' : '';
 }
 
+
+function cascadeAttrs(node: { anchors?: any[]; id?: string }, ctx: ResolveContext): string {
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length) return '';
+  const primary = anchors[0] ?? {};
+  const enabled = Boolean((ctx as any)._cascadeMetadata || (ctx as any)._cascadeDebug || (ctx as any)._editorMode);
+  if (!enabled) return '';
+  return [
+    `data-cascade-anchor-id="${esc(primary.id || '')}"`,
+    primary.kind ? `data-cascade-kind="${esc(primary.kind)}"` : '',
+    primary.sectionId ? `data-cascade-section-id="${esc(primary.sectionId)}"` : '',
+    primary.fieldPath ? `data-cascade-field-path="${esc(primary.fieldPath)}"` : '',
+    primary.bindingPath ? `data-cascade-binding-path="${esc(primary.bindingPath)}"` : '',
+    primary.qaStatus ? `data-cascade-qa-status="${esc(primary.qaStatus)}"` : '',
+    primary.qaOwner ? `data-cascade-qa-owner="${esc(primary.qaOwner)}"` : '',
+    `data-cascade-anchor-count="${anchors.length}"`,
+  ].filter(Boolean).join(' ');
+}
+
+function cascadeDebugBadge(node: { anchors?: any[] }, ctx: ResolveContext): string {
+  if (!(ctx as any)._cascadeDebug) return '';
+  const anchors = Array.isArray(node?.anchors) ? node.anchors : [];
+  if (!anchors.length) return '';
+  const label = anchors[0]?.label || anchors[0]?.fieldPath || anchors[0]?.sectionId || anchors[0]?.id || 'cascade anchor';
+  return `<span style="position:absolute;left:0;top:-12pt;z-index:999999;background:#0f172a;color:#f8fafc;border:0.5pt solid #fbbf24;border-radius:3pt;padding:1pt 3pt;font:7pt ui-monospace,monospace;line-height:1;white-space:nowrap;max-width:220pt;overflow:hidden;text-overflow:ellipsis;">§ ${esc(label)}</span>`;
+}
+
+function withCascadeWrapper(html: string, node: { anchors?: any[]; id?: string }, ctx: ResolveContext): string {
+  const attrs = cascadeAttrs(node, ctx);
+  const badge = cascadeDebugBadge(node, ctx);
+  if (!attrs && !badge) return html;
+  return `<span ${attrs} style="display:contents">${badge}${html}</span>`;
+}
+
 /** Render an overlay (text / image / shape / textOnPath / table) as an absolute-positioned HTML element. */
 export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
   if (!evalConditional(overlay.conditional, ctx)) return '';
@@ -229,13 +263,13 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
           inner = renderWithDropCap(String(text));
         }
       }
-      return `<div style="${style}">${inner}</div>`;
+      return withCascadeWrapper(`<div style="${style}">${inner}</div>`, overlay as any, ctx);
     }
     case 'image': {
       const src = resolveBindable(overlay.src, ctx);
       if (!src) return '';
       const fit = overlay.fit === 'fill' ? 'fill' : overlay.fit;
-      return `<img src="${esc(src)}" style="${base}object-fit:${fit};"/>`;
+      return withCascadeWrapper(`<img src="${esc(src)}" style="${base}object-fit:${fit};"/>`, overlay as any, ctx);
     }
     case 'shape': {
       // Gradient fills (captured from PDF shading ops / DOM computed styles)
@@ -248,9 +282,9 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       const sw = overlay.strokeWidth || 0;
       const radius = overlay.shape === 'ellipse' ? '50%' : `${overlay.borderRadius || 0}pt`;
       if (overlay.shape === 'line') {
-        return `<div style="${base}border-top:${sw}pt solid ${stroke};"></div>`;
+        return withCascadeWrapper(`<div style="${base}border-top:${sw}pt solid ${stroke};"></div>`, overlay as any, ctx);
       }
-      return `<div style="${base}background:${fill};border:${sw}pt solid ${stroke};border-radius:${radius};"></div>`;
+      return withCascadeWrapper(`<div style="${base}background:${fill};border:${sw}pt solid ${stroke};border-radius:${radius};"></div>`, overlay as any, ctx);
     }
     case 'vector': {
       // R0 — editable vector geometry (icons/logos captured as SVG paths).
@@ -270,7 +304,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
         return `<path ${attrs}/>`;
       }).join('');
       const par = esc(String(o.preserveAspectRatio ?? 'xMidYMid meet'));
-      return `<svg viewBox="${esc(String(o.viewBox ?? '0 0 100 100'))}" preserveAspectRatio="${par}" style="${base}">${inner}</svg>`;
+      return withCascadeWrapper(`<svg viewBox="${esc(String(o.viewBox ?? '0 0 100 100'))}" preserveAspectRatio="${par}" style="${base}">${inner}</svg>`, overlay as any, ctx);
     }
     case 'textOnPath': {
       const o: any = overlay;
@@ -309,7 +343,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       }
       const pathId = `txp-${overlay.id}`;
       const offset = Math.max(0, Math.min(100, Number(o.startOffset ?? 0)));
-      return `<svg xmlns="http://www.w3.org/2000/svg" style="${base}overflow:visible;" viewBox="0 0 ${w} ${h}" width="${w}pt" height="${h}pt"><defs><path id="${pathId}" d="${d}" fill="none"/></defs><text fill="${color}" font-family="${esc(family)}" font-size="${size}" font-weight="${o.fontWeight ?? 'normal'}" letter-spacing="${o.letterSpacing ?? 0}"><textPath href="#${pathId}" startOffset="${offset}%">${esc(text)}</textPath></text></svg>`;
+      return withCascadeWrapper(`<svg xmlns="http://www.w3.org/2000/svg" style="${base}overflow:visible;" viewBox="0 0 ${w} ${h}" width="${w}pt" height="${h}pt"><defs><path id="${pathId}" d="${d}" fill="none"/></defs><text fill="${color}" font-family="${esc(family)}" font-size="${size}" font-weight="${o.fontWeight ?? 'normal'}" letter-spacing="${o.letterSpacing ?? 0}"><textPath href="#${pathId}" startOffset="${offset}%">${esc(text)}</textPath></text></svg>`, overlay as any, ctx);
     }
     case 'table': {
       const o: any = overlay;
@@ -395,7 +429,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
         }).join('');
         return `<tr>${tds}</tr>`;
       }).join('');
-      return `<div style="${base}overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-family:${family};font-size:${Number(o.fontSize ?? 10)}pt;table-layout:fixed;">${colGroup ? `<colgroup>${colGroup}</colgroup>` : ''}${o.showHeader !== false ? `<thead><tr>${headerCells}</tr></thead>` : ''}<tbody>${bodyRows}</tbody></table></div>`;
+      return withCascadeWrapper(`<div style="${base}overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-family:${family};font-size:${Number(o.fontSize ?? 10)}pt;table-layout:fixed;">${colGroup ? `<colgroup>${colGroup}</colgroup>` : ''}${o.showHeader !== false ? `<thead><tr>${headerCells}</tr></thead>` : ''}<tbody>${bodyRows}</tbody></table></div>`, overlay as any, ctx);
     }
   }
   return '';
