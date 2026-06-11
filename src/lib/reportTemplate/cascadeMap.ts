@@ -439,6 +439,7 @@ export function makeSectionAnchor(section: ReportOutputSectionContract): ReportA
     structureTemplateId: section.structureTemplateId,
     renderMode: 'replace',
     visibility: 'designer',
+    qaStatus: 'unreviewed',
   };
 }
 
@@ -453,9 +454,94 @@ export function makeFieldAnchor(field: ReportOutputFieldContract): ReportAnchor 
     required: field.required,
     renderMode: field.repeatable ? 'repeat' : 'replace',
     visibility: 'designer',
+    qaStatus: 'unreviewed',
   };
 }
 
+export type CascadeQaStatus = NonNullable<ReportAnchor['qaStatus']>;
+
+export interface CascadeQaPatchFilter {
+  anchorIds?: string[];
+  sectionIds?: string[];
+  fieldPaths?: string[];
+  currentStatuses?: CascadeQaStatus[];
+  requiredOnly?: boolean;
+}
+
+export interface CascadeQaPatchInput {
+  qaStatus: CascadeQaStatus;
+  qaOwner?: string;
+  qaNote?: string;
+  qaReviewedAt?: string;
+}
+
+export interface CascadeQaPatchResult {
+  next: ReportTemplate;
+  updated: number;
+}
+
+function anchorMatchesQaPatchFilter(anchor: ReportAnchor, filter: CascadeQaPatchFilter): boolean {
+  if (filter.anchorIds?.length && !filter.anchorIds.includes(anchor.id)) return false;
+  if (filter.sectionIds?.length && (!anchor.sectionId || !filter.sectionIds.includes(anchor.sectionId))) return false;
+  if (filter.fieldPaths?.length) {
+    const paths = [anchor.fieldPath, anchor.bindingPath].filter(Boolean) as string[];
+    if (!paths.some((path) => filter.fieldPaths!.includes(path))) return false;
+  }
+  if (filter.currentStatuses?.length) {
+    const current = anchor.qaStatus ?? 'unreviewed';
+    if (!filter.currentStatuses.includes(current)) return false;
+  }
+  if (filter.requiredOnly && !anchor.required) return false;
+  return true;
+}
+
+function patchAnchorQa(anchor: ReportAnchor, patch: CascadeQaPatchInput): ReportAnchor {
+  return {
+    ...anchor,
+    qaStatus: patch.qaStatus,
+    ...(patch.qaOwner !== undefined ? { qaOwner: patch.qaOwner.trim() || undefined } : {}),
+    ...(patch.qaNote !== undefined ? { qaNote: patch.qaNote.trim() || undefined } : {}),
+    qaReviewedAt: patch.qaReviewedAt ?? new Date().toISOString(),
+  };
+}
+
+export function patchCascadeAnchorsQaStatus(
+  templateInput: ReportTemplate,
+  patch: CascadeQaPatchInput,
+  filter: CascadeQaPatchFilter = {},
+): CascadeQaPatchResult {
+  let updated = 0;
+  const template = parseTemplate(templateInput);
+  const patchAnchors = (anchors: ReportAnchor[] | undefined): ReportAnchor[] | undefined => {
+    if (!Array.isArray(anchors) || anchors.length === 0) return anchors;
+    let changed = false;
+    const nextAnchors = anchors.map((anchor) => {
+      if (!anchorMatchesQaPatchFilter(anchor, filter)) return anchor;
+      updated += 1;
+      changed = true;
+      return patchAnchorQa(anchor, patch);
+    });
+    return changed ? nextAnchors : anchors;
+  };
+
+  const next: ReportTemplate = {
+    ...template,
+    pages: template.pages.map((page) => ({
+      ...page,
+      blocks: page.blocks.map((block) => {
+        const blockAnchors = patchAnchors((block as any).anchors);
+        const overlays = block.overlays.map((overlay) => {
+          const overlayAnchors = patchAnchors((overlay as any).anchors);
+          return overlayAnchors === (overlay as any).anchors ? overlay : ({ ...overlay, anchors: overlayAnchors } as Overlay);
+        });
+        return blockAnchors === (block as any).anchors && overlays.every((overlay, index) => overlay === block.overlays[index])
+          ? block
+          : ({ ...block, anchors: blockAnchors, overlays } as Block);
+      }),
+    })),
+  };
+  return { next, updated };
+}
 
 export interface CascadeAnchorSuggestion {
   pageId: string;
@@ -589,9 +675,8 @@ export function buildCascadeAnchorSuggestions(
     .sort((a, b) => a.pageIndex - b.pageIndex || a.blockId.localeCompare(b.blockId) || (a.overlayId || '').localeCompare(b.overlayId || '') || a.fieldPath.localeCompare(b.fieldPath));
 }
 
-
 export interface CascadeActivationReadinessItem {
-  code: CascadeIssue['code'] | 'auto_map_available';
+  code: CascadeIssue['code'] | 'auto_map_available' | 'qa_approval_required';
   message: string;
   sectionId?: string;
   fieldPath?: string;
@@ -606,6 +691,8 @@ export interface CascadeActivationReadiness {
   blockerCount: number;
   warningCount: number;
   autoMapSuggestionCount: number;
+  qaApprovedRequiredSections: number;
+  qaApprovalRequiredCount: number;
   blockers: CascadeActivationReadinessItem[];
   warnings: CascadeActivationReadinessItem[];
   nextActions: string[];
@@ -614,6 +701,7 @@ export interface CascadeActivationReadiness {
 export function buildCascadeActivationReadiness(
   cascade: CascadeMap,
   suggestions: CascadeAnchorSuggestion[] = [],
+  opts: { requireQaApproved?: boolean } = {},
 ): CascadeActivationReadiness {
   const blockers = cascade.issues
     .filter((issue) => issue.severity === 'error')
@@ -641,11 +729,25 @@ export function buildCascadeActivationReadiness(
     });
   }
 
+  const qaApprovedRequiredSections = cascade.sections.filter((section) => section.required && section.targets.some((target) => target.anchor.qaStatus === 'approved')).length;
+  const qaApprovalBlockers = opts.requireQaApproved
+    ? cascade.sections
+      .filter((section) => section.required && section.targets.length > 0 && !section.targets.some((target) => target.anchor.qaStatus === 'approved'))
+      .map((section) => ({
+        code: 'qa_approval_required' as const,
+        message: `Required report section “${section.label}” has mapped anchors but no QA-approved anchor.`,
+        sectionId: section.sectionId,
+        severity: 'error' as const,
+      }))
+    : [];
+  blockers.push(...qaApprovalBlockers);
+
   const nextActions: string[] = [];
-  if (blockers.length > 0) nextActions.push('Map every required report-structure section before activation.');
+  if (blockers.some((blocker) => blocker.code === 'missing_required_anchor')) nextActions.push('Map every required report-structure section before activation.');
+  if (qaApprovalBlockers.length > 0) nextActions.push('QA-approve every required mapped section before activation.');
   if (suggestions.length > 0) nextActions.push('Review and apply Cascade auto-map suggestions for existing bindings.');
   if (warnings.some((warning) => warning.code === 'duplicate_anchor')) nextActions.push('Review duplicate anchors so generated output lands in intentional places.');
-  if (nextActions.length === 0) nextActions.push('Cascade coverage is ready for activation.');
+  if (nextActions.length === 0) nextActions.push(opts.requireQaApproved ? 'Cascade coverage and QA approvals are ready for activation.' : 'Cascade coverage is ready for activation.');
 
   return {
     status: blockers.length > 0 ? 'blocked' : 'ready',
@@ -655,6 +757,8 @@ export function buildCascadeActivationReadiness(
     blockerCount: blockers.length,
     warningCount: warnings.length,
     autoMapSuggestionCount: suggestions.length,
+    qaApprovedRequiredSections,
+    qaApprovalRequiredCount: qaApprovalBlockers.length,
     blockers,
     warnings,
     nextActions,
@@ -698,6 +802,10 @@ export interface CascadeDiagnosticsExport {
       anchorId: string;
       fieldPath?: string;
       bindingExpression?: string;
+      qaStatus?: ReportAnchor['qaStatus'];
+      qaOwner?: string;
+      qaNote?: string;
+      qaReviewedAt?: string;
     }>;
   }>;
   issues: Array<{
@@ -758,6 +866,10 @@ export function buildCascadeDiagnosticsExport(
         anchorId: target.anchorId,
         fieldPath: target.fieldPath || target.anchor.fieldPath,
         bindingExpression: target.bindingExpression,
+        qaStatus: target.anchor.qaStatus,
+        qaOwner: target.anchor.qaOwner,
+        qaNote: target.anchor.qaNote,
+        qaReviewedAt: target.anchor.qaReviewedAt,
       })),
     })),
     issues: cascade.issues.map((issue) => ({
@@ -794,10 +906,13 @@ export function cascadeDiagnosticsToCsv(diag: CascadeDiagnosticsExport): string 
     'target_pages',
     'target_blocks',
     'target_overlays',
+    'qa_status',
+    'qa_owner',
+    'qa_note',
   ]];
   for (const section of diag.sections) {
     if (!section.fields.length) {
-      rows.push([section.sectionId, section.label, section.status, section.required, '', '', '', '', section.mappedTargetCount > 0, section.mappedTargetCount, '', '', '']);
+      rows.push([section.sectionId, section.label, section.status, section.required, '', '', '', '', section.mappedTargetCount > 0, section.mappedTargetCount, '', '', '', '', '', '']);
       continue;
     }
     for (const field of section.fields) {
@@ -816,6 +931,9 @@ export function cascadeDiagnosticsToCsv(diag: CascadeDiagnosticsExport): string 
         fieldTargets.map((target) => `${target.pageIndex + 1}:${target.pageName}`).join('; '),
         fieldTargets.map((target) => target.blockId).join('; '),
         fieldTargets.map((target) => target.overlayId || '').filter(Boolean).join('; '),
+        fieldTargets.map((target) => target.qaStatus || '').filter(Boolean).join('; '),
+        fieldTargets.map((target) => target.qaOwner || '').filter(Boolean).join('; '),
+        fieldTargets.map((target) => target.qaNote || '').filter(Boolean).join('; '),
       ]);
     }
   }

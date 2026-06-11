@@ -15,8 +15,10 @@ import {
   contractFromStructureTemplate,
   makeFieldAnchor,
   makeSectionAnchor,
+  patchCascadeAnchorsQaStatus,
   selectStructureTemplate,
   type CascadeAnchorSuggestion,
+  type CascadeQaStatus,
   type ReportOutputFieldContract,
   type ReportOutputSectionContract,
   type ReportStructureTemplateLike,
@@ -53,7 +55,6 @@ function patchOverlayForAnchor(overlay: Overlay, anchor: ReportAnchor): Overlay 
   return next as Overlay;
 }
 
-
 function safeFilePart(value: string | null | undefined, fallback: string): string {
   const safe = String(value || fallback).trim().replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
   return safe || fallback;
@@ -70,7 +71,6 @@ function downloadTextFile(filename: string, text: string, type: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
-
 
 function patchTemplateForSuggestions(template: ReportTemplate, suggestions: CascadeAnchorSuggestion[]): { next: ReportTemplate; applied: number } {
   let applied = 0;
@@ -108,6 +108,13 @@ function patchTemplateForSuggestions(template: ReportTemplate, suggestions: Casc
   };
   return { next, applied };
 }
+
+const QA_STATUS_OPTIONS: Array<{ value: CascadeQaStatus; label: string }> = [
+  { value: 'unreviewed', label: 'Unreviewed' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'needs_changes', label: 'Needs changes' },
+  { value: 'rejected', label: 'Rejected' },
+];
 
 function issueTone(severity: string): string {
   if (severity === 'error') return 'border-destructive/40 bg-destructive/5 text-destructive';
@@ -193,6 +200,23 @@ export function CascadeMapPanel({
 
   const targetLabel = selectedOverlayId ? `overlay ${selectedOverlayId}` : selectedBlockId ? `block ${selectedBlockId}` : 'no selected target';
   const [includeRepeatedAutoMap, setIncludeRepeatedAutoMap] = useState(false);
+  const [bulkQaStatusFilter, setBulkQaStatusFilter] = useState<CascadeQaStatus | 'all'>('unreviewed');
+  const [bulkQaNextStatus, setBulkQaNextStatus] = useState<CascadeQaStatus>('approved');
+  const [bulkQaRequiredOnly, setBulkQaRequiredOnly] = useState(true);
+  const [bulkQaOwner, setBulkQaOwner] = useState('');
+  const [bulkQaNote, setBulkQaNote] = useState('');
+  const cascadeTargets = useMemo(() => [...cascade.sections.flatMap((section) => section.targets), ...cascade.unmappedTargets], [cascade]);
+  const bulkQaTargets = useMemo(() => cascadeTargets.filter((target) => {
+    const current = target.anchor.qaStatus ?? 'unreviewed';
+    if (bulkQaStatusFilter !== 'all' && current !== bulkQaStatusFilter) return false;
+    if (bulkQaRequiredOnly && !target.anchor.required) return false;
+    return true;
+  }), [bulkQaRequiredOnly, bulkQaStatusFilter, cascadeTargets]);
+  const bulkQaStatusCounts = useMemo(() => {
+    const counts = QA_STATUS_OPTIONS.reduce((acc, option) => ({ ...acc, [option.value]: 0 }), {} as Record<CascadeQaStatus, number>);
+    for (const target of cascadeTargets) counts[target.anchor.qaStatus ?? 'unreviewed'] += 1;
+    return counts;
+  }, [cascadeTargets]);
   const primaryAnchorSuggestions = useMemo(() => buildCascadeAnchorSuggestions(template, contract), [template, contract]);
   const repeatedAnchorSuggestions = useMemo(() => buildCascadeAnchorSuggestions(template, contract, { includeDuplicates: true }), [template, contract]);
   const anchorSuggestions = includeRepeatedAutoMap ? repeatedAnchorSuggestions : primaryAnchorSuggestions;
@@ -224,6 +248,27 @@ export function CascadeMapPanel({
     }
     onUpdateTemplate(next);
     toast.success(`Applied ${applied} cascade anchor suggestion${applied === 1 ? '' : 's'}.`);
+  };
+  const applyBulkQaStatus = () => {
+    const { next, updated } = patchCascadeAnchorsQaStatus(
+      template,
+      {
+        qaStatus: bulkQaNextStatus,
+        qaOwner: bulkQaOwner.trim() || undefined,
+        qaNote: bulkQaNote.trim() || undefined,
+        qaReviewedAt: new Date().toISOString(),
+      },
+      {
+        currentStatuses: bulkQaStatusFilter === 'all' ? undefined : [bulkQaStatusFilter],
+        requiredOnly: bulkQaRequiredOnly,
+      },
+    );
+    if (!updated) {
+      toast.info('No Cascade anchors matched the bulk QA filter.');
+      return;
+    }
+    onUpdateTemplate(next);
+    toast.success(`Updated ${updated} Cascade anchor${updated === 1 ? '' : 's'} to ${QA_STATUS_OPTIONS.find((option) => option.value === bulkQaNextStatus)?.label ?? bulkQaNextStatus}.`);
   };
 
   return (
@@ -305,6 +350,52 @@ export function CascadeMapPanel({
                   </button>
                 ))}
                 {anchorSuggestions.length > 5 && <p className="text-[11px] text-muted-foreground">+{anchorSuggestions.length - 5} more suggestions.</p>}
+              </div>
+            </Card>
+          )}
+
+          {cascadeTargets.length > 0 && (
+            <Card className="border-amber-400/30 bg-amber-50/60 p-3 text-xs dark:bg-amber-950/10">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-amber-600" /> Bulk QA signoff</h4>
+                  <p className="mt-1 text-muted-foreground">
+                    Filter mapped anchors by current QA status, assign an owner/note, and update their signoff state before activation.
+                  </p>
+                </div>
+                <Badge variant="secondary" className="shrink-0">{bulkQaTargets.length} matching</Badge>
+              </div>
+              <div className="mt-2 grid gap-2 md:grid-cols-5">
+                <label className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Current status</span>
+                  <select className="h-8 w-full rounded border bg-background px-2 text-xs" value={bulkQaStatusFilter} onChange={(event) => setBulkQaStatusFilter(event.currentTarget.value as CascadeQaStatus | 'all')}>
+                    <option value="all">All statuses</option>
+                    {QA_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({bulkQaStatusCounts[option.value]})</option>)}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Set status</span>
+                  <select className="h-8 w-full rounded border bg-background px-2 text-xs" value={bulkQaNextStatus} onChange={(event) => setBulkQaNextStatus(event.currentTarget.value as CascadeQaStatus)}>
+                    {QA_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">QA owner</span>
+                  <input className="h-8 w-full rounded border bg-background px-2 text-xs" placeholder="Reviewer" value={bulkQaOwner} onChange={(event) => setBulkQaOwner(event.currentTarget.value)} />
+                </label>
+                <label className="space-y-1 md:col-span-2">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">QA note</span>
+                  <input className="h-8 w-full rounded border bg-background px-2 text-xs" placeholder="Optional signoff note" value={bulkQaNote} onChange={(event) => setBulkQaNote(event.currentTarget.value)} />
+                </label>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={bulkQaRequiredOnly} onChange={(event) => setBulkQaRequiredOnly(event.currentTarget.checked)} />
+                  Required anchors only
+                </label>
+                <Button size="sm" className="h-7 text-xs" disabled={!bulkQaTargets.length} onClick={applyBulkQaStatus}>
+                  Apply QA update
+                </Button>
               </div>
             </Card>
           )}

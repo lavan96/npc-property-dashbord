@@ -177,6 +177,10 @@ export const ReportAnchorSchema = z.object({
   bindingPath: z.string().optional(),
   label: z.string().optional(),
   required: z.boolean().optional(),
+  qaStatus: z.enum(['unreviewed', 'approved', 'needs_changes', 'rejected']).optional(),
+  qaOwner: z.string().optional(),
+  qaNote: z.string().optional(),
+  qaReviewedAt: z.string().optional(),
   renderMode: z.enum(['replace', 'append', 'overlay', 'repeat', 'conditional']).optional(),
   visibility: z.enum(['designer', 'debug_pdf', 'hidden_final']).optional(),
 }).refine((a) => Boolean(a.sectionId || a.fieldPath || a.bindingPath), {

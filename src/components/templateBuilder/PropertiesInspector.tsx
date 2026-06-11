@@ -159,6 +159,7 @@ function makeManualAnchor(targetId: string): ReportAnchor {
     bindingPath: 'sections.example.body',
     visibility: 'designer',
     renderMode: 'replace',
+    qaStatus: 'unreviewed',
   };
 }
 
@@ -174,6 +175,12 @@ function CascadeAnchorEditor({
   const list = Array.isArray(anchors) ? anchors : [];
   const update = (index: number, patch: Partial<ReportAnchor>) => {
     onChange(list.map((anchor, i) => (i === index ? { ...anchor, ...patch } : anchor)));
+  };
+  const updateQaStatus = (index: number, status: NonNullable<ReportAnchor['qaStatus']>) => {
+    update(index, {
+      qaStatus: status,
+      qaReviewedAt: status === 'unreviewed' ? undefined : new Date().toISOString(),
+    });
   };
   const remove = (index: number) => {
     const next = list.filter((_, i) => i !== index);
@@ -244,6 +251,29 @@ function CascadeAnchorEditor({
               <div>
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Binding path override</Label>
                 <Input className="h-8 text-xs font-mono" placeholder="defaults to field path" value={anchor.bindingPath ?? ''} onChange={(e) => update(index, { bindingPath: e.target.value || undefined })} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA status</Label>
+                  <Select value={anchor.qaStatus ?? 'unreviewed'} onValueChange={(v) => updateQaStatus(index, v as NonNullable<ReportAnchor['qaStatus']>)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unreviewed">Unreviewed</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="needs_changes">Needs changes</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA owner</Label>
+                  <Input className="h-8 text-xs" placeholder="Reviewer" value={anchor.qaOwner ?? ''} onChange={(e) => update(index, { qaOwner: e.target.value || undefined })} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">QA note</Label>
+                <Textarea className="min-h-16 text-xs" placeholder="Why this generated field lands here; review notes for repeated uses." value={anchor.qaNote ?? ''} onChange={(e) => update(index, { qaNote: e.target.value || undefined })} />
+                {anchor.qaReviewedAt && <div className="mt-1 text-[10px] text-muted-foreground">Reviewed {new Date(anchor.qaReviewedAt).toLocaleString()}</div>}
               </div>
             </div>
           ))}

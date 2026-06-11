@@ -129,6 +129,8 @@ function cascadeAttrs(node: { anchors?: any[]; id?: string }, ctx: ResolveContex
     primary.sectionId ? `data-cascade-section-id="${esc(primary.sectionId)}"` : '',
     primary.fieldPath ? `data-cascade-field-path="${esc(primary.fieldPath)}"` : '',
     primary.bindingPath ? `data-cascade-binding-path="${esc(primary.bindingPath)}"` : '',
+    primary.qaStatus ? `data-cascade-qa-status="${esc(primary.qaStatus)}"` : '',
+    primary.qaOwner ? `data-cascade-qa-owner="${esc(primary.qaOwner)}"` : '',
     `data-cascade-anchor-count="${anchors.length}"`,
   ].filter(Boolean).join(' ');
 }

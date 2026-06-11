@@ -116,6 +116,11 @@ body { font-family: var(--font-body, 'Helvetica', sans-serif); color: var(--colo
 img { max-width: 100%; }
 table { border-collapse: collapse; }
 h1, h2, h3, h4 { font-family: var(--font-heading, var(--font-body, 'Helvetica', sans-serif)); }
+.tpl-cascade-index th, .tpl-cascade-index td { border:0.5pt solid #cbd5e1; padding:4pt 5pt; vertical-align:top; overflow-wrap:anywhere; }
+.tpl-cascade-index th { text-align:left; font-weight:700; }
+.tpl-cascade-index tbody tr:nth-child(even) { background:#eef2f7; }
+.tpl-cascade-index span { color:#64748b; font-size:6.5pt; }
+.tpl-cascade-index code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:6.8pt; }
 `;
 }
 
@@ -333,6 +338,8 @@ function cascadeAttrs(node: { anchors?: any[] }, ctxBase: ResolveContext): strin
     primary.sectionId ? `data-cascade-section-id="${escapeHtml(String(primary.sectionId))}"` : '',
     primary.fieldPath ? `data-cascade-field-path="${escapeHtml(String(primary.fieldPath))}"` : '',
     primary.bindingPath ? `data-cascade-binding-path="${escapeHtml(String(primary.bindingPath))}"` : '',
+    primary.qaStatus ? `data-cascade-qa-status="${escapeHtml(String(primary.qaStatus))}"` : '',
+    primary.qaOwner ? `data-cascade-qa-owner="${escapeHtml(String(primary.qaOwner))}"` : '',
     `data-cascade-anchor-count="${anchors.length}"`,
   ].filter(Boolean).join(' ');
 }
@@ -481,6 +488,100 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
   const dataAttrs = editorMode ? ` data-page-id="${escapeHtml(String(page.id))}" data-page-index="${pageIndex}"` : '';
   return `<section id="tpl-page-${pageIndex}" class="tpl-page tpl-page-${pageIndex}"${dataAttrs} style="${bgStyle}">${baselineEl}${blocks.join('\n')}</section>`;
 }
+interface CascadeIndexEntry {
+  pageIndex: number;
+  pageName: string;
+  blockId: string;
+  blockName?: string;
+  blockType?: string;
+  overlayId?: string;
+  overlayType?: string;
+  anchor: any;
+}
+
+function collectCascadeIndexEntries(pages: Page[], ctxBase: ResolveContext): CascadeIndexEntry[] {
+  const entries: CascadeIndexEntry[] = [];
+  pages.forEach((page, pageIndex) => {
+    if (!evalConditional(page.conditional, ctxBase)) return;
+    for (const block of page.blocks) {
+      if (block.hidden) continue;
+      if (!evalConditional(block.conditional, ctxBase)) continue;
+      if (!evalBlockVisibility(block.visibility, ctxBase)) continue;
+      for (const anchor of (((block as any).anchors ?? []) as any[])) {
+        entries.push({
+          pageIndex,
+          pageName: page.name,
+          blockId: block.id,
+          blockName: block.name,
+          blockType: block.type,
+          anchor,
+        });
+      }
+      for (const overlay of block.overlays ?? []) {
+        if ((overlay as any).hidden) continue;
+        if (!evalConditional((overlay as any).conditional, ctxBase)) continue;
+        for (const anchor of ((((overlay as any).anchors ?? []) as any[]))) {
+          entries.push({
+            pageIndex,
+            pageName: page.name,
+            blockId: block.id,
+            blockName: block.name,
+            blockType: block.type,
+            overlayId: overlay.id,
+            overlayType: overlay.type,
+            anchor,
+          });
+        }
+      }
+    }
+  });
+  return entries;
+}
+
+function renderCascadeDebugIndexPage(template: ReportTemplate, pages: Page[], ctxBase: ResolveContext): string {
+  const entries = collectCascadeIndexEntries(pages, ctxBase);
+  if (!entries.length) return '';
+  const firstPage = pages[0];
+  const width = firstPage?.size?.width ?? 595;
+  const height = firstPage?.size?.height ?? 842;
+  const rows = entries.map((entry, index) => {
+    const label = entry.anchor?.label || entry.anchor?.fieldPath || entry.anchor?.sectionId || entry.anchor?.id || 'Cascade anchor';
+    const target = entry.overlayId
+      ? `block ${entry.blockId} / overlay ${entry.overlayId}`
+      : `block ${entry.blockId}`;
+    const path = entry.anchor?.fieldPath || entry.anchor?.bindingPath || entry.anchor?.sectionId || '';
+    const qa = [entry.anchor?.qaStatus || 'unreviewed', entry.anchor?.qaOwner].filter(Boolean).join(' · ');
+    return `<tr>
+      <td>${index + 1}</td>
+      <td>Page ${entry.pageIndex + 1}<br/><span>${escapeHtml(entry.pageName || '')}</span></td>
+      <td>${escapeHtml(String(label))}<br/><span>${escapeHtml(String(entry.anchor?.kind || 'field'))}</span></td>
+      <td><code>${escapeHtml(String(path))}</code></td>
+      <td>${escapeHtml(target)}<br/><span>${escapeHtml(entry.overlayType || entry.blockType || '')}</span></td>
+      <td>${escapeHtml(qa)}${entry.anchor?.qaNote ? `<br/><span>${escapeHtml(String(entry.anchor.qaNote))}</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+  return `<section class="tpl-page tpl-cascade-index" style="width:${width}pt;height:${height}pt;padding:28pt;background:#f8fafc;color:#0f172a;overflow:hidden;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18pt;margin-bottom:14pt;border-bottom:1pt solid #cbd5e1;padding-bottom:10pt;">
+      <div>
+        <div style="font:700 18pt var(--font-heading, var(--font-body, Helvetica, sans-serif));">Cascade anchor index</div>
+        <div style="margin-top:3pt;font:9pt var(--font-body, Helvetica, sans-serif);color:#475569;">Debug-only page generated when Cascade tags are enabled.</div>
+      </div>
+      <div style="text-align:right;font:8pt ui-monospace, SFMono-Regular, Menlo, monospace;color:#475569;">
+        ${entries.length} anchor${entries.length === 1 ? '' : 's'}<br/>${escapeHtml(String((template as any).meta?.title || 'Template preview'))}
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font:7.5pt var(--font-body, Helvetica, sans-serif);table-layout:fixed;">
+      <thead>
+        <tr style="background:#0f172a;color:#f8fafc;">
+          <th style="width:24pt;">#</th><th style="width:72pt;">Page</th><th style="width:128pt;">Anchor</th><th>Section / field / binding</th><th style="width:125pt;">Target</th><th style="width:110pt;">QA</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </section>`;
+}
+
+
 
 /** Compile a template + data into a print-ready HTML document. */
 export function renderTemplateToHtml(
@@ -531,6 +632,7 @@ export function renderTemplateToHtml(
     (pageCtx as any)._editorMode = !!options.editorMode;
     return renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
   }).join('\n');
+  const cascadeDebugIndexHtml = options.cascadeDebug ? renderCascadeDebugIndexPage(template, visiblePages, ctxBase) : '';
 
 
   const editorCss = options.editorMode ? `
@@ -614,6 +716,7 @@ ${metaTags}
 </head>
 <body>
 ${pageHtml}
+${cascadeDebugIndexHtml}
 ${editorRuntime}
 </body>
 </html>`;
