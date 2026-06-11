@@ -58,6 +58,9 @@ describe('ingestion — code flavor + render tier', () => {
     expect(codeFlavorForFile('a.jsx')).toBe('jsx');
     expect(codeFlavorForFile('a.tsx')).toBe('tsx');
     expect(codeFlavorForFile('a.vue')).toBe('vue');
+    expect(codeFlavorForFile('a.astro')).toBe('astro');
+    expect(codeFlavorForFile('a.md')).toBe('html');
+    expect(codeFlavorForFile('a.json')).toBe('data');
     expect(codeFlavorForFile('a.zip')).toBe('zip');
     expect(codeFlavorForFile('a.txt')).toBeNull();
   });
@@ -67,6 +70,8 @@ describe('ingestion — code flavor + render tier', () => {
     expect(codeTierForFlavor('css')).toBe('C1-html-css');
     expect(codeTierForFlavor('jsx')).toBe('C3-react-jsx');
     expect(codeTierForFlavor('tsx')).toBe('C3-react-jsx');
+    expect(codeTierForFlavor('astro')).toBe('C3-react-jsx');
+    expect(codeTierForFlavor('data')).toBe('C1-html-css');
     expect(codeTierForFlavor('zip')).toBe('C4-repo-zip');
   });
 });

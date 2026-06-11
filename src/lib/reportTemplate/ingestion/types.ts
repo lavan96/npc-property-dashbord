@@ -20,7 +20,7 @@ import type { CdirFidelityReport } from './fidelity';
 export type SourceKind = 'pdf' | 'image' | 'url' | 'code';
 
 /** Concrete code input shapes accepted by the raw-codebase source. */
-export type CodeFlavor = 'html' | 'css' | 'jsx' | 'tsx' | 'vue' | 'svelte' | 'zip';
+export type CodeFlavor = 'html' | 'css' | 'jsx' | 'tsx' | 'vue' | 'svelte' | 'astro' | 'data' | 'asset' | 'zip';
 
 /**
  * Render tiers for raw-codebase ingestion (locked decision: support all four).

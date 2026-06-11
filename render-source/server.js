@@ -158,15 +158,27 @@ function findServeDir(root) {
   return null;
 }
 
+function findProjectRoot(root) {
+  if (fs.existsSync(path.join(root, 'package.json')) || fs.existsSync(path.join(root, 'index.html'))) return root;
+  const children = fs.readdirSync(root)
+    .map((name) => path.join(root, name))
+    .filter((p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } });
+  for (const child of children) {
+    if (fs.existsSync(path.join(child, 'package.json')) || fs.existsSync(path.join(child, 'index.html'))) return child;
+  }
+  return root;
+}
+
 function prepareZipServe(b64, id) {
   const root = path.join(os.tmpdir(), 'render-source', id);
   fs.mkdirSync(root, { recursive: true });
   extractZip(b64, root);
-  let serveDir = findServeDir(root);
-  if (!serveDir && ALLOW_BUILD && fs.existsSync(path.join(root, 'package.json'))) {
-    execSync('npm install --no-audit --no-fund', { cwd: root, timeout: BUILD_TIMEOUT_MS, stdio: 'ignore' });
-    try { execSync('npm run build', { cwd: root, timeout: BUILD_TIMEOUT_MS, stdio: 'ignore' }); } catch { /* build script may not exist */ }
-    serveDir = findServeDir(root);
+  const projectRoot = findProjectRoot(root);
+  let serveDir = findServeDir(projectRoot) || findServeDir(root);
+  if (!serveDir && ALLOW_BUILD && fs.existsSync(path.join(projectRoot, 'package.json'))) {
+    execSync('npm install --no-audit --no-fund', { cwd: projectRoot, timeout: BUILD_TIMEOUT_MS, stdio: 'ignore' });
+    try { execSync('npm run build', { cwd: projectRoot, timeout: BUILD_TIMEOUT_MS, stdio: 'ignore' }); } catch { /* build script may not exist */ }
+    serveDir = findServeDir(projectRoot) || findServeDir(root);
   }
   if (!serveDir) {
     throw new Error(ALLOW_BUILD

@@ -8,20 +8,23 @@
 import { detectReferenceKind } from '../referenceImport';
 import type { CodeFlavor, CodeTier, IngestionInput, SourceKind } from './types';
 
-const CODE_EXT = /\.(html?|css|jsx?|tsx?|vue|svelte|zip)$/i;
-const CODE_MIME = /^(text\/html|text\/css|application\/zip|application\/x-zip-compressed|application\/javascript|text\/(javascript|jsx|tsx))/i;
+const CODE_EXT = /\.(html?|css|s[ac]ss|less|jsx?|mjs|cjs|tsx?|vue|svelte|astro|md|markdown|json|ya?ml|svg|png|jpe?g|webp|gif|avif|woff2?|ttf|otf|zip)$/i;
+const CODE_MIME = /^(text\/html|text\/css|text\/plain|text\/markdown|application\/(zip|x-zip-compressed|javascript|json)|text\/(javascript|jsx|tsx)|image\/svg\+xml|image\/(png|jpeg|webp|gif|avif)|font\/)/i;
 
 /** Map a code file's name to its flavor, or null when it isn't a code file. */
 export function codeFlavorForFile(name = ''): CodeFlavor | null {
   const m = CODE_EXT.exec(name.toLowerCase());
   if (!m) return null;
   const ext = m[1].toLowerCase();
-  if (ext === 'htm' || ext === 'html') return 'html';
-  if (ext === 'css') return 'css';
-  if (ext === 'js' || ext === 'jsx') return 'jsx';
+  if (ext === 'htm' || ext === 'html' || ext === 'md' || ext === 'markdown' || ext === 'svg') return 'html';
+  if (ext === 'css' || ext === 'scss' || ext === 'sass' || ext === 'less') return 'css';
+  if (ext === 'js' || ext === 'jsx' || ext === 'mjs' || ext === 'cjs') return 'jsx';
   if (ext === 'ts' || ext === 'tsx') return 'tsx';
   if (ext === 'vue') return 'vue';
   if (ext === 'svelte') return 'svelte';
+  if (ext === 'astro') return 'astro';
+  if (ext === 'json' || ext === 'yaml' || ext === 'yml') return 'data';
+  if (/^(png|jpe?g|webp|gif|avif|woff2?|ttf|otf)$/.test(ext)) return 'asset';
   if (ext === 'zip') return 'zip';
   return null;
 }
@@ -34,6 +37,9 @@ const TIER_BY_FLAVOR: Record<CodeFlavor, CodeTier> = {
   tsx: 'C3-react-jsx',
   vue: 'C3-react-jsx',
   svelte: 'C3-react-jsx',
+  astro: 'C3-react-jsx',
+  data: 'C1-html-css',
+  asset: 'C1-html-css',
   zip: 'C4-repo-zip',
 };
 

@@ -80,6 +80,40 @@ export type ReferenceImportOutcome =
   /** The source resolved to a PDF/image file — re-classify and let the user pick modes. */
   | { type: 'file'; file: File; note?: string };
 
+
+function escapeHtmlText(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function markdownToPreviewHtml(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:56px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;line-height:1.55;color:#172033;background:#fff}h1{font-size:44px;line-height:1.08;margin:0 0 20px}h2{font-size:30px;margin:28px 0 12px}p,li{font-size:18px}pre{padding:18px;background:#0f172a;color:#e2e8f0;border-radius:14px;overflow:auto}</style></head><body>${lines.map((line) => {
+    const t = line.trim();
+    if (!t) return '<br />';
+    if (t.startsWith('# ')) return `<h1>${escapeHtmlText(t.slice(2))}</h1>`;
+    if (t.startsWith('## ')) return `<h2>${escapeHtmlText(t.slice(3))}</h2>`;
+    if (/^[-*]\s+/.test(t)) return `<li>${escapeHtmlText(t.replace(/^[-*]\s+/, ''))}</li>`;
+    return `<p>${escapeHtmlText(t)}</p>`;
+  }).join('')}</body></html>`;
+}
+
+function sourceExtension(filename?: string | null): string {
+  const name = String(filename || '').toLowerCase().split(/[?#]/)[0];
+  return name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+}
+
+function sourceToRenderableHtml(raw: string, filename?: string | null): string {
+  const ext = sourceExtension(filename);
+  if (ext === 'md' || ext === 'markdown') return markdownToPreviewHtml(raw);
+  if (ext === 'json' || ext === 'yaml' || ext === 'yml') {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:48px;background:#f8fafc;color:#0f172a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}pre{white-space:pre-wrap;font-size:16px;line-height:1.5;background:white;border:1px solid #e2e8f0;border-radius:18px;padding:24px;box-shadow:0 18px 40px rgba(15,23,42,.08)}</style></head><body><pre>${escapeHtmlText(raw)}</pre></body></html>`;
+  }
+  if (ext === 'svg' && /^\s*<svg[\s>]/i.test(raw)) {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff}svg{max-width:100%;height:auto}</style></head><body>${raw}</body></html>`;
+  }
+  return raw;
+}
+
 const CSS_SAMPLE_HTML = '<!doctype html><html><body><main class="template-builder-css-sample"><section class="hero"><p class="eyebrow">CSS preview</p><h1>Template style sample</h1><p>Upload paired HTML or a project ZIP for exact content reconstruction.</p><button>Sample CTA</button></section></main></body></html>';
 
 const defaultInvoke: InvokeFn = (name, body, options) =>
@@ -435,14 +469,16 @@ async function importCode(
     const asUrl = isHttpUrl(raw);
     const flavor = source.flavor ?? (source.filename ? codeFlavorForFile(source.filename) : null);
     const isCssOnly = !asUrl && flavor === 'css';
-    const isJsx = !asUrl && !isCssOnly && (looksLikeJsx(raw) || flavor === 'jsx' || flavor === 'tsx');
+    const ext = sourceExtension(source.filename);
+    const isJsx = !asUrl && !isCssOnly && (looksLikeJsx(raw) || flavor === 'jsx' || flavor === 'tsx' || (flavor === 'astro' && ext !== 'astro'));
+    const htmlSource = sourceToRenderableHtml(raw, source.filename);
     input = asUrl
       ? { url: raw }
       : isCssOnly
         ? { html: CSS_SAMPLE_HTML, css: raw, sourceFilename: source.filename ?? 'style.css' }
         : isJsx
           ? { jsx: raw, sourceFilename: source.filename ?? undefined }
-          : { html: raw, sourceFilename: source.filename ?? undefined };
+          : { html: htmlSource, sourceFilename: source.filename ?? undefined };
     label = source.filename ?? (asUrl ? 'URL' : isJsx ? 'JSX' : isCssOnly ? 'CSS' : 'HTML');
     ctx.onStage?.(asUrl ? 'Rendering page…' : isCssOnly ? 'Rendering CSS preview…' : isJsx ? 'Rendering component…' : 'Rendering HTML…');
   }
