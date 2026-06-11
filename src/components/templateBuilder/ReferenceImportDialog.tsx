@@ -43,8 +43,13 @@ import {
   type ReferenceImportSource,
   type CodeSourceFlavor,
 } from '@/lib/reportTemplate/ingestion/importOrchestrator';
+import {
+  detectPlaceholderSuggestions,
+  applyPlaceholderSuggestions,
+  type PlaceholderSuggestion,
+} from '@/lib/reportTemplate/ingestion/placeholderDetect';
 
-type ImageMode = 'faithful' | 'redesign';
+type ImageMode = 'faithful' | 'redesign' | 'background';
 
 const MAX_CODE_ZIP_BYTES = 18 * 1024 * 1024;
 
@@ -96,6 +101,8 @@ export function ReferenceImportDialog({
   const [codeSourceName, setCodeSourceName] = useState<string | null>(null);
   const [codeSourceFlavor, setCodeSourceFlavor] = useState<CodeSourceFlavor>(null);
   const [codeBusy, setCodeBusy] = useState(false);
+  // Phase 4: dynamic-field candidates detected in the applied import.
+  const [bindingCandidates, setBindingCandidates] = useState<{ schema: ReportTemplate; suggestions: PlaceholderSuggestion[] } | null>(null);
 
   const urlInfo = useMemo(() => (url.trim() ? normalizeImportUrl(url.trim()) : null), [url]);
   // onAnyFile routes code files to onCodeFile, which is declared later — keep a ref.
@@ -104,7 +111,7 @@ export function ReferenceImportDialog({
   const reset = () => {
     setFile(null); setKind('unsupported'); setBusy(false);
     setProgress(null); setStage(null); setError(null); setDone(null); setDragging(false);
-    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeSourceFlavor(null); setCodeBusy(false); setPdfClaude(false);
+    setUrl(''); setUrlBusy(false); setCodeText(''); setCodeSourceName(null); setCodeSourceFlavor(null); setCodeBusy(false); setPdfClaude(false); setBindingCandidates(null);
   };
   const handleClose = (v: boolean) => { if (busy || codeBusy) return; if (!v) reset(); onOpenChange(v); };
 
@@ -156,6 +163,10 @@ export function ReferenceImportDialog({
     if (outcome.type === 'schema') {
       onApplySchema?.(outcome.schema);
       setDone(outcome.message);
+      try {
+        const suggestions = detectPlaceholderSuggestions(outcome.schema);
+        setBindingCandidates(suggestions.length ? { schema: outcome.schema, suggestions } : null);
+      } catch { setBindingCandidates(null); }
       return;
     }
     setDone(outcome.message);
@@ -277,6 +288,27 @@ export function ReferenceImportDialog({
               <CheckCircle2 className="h-5 w-5" /> Done
             </div>
             <p className="text-xs text-muted-foreground mt-2">{done}</p>
+            {bindingCandidates && (
+              <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+                <p className="text-xs font-medium">
+                  {bindingCandidates.suggestions.length} dynamic field candidate{bindingCandidates.suggestions.length === 1 ? '' : 's'} detected
+                  <span className="text-muted-foreground font-normal"> — {Array.from(new Set(bindingCandidates.suggestions.map((s) => s.label))).join(', ')}</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="mt-2"
+                  onClick={() => {
+                    const { template: bound, applied } = applyPlaceholderSuggestions(bindingCandidates.schema, bindingCandidates.suggestions);
+                    onApplySchema?.(bound);
+                    setBindingCandidates(null);
+                    toast.success(`Converted ${applied} value${applied === 1 ? '' : 's'} to dynamic {{bindings}} — this import is now a reusable template.`);
+                  }}
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1" /> Convert to dynamic bindings
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <div className="space-y-4">
@@ -443,6 +475,19 @@ export function ReferenceImportDialog({
                       </div>
                     </div>
                   </Card>
+                  <Card className="p-3 cursor-pointer" onClick={() => !busy && setImageMode('background')}>
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="background" id="im-background" className="mt-1" />
+                      <div className="flex-1">
+                        <Label htmlFor="im-background" className="font-medium cursor-pointer flex items-center gap-2">
+                          Place as background <Badge variant="outline" className="text-[10px]">Exact</Badge>
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Pixel-perfect: the image becomes the locked page background. Add editable text and fields on top — no AI involved.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                   <Card className="p-3 cursor-pointer" onClick={() => !busy && setImageMode('redesign')}>
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="redesign" id="im-redesign" className="mt-1" />
@@ -490,8 +535,8 @@ export function ReferenceImportDialog({
               <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
               <Button onClick={start} disabled={!file || busy}>
                 {busy
-                  ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {kind === 'pdf' ? 'Importing…' : imageMode === 'faithful' ? 'Reconstructing…' : 'Redesigning…'}</>
-                  : <><Upload className="h-4 w-4 mr-1" /> {error ? 'Retry' : kind === 'image' ? (imageMode === 'faithful' ? 'Reconstruct' : 'Redesign') : 'Import'}</>}
+                  ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {kind === 'pdf' ? 'Importing…' : imageMode === 'background' ? 'Placing…' : imageMode === 'faithful' ? 'Reconstructing…' : 'Redesigning…'}</>
+                  : <><Upload className="h-4 w-4 mr-1" /> {error ? 'Retry' : kind === 'image' ? (imageMode === 'background' ? 'Place as background' : imageMode === 'faithful' ? 'Reconstruct' : 'Redesign') : 'Import'}</>}
               </Button>
             </>
           )}

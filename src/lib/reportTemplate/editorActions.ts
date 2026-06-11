@@ -211,3 +211,96 @@ export function distributeOverlays(page: Page, overlays: Overlay[]): Page {
   });
   return { ...page, blocks };
 }
+
+/**
+ * Merge multiple selected TEXT overlays into one (import cleanup: PDF/OCR
+ * extraction often splits a heading or paragraph into fragments).
+ *
+ * Reading order = top→bottom then left→right; fragments separated by a real
+ * vertical gap join with a newline, same-line fragments with a space. Styling
+ * is preserved: when the fragments share one style the merged overlay keeps it
+ * plainly; mixed styles become rich-text `runs`. Locked/hidden overlays and
+ * non-text overlays in the selection are ignored.
+ */
+export function mergeTextOverlays(page: Page, overlayIds: string[]): { page: Page; mergedId: string | null } {
+  const wanted = new Set(overlayIds);
+  // The zod-inferred Overlay union has an optional discriminant, so
+  // Extract<Overlay, { type: 'text' }> collapses to never — use a structural
+  // view of the text-overlay fields instead.
+  interface TextOverlayView {
+    id: string; type: string; x: number; y: number; width: number; height: number;
+    content?: string; name?: string; locked?: boolean; hidden?: boolean;
+    fontFamily?: string; fontSize?: number; fontWeight?: unknown; fontWeightNumeric?: number;
+    fontStyle?: string; color?: string; letterSpacing?: number; confidence?: number;
+  }
+  type Hit = { blockIndex: number; overlay: TextOverlayView };
+  const hits: Hit[] = [];
+  page.blocks.forEach((block, blockIndex) => {
+    for (const overlay of block.overlays as unknown as TextOverlayView[]) {
+      if (wanted.has(overlay.id) && overlay.type === 'text' && !overlay.locked && !overlay.hidden) {
+        hits.push({ blockIndex, overlay });
+      }
+    }
+  });
+  if (hits.length < 2) return { page, mergedId: null };
+
+  hits.sort((a, b) => (a.overlay.y - b.overlay.y) || (a.overlay.x - b.overlay.x));
+  const first = hits[0].overlay;
+
+  const minX = Math.min(...hits.map((h) => h.overlay.x));
+  const minY = Math.min(...hits.map((h) => h.overlay.y));
+  const maxX = Math.max(...hits.map((h) => h.overlay.x + h.overlay.width));
+  const maxY = Math.max(...hits.map((h) => h.overlay.y + h.overlay.height));
+
+  const sep = (prev: TextOverlayView, next: TextOverlayView): string =>
+    next.y > prev.y + prev.height * 0.5 ? '\n' : ' ';
+
+  let content = '';
+  const runs: Array<Record<string, unknown>> = [];
+  const styleKey = (o: TextOverlayView) =>
+    [o.fontFamily, o.fontSize, o.fontWeightNumeric ?? o.fontWeight, o.fontStyle, o.color, o.letterSpacing].join('|');
+  const mixedStyles = new Set(hits.map((h) => styleKey(h.overlay))).size > 1;
+
+  hits.forEach((h, i) => {
+    const piece = String(h.overlay.content ?? '');
+    const separator = i === 0 ? '' : sep(hits[i - 1].overlay, h.overlay);
+    content += separator + piece;
+    runs.push({
+      text: separator + piece,
+      fontFamily: h.overlay.fontFamily,
+      fontSize: h.overlay.fontSize,
+      fontWeight: h.overlay.fontWeightNumeric ?? h.overlay.fontWeight,
+      fontStyle: h.overlay.fontStyle,
+      color: h.overlay.color,
+      letterSpacing: h.overlay.letterSpacing,
+    });
+  });
+
+  const confidences = hits.map((h) => h.overlay.confidence).filter((c): c is number => typeof c === 'number');
+  const merged = {
+    ...(first as unknown as Record<string, unknown>),
+    id: defaultMakeId(),
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+    content,
+    name: first.name ?? 'Merged text',
+    ...(confidences.length ? { confidence: Math.min(...confidences) } : {}),
+    ...(mixedStyles ? { runs } : { runs: undefined }),
+  } as unknown as Overlay;
+
+  const removed = new Set(hits.map((h) => h.overlay.id));
+  const firstBlockIndex = hits[0].blockIndex;
+  const blocks = page.blocks.map((block, blockIndex) => {
+    let overlays = block.overlays.filter((o) => !removed.has(o.id));
+    if (blockIndex === firstBlockIndex) {
+      const at = block.overlays.findIndex((o) => o.id === first.id);
+      const insertAt = Math.min(Math.max(0, at), overlays.length);
+      overlays = [...overlays.slice(0, insertAt), merged, ...overlays.slice(insertAt)];
+    }
+    return { ...block, overlays };
+  });
+
+  return { page: { ...page, blocks }, mergedId: merged.id };
+}

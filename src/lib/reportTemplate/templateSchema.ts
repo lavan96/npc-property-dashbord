@@ -180,6 +180,10 @@ const BaseOverlay = z.object({
   groupId: z.string().optional(),         // overlays sharing groupId move together
   zIndex: z.number().int().optional(),    // overlay stacking within its block
   name: z.string().optional(),            // designer label (Layers panel)
+  // Import extraction confidence (0–1). Set by the import pipelines; low-
+  // confidence elements arrive locked so unreliable extractions cannot be
+  // nudged accidentally — unlock from the Layers panel to edit anyway.
+  confidence: z.number().min(0).max(1).optional(),
   effects: OverlayEffectsSchema,
   constraints: z.object({                 // pinning for responsive paper-size changes
     left: z.boolean().optional(),

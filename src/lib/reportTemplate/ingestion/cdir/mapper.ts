@@ -16,7 +16,12 @@ export interface CdirToTemplateOptions {
   includeTraceLayers?: boolean;
 }
 
+/** Below this confidence an imported element arrives LOCKED (advisor model:
+ *  low-confidence extractions are kept visually but not freely editable). */
+export const LOW_CONFIDENCE_LOCK_THRESHOLD = 0.5;
+
 function layerBounds(layer: CdirLayer) {
+  const confidence = layer.confidence;
   return {
     x: layer.bounds.x,
     y: layer.bounds.y,
@@ -26,6 +31,8 @@ function layerBounds(layer: CdirLayer) {
     opacity: layer.opacity ?? 1,
     zIndex: layer.zIndex,
     name: layer.name,
+    ...(confidence != null ? { confidence } : {}),
+    ...(confidence != null && confidence < LOW_CONFIDENCE_LOCK_THRESHOLD ? { locked: true } : {}),
   };
 }
 

@@ -24,7 +24,7 @@ import { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput, type InvokeFn } from './codeIngest';
 import { codeFlavorForFile } from './detect';
 import { detectReferenceKind, validateReconstructedSchema, fileToDataUrl } from '../referenceImport';
-import { groundOcrWords, type GroundedReference, type OcrWord } from '../imageGrounding';
+import { computePageSize, groundOcrWords, type GroundedReference, type OcrWord } from '../imageGrounding';
 import { groundDomBoxTree } from '../codeGrounding';
 import { figmaNodesToBoxTree } from '../figmaGrounding';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '../importUrl';
@@ -52,7 +52,7 @@ export function classifyReferenceFile(file: File): ReferenceImportKind {
 
 export type ReferenceImportSource =
   | { kind: 'pdf'; file: File; mode: FidelityMode; useClaude?: boolean }
-  | { kind: 'image'; file?: File; dataUrl?: string; imageMode: 'faithful' | 'redesign'; grounded?: GroundedReference }
+  | { kind: 'image'; file?: File; dataUrl?: string; imageMode: 'faithful' | 'redesign' | 'background'; grounded?: GroundedReference }
   | { kind: 'code'; text?: string; filename?: string | null; flavor?: CodeSourceFlavor; zipFile?: File }
   | { kind: 'url'; url: string }
   | { kind: 'make'; file: File };
@@ -338,6 +338,57 @@ async function reconstructImage(
   };
 }
 
+/**
+ * "Import as background" (pure): place the image as the active page's locked
+ * background, sized to the image's aspect ratio. The advisor-model safest
+ * tier — exact visual fidelity, user adds editable fields on top, no AI.
+ */
+export function buildImageBackgroundSchema(args: {
+  schema?: ReportTemplate;
+  activePageId?: string | null;
+  dataUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  templateName?: string;
+}): ReportTemplate {
+  const { pageWidth, pageHeight } = computePageSize(args.imageWidth, args.imageHeight);
+  if (args.schema?.pages?.length) {
+    const targetId = args.activePageId ?? args.schema.pages[0].id;
+    return parseTemplate({
+      ...args.schema,
+      pages: args.schema.pages.map((page) => page.id === targetId
+        ? {
+            ...page,
+            size: { width: pageWidth, height: pageHeight },
+            background: { ...(page.background ?? {}), imageUrl: args.dataUrl },
+          }
+        : page),
+    });
+  }
+  return parseTemplate({
+    version: 1,
+    tokens: { colors: {}, fonts: {}, spacing: {} },
+    pages: [{
+      id: 'imported_background_page',
+      name: 'Imported page',
+      size: { width: pageWidth, height: pageHeight },
+      background: { imageUrl: args.dataUrl },
+      blocks: [{ id: 'imported_background_free', type: 'free', props: {}, overlays: [] }],
+    }],
+    slots: {},
+    meta: { title: args.templateName ?? 'Imported background' },
+  });
+}
+
+function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => reject(new Error('image load failed'));
+    image.src = dataUrl;
+  });
+}
+
 async function importImage(
   source: Extract<ReferenceImportSource, { kind: 'image' }>,
   ctx: ReferenceImportContext,
@@ -345,6 +396,23 @@ async function importImage(
   ctx.onStage?.('Reading image…');
   const dataUrl = source.dataUrl ?? (source.file ? await fileToDataUrl(source.file) : null);
   if (!dataUrl) throw new Error('No image supplied.');
+  if (source.imageMode === 'background') {
+    // Safest tier: exact look, zero AI — page background is inherently locked.
+    const dims = await measureImage(dataUrl);
+    const schema = buildImageBackgroundSchema({
+      schema: ctx.schema,
+      activePageId: ctx.activePageId,
+      dataUrl,
+      imageWidth: dims.width,
+      imageHeight: dims.height,
+      templateName: ctx.templateName,
+    });
+    return {
+      type: 'schema',
+      schema,
+      message: 'Placed the image as the page background (exact look, locked). Add editable text, images, and fields on top.',
+    };
+  }
   return reconstructImage(dataUrl, source.imageMode, ctx, source.grounded);
 }
 
