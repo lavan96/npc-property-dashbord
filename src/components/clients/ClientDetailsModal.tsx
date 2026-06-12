@@ -327,6 +327,7 @@ The Team`
             properties: properties as any[],
             employment: employment as any[],
             income: income as any[],
+            incomeSources: incomeSources as any[],
             assets: assets as any[],
             liabilities: liabilities as any[],
             expenses: expenses as any[],
