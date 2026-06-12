@@ -17941,6 +17941,47 @@ export type Database = {
       retry_failed_bulk_items: { Args: { p_job_id: string }; Returns: number }
       seed_sample_schools: { Args: never; Returns: undefined }
       seed_settlement_runway: { Args: { _file_id: string }; Returns: undefined }
+      template_resync: {
+        Args: { p_note?: string; p_schema: Json; p_template_id: string }
+        Returns: {
+          active_theme: string
+          agency_id: string | null
+          approval_status: string
+          branch_label: string | null
+          brand_kit_id: string | null
+          config: Json
+          created_at: string
+          created_by: string | null
+          custom_css: string | null
+          description: string | null
+          engine: string
+          id: string
+          is_active: boolean
+          is_default: boolean | null
+          is_draft: boolean
+          locked_at: string | null
+          locked_by: string | null
+          locked_for_review: boolean
+          name: string
+          owner_user_id: string | null
+          parent_template_id: string | null
+          priority: number
+          report_type: string | null
+          schema: Json
+          scope: string
+          thumbnail_url: string | null
+          tier: string | null
+          updated_at: string
+          variant: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "report_templates"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       validate_property_specs: {
         Args: { specs: Json }
         Returns: {

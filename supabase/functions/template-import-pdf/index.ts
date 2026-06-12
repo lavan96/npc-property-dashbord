@@ -256,46 +256,30 @@ Deno.serve(async (req) => {
     if (operation === 'resync') {
       // Replace an existing template's schema (re-import revised PDF).
       // Bumps version and snapshots the previous schema.
+      //
+      // The snapshot + update + post-snapshot is delegated to the
+      // `public.template_resync` SECURITY DEFINER function, which raises
+      // statement_timeout to 5min so multi-page hybrid schemas with embedded
+      // raster page refs don't get cancelled mid-save, and uses
+      // ON CONFLICT DO NOTHING on the version snapshots so a partially-failed
+      // previous attempt doesn't block a retry.
       const importId = body.import_id as string;
       const templateId = body.template_id as string;
       const schema = body.schema;
       const note = (body.note as string) || 'Re-synced from PDF';
       if (!templateId || !schema) return json({ error: 'template_id and schema required' }, 400);
 
-      const { data: existing, error: getErr } = await admin
-        .from('report_templates').select('id,version,schema,name').eq('id', templateId).single();
-      if (getErr) return json({ error: getErr.message }, 400);
-
-      const nextVersion = (existing?.version ?? 1) + 1;
-
-      // Snapshot the OLD schema first
-      try {
-        const { error: snapshotErr } = await admin.from('report_template_versions').insert({
-          template_id: templateId,
-          version: existing?.version ?? 1,
-          schema: existing?.schema,
-          note: 'Pre-resync snapshot',
-        });
-        logDbError('resync.insert_pre_snapshot', snapshotErr);
-      } catch (_) { /* ignore */ }
-
-      const { data: tpl, error: upErr } = await admin
-        .from('report_templates')
-        .update({ schema, version: nextVersion, updated_at: new Date().toISOString() })
-        .eq('id', templateId)
-        .select()
-        .single();
-      if (upErr) return json({ error: upErr.message }, 400);
-
-      try {
-        const { error: versionErr } = await admin.from('report_template_versions').insert({
-          template_id: templateId,
-          version: nextVersion,
-          schema,
-          note,
-        });
-        logDbError('resync.insert_post_snapshot', versionErr);
-      } catch (_) { /* ignore */ }
+      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_resync', {
+        p_template_id: templateId,
+        p_schema: schema,
+        p_note: note,
+      });
+      if (rpcErr) {
+        logDbError('resync.rpc_template_resync', rpcErr);
+        return json({ error: rpcErr.message, details: rpcErr.details, hint: rpcErr.hint, code: rpcErr.code }, 400);
+      }
+      const tpl = Array.isArray(rpcRow) ? rpcRow[0] : rpcRow;
+      if (!tpl) return json({ error: 'Template not found' }, 404);
 
       const artifactMeta = await buildImportArtifactMeta(admin, importId, body);
       await admin.from('template_imports').update({
@@ -305,8 +289,9 @@ Deno.serve(async (req) => {
         meta: artifactMeta,
       }).eq('id', importId);
 
-      return json({ template: tpl, version: nextVersion });
+      return json({ template: tpl, version: tpl.version });
     }
+
 
     if (operation === 'get_artifacts') {
       const importId = body.import_id as string;
