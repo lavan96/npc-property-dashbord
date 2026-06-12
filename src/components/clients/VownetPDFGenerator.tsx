@@ -108,6 +108,8 @@ interface PropertyData {
   loan_repayment_amount?: number | null;
   loan_repayment_frequency?: string | null;
   lender_name?: string | null;
+  repayment_type?: string | null;
+  purchase_price?: number | null;
   // SMSF-specific fields
   smsf_fund_name?: string | null;
   smsf_trustee_name?: string | null;
@@ -200,6 +202,10 @@ const formatCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
+
+const NOT_RECORDED = '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
+const textOrNotRecorded = (v: string | null | undefined): string => (v && String(v).trim() ? String(v) : NOT_RECORDED);
+const currencyOrNotRecorded = (v: number | null | undefined): string => (v === null || v === undefined ? NOT_RECORDED : formatCurrency(v));
 
 const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
@@ -963,8 +969,9 @@ function generateHTMLContent(
         <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
         <tr><td class="label">Interest Rate</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
         <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
-        ${prop.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${prop.lender_name}</td></tr>` : ''}
-        ${prop.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}</td></tr>` : ''}
+        <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(prop.lender_name)}</td></tr>
+        <tr><td class="label">Loan Repayment</td><td class="value currency">${prop.loan_repayment_amount ? `${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}` : NOT_RECORDED}</td></tr>
+        <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(prop.repayment_type)}</td></tr>
       </table>
       <div class="subsection-header">Monthly Expenses</div>
       <table class="data-table compact alt-rows">
@@ -1036,8 +1043,9 @@ function generateHTMLContent(
         <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
         <tr><td class="label">Interest Rate</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
         <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
-        ${prop.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${prop.lender_name}</td></tr>` : ''}
-        ${prop.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}</td></tr>` : ''}
+        <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(prop.lender_name)}</td></tr>
+        <tr><td class="label">Loan Repayment</td><td class="value currency">${prop.loan_repayment_amount ? `${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}` : NOT_RECORDED}</td></tr>
+        <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(prop.repayment_type)}</td></tr>
       </table>
       
       <div class="subsection-header">Monthly Expenses</div>
@@ -2358,8 +2366,10 @@ function generateHTMLContent(
                   <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(ownerOccupied?.loan_remaining)}</td></tr>
                   <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(ownerOccupied?.interest_rate)}</td></tr>
                   <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
-                  ${ownerOccupied?.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${ownerOccupied.lender_name}</td></tr>` : ''}
-                  ${ownerOccupied?.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(ownerOccupied.loan_repayment_amount)} <span style="font-size:7px;color:#999">(${ownerOccupied.loan_repayment_frequency || 'monthly'})</span></td></tr>` : ''}
+                  <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(ownerOccupied?.lender_name)}</td></tr>
+                  <tr><td class="label">Purchase Price</td><td class="value currency">${currencyOrNotRecorded(ownerOccupied?.purchase_price)}</td></tr>
+                  <tr><td class="label">Loan Repayment</td><td class="value currency">${ownerOccupied?.loan_repayment_amount ? `${formatCurrency(ownerOccupied.loan_repayment_amount)} <span style="font-size:7px;color:#999">(${ownerOccupied.loan_repayment_frequency || 'monthly'})</span>` : NOT_RECORDED}</td></tr>
+                  <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(ownerOccupied?.repayment_type)}</td></tr>
                   <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
