@@ -97,8 +97,9 @@ async function invokeImport(body: any) {
   // invokeSecureFunction attaches the custom-auth session token; the edge
   // function now verifies it (supabase.functions.invoke only carries the anon
   // key for this app, which the secured function rejects).
-  const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 120000 });
+  const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
+
   if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
   return data;
 }
