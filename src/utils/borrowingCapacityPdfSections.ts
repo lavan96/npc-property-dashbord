@@ -25,6 +25,7 @@
  */
 
 import type { jsPDF } from 'jspdf';
+import { buildLiabilityServicing } from '@/utils/householdFinance';
 
 // ─── Design tokens (brand) ──────────────────────────────────────────────────
 const GOLD   = { r: 191, g: 155, b: 80 };
@@ -1204,14 +1205,18 @@ export function transformAssessmentToSectionData(
       });
     }
   } else if (options?.liabilities && options.liabilities.length > 0) {
-    for (const lib of options.liabilities) {
+    // Use shared engine so credit-card 3% / BNPL 5% / HECS / P&I fallbacks
+    // are applied consistently with VownetPDFGenerator and BorrowingCapacityModal.
+    const totalGrossAnnualIncome = Number(a.gross_annual_income) || 0;
+    const servicing = buildLiabilityServicing(options.liabilities, { totalGrossAnnualIncome });
+    for (const item of servicing.items) {
       liabilityBreakdown.push({
-        type: lib.liability_type || 'other',
-        label: lib.provider_name || lib.liability_type || 'Liability',
-        balance: Number(lib.current_balance) || 0,
-        limit: Number(lib.credit_limit) || undefined,
-        monthlyServicing: Number(lib.monthly_repayment) || 0,
-        calculationNote: undefined,
+        type: item.type,
+        label: item.label,
+        balance: item.balance,
+        limit: item.limit,
+        monthlyServicing: item.monthlyServicing,
+        calculationNote: item.calculationNote || undefined,
       });
     }
   }
