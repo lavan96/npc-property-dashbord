@@ -215,15 +215,16 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                 </Card>
-                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
+                <Card className={`p-3 ${effectiveEngine === 'docling' ? 'opacity-50' : 'cursor-pointer'}`} onClick={() => !busy && effectiveEngine !== 'docling' && setMode('ocr')}>
                   <div className="flex items-start gap-3">
-                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
+                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" disabled={effectiveEngine === 'docling'} />
                     <div className="flex-1">
                       <Label htmlFor="m-ocr" className="font-medium cursor-pointer flex items-center gap-2">
                         OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Tesseract</Badge>
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         For scans and image-only PDFs. Rasterises each page and recognises text via Tesseract (English). Slower.
+                        {effectiveEngine === 'docling' && <span className="block mt-1 italic">Docling engine OCRs scanned pages automatically — switch the engine below to use Tesseract.</span>}
                       </p>
                     </div>
                   </div>
@@ -231,11 +232,44 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               </RadioGroup>
             </div>
 
+            {/* Engine selector */}
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-sm">
+                  {effectiveEngine === 'docling' ? <Zap className="h-4 w-4 text-primary" /> : <Cpu className="h-4 w-4 text-muted-foreground" />}
+                  <span className="font-medium">Extraction engine</span>
+                  <Badge variant={effectiveEngine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
+                    {effectiveEngine === 'docling' ? 'Docling (cloud)' : 'Legacy (pdf.js)'}
+                  </Badge>
+                  {engineChoice === 'auto' && (
+                    <span className="text-[11px] text-muted-foreground">resolved from feature flag</span>
+                  )}
+                </div>
+                <Select value={engineChoice} onValueChange={(v) => setEngineChoice(v as 'auto' | PdfImportEngine)} disabled={busy}>
+                  <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto ({resolvedEngine})</SelectItem>
+                    <SelectItem value="legacy">Legacy (pdf.js)</SelectItem>
+                    <SelectItem value="docling">Docling (cloud)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {effectiveEngine === 'docling'
+                  ? 'Runs on the Cloud Run Docling sidecar. Handles complex layouts and tables, OCRs scanned pages automatically, and streams progress from `pdf_import_jobs`.'
+                  : 'Runs entirely in the browser via pdf.js. Best for fonts/colour fidelity on digital-native PDFs and for the dedicated Tesseract OCR mode.'}
+              </p>
+            </div>
+
             {/* Progress */}
             {progress && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="capitalize">{progress.phase}{progress.page && progress.totalPages ? ` page ${progress.page} / ${progress.totalPages}` : ''}</span>
+                  <span className="capitalize">
+                    {progress.phase}
+                    {progress.page && progress.totalPages ? ` · page ${progress.page} / ${progress.totalPages}` : ''}
+                    {progress.message ? ` · ${progress.message}` : ''}
+                  </span>
                   <span>{percent}%</span>
                 </div>
                 <Progress value={percent} />
