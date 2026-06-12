@@ -1,11 +1,16 @@
-export * from './noiCalculator';
+// Legacy single-purpose calculators (renamed to avoid clashing with the newer
+// borrowing/ engine, which is the authoritative source for `NoiResult`,
+// `calculateNoi`, `BindingConstraint`, and `GstTreatment`).
+export {
+  type NoiInputs as LegacyNoiInputs,
+  type NoiResult as LegacyNoiResult,
+  calculateNoi as calculateLegacyNoi,
+} from './noiCalculator';
 export * from './capRateCalculator';
 export * from './icrDscrCalculator';
 export * from './waleCalculator';
 export * from './dcfEngine';
 
-// Legacy modules: re-export concrete entry points but rename the type aliases
-// that collide with the newer borrowing/ definitions below.
 export {
   type GstInputs,
   type GstResult,
@@ -19,9 +24,7 @@ export {
   type BindingConstraint as LegacyBindingConstraint,
 } from './commercialBorrowingCapacity';
 
-// Authoritative borrowing engine (wins the `BindingConstraint` / `GstTreatment`
-// names because the CommercialBorrowingCapacityCard and the rest of the
-// borrowing/ pipeline rely on these wider unions).
+// Authoritative borrowing engine.
 export * from './borrowing/calculatorTypes';
 export * from './borrowing/lenderPolicyProfiles';
 export * from './borrowing/noiAdjustmentEngine';
