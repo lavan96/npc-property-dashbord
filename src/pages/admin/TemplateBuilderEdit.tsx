@@ -129,6 +129,8 @@ import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
+import { EditorEmptyState } from '@/components/templateBuilder/EditorEmptyState';
+import { EditorOnboardingTour, hasSeenEditorTour, markEditorTourSeen } from '@/components/templateBuilder/EditorOnboardingTour';
 import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
@@ -229,6 +231,9 @@ export default function TemplateBuilderEdit() {
     setShowV2Hint(false);
     try { localStorage.setItem('tpl-v2-coachmark-seen', '1'); } catch { /* ignore */ }
   };
+  // Multi-step onboarding tour (Phase 7) — opens once per browser; reopenable
+  // from the shortcuts dialog via `resetEditorTour()`.
+  const [showTour, setShowTour] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
@@ -400,6 +405,17 @@ export default function TemplateBuilderEdit() {
       setSelectedBlockId(null);
     }
   }, [template.pages, activePageId]);
+
+  // Open the first-run Phase 7 tour once the editor has at least one page —
+  // keeps the empty-state CTAs unobstructed and avoids firing on every blank
+  // template load.
+  useEffect(() => {
+    if (!editorV2) return;
+    if (template.pages.length === 0) return;
+    if (hasSeenEditorTour()) return;
+    const t = setTimeout(() => setShowTour(true), 600);
+    return () => clearTimeout(t);
+  }, [editorV2, template.pages.length]);
 
   const reloadTplMeta = useCallback(async () => {
     if (!id) return;
@@ -2286,9 +2302,12 @@ export default function TemplateBuilderEdit() {
                   />
                 </>
               ) : (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  No page selected. Add one from the left rail.
-                </div>
+                <EditorEmptyState
+                  onBlank={() => addPage()}
+                  onTemplates={() => setShowPageMarket(true)}
+                  onReference={() => setShowReferenceImport(true)}
+                  referenceDisabled={!id}
+                />
               )}
             </div>
 
@@ -2991,6 +3010,11 @@ export default function TemplateBuilderEdit() {
         </MountOnFirstOpen>
       )}
       <TemplateShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <EditorOnboardingTour
+        open={showTour}
+        onOpenChange={setShowTour}
+        onComplete={markEditorTourSeen}
+      />
       {showV2Hint && (
         <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[640px] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover px-4 py-2.5 text-sm shadow-lg">
           <Sparkles className="h-4 w-4 shrink-0 text-primary" />
