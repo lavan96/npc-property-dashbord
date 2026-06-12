@@ -311,7 +311,7 @@ async function importPdf(
   }
 
   ctx.onStage?.('Reading PDF…');
-  const result = await extractPdfToTemplate(source.file, {
+  const result = await extractPdfToTemplateRouted(source.file, {
     mode: source.mode,
     templateName: ctx.templateName,
     userId: ctx.userId ?? null,
