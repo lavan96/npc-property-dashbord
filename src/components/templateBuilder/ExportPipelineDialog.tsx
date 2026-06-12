@@ -235,16 +235,15 @@ export function ExportPipelineDialog({
     setRunning(true);
     const toastId = toast.loading('Preparing export…');
     try {
-      // 1) Preload remote images to warm Cloudflare/CDN cache for WeasyPrint
+      // 1) Preload remote images into the template WeasyPrint will receive.
       setPreloading(true);
-      if (assetSummary.images.length) {
-        try { await preloadImages(template); } catch (_) { /* non-fatal */ }
-      }
+      const tplForExport = buildTemplateForExport();
+      const tplForRender = assetSummary.images.length
+        ? await preloadImages(tplForExport).catch(() => tplForExport)
+        : tplForExport;
       setPreloading(false);
 
       // 2) Compile HTML server-friendly with page-range + theme applied
-      const tplForRender = buildTemplateForExport();
-
       toast.loading('Compiling HTML…', { id: toastId });
       const { html } = renderTemplateToHtml(tplForRender, {
         data: sampleData,

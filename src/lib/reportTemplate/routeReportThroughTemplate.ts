@@ -50,8 +50,8 @@ export async function routeReportThroughTemplate(
       const bindingData = ctx?.data ?? {};
 
       const schema = parseTemplate(tplRow.schema);
-      await preloadImages(schema).catch(() => {});
-      const { html } = renderTemplateToHtml(schema, {
+      const preparedSchema = await preloadImages(schema).catch(() => schema);
+      const { html } = renderTemplateToHtml(preparedSchema, {
         data: bindingData,
         customCss: tplRow.custom_css ?? undefined,
         title: `${tplRow.name} — ${routing.title ?? ''}`.trim(),
