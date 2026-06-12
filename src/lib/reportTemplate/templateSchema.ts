@@ -527,6 +527,7 @@ export type Page = z.infer<typeof PageSchema>;
 // ─── Top-level template ───────────────────────────────────────────────────────
 export const ReportTemplateSchema = z.object({
   version: z.literal(1).default(1),
+  name: z.string().optional(),
   tokens: TokensSchema,
   pages: z.array(PageSchema).default([]),
   /**

@@ -25,7 +25,7 @@ function importMeta(plan: TemplateImportPlan, title?: string, baseMeta?: ReportT
   };
 }
 
-function planPageToTemplatePage(page: TemplateImportPlan['pages'][number], override?: Pick<Page, 'id' | 'name'>): Page {
+function planPageToTemplatePage(page: TemplateImportPlan['pages'][number], plan: TemplateImportPlan, override?: Pick<Page, 'id' | 'name'>): Page {
   const pageId = override?.id ?? page.id;
   return {
     id: pageId,
@@ -57,13 +57,13 @@ export function applyTemplateImportPlan(
   plan: TemplateImportPlan,
   options: ApplyImportPlanOptions = {},
 ): ReportTemplate {
-  const importedPages = plan.pages.map((page) => planPageToTemplatePage(page));
+  const importedPages = plan.pages.map((page) => planPageToTemplatePage(page, plan));
 
   if (options.baseTemplate?.pages?.length && options.activePageId && plan.pages.length === 1) {
     return parseTemplate({
       ...options.baseTemplate,
       pages: options.baseTemplate.pages.map((page) => page.id === options.activePageId
-        ? planPageToTemplatePage(plan.pages[0], { id: page.id, name: page.name })
+        ? planPageToTemplatePage(plan.pages[0], plan, { id: page.id, name: page.name })
         : page),
       meta: importMeta(plan, options.baseTemplate.meta?.title, options.baseTemplate.meta),
     });

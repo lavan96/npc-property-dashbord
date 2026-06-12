@@ -12,8 +12,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
-  rpcImpl: vi.fn<any>(),
-  listImpl: vi.fn<any>(),
+  rpcImpl: vi.fn<(...args: any[]) => any>(),
+  listImpl: vi.fn<(...args: any[]) => any>(),
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({

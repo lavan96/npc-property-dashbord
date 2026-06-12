@@ -82,7 +82,7 @@ export async function readZipEntry(bytes: Uint8Array, entry: ZipEntry): Promise<
       controller.close();
     },
   });
-  const stream = source.pipeThrough(new DecompressionStream('deflate-raw'));
+  const stream = source.pipeThrough(new DecompressionStream('deflate-raw') as any);
   const buf = await new Response(stream).arrayBuffer();
   return new Uint8Array(buf);
 }
