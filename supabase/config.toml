@@ -297,15 +297,15 @@ verify_jwt = false
 request_timeout = 300
 
 [functions.scrape-property-listing]
-verify_jwt = true
-request_timeout = 60
+verify_jwt = false
+request_timeout = 120
 
 [functions.estimate-property-expenses]
 verify_jwt = true
 
 [functions.parse-property-pdf]
-verify_jwt = true
-request_timeout = 60
+verify_jwt = false
+request_timeout = 300
 
 [functions.parse-template-document]
 verify_jwt = true
