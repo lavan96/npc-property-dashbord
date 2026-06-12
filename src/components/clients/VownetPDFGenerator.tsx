@@ -888,7 +888,7 @@ function generateHTMLContent(
   const _disclaimerText = (brandDisclaimer?.is_enabled === false)
     ? ''
     : (brandDisclaimer?.text || 'This information is provided for general informational purposes only and does not constitute financial, legal, or investment advice.');
-  const { client, properties, employment = [], income = [], assets = [], liabilities = [], expenses = [] } = data;
+  const { client, properties, employment = [], income = [], incomeSources = [], assets = [], liabilities = [], expenses = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
   // Always find owner occupied property (shown on page 1 regardless of toggle)
