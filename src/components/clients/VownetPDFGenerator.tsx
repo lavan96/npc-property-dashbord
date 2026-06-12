@@ -1493,17 +1493,55 @@ function generateHTMLContent(
   }, 0);
   const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
 
-  // Calculate accurate monthly expenditure from properties + liabilities + rental + living expenses
-  const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
-    return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
-      (p.monthly_landlord_insurance || 0) + (p.monthly_building_insurance || 0) +
-      (p.monthly_repairs_maintenance || 0) + (p.monthly_property_management || 0) +
-      ((p.monthly_council_rates || 0) / 12) + ((p.monthly_water_rates || 0) / 12);
-  }, 0);
-  const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
-  const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+  // ─── Cash Flow: cross-validated against raw client data ───────────────────
+  // Property loan repayments and true holding costs are tracked separately so
+  // owner-occupied mortgage payments aren't mislabelled as "Property Holding
+  // Costs". Investment loan interest stays inside holding costs because the
+  // rental income above offsets it.
+  const isInvestmentProp = (p: PropertyData) =>
+    !!p.property_type && !['owner_occupied', 'ppor', 'principal_place_of_residence'].includes(String(p.property_type).toLowerCase());
+
+  const sumTrueHolding = (p: PropertyData) =>
+    (p.monthly_body_corporate || 0) +
+    (p.monthly_landlord_insurance || 0) +
+    (p.monthly_building_insurance || 0) +
+    (p.monthly_repairs_maintenance || 0) +
+    (p.monthly_property_management || 0) +
+    ((p.monthly_council_rates || 0) / 12) +
+    ((p.monthly_water_rates || 0) / 12);
+
+  const investmentHoldingCosts = summaryProperties
+    .filter(isInvestmentProp)
+    .reduce((s, p) => s + sumTrueHolding(p) + (p.monthly_interest_repayment || 0), 0);
+
+  const ownerOccHoldingCosts = summaryProperties
+    .filter((p) => !isInvestmentProp(p))
+    .reduce((s, p) => s + sumTrueHolding(p), 0);
+
+  const homeLoanRepayments = summaryProperties
+    .filter((p) => !isInvestmentProp(p))
+    .reduce((s, p) => s + (p.monthly_interest_repayment || 0), 0);
+
+  const totalPropertyHoldingCosts = investmentHoldingCosts + ownerOccHoldingCosts;
+
+  // Liability repayments: prefer captured monthly_repayment. For credit cards
+  // with $0 captured but a positive balance, fall back to a 3% min estimate
+  // (APRA-style buffer) so the cash flow isn't understated.
+  const liabilityRepaymentBreakdown = (liabilities as any[]).map((l) => {
+    const captured = Number(l.monthly_repayment || 0);
+    const isCC = String(l.liability_type || '').toLowerCase().includes('credit');
+    const bal = Number(l.current_balance || 0);
+    const estimated = captured > 0 ? captured : (isCC && bal > 0 ? Math.round(bal * 0.03) : 0);
+    return { captured, estimated, isCC, hasEstimate: captured === 0 && estimated > 0 };
+  });
+  const totalLiabilityRepayments = liabilityRepaymentBreakdown.reduce((s, l) => s + l.estimated, 0);
+  const hasEstimatedLiabilities = liabilityRepaymentBreakdown.some((l) => l.hasEstimate);
+  const hasAnyLiability = liabilities.length > 0;
+
   const totalLivingExpenses = expenses.reduce((sum, e) => sum + (e.monthly_amount || 0), 0);
-  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses + totalLivingExpenses;
+
+  const calculatedMonthlyExpenditure =
+    totalPropertyHoldingCosts + homeLoanRepayments + totalLiabilityRepayments + totalLivingExpenses;
 
   // Use calculated values, falling back to client record only if no source data exists
   const displayMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (client.total_monthly_income || 0);
