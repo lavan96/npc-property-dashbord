@@ -703,7 +703,7 @@ export function buildCascadeActivationReadiness(
   suggestions: CascadeAnchorSuggestion[] = [],
   opts: { requireQaApproved?: boolean } = {},
 ): CascadeActivationReadiness {
-  const blockers = cascade.issues
+  const blockers: CascadeActivationReadinessItem[] = cascade.issues
     .filter((issue) => issue.severity === 'error')
     .map((issue) => ({
       code: issue.code,
@@ -712,7 +712,7 @@ export function buildCascadeActivationReadiness(
       fieldPath: issue.fieldPath ?? issue.target?.fieldPath ?? issue.target?.anchor.fieldPath,
       severity: 'error' as const,
     }));
-  const warnings = cascade.issues
+  const warnings: CascadeActivationReadinessItem[] = cascade.issues
     .filter((issue) => issue.severity === 'warning')
     .map((issue) => ({
       code: issue.code,
