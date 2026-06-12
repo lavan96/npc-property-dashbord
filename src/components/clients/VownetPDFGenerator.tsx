@@ -1139,9 +1139,35 @@ function generateHTMLContent(
     `;}).join('');
   };
 
-  // Income tables
-  const primaryIncome = income.find(i => i.contact_type === 'primary');
-  const secondaryIncome = income.find(i => i.contact_type === 'secondary');
+  // Income tables — prefer client_income, fall back to aggregated client_employment so
+  // secondary income appears even when the dedicated income row is missing (audit fix).
+  const employmentToIncome = (empList: EmploymentData[], contactType: 'primary' | 'secondary'): IncomeData | undefined => {
+    if (!empList.length) return undefined;
+    const current = empList.filter(e => e.is_current !== false);
+    const pool = current.length ? current : empList;
+    const totals = pool.reduce((acc, e) => {
+      const annual = e.gross_annual_salary || (e.salary_amount ? (() => {
+        const freq = e.salary_frequency || 'annually';
+        if (freq === 'weekly') return (e.salary_amount || 0) * 52;
+        if (freq === 'fortnightly') return (e.salary_amount || 0) * 26;
+        if (freq === 'monthly') return (e.salary_amount || 0) * 12;
+        return e.salary_amount || 0;
+      })() : 0);
+      acc.gross_salary += annual;
+      acc.bonus += e.bonus || 0;
+      acc.allowance += e.allowance || 0;
+      acc.commission += e.commission || 0;
+      acc.overtime_essential += e.overtime_essential || 0;
+      acc.overtime_non_essential += e.overtime_non_essential || 0;
+      acc.other_taxable_income += e.other_taxable_income || 0;
+      return acc;
+    }, { gross_salary: 0, bonus: 0, allowance: 0, commission: 0, overtime_essential: 0, overtime_non_essential: 0, other_taxable_income: 0 });
+    if (Object.values(totals).every(v => !v)) return undefined;
+    return { contact_type: contactType, salary_frequency: 'annually', ...totals };
+  };
+
+  const primaryIncome = income.find(i => i.contact_type === 'primary') ?? employmentToIncome(primaryEmployment, 'primary');
+  const secondaryIncome = income.find(i => i.contact_type === 'secondary') ?? employmentToIncome(secondaryEmployment, 'secondary');
   
   const generateIncomeTable = (inc: IncomeData | undefined) => {
     if (!inc) {
