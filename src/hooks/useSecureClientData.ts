@@ -62,6 +62,7 @@ export interface SecureClientDataResponse {
   assets: ClientAsset[];
   liabilities: ClientLiability[];
   expenses: ClientExpense[];
+  incomeSources?: any[];
   notes?: any[];
   files?: any[];
   activities?: any[];
