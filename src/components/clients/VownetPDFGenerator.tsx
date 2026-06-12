@@ -2246,7 +2246,7 @@ function generateHTMLContent(
               </tr>
               ${homeLoanRepayments > 0 ? `<tr><td class="label" style="padding-left:20px;">Home Loan Repayments</td><td class="value currency">${formatCurrency(Math.round(homeLoanRepayments))}</td></tr>` : ''}
               ${totalPropertyHoldingCosts > 0
-                ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs${investmentHoldingCosts > 0 ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(incl. investment loan interest)</span>' : ''}</td><td class="value currency">${formatCurrency(Math.round(totalPropertyHoldingCosts))}</td></tr>`
+                ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs${propertyExpenditure.investmentHoldingCosts > 0 ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(incl. investment loan interest)</span>' : ''}</td><td class="value currency">${formatCurrency(Math.round(totalPropertyHoldingCosts))}</td></tr>`
                 : ''}
               ${totalLiabilityRepayments > 0
                 ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments${hasEstimatedLiabilities ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(3% min. estimate on cards)</span>' : ''}</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>`
