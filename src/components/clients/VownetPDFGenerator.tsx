@@ -2257,7 +2257,13 @@ function generateHTMLContent(
         }
         .financial-table .total-row td { 
           border-top: 2px solid ${NPC_COLORS.gold}; 
-          font-size: 10pt;
+          font-size: 10.5pt;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0.2px;
+        }
+        /* Keep all currency cells tabular so commas render as crisp commas under rasterisation */
+        .financial-table td.currency, .financial-table .value.currency, .data-table .value.currency, .kpi-value {
+          font-variant-numeric: tabular-nums;
         }
         
         /* KPI Cards - Premium glass-card aesthetic */
