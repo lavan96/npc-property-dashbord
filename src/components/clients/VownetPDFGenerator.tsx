@@ -108,6 +108,8 @@ interface PropertyData {
   loan_repayment_amount?: number | null;
   loan_repayment_frequency?: string | null;
   lender_name?: string | null;
+  repayment_type?: string | null;
+  purchase_price?: number | null;
   // SMSF-specific fields
   smsf_fund_name?: string | null;
   smsf_trustee_name?: string | null;
