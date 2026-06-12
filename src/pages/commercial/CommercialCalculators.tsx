@@ -13,10 +13,10 @@ export default function CommercialCalculators() {
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Calculator className="h-7 w-7 text-primary" />
-          Commercial Calculators
+          Commercial / Industrial Calculators
         </h1>
         <p className="text-muted-foreground mt-1">
-          NOI, cap rate, ICR/DSCR, GST, DCF and commercial borrowing capacity.
+          NOI, cap rate, ICR/DSCR, GST, DCF and commercial or industrial borrowing capacity.
         </p>
       </div>
 

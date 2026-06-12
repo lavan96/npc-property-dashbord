@@ -38,10 +38,10 @@ export default function CommercialProperties() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Building2 className="h-7 w-7 text-primary" />
-            Commercial Properties
+            Commercial / Industrial Properties
           </h1>
           <p className="text-muted-foreground mt-1">
-            Multi-tenant rent rolls, NOI, yield, ICR/DSCR and DCF scenarios.
+            Commercial and industrial rent rolls, NOI, yield, ICR/DSCR and DCF scenarios.
           </p>
         </div>
         <div className="flex gap-2">
@@ -59,7 +59,7 @@ export default function CommercialProperties() {
           ) : properties.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-lg font-medium">No commercial properties yet</p>
+              <p className="text-lg font-medium">No commercial or industrial properties yet</p>
               <p className="text-sm text-muted-foreground mt-1">Add your first asset to start building the rent roll and DCF models.</p>
               <Button className="mt-4" onClick={() => { setEditing(null); setOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" /> Add Property
