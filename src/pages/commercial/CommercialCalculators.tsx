@@ -21,13 +21,13 @@ export default function CommercialCalculators() {
       </div>
 
       <Tabs defaultValue="bc" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
-          <TabsTrigger value="bc">Borrowing</TabsTrigger>
-          <TabsTrigger value="noi">NOI</TabsTrigger>
-          <TabsTrigger value="cap">Cap Rate</TabsTrigger>
-          <TabsTrigger value="icr">ICR / DSCR</TabsTrigger>
-          <TabsTrigger value="gst">GST</TabsTrigger>
-          <TabsTrigger value="dcf">DCF</TabsTrigger>
+        <TabsList className="w-full justify-start gap-1 overflow-x-auto">
+          <TabsTrigger value="bc" className="shrink-0 text-xs md:text-sm">Borrowing Capacity</TabsTrigger>
+          <TabsTrigger value="noi" className="shrink-0 text-xs md:text-sm">Net Operating Income (NOI)</TabsTrigger>
+          <TabsTrigger value="cap" className="shrink-0 text-xs md:text-sm">Capitalisation Rate (Cap Rate)</TabsTrigger>
+          <TabsTrigger value="icr" className="shrink-0 text-xs md:text-sm">Interest Coverage Ratio / Debt Service Coverage Ratio (ICR / DSCR)</TabsTrigger>
+          <TabsTrigger value="gst" className="shrink-0 text-xs md:text-sm">Goods and Services Tax (GST)</TabsTrigger>
+          <TabsTrigger value="dcf" className="shrink-0 text-xs md:text-sm">Discounted Cash Flow (DCF)</TabsTrigger>
         </TabsList>
         <TabsContent value="bc" className="mt-4"><CommercialBorrowingCapacityCard /></TabsContent>
         <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
