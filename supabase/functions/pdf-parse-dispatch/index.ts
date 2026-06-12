@@ -135,15 +135,21 @@ async function runJob(
       throw new Error(`sidecar /parse ${parseRes.status}: ${text.slice(0, 500)}`);
     }
     const parseJson = await parseRes.json();
+    // Sidecar returns an envelope { engine_version, pages, docling_document, ... }.
+    // The frontend mapper expects the DoclingDocument itself, so persist just
+    // that under `docling.json`.
+    const doclingDoc = parseJson?.docling_document ?? parseJson;
     const doclingPath = await uploadDiagnostic(
       admin,
       jobId,
       'docling.json',
-      JSON.stringify(parseJson),
+      JSON.stringify(doclingDoc),
       'application/json',
     );
 
-    const pageCount = Array.isArray(parseJson?.pages) ? parseJson.pages.length : null;
+    const pageCount = Array.isArray(parseJson?.pages)
+      ? parseJson.pages.length
+      : (typeof parseJson?.page_count === 'number' ? parseJson.page_count : null);
     await updateJob(admin, jobId, {
       page_count: pageCount,
       engine_version: parseJson?.engine_version ?? 'docling',
@@ -154,24 +160,40 @@ async function runJob(
     if (mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect') {
       await setStage(admin, jobId, 'rastering');
       const dpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
+      const format = 'png';
       const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${PARSE_TOKEN}`,
         },
-        body: JSON.stringify({ url: signedUrl, dpi, format: 'png' }),
+        body: JSON.stringify({ url: signedUrl, dpi, format }),
       });
       if (!rasterRes.ok) {
         const text = await rasterRes.text().catch(() => '');
         throw new Error(`sidecar /raster ${rasterRes.status}: ${text.slice(0, 500)}`);
       }
       const rasterJson = await rasterRes.json();
+      // Normalize sidecar shape ({ pages:[{page_no, mime, width_px, height_px, base64}] })
+      // into the envelope the frontend `DoclingRasterResponse` typings expect.
+      const normalizedRaster = {
+        format,
+        dpi: rasterJson?.dpi ?? dpi,
+        engine_version: rasterJson?.engine_version,
+        pages: Array.isArray(rasterJson?.pages)
+          ? rasterJson.pages.map((p: any) => ({
+              page_no: p.page_no,
+              width: p.width ?? p.width_px ?? 0,
+              height: p.height ?? p.height_px ?? 0,
+              image_base64: p.image_base64 ?? p.base64 ?? '',
+            }))
+          : [],
+      };
       rasterPath = await uploadDiagnostic(
         admin,
         jobId,
         'rasters.json',
-        JSON.stringify(rasterJson),
+        JSON.stringify(normalizedRaster),
         'application/json',
       );
     }
@@ -252,7 +274,8 @@ Deno.serve(async (req) => {
         .insert({
           user_id: userId,
           template_id: body.template_id ?? null,
-          source_file_path: (body.source_path as string) ?? (body.source_url as string) ?? `inbox/${crypto.randomUUID()}.pdf`,
+          source_file_path: (body.source_path as string)
+            ?? (typeof body.source_file_name === 'string' ? `inline:${body.source_file_name}` : `inline:${crypto.randomUUID()}.pdf`),
           source_file_name: body.source_file_name ?? null,
           source_file_size_bytes: body.source_file_size_bytes ?? null,
           engine: 'docling',

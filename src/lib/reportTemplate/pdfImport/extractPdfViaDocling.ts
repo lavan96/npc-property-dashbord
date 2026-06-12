@@ -29,8 +29,8 @@ import type {
   DoclingRasterResponse,
 } from './docling/doclingTypes';
 
-const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 5 * 60_000;
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 10 * 60_000;
 const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
@@ -100,30 +100,30 @@ async function pollJob(
   let lastStage: string | null = null;
   let consecutiveErrors = 0;
   let lastError: string | null = null;
-  // Treat transient read failures (statement timeouts, intermittent network)
-  // as retry-able — the dispatcher continues to run server-side regardless,
-  // so we should keep polling rather than abort the whole import.
+  // Poll via `pdf-parse-dispatch { operation: 'status' }` rather than direct
+  // table reads — the table is RLS-scoped to `auth.uid()`, which is null under
+  // our custom session tokens, so direct selects would silently return zero
+  // rows and the import would always time out.
   const MAX_CONSECUTIVE_ERRORS = 8;
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const { data, error } = await supabase
-      .from('pdf_import_jobs')
-      .select('id,status,stage,page_count,duration_ms,engine_version,diagnostics_path,error_code,error_text,result_payload')
-      .eq('id', jobId)
-      .maybeSingle();
-    if (error) {
+    const { data, error } = await invokeSecureFunction(
+      'pdf-parse-dispatch',
+      { operation: 'status', job_id: jobId },
+      { timeoutMs: 30_000 },
+    );
+    if (error || (data as any)?.error) {
       consecutiveErrors += 1;
-      lastError = error.message;
-      console.warn(`[docling] pdf_import_jobs read failed (attempt ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${error.message}`);
+      lastError = error?.message ?? String((data as any)?.error ?? 'unknown');
+      console.warn(`[docling] status read failed (attempt ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${lastError}`);
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        throw new Error(`pdf_import_jobs read failed after ${consecutiveErrors} retries: ${lastError}`);
+        throw new Error(`pdf-parse-dispatch status failed after ${consecutiveErrors} retries: ${lastError}`);
       }
-      // Back off briefly and retry — don't abort the in-flight parse.
       await new Promise((r) => setTimeout(r, Math.min(1000 * consecutiveErrors, 5000)));
     } else {
       consecutiveErrors = 0;
-      if (data) {
-        const row = data as JobRow;
+      const row = (data as { job?: JobRow } | null)?.job;
+      if (row) {
         if (row.stage && row.stage !== lastStage) {
           lastStage = row.stage;
           onProgress?.({
@@ -138,7 +138,7 @@ async function pollJob(
       }
     }
     if (Date.now() - start > POLL_TIMEOUT_MS) {
-      throw new Error('Docling parse timed out after 5 minutes');
+      throw new Error('Docling parse timed out after 10 minutes');
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
