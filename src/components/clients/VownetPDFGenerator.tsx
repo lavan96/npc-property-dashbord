@@ -295,7 +295,7 @@ const ENUM_LABEL_OVERRIDES: Record<string, string> = {
 };
 
 const humanizeEnum = (raw: string | null | undefined): string => {
-  if (!raw && raw !== 0) return '-';
+  if (raw === null || raw === undefined) return '-';
   const v = String(raw).trim();
   if (!v) return '-';
   const key = v.toLowerCase().replace(/[\s-]+/g, '_');
