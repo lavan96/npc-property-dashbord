@@ -15,7 +15,6 @@
 import { toast } from 'sonner';
 import { parseTemplate, type ReportTemplate } from '../templateSchema';
 import {
-  extractPdfToTemplate,
   type FidelityMode,
   type ImportProgress,
   type ImportResult,
