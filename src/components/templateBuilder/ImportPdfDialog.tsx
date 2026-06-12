@@ -5,9 +5,9 @@
  * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
  * progress + a fidelity report card when finished.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Cpu, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,10 +15,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { describeAuthError } from '@/lib/secureInvoke';
 import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
 import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
+import { resolvePdfImportEngine, type PdfImportEngine } from '@/lib/featureFlags/pdfImportEngine';
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
@@ -32,15 +34,31 @@ interface Props {
 
 export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isSuperadmin } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
+  const [engineChoice, setEngineChoice] = useState<'auto' | PdfImportEngine>('auto');
+  const [resolvedEngine, setResolvedEngine] = useState<PdfImportEngine>('legacy');
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
+
+  // Resolve which engine the feature flag picks for the current user, so the UI
+  // can tell them up-front whether they'll go through pdf.js or Docling.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    resolvePdfImportEngine({ userId: user?.id ?? null, isSuperadmin })
+      .then((e) => { if (!cancelled) setResolvedEngine(e); })
+      .catch(() => { if (!cancelled) setResolvedEngine('legacy'); });
+    return () => { cancelled = true; };
+  }, [open, user?.id, isSuperadmin]);
+
+  const effectiveEngine: PdfImportEngine =
+    engineChoice === 'auto' ? resolvedEngine : engineChoice;
 
   const reset = () => {
     setFile(null);
@@ -80,18 +98,20 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       const outcome = await runReferenceImport({ kind: 'pdf', file, mode }, {
         templateName: file.name.replace(/\.pdf$/i, ''),
         userId: user?.id ?? null,
+        isSuperadmin,
+        pdfEngine: engineChoice === 'auto' ? undefined : engineChoice,
         onProgress: setProgress,
       });
       if (outcome.type !== 'persisted') throw new Error('Unexpected import outcome.');
       setResult(outcome.result);
       setRecordedDecision(null);
-      toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'}.`);
+      toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'} via ${outcome.result.engine ?? effectiveEngine}.`);
     } catch (err) {
       toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }
-  }, [file, mode, user?.id]);
+  }, [file, mode, user?.id, isSuperadmin, engineChoice, effectiveEngine]);
 
   const percent = (() => {
     if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
@@ -195,15 +215,16 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                 </Card>
-                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
+                <Card className={`p-3 ${effectiveEngine === 'docling' ? 'opacity-50' : 'cursor-pointer'}`} onClick={() => !busy && effectiveEngine !== 'docling' && setMode('ocr')}>
                   <div className="flex items-start gap-3">
-                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
+                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" disabled={effectiveEngine === 'docling'} />
                     <div className="flex-1">
                       <Label htmlFor="m-ocr" className="font-medium cursor-pointer flex items-center gap-2">
                         OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Tesseract</Badge>
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         For scans and image-only PDFs. Rasterises each page and recognises text via Tesseract (English). Slower.
+                        {effectiveEngine === 'docling' && <span className="block mt-1 italic">Docling engine OCRs scanned pages automatically — switch the engine below to use Tesseract.</span>}
                       </p>
                     </div>
                   </div>
@@ -211,11 +232,44 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               </RadioGroup>
             </div>
 
+            {/* Engine selector */}
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-sm">
+                  {effectiveEngine === 'docling' ? <Zap className="h-4 w-4 text-primary" /> : <Cpu className="h-4 w-4 text-muted-foreground" />}
+                  <span className="font-medium">Extraction engine</span>
+                  <Badge variant={effectiveEngine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
+                    {effectiveEngine === 'docling' ? 'Docling (cloud)' : 'Legacy (pdf.js)'}
+                  </Badge>
+                  {engineChoice === 'auto' && (
+                    <span className="text-[11px] text-muted-foreground">resolved from feature flag</span>
+                  )}
+                </div>
+                <Select value={engineChoice} onValueChange={(v) => setEngineChoice(v as 'auto' | PdfImportEngine)} disabled={busy}>
+                  <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto ({resolvedEngine})</SelectItem>
+                    <SelectItem value="legacy">Legacy (pdf.js)</SelectItem>
+                    <SelectItem value="docling">Docling (cloud)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {effectiveEngine === 'docling'
+                  ? 'Runs on the Cloud Run Docling sidecar. Handles complex layouts and tables, OCRs scanned pages automatically, and streams progress from `pdf_import_jobs`.'
+                  : 'Runs entirely in the browser via pdf.js. Best for fonts/colour fidelity on digital-native PDFs and for the dedicated Tesseract OCR mode.'}
+              </p>
+            </div>
+
             {/* Progress */}
             {progress && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="capitalize">{progress.phase}{progress.page && progress.totalPages ? ` page ${progress.page} / ${progress.totalPages}` : ''}</span>
+                  <span className="capitalize">
+                    {progress.phase}
+                    {progress.page && progress.totalPages ? ` · page ${progress.page} / ${progress.totalPages}` : ''}
+                    {progress.message ? ` · ${progress.message}` : ''}
+                  </span>
                   <span>{percent}%</span>
                 </div>
                 <Progress value={percent} />
@@ -226,8 +280,13 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           // Result card
           <div className="space-y-3">
             <Card className="p-4 border-success/40 bg-success/5">
-              <div className="flex items-center gap-2 text-success font-medium">
-                <CheckCircle2 className="h-5 w-5" /> Import complete
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-success font-medium">
+                  <CheckCircle2 className="h-5 w-5" /> Import complete
+                </div>
+                <Badge variant={result.engine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
+                  {result.engine === 'docling' ? <><Zap className="h-3 w-3 mr-1" />Docling</> : <><Cpu className="h-3 w-3 mr-1" />Legacy</>}
+                </Badge>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <Stat label="Pages" value={result.pageCount} />

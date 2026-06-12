@@ -80,6 +80,8 @@ export interface ImportResult {
   importAsset?: ImportAsset;
   /** Raw deterministic manifests generated from the rendered PDF pages for provider-backed reconciliation. */
   importManifests?: RawImportManifest[];
+  /** Which extraction engine produced this result (set by extractPdfToTemplateRouted). */
+  engine?: 'legacy' | 'docling';
   fidelityReport: {
     semanticPages: number;
     rasterizedPages: number;
