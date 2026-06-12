@@ -76,6 +76,10 @@ export interface ReferenceImportContext {
   templateId?: string;
   templateName?: string;
   userId?: string | null;
+  /** Force a specific PDF extraction engine, bypassing `feature_flags.pdf_import.engine`. */
+  pdfEngine?: 'legacy' | 'docling';
+  /** Whether the current user is a superadmin — used by the engine resolver. */
+  isSuperadmin?: boolean;
   onStage?: (stage: string) => void;
   onProgress?: (p: ImportProgress) => void;
   /** Injectable network call (tests). Defaults to the secured invoke. */
