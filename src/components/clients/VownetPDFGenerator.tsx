@@ -2085,16 +2085,40 @@ function generateHTMLContent(
           padding: 14px 16px;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
           border-left: 4px solid ${NPC_COLORS.gold};
+          min-width: 0;
         }
         .employer-icon { 
           font-size: 16pt; 
-          line-height: 1; 
+          line-height: 1;
+          flex: 0 0 auto;
         }
-        .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 10pt; }
-        
+        .employer-name {
+          font-weight: 600;
+          color: ${NPC_COLORS.darkBlue};
+          font-size: 10pt;
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .status-pill {
+          flex: 0 0 auto;
+          font-size: 6.5pt;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          text-transform: uppercase;
+          color: #fff;
+          white-space: nowrap;
+        }
+        .status-pill-current { background: #16a34a; }
+        .status-pill-previous { background: #94a3b8; }
+
         .emp-type-badge, .freq-badge {
           background: ${NPC_COLORS.goldLight};
           color: ${NPC_COLORS.goldDark};
@@ -2104,23 +2128,34 @@ function generateHTMLContent(
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.3px;
+          white-space: nowrap;
+        }
+
+        .provider-cell {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 0;
+          min-width: 130px;
         }
         
-        /* Empty State - Compact */
+        /* Empty State - Compact (neutral; never gold to avoid header-band drift) */
         .empty-state-compact {
-          padding: 28px 16px;
+          padding: 24px 16px;
           text-align: center;
           background: ${NPC_COLORS.lightGray};
           border-radius: 6px;
           border: 1px dashed ${NPC_COLORS.borderGray};
         }
         .empty-state-compact.primary {
-          border-color: ${NPC_COLORS.gold};
-          background: ${NPC_COLORS.goldTint};
+          /* Subtle primary cue — soft tint without bleeding into card header palette */
+          border-color: ${NPC_COLORS.borderGray};
+          background: ${NPC_COLORS.lightGray};
         }
         .empty-state-icon {
-          font-size: 24pt;
-          margin-bottom: 10px;
+          font-size: 20pt;
+          margin-bottom: 8px;
+          opacity: 0.7;
         }
         .empty-state-text {
           font-size: 9pt;
