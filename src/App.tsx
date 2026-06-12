@@ -66,6 +66,7 @@ import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
 import TemplateSharePreview from "./pages/TemplateSharePreview";
 import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
 import FigmaTemplates from "./pages/admin/FigmaTemplates";
+import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
