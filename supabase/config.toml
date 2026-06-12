@@ -782,3 +782,9 @@ request_timeout = 1500
 [functions.finance-portal-templates]
 verify_jwt = false
 request_timeout = 1500
+
+[functions.feature-flags-admin]
+# Superadmin role re-checked inside the function against user_roles.
+verify_jwt = false
+request_timeout = 1500
+

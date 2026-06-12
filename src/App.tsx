@@ -66,6 +66,7 @@ import TemplateBuilderEdit from "./pages/admin/TemplateBuilderEdit";
 import TemplateSharePreview from "./pages/TemplateSharePreview";
 import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
 import FigmaTemplates from "./pages/admin/FigmaTemplates";
+import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
@@ -327,6 +328,7 @@ const App = () => (
                 <Route path="admin/template-builder/:id" element={<ModuleGuard moduleKey="templates" requireEdit><TemplateBuilderEdit /></ModuleGuard>} />
                 <Route path="admin/report-engine-inspector" element={<ReportEngineInspector />} />
                 <Route path="admin/figma-templates" element={<ModuleGuard moduleKey="templates"><FigmaTemplates /></ModuleGuard>} />
+                <Route path="admin/pdf-import-engine" element={<ModuleGuard moduleKey="templates"><PdfImportEngineAdmin /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
