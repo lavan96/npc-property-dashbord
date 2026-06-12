@@ -1493,17 +1493,55 @@ function generateHTMLContent(
   }, 0);
   const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
 
-  // Calculate accurate monthly expenditure from properties + liabilities + rental + living expenses
-  const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
-    return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
-      (p.monthly_landlord_insurance || 0) + (p.monthly_building_insurance || 0) +
-      (p.monthly_repairs_maintenance || 0) + (p.monthly_property_management || 0) +
-      ((p.monthly_council_rates || 0) / 12) + ((p.monthly_water_rates || 0) / 12);
-  }, 0);
-  const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
-  const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+  // ─── Cash Flow: cross-validated against raw client data ───────────────────
+  // Property loan repayments and true holding costs are tracked separately so
+  // owner-occupied mortgage payments aren't mislabelled as "Property Holding
+  // Costs". Investment loan interest stays inside holding costs because the
+  // rental income above offsets it.
+  const isInvestmentProp = (p: PropertyData) =>
+    !!p.property_type && !['owner_occupied', 'ppor', 'principal_place_of_residence'].includes(String(p.property_type).toLowerCase());
+
+  const sumTrueHolding = (p: PropertyData) =>
+    (p.monthly_body_corporate || 0) +
+    (p.monthly_landlord_insurance || 0) +
+    (p.monthly_building_insurance || 0) +
+    (p.monthly_repairs_maintenance || 0) +
+    (p.monthly_property_management || 0) +
+    ((p.monthly_council_rates || 0) / 12) +
+    ((p.monthly_water_rates || 0) / 12);
+
+  const investmentHoldingCosts = summaryProperties
+    .filter(isInvestmentProp)
+    .reduce((s, p) => s + sumTrueHolding(p) + (p.monthly_interest_repayment || 0), 0);
+
+  const ownerOccHoldingCosts = summaryProperties
+    .filter((p) => !isInvestmentProp(p))
+    .reduce((s, p) => s + sumTrueHolding(p), 0);
+
+  const homeLoanRepayments = summaryProperties
+    .filter((p) => !isInvestmentProp(p))
+    .reduce((s, p) => s + (p.monthly_interest_repayment || 0), 0);
+
+  const totalPropertyHoldingCosts = investmentHoldingCosts + ownerOccHoldingCosts;
+
+  // Liability repayments: prefer captured monthly_repayment. For credit cards
+  // with $0 captured but a positive balance, fall back to a 3% min estimate
+  // (APRA-style buffer) so the cash flow isn't understated.
+  const liabilityRepaymentBreakdown = (liabilities as any[]).map((l) => {
+    const captured = Number(l.monthly_repayment || 0);
+    const isCC = String(l.liability_type || '').toLowerCase().includes('credit');
+    const bal = Number(l.current_balance || 0);
+    const estimated = captured > 0 ? captured : (isCC && bal > 0 ? Math.round(bal * 0.03) : 0);
+    return { captured, estimated, isCC, hasEstimate: captured === 0 && estimated > 0 };
+  });
+  const totalLiabilityRepayments = liabilityRepaymentBreakdown.reduce((s, l) => s + l.estimated, 0);
+  const hasEstimatedLiabilities = liabilityRepaymentBreakdown.some((l) => l.hasEstimate);
+  const hasAnyLiability = liabilities.length > 0;
+
   const totalLivingExpenses = expenses.reduce((sum, e) => sum + (e.monthly_amount || 0), 0);
-  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses + totalLivingExpenses;
+
+  const calculatedMonthlyExpenditure =
+    totalPropertyHoldingCosts + homeLoanRepayments + totalLiabilityRepayments + totalLivingExpenses;
 
   // Use calculated values, falling back to client record only if no source data exists
   const displayMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (client.total_monthly_income || 0);
@@ -2221,15 +2259,18 @@ function generateHTMLContent(
               <tr style="background: #fef2f2;">
                 <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.danger}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Expenditure</td>
               </tr>
-              ${totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs</td><td class="value currency">${formatCurrency(Math.round(totalPropertyExpenses))}</td></tr>` : ''}
+              ${homeLoanRepayments > 0 ? `<tr><td class="label" style="padding-left:20px;">Home Loan Repayments</td><td class="value currency">${formatCurrency(Math.round(homeLoanRepayments))}</td></tr>` : ''}
+              ${totalPropertyHoldingCosts > 0
+                ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs${investmentHoldingCosts > 0 ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(incl. investment loan interest)</span>' : ''}</td><td class="value currency">${formatCurrency(Math.round(totalPropertyHoldingCosts))}</td></tr>`
+                : ''}
               ${totalLiabilityRepayments > 0
-                ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>`
-                : (liabilities.some(l => (l.current_balance || 0) > 0)
-                    ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Liability Repayments</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>`
+                ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments${hasEstimatedLiabilities ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(3% min. estimate on cards)</span>' : ''}</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>`
+                : (hasAnyLiability
+                    ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Liability Repayments</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Recorded with $0 monthly</td></tr>`
                     : '')}
-              ${totalRentalExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Rent Paid (PPOR)</td><td class="value currency">${formatCurrency(Math.round(totalRentalExpenses))}</td></tr>` : ''}
-              ${totalLivingExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Living Expenses</td><td class="value currency">${formatCurrency(Math.round(totalLivingExpenses))}</td></tr>` : ''}
-              ${totalLivingExpenses === 0 && totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Living Expenses</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>` : ''}
+              ${totalLivingExpenses > 0
+                ? `<tr><td class="label" style="padding-left:20px;">Living Expenses</td><td class="value currency">${formatCurrency(Math.round(totalLivingExpenses))}</td></tr>`
+                : `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Living Expenses</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>`}
               <tr style="border-top: 1px solid #d1d5db;"><td class="label"><strong>Total Monthly Expenditure</strong></td><td class="value currency"><strong>${formatCurrency(Math.round(displayMonthlyExpenditure))}</strong></td></tr>
               
               <tr class="cashflow-row ${displayNetCashFlow >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
@@ -2240,7 +2281,7 @@ function generateHTMLContent(
                 </td>
               </tr>
             </table>
-            ${totalLivingExpenses === 0 ? `<div style="font-size:7pt; color:#9ca3af; margin-top:4px; padding-left:4px; font-style:italic;">⚠ Living expenses not yet recorded — figures reflect property & liability commitments only.</div>` : ''}
+            ${totalLivingExpenses === 0 ? `<div style="font-size:7pt; color:#9ca3af; margin-top:4px; padding-left:4px; font-style:italic;">⚠ Living expenses not yet recorded — net cash flow reflects property & liability commitments only and will overstate true surplus.</div>` : ''}
           </div>
           
           <div class="section" style="margin-top: 20px;">
