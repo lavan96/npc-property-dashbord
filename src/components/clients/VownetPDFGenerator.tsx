@@ -201,6 +201,10 @@ const formatCurrency = (value: number | null | undefined): string => {
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
+const NOT_RECORDED = '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
+const textOrNotRecorded = (v: string | null | undefined): string => (v && String(v).trim() ? String(v) : NOT_RECORDED);
+const currencyOrNotRecorded = (v: number | null | undefined): string => (v === null || v === undefined ? NOT_RECORDED : formatCurrency(v));
+
 const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
   // Format interest rates properly (e.g., 5.9 -> 5.9%, not 250%)
