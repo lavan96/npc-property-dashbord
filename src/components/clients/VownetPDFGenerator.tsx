@@ -2045,17 +2045,16 @@ function generateHTMLContent(
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.3px;
-          white-space: normal;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          white-space: nowrap;
           max-width: 100%;
           line-height: 1.25;
         }
 
         .provider-cell {
           white-space: normal;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          overflow-wrap: break-word;
+          word-break: normal;
+          hyphens: none;
           min-width: 110px;
           line-height: 1.3;
         }
