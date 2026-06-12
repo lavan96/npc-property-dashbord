@@ -129,11 +129,18 @@ async function pollJob(
 
 function rastersByPage(payload: unknown): DoclingRasterByPage | undefined {
   if (!payload || typeof payload !== 'object') return undefined;
-  const pages = (payload as { pages?: DoclingPageRasterEntry[] }).pages;
+  const env = payload as DoclingRasterResponse;
+  const pages = env.pages;
   if (!Array.isArray(pages)) return undefined;
+  const mime = env.format === 'jpeg' ? 'image/jpeg' : 'image/png';
   const out: DoclingRasterByPage = {};
   for (const p of pages) {
-    if (p?.page_no != null) out[p.page_no] = p;
+    if (p?.page_no == null) continue;
+    out[p.page_no] = {
+      width: p.width,
+      height: p.height,
+      dataUrl: `data:${mime};base64,${p.image_base64}`,
+    };
   }
   return out;
 }
