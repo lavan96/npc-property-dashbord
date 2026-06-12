@@ -2291,9 +2291,12 @@ export default function TemplateBuilderEdit() {
                   />
                 </>
               ) : (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  No page selected. Add one from the left rail.
-                </div>
+                <EditorEmptyState
+                  onBlank={() => addPage()}
+                  onTemplates={() => setShowPageMarket(true)}
+                  onReference={() => setShowReferenceImport(true)}
+                  referenceDisabled={!id}
+                />
               )}
             </div>
 
