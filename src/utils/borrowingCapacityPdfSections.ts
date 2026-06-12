@@ -25,6 +25,7 @@
  */
 
 import type { jsPDF } from 'jspdf';
+import { buildLiabilityServicing } from '@/utils/householdFinance';
 
 // ─── Design tokens (brand) ──────────────────────────────────────────────────
 const GOLD   = { r: 191, g: 155, b: 80 };
