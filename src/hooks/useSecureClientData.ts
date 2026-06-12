@@ -62,6 +62,7 @@ export interface SecureClientDataResponse {
   assets: ClientAsset[];
   liabilities: ClientLiability[];
   expenses: ClientExpense[];
+  incomeSources?: any[];
   notes?: any[];
   files?: any[];
   activities?: any[];
@@ -98,6 +99,7 @@ interface UseSecureClientDataOptions {
     assets?: boolean;
     liabilities?: boolean;
     expenses?: boolean;
+    incomeSources?: boolean;
     notes?: boolean;
     files?: boolean;
     activities?: boolean;

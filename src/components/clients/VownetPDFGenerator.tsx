@@ -168,11 +168,23 @@ interface LiabilityData {
   repayment_type?: string | null;
 }
 
+interface IncomeSourceData {
+  contact_type?: string | null;
+  source_category?: string | null;
+  source_type?: string | null;
+  source_name?: string | null;
+  gross_annual_amount?: number | null;
+  input_amount?: number | null;
+  input_frequency?: string | null;
+  is_active?: boolean | null;
+}
+
 export interface VownetPDFData {
   client: ClientData;
   properties: PropertyData[];
   employment?: EmploymentData[];
   income?: IncomeData[];
+  incomeSources?: IncomeSourceData[];
   assets?: AssetData[];
   liabilities?: LiabilityData[];
   expenses?: ExpenseData[];
@@ -876,7 +888,7 @@ function generateHTMLContent(
   const _disclaimerText = (brandDisclaimer?.is_enabled === false)
     ? ''
     : (brandDisclaimer?.text || 'This information is provided for general informational purposes only and does not constitute financial, legal, or investment advice.');
-  const { client, properties, employment = [], income = [], assets = [], liabilities = [], expenses = [] } = data;
+  const { client, properties, employment = [], income = [], incomeSources = [], assets = [], liabilities = [], expenses = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
   // Always find owner occupied property (shown on page 1 regardless of toggle)
@@ -1478,20 +1490,64 @@ function generateHTMLContent(
   const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
-  // Calculate accurate monthly income from all sources (employment + rental)
-  const totalEmploymentIncome = income.reduce((sum, inc) => {
-    const gross = inc.gross_salary || 0;
-    const freq = inc.salary_frequency || 'annually';
-    let monthly = 0;
-    if (freq === 'weekly') monthly = gross * (52 / 12);
-    else if (freq === 'fortnightly') monthly = gross * (26 / 12);
-    else if (freq === 'monthly') monthly = gross;
-    else monthly = gross / 12; // annually
-    // Add other income components (assumed annual)
-    monthly += ((inc.bonus || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) + (inc.overtime_non_essential || 0) + (inc.allowance || 0) + (inc.other_taxable_income || 0)) / 12;
-    return sum + monthly;
-  }, 0);
-  const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
+  // ─── Income: aggregate across all contacts + every recorded source ────────
+  const freqToMonthly = (amount: number, freq?: string | null) => {
+    const f = String(freq || 'annual').toLowerCase();
+    if (f === 'weekly') return amount * (52 / 12);
+    if (f === 'fortnightly') return amount * (26 / 12);
+    if (f === 'monthly') return amount;
+    return amount / 12; // annual / annually / yearly
+  };
+
+  // Build per-contact employment monthly totals. `client_employment` is the
+  // source of truth (memory: Income Source of Truth) — fall back to the
+  // legacy `client_income` table only when employment has no row for that
+  // contact_type. This ensures the secondary contact's salary is counted.
+  const employmentByContact: Record<string, number> = {};
+  for (const e of employment as any[]) {
+    if (e.is_current === false) continue;
+    const key = String(e.contact_type || 'primary').toLowerCase();
+    const base = Number(e.gross_annual_salary || e.salary_amount || 0);
+    const baseMonthly = base ? freqToMonthly(base, e.salary_frequency) : 0;
+    const extras = ((e.bonus || 0) + (e.commission || 0) + (e.overtime_essential || 0) +
+      (e.overtime_non_essential || 0) + (e.allowance || 0) + (e.other_taxable_income || 0)) / 12;
+    employmentByContact[key] = (employmentByContact[key] || 0) + baseMonthly + extras;
+  }
+  for (const inc of income as any[]) {
+    const key = String(inc.contact_type || 'primary').toLowerCase();
+    if (employmentByContact[key]) continue; // employment row wins
+    const baseMonthly = freqToMonthly(Number(inc.gross_salary || 0), inc.salary_frequency);
+    const extras = ((inc.bonus || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) +
+      (inc.overtime_non_essential || 0) + (inc.allowance || 0) + (inc.other_taxable_income || 0)) / 12;
+    employmentByContact[key] = baseMonthly + extras;
+  }
+
+  const primaryEmploymentIncome = employmentByContact['primary'] || 0;
+  const secondaryEmploymentIncome = Object.entries(employmentByContact)
+    .filter(([k]) => k !== 'primary')
+    .reduce((s, [, v]) => s + v, 0);
+  const totalEmploymentIncome = primaryEmploymentIncome + secondaryEmploymentIncome;
+
+  // Other (non-employment) income sources — government payments, dividends,
+  // trust distributions, child support, etc. Each one is shown on its own
+  // row so the final figure is fully traceable.
+  const otherIncomeBreakdown = (incomeSources as any[])
+    .filter((s) => s.is_active !== false)
+    .filter((s) => !['employment', 'salary', 'paye', 'wages'].includes(String(s.source_category || '').toLowerCase()))
+    .map((s) => {
+      const annual = Number(s.gross_annual_amount || 0);
+      const inputAmt = Number(s.input_amount || 0);
+      const monthly = annual > 0
+        ? annual / 12
+        : (inputAmt > 0 ? freqToMonthly(inputAmt, s.input_frequency) : 0);
+      const label = s.source_name || s.source_type || s.source_category || 'Other income';
+      const who = String(s.contact_type || 'primary').toLowerCase() === 'primary' ? '' : ' (Secondary)';
+      return { label: `${label}${who}`, monthly };
+    })
+    .filter((s) => s.monthly > 0);
+  const totalOtherIncome = otherIncomeBreakdown.reduce((s, x) => s + x.monthly, 0);
+
+  const calculatedMonthlyIncome = totalEmploymentIncome + totalRental + totalOtherIncome;
 
   // ─── Cash Flow: cross-validated against raw client data ───────────────────
   // Property loan repayments and true holding costs are tracked separately so
@@ -2252,8 +2308,10 @@ function generateHTMLContent(
               <tr style="background: #f0fdf4;">
                 <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.success}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Income</td>
               </tr>
-              <tr><td class="label" style="padding-left:20px;">Employment Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalEmploymentIncome))}</td></tr>
+              <tr><td class="label" style="padding-left:20px;">Employment Income${secondaryEmploymentIncome > 0 ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(Primary)</span>' : ''}</td><td class="value currency income-value">${formatCurrency(Math.round(primaryEmploymentIncome))}</td></tr>
+              ${secondaryEmploymentIncome > 0 ? `<tr><td class="label" style="padding-left:20px;">Employment Income <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(Secondary)</span></td><td class="value currency income-value">${formatCurrency(Math.round(secondaryEmploymentIncome))}</td></tr>` : ''}
               <tr><td class="label" style="padding-left:20px;">Rental Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalRental))}</td></tr>
+              ${otherIncomeBreakdown.map((s) => `<tr><td class="label" style="padding-left:20px;">${s.label}</td><td class="value currency income-value">${formatCurrency(Math.round(s.monthly))}</td></tr>`).join('')}
               <tr style="border-top: 1px solid #d1d5db;"><td class="label"><strong>Total Monthly Income</strong></td><td class="value currency income-value"><strong>${formatCurrency(Math.round(displayMonthlyIncome))}</strong></td></tr>
               
               <tr style="background: #fef2f2;">
