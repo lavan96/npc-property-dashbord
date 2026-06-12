@@ -90,6 +90,33 @@ const formatAUAddress = (
   return joined || '-';
 };
 
+// Normalize common provider/lender brand names so the PDF doesn't show typos
+// like "Common Wealth Bank" or inconsistent casing across cards.
+const PROVIDER_NORMALIZATION: Array<[RegExp, string]> = [
+  [/\bcommon\s*wealth\b/i, 'Commonwealth Bank'],
+  [/\bcommonwealth\s*bank(?:ing)?(?:\s*corp(?:oration)?)?\b/i, 'Commonwealth Bank'],
+  [/^\s*cba\s*$/i, 'Commonwealth Bank'],
+  [/\bwest\s*pac\b/i, 'Westpac'],
+  [/^\s*nab\s*$/i, 'NAB'],
+  [/\bnational\s*australia\s*bank\b/i, 'NAB'],
+  [/^\s*anz\s*$/i, 'ANZ'],
+  [/\bing\s*direct\b/i, 'ING'],
+  [/\bmacquarie\s*bank\b/i, 'Macquarie Bank'],
+  [/\bafterpay\b/i, 'Afterpay'],
+  [/\bzip(?:\s*pay|\s*money)?\b/i, 'Zip'],
+  [/\bhumm\b/i, 'Humm'],
+  [/\blatitude\b/i, 'Latitude'],
+];
+const normalizeProvider = (raw: string | null | undefined): string => {
+  if (!raw) return '-';
+  let v = String(raw).trim().replace(/\s+/g, ' ');
+  if (!v) return '-';
+  for (const [pattern, replacement] of PROVIDER_NORMALIZATION) {
+    if (pattern.test(v)) { v = v.replace(pattern, replacement); break; }
+  }
+  return v;
+};
+
 interface PropertyData {
   property_type: string;
   address: string;
@@ -1288,15 +1315,17 @@ function generateHTMLContent(
         <div class="info-card-header">
           <span class="employer-icon">🏢</span>
           <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
-          ${emp.is_current !== false ? '<span class="emp-type-badge" style="background: #16a34a; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">CURRENT</span>' : '<span class="emp-type-badge" style="background: #94a3b8; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">PREVIOUS</span>'}
+          ${emp.is_current !== false
+            ? '<span class="status-pill status-pill-current">CURRENT</span>'
+            : '<span class="status-pill status-pill-previous">PREVIOUS</span>'}
         </div>
         <table class="data-table compact alt-rows">
-          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${(emp.employment_type || '-').toUpperCase()}</span></td></tr>
+          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${emp.employment_type ? humanizeEnum(emp.employment_type).toUpperCase() : '-'}</span></td></tr>
           <tr><td class="label">Role</td><td class="value">${emp.occupation_role || '-'}</td></tr>
           <tr><td class="label">Start Date</td><td class="value">${formatDate(emp.start_date)}</td></tr>
           <tr><td class="label">Tenure</td><td class="value">${tenureStr}</td></tr>
           ${annualSalary > 0 ? `<tr><td class="label">Gross Annual Salary</td><td class="value currency">${formatCurrency(annualSalary)}</td></tr>` : ''}
-          ${emp.salary_amount && emp.salary_frequency ? `<tr><td class="label">Pay Cycle</td><td class="value">${formatCurrency(emp.salary_amount)} <span style="font-size:7px;color:#666;">(${emp.salary_frequency})</span></td></tr>` : ''}
+          ${emp.salary_amount && emp.salary_frequency ? `<tr><td class="label">Pay Cycle</td><td class="value">${formatCurrency(emp.salary_amount)} <span style="font-size:7px;color:#666;">(${humanizeEnum(emp.salary_frequency)})</span></td></tr>` : ''}
         </table>
       </div>
     `;}).join('');
@@ -1349,7 +1378,7 @@ function generateHTMLContent(
       </div>
       <table class="data-table alt-rows compact">
         <tr><td class="label">Gross Salary</td><td class="value currency income-value">${formatCurrency(inc.gross_salary)}</td></tr>
-        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${(inc.salary_frequency || '-').toUpperCase()}</span></td></tr>
+        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${inc.salary_frequency ? humanizeEnum(inc.salary_frequency).toUpperCase() : '-'}</span></td></tr>
         <tr><td class="label">Bonus</td><td class="value currency">${formatCurrency(inc.bonus)}</td></tr>
         <tr><td class="label">Allowance</td><td class="value currency">${formatCurrency(inc.allowance)}</td></tr>
         <tr><td class="label">Commission</td><td class="value currency">${formatCurrency(inc.commission)}</td></tr>
@@ -1555,7 +1584,7 @@ function generateHTMLContent(
                 const estNote = servicing?.calculationNote || '';
                 return `
                 <tr>
-                  <td class="value">${liab.provider_name || '-'}</td>
+                  <td class="value provider-cell">${normalizeProvider(liab.provider_name)}</td>
                   ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
                   <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
                   ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
@@ -2056,16 +2085,40 @@ function generateHTMLContent(
           padding: 14px 16px;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
           border-left: 4px solid ${NPC_COLORS.gold};
+          min-width: 0;
         }
         .employer-icon { 
           font-size: 16pt; 
-          line-height: 1; 
+          line-height: 1;
+          flex: 0 0 auto;
         }
-        .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 10pt; }
-        
+        .employer-name {
+          font-weight: 600;
+          color: ${NPC_COLORS.darkBlue};
+          font-size: 10pt;
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .status-pill {
+          flex: 0 0 auto;
+          font-size: 6.5pt;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          text-transform: uppercase;
+          color: #fff;
+          white-space: nowrap;
+        }
+        .status-pill-current { background: #16a34a; }
+        .status-pill-previous { background: #94a3b8; }
+
         .emp-type-badge, .freq-badge {
           background: ${NPC_COLORS.goldLight};
           color: ${NPC_COLORS.goldDark};
@@ -2075,23 +2128,34 @@ function generateHTMLContent(
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.3px;
+          white-space: nowrap;
+        }
+
+        .provider-cell {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 0;
+          min-width: 130px;
         }
         
-        /* Empty State - Compact */
+        /* Empty State - Compact (neutral; never gold to avoid header-band drift) */
         .empty-state-compact {
-          padding: 28px 16px;
+          padding: 24px 16px;
           text-align: center;
           background: ${NPC_COLORS.lightGray};
           border-radius: 6px;
           border: 1px dashed ${NPC_COLORS.borderGray};
         }
         .empty-state-compact.primary {
-          border-color: ${NPC_COLORS.gold};
-          background: ${NPC_COLORS.goldTint};
+          /* Subtle primary cue — soft tint without bleeding into card header palette */
+          border-color: ${NPC_COLORS.borderGray};
+          background: ${NPC_COLORS.lightGray};
         }
         .empty-state-icon {
-          font-size: 24pt;
-          margin-bottom: 10px;
+          font-size: 20pt;
+          margin-bottom: 8px;
+          opacity: 0.7;
         }
         .empty-state-text {
           font-size: 9pt;
