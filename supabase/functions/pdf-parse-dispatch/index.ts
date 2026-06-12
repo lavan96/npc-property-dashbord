@@ -260,6 +260,35 @@ Deno.serve(async (req) => {
       return json({ job: data });
     }
 
+    if (operation === 'download') {
+      // Signed-URL minter for diagnostic artifacts (docling.json / rasters.json).
+      // The frontend can't sign URLs on the private `pdf-import-diagnostics`
+      // bucket itself under our custom-auth model, so we mediate here.
+      const path = typeof body.path === 'string' ? body.path : '';
+      if (!path) return json({ error: 'path required' }, 400);
+      const expiresIn = Math.min(Math.max(Number(body.expires_in) || 600, 60), 3600);
+      const objectPath = path.startsWith(`${DIAGNOSTICS_BUCKET}/`)
+        ? path.slice(DIAGNOSTICS_BUCKET.length + 1)
+        : path;
+      // Scope: caller must own the underlying job (jobId is the first path segment).
+      const jobId = objectPath.split('/')[0];
+      if (userId && jobId) {
+        const { data: jobRow } = await admin
+          .from('pdf_import_jobs')
+          .select('user_id')
+          .eq('id', jobId)
+          .maybeSingle();
+        if (jobRow && jobRow.user_id && jobRow.user_id !== userId) {
+          return json({ error: 'forbidden' }, 403);
+        }
+      }
+      const { data, error } = await admin.storage
+        .from(DIAGNOSTICS_BUCKET)
+        .createSignedUrl(objectPath, expiresIn);
+      if (error || !data?.signedUrl) return json({ error: error?.message ?? 'sign failed' }, 500);
+      return json({ signed_url: data.signedUrl, expires_in: expiresIn });
+    }
+
     if (operation === 'start') {
       const rawMode = (body.mode as string) ?? 'semantic';
       // DB CHECK uses 'pixel_perfect' (underscore); UI/API may pass 'pixel-perfect'.
