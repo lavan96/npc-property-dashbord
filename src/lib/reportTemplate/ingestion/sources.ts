@@ -34,7 +34,7 @@ export const pdfSource: IngestionSource = {
     strategy: 'delegate',
     delegate: 'extractPdfToTemplate',
     available: true,
-    note: 'Deterministic extract (text/vectors/fonts/images) → R0–R6 reconstruction.',
+    note: 'Routed via feature_flags.pdf_import.engine: legacy in-browser pdf.js extractor or Docling Cloud Run sidecar (extractPdfToTemplateRouted).',
   }),
 };
 

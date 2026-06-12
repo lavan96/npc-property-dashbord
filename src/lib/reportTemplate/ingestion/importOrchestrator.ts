@@ -15,11 +15,11 @@
 import { toast } from 'sonner';
 import { parseTemplate, type ReportTemplate } from '../templateSchema';
 import {
-  extractPdfToTemplate,
   type FidelityMode,
   type ImportProgress,
   type ImportResult,
 } from '../pdfImport/extractPdfToTemplate';
+import { extractPdfToTemplateRouted } from '../pdfImport/extractPdfToTemplateRouted';
 import { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput, type InvokeFn } from './codeIngest';
 import { codeFlavorForFile } from './detect';
@@ -310,7 +310,7 @@ async function importPdf(
   }
 
   ctx.onStage?.('Reading PDF…');
-  const result = await extractPdfToTemplate(source.file, {
+  const result = await extractPdfToTemplateRouted(source.file, {
     mode: source.mode,
     templateName: ctx.templateName,
     userId: ctx.userId ?? null,

@@ -151,9 +151,9 @@ async function runJob(
 
     // Hybrid / pixel-perfect need page rasters; semantic skips this.
     let rasterPath: string | null = null;
-    if (mode === 'hybrid' || mode === 'pixel-perfect') {
+    if (mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect') {
       await setStage(admin, jobId, 'rastering');
-      const dpi = mode === 'pixel-perfect' ? 200 : 144;
+      const dpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
       const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
         method: 'POST',
         headers: {
@@ -179,7 +179,7 @@ async function runJob(
     await setStage(admin, jobId, 'finalizing');
     const finishedAt = Date.now();
     await updateJob(admin, jobId, {
-      status: 'parsed',
+      status: 'succeeded',
       stage: 'parsed',
       finished_at: new Date(finishedAt).toISOString(),
       duration_ms: finishedAt - startedAt,
@@ -239,17 +239,20 @@ Deno.serve(async (req) => {
     }
 
     if (operation === 'start') {
-      const mode = (body.mode as string) ?? 'semantic';
+      const rawMode = (body.mode as string) ?? 'semantic';
+      // DB CHECK uses 'pixel_perfect' (underscore); UI/API may pass 'pixel-perfect'.
+      const mode = rawMode === 'pixel-perfect' ? 'pixel_perfect' : rawMode;
       await ensureDiagnosticsBucket(admin);
       const sourceRes = await resolveSignedSourceUrl(admin, body);
       if ('error' in sourceRes) return json({ error: sourceRes.error }, 400);
+
 
       const { data: jobRow, error: insertErr } = await admin
         .from('pdf_import_jobs')
         .insert({
           user_id: userId,
           template_id: body.template_id ?? null,
-          source_file_path: body.source_path ?? null,
+          source_file_path: (body.source_path as string) ?? (body.source_url as string) ?? `inbox/${crypto.randomUUID()}.pdf`,
           source_file_name: body.source_file_name ?? null,
           source_file_size_bytes: body.source_file_size_bytes ?? null,
           engine: 'docling',
