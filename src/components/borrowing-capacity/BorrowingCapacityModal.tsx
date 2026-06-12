@@ -21,6 +21,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, getHecsRepayment, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
+import { computeLiabilityServicing } from '@/utils/householdFinance';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 import type { LmiMode, LmiEstimate } from '@/utils/lmiCalculations';
 import { calculateLmiImpact } from '@/utils/lmiCalculations';
