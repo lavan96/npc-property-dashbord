@@ -740,7 +740,15 @@ export async function extractPdfToTemplate(
       // (that double-paints every glyph). 'pixel' keeps the raster as the page
       // background; 'hybrid' rasterizes too but attaches it as a HIDDEN, locked
       // reference overlay for tracing — excluded from preview/export render.
-      const needRaster = mode === 'pixel' || mode === 'ocr' || mode === 'hybrid';
+      //
+      // SEMANTIC-FALLBACK: when 'semantic' extraction finds zero text overlays
+      // on a page (typical for scanned/image-only PDFs that have no live text
+      // layer), rasterize anyway and use the raster as the page background so
+      // the editor + exported PDF aren't blank. Without this the user sees a
+      // populated import-preview but an empty editor/export.
+      const pageHasNoText = overlays.filter((o: any) => o?.type === 'text' && !o?.hidden).length === 0;
+      const semanticFallbackRaster = mode === 'semantic' && pageHasNoText;
+      const needRaster = mode === 'pixel' || mode === 'ocr' || mode === 'hybrid' || semanticFallbackRaster;
       let rasterCanvas: HTMLCanvasElement | null = null;
       if (needRaster) {
         onProgress({ phase: 'rasterizing', page: pageIndex, totalPages });
@@ -753,7 +761,7 @@ export async function extractPdfToTemplate(
         await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
         rasterCanvas = canvas;
 
-        if (mode === 'pixel' || mode === 'hybrid') {
+        if (mode === 'pixel' || mode === 'hybrid' || semanticFallbackRaster) {
           const blob: Blob = await new Promise((resolve) =>
             canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
           );
@@ -768,13 +776,14 @@ export async function extractPdfToTemplate(
             content_type: 'image/jpeg',
             data_base64: b64,
           });
-          if (mode === 'pixel') {
-            // Pixel-perfect mode must be self-contained for both iframe preview and
-            // WeasyPrint. Public storage URLs can be misconfigured or unavailable to
-            // the render service, which produced blank white pages; embedding the
-            // page raster as a data URL guarantees the raster is present at render.
+          if (mode === 'pixel' || semanticFallbackRaster) {
+            // Pixel-perfect mode and the semantic-fallback path must be
+            // self-contained for both iframe preview and WeasyPrint. Public
+            // storage URLs can be misconfigured or unavailable to the render
+            // service, which produced blank white pages; embedding the page
+            // raster as a data URL guarantees the raster is present at render.
             backgroundImageUrl = `data:image/jpeg;base64,${b64}`;
-            rasterized++;
+            if (semanticFallbackRaster) semantic++; else rasterized++;
           } else {
             // Hybrid: keep the source raster available as a locked, hidden trace
             // layer (renderers skip hidden overlays, so no ghosted double text).
@@ -799,6 +808,7 @@ export async function extractPdfToTemplate(
       } else {
         semantic++;
       }
+
 
       // OCR pass — recognise text on the rasterised page and add as overlays
       if (mode === 'ocr' && rasterCanvas) {
