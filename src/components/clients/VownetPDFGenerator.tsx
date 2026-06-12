@@ -2308,8 +2308,10 @@ function generateHTMLContent(
               <tr style="background: #f0fdf4;">
                 <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.success}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Income</td>
               </tr>
-              <tr><td class="label" style="padding-left:20px;">Employment Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalEmploymentIncome))}</td></tr>
+              <tr><td class="label" style="padding-left:20px;">Employment Income${secondaryEmploymentIncome > 0 ? ' <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(Primary)</span>' : ''}</td><td class="value currency income-value">${formatCurrency(Math.round(primaryEmploymentIncome))}</td></tr>
+              ${secondaryEmploymentIncome > 0 ? `<tr><td class="label" style="padding-left:20px;">Employment Income <span style="color:#9ca3af; font-weight:400; font-size:7pt;">(Secondary)</span></td><td class="value currency income-value">${formatCurrency(Math.round(secondaryEmploymentIncome))}</td></tr>` : ''}
               <tr><td class="label" style="padding-left:20px;">Rental Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalRental))}</td></tr>
+              ${otherIncomeBreakdown.map((s) => `<tr><td class="label" style="padding-left:20px;">${s.label}</td><td class="value currency income-value">${formatCurrency(Math.round(s.monthly))}</td></tr>`).join('')}
               <tr style="border-top: 1px solid #d1d5db;"><td class="label"><strong>Total Monthly Income</strong></td><td class="value currency income-value"><strong>${formatCurrency(Math.round(displayMonthlyIncome))}</strong></td></tr>
               
               <tr style="background: #fef2f2;">
