@@ -2178,7 +2178,7 @@ function generateHTMLContent(
       </div>
       
       <!-- PAGE 1: Portfolio Summary (immediately after cover) -->
-      <div class="page">
+      <div class="page-auto" data-content-page="true">
         <div class="page-header">
           <div class="header-title-group">
             <div class="header-title">Portfolio Summary</div>
