@@ -967,8 +967,9 @@ function generateHTMLContent(
         <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
         <tr><td class="label">Interest Rate</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
         <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
-        ${prop.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${prop.lender_name}</td></tr>` : ''}
-        ${prop.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}</td></tr>` : ''}
+        <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(prop.lender_name)}</td></tr>
+        <tr><td class="label">Loan Repayment</td><td class="value currency">${prop.loan_repayment_amount ? `${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}` : NOT_RECORDED}</td></tr>
+        <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(prop.repayment_type)}</td></tr>
       </table>
       <div class="subsection-header">Monthly Expenses</div>
       <table class="data-table compact alt-rows">
