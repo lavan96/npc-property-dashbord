@@ -21,13 +21,30 @@ export default function CommercialCalculators() {
       </div>
 
       <Tabs defaultValue="bc" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
-          <TabsTrigger value="bc">Borrowing</TabsTrigger>
-          <TabsTrigger value="noi">NOI</TabsTrigger>
-          <TabsTrigger value="cap">Cap Rate</TabsTrigger>
-          <TabsTrigger value="icr">ICR / DSCR</TabsTrigger>
-          <TabsTrigger value="gst">GST</TabsTrigger>
-          <TabsTrigger value="dcf">DCF</TabsTrigger>
+        <TabsList className="w-full justify-start gap-1 overflow-x-auto">
+          <TabsTrigger value="bc" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Borrowing Capacity</span>
+          </TabsTrigger>
+          <TabsTrigger value="noi" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Net Operating Income</span>
+            <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(NOI)</span>
+          </TabsTrigger>
+          <TabsTrigger value="cap" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Capitalisation Rate</span>
+            <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(Cap Rate)</span>
+          </TabsTrigger>
+          <TabsTrigger value="icr" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Interest Coverage Ratio / Debt Service Coverage Ratio</span>
+            <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(ICR / DSCR)</span>
+          </TabsTrigger>
+          <TabsTrigger value="gst" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Goods and Services Tax</span>
+            <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(GST)</span>
+          </TabsTrigger>
+          <TabsTrigger value="dcf" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <span className="whitespace-nowrap">Discounted Cash Flow</span>
+            <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(DCF)</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="bc" className="mt-4"><CommercialBorrowingCapacityCard /></TabsContent>
         <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
