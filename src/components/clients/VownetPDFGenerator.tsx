@@ -1617,7 +1617,10 @@ function generateHTMLContent(
         /* Page Layout */
         .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
         .page-auto { width: 794px; min-height: 1123px; height: auto; background: ${NPC_COLORS.white}; position: relative; overflow: visible; }
-        .page-content { padding: 30px 40px; padding-top: 94px; }
+        .page-content { padding: 30px 40px 80px; padding-top: 94px; }
+        /* Keep cohesive blocks together when the auto-tiler picks a safe break */
+        .section, .property-card, .summary-box, .kpi-card, .financial-table thead, .data-table thead { page-break-inside: avoid; break-inside: avoid; }
+        .financial-table tr, .data-table tr { page-break-inside: avoid; break-inside: avoid; }
         
         /* Cover Page - Image Based */
         .cover-page-image { 
