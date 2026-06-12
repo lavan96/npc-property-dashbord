@@ -8,12 +8,11 @@
  *                       with confidence ≥ 0.7; lower-confidence items locked.
  *   - 'pixel-perfect' → raster background + ALL overlays locked.
  */
-import type {
-  Overlay,
-  TextOverlay,
-  ImageOverlay,
-  TableOverlay,
-} from '@/lib/reportTemplate/templateSchema';
+import type { Overlay } from '@/lib/reportTemplate/templateSchema';
+
+type TextOverlay = Extract<Overlay, { type: 'text' }>;
+type ImageOverlay = Extract<Overlay, { type: 'image' }>;
+type TableOverlay = Extract<Overlay, { type: 'table' }>;
 import type {
   ImportWarning,
   RawImportBlock,
