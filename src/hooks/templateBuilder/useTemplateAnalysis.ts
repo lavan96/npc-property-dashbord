@@ -157,7 +157,7 @@ export function useTemplateAnalysis(
             return;
           }
 
-          if (message.needsFullPayload) {
+          if (!message.ok && message.needsFullPayload) {
             // Worker lacks pages we stubbed (restart/desync) — resend in full.
             // A full request always assembles, so this cannot loop.
             post(true);
