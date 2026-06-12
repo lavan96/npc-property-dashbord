@@ -453,10 +453,14 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                       <Input
                         type="number"
-                        value={formData.monthly_repayment || ''}
-                        onChange={(e) => updateField('monthly_repayment', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        value={formData.monthly_repayment ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          updateField('monthly_repayment', raw === '' ? 0 : (parseFloat(raw) || 0));
+                        }}
                         className="pl-7"
-                        placeholder="0"
+                        placeholder="0 (TBC)"
                       />
                     </div>
                   </div>
