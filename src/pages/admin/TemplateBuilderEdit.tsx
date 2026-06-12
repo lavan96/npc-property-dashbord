@@ -129,6 +129,8 @@ import { useBrand } from '@/branding/BrandProvider';
 import { BLOCK_DEFS, getBlockRendererCapabilities } from '@/lib/reportTemplate/blocks';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { EditorialCanvas } from '@/components/templateBuilder/EditorialCanvas';
+import { EditorEmptyState } from '@/components/templateBuilder/EditorEmptyState';
+import { EditorOnboardingTour, hasSeenEditorTour, markEditorTourSeen } from '@/components/templateBuilder/EditorOnboardingTour';
 import { isTemplateEditorV2Enabled, setTemplateEditorV2 } from '@/lib/reportTemplate/editorV2Flag';
 import { TemplateShortcutsDialog } from '@/components/templateBuilder/TemplateShortcutsDialog';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
