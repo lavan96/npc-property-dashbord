@@ -240,6 +240,7 @@ Deno.serve(async (req) => {
 
     if (operation === 'start') {
       const mode = (body.mode as string) ?? 'semantic';
+      await ensureDiagnosticsBucket(admin);
       const sourceRes = await resolveSignedSourceUrl(admin, body);
       if ('error' in sourceRes) return json({ error: sourceRes.error }, 400);
 
