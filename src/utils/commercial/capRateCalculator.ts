@@ -2,7 +2,7 @@
  * Cap Rate / Yield Calculators
  *  - Passing Yield = NOI based on CURRENT (passing) rent / Price
  *  - Reversionary Yield = NOI based on MARKET rent / Price
- *  - Equivalent Yield approximation = weighted average using over/under-rented adjustment
+ *  - Blended Yield / Simple Average Yield approximation = weighted average using over/under-rented adjustment
  */
 
 export interface CapRateInputs {
@@ -25,6 +25,8 @@ export interface YieldSetResult {
   passingYield: number;
   reversionaryYield: number;
   equivalentYield: number;
+  blendedYield: number;
+  simpleAverageYield: number;
 }
 
 export function calculateYields({ passingNoi, marketNoi, price }: YieldSetInputs): YieldSetResult {
@@ -33,7 +35,7 @@ export function calculateYields({ passingNoi, marketNoi, price }: YieldSetInputs
   // Simple equivalent yield: arithmetic mean of passing & reversionary
   // (Full equivalent yield is IRR of rent reversions — done in DCF engine)
   const equivalent = Number(((passing + reversionary) / 2).toFixed(2));
-  return { passingYield: passing, reversionaryYield: reversionary, equivalentYield: equivalent };
+  return { passingYield: passing, reversionaryYield: reversionary, equivalentYield: equivalent, blendedYield: equivalent, simpleAverageYield: equivalent };
 }
 
 /** Value derived from a NOI and target cap rate (cap rate as %) */

@@ -1,0 +1,85 @@
+import { create } from 'zustand';
+import type { AiEstimateAuditEvent, AiEstimateResult } from './aiEstimateEngine';
+import type { AssumptionProvenance } from './assumptionRegistry';
+import type { NoiEngineInputs, NoiEngineResult } from './noiEngine';
+import type { CapRateEngineResult } from './capRateEngine';
+import type { IcrDscrEngineResult } from './icrDscrEngine';
+import type { CommercialGstEngineInputs, CommercialGstEngineResult } from './gstEngine';
+import type { DcfAssessmentInputs, DcfAssessmentResult } from './dcfAssessmentEngine';
+import type { BorrowingInputs, BorrowingResult } from './borrowing/calculatorTypes';
+
+export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf';
+export type CalculatorSourceMode = 'global' | 'manualOverride' | 'scenario';
+
+export interface CommercialIndustrialDealProfile {
+  dealProfile: Partial<BorrowingInputs['dealProfile']>;
+  purchaserStructure: Partial<BorrowingInputs['purchaserStructure']>;
+  propertyValuation: Partial<BorrowingInputs['propertyValuation']>;
+  leaseIncome: Partial<NoiEngineInputs>;
+  operatingExpenses: Record<string, number>;
+  noiOutputs?: Partial<NoiEngineResult>;
+  capRateOutputs?: Partial<CapRateEngineResult>;
+  debtInputs: Record<string, number | string | boolean | undefined>;
+  lendingAssumptions: Partial<BorrowingInputs['lendingAssumptions']>;
+  gstInputs: Partial<CommercialGstEngineInputs>;
+  gstOutputs?: Partial<CommercialGstEngineResult>;
+  acquisitionCosts: Partial<BorrowingInputs['acquisitionCosts']>;
+  fundsToComplete?: Partial<BorrowingResult['fundsToComplete']>;
+  dcfInputs: Partial<DcfAssessmentInputs>;
+  dcfOutputs?: Partial<DcfAssessmentResult>;
+  riskInputs: Record<string, unknown>;
+  riskOutputs: Record<string, unknown>;
+  aiEstimateMetadata: Record<string, AiEstimateResult>;
+  documentVerificationStatus: Record<string, 'required' | 'uploaded' | 'reviewed' | 'verified' | 'missing' | 'not applicable'>;
+  scenarioOverrides: Partial<Record<CalculatorTabKey, Record<string, unknown>>>;
+  assumptions: Record<string, AssumptionProvenance>;
+  aiEstimateAuditLog: AiEstimateAuditEvent[];
+}
+
+const defaultProfile: CommercialIndustrialDealProfile = {
+  dealProfile: { assetCategory: 'commercial', acquisitionPurpose: 'investment', leaseStatus: 'fullyLeased', state: 'NSW' },
+  purchaserStructure: { purchaserType: 'company', availableCashEquity: 1_100_000, sponsorLiquidity: 500_000, liquidityMultiplier: 0 },
+  propertyValuation: { purchasePrice: 3_500_000, estimatedMarketValue: 3_500_000, useConservativeValuation: true, valuationConfidence: 'medium' },
+  leaseIncome: { leaseType: 'unknown', grossPassingRent: 250_000, otherIncome: 0, marketRent: 250_000, vacancyAllowancePct: 5, recoveredOutgoings: 45_000, confidenceTags: ['Manual Estimate'] },
+  operatingExpenses: {},
+  debtInputs: { proposedLoanAmount: undefined },
+  lendingAssumptions: { profile: 'mainstreamCommercialBank', contractInterestRatePct: 7.25, assessmentBufferPct: 1, assessmentFloorRatePct: 0, loanTermYears: 25, interestOnlyPeriodYears: 0, amortisationYears: 25, maxLvr: 0.65, minIcr: 1.5, minDscr: 1.25, minDebtYield: 0.09, debtYieldEnabled: true },
+  gstInputs: { treatment: 'unknown', purchasePrice: 3_500_000 },
+  acquisitionCosts: { stampDuty: 175_000, transferRegistrationFee: 0, mortgageRegistrationFee: 0, pexaSettlementFee: 0, otherAcquisitionCosts: 0, gstTreatment: 'unknown' },
+  dcfInputs: { purchasePrice: 3_500_000, initialNoi: 220_000, holdPeriodYears: 10, rentalGrowthPct: 3, terminalCapRatePct: 6.5, discountRatePct: 8 },
+  riskInputs: {},
+  riskOutputs: {},
+  aiEstimateMetadata: {},
+  documentVerificationStatus: {},
+  scenarioOverrides: {},
+  assumptions: {},
+  aiEstimateAuditLog: [],
+};
+
+interface DealStateStore {
+  profile: CommercialIndustrialDealProfile;
+  sourceModes: Record<CalculatorTabKey, CalculatorSourceMode>;
+  updateGlobal: <K extends keyof CommercialIndustrialDealProfile>(section: K, patch: Partial<CommercialIndustrialDealProfile[K]>) => void;
+  setSourceMode: (tab: CalculatorTabKey, mode: CalculatorSourceMode) => void;
+  setScenarioOverride: (tab: CalculatorTabKey, fieldKey: string, value: unknown) => void;
+  clearScenarioOverrides: (tab: CalculatorTabKey) => void;
+  recordAiEstimate: (estimate: AiEstimateResult) => void;
+  appendAiAudit: (event: AiEstimateAuditEvent) => void;
+  resetDealProfile: () => void;
+}
+
+export const useCommercialDealState = create<DealStateStore>((set) => ({
+  profile: defaultProfile,
+  sourceModes: { borrowing: 'global', noi: 'global', capRate: 'global', icrDscr: 'global', gst: 'global', dcf: 'global' },
+  updateGlobal: (section, patch) => set(state => ({ profile: { ...state.profile, [section]: { ...(state.profile[section] as object), ...(patch as object) } } })),
+  setSourceMode: (tab, mode) => set(state => ({ sourceModes: { ...state.sourceModes, [tab]: mode } })),
+  setScenarioOverride: (tab, fieldKey, value) => set(state => ({ profile: { ...state.profile, scenarioOverrides: { ...state.profile.scenarioOverrides, [tab]: { ...(state.profile.scenarioOverrides[tab] ?? {}), [fieldKey]: value } } } })),
+  clearScenarioOverrides: (tab) => set(state => ({ profile: { ...state.profile, scenarioOverrides: { ...state.profile.scenarioOverrides, [tab]: {} } } })),
+  recordAiEstimate: (estimate) => set(state => ({ profile: { ...state.profile, aiEstimateMetadata: { ...state.profile.aiEstimateMetadata, [estimate.fieldKey]: estimate } } })),
+  appendAiAudit: (event) => set(state => ({ profile: { ...state.profile, aiEstimateAuditLog: [...state.profile.aiEstimateAuditLog, event] } })),
+  resetDealProfile: () => set({ profile: defaultProfile }),
+}));
+
+export function getDefaultCommercialIndustrialDealProfile(): CommercialIndustrialDealProfile {
+  return JSON.parse(JSON.stringify(defaultProfile));
+}
