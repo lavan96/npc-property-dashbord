@@ -44,11 +44,22 @@ interface ClientData {
   secondary_gender?: string | null;
   secondary_dob?: string | null;
   current_address?: string | null;
+  current_suburb?: string | null;
+  current_state?: string | null;
+  current_postcode?: string | null;
   country?: string | null;
   living_situation?: string | null;
   residential_status?: string | null;
   marital_status?: string | null;
   dependents_count?: number | null;
+  secondary_same_address_as_primary?: boolean | null;
+  secondary_current_address?: string | null;
+  secondary_current_suburb?: string | null;
+  secondary_current_state?: string | null;
+  secondary_current_postcode?: string | null;
+  secondary_country?: string | null;
+  secondary_living_situation?: string | null;
+  secondary_residential_status?: string | null;
   total_portfolio_value?: number | null;
   total_debt?: number | null;
   total_monthly_expenditure?: number | null;
@@ -56,6 +67,23 @@ interface ClientData {
   total_monthly_rental_income?: number | null;
   net_monthly_cash_flow?: number | null;
 }
+
+// Format an AU address with safe fallback. Returns '-' when nothing usable.
+const formatAUAddress = (
+  street: string | null | undefined,
+  suburb: string | null | undefined,
+  state: string | null | undefined,
+  postcode: string | null | undefined,
+): string => {
+  const parts: string[] = [];
+  if (street) parts.push(String(street).trim());
+  const locality = [suburb?.trim(), state?.trim()?.toUpperCase(), postcode?.trim()]
+    .filter(Boolean)
+    .join(' ');
+  if (locality) parts.push(locality);
+  const joined = parts.filter(Boolean).join(', ');
+  return joined || '-';
+};
 
 interface PropertyData {
   property_type: string;
