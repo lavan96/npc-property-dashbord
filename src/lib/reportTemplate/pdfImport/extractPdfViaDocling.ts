@@ -98,6 +98,12 @@ async function pollJob(
 ): Promise<JobRow> {
   const start = Date.now();
   let lastStage: string | null = null;
+  let consecutiveErrors = 0;
+  let lastError: string | null = null;
+  // Treat transient read failures (statement timeouts, intermittent network)
+  // as retry-able — the dispatcher continues to run server-side regardless,
+  // so we should keep polling rather than abort the whole import.
+  const MAX_CONSECUTIVE_ERRORS = 8;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { data, error } = await supabase
@@ -105,20 +111,31 @@ async function pollJob(
       .select('id,status,stage,page_count,duration_ms,engine_version,diagnostics_path,error_code,error_text,result_payload')
       .eq('id', jobId)
       .maybeSingle();
-    if (error) throw new Error(`pdf_import_jobs read failed: ${error.message}`);
-    if (data) {
-      const row = data as JobRow;
-      if (row.stage && row.stage !== lastStage) {
-        lastStage = row.stage;
-        onProgress?.({
-          phase: row.stage === 'rastering' ? 'rasterizing'
-            : row.stage === 'finalizing' ? 'finalizing'
-            : row.stage === 'parsed' ? 'finalizing'
-            : 'extracting',
-          message: `Docling: ${row.stage}`,
-        });
+    if (error) {
+      consecutiveErrors += 1;
+      lastError = error.message;
+      console.warn(`[docling] pdf_import_jobs read failed (attempt ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${error.message}`);
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        throw new Error(`pdf_import_jobs read failed after ${consecutiveErrors} retries: ${lastError}`);
       }
-      if (TERMINAL_STATUS.has(row.status)) return row;
+      // Back off briefly and retry — don't abort the in-flight parse.
+      await new Promise((r) => setTimeout(r, Math.min(1000 * consecutiveErrors, 5000)));
+    } else {
+      consecutiveErrors = 0;
+      if (data) {
+        const row = data as JobRow;
+        if (row.stage && row.stage !== lastStage) {
+          lastStage = row.stage;
+          onProgress?.({
+            phase: row.stage === 'rastering' ? 'rasterizing'
+              : row.stage === 'finalizing' ? 'finalizing'
+              : row.stage === 'parsed' ? 'finalizing'
+              : 'extracting',
+            message: `Docling: ${row.stage}`,
+          });
+        }
+        if (TERMINAL_STATUS.has(row.status)) return row;
+      }
     }
     if (Date.now() - start > POLL_TIMEOUT_MS) {
       throw new Error('Docling parse timed out after 5 minutes');
