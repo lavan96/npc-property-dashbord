@@ -231,6 +231,9 @@ export default function TemplateBuilderEdit() {
     setShowV2Hint(false);
     try { localStorage.setItem('tpl-v2-coachmark-seen', '1'); } catch { /* ignore */ }
   };
+  // Multi-step onboarding tour (Phase 7) — opens once per browser; reopenable
+  // from the shortcuts dialog via `resetEditorTour()`.
+  const [showTour, setShowTour] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [showApproval, setShowApproval] = useState(false);
