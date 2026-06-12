@@ -1376,7 +1376,7 @@ function generateHTMLContent(
       </div>
       <table class="data-table alt-rows compact">
         <tr><td class="label">Gross Salary</td><td class="value currency income-value">${formatCurrency(inc.gross_salary)}</td></tr>
-        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${(inc.salary_frequency || '-').toUpperCase()}</span></td></tr>
+        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${inc.salary_frequency ? humanizeEnum(inc.salary_frequency).toUpperCase() : '-'}</span></td></tr>
         <tr><td class="label">Bonus</td><td class="value currency">${formatCurrency(inc.bonus)}</td></tr>
         <tr><td class="label">Allowance</td><td class="value currency">${formatCurrency(inc.allowance)}</td></tr>
         <tr><td class="label">Commission</td><td class="value currency">${formatCurrency(inc.commission)}</td></tr>
