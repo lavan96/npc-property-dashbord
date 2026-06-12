@@ -459,7 +459,7 @@ export function VownetPDFGenerator({
           
           // Find safe break points by scanning DOM elements (rows, sections)
           // so we never slice through the middle of a table row
-          const breakableElements = page.querySelectorAll('tr, .section, .section-header-bar');
+          const breakableElements = page.querySelectorAll('tr, .section, .section-header-bar, .property-card, .summary-box, .kpi-card');
           const elementBottoms: number[] = [];
           breakableElements.forEach((el: Element) => {
             const rect = (el as HTMLElement).offsetTop + (el as HTMLElement).offsetHeight;
@@ -467,52 +467,102 @@ export function VownetPDFGenerator({
           });
           // Sort and deduplicate
           const sortedBottoms = [...new Set(elementBottoms)].sort((a, b) => a - b);
-          
-          // Build safe split points: find the last element bottom that fits within each page slice
+
+          // Pull running-header metadata once per page so continuation tiles can repaint it
+          const headerTitleText = (page.querySelector('.page-header .header-title') as HTMLElement | null)?.innerText?.trim() || '';
+          const headerSubtitleText = (page.querySelector('.page-header .header-subtitle') as HTMLElement | null)?.innerText?.trim() || '';
+          const RUNNING_HEADER_MM = 14;       // continuation-tile band height
+          const RUNNING_HEADER_PX = Math.round((RUNNING_HEADER_MM / 297) * PAGE_HEIGHT_PX);
+
+          // Build safe split points: find the last element bottom that fits within each page slice.
+          // Continuation tiles lose RUNNING_HEADER_PX of vertical room because the running band is overlaid.
           const splitPoints: number[] = [0]; // start of first tile
-          let currentLimit = PAGE_HEIGHT_PX;
-          
-          while (currentLimit < naturalHeight) {
-            // Find the last element bottom that is <= currentLimit (safe break)
-            let safeCut = currentLimit;
-            for (let j = sortedBottoms.length - 1; j >= 0; j--) {
-              if (sortedBottoms[j] <= currentLimit && sortedBottoms[j] > splitPoints[splitPoints.length - 1]) {
-                safeCut = sortedBottoms[j];
-                break;
+          {
+            let currentLimit = PAGE_HEIGHT_PX; // first tile keeps the embedded page header
+            while (currentLimit < naturalHeight) {
+              let safeCut = currentLimit;
+              for (let j = sortedBottoms.length - 1; j >= 0; j--) {
+                if (sortedBottoms[j] <= currentLimit && sortedBottoms[j] > splitPoints[splitPoints.length - 1]) {
+                  safeCut = sortedBottoms[j];
+                  break;
+                }
               }
+              if (safeCut <= splitPoints[splitPoints.length - 1]) {
+                safeCut = currentLimit;
+              }
+              splitPoints.push(safeCut);
+              currentLimit = safeCut + (PAGE_HEIGHT_PX - RUNNING_HEADER_PX);
             }
-            // If no safe cut found (single element taller than page), fall back to hard cut
-            if (safeCut <= splitPoints[splitPoints.length - 1]) {
-              safeCut = currentLimit;
-            }
-            splitPoints.push(safeCut);
-            currentLimit = safeCut + PAGE_HEIGHT_PX;
+            splitPoints.push(naturalHeight); // final end
           }
-          splitPoints.push(naturalHeight); // final end
-          
+
+          // Collapse trailing orphan tile — when content only overflows by a tiny amount
+          // (often just bottom padding / margin), the algorithm produces a near-empty
+          // PDF page. Merge it back into the previous tile so we don't ship a blank page.
+          const MIN_TAIL_PX = 110;
+          if (splitPoints.length >= 3) {
+            const tailHeight = splitPoints[splitPoints.length - 1] - splitPoints[splitPoints.length - 2];
+            if (tailHeight < MIN_TAIL_PX) {
+              // Drop the inner split — keep [..., previousStart, naturalHeight]
+              splitPoints.splice(splitPoints.length - 2, 1);
+            }
+          }
+
           const pagesNeeded = splitPoints.length - 1;
           console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages, splits: ${splitPoints.join(',')})`);
 
           for (let tile = 0; tile < pagesNeeded; tile++) {
             if (pdfPageIndex > 0) pdf.addPage();
-            
+
             const sliceStart = splitPoints[tile];
             const sliceEnd = splitPoints[tile + 1];
             const sliceHeight = sliceEnd - sliceStart;
-            
-            // Create a tile canvas for this slice
+            const isContinuation = tile > 0;
+
+            // Available drawing area on the PDF page (mm). Continuation tiles reserve
+            // the top band for the running header so it can be overlaid cleanly.
+            const drawTopMm = isContinuation ? RUNNING_HEADER_MM : 0;
+            const drawHeightMm = 297 - drawTopMm;
+            // Tile canvas matches the slice — let jsPDF scale it to drawHeightMm.
             const tileCanvas = document.createElement('canvas');
             tileCanvas.width = canvas.width;
-            tileCanvas.height = Math.round(PAGE_HEIGHT_PX * renderScale);
+            tileCanvas.height = Math.max(1, Math.round(sliceHeight * renderScale));
             const ctx = tileCanvas.getContext('2d')!;
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
-            
+
             const srcY = Math.round(sliceStart * renderScale);
             const srcH = Math.round(sliceHeight * renderScale);
             ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-            
-            pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+
+            // Cap the painted height so a short slice doesn't get stretched to fill the page —
+            // keep its natural pixel ratio and leave whitespace below.
+            const naturalDrawHeightMm = (sliceHeight / PAGE_HEIGHT_PX) * 297;
+            const paintedHeightMm = Math.min(drawHeightMm, naturalDrawHeightMm);
+            pdf.addImage(tileCanvas, 'JPEG', 0, drawTopMm, 210, paintedHeightMm, undefined, 'FAST');
+
+            // Running header band for continuation tiles (so split content keeps the page identity)
+            if (isContinuation && headerTitleText) {
+              pdf.setFillColor(15, 32, 64);                    // navy band
+              pdf.rect(0, 0, 210, RUNNING_HEADER_MM, 'F');
+              pdf.setFillColor(201, 162, 39);                  // gold underline
+              pdf.rect(0, RUNNING_HEADER_MM - 1.2, 210, 1.2, 'F');
+              pdf.setFont('helvetica', 'bold');
+              pdf.setFontSize(11);
+              pdf.setTextColor(255, 255, 255);
+              pdf.text(headerTitleText, 200, RUNNING_HEADER_MM / 2 + 0.5, { align: 'right', baseline: 'middle' });
+              if (headerSubtitleText) {
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(7);
+                pdf.setTextColor(232, 200, 110);
+                pdf.text(`${headerSubtitleText} · continued`, 200, RUNNING_HEADER_MM - 3.2, { align: 'right' });
+              } else {
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(7);
+                pdf.setTextColor(232, 200, 110);
+                pdf.text('continued', 200, RUNNING_HEADER_MM - 3.2, { align: 'right' });
+              }
+            }
             
             // Draw footer on each tiled property page using html2canvas for emoji support
             const footerY = 291;
