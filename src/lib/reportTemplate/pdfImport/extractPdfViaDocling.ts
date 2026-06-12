@@ -72,9 +72,17 @@ function modeToWire(mode: DoclingPlanMode): string {
 }
 
 async function downloadJson<T>(path: string): Promise<T | null> {
-  const { data, error } = await supabase.storage.from(DIAGNOSTICS_BUCKET).createSignedUrl(path, 300);
-  if (error || !data?.signedUrl) return null;
-  const res = await fetch(data.signedUrl);
+  // Sign via the dispatcher — the anon client can't sign URLs on the private
+  // diagnostics bucket under our custom-auth model.
+  const { data, error } = await invokeSecureFunction(
+    'pdf-parse-dispatch',
+    { operation: 'download', path },
+    { timeoutMs: 30_000 },
+  );
+  if (error) return null;
+  const signed = (data as { signed_url?: string } | null)?.signed_url;
+  if (!signed) return null;
+  const res = await fetch(signed);
   if (!res.ok) return null;
   return (await res.json()) as T;
 }
