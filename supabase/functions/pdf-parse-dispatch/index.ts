@@ -239,10 +239,13 @@ Deno.serve(async (req) => {
     }
 
     if (operation === 'start') {
-      const mode = (body.mode as string) ?? 'semantic';
+      const rawMode = (body.mode as string) ?? 'semantic';
+      // DB CHECK uses 'pixel_perfect' (underscore); UI/API may pass 'pixel-perfect'.
+      const mode = rawMode === 'pixel-perfect' ? 'pixel_perfect' : rawMode;
       await ensureDiagnosticsBucket(admin);
       const sourceRes = await resolveSignedSourceUrl(admin, body);
       if ('error' in sourceRes) return json({ error: sourceRes.error }, 400);
+
 
       const { data: jobRow, error: insertErr } = await admin
         .from('pdf_import_jobs')
