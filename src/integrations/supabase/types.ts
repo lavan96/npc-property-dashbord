@@ -6867,6 +6867,33 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       figma_template_sync_log: {
         Row: {
           created_at: string
@@ -12801,6 +12828,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pdf_import_jobs: {
+        Row: {
+          created_at: string
+          diagnostics_path: string | null
+          duration_ms: number | null
+          engine: string
+          engine_version: string | null
+          error_code: string | null
+          error_text: string | null
+          finished_at: string | null
+          id: string
+          mode: string
+          page_count: number | null
+          request_payload: Json
+          result_payload: Json
+          source_file_name: string | null
+          source_file_path: string
+          source_file_size_bytes: number | null
+          ssim_score: number | null
+          stage: string | null
+          stage_started_at: string | null
+          started_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diagnostics_path?: string | null
+          duration_ms?: number | null
+          engine?: string
+          engine_version?: string | null
+          error_code?: string | null
+          error_text?: string | null
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          page_count?: number | null
+          request_payload?: Json
+          result_payload?: Json
+          source_file_name?: string | null
+          source_file_path: string
+          source_file_size_bytes?: number | null
+          ssim_score?: number | null
+          stage?: string | null
+          stage_started_at?: string | null
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diagnostics_path?: string | null
+          duration_ms?: number | null
+          engine?: string
+          engine_version?: string | null
+          error_code?: string | null
+          error_text?: string | null
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          page_count?: number | null
+          request_payload?: Json
+          result_payload?: Json
+          source_file_name?: string | null
+          source_file_path?: string
+          source_file_size_bytes?: number | null
+          ssim_score?: number | null
+          stage?: string | null
+          stage_started_at?: string | null
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       permission_invite_tokens: {
         Row: {
