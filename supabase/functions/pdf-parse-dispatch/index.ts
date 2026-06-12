@@ -122,18 +122,37 @@ async function runJob(
   try {
     await setStage(admin, jobId, 'parsing');
 
-    const parseRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${PARSE_TOKEN}`,
-      },
-      body: JSON.stringify({ url: signedUrl }),
-    });
-    if (!parseRes.ok) {
-      const text = await parseRes.text().catch(() => '');
-      throw new Error(`sidecar /parse ${parseRes.status}: ${text.slice(0, 500)}`);
+    // Retry transient 5xx (Cloud Run cold-start / scale-to-zero often returns 503).
+    const TRANSIENT = new Set([502, 503, 504, 522, 524]);
+    const MAX_ATTEMPTS = 4;
+    let parseRes: Response | null = null;
+    let lastErr = '';
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        parseRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${PARSE_TOKEN}`,
+          },
+          body: JSON.stringify({ url: signedUrl }),
+        });
+        if (parseRes.ok) break;
+        const text = await parseRes.text().catch(() => '');
+        lastErr = `sidecar /parse ${parseRes.status}: ${text.slice(0, 500)}`;
+        if (!TRANSIENT.has(parseRes.status) || attempt === MAX_ATTEMPTS) {
+          throw new Error(lastErr);
+        }
+      } catch (e) {
+        lastErr = String((e as Error)?.message ?? e);
+        if (attempt === MAX_ATTEMPTS) throw new Error(lastErr);
+      }
+      // Exponential backoff: 2s, 5s, 12s (handles ~30s cold-start window).
+      const delay = [2000, 5000, 12000][attempt - 1] ?? 5000;
+      console.log(`[pdf-parse-dispatch] sidecar transient error (attempt ${attempt}): ${lastErr}; retrying in ${delay}ms`);
+      await new Promise((r) => setTimeout(r, delay));
     }
+    if (!parseRes || !parseRes.ok) throw new Error(lastErr || 'sidecar /parse failed');
     const parseJson = await parseRes.json();
     // Sidecar returns an envelope { engine_version, pages, docling_document, ... }.
     // The frontend mapper expects the DoclingDocument itself, so persist just
