@@ -2299,16 +2299,8 @@ function generateHTMLContent(
             </table>
           </div>
         </div>
-        <div class="page-footer">
-          <div class="footer-contact">
-            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
-            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
-            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
-          </div>
-          <div class="footer-confidential">CONFIDENTIAL</div>
-          <div>Page ${summaryPageNumber} of ${totalPages}</div>
-        </div>
       </div>
+      
       
       <!-- PAGE 2: Personal Details & Properties -->
       <div class="page">
