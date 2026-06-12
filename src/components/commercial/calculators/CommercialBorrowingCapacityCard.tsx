@@ -27,7 +27,7 @@ function Field({ label, value, onChange, step = '1' }: { label: string; value: s
   return <div><Label>{label}</Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
 }
 
-function SelectField<T extends string>({ label, value, onChange, options }: { label: string; value: T; onChange: (v: T) => void; options: Array<{ value: T; label: string }> }) {
+function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }> }) {
   return <div><Label>{label}</Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 
