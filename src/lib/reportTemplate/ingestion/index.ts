@@ -8,7 +8,7 @@
  */
 export * from './types';
 export { classifyInput, codeFlavorForFile, codeTierForFlavor } from './detect';
-export { SOURCES, pdfSource, imageSource, urlSource, codeSource } from './sources';
+export { SOURCES, pdfSource, imageSource, urlSource, codeSource, figmaSource } from './sources';
 export { resolveSource, planIngestion, planIngestionOrThrow } from './registry';
 
 // Raw-codebase ingestion (C1/C2): render-source → grounded reference.
