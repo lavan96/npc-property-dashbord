@@ -221,7 +221,8 @@ export default function PdfImportDiagnostics() {
         expiresIn: 600,
       });
       if (res.error || !res.data?.signedUrl) {
-        toast.error(res.error ?? 'Failed to sign URL');
+        toast.error(res.error?.message ?? 'Failed to sign URL');
+
         return;
       }
       window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
