@@ -1425,13 +1425,21 @@ function generateHTMLContent(
     }
     
     const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
-    // Use the shared household finance engine so the card-level "Monthly Repayments"
-    // figure matches the Cashflow page (e.g. 3% CC fallback, 5% BNPL, HECS ATO bracket).
+    // Source of truth = user-entered monthly_repayment from the dashboard.
+    // Only fall back to the shared servicing engine when the value is genuinely
+    // missing (null/undefined). An explicit 0 means "TBC" and must be respected.
     const servicingById = new Map<string, { monthlyServicing: number; isEstimated: boolean; calculationNote: string }>();
     liabilityServicingSummary.items.forEach((s: any) => {
       if (s.id) servicingById.set(s.id, { monthlyServicing: s.monthlyServicing, isEstimated: s.isEstimated, calculationNote: s.calculationNote });
     });
-    const totalRepayments = liabilityServicingSummary.totalMonthly;
+    const totalRepayments = liabilities.reduce((sum, l) => {
+      const v = (l as any).monthly_repayment;
+      if (v === null || v === undefined) {
+        const srv = (l as any).id ? servicingById.get((l as any).id) : undefined;
+        return sum + (srv?.monthlyServicing || 0);
+      }
+      return sum + (Number(v) || 0);
+    }, 0);
     const liabsByType: Record<string, LiabilityData[]> = {};
     liabilities.forEach(liab => {
       const type = liab.liability_type || 'Other';
