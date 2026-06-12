@@ -2154,6 +2154,16 @@ function generateHTMLContent(
           </div>
         </div>
         <div class="page-content">
+          ${(() => {
+            // Compute non-property assets and non-property liabilities for true Net Worth
+            const nonPropertyAssetsTotal = (assets || []).reduce((sum, a) => {
+              const t = (a.asset_type || '').toLowerCase();
+              const isCreditCard = t.includes('credit') || t.includes('card');
+              return isCreditCard ? sum : sum + (a.value || 0);
+            }, 0);
+            const nonPropertyLiabilitiesTotal = (liabilities || []).reduce((sum, l) => sum + (l.current_balance || 0), 0);
+            const netWorth = summaryEquity + nonPropertyAssetsTotal - nonPropertyLiabilitiesTotal;
+            return `
           <div class="kpi-grid">
             <div class="kpi-card">
               <span class="kpi-icon">🏠</span>
@@ -2171,6 +2181,24 @@ function generateHTMLContent(
               <div class="kpi-value ${summaryEquity >= 0 ? 'positive' : 'negative'}">${formatCurrency(summaryEquity)}</div>
             </div>
           </div>
+          <div class="kpi-grid" style="margin-top:10px;">
+            <div class="kpi-card">
+              <span class="kpi-icon">💎</span>
+              <div class="kpi-label">OTHER ASSETS</div>
+              <div class="kpi-value">${formatCurrency(nonPropertyAssetsTotal)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">📉</span>
+              <div class="kpi-label">OTHER LIABILITIES</div>
+              <div class="kpi-value">${formatCurrency(nonPropertyLiabilitiesTotal)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">🧮</span>
+              <div class="kpi-label">ESTIMATED NET WORTH</div>
+              <div class="kpi-value ${netWorth >= 0 ? 'positive' : 'negative'}">${formatCurrency(netWorth)}</div>
+            </div>
+          </div>`;
+          })()}
           
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
