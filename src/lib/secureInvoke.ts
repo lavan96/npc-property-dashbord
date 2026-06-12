@@ -50,6 +50,7 @@ const BODY_TOKEN_FUNCTIONS = new Set([
   'template-design-agent',
   'render-source',
   'import-from-url',
+  'pdf-parse-dispatch',
 ]);
 
 /** Human-readable guidance for auth failures from secured edge functions. */

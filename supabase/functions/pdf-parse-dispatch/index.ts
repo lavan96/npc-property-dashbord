@@ -40,6 +40,17 @@ async function setStage(admin: Admin, jobId: string, stage: string) {
   await updateJob(admin, jobId, { stage, stage_started_at: new Date().toISOString() });
 }
 
+async function ensureDiagnosticsBucket(admin: Admin) {
+  const { data } = await admin.storage.getBucket(DIAGNOSTICS_BUCKET);
+  if (data) return;
+  const { error } = await admin.storage.createBucket(DIAGNOSTICS_BUCKET, {
+    public: false,
+    fileSizeLimit: 52428800,
+    allowedMimeTypes: ['application/json', 'application/pdf', 'image/png', 'image/jpeg'],
+  });
+  if (error) console.error('[pdf-parse-dispatch] ensureDiagnosticsBucket failed', error);
+}
+
 async function uploadDiagnostic(
   admin: Admin,
   jobId: string,
@@ -229,6 +240,7 @@ Deno.serve(async (req) => {
 
     if (operation === 'start') {
       const mode = (body.mode as string) ?? 'semantic';
+      await ensureDiagnosticsBucket(admin);
       const sourceRes = await resolveSignedSourceUrl(admin, body);
       if ('error' in sourceRes) return json({ error: sourceRes.error }, 400);
 
