@@ -217,6 +217,10 @@ interface VownetPDFGeneratorProps {
 // Helper functions
 const formatCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
+  // Always render negatives as -$X,XXX (never $-X,XXX)
+  if (value < 0) {
+    return '-$' + Math.abs(value).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
@@ -245,6 +249,90 @@ const properCase = (str: string | null | undefined): string => {
   return str.split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
+};
+
+// Friendly labels for enum-style values stored as snake_case in the DB.
+// Falls back to a Title Case version of the raw value so new enums never
+// leak unmapped strings into the client-facing PDF.
+const ENUM_LABEL_OVERRIDES: Record<string, string> = {
+  // Living situation
+  home_with_mortgage: 'Home with Mortgage',
+  home_owned_outright: 'Home Owned Outright',
+  renting: 'Renting',
+  living_with_parents: 'Living with Parents',
+  boarding: 'Boarding',
+  other: 'Other',
+  // Residential status
+  citizen: 'Australian Citizen',
+  permanent_resident: 'Permanent Resident',
+  temporary_resident: 'Temporary Resident',
+  visa_holder: 'Visa Holder',
+  // Marital status
+  single: 'Single',
+  married: 'Married',
+  de_facto: 'De Facto',
+  defacto: 'De Facto',
+  divorced: 'Divorced',
+  separated: 'Separated',
+  widowed: 'Widowed',
+  // Gender
+  male: 'Male',
+  female: 'Female',
+  non_binary: 'Non-binary',
+  prefer_not_to_say: 'Prefer not to say',
+  // Repayment type
+  interest_only: 'Interest Only',
+  principal_and_interest: 'Principal & Interest',
+  pi: 'Principal & Interest',
+  p_and_i: 'Principal & Interest',
+  // Frequency
+  annual: 'Annual',
+  annually: 'Annual',
+  monthly: 'Monthly',
+  fortnightly: 'Fortnightly',
+  weekly: 'Weekly',
+  quarterly: 'Quarterly',
+};
+
+const humanizeEnum = (raw: string | null | undefined): string => {
+  if (raw === null || raw === undefined) return '-';
+  const v = String(raw).trim();
+  if (!v) return '-';
+  const key = v.toLowerCase().replace(/[\s-]+/g, '_');
+  if (ENUM_LABEL_OVERRIDES[key]) return ENUM_LABEL_OVERRIDES[key];
+  return key
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const enumOrNotRecorded = (raw: string | null | undefined): string => {
+  if (!raw || !String(raw).trim() || String(raw).trim() === '-') return NOT_RECORDED;
+  return humanizeEnum(raw);
+};
+
+// ISO-2 / common country codes → display name. Falls back to humanizeEnum.
+const COUNTRY_LABEL_OVERRIDES: Record<string, string> = {
+  au: 'Australia',
+  aus: 'Australia',
+  australia: 'Australia',
+  nz: 'New Zealand',
+  nzl: 'New Zealand',
+  uk: 'United Kingdom',
+  gb: 'United Kingdom',
+  gbr: 'United Kingdom',
+  us: 'United States',
+  usa: 'United States',
+  in: 'India',
+  ind: 'India',
+};
+
+const formatCountry = (raw: string | null | undefined, fallback: string = 'Australia'): string => {
+  if (!raw || !String(raw).trim()) return fallback;
+  const k = String(raw).trim().toLowerCase();
+  if (COUNTRY_LABEL_OVERRIDES[k]) return COUNTRY_LABEL_OVERRIDES[k];
+  return humanizeEnum(raw);
 };
 
 export function VownetPDFGenerator({ 
@@ -1038,7 +1126,7 @@ function generateHTMLContent(
         <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
         <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(prop.lender_name)}</td></tr>
         <tr><td class="label">Loan Repayment</td><td class="value currency">${prop.loan_repayment_amount ? `${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}` : NOT_RECORDED}</td></tr>
-        <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(prop.repayment_type)}</td></tr>
+        <tr><td class="label">Repayment Type</td><td class="value">${enumOrNotRecorded(prop.repayment_type)}</td></tr>
       </table>
       <div class="subsection-header">Monthly Expenses</div>
       <table class="data-table compact alt-rows">
@@ -1112,7 +1200,7 @@ function generateHTMLContent(
         <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
         <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(prop.lender_name)}</td></tr>
         <tr><td class="label">Loan Repayment</td><td class="value currency">${prop.loan_repayment_amount ? `${formatCurrency(prop.loan_repayment_amount)}${prop.loan_repayment_frequency ? ` <span style="font-size:7px;color:#999">(${prop.loan_repayment_frequency})</span>` : ''}` : NOT_RECORDED}</td></tr>
-        <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(prop.repayment_type)}</td></tr>
+        <tr><td class="label">Repayment Type</td><td class="value">${enumOrNotRecorded(prop.repayment_type)}</td></tr>
       </table>
       
       <div class="subsection-header">Monthly Expenses</div>
@@ -1394,7 +1482,13 @@ function generateHTMLContent(
     }
     
     const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
-    const totalRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
+    // Use the shared household finance engine so the card-level "Monthly Repayments"
+    // figure matches the Cashflow page (e.g. 3% CC fallback, 5% BNPL, HECS ATO bracket).
+    const servicingById = new Map<string, { monthlyServicing: number; isEstimated: boolean; calculationNote: string }>();
+    liabilityServicingSummary.items.forEach((s: any) => {
+      if (s.id) servicingById.set(s.id, { monthlyServicing: s.monthlyServicing, isEstimated: s.isEstimated, calculationNote: s.calculationNote });
+    });
+    const totalRepayments = liabilityServicingSummary.totalMonthly;
     const liabsByType: Record<string, LiabilityData[]> = {};
     liabilities.forEach(liab => {
       const type = liab.liability_type || 'Other';
@@ -1411,7 +1505,7 @@ function generateHTMLContent(
           <span class="liab-value negative">${formatCurrency(totalLiabilities)}</span>
         </div>
         <div class="liab-summary-item">
-          <span class="liab-label">MONTHLY REPAYMENTS</span>
+          <span class="liab-label">MONTHLY REPAYMENTS${liabilityServicingSummary.hasEstimated ? ' <span style="font-size:6.5pt;color:#9ca3af;font-weight:500;">(incl. est.)</span>' : ''}</span>
           <span class="liab-value">${formatCurrency(totalRepayments)}</span>
         </div>
       </div>
@@ -1431,12 +1525,13 @@ function generateHTMLContent(
         const isCreditCard = type === 'credit_card';
         const hasAnyLimit = liabList.some(l => (l.credit_limit || 0) > 0);
         const hasAnyRate = liabList.some(l => (l.interest_rate || 0) > 0);
+        const typeLabel = humanizeEnum(type);
         
         return `
         <div class="liability-category">
           <div class="liability-category-header">
             <span class="category-icon">${getLiabilityEmoji(type)}</span>
-            <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+            <span class="category-title">${typeLabel}</span>
           </div>
           <table class="data-table financial-mini alt-rows">
             <thead>
@@ -1453,13 +1548,18 @@ function generateHTMLContent(
                 const utilisation = (isCreditCard && (liab.credit_limit || 0) > 0) 
                   ? Math.round(((liab.current_balance || 0) / liab.credit_limit!) * 100) 
                   : null;
+                const liabId = (liab as any).id as string | undefined;
+                const servicing = liabId ? servicingById.get(liabId) : undefined;
+                const effectiveRepayment = servicing ? servicing.monthlyServicing : (liab.monthly_repayment || 0);
+                const isEst = !!servicing?.isEstimated;
+                const estNote = servicing?.calculationNote || '';
                 return `
                 <tr>
                   <td class="value">${liab.provider_name || '-'}</td>
                   ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
                   <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
                   ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
-                  <td class="value currency">${formatCurrency(liab.monthly_repayment)}/mo</td>
+                  <td class="value currency">${formatCurrency(effectiveRepayment)}/mo${isEst ? ` <span style="font-size:6.5pt;color:#9ca3af;font-style:italic;" title="${estNote}">est.</span>` : ''}</td>
                 </tr>
               `;}).join('')}
             </tbody>
@@ -2157,7 +2257,13 @@ function generateHTMLContent(
         }
         .financial-table .total-row td { 
           border-top: 2px solid ${NPC_COLORS.gold}; 
-          font-size: 10pt;
+          font-size: 10.5pt;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0.2px;
+        }
+        /* Keep all currency cells tabular so commas render as crisp commas under rasterisation */
+        .financial-table td.currency, .financial-table .value.currency, .data-table .value.currency, .kpi-value {
+          font-variant-numeric: tabular-nums;
         }
         
         /* KPI Cards - Premium glass-card aesthetic */
@@ -2384,7 +2490,7 @@ function generateHTMLContent(
                   <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.primary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.primary_email || '-'}</td></tr>
-                  <tr><td class="label">Gender</td><td class="value">${client.primary_gender || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${enumOrNotRecorded(client.primary_gender)}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
                 </table>
               </div>
@@ -2397,7 +2503,7 @@ function generateHTMLContent(
                   <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.secondary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
-                  <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${enumOrNotRecorded(client.secondary_gender)}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
                 </table>
               </div>
@@ -2416,10 +2522,10 @@ function generateHTMLContent(
                     }
                     return '-';
                   })()}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
-                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${formatCountry(client.country)}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${enumOrNotRecorded(client.living_situation)}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${enumOrNotRecorded(client.residential_status)}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${enumOrNotRecorded(client.marital_status)}</td></tr>
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
@@ -2435,9 +2541,9 @@ function generateHTMLContent(
                     if (sec !== '-') return sec;
                     return '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
                   })()}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.secondary_country || client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.secondary_living_situation || client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.secondary_residential_status || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${formatCountry(client.secondary_country || client.country)}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${enumOrNotRecorded(client.secondary_living_situation || client.living_situation)}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${enumOrNotRecorded(client.secondary_residential_status)}</td></tr>
                 </table>
               </div>
               ` : ''}
@@ -2453,7 +2559,7 @@ function generateHTMLContent(
                   <tr><td class="label">Lender / Bank</td><td class="value">${textOrNotRecorded(ownerOccupied?.lender_name)}</td></tr>
                   <tr><td class="label">Purchase Price</td><td class="value currency">${currencyOrNotRecorded(ownerOccupied?.purchase_price)}</td></tr>
                   <tr><td class="label">Loan Repayment</td><td class="value currency">${ownerOccupied?.loan_repayment_amount ? `${formatCurrency(ownerOccupied.loan_repayment_amount)} <span style="font-size:7px;color:#999">(${ownerOccupied.loan_repayment_frequency || 'monthly'})</span>` : NOT_RECORDED}</td></tr>
-                  <tr><td class="label">Repayment Type</td><td class="value">${textOrNotRecorded(ownerOccupied?.repayment_type)}</td></tr>
+                  <tr><td class="label">Repayment Type</td><td class="value">${enumOrNotRecorded(ownerOccupied?.repayment_type)}</td></tr>
                   <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
