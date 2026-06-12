@@ -777,12 +777,11 @@ export async function extractPdfToTemplate(
             data_base64: b64,
           });
           if (mode === 'pixel' || semanticFallbackRaster) {
-            // Pixel-perfect mode and the semantic-fallback path must be
-            // self-contained for both iframe preview and WeasyPrint. Public
-            // storage URLs can be misconfigured or unavailable to the render
-            // service, which produced blank white pages; embedding the page
-            // raster as a data URL guarantees the raster is present at render.
-            backgroundImageUrl = `data:image/jpeg;base64,${b64}`;
+            // Keep persisted templates small. Storing multi-page page rasters as
+            // data URLs inside report_templates.schema causes PostgREST/RPC
+            // writes to hit the project statement timeout; the public asset URL
+            // is still preloaded to a data URL at render/export time.
+            backgroundImageUrl = up.url;
             if (semanticFallbackRaster) semantic++; else rasterized++;
           } else {
             // Hybrid: keep the source raster available as a locked, hidden trace
