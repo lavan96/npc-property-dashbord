@@ -1,124 +1,245 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
+import { AlertTriangle, Building2, Factory, FileCheck2 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { calculateCommercialBc } from '@/utils/commercial';
+import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
-const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
+const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
+const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
 const num = (v: string) => (v === '' ? 0 : Number(v));
+const set = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => setter(e.target.value);
+const badgeVariant = (r: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
+const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
-const bandVariant = (b: string) =>
-  b === 'green' ? 'default' : b === 'amber' ? 'secondary' : 'destructive';
-const bindingLabel: Record<string, string> = {
-  icr: 'ICR (Interest Coverage)',
-  dscr: 'DSCR (Debt Service Coverage)',
-  lvr: 'LVR ceiling',
-  liquidity: 'Sponsor liquidity',
-  none: 'None — no loan supportable',
-};
+const commercialSubtypes = ['Office', 'Retail', 'Medical', 'Childcare', 'Showroom', 'Hospitality', 'Mixed-use commercial', 'Other commercial'];
+const industrialSubtypes = ['Warehouse', 'Factory', 'Logistics facility', 'Cold storage', 'Workshop', 'Storage yard', 'Manufacturing facility', 'Last-mile facility', 'Other industrial'];
+
+function MoneyRow({ label, value, emph }: { label: string; value: number | string; emph?: boolean }) {
+  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{typeof value === 'number' ? fmt(value) : value}</span></div>;
+}
+
+function Field({ label, value, onChange, step = '1' }: { label: string; value: string; onChange: (v: string) => void; step?: string }) {
+  return <div><Label>{label}</Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+}
+
+function SelectField<T extends string>({ label, value, onChange, options }: { label: string; value: T; onChange: (v: T) => void; options: Array<{ value: T; label: string }> }) {
+  return <div><Label>{label}</Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+}
 
 export function CommercialBorrowingCapacityCard() {
-  const [noi, setNoi] = useState('250000');
-  const [propertyValue, setPropertyValue] = useState('3500000');
-  const [rate, setRate] = useState('7.25');
-  const [buffer, setBuffer] = useState('1.0');
-  const [term, setTerm] = useState('25');
-  const [maxLvr, setMaxLvr] = useState('0.65');
-  const [minIcr, setMinIcr] = useState('1.5');
-  const [minDscr, setMinDscr] = useState('1.25');
-  const [liquidity, setLiquidity] = useState('0');
+  const [assetCategory, setAssetCategory] = useState<AssetCategory>('commercial');
+  const [assetSubtype, setAssetSubtype] = useState('Office');
+  const [purpose, setPurpose] = useState<AcquisitionPurpose>('investment');
+  const [leaseStatus, setLeaseStatus] = useState<LeaseStatus>('fullyLeased');
+  const [state, setState] = useState<'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'>('NSW');
+  const [purchaserType, setPurchaserType] = useState<PurchaserStructure>('company');
+  const [entityName, setEntityName] = useState('Acquisition SPV Pty Ltd');
+  const [guarantees, setGuarantees] = useState<'yes' | 'no' | 'unknown'>('yes');
+  const [gstRegistered, setGstRegistered] = useState<'yes' | 'no' | 'unknown'>('unknown');
+  const [relatedPartyTenant, setRelatedPartyTenant] = useState<'yes' | 'no'>('no');
+  const [availableEquity, setAvailableEquity] = useState('1100000');
+  const [sponsorLiquidity, setSponsorLiquidity] = useState('500000');
   const [liquidityMult, setLiquidityMult] = useState('0');
+  const [businessDebt, setBusinessDebt] = useState('0');
+  const [businessEbitda, setBusinessEbitda] = useState('0');
+  const [currentRent, setCurrentRent] = useState('0');
+  const [proposedRent, setProposedRent] = useState('0');
+  const [smsfBalance, setSmsfBalance] = useState('0');
 
-  const result = useMemo(() => calculateCommercialBc({
-    noi: num(noi),
-    propertyValue: num(propertyValue),
-    interestRatePct: num(rate),
-    bufferPct: num(buffer),
-    loanTermYears: num(term),
-    maxLvr: num(maxLvr),
-    minIcr: num(minIcr),
-    minDscr: num(minDscr),
-    sponsorLiquidity: num(liquidity),
-    sponsorLiquidityMultiplier: num(liquidityMult),
-  }), [noi, propertyValue, rate, buffer, term, maxLvr, minIcr, minDscr, liquidity, liquidityMult]);
+  const [purchasePrice, setPurchasePrice] = useState('3500000');
+  const [estimatedValue, setEstimatedValue] = useState('3500000');
+  const [bankValue, setBankValue] = useState('');
+  const [conservativeValue, setConservativeValue] = useState<'yes' | 'no'>('yes');
+  const [landArea, setLandArea] = useState('1200');
+  const [buildingArea, setBuildingArea] = useState('900');
+  const [lettableArea, setLettableArea] = useState('850');
+  const [valuationConfidence, setValuationConfidence] = useState<'low' | 'medium' | 'high'>('medium');
+  const [clearance, setClearance] = useState('7.5');
+  const [rollerDoors, setRollerDoors] = useState('2');
+  const [truckAccess, setTruckAccess] = useState<'poor' | 'average' | 'good' | 'excellent'>('good');
+  const [powerCapacity, setPowerCapacity] = useState<'unknown' | 'singlePhase' | 'threePhase' | 'highCapacity' | 'substationPresent'>('unknown');
+  const [slabCondition, setSlabCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
+  const [roofCondition, setRoofCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
+
+  const [passingRent, setPassingRent] = useState('250000');
+  const [otherIncome, setOtherIncome] = useState('0');
+  const [recoveries, setRecoveries] = useState('45000');
+  const [marketRent, setMarketRent] = useState('250000');
+  const [vacancy, setVacancy] = useState('3');
+  const [incentives, setIncentives] = useState('0');
+  const [arrearsAdj, setArrearsAdj] = useState('0');
+  const [nonRecoverable, setNonRecoverable] = useState('15000');
+  const [rates, setRates] = useState('12000');
+  const [water, setWater] = useState('2500');
+  const [landTax, setLandTax] = useState('8000');
+  const [insurance, setInsurance] = useState('6000');
+  const [management, setManagement] = useState('7000');
+  const [repairs, setRepairs] = useState('5000');
+  const [wale, setWale] = useState('3.5');
+  const [tenantCovenant, setTenantCovenant] = useState<'government' | 'nationalTenant' | 'listedCompany' | 'establishedSme' | 'newBusiness' | 'relatedParty' | 'weakUnknown'>('establishedSme');
+  const [rentOverMarket, setRentOverMarket] = useState<'yes' | 'no' | 'unknown'>('no');
+  const [aboveMarketPct, setAboveMarketPct] = useState('0');
+  const [noiBasis, setNoiBasis] = useState<'actual' | 'stabilised' | 'lenderAdjusted'>('lenderAdjusted');
+
+  const [stampDuty, setStampDuty] = useState('175000');
+  const [legal, setLegal] = useState('12000');
+  const [bankLegal, setBankLegal] = useState('8000');
+  const [valuationFee, setValuationFee] = useState('6000');
+  const [dueDiligence, setDueDiligence] = useState('10000');
+  const [environmentalCost, setEnvironmentalCost] = useState('0');
+  const [asbestosCost, setAsbestosCost] = useState('0');
+  const [capexReserve, setCapexReserve] = useState('50000');
+  const [workingCapital, setWorkingCapital] = useState('25000');
+  const [otherCosts, setOtherCosts] = useState('0');
+  const [gstTreatment, setGstTreatment] = useState<'gstInclusive' | 'plusGst' | 'gstFreeGoingConcern' | 'marginScheme' | 'unknown'>('unknown');
+  const [gstCashflow, setGstCashflow] = useState<'yes' | 'no' | 'unknown'>('unknown');
+
+  const [profile, setProfile] = useState<LenderPolicyProfileKey>('mainstreamCommercialBank');
+  const [rate, setRate] = useState('7.25');
+  const [buffer, setBuffer] = useState('1.00');
+  const [term, setTerm] = useState('25');
+  const [ioPeriod, setIoPeriod] = useState('0');
+  const [amortisation, setAmortisation] = useState('25');
+  const [maxLvr, setMaxLvr] = useState('0.65');
+  const [minIcr, setMinIcr] = useState('1.50');
+  const [minDscr, setMinDscr] = useState('1.25');
+  const [minDebtYield, setMinDebtYield] = useState('0.09');
+
+  const [tenantStrength, setTenantStrength] = useState<'strong' | 'established' | 'weak' | 'unknown'>('established');
+  const [vacancyLevel, setVacancyLevel] = useState<'none' | 'minor' | 'major'>('minor');
+  const [buildingCondition, setBuildingCondition] = useState<'good' | 'average' | 'poor'>('good');
+  const [zoning, setZoning] = useState<'clear' | 'uncertain' | 'notPermitted'>('clear');
+  const [leaseDocs, setLeaseDocs] = useState<'yes' | 'no' | 'unknown'>('unknown');
+  const [environmentalRisk, setEnvironmentalRisk] = useState<'low' | 'unknown' | 'present' | 'knownContamination'>('unknown');
+  const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
+  const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
+
+  const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
+
+  const result = useMemo(() => {
+    const inputs: BorrowingInputs = {
+      dealProfile: { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state },
+      purchaserStructure: { purchaserType, borrowerEntityName: entityName, corporateTrustee: purchaserType.includes('Trust') ? 'yes' : 'notApplicable', guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: num(availableEquity), sponsorLiquidity: num(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda), existingRentPaid: num(currentRent), proposedRentPayable: num(proposedRent), smsfBalance: num(smsfBalance), smsfSpecialistReviewRequired: purchaserType === 'smsf' },
+      propertyValuation: { purchasePrice: num(purchasePrice), estimatedMarketValue: num(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: num(landArea), buildingArea: num(buildingArea), lettableArea: num(lettableArea), valuationConfidence, clearanceHeight: num(clearance), rollerDoors: num(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition },
+      income: { grossPassingRent: num(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: num(recoveries), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy), incentivesAdjustment: num(incentives), tenantArrearsAdjustment: num(arrearsAdj), nonRecoverableExpenses: num(nonRecoverable), councilRates: num(rates), water: num(water), landTax: num(landTax), insurance: num(insurance), strataOwnersCorp: 0, managementFees: num(management), repairsMaintenance: num(repairs), utilities: 0, cleaning: 0, security: 0, otherExpenses: 0, wale: num(wale), tenantCovenant, rentOverMarket, percentageAboveMarket: num(aboveMarketPct), noiBasis },
+      acquisitionCosts: { depositPaid: 0, stampDuty: num(stampDuty), transferRegistrationFee: 180, mortgageRegistrationFee: 180, pexaSettlementFee: 150, legalConveyancingFee: num(legal), bankLegalFee: num(bankLegal), valuationFee: num(valuationFee), loanApplicationFee: 0, buyersAgentFee: 0, buildingInspection: 0, pestInspection: 0, structuralInspection: assetCategory === 'industrial' ? 5000 : 0, fireComplianceInspection: 2500, planningZoningReview: 2500, environmentalReport: num(environmentalCost), asbestosReport: num(asbestosCost), dueDiligence: num(dueDiligence), capexReserve: num(capexReserve), workingCapitalReserve: num(workingCapital), otherAcquisitionCosts: num(otherCosts), gstTreatment, gstAmount: 0, gstClaimable: 'unknown', gstCashflowRequired: gstCashflow },
+      lendingAssumptions: { profile, contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), loanTermYears: num(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: num(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true },
+      riskInputs: { tenantStrength, vacancyLevel, buildingCondition, zoningCertainty: zoning, leaseDocumentationComplete: leaseDocs, environmentalRisk, asbestosRisk, capexRequired, rentComparedToMarket: rentOverMarket === 'yes' ? 'materiallyOver' : 'belowOrAtMarket' },
+    };
+    return calculateCommercialIndustrialBorrowing(inputs);
+  }, [assetCategory, assetSubtype, purpose, leaseStatus, state, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, gstTreatment, gstCashflow, profile, rate, buffer, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired]);
+
+  const applyProfile = (next: LenderPolicyProfileKey) => {
+    setProfile(next);
+    const p = lenderPolicyProfiles[next];
+    setMaxLvr(String(p.maxLvr)); setMinIcr(String(p.minIcr)); setMinDscr(String(p.minDscr)); setBuffer(String(p.assessmentBufferPct)); setMinDebtYield(String(p.minDebtYield));
+    if (next === 'smsfCommercial') setPurchaserType('smsf');
+  };
 
   return (
-    <Card>
+    <Card className="bg-card/95">
       <CardHeader>
-        <CardTitle>Commercial Borrowing Capacity</CardTitle>
-        <CardDescription>
-          Sizes the loan against the property's own income via ICR / DSCR, capped by LVR. Distinct
-          from residential DTI/HEM serviceability.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid lg:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>NOI (PA)</Label><Input type="number" value={noi} onChange={e => setNoi(e.target.value)} /></div>
-            <div><Label>Property value</Label><Input type="number" value={propertyValue} onChange={e => setPropertyValue(e.target.value)} /></div>
-            <div><Label>Contract rate %</Label><Input type="number" step="0.05" value={rate} onChange={e => setRate(e.target.value)} /></div>
-            <div><Label>Assessment buffer %</Label><Input type="number" step="0.05" value={buffer} onChange={e => setBuffer(e.target.value)} /></div>
-            <div><Label>Term (years)</Label><Input type="number" value={term} onChange={e => setTerm(e.target.value)} /></div>
-            <div><Label>Max LVR (0–1)</Label><Input type="number" step="0.01" value={maxLvr} onChange={e => setMaxLvr(e.target.value)} /></div>
-            <div><Label>Min ICR (x)</Label><Input type="number" step="0.05" value={minIcr} onChange={e => setMinIcr(e.target.value)} /></div>
-            <div><Label>Min DSCR (x)</Label><Input type="number" step="0.05" value={minDscr} onChange={e => setMinDscr(e.target.value)} /></div>
-            <div><Label>Sponsor liquidity</Label><Input type="number" value={liquidity} onChange={e => setLiquidity(e.target.value)} /></div>
-            <div><Label>Liquidity multiplier</Label><Input type="number" step="0.5" value={liquidityMult} onChange={e => setLiquidityMult(e.target.value)} /></div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Commercial & Industrial Borrowing Capacity</CardTitle>
+            <CardDescription>Shared lending engine with commercial and industrial profiles, funds-to-complete, risk overlays, commentary and document checklist.</CardDescription>
           </div>
+          <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">
+        <div className="space-y-4">
+          <Accordion type="multiple" defaultValue={['deal', 'income', 'assumptions', 'risk']} className="rounded-lg border px-4">
+            <AccordionItem value="deal"><AccordionTrigger>1. Deal Profile</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <SelectField label="Asset category" value={assetCategory} onChange={(v) => { setAssetCategory(v); setAssetSubtype(v === 'industrial' ? 'Warehouse' : 'Office'); }} options={[{ value: 'commercial', label: 'Commercial Asset Borrowing Capacity' }, { value: 'industrial', label: 'Industrial Asset Borrowing Capacity' }]} />
+              <SelectField label="Asset subtype" value={assetSubtype} onChange={setAssetSubtype} options={(assetCategory === 'commercial' ? commercialSubtypes : industrialSubtypes).map(s => ({ value: s, label: s }))} />
+              <SelectField label="Acquisition purpose" value={purpose} onChange={setPurpose} options={[['investment', 'Arm’s-length investment'], ['ownerOccupied', 'Owner-occupied business premises'], ['relatedPartyLease', 'Related-party lease'], ['vacant', 'Vacant possession'], ['partiallyVacant', 'Partially vacant'], ['mixedUse', 'Mixed-use'], ['development', 'Development / repositioning']].map(([value, label]) => ({ value: value as AcquisitionPurpose, label }))} />
+              <SelectField label="Lease status" value={leaseStatus} onChange={setLeaseStatus} options={[['fullyLeased', 'Fully leased'], ['partiallyLeased', 'Partially leased'], ['vacant', 'Vacant'], ['monthToMonth', 'Month-to-month'], ['relatedPartyLease', 'Related-party lease'], ['leasePending', 'Lease pending']].map(([value, label]) => ({ value: value as LeaseStatus, label }))} />
+              <SelectField label="State / Territory" value={state} onChange={setState} options={['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'].map(s => ({ value: s as typeof state, label: s }))} />
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="purchaser"><AccordionTrigger>2. Purchaser Structure</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <SelectField label="Purchaser type" value={purchaserType} onChange={setPurchaserType} options={[['individual', 'Individual'], ['company', 'Company'], ['discretionaryTrust', 'Discretionary trust'], ['unitTrust', 'Unit trust'], ['smsf', 'SMSF'], ['holdingCompany', 'Holding company'], ['spv', 'SPV'], ['operatingBusiness', 'Operating business entity'], ['other', 'Other']].map(([value, label]) => ({ value: value as PurchaserStructure, label }))} />
+              <div><Label>Borrower entity name</Label><Input value={entityName} onChange={e => setEntityName(e.target.value)} /></div>
+              <SelectField label="Guarantees available?" value={guarantees} onChange={setGuarantees} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
+              <SelectField label="Related-party tenant?" value={relatedPartyTenant} onChange={setRelatedPartyTenant} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
+              <SelectField label="GST registered?" value={gstRegistered} onChange={setGstRegistered} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
+              <Field label="Available cash / equity" value={availableEquity} onChange={setAvailableEquity} />
+              <Field label="Sponsor liquidity" value={sponsorLiquidity} onChange={setSponsorLiquidity} />
+              <Field label="Liquidity multiplier" value={liquidityMult} onChange={setLiquidityMult} step="0.5" />
+              {showBusinessFields && <><Field label="Existing business debts" value={businessDebt} onChange={setBusinessDebt} /><Field label="Business EBITDA / NPBT" value={businessEbitda} onChange={setBusinessEbitda} /><Field label="Current business rent" value={currentRent} onChange={setCurrentRent} /><Field label="Proposed related-party rent" value={proposedRent} onChange={setProposedRent} /></>}
+              {purchaserType === 'smsf' && <><Field label="SMSF balance" value={smsfBalance} onChange={setSmsfBalance} /><div className="md:col-span-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">SMSF / LRBA placeholder only — specialist review is required before relying on this output.</div></>}
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="property"><AccordionTrigger>3. Property / Valuation</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <Field label="Purchase price" value={purchasePrice} onChange={setPurchasePrice} /><Field label="Estimated market value" value={estimatedValue} onChange={setEstimatedValue} /><Field label="Bank valuation" value={bankValue} onChange={setBankValue} />
+              <SelectField label="Use conservative valuation?" value={conservativeValue} onChange={setConservativeValue} options={[{ value: 'yes', label: 'Yes — lowest available' }, { value: 'no', label: 'No' }]} />
+              <Field label="Land area sqm" value={landArea} onChange={setLandArea} /><Field label="Building area sqm" value={buildingArea} onChange={setBuildingArea} /><Field label="Lettable area sqm" value={lettableArea} onChange={setLettableArea} />
+              <SelectField label="Valuation confidence" value={valuationConfidence} onChange={setValuationConfidence} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} />
+              {assetCategory === 'industrial' && <><Field label="Clearance height m" value={clearance} onChange={setClearance} step="0.1" /><Field label="Roller doors" value={rollerDoors} onChange={setRollerDoors} /><SelectField label="Truck access" value={truckAccess} onChange={setTruckAccess} options={[{ value: 'poor', label: 'Poor' }, { value: 'average', label: 'Average' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }]} /><SelectField label="Power capacity" value={powerCapacity} onChange={setPowerCapacity} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'singlePhase', label: 'Single phase' }, { value: 'threePhase', label: '3 phase' }, { value: 'highCapacity', label: 'High capacity' }, { value: 'substationPresent', label: 'Substation present' }]} /><SelectField label="Slab condition" value={slabCondition} onChange={setSlabCondition} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'good', label: 'Good' }, { value: 'average', label: 'Average' }, { value: 'poor', label: 'Poor' }]} /><SelectField label="Roof condition" value={roofCondition} onChange={setRoofCondition} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'good', label: 'Good' }, { value: 'average', label: 'Average' }, { value: 'poor', label: 'Poor' }]} /></>}
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="income"><AccordionTrigger>4. Income / NOI</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <Field label="Gross passing rent p.a." value={passingRent} onChange={setPassingRent} /><Field label="Other income p.a." value={otherIncome} onChange={setOtherIncome} /><Field label="Recovered outgoings p.a." value={recoveries} onChange={setRecoveries} />
+              <Field label="Market rent p.a." value={marketRent} onChange={setMarketRent} /><Field label="Vacancy allowance %" value={vacancy} onChange={setVacancy} step="0.1" /><Field label="Incentives / rent-free adjustment" value={incentives} onChange={setIncentives} />
+              <Field label="Tenant arrears adjustment" value={arrearsAdj} onChange={setArrearsAdj} /><Field label="Non-recoverable expenses" value={nonRecoverable} onChange={setNonRecoverable} /><Field label="Council rates" value={rates} onChange={setRates} />
+              <Field label="Water" value={water} onChange={setWater} /><Field label="Land tax" value={landTax} onChange={setLandTax} /><Field label="Insurance" value={insurance} onChange={setInsurance} />
+              <Field label="Management fees" value={management} onChange={setManagement} /><Field label="Repairs and maintenance" value={repairs} onChange={setRepairs} /><Field label="WALE years" value={wale} onChange={setWale} step="0.1" />
+              <SelectField label="Tenant covenant" value={tenantCovenant} onChange={setTenantCovenant} options={[['government', 'Government'], ['nationalTenant', 'National tenant'], ['listedCompany', 'Listed company'], ['establishedSme', 'Established SME'], ['newBusiness', 'New business'], ['relatedParty', 'Related party'], ['weakUnknown', 'Weak / unknown']].map(([value, label]) => ({ value: value as typeof tenantCovenant, label }))} />
+              <SelectField label="Rent over market?" value={rentOverMarket} onChange={setRentOverMarket} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }, { value: 'unknown', label: 'Unknown' }]} />
+              {rentOverMarket === 'yes' && <Field label="% above market" value={aboveMarketPct} onChange={setAboveMarketPct} step="0.1" />}
+              <SelectField label="NOI basis for borrowing" value={noiBasis} onChange={setNoiBasis} options={[{ value: 'actual', label: 'Actual NOI' }, { value: 'stabilised', label: 'Stabilised NOI' }, { value: 'lenderAdjusted', label: 'Lender-adjusted NOI' }]} />
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="costs"><AccordionTrigger>5. Acquisition Costs & Funds to Complete</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <Field label="Stamp duty estimate" value={stampDuty} onChange={setStampDuty} /><Field label="Legal / conveyancing" value={legal} onChange={setLegal} /><Field label="Bank legal fee" value={bankLegal} onChange={setBankLegal} />
+              <Field label="Valuation fee" value={valuationFee} onChange={setValuationFee} /><Field label="Due diligence allowance" value={dueDiligence} onChange={setDueDiligence} /><Field label="Capex reserve" value={capexReserve} onChange={setCapexReserve} />
+              <Field label="Working capital reserve" value={workingCapital} onChange={setWorkingCapital} /><Field label="Environmental report" value={environmentalCost} onChange={setEnvironmentalCost} /><Field label="Asbestos report" value={asbestosCost} onChange={setAsbestosCost} />
+              <Field label="Other acquisition costs" value={otherCosts} onChange={setOtherCosts} />
+              <SelectField label="GST treatment" value={gstTreatment} onChange={setGstTreatment} options={[['gstInclusive', 'GST inclusive'], ['plusGst', 'Plus GST'], ['gstFreeGoingConcern', 'GST-free going concern'], ['marginScheme', 'Margin scheme'], ['unknown', 'Unknown']].map(([value, label]) => ({ value: value as typeof gstTreatment, label }))} />
+              <SelectField label="GST cashflow at settlement?" value={gstCashflow} onChange={setGstCashflow} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="assumptions"><AccordionTrigger>6. Lending Assumptions</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <SelectField label="Lender policy profile" value={profile} onChange={applyProfile} options={[['conservativeBank', 'Conservative bank'], ['mainstreamCommercialBank', 'Mainstream commercial bank'], ['nonBankCommercial', 'Non-bank commercial lender'], ['privateCreditShortTerm', 'Private credit / short-term'], ['smsfCommercial', 'SMSF commercial lender'], ['ownerOccupiedBusinessLending', 'Owner-occupied business lending'], ['custom', 'Custom']].map(([value, label]) => ({ value: value as LenderPolicyProfileKey, label }))} />
+              <Field label="Contract interest rate %" value={rate} onChange={setRate} step="0.05" /><Field label="Assessment buffer %" value={buffer} onChange={setBuffer} step="0.05" />
+              <Field label="Loan term years" value={term} onChange={setTerm} /><Field label="Interest-only years" value={ioPeriod} onChange={setIoPeriod} /><Field label="Amortisation years" value={amortisation} onChange={setAmortisation} />
+              <Field label="Max LVR (0–1)" value={maxLvr} onChange={setMaxLvr} step="0.01" /><Field label="Minimum ICR (x)" value={minIcr} onChange={setMinIcr} step="0.05" /><Field label="Minimum DSCR (x)" value={minDscr} onChange={setMinDscr} step="0.05" />
+              <Field label="Minimum debt yield (0–1)" value={minDebtYield} onChange={setMinDebtYield} step="0.01" />
+            </AccordionContent></AccordionItem>
+
+            <AccordionItem value="risk"><AccordionTrigger>7. {assetCategory === 'industrial' ? 'Industrial' : 'Commercial'} Risk Assessment</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
+              <SelectField label="Tenant strength" value={tenantStrength} onChange={setTenantStrength} options={[{ value: 'strong', label: 'Strong' }, { value: 'established', label: 'Established' }, { value: 'weak', label: 'Weak' }, { value: 'unknown', label: 'Unknown' }]} />
+              <SelectField label="Vacancy level" value={vacancyLevel} onChange={setVacancyLevel} options={[{ value: 'none', label: 'None' }, { value: 'minor', label: 'Minor' }, { value: 'major', label: 'Major' }]} />
+              <SelectField label="Building condition" value={buildingCondition} onChange={setBuildingCondition} options={[{ value: 'good', label: 'Good' }, { value: 'average', label: 'Average' }, { value: 'poor', label: 'Poor' }]} />
+              <SelectField label="Zoning / permitted use" value={zoning} onChange={setZoning} options={[{ value: 'clear', label: 'Clear' }, { value: 'uncertain', label: 'Uncertain' }, { value: 'notPermitted', label: 'Not permitted' }]} />
+              <SelectField label="Lease docs complete?" value={leaseDocs} onChange={setLeaseDocs} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
+              {assetCategory === 'industrial' && <><SelectField label="Environmental risk" value={environmentalRisk} onChange={setEnvironmentalRisk} options={[{ value: 'low', label: 'Low' }, { value: 'unknown', label: 'Unknown' }, { value: 'present', label: 'Present' }, { value: 'knownContamination', label: 'Known contamination' }]} /><SelectField label="Asbestos risk" value={asbestosRisk} onChange={setAsbestosRisk} options={[{ value: 'low', label: 'Low' }, { value: 'unknown', label: 'Unknown' }, { value: 'likely', label: 'Likely' }, { value: 'confirmed', label: 'Confirmed' }]} /><SelectField label="Capex required" value={capexRequired} onChange={setCapexRequired} options={[{ value: 'none', label: 'None' }, { value: 'some', label: 'Some' }, { value: 'heavy', label: 'Heavy' }]} /></>}
+            </AccordionContent></AccordionItem>
+          </Accordion>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-muted-foreground">Maximum supportable loan</div>
-              <div className="text-3xl font-bold text-primary">{fmt(result.maxLoan)}</div>
-            </div>
-            <Badge variant={bandVariant(result.band) as any} className="text-base px-3 py-1 capitalize">{result.band}</Badge>
-          </div>
+        <div className="space-y-4">
+          <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-6 space-y-4">
+            <div className="flex justify-between gap-4"><div><p className="text-sm text-muted-foreground">Maximum risk-adjusted loan</p><p className="text-3xl font-bold text-primary">{fmt(result.finalRiskAdjustedLoan)}</p></div><div className="text-right"><p className="text-sm text-muted-foreground">Purchase ability</p><Badge variant={badgeVariant(result.riskRating) as any}>{title(result.purchaseAbilityStatus)}</Badge></div></div>
+            <Separator />
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm"><MoneyRow label="Property-supported loan" value={result.propertySupportedLoan} /><MoneyRow label="Sponsor-supported uplift" value={result.sponsorSupportedUplift} /><MoneyRow label="Binding constraint" value={title(result.bindingConstraint)} /><MoneyRow label="Implied LVR" value={pct(result.impliedLvr)} /><MoneyRow label="Assessment rate" value={pct(result.assessmentRate)} /><MoneyRow label="Debt yield" value={pct(result.debtYield)} /><MoneyRow label="ICR" value={`${result.icr.toFixed(2)}x`} /><MoneyRow label="DSCR" value={`${result.dscr.toFixed(2)}x`} /></div>
+          </CardContent></Card>
 
-          <Separator />
+          <Card><CardHeader><CardTitle className="text-base">Borrowing Capacity Output</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><MoneyRow label="LVR cap" value={result.componentCaps.lvrCap} /><MoneyRow label="ICR cap" value={result.componentCaps.icrCap} /><MoneyRow label="DSCR cap" value={result.componentCaps.dscrCap} /><MoneyRow label="Debt yield cap" value={result.componentCaps.debtYieldCap} />{result.componentCaps.liquidityCap != null && <MoneyRow label="Liquidity cap" value={result.componentCaps.liquidityCap} />}<Separator /><MoneyRow label="Annual interest" value={result.annualInterest} /><MoneyRow label="Annual debt service" value={result.annualDebtService} /></CardContent></Card>
 
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between"><span>Binding constraint</span><span className="font-medium">{bindingLabel[result.bindingConstraint]}</span></div>
-            <div className="flex justify-between"><span>Implied LVR</span><span className="font-medium">{pct(result.impliedLvr)}</span></div>
-            <div className="flex justify-between"><span>Assessment rate</span><span className="font-medium">{result.assessmentRatePct.toFixed(2)}%</span></div>
-          </div>
+          <Card><CardHeader><CardTitle className="text-base">Purchase Ability / Funds to Complete</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><MoneyRow label="Purchase price" value={num(purchasePrice)} /><MoneyRow label="Acquisition costs" value={result.fundsToComplete.totalAcquisitionCosts} /><MoneyRow label="GST cashflow requirement" value={result.fundsToComplete.gstCashflowRequirement} /><MoneyRow label="Total cost base" value={result.fundsToComplete.totalCostBase} emph /><MoneyRow label="Final loan" value={result.finalRiskAdjustedLoan} /><MoneyRow label="Required equity" value={result.fundsToComplete.requiredEquity} emph /><MoneyRow label="Available equity" value={num(availableEquity)} /><MoneyRow label="Equity surplus / shortfall" value={result.fundsToComplete.equitySurplusShortfall} emph /></CardContent></Card>
 
-          <Separator />
+          <Card><CardHeader><CardTitle className="text-base">Risk Summary & Commentary</CardTitle><CardDescription>{result.primaryReason}</CardDescription></CardHeader><CardContent className="space-y-3"><p className="text-sm leading-relaxed text-muted-foreground">{result.commentary}</p>{result.warnings.length > 0 && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3"><div className="flex items-center gap-2 text-sm font-medium text-amber-200"><AlertTriangle className="h-4 w-4" /> Key warnings</div><ul className="mt-2 space-y-1 text-xs text-muted-foreground">{result.warnings.slice(0, 6).map((w, i) => <li key={i}>• {w}</li>)}</ul></div>}<p className="text-sm font-medium">Next action: {result.requiredNextAction}</p></CardContent></Card>
 
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Component caps</div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>ICR cap</span><span>{fmt(result.caps.icrCap)}</span></div>
-              <div className="flex justify-between"><span>DSCR cap</span><span>{fmt(result.caps.dscrCap)}</span></div>
-              <div className="flex justify-between"><span>LVR cap</span><span>{fmt(result.caps.lvrCap)}</span></div>
-              {result.caps.liquidityCap != null && (
-                <div className="flex justify-between"><span>Liquidity cap</span><span>{fmt(result.caps.liquidityCap)}</span></div>
-              )}
-            </div>
-          </div>
+          <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Required Documents / Next Steps</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">{result.documentChecklist.slice(0, 18).map(item => <div key={item} className="rounded border bg-muted/20 px-2 py-1">{item}</div>)}</div></CardContent></Card>
 
-          <Separator />
-
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Coverage at max loan</div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>ICR</span><span>{result.coverageAtMax.icr.toFixed(2)}x</span></div>
-              <div className="flex justify-between"><span>DSCR</span><span>{result.coverageAtMax.dscr.toFixed(2)}x</span></div>
-              <div className="flex justify-between"><span>Annual interest</span><span>{fmt(result.coverageAtMax.annualInterest)}</span></div>
-              <div className="flex justify-between"><span>Annual debt service</span><span>{fmt(result.coverageAtMax.annualDebtService)}</span></div>
-            </div>
-          </div>
-
-          {result.notes.length > 0 && (
-            <ul className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
-              {result.notes.map((n, i) => <li key={i}>• {n}</li>)}
-            </ul>
-          )}
+          <Card><CardHeader><CardTitle className="text-base">Scenario Comparison</CardTitle></CardHeader><CardContent className="space-y-2 text-xs">{result.scenarios.map(s => <div key={s.name} className="grid grid-cols-4 gap-2 rounded border p-2"><span className="font-medium">{s.name}</span><span>{fmt(s.maxLoan)}</span><span>{title(s.bindingConstraint)}</span><span>{title(s.riskRating)}</span></div>)}</CardContent></Card>
         </div>
       </CardContent>
     </Card>
