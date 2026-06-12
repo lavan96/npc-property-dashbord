@@ -179,7 +179,7 @@ async function runJob(
     await setStage(admin, jobId, 'finalizing');
     const finishedAt = Date.now();
     await updateJob(admin, jobId, {
-      status: 'parsed',
+      status: 'succeeded',
       stage: 'parsed',
       finished_at: new Date(finishedAt).toISOString(),
       duration_ms: finishedAt - startedAt,
