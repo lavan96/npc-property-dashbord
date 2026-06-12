@@ -2504,10 +2504,10 @@ function generateHTMLContent(
                     }
                     return '-';
                   })()}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
-                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${formatCountry(client.country)}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${enumOrNotRecorded(client.living_situation)}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${enumOrNotRecorded(client.residential_status)}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${enumOrNotRecorded(client.marital_status)}</td></tr>
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
