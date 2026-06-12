@@ -53,6 +53,10 @@ export function classifyInput(input: IngestionInput): SourceKind | 'unsupported'
   if (input.kind === 'url') return 'url';
   if (input.kind === 'code') return 'code';
 
+  // Figma Make / local-Figma exports take precedence over generic code detection
+  // (they share the .zip-ish container but route through the figma orchestrator).
+  if (input.file?.name && isFigmaMakeFile(input.file.name)) return 'figma';
+
   // File input: prefer the existing PDF/image detector, then fall back to code.
   const ref = detectReferenceKind(input.file);
   if (ref === 'pdf') return 'pdf';
