@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { runDcf } from '@/utils/commercial';
+import { runDcfAssessment } from '@/utils/commercial';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const fmt0 = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -25,8 +27,10 @@ export function DcfCalculatorCard() {
   const [loan, setLoan] = useState('1950000');
   const [interest, setInterest] = useState('7.25');
   const [term, setTerm] = useState('25');
+  const [annualCapex, setAnnualCapex] = useState('10000');
+  const [downtimeMonths, setDowntimeMonths] = useState('3');
 
-  const result = useMemo(() => runDcf({
+  const result = useMemo(() => runDcfAssessment({
     purchasePrice: num(price),
     acquisitionCosts: num(acqCosts),
     initialNoi: num(initialNoi),
@@ -39,13 +43,16 @@ export function DcfCalculatorCard() {
     loanAmount: num(loan),
     interestRatePct: num(interest),
     loanTermYears: num(term),
-  }), [price, acqCosts, initialNoi, hold, growth, vacancy, termCap, sellingCosts, discount, loan, interest, term]);
+    annualCapex: num(annualCapex),
+    downtimeMonths: num(downtimeMonths),
+    exitCapSensitivityPct: [num(termCap) - 0.5, num(termCap), num(termCap) + 0.5],
+  }), [price, acqCosts, initialNoi, hold, growth, vacancy, termCap, sellingCosts, discount, loan, interest, term, annualCapex, downtimeMonths]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Discounted Cash Flow (DCF)</CardTitle>
-        <CardDescription>10-year levered & unlevered IRR, NPV and equity multiple.</CardDescription>
+        <CardDescription>Scenario-ready DCF with capex, downtime, exit sensitivity, levered and unlevered returns.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">Manual Estimate</Badge><Button size="sm" variant="outline">Estimate for me</Button></div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-3">
@@ -60,7 +67,7 @@ export function DcfCalculatorCard() {
           <Field label="Discount Rate %" v={discount} set={setDiscount} step="0.1" />
           <Field label="Loan Amount" v={loan} set={setLoan} />
           <Field label="Interest %" v={interest} set={setInterest} step="0.05" />
-          <Field label="Loan Term (yrs, 0=IO)" v={term} set={setTerm} />
+          <Field label="Loan Term (yrs, 0=IO)" v={term} set={setTerm} /><Field label="Annual capex" v={annualCapex} set={setAnnualCapex} /><Field label="Downtime months" v={downtimeMonths} set={setDowntimeMonths} />
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -71,7 +78,7 @@ export function DcfCalculatorCard() {
           <Metric label="Equity Invested" value={fmt0(result.equityInvested)} />
           <Metric label="Total Equity Returned" value={fmt0(result.totalEquityReturned)} />
           <Metric label="Equity Multiple" value={`${result.equityMultiple}x`} />
-          <Metric label="Terminal Value" value={fmt0(result.terminalValue)} />
+          <Metric label="Terminal Value" value={fmt0(result.terminalValue)} /><Metric label="Net Sale Proceeds" value={fmt0(result.netSaleProceeds)} />
         </div>
 
         <Separator />
@@ -107,6 +114,7 @@ export function DcfCalculatorCard() {
             </Table>
           </ScrollArea>
         </div>
+        <div className="grid md:grid-cols-2 gap-3"><div className="rounded border p-3"><Label>Exit Cap Sensitivity</Label>{result.sensitivityTable.map(r => <div key={r.exitCapRatePct} className="flex justify-between text-sm"><span>{r.exitCapRatePct}%</span><span>{fmt0(r.netSaleProceeds)}</span></div>)}</div><div className="rounded border p-3"><Label>DCF Scenarios</Label>{result.scenarios.map(s => <div key={s.name} className="flex justify-between text-sm"><span>{s.name}</span><span>{s.result.unleveredIrr ?? "—"}%</span></div>)}</div></div>{result.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
       </CardContent>
     </Card>
   );

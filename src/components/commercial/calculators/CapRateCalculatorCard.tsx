@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { calculateYields, valueFromCap } from '@/utils/commercial';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { calculateYields, valueFromCap, calculateCapRateEngine } from '@/utils/commercial';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -21,13 +23,14 @@ export function CapRateCalculatorCard() {
   }), [passingNoi, marketNoi, price]);
 
   const valuation = useMemo(() => valueFromCap(num(marketNoi), num(targetCap)), [marketNoi, targetCap]);
+  const capAssessment = useMemo(() => calculateCapRateEngine({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), selectedNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap), sensitivityCapRatesPct: [5.5, 6, 6.5, 7, 7.5], aiBenchmark: true }), [passingNoi, marketNoi, price, targetCap]);
   const reversionarySpread = (yields.reversionaryYield - yields.passingYield).toFixed(2);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Cap Rate & Yield</CardTitle>
-        <CardDescription>Passing, reversionary and equivalent yields. Valuation from target cap.</CardDescription>
+        <CardDescription>Passing, reversionary and Blended Yield / Simple Average Yield. Benchmark only — valuer confirmation required.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">AI Estimate benchmark only</Badge><Button size="sm" variant="outline">Estimate cap rate range</Button></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
@@ -40,10 +43,14 @@ export function CapRateCalculatorCard() {
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
           <Row label="Passing Yield" value={`${yields.passingYield}%`} />
           <Row label="Reversionary Yield" value={`${yields.reversionaryYield}%`} />
-          <Row label="Equivalent Yield" value={`${yields.equivalentYield}%`} bold />
+          <Row label="Blended Yield / Simple Average Yield" value={`${yields.blendedYield}%`} bold />
           <Row label="Reversion Spread" value={`${reversionarySpread}%`} muted />
           <Separator />
           <Row label={`Implied Value @ ${targetCap || 0}%`} value={fmt(valuation)} highlight />
+          <Row label="Valuation Gap" value={fmt(capAssessment.valuationGap)} />
+          <Separator />
+          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">Value Sensitivity</div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="flex justify-between"><span>{row.capRatePct}%</span><span>{fmt(row.impliedValue)}</span></div>)}</div>
+          <p className="text-xs text-amber-200">Benchmark only — valuer confirmation required.</p>
         </div>
       </CardContent>
     </Card>

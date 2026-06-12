@@ -10,8 +10,8 @@ export function calculateGstCashflow(purchasePrice: number, treatment: GstTreatm
 
 export function calculateFundsToComplete(purchasePrice: number, costs: AcquisitionCosts, finalLoan: number, availableEquity: number, additionalCapexReserve = 0, annualDebtService = 0, ownerBorneOutgoings = 0): FundsToCompleteResult {
   const warnings: string[] = [];
-  const acquisitionCostItems = [costs.stampDuty, costs.transferRegistrationFee, costs.mortgageRegistrationFee, costs.pexaSettlementFee, costs.legalConveyancingFee, costs.bankLegalFee, costs.valuationFee, costs.loanApplicationFee, costs.buyersAgentFee, costs.buildingInspection, costs.pestInspection, costs.structuralInspection, costs.fireComplianceInspection, costs.planningZoningReview, costs.environmentalReport, costs.asbestosReport, costs.dueDiligence, costs.otherAcquisitionCosts];
-  const totalAcquisitionCosts = sum(acquisitionCostItems);
+  const acquisitionCostLineItems = { stampDuty: costs.stampDuty, transferRegistrationFee: costs.transferRegistrationFee, mortgageRegistrationFee: costs.mortgageRegistrationFee, pexaSettlementFee: costs.pexaSettlementFee, legalConveyancingFee: costs.legalConveyancingFee, bankLegalFee: costs.bankLegalFee, valuationFee: costs.valuationFee, loanApplicationFee: costs.loanApplicationFee, buyersAgentFee: costs.buyersAgentFee, buildingInspection: costs.buildingInspection, pestInspection: costs.pestInspection, structuralInspection: costs.structuralInspection, fireComplianceInspection: costs.fireComplianceInspection, planningZoningReview: costs.planningZoningReview, environmentalReport: costs.environmentalReport, asbestosReport: costs.asbestosReport, dueDiligence: costs.dueDiligence, otherAcquisitionCosts: costs.otherAcquisitionCosts };
+  const totalAcquisitionCosts = sum(Object.values(acquisitionCostLineItems));
   const gst = calculateGstAssessment(purchasePrice, costs);
   warnings.push(...gst.warnings);
   const capexReserve = Math.max(0, costs.capexReserve + additionalCapexReserve);
@@ -22,12 +22,12 @@ export function calculateFundsToComplete(purchasePrice: number, costs: Acquisiti
   const postSettlementLiquidity = equitySurplusShortfall;
   const monthlyDebtService = annualDebtService / 12;
   const monthlyOwnerBorneOutgoings = ownerBorneOutgoings / 12;
-  const monthsDebtServiceCovered = monthlyDebtService > 0 ? postSettlementLiquidity / monthlyDebtService : 0;
-  const monthsOutgoingsCovered = monthlyOwnerBorneOutgoings > 0 ? postSettlementLiquidity / monthlyOwnerBorneOutgoings : 0;
+  const monthsDebtServiceCovered = postSettlementLiquidity < 0 ? null : (monthlyDebtService > 0 ? postSettlementLiquidity / monthlyDebtService : 0);
+  const monthsOutgoingsCovered = postSettlementLiquidity < 0 ? null : (monthlyOwnerBorneOutgoings > 0 ? postSettlementLiquidity / monthlyOwnerBorneOutgoings : 0);
   const minimumLiquidityRequirement = Math.max(costs.minimumPostSettlementLiquidityReserve ?? 0, monthlyDebtService * (costs.requiredDebtServiceReserveMonths ?? 3), monthlyOwnerBorneOutgoings * (costs.requiredOutgoingsReserveMonths ?? 3));
   const liquiditySurplusShortfall = postSettlementLiquidity - minimumLiquidityRequirement;
   const liquidityStatus = postSettlementLiquidity < 0 ? 'insufficient' : liquiditySurplusShortfall >= minimumLiquidityRequirement ? 'strong' : liquiditySurplusShortfall >= 0 ? 'acceptable' : postSettlementLiquidity > 0 ? 'tight' : 'insufficient';
   if (liquidityStatus === 'tight') warnings.push('Post-settlement liquidity is tight.');
   if (liquidityStatus === 'insufficient') warnings.push('Post-settlement liquidity is insufficient.');
-  return { totalAcquisitionCosts, gstCashflowRequirement: gst.settlementCashflowRequirement, totalCostBase, requiredEquity, equitySurplusShortfall, capexReserve, postSettlementLiquidity, monthlyDebtService, monthlyOwnerBorneOutgoings, monthsDebtServiceCovered, monthsOutgoingsCovered, minimumLiquidityRequirement, liquiditySurplusShortfall, liquidityStatus, gst, warnings };
+  return { totalAcquisitionCosts, acquisitionCostLineItems, gstCashflowRequirement: gst.settlementCashflowRequirement, totalCostBase, requiredEquity, equitySurplusShortfall, capexReserve, postSettlementLiquidity, monthlyDebtService, monthlyOwnerBorneOutgoings, monthsDebtServiceCovered, monthsOutgoingsCovered, minimumLiquidityRequirement, liquiditySurplusShortfall, liquidityStatus, gst, warnings };
 }

@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { calculateNoi, type OutgoingsBreakdown } from '@/utils/commercial';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -26,6 +28,11 @@ export function NoiCalculatorCard() {
   const [recovered, setRecovered] = useState('40000');
   const [other, setOther] = useState('5000');
   const [vacancy, setVacancy] = useState('5');
+  const [leaseType, setLeaseType] = useState<LeaseType>('unknown');
+  const [noiBasis, setNoiBasis] = useState<NoiBasis>('lenderAdjusted');
+  const [marketRent, setMarketRent] = useState('260000');
+  const [incentiveAdjustment, setIncentiveAdjustment] = useState('5000');
+  const [tenantRiskHaircut, setTenantRiskHaircut] = useState('2500');
   const [outgoings, setOutgoings] = useState<Record<string, string>>({
     council: '12000', water: '4000', land_tax: '18000', insurance: '6000',
     management: '10000', repairs_maintenance: '8000', utilities: '0', cleaning: '3000',
@@ -44,11 +51,26 @@ export function NoiCalculatorCard() {
     });
   }, [grossRent, recovered, other, vacancy, outgoings]);
 
+  const assessment = useMemo(() => calculateNoiEngine({
+    dataSourceMode: 'global',
+    leaseType,
+    grossPassingRent: num(grossRent),
+    otherIncome: num(other),
+    marketRent: num(marketRent),
+    vacancyAllowancePct: num(vacancy),
+    recoveredOutgoings: num(recovered),
+    outgoings: OUTGOING_KEYS.map(k => ({ name: labelMap[k], amount: num(outgoings[k] ?? '0'), recoverablePct: num(recovered) > 0 ? 100 : 0 })),
+    incentiveAdjustment: num(incentiveAdjustment),
+    tenantRiskHaircut: num(tenantRiskHaircut),
+    leaseDocsVerified: leaseType !== 'unknown',
+    confidenceTags: ['Manual Estimate'],
+  }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut]);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>NOI Calculator</CardTitle>
-        <CardDescription>Effective Gross Income minus operating expenses.</CardDescription>
+        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
@@ -57,6 +79,11 @@ export function NoiCalculatorCard() {
             <div><Label>Recovered Outgoings</Label><Input type="number" value={recovered} onChange={e => setRecovered(e.target.value)} /></div>
             <div><Label>Other Income</Label><Input type="number" value={other} onChange={e => setOther(e.target.value)} /></div>
             <div><Label>Vacancy Allowance %</Label><Input type="number" value={vacancy} onChange={e => setVacancy(e.target.value)} /></div>
+            <div><Label>Lease Type</Label><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setLeaseType(e.target.value as LeaseType)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></div>
+            <div><Label>NOI Basis</Label><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setNoiBasis(e.target.value as NoiBasis)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></div>
+            <div><Label>Market Rent</Label><Input type="number" value={marketRent} onChange={e => setMarketRent(e.target.value)} /></div>
+            <div><Label>Tenant incentive adjustment</Label><Input type="number" value={incentiveAdjustment} onChange={e => setIncentiveAdjustment(e.target.value)} /></div>
+            <div><Label>Tenant risk haircut</Label><Input type="number" value={tenantRiskHaircut} onChange={e => setTenantRiskHaircut(e.target.value)} /></div>
           </div>
           <Separator />
           <div>
@@ -80,7 +107,13 @@ export function NoiCalculatorCard() {
           <Row label="Total Outgoings" value={`- ${fmt(result.totalOutgoings)}`} />
           <Row label="Owner-Borne Outgoings" value={fmt(result.netOutgoings)} muted />
           <Separator />
-          <Row label="Net Operating Income (NOI)" value={fmt(result.noi)} highlight />
+          <Row label="Legacy NOI" value={fmt(result.noi)} />
+          <Row label="Actual NOI" value={fmt(assessment.actualNoi)} highlight />
+          <Row label="Stabilised NOI" value={fmt(assessment.stabilisedNoi)} highlight />
+          <Row label="Lender-Adjusted NOI" value={fmt(assessment.lenderAdjustedNoi)} highlight />
+          <Separator />
+          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">NOI Bridge</div>{assessment.bridge.map(item => <div key={item.label} className="flex justify-between"><span>{item.label}</span><span>{fmt(item.amount)}</span></div>)}</div>
+          {assessment.warnings.length > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">{assessment.warnings.map(w => <div key={w}>• {w}</div>)}</div>}
         </div>
       </CardContent>
     </Card>
