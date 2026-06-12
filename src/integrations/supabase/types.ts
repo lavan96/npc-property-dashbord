@@ -17989,6 +17989,21 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      template_finalize_v2: {
+        Args: {
+          p_description: string
+          p_import_id: string
+          p_meta?: Json
+          p_name: string
+          p_page_count?: number
+          p_schema: Json
+        }
+        Returns: {
+          id: string
+          name: string
+          version: number
+        }[]
+      }
       template_resync: {
         Args: { p_note?: string; p_schema: Json; p_template_id: string }
         Returns: {
@@ -18029,6 +18044,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      template_resync_v2: {
+        Args: { p_note?: string; p_schema: Json; p_template_id: string }
+        Returns: {
+          id: string
+          name: string
+          version: number
+        }[]
       }
       validate_property_specs: {
         Args: { specs: Json }

@@ -219,7 +219,12 @@ Deno.serve(async (req) => {
       // 10s statement timeout cancels large hybrid/pixel-perfect schemas
       // (multi-page imports embed base64 page rasters) mid-INSERT.
       const artifactMeta = await buildImportArtifactMeta(admin, importId, body);
-      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_finalize', {
+      // Use the v2 RPC which returns only id/name/version. The previous RPC
+      // returned the entire report_templates row, forcing PostgREST to
+      // re-serialize the (sometimes multi-MB) schema jsonb back to the
+      // edge function — that round-trip is what was tripping the project's
+      // default statement_timeout on hybrid/pixel imports.
+      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_finalize_v2', {
         p_import_id: importId,
         p_name: name,
         p_description: `Imported from ${body.source_filename ?? 'PDF'}`,
@@ -228,7 +233,7 @@ Deno.serve(async (req) => {
         p_meta: artifactMeta ?? {},
       });
       if (rpcErr) {
-        logDbError('finalize.rpc_template_finalize', rpcErr);
+        logDbError('finalize.rpc_template_finalize_v2', rpcErr);
         return json({ error: rpcErr.message, details: rpcErr.details, hint: rpcErr.hint, code: rpcErr.code }, 400);
       }
       const tpl = Array.isArray(rpcRow) ? rpcRow[0] : rpcRow;
@@ -252,13 +257,16 @@ Deno.serve(async (req) => {
       const note = (body.note as string) || 'Re-synced from PDF';
       if (!templateId || !schema) return json({ error: 'template_id and schema required' }, 400);
 
-      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_resync', {
+      // v2 RPC returns only id/name/version. See finalize note above — the
+      // legacy version returned the full row (including the multi-MB schema)
+      // and PostgREST's re-serialization round-trip was timing out.
+      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_resync_v2', {
         p_template_id: templateId,
         p_schema: schema,
         p_note: note,
       });
       if (rpcErr) {
-        logDbError('resync.rpc_template_resync', rpcErr);
+        logDbError('resync.rpc_template_resync_v2', rpcErr);
         return json({ error: rpcErr.message, details: rpcErr.details, hint: rpcErr.hint, code: rpcErr.code }, 400);
       }
       const tpl = Array.isArray(rpcRow) ? rpcRow[0] : rpcRow;
