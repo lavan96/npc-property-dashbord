@@ -1315,15 +1315,17 @@ function generateHTMLContent(
         <div class="info-card-header">
           <span class="employer-icon">🏢</span>
           <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
-          ${emp.is_current !== false ? '<span class="emp-type-badge" style="background: #16a34a; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">CURRENT</span>' : '<span class="emp-type-badge" style="background: #94a3b8; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">PREVIOUS</span>'}
+          ${emp.is_current !== false
+            ? '<span class="status-pill status-pill-current">CURRENT</span>'
+            : '<span class="status-pill status-pill-previous">PREVIOUS</span>'}
         </div>
         <table class="data-table compact alt-rows">
-          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${(emp.employment_type || '-').toUpperCase()}</span></td></tr>
+          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${emp.employment_type ? humanizeEnum(emp.employment_type).toUpperCase() : '-'}</span></td></tr>
           <tr><td class="label">Role</td><td class="value">${emp.occupation_role || '-'}</td></tr>
           <tr><td class="label">Start Date</td><td class="value">${formatDate(emp.start_date)}</td></tr>
           <tr><td class="label">Tenure</td><td class="value">${tenureStr}</td></tr>
           ${annualSalary > 0 ? `<tr><td class="label">Gross Annual Salary</td><td class="value currency">${formatCurrency(annualSalary)}</td></tr>` : ''}
-          ${emp.salary_amount && emp.salary_frequency ? `<tr><td class="label">Pay Cycle</td><td class="value">${formatCurrency(emp.salary_amount)} <span style="font-size:7px;color:#666;">(${emp.salary_frequency})</span></td></tr>` : ''}
+          ${emp.salary_amount && emp.salary_frequency ? `<tr><td class="label">Pay Cycle</td><td class="value">${formatCurrency(emp.salary_amount)} <span style="font-size:7px;color:#666;">(${humanizeEnum(emp.salary_frequency)})</span></td></tr>` : ''}
         </table>
       </div>
     `;}).join('');
