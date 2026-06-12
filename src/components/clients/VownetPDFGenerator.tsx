@@ -2110,24 +2110,37 @@ function generateHTMLContent(
           font-size: 10pt;
         }
         
-        /* KPI Cards - Enhanced with emoji icons for character */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
-        .kpi-card { 
-          background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
-          border: 1px solid ${NPC_COLORS.borderGray};
+        /* KPI Cards - Premium glass-card aesthetic */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+        .kpi-card {
+          position: relative;
+          background:
+            radial-gradient(120% 90% at 100% 0%, rgba(201,162,39,0.10) 0%, rgba(201,162,39,0) 55%),
+            linear-gradient(160deg, #ffffff 0%, #f7f9fc 100%);
+          border: 1px solid #e6eaf0;
           border-left: 5px solid ${NPC_COLORS.gold};
-          padding: 22px 24px;
-          border-radius: 6px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          padding: 20px 22px 22px;
+          border-radius: 10px;
+          box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 6px 18px -8px rgba(15,23,42,0.18), 0 2px 4px rgba(15,23,42,0.05);
+          overflow: hidden;
         }
-        .kpi-icon { 
-          font-size: 26pt; 
-          margin-bottom: 14px; 
-          display: block; 
-          line-height: 1; 
+        .kpi-card::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, ${NPC_COLORS.gold}, ${NPC_COLORS.goldLight}, transparent);
+          opacity: 0.6;
         }
-        .kpi-label { font-size: 8pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; font-weight: 600; }
-        .kpi-value { font-size: 22pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-icon {
+          font-size: 24pt;
+          margin-bottom: 10px;
+          display: block;
+          line-height: 1;
+          filter: drop-shadow(0 2px 4px rgba(15,23,42,0.10));
+        }
+        .kpi-label { font-size: 7.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; font-weight: 700; }
+        .kpi-value { font-size: 22pt; font-weight: 800; color: ${NPC_COLORS.darkBlue}; letter-spacing: -0.5px; line-height: 1.1; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
         .kpi-trend { font-size: 8.5pt; color: ${NPC_COLORS.mediumGray}; margin-top: 8px; }
