@@ -2303,7 +2303,7 @@ function generateHTMLContent(
       
       
       <!-- PAGE 2: Personal Details & Properties -->
-      <div class="page">
+      <div class="page-auto" data-content-page="true">
         <div class="page-header">
           <div class="header-title-group">
             <div class="header-title">Personal Details</div>
@@ -2399,21 +2399,13 @@ function generateHTMLContent(
             </div>
           </div>
         </div>
-        <div class="page-footer">
-          <div class="footer-contact">
-            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
-            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
-            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
-          </div>
-          <div class="footer-confidential">CONFIDENTIAL</div>
-          <div>Page ${page1Number} of ${totalPages}</div>
-        </div>
+        
       </div>
       
       ${allPropertyPagesHTML}
       
       <!-- Employment & Income -->
-      <div class="page">
+      <div class="page-auto" data-content-page="true">
         <div class="page-header">
           <div class="header-title-group">
             <div class="header-title">Employment & Income</div>
@@ -2444,19 +2436,11 @@ function generateHTMLContent(
             </div>
           </div>
         </div>
-        <div class="page-footer">
-          <div class="footer-contact">
-            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
-            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
-            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
-          </div>
-          <div class="footer-confidential">CONFIDENTIAL</div>
-          <div>Page ${employmentPageNumber} of ${totalPages}</div>
-        </div>
+        
       </div>
       
       <!-- Assets, Liabilities & Expenses -->
-      <div class="page">
+      <div class="page-auto" data-content-page="true">
         <div class="page-header">
           <div class="header-title-group">
             <div class="header-title">Assets, Liabilities & Expenses</div>
@@ -2485,15 +2469,7 @@ function generateHTMLContent(
             </div>
           </div>
         </div>
-        <div class="page-footer">
-          <div class="footer-contact">
-            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
-            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
-            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
-          </div>
-          <div class="footer-confidential">CONFIDENTIAL</div>
-          <div>Page ${assetsPageNumber} of ${totalPages}</div>
-        </div>
+        
       </div>
 
 
