@@ -13,7 +13,7 @@ export type PdfImportMode = 'semantic' | 'hybrid' | 'pixel-perfect';
 
 export interface PdfImportJobRow {
   id: string;
-  status: 'queued' | 'parsing' | 'rastering' | 'finalizing' | 'parsed' | 'failed' | string;
+  status: 'queued' | 'uploading' | 'parsing' | 'mapping' | 'rastering' | 'finalizing' | 'parsed' | 'succeeded' | 'failed' | 'cancelled' | string;
   stage: string | null;
   mode: PdfImportMode | string;
   page_count: number | null;
@@ -50,7 +50,7 @@ export interface UsePdfImportJobResult {
   reset: () => void;
 }
 
-const TERMINAL = new Set(['parsed', 'failed']);
+const TERMINAL = new Set(['succeeded', 'failed', 'cancelled']);
 
 export function usePdfImportJob(): UsePdfImportJobResult {
   const [jobId, setJobId] = useState<string | null>(null);
