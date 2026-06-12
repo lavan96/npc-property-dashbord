@@ -320,6 +320,8 @@ async function importPdf(
     userId: ctx.userId ?? null,
     targetTemplateId: ctx.templateId,
     onProgress: ctx.onProgress,
+    engine: ctx.pdfEngine,
+    isSuperadmin: ctx.isSuperadmin,
   });
   return {
     type: 'persisted',
