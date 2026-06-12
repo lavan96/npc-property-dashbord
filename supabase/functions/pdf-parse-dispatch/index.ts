@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
         .insert({
           user_id: userId,
           template_id: body.template_id ?? null,
-          source_file_path: body.source_path ?? null,
+          source_file_path: (body.source_path as string) ?? (body.source_url as string) ?? `inbox/${crypto.randomUUID()}.pdf`,
           source_file_name: body.source_file_name ?? null,
           source_file_size_bytes: body.source_file_size_bytes ?? null,
           engine: 'docling',
