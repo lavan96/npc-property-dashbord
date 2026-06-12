@@ -151,9 +151,9 @@ async function runJob(
 
     // Hybrid / pixel-perfect need page rasters; semantic skips this.
     let rasterPath: string | null = null;
-    if (mode === 'hybrid' || mode === 'pixel-perfect') {
+    if (mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect') {
       await setStage(admin, jobId, 'rastering');
-      const dpi = mode === 'pixel-perfect' ? 200 : 144;
+      const dpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
       const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
         method: 'POST',
         headers: {
