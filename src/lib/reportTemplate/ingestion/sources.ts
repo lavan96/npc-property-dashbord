@@ -77,14 +77,29 @@ export const codeSource: IngestionSource = {
       kind: 'code',
       strategy: 'render-source',
       codeTier,
-      // The render-source service + edge function are shipped; runtime
-      // availability depends on RENDER_SOURCE_URL/TOKEN being configured, which
-      // this pure planner can't see — callers detect the 503 at invoke time.
-      available: false,
-      note: `Raw-codebase ingestion (${codeTier}) renders to a page + DOM box tree via the render-source service, then reuses the image grounded-classify pipeline. Enable by deploying render-source and setting RENDER_SOURCE_URL/TOKEN.`,
+      // The render-source service + edge function are shipped. Runtime
+      // availability still depends on RENDER_SOURCE_URL/TOKEN being configured
+      // on the edge function; callers surface the 503 at invoke time if not.
+      available: true,
+      note: `Raw-codebase ingestion (${codeTier}) renders to a page + DOM box tree via the render-source service, then reuses the image grounded-classify pipeline.`,
     };
   },
 };
 
-/** Ordered registry — first matching source wins. */
-export const SOURCES: readonly IngestionSource[] = [pdfSource, imageSource, urlSource, codeSource];
+export const figmaSource: IngestionSource = {
+  id: 'figma',
+  kind: 'figma',
+  accepts: (input) => classifyInput(input) === 'figma',
+  plan: (): IngestionPlan => ({
+    sourceId: 'figma',
+    kind: 'figma',
+    strategy: 'delegate',
+    delegate: 'importOrchestrator:figma-make',
+    available: true,
+    note: 'Figma Make / local-Figma export (.make/.fig) — unpacked by the orchestrator and grounded through the image/vision pipeline.',
+  }),
+};
+
+/** Ordered registry — first matching source wins. Figma before code so that
+ *  .fig/.make exports (which are zip-shaped) route through the figma path. */
+export const SOURCES: readonly IngestionSource[] = [pdfSource, imageSource, urlSource, figmaSource, codeSource];

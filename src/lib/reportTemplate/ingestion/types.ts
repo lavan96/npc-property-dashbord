@@ -17,7 +17,7 @@ import type { CdirDocument } from './cdir/schema';
 import type { CdirFidelityReport } from './fidelity';
 
 /** The pipelines an input can be routed to. */
-export type SourceKind = 'pdf' | 'image' | 'url' | 'code';
+export type SourceKind = 'pdf' | 'image' | 'url' | 'code' | 'figma';
 
 /** Concrete code input shapes accepted by the raw-codebase source. */
 export type CodeFlavor = 'html' | 'css' | 'jsx' | 'tsx' | 'vue' | 'svelte' | 'astro' | 'data' | 'asset' | 'zip';
@@ -76,7 +76,8 @@ export interface IngestionPlan {
   delegate?:
     | 'extractPdfToTemplate'
     | 'template-design-agent:screenshot_to_block'
-    | 'import-from-url';
+    | 'import-from-url'
+    | 'importOrchestrator:figma-make';
   /** For code inputs — the render tier and current availability. */
   codeTier?: CodeTier;
   available: boolean;

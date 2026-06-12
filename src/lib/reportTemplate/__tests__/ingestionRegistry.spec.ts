@@ -97,15 +97,22 @@ describe('ingestion — resolveSource + planIngestion', () => {
     });
   });
 
-  it('plans raw-codebase ingestion by tier and marks it pending render-source', () => {
+  it('plans raw-codebase ingestion by tier (render-source-backed, runtime availability detected at invoke time)', () => {
     expect(planIngestion(file('index.html'))).toMatchObject({
-      kind: 'code', strategy: 'render-source', codeTier: 'C1-html-css', available: false,
+      kind: 'code', strategy: 'render-source', codeTier: 'C1-html-css', available: true,
     });
-    expect(planIngestion(file('App.tsx'))).toMatchObject({ codeTier: 'C3-react-jsx', available: false });
-    expect(planIngestion(file('site.zip'))).toMatchObject({ codeTier: 'C4-repo-zip', available: false });
+    expect(planIngestion(file('App.tsx'))).toMatchObject({ codeTier: 'C3-react-jsx', available: true });
+    expect(planIngestion(file('site.zip'))).toMatchObject({ codeTier: 'C4-repo-zip', available: true });
     // A link wins as 'url' even if it points at a code-built design (handled by import-from-url).
     expect(planIngestion({ kind: 'url', url: 'https://figma.com/file/abc' })).toMatchObject({ kind: 'url' });
     expect(planIngestion({ kind: 'code', flavor: 'html' })).toMatchObject({ codeTier: 'C1-html-css' });
+  });
+
+  it('routes Figma Make / local-Figma exports (.make/.fig) through the figma source', () => {
+    expect(planIngestion(file('design.make'))).toMatchObject({
+      kind: 'figma', strategy: 'delegate', delegate: 'importOrchestrator:figma-make', available: true,
+    });
+    expect(planIngestion(file('design.fig'))).toMatchObject({ kind: 'figma', available: true });
   });
 
   it('throws a typed error for unsupported input', () => {

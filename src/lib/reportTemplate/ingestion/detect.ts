@@ -6,6 +6,7 @@
  * detection (the new `code` kind) by extension/MIME. No logic is duplicated.
  */
 import { detectReferenceKind } from '../referenceImport';
+import { isFigmaMakeFile } from './makeImport';
 import type { CodeFlavor, CodeTier, IngestionInput, SourceKind } from './types';
 
 const CODE_EXT = /\.(html?|css|s[ac]ss|less|jsx?|mjs|cjs|tsx?|vue|svelte|astro|md|markdown|json|ya?ml|svg|png|jpe?g|webp|gif|avif|woff2?|ttf|otf|zip)$/i;
@@ -51,6 +52,10 @@ export function codeTierForFlavor(flavor: CodeFlavor): CodeTier {
 export function classifyInput(input: IngestionInput): SourceKind | 'unsupported' {
   if (input.kind === 'url') return 'url';
   if (input.kind === 'code') return 'code';
+
+  // Figma Make / local-Figma exports take precedence over generic code detection
+  // (they share the .zip-ish container but route through the figma orchestrator).
+  if (input.file?.name && isFigmaMakeFile(input.file.name)) return 'figma';
 
   // File input: prefer the existing PDF/image detector, then fall back to code.
   const ref = detectReferenceKind(input.file);
