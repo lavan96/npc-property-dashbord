@@ -1490,109 +1490,31 @@ function generateHTMLContent(
   const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
-  // ─── Income: aggregate across all contacts + every recorded source ────────
-  const freqToMonthly = (amount: number, freq?: string | null) => {
-    const f = String(freq || 'annual').toLowerCase();
-    if (f === 'weekly') return amount * (52 / 12);
-    if (f === 'fortnightly') return amount * (26 / 12);
-    if (f === 'monthly') return amount;
-    return amount / 12; // annual / annually / yearly
-  };
-
-  // Build per-contact employment monthly totals. `client_employment` is the
-  // source of truth (memory: Income Source of Truth) — fall back to the
-  // legacy `client_income` table only when employment has no row for that
-  // contact_type. This ensures the secondary contact's salary is counted.
-  const employmentByContact: Record<string, number> = {};
-  for (const e of employment as any[]) {
-    if (e.is_current === false) continue;
-    const key = String(e.contact_type || 'primary').toLowerCase();
-    const base = Number(e.gross_annual_salary || e.salary_amount || 0);
-    const baseMonthly = base ? freqToMonthly(base, e.salary_frequency) : 0;
-    const extras = ((e.bonus || 0) + (e.commission || 0) + (e.overtime_essential || 0) +
-      (e.overtime_non_essential || 0) + (e.allowance || 0) + (e.other_taxable_income || 0)) / 12;
-    employmentByContact[key] = (employmentByContact[key] || 0) + baseMonthly + extras;
-  }
-  for (const inc of income as any[]) {
-    const key = String(inc.contact_type || 'primary').toLowerCase();
-    if (employmentByContact[key]) continue; // employment row wins
-    const baseMonthly = freqToMonthly(Number(inc.gross_salary || 0), inc.salary_frequency);
-    const extras = ((inc.bonus || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) +
-      (inc.overtime_non_essential || 0) + (inc.allowance || 0) + (inc.other_taxable_income || 0)) / 12;
-    employmentByContact[key] = baseMonthly + extras;
-  }
-
-  const primaryEmploymentIncome = employmentByContact['primary'] || 0;
-  const secondaryEmploymentIncome = Object.entries(employmentByContact)
-    .filter(([k]) => k !== 'primary')
-    .reduce((s, [, v]) => s + v, 0);
-  const totalEmploymentIncome = primaryEmploymentIncome + secondaryEmploymentIncome;
-
-  // Other (non-employment) income sources — government payments, dividends,
-  // trust distributions, child support, etc. Each one is shown on its own
-  // row so the final figure is fully traceable.
-  const otherIncomeBreakdown = (incomeSources as any[])
-    .filter((s) => s.is_active !== false)
-    .filter((s) => !['employment', 'salary', 'paye', 'wages'].includes(String(s.source_category || '').toLowerCase()))
-    .map((s) => {
-      const annual = Number(s.gross_annual_amount || 0);
-      const inputAmt = Number(s.input_amount || 0);
-      const monthly = annual > 0
-        ? annual / 12
-        : (inputAmt > 0 ? freqToMonthly(inputAmt, s.input_frequency) : 0);
-      const label = s.source_name || s.source_type || s.source_category || 'Other income';
-      const who = String(s.contact_type || 'primary').toLowerCase() === 'primary' ? '' : ' (Secondary)';
-      return { label: `${label}${who}`, monthly };
-    })
-    .filter((s) => s.monthly > 0);
-  const totalOtherIncome = otherIncomeBreakdown.reduce((s, x) => s + x.monthly, 0);
-
-  const calculatedMonthlyIncome = totalEmploymentIncome + totalRental + totalOtherIncome;
-
-  // ─── Cash Flow: cross-validated against raw client data ───────────────────
-  // Property loan repayments and true holding costs are tracked separately so
-  // owner-occupied mortgage payments aren't mislabelled as "Property Holding
-  // Costs". Investment loan interest stays inside holding costs because the
-  // rental income above offsets it.
-  const isInvestmentProp = (p: PropertyData) =>
-    !!p.property_type && !['owner_occupied', 'ppor', 'principal_place_of_residence'].includes(String(p.property_type).toLowerCase());
-
-  const sumTrueHolding = (p: PropertyData) =>
-    (p.monthly_body_corporate || 0) +
-    (p.monthly_landlord_insurance || 0) +
-    (p.monthly_building_insurance || 0) +
-    (p.monthly_repairs_maintenance || 0) +
-    (p.monthly_property_management || 0) +
-    ((p.monthly_council_rates || 0) / 12) +
-    ((p.monthly_water_rates || 0) / 12);
-
-  const investmentHoldingCosts = summaryProperties
-    .filter(isInvestmentProp)
-    .reduce((s, p) => s + sumTrueHolding(p) + (p.monthly_interest_repayment || 0), 0);
-
-  const ownerOccHoldingCosts = summaryProperties
-    .filter((p) => !isInvestmentProp(p))
-    .reduce((s, p) => s + sumTrueHolding(p), 0);
-
-  const homeLoanRepayments = summaryProperties
-    .filter((p) => !isInvestmentProp(p))
-    .reduce((s, p) => s + (p.monthly_interest_repayment || 0), 0);
-
-  const totalPropertyHoldingCosts = investmentHoldingCosts + ownerOccHoldingCosts;
-
-  // Liability repayments: prefer captured monthly_repayment. For credit cards
-  // with $0 captured but a positive balance, fall back to a 3% min estimate
-  // (APRA-style buffer) so the cash flow isn't understated.
-  const liabilityRepaymentBreakdown = (liabilities as any[]).map((l) => {
-    const captured = Number(l.monthly_repayment || 0);
-    const isCC = String(l.liability_type || '').toLowerCase().includes('credit');
-    const bal = Number(l.current_balance || 0);
-    const estimated = captured > 0 ? captured : (isCC && bal > 0 ? Math.round(bal * 0.03) : 0);
-    return { captured, estimated, isCC, hasEstimate: captured === 0 && estimated > 0 };
+  // ─── Household finance: single source of truth (src/utils/householdFinance.ts) ──
+  const householdIncome = buildHouseholdIncome({
+    employment: employment as any[],
+    income: income as any[],
+    incomeSources: incomeSources as any[],
+    monthlyRentalIncome: totalRental,
   });
-  const totalLiabilityRepayments = liabilityRepaymentBreakdown.reduce((s, l) => s + l.estimated, 0);
-  const hasEstimatedLiabilities = liabilityRepaymentBreakdown.some((l) => l.hasEstimate);
-  const hasAnyLiability = liabilities.length > 0;
+  const primaryEmploymentIncome = householdIncome.primaryEmploymentMonthly;
+  const secondaryEmploymentIncome = householdIncome.secondaryEmploymentMonthly;
+  const totalEmploymentIncome = householdIncome.totalEmploymentMonthly;
+  const otherIncomeBreakdown = householdIncome.otherIncome;
+  const totalOtherIncome = householdIncome.totalOtherIncomeMonthly;
+  const calculatedMonthlyIncome = householdIncome.totalMonthly;
+
+  const propertyExpenditure = buildPropertyExpenditure(summaryProperties as any[]);
+  const homeLoanRepayments = propertyExpenditure.homeLoanRepayments;
+  const totalPropertyHoldingCosts = propertyExpenditure.totalHoldingCosts;
+
+  const liabilityServicingSummary = buildLiabilityServicing(
+    liabilities as any[],
+    { totalGrossAnnualIncome: householdIncome.totalGrossAnnual }
+  );
+  const totalLiabilityRepayments = liabilityServicingSummary.totalMonthly;
+  const hasEstimatedLiabilities = liabilityServicingSummary.hasEstimated;
+  const hasAnyLiability = liabilityServicingSummary.hasAny;
 
   const totalLivingExpenses = expenses.reduce((sum, e) => sum + (e.monthly_amount || 0), 0);
 
