@@ -20,6 +20,7 @@ import {
   type ImportProgress,
   type ImportResult,
 } from '../pdfImport/extractPdfToTemplate';
+import { extractPdfToTemplateRouted } from '../pdfImport/extractPdfToTemplateRouted';
 import { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput, type InvokeFn } from './codeIngest';
 import { codeFlavorForFile } from './detect';
