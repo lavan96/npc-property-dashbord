@@ -111,8 +111,6 @@ function LiveHtmlPreviewImpl({
         onSelect({
           blockId: m.blockId ?? null,
           pageId: m.pageId ?? null,
-          pageIndex: m.pageIndex ?? null,
-          blockType: m.blockType ?? null,
         });
       }
     };
