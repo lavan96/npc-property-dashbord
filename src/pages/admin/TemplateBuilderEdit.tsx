@@ -406,6 +406,17 @@ export default function TemplateBuilderEdit() {
     }
   }, [template.pages, activePageId]);
 
+  // Open the first-run Phase 7 tour once the editor has at least one page —
+  // keeps the empty-state CTAs unobstructed and avoids firing on every blank
+  // template load.
+  useEffect(() => {
+    if (!editorV2) return;
+    if (template.pages.length === 0) return;
+    if (hasSeenEditorTour()) return;
+    const t = setTimeout(() => setShowTour(true), 600);
+    return () => clearTimeout(t);
+  }, [editorV2, template.pages.length]);
+
   const reloadTplMeta = useCallback(async () => {
     if (!id) return;
     const { data } = await supabase
