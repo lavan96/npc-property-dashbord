@@ -168,11 +168,23 @@ interface LiabilityData {
   repayment_type?: string | null;
 }
 
+interface IncomeSourceData {
+  contact_type?: string | null;
+  source_category?: string | null;
+  source_type?: string | null;
+  source_name?: string | null;
+  gross_annual_amount?: number | null;
+  input_amount?: number | null;
+  input_frequency?: string | null;
+  is_active?: boolean | null;
+}
+
 export interface VownetPDFData {
   client: ClientData;
   properties: PropertyData[];
   employment?: EmploymentData[];
   income?: IncomeData[];
+  incomeSources?: IncomeSourceData[];
   assets?: AssetData[];
   liabilities?: LiabilityData[];
   expenses?: ExpenseData[];
