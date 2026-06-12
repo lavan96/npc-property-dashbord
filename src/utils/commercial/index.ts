@@ -23,6 +23,7 @@ export {
   type FundsToCompleteResult,
   type LeaseStatus,
   type LendingAssumptions,
+  type LenderPolicyProfileKey,
   type PurchaseAbilityStatus,
   type PurchaserStructure,
   type RiskRating,
