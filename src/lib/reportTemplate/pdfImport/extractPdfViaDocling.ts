@@ -25,8 +25,8 @@ import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconcil
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import type {
   DoclingDocument,
-  DoclingPageRasterEntry,
   DoclingRasterByPage,
+  DoclingRasterResponse,
 } from './docling/doclingTypes';
 
 const POLL_INTERVAL_MS = 1500;
