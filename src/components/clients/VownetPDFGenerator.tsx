@@ -2523,9 +2523,9 @@ function generateHTMLContent(
                     if (sec !== '-') return sec;
                     return '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
                   })()}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.secondary_country || client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.secondary_living_situation || client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.secondary_residential_status || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${formatCountry(client.secondary_country || client.country)}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${enumOrNotRecorded(client.secondary_living_situation || client.living_situation)}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${enumOrNotRecorded(client.secondary_residential_status)}</td></tr>
                 </table>
               </div>
               ` : ''}
