@@ -10,6 +10,7 @@ import { parseCdirDocument, type CdirDocument } from './cdir';
 import { buildImportReviewDraft, type ImportReviewArtifact, type ImportReviewDecision, type ImportReviewDraft } from './review';
 import type { CdirFidelityReport } from './fidelity';
 import type { ReportTemplate } from '../templateSchema';
+import { importAssetToReviewArtifacts, type ImportAsset, type RawImportManifest } from './reconciliation';
 
 export interface PersistedImportRecord {
   id: string;
@@ -25,7 +26,9 @@ export interface ImportArtifactsPayload {
   record: PersistedImportRecord;
   cdir: unknown;
   cdirFidelity: CdirFidelityReport | null;
-  artifactPaths?: { cdir?: string | null; cdirFidelity?: string | null };
+  importAsset?: ImportAsset | null;
+  importManifests?: RawImportManifest[] | null;
+  artifactPaths?: { cdir?: string | null; cdirFidelity?: string | null; importAsset?: string | null; importManifests?: string | null };
 }
 
 export type ImportArtifactInvoke = (
@@ -60,7 +63,9 @@ export interface LoadImportReviewDraftOptions {
 export interface LoadImportReviewDraftResult {
   record: PersistedImportRecord;
   draft: ImportReviewDraft;
-  artifactPaths: { cdir?: string | null; cdirFidelity?: string | null };
+  importAsset: ImportAsset | null;
+  importManifests: RawImportManifest[] | null;
+  artifactPaths: { cdir?: string | null; cdirFidelity?: string | null; importAsset?: string | null; importManifests?: string | null };
 }
 
 // Default transport: invokeSecureFunction (attaches the custom-auth session
@@ -98,12 +103,14 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     cdir,
     template: options.template,
     fidelity: data.cdirFidelity ?? undefined,
-    artifacts: options.artifacts ?? [],
+    artifacts: [...importAssetToReviewArtifacts(data.importAsset), ...(options.artifacts ?? [])],
   });
 
   return {
     record: data.record,
     draft,
+    importAsset: data.importAsset ?? null,
+    importManifests: data.importManifests ?? null,
     artifactPaths: data.artifactPaths ?? {},
   };
 }

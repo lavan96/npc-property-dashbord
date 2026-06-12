@@ -22,13 +22,17 @@ import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
 import { Loader2, FileText, GitCompareArrows, Wand2, Gauge } from 'lucide-react';
 import { toast } from 'sonner';
-import { parseTemplate, type ReportTemplate } from '@/lib/reportTemplate/templateSchema';
+import { type ReportTemplate, type Overlay } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import {
+  buildVisualDiffRepairReport,
+  runReconciliationRepairPass,
+  TemplateDesignAgentReconciliationClient,
+  type TemplateImportPlan,
+} from '@/lib/reportTemplate/ingestion/reconciliation';
+import {
   buildFidelityReport,
-  lowRegionsToPageRects,
-  buildRepairInstruction,
   rgbaToGray,
   type FidelityReport,
   type ConfidenceBand,
@@ -189,38 +193,59 @@ export function PdfFidelityDiffDialog({ open, onOpenChange, template, sampleData
 
   // AI-repair the low-confidence regions of the current page (opt-in via prop).
   const repair = useCallback(async () => {
-    const pageId = template.pages[pageIndex]?.id;
-    if (!report || !pageId || !onApplySchema) return;
-    const size = template.pages[pageIndex]?.size ?? { width: 595, height: 842 };
-    const rects = lowRegionsToPageRects(report, size.width, size.height);
-    if (!rects.length) { toast.message('No low-confidence areas to repair on this page.'); return; }
-    const instruction = buildRepairInstruction(rects, pageId);
+    const page = template.pages[pageIndex];
+    if (!report || !page || !onApplySchema) return;
+    const plan: TemplateImportPlan = {
+      version: 1,
+      importId: `fidelity_repair_${page.id}`,
+      pages: [{
+        id: page.id,
+        name: page.name,
+        width: page.size.width,
+        height: page.size.height,
+        background: { imageUrl: page.background?.imageUrl ?? pdfPages[pageIndex] ?? '', color: page.background?.color, opacity: page.background?.opacity },
+        overlays: page.blocks.flatMap((block) => block.overlays ?? []) as Overlay[],
+        sourcePageId: page.id,
+        warnings: [],
+      }],
+      warnings: [],
+      confidenceScore: report.overall,
+      importSummary: {
+        visualFidelityMode: 'hybrid',
+        editableElementsCreated: page.blocks.reduce((sum, block) => sum + (block.overlays?.length ?? 0), 0),
+        manualReviewRequired: report.low.length > 0,
+        repairPassesApplied: 0,
+      },
+    };
+    const diffReport = {
+      ...buildVisualDiffRepairReport({ plan, pageId: page.id, fidelity: report }),
+      sourceImageDataUrl: pdfPages[pageIndex],
+      templatePage: page,
+      blockIds: page.blocks.map((block) => block.id),
+    };
+    if (!diffReport.issues.length) { toast.message('No low-confidence areas to repair on this page.'); return; }
     setRepairing(true);
-    const t = toast.loading(`Repairing ${rects.length} area(s) with AI…`);
+    const t = toast.loading(`Repairing ${diffReport.issues.length} area(s) with AI…`);
     try {
-      const { data, error } = await invokeSecureFunction('template-design-agent', {
-        schema: template,
-        instruction,
-        messages: [{ role: 'user', content: instruction }],
-        activePageId: pageId,
-        mode: 'art_director',
-        imageDataUrl: pdfPages[pageIndex],
-        sampleData,
-      }, { timeoutMs: 180000 });
-      if (error) throw new Error(error.message);
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const next = parseTemplate((data as any).schema);
-      onApplySchema(next);
-      const tplImgs = await rasterizeTemplate(next);
+      const result = await runReconciliationRepairPass({
+        template,
+        plan,
+        diffReport,
+        client: new TemplateDesignAgentReconciliationClient(invokeSecureFunction as any),
+        maxOperations: 20,
+      });
+      if (!result.applied) throw new Error(result.rejected[0]?.reason ?? 'No repair patches were applied.');
+      onApplySchema(result.template);
+      const tplImgs = await rasterizeTemplate(result.template);
       setHtmlPages(tplImgs);
       setReports(await computeFidelityReports(pdfPages, tplImgs));
-      toast.success('Applied repair — re-scored fidelity.', { id: t });
+      toast.success(`Applied ${result.applied} repair patch${result.applied === 1 ? '' : 'es'} — re-scored fidelity.`, { id: t });
     } catch (e) {
       toast.error(`Repair failed: ${(e as Error).message}`, { id: t });
     } finally {
       setRepairing(false);
     }
-  }, [report, pageIndex, template, onApplySchema, pdfPages, sampleData, rasterizeTemplate]);
+  }, [report, pageIndex, template, onApplySchema, pdfPages, rasterizeTemplate]);
 
   const total = Math.max(pdfPages.length, htmlPages.length);
   const left = pdfPages[pageIndex];

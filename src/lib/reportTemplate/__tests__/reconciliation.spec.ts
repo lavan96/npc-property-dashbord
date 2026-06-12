@@ -4,6 +4,7 @@ import {
   buildBackgroundFirstImportPlan,
   buildRawImportManifest,
   createImageImportAsset,
+  createPdfImportAsset,
   extractPaletteFromPixels,
   groundedReferenceToRawBlocks,
   sampleBackgroundColorFromPixels,
@@ -13,6 +14,14 @@ import {
   applyTemplateImportPatches,
   buildHybridImportPlanFromManifests,
   parseTemplateImportPlanResponse,
+  reconcileWithFallback,
+  TemplateDesignAgentReconciliationClient,
+  runReconciliationRepairPass,
+  buildVisualDiffRepairReportFromRgba,
+  buildPdfImportAssetManifests,
+  importAssetToReviewArtifacts,
+  reconcilePdfImportAsset,
+  summarizeImportAsset,
 } from '../ingestion/reconciliation';
 import type { GroundedReference } from '../imageGrounding';
 import { parseTemplate } from '../templateSchema';
@@ -66,6 +75,44 @@ describe('Template Import Reconciliation Engine foundation', () => {
     expect(template.pages[0].name).toBe('Existing Cover');
     expect(template.pages[0].background.imageUrl).toBe(DATA_URL);
     expect(template.pages[1].background.imageUrl).toBeUndefined();
+  });
+
+  it('summarizes PDF import assets and converts source pages to review artifacts', () => {
+    const asset = createPdfImportAsset({
+      fileName: 'review.pdf',
+      fileId: 'pdf_review_asset',
+      pages: [
+        { pageIndex: 0, width: 595, height: 842, referenceImageUrl: 'data:image/png;base64,PAGE1', dpiScale: 2, backgroundColor: '#ffffff' },
+        { pageIndex: 1, width: 595, height: 842, referenceImageUrl: 'https://example.test/page2.png', dpiScale: 1.5 },
+      ],
+    });
+
+    const summary = summarizeImportAsset(asset);
+    const artifacts = importAssetToReviewArtifacts(asset);
+
+    expect(summary?.fileType).toBe('pdf');
+    expect(summary?.sourcePages).toBe(2);
+    expect(summary?.averageDpiScale).toBe(1.75);
+    expect(artifacts).toHaveLength(2);
+    expect(artifacts[0].kind).toBe('source-raster');
+    expect(artifacts[0].dataUrl).toContain('PAGE1');
+    expect(artifacts[1].url).toBe('https://example.test/page2.png');
+  });
+
+  it('creates multi-page PDF import assets from rendered page references', () => {
+    const asset = createPdfImportAsset({
+      fileName: 'report.pdf',
+      pages: [
+        { pageIndex: 0, width: 595, height: 842, referenceImageUrl: 'data:image/png;base64,PAGE1', dpiScale: 2 },
+        { pageIndex: 1, width: 595, height: 842, referenceImageUrl: 'data:image/png;base64,PAGE2', dpiScale: 2 },
+      ],
+    });
+    const plan = buildBackgroundFirstImportPlan(asset);
+
+    expect(asset.fileType).toBe('pdf');
+    expect(asset.pages).toHaveLength(2);
+    expect(asset.pages[0].source).toBe('pdf-render');
+    expect(plan.pages.map((page) => page.background.imageUrl)).toEqual(['data:image/png;base64,PAGE1', 'data:image/png;base64,PAGE2']);
   });
 
   it('derives distinct stable image import asset ids when data URLs differ', () => {
@@ -177,6 +224,73 @@ describe('Template Import Reconciliation Engine foundation', () => {
     expect(() => parseTemplateImportPlanResponse('{"version":1,"pages":[],"warnings":[],"confidenceScore":1,"importSummary":{"visualFidelityMode":"hybrid","editableElementsCreated":0,"manualReviewRequired":false,"repairPassesApplied":0}}')).toThrow(/at least one page/i);
   });
 
+  it('invokes the design-agent reconciliation provider and parses its TemplateImportPlan response', async () => {
+    const asset = createImageImportAsset({ dataUrl: DATA_URL, imageWidth: 800, imageHeight: 600, fileId: 'asset_provider' });
+    const plan = buildBackgroundFirstImportPlan(asset);
+    const invoke = async (name: string, body?: Record<string, unknown>) => {
+      expect(name).toBe('template-design-agent');
+      expect(body?.mode).toBe('layout_reconciliation');
+      expect(JSON.stringify(body)).toContain('TemplateImportPlan');
+      return { data: { text: ['```json', JSON.stringify(plan), '```'].join('\n') }, error: null };
+    };
+
+    const parsed = await new TemplateDesignAgentReconciliationClient(invoke).reconcile({ importAsset: asset, manifests: [] });
+
+    expect(parsed.pages[0].background.imageUrl).toBe(DATA_URL);
+  });
+
+  it('falls back to the deterministic hybrid plan when provider reconciliation fails', async () => {
+    const asset = createImageImportAsset({ dataUrl: DATA_URL, imageWidth: 800, imageHeight: 600, fileId: 'asset_provider_fallback' });
+    const fallbackPlan = buildBackgroundFirstImportPlan(asset);
+    const warnings: string[] = [];
+    const failingClient = new TemplateDesignAgentReconciliationClient(async () => ({ data: null, error: { message: 'provider unavailable' } }));
+
+    const plan = await reconcileWithFallback(failingClient, { importAsset: asset, manifests: [] }, fallbackPlan, (message) => warnings.push(message));
+
+    expect(plan).toBe(fallbackPlan);
+    expect(warnings.join(' ')).toMatch(/provider unavailable/);
+  });
+
+  it('feeds PDF ImportAsset manifests into provider-backed reconciliation with a hybrid fallback', async () => {
+    const asset = createPdfImportAsset({
+      fileName: 'provider.pdf',
+      fileId: 'pdf_provider_asset',
+      pages: [
+        { pageIndex: 0, width: 595, height: 842, referenceImageUrl: 'data:image/png;base64,PAGE1', dpiScale: 2 },
+      ],
+    });
+    const manifests = buildPdfImportAssetManifests(asset, {
+      rawBlocksByPage: {
+        0: [{
+          id: 'raw_title',
+          type: 'text',
+          text: 'PDF Title',
+          bbox: { x: 72, y: 80, width: 220, height: 30 },
+          confidence: 0.94,
+          source: 'pdf-text',
+        }],
+      },
+      paletteByPage: { 0: ['#102030'] },
+    });
+    let providerSawPdfManifest = false;
+    const result = await reconcilePdfImportAsset(asset, {
+      manifests,
+      client: {
+        reconcile: async (request) => {
+          providerSawPdfManifest = request.importAsset.fileType === 'pdf'
+            && request.manifests[0].rawBlocks[0].source === 'pdf-text'
+            && request.constraints?.preserveRenderedPdfPages === true;
+          return buildBackgroundFirstImportPlan(request.importAsset, { importId: request.importAsset.fileId });
+        },
+        repair: async () => [],
+      },
+    });
+
+    expect(providerSawPdfManifest).toBe(true);
+    expect(result.manifests[0].extractionSummary.hasPdfTextLayer).toBe(true);
+    expect(result.plan.pages[0].background.imageUrl).toContain('PAGE1');
+  });
+
   it('provides a deterministic background-first AI fallback client', async () => {
     const asset = createImageImportAsset({ dataUrl: DATA_URL, imageWidth: 800, imageHeight: 600, fileId: 'asset_fallback' });
     const client = new BackgroundFirstReconciliationClient();
@@ -184,6 +298,77 @@ describe('Template Import Reconciliation Engine foundation', () => {
 
     expect(plan.importSummary.visualFidelityMode).toBe('background-first');
     expect(plan.pages[0].background.imageUrl).toBe(DATA_URL);
+  });
+
+  it('builds a visual diff repair report from source/rendered RGBA rasters', () => {
+    const asset = createImageImportAsset({ dataUrl: DATA_URL, imageWidth: 200, imageHeight: 200, fileId: 'asset_visual_diff' });
+    const plan = buildBackgroundFirstImportPlan(asset);
+    const source = new Uint8ClampedArray(4 * 4 * 4).fill(200);
+    const rendered = new Uint8ClampedArray(source);
+    for (let y = 2; y < 4; y += 1) {
+      for (let x = 2; x < 4; x += 1) {
+        const i = (y * 4 + x) * 4;
+        rendered[i] = 10;
+        rendered[i + 1] = 10;
+        rendered[i + 2] = 10;
+        rendered[i + 3] = 255;
+      }
+    }
+
+    const report = buildVisualDiffRepairReportFromRgba({
+      plan,
+      pageId: plan.pages[0].id,
+      sourceRgba: source,
+      renderedRgba: rendered,
+      width: 4,
+      height: 4,
+      fidelityOptions: { cols: 2, rows: 2 },
+    });
+
+    expect(report.diffScore).toBeGreaterThan(0);
+    expect(report.issues.length).toBeGreaterThan(0);
+    expect(report.repairInstruction).toContain('ONLY these areas');
+  });
+
+  it('runs a bounded repair pass through patch operations instead of replacing the template', async () => {
+    const asset = createImageImportAsset({ dataUrl: DATA_URL, imageWidth: 800, imageHeight: 600, fileId: 'asset_repair_loop' });
+    const plan = buildBackgroundFirstImportPlan(asset);
+    plan.pages[0].overlays.push({
+      id: 'heading_1',
+      type: 'text',
+      x: 40,
+      y: 80,
+      width: 240,
+      height: 40,
+      rotation: 0,
+      opacity: 1,
+      content: 'Original',
+      fontFamily: 'Inter',
+      fontSize: 24,
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      color: '#111111',
+      align: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      confidence: 0.9,
+    });
+    const template = applyTemplateImportPlan(plan);
+    const blockId = template.pages[0].blocks[0].id;
+    const client = {
+      reconcile: async () => plan,
+      repair: async () => ([
+        { operation: 'updateOverlay' as const, pageId: template.pages[0].id, blockId, overlayId: 'heading_1', changes: { y: 100 } as any },
+        { operation: 'updatePageBackground' as const, pageId: template.pages[0].id, changes: { imageUrl: '' } },
+      ]),
+    };
+
+    const result = await runReconciliationRepairPass({ template, plan, diffReport: { diffScore: 0.2 }, client, maxOperations: 2 });
+
+    expect(result.requested).toBe(2);
+    expect(result.applied).toBe(1);
+    expect(result.rejected).toHaveLength(1);
+    expect((result.template.pages[0].blocks[0].overlays[0] as any).y).toBe(100);
   });
 
   it('applies bounded patch operations while rejecting background removal', () => {

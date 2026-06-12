@@ -40,6 +40,8 @@ import {
   buildHybridImportPlanFromManifests,
   buildRawImportManifests,
   createImageImportAsset,
+  reconcileWithFallback,
+  TemplateDesignAgentReconciliationClient,
 } from './reconciliation';
 
 export type CodeSourceFlavor = ReturnType<typeof codeFlavorForFile>;
@@ -404,9 +406,17 @@ async function reconcileImageImport(
   }
 
   const manifests = buildRawImportManifests(asset, { palette: colorPalette, grounded: groundedReference });
-  const plan = assertValidTemplateImportPlan(buildHybridImportPlanFromManifests(asset, manifests, {
+  const fallbackPlan = assertValidTemplateImportPlan(buildHybridImportPlanFromManifests(asset, manifests, {
     importId: asset.fileId,
   }));
+  const providerWarnings: string[] = [];
+  ctx.onStage?.('Reconciling layout to template schema…');
+  const plan = await reconcileWithFallback(
+    new TemplateDesignAgentReconciliationClient((ctx.invoke ?? defaultInvoke) as any),
+    { importAsset: asset, manifests, existingTemplate: ctx.schema, constraints: { mode: 'hybrid-image-import' } },
+    fallbackPlan,
+    (message) => providerWarnings.push(message),
+  );
   const schema = applyTemplateImportPlan(plan, {
     templateName: ctx.templateName ?? 'Reconciled import',
     baseTemplate: ctx.schema,
@@ -415,7 +425,7 @@ async function reconcileImageImport(
   return {
     type: 'schema',
     schema: ensureCatalogFontFaces(schema),
-    message: `Reconciled ${plan.pages.length} page${plan.pages.length === 1 ? '' : 's'} with locked reference background and ${plan.importSummary.editableElementsCreated} editable text overlay${plan.importSummary.editableElementsCreated === 1 ? '' : 's'}.${plan.warnings.length ? ` ${plan.warnings.length} warning(s) need review.` : ''}`,
+    message: `Reconciled ${plan.pages.length} page${plan.pages.length === 1 ? '' : 's'} with locked reference background and ${plan.importSummary.editableElementsCreated} editable text overlay${plan.importSummary.editableElementsCreated === 1 ? '' : 's'}.${plan.warnings.length ? ` ${plan.warnings.length} warning(s) need review.` : ''}${providerWarnings.length ? ' AI reconciliation fell back to deterministic OCR.' : ''}`,
   };
 }
 

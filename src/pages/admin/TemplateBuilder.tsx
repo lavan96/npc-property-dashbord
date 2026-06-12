@@ -19,11 +19,14 @@ import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
-import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
+import { applyTemplateImportPlan, reconcilePdfImportAsset, TemplateDesignAgentReconciliationClient, type ImportAsset, type RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   listAdapters().map((adapter) => [adapter.reportType, adapter.label]),
@@ -32,7 +35,7 @@ const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 export default function TemplateBuilder() {
   const navigate = useNavigate();
   const { data: templates = [], isLoading } = useReportTemplates();
-  const { create, remove } = useReportTemplateMutations();
+  const { create, update, remove } = useReportTemplateMutations();
   const { canEdit, canDelete } = usePermissions();
   const { user } = useAuth();
   const canEditTemplates = canEdit('templates');
@@ -43,6 +46,10 @@ export default function TemplateBuilder() {
   const [reviewLoadingId, setReviewLoadingId] = useState<string | null>(null);
   const [reviewImportId, setReviewImportId] = useState<string | null>(null);
   const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
+  const [reviewRecord, setReviewRecord] = useState<PersistedImportRecord | null>(null);
+  const [reviewImportAsset, setReviewImportAsset] = useState<ImportAsset | null>(null);
+  const [reviewImportManifests, setReviewImportManifests] = useState<RawImportManifest[] | null>(null);
+  const [reconcilingReview, setReconcilingReview] = useState(false);
 
   const handleCreate = () => {
     if (!canEditTemplates) return;
@@ -77,15 +84,55 @@ export default function TemplateBuilder() {
   const openPersistedReview = async (importId: string) => {
     setReviewLoadingId(importId);
     try {
-      const { draft, record } = await loadImportReviewDraft({ importId });
+      const { draft, record, importAsset, importManifests } = await loadImportReviewDraft({ importId });
       setReviewDraft(draft);
       setReviewImportId(importId);
+      setReviewRecord(record);
+      setReviewImportAsset(importAsset);
+      setReviewImportManifests(importManifests);
       setRecordedDecision(readImportReviewDecision(record.meta));
       setReviewOpen(true);
     } catch (err) {
       toast.error(`Could not load import review: ${(err as Error).message}`);
     } finally {
       setReviewLoadingId(null);
+    }
+  };
+
+  const runPersistedPdfReconciliation = async () => {
+    if (!reviewDraft || !reviewRecord?.created_template_id || !reviewImportAsset) {
+      toast.error('This review does not have persisted PDF reference assets to reconcile.');
+      return;
+    }
+    setReconcilingReview(true);
+    const t = toast.loading('Reconciling persisted PDF references…');
+    try {
+      const result = await reconcilePdfImportAsset(reviewImportAsset, {
+        manifests: reviewImportManifests ?? undefined,
+        existingTemplate: reviewDraft.template,
+        client: new TemplateDesignAgentReconciliationClient(invokeSecureFunction as any),
+        constraints: {
+          mode: 'persisted-import-review-reconcile',
+          importId: reviewImportId,
+          sourceFilename: reviewDraft.sourceFilename,
+        },
+      });
+      const schema = ensureCatalogFontFaces(applyTemplateImportPlan(result.plan, {
+        templateName: reviewDraft.sourceFilename ?? 'Reconciled PDF import',
+        baseTemplate: reviewDraft.template,
+      }));
+      await update.mutateAsync({
+        id: reviewRecord.created_template_id,
+        patch: { schema },
+        snapshot: true,
+        note: `AI reconciled persisted PDF import ${reviewImportId ?? reviewRecord.id}`,
+      });
+      toast.success(`Applied reconciliation plan with ${result.plan.importSummary.editableElementsCreated} editable overlay(s).`, { id: t });
+      navigate(`/admin/template-builder/${reviewRecord.created_template_id}`);
+    } catch (err) {
+      toast.error(`PDF reconciliation failed: ${(err as Error).message}`, { id: t });
+    } finally {
+      setReconcilingReview(false);
     }
   };
 
@@ -123,6 +170,9 @@ export default function TemplateBuilder() {
         onOpenChange={setReviewOpen}
         draft={reviewDraft}
         recordedDecision={recordedDecision}
+        reconciliationAvailable={!!reviewImportAsset && !!reviewRecord?.created_template_id}
+        reconciliationBusy={reconcilingReview}
+        onRunReconciliation={runPersistedPdfReconciliation}
         onRecordDecision={reviewImportId ? async (decision: ImportReviewDecision, note?: string) => {
           try {
             const saved = await saveImportReviewDecision({ importId: reviewImportId, decision, note });

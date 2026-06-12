@@ -1,10 +1,22 @@
-import type { ReconciliationRequest } from './types';
+import type { ImportAsset, ReconciliationRequest } from './types';
 import { buildTemplateSchemaSummary } from './schemaSummary';
 
 export interface ReconciliationPromptPayload {
   system: string;
   user: string;
   schemaSummary: ReturnType<typeof buildTemplateSchemaSummary>;
+}
+
+function compactImportAsset(asset: ImportAsset): ImportAsset {
+  return {
+    ...asset,
+    pages: asset.pages.map((page) => ({
+      ...page,
+      referenceImageUrl: page.referenceImageUrl.startsWith('data:')
+        ? '[reference image supplied separately]'
+        : page.referenceImageUrl,
+    })),
+  };
 }
 
 export function buildReconciliationPrompt(request: ReconciliationRequest): ReconciliationPromptPayload {
@@ -19,7 +31,7 @@ export function buildReconciliationPrompt(request: ReconciliationRequest): Recon
     ].join('\n'),
     user: JSON.stringify({
       instructions: schemaSummary.hardRules,
-      importAsset: request.importAsset,
+      importAsset: compactImportAsset(request.importAsset),
       manifests: request.manifests,
       vision: request.vision ?? [],
       constraints: request.constraints ?? {},

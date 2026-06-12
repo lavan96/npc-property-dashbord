@@ -41,6 +41,7 @@ import { deriveTokensFromExtraction, pickInkColor, dominantEdgeColor, isNearWhit
 import { parseShadingIR, shadingToOverlaySpec, pathPointsToPageBBox, type ShadingOverlaySpec } from './shadingExtract';
 import { applyAlphaToColor } from '@/lib/reportTemplate/cssColor';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
+import { buildPdfImportAssetManifests, createPdfImportAsset, type ImportAsset, type RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -75,6 +76,10 @@ export interface ImportResult {
   /** Phase 1/2 normalized editable IR and quality metrics for import review. */
   cdir?: CdirDocument;
   cdirFidelity?: CdirFidelityReport;
+  /** Rendered source pages wired into the reconciliation ImportAsset contract. */
+  importAsset?: ImportAsset;
+  /** Raw deterministic manifests generated from the rendered PDF pages for provider-backed reconciliation. */
+  importManifests?: RawImportManifest[];
   fidelityReport: {
     semanticPages: number;
     rasterizedPages: number;
@@ -491,6 +496,7 @@ export async function extractPdfToTemplate(
   let semantic = 0;
   const expectedText: SourceTextExpectation[] = [];
   const expectedBounds: SourceBoundsExpectation[] = [];
+  const renderedPdfPages: Array<{ pageIndex: number; width: number; height: number; referenceImageUrl: string; dpiScale: number; backgroundColor?: string }> = [];
 
   // R3 — embedded fonts captured as @font-face entries (deduped by loadedName).
   type EmbeddedRef = { family: string; weight: number; style: 'normal' | 'italic' };
@@ -926,6 +932,19 @@ export async function extractPdfToTemplate(
         if (backgroundColor) fillObs.push({ color: backgroundColor, area: pageArea });
       }
 
+      const rasterReferenceImageUrl = backgroundImageUrl
+        ?? (rasterCanvas ? rasterCanvas.toDataURL('image/jpeg', 0.85) : undefined);
+      if (rasterReferenceImageUrl) {
+        renderedPdfPages.push({
+          pageIndex: pageIndex - 1,
+          width: pageWidth,
+          height: pageHeight,
+          referenceImageUrl: rasterReferenceImageUrl,
+          dpiScale: rasterCanvas ? rasterCanvas.width / Math.max(1, pageWidth) : 1,
+          backgroundColor,
+        });
+      }
+
       if (rasterCanvas) {
         rasterCanvas.width = 0;
         rasterCanvas.height = 0;
@@ -994,6 +1013,11 @@ export async function extractPdfToTemplate(
       meta: { title: options.templateName ?? file.name.replace(/\.pdf$/i, '') },
     } as ReportTemplate);
 
+    const importAsset = renderedPdfPages.length
+      ? createPdfImportAsset({ fileName: file.name, fileId: `${importId}_rendered_pages`, pages: renderedPdfPages })
+      : undefined;
+    const importManifests = importAsset ? buildPdfImportAssetManifests(importAsset) : undefined;
+
     const cdir = reportTemplateToCdir(template, {
       kind: 'pdf',
       checksum: sourceChecksum,
@@ -1013,6 +1037,8 @@ export async function extractPdfToTemplate(
           source_checksum: sourceChecksum,
           cdir,
           cdir_fidelity: cdirFidelity,
+          import_asset: importAsset,
+          import_manifests: importManifests,
           note: `Re-synced from ${file.name}`,
         })
       : await invokeImport({
@@ -1025,6 +1051,8 @@ export async function extractPdfToTemplate(
           source_checksum: sourceChecksum,
           cdir,
           cdir_fidelity: cdirFidelity,
+          import_asset: importAsset,
+          import_manifests: importManifests,
         });
 
     onProgress({ phase: 'done', totalPages });
@@ -1034,6 +1062,8 @@ export async function extractPdfToTemplate(
       pageCount: totalPages,
       cdir,
       cdirFidelity,
+      importAsset,
+      importManifests,
       fidelityReport: {
         semanticPages: semantic,
         rasterizedPages: rasterized,

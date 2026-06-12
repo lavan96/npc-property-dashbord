@@ -11,3 +11,8 @@ export * from './aiClient';
 export * from './patches';
 export * from './hybridPlan';
 export * from './responseParser';
+export * from './repairLoop';
+export * from './visualDiff';
+
+export * from './reviewArtifacts';
+export * from './pdfReconcile';
