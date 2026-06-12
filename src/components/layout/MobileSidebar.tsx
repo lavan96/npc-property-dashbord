@@ -94,6 +94,8 @@ const adminItems = [
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
   { title: 'Finance Portal', url: '/admin/finance-portal', icon: ShieldCheck, moduleKey: 'finance_portal_admin' },
   { title: 'Portal Config', url: '/portal-config', icon: Globe, moduleKey: 'portal_config' },
+  { title: 'PDF Import Engine', url: '/admin/pdf-import-engine', icon: Cpu, moduleKey: '__superadmin_only__' },
+  { title: 'PDF Import Diagnostics', url: '/admin/pdf-import-diagnostics', icon: Activity, moduleKey: '__superadmin_only__' },
 ];
 
 export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
