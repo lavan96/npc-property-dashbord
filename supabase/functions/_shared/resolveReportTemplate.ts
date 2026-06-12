@@ -19,6 +19,7 @@
  * fork-investment-report, …) so they can route through the Template Builder
  * when an active template resolves. Falls through (returns null) otherwise.
  */
+// @ts-ignore Deno-only import; resolved at edge runtime.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 export type ReportVariant = 'composite' | 'financial' | 'due_diligence';
