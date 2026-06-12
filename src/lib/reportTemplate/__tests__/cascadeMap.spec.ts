@@ -204,9 +204,7 @@ describe('report template cascade map', () => {
     const cascade = buildCascadeMap(baseTemplate([anchor]), contract, {
       data: { sections: { executive_summary: { body: 'Hello' } } },
       templateId: 'tpl1',
-      reportType: 'investment_report',
-      tier: 'compass',
-    });
+    } as any);
 
     const diagnostics = buildCascadeDiagnosticsExport(cascade, contract, { generatedAt: '2026-06-11T00:00:00.000Z' });
     expect(diagnostics.generatedAt).toBe('2026-06-11T00:00:00.000Z');
