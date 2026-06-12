@@ -51,7 +51,7 @@ import {
   type PlaceholderSuggestion,
 } from '@/lib/reportTemplate/ingestion/placeholderDetect';
 
-type ImageMode = 'faithful' | 'redesign' | 'background';
+type ImageMode = 'reconciled' | 'faithful' | 'redesign' | 'background';
 
 const MAX_CODE_ZIP_BYTES = 18 * 1024 * 1024;
 
@@ -90,7 +90,7 @@ export function ReferenceImportDialog({
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<ReferenceKind>('unsupported');
   const [mode, setMode] = useState<FidelityMode>('hybrid');
-  const [imageMode, setImageMode] = useState<ImageMode>('faithful'); // R5: faithful reconstruct by default
+  const [imageMode, setImageMode] = useState<ImageMode>('reconciled'); // background-first hybrid is the safest default
   const [pdfClaude, setPdfClaude] = useState(false); // §7a: route the PDF straight to Claude
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
@@ -544,15 +544,28 @@ export function ReferenceImportDialog({
               <div>
                 <Label className="text-sm font-medium">Reconstruction mode</Label>
                 <RadioGroup value={imageMode} onValueChange={(v) => setImageMode(v as ImageMode)} className="mt-2 space-y-2" disabled={busy}>
-                  <Card className="p-3 cursor-pointer border-primary/30" onClick={() => !busy && setImageMode('faithful')}>
+                  <Card className="p-3 cursor-pointer border-primary/30" onClick={() => !busy && setImageMode('reconciled')}>
+                    <div className="flex items-start gap-3">
+                      <RadioGroupItem value="reconciled" id="im-reconciled" className="mt-1" />
+                      <div className="flex-1">
+                        <Label htmlFor="im-reconciled" className="font-medium cursor-pointer flex items-center gap-2">
+                          Hybrid editable import <Badge variant="default" className="text-[10px]">Recommended</Badge>
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Preserves the exact image as a locked background, then adds OCR text overlays only when confidence is high.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="p-3 cursor-pointer" onClick={() => !busy && setImageMode('faithful')}>
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="faithful" id="im-faithful" className="mt-1" />
                       <div className="flex-1">
                         <Label htmlFor="im-faithful" className="font-medium cursor-pointer flex items-center gap-2">
-                          Faithful reconstruct <Badge variant="default" className="text-[10px]">Recommended</Badge>
+                          AI faithful reconstruct <Sparkles className="h-3.5 w-3.5 text-primary" />
                         </Label>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Reads the real text with OCR and places it at the measured positions — keeps your copy and layout. No fabrication.
+                          Sends the reference to the design agent to recreate native editable blocks. More editable, less deterministic.
                         </p>
                       </div>
                     </div>
@@ -617,8 +630,8 @@ export function ReferenceImportDialog({
               <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
               <Button onClick={start} disabled={!file || busy}>
                 {busy
-                  ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {kind === 'pdf' ? 'Importing…' : imageMode === 'background' ? 'Placing…' : imageMode === 'faithful' ? 'Reconstructing…' : 'Redesigning…'}</>
-                  : <><Upload className="h-4 w-4 mr-1" /> {error ? 'Retry' : kind === 'image' ? (imageMode === 'background' ? 'Place as background' : imageMode === 'faithful' ? 'Reconstruct' : 'Redesign') : 'Import'}</>}
+                  ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {kind === 'pdf' ? 'Importing…' : imageMode === 'background' ? 'Placing…' : imageMode === 'reconciled' ? 'Reconciling…' : imageMode === 'faithful' ? 'Reconstructing…' : 'Redesigning…'}</>
+                  : <><Upload className="h-4 w-4 mr-1" /> {error ? 'Retry' : kind === 'image' ? (imageMode === 'background' ? 'Place as background' : imageMode === 'reconciled' ? 'Import hybrid editable' : imageMode === 'faithful' ? 'AI reconstruct' : 'Redesign') : 'Import'}</>}
               </Button>
             </>
           )}

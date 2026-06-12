@@ -7,7 +7,7 @@
  * the generated template for manual refinement.
  */
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -28,6 +28,9 @@ interface Props {
   onRetry?: () => void;
   onRecordDecision?: (decision: ImportReviewDecision, note?: string) => Promise<void> | void;
   recordedDecision?: ImportReviewDecisionRecord | null;
+  onRunReconciliation?: () => Promise<void> | void;
+  reconciliationAvailable?: boolean;
+  reconciliationBusy?: boolean;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -53,12 +56,13 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
   const totalLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).length, 0) ?? 0;
   const fallbackLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).filter((layer) => layer.kind === 'image' && layer.fallbackRaster).length, 0) ?? 0;
+  const sourceRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'source-raster') ?? [];
 
   const recordDecision = async (value: ImportReviewDecision) => {
     if (!onRecordDecision) return;
@@ -104,6 +108,20 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
                 <Badge variant={decision.variant}>{decision.label}</Badge>
               </div>
             </Card>
+
+            {sourceRasterArtifacts.length > 0 && (
+              <Card className="p-4 border-primary/20 bg-primary/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">Rendered PDF reference pages available</div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {sourceRasterArtifacts.length} locked source raster{sourceRasterArtifacts.length === 1 ? '' : 's'} are attached for review, visual diffing, and reconciliation repair.
+                    </p>
+                  </div>
+                  <Badge variant="outline">ImportAsset</Badge>
+                </div>
+              </Card>
+            )}
 
             {recordedDecision && (
               <Card className="p-4 border-success/30 bg-success/5">
@@ -214,6 +232,12 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
           {draft?.recommendedDecision === 'retry' && onRetry && (
             <Button variant="secondary" onClick={onRetry}>
               <RotateCw className="h-4 w-4 mr-1" /> Retry import
+            </Button>
+          )}
+          {onRunReconciliation && (
+            <Button variant="secondary" onClick={onRunReconciliation} disabled={!reconciliationAvailable || !!reconciliationBusy}>
+              {reconciliationBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
+              AI reconcile references
             </Button>
           )}
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>

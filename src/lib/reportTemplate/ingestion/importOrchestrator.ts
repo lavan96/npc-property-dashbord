@@ -24,7 +24,7 @@ import { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput, type InvokeFn } from './codeIngest';
 import { codeFlavorForFile } from './detect';
 import { detectReferenceKind, validateReconstructedSchema, fileToDataUrl } from '../referenceImport';
-import { computePageSize, groundOcrWords, type GroundedReference, type OcrWord } from '../imageGrounding';
+import { groundOcrWords, type GroundedReference, type OcrWord } from '../imageGrounding';
 import { groundDomBoxTree } from '../codeGrounding';
 import { figmaNodesToBoxTree } from '../figmaGrounding';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '../importUrl';
@@ -33,6 +33,16 @@ import { renderCodeLocally, isRenderSourceUnconfigured, URL_NEEDS_SERVICE_GUIDAN
 import { ensureCatalogFontFaces } from '../fontCatalog';
 import { pickInkColor } from '../pdfImport/tokenDerivation';
 import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
+import {
+  applyTemplateImportPlan,
+  assertValidTemplateImportPlan,
+  buildBackgroundFirstImportPlan,
+  buildHybridImportPlanFromManifests,
+  buildRawImportManifests,
+  createImageImportAsset,
+  reconcileWithFallback,
+  TemplateDesignAgentReconciliationClient,
+} from './reconciliation';
 
 export type CodeSourceFlavor = ReturnType<typeof codeFlavorForFile>;
 
@@ -52,7 +62,7 @@ export function classifyReferenceFile(file: File): ReferenceImportKind {
 
 export type ReferenceImportSource =
   | { kind: 'pdf'; file: File; mode: FidelityMode; useClaude?: boolean }
-  | { kind: 'image'; file?: File; dataUrl?: string; imageMode: 'faithful' | 'redesign' | 'background'; grounded?: GroundedReference }
+  | { kind: 'image'; file?: File; dataUrl?: string; imageMode: 'reconciled' | 'faithful' | 'redesign' | 'background'; grounded?: GroundedReference }
   | { kind: 'code'; text?: string; filename?: string | null; flavor?: CodeSourceFlavor; zipFile?: File }
   | { kind: 'url'; url: string }
   | { kind: 'make'; file: File };
@@ -372,6 +382,53 @@ async function reconstructImage(
   };
 }
 
+async function reconcileImageImport(
+  dataUrl: string,
+  ctx: ReferenceImportContext,
+  preGrounded?: GroundedReference,
+): Promise<ReferenceImportOutcome> {
+  ctx.onStage?.('Preparing background-first reconciliation…');
+  const dims = await measureImage(dataUrl);
+  const asset = createImageImportAsset({
+    dataUrl,
+    imageWidth: dims.width,
+    imageHeight: dims.height,
+    fileName: ctx.templateName ?? 'Imported reference',
+  });
+
+  ctx.onStage?.('Sampling palette and measuring editable text…');
+  const agentImageDataUrl = await prepareImageForDesignAgent(dataUrl);
+  const colorPalette = await extractImagePalette(agentImageDataUrl);
+  let groundedReference = preGrounded;
+  if (!groundedReference) {
+    const ocr = await ocrImageWords(agentImageDataUrl);
+    if (ocr && ocr.words.length) groundedReference = groundOcrWords(ocr.words, ocr.width, ocr.height);
+  }
+
+  const manifests = buildRawImportManifests(asset, { palette: colorPalette, grounded: groundedReference });
+  const fallbackPlan = assertValidTemplateImportPlan(buildHybridImportPlanFromManifests(asset, manifests, {
+    importId: asset.fileId,
+  }));
+  const providerWarnings: string[] = [];
+  ctx.onStage?.('Reconciling layout to template schema…');
+  const plan = await reconcileWithFallback(
+    new TemplateDesignAgentReconciliationClient((ctx.invoke ?? defaultInvoke) as any),
+    { importAsset: asset, manifests, existingTemplate: ctx.schema, constraints: { mode: 'hybrid-image-import' } },
+    fallbackPlan,
+    (message) => providerWarnings.push(message),
+  );
+  const schema = applyTemplateImportPlan(plan, {
+    templateName: ctx.templateName ?? 'Reconciled import',
+    baseTemplate: ctx.schema,
+    activePageId: ctx.activePageId,
+  });
+  return {
+    type: 'schema',
+    schema: ensureCatalogFontFaces(schema),
+    message: `Reconciled ${plan.pages.length} page${plan.pages.length === 1 ? '' : 's'} with locked reference background and ${plan.importSummary.editableElementsCreated} editable text overlay${plan.importSummary.editableElementsCreated === 1 ? '' : 's'}.${plan.warnings.length ? ` ${plan.warnings.length} warning(s) need review.` : ''}${providerWarnings.length ? ' AI reconciliation fell back to deterministic OCR.' : ''}`,
+  };
+}
+
 /**
  * "Import as background" (pure): place the image as the active page's locked
  * background, sized to the image's aspect ratio. The advisor-model safest
@@ -385,7 +442,19 @@ export function buildImageBackgroundSchema(args: {
   imageHeight: number;
   templateName?: string;
 }): ReportTemplate {
-  const { pageWidth, pageHeight } = computePageSize(args.imageWidth, args.imageHeight);
+  const asset = createImageImportAsset({
+    dataUrl: args.dataUrl,
+    imageWidth: args.imageWidth,
+    imageHeight: args.imageHeight,
+    fileName: args.templateName ?? 'Imported background',
+    fileId: 'imported_background',
+  });
+  const plan = assertValidTemplateImportPlan(buildBackgroundFirstImportPlan(asset, {
+    importId: 'imported_background',
+    pageNamePrefix: 'Imported page',
+  }));
+  const firstPage = plan.pages[0];
+
   if (args.schema?.pages?.length) {
     const targetId = args.activePageId ?? args.schema.pages[0].id;
     return parseTemplate({
@@ -393,25 +462,14 @@ export function buildImageBackgroundSchema(args: {
       pages: args.schema.pages.map((page) => page.id === targetId
         ? {
             ...page,
-            size: { width: pageWidth, height: pageHeight },
-            background: { ...(page.background ?? {}), imageUrl: args.dataUrl },
+            size: { width: firstPage.width, height: firstPage.height },
+            background: { ...(page.background ?? {}), imageUrl: firstPage.background.imageUrl },
           }
         : page),
     });
   }
-  return parseTemplate({
-    version: 1,
-    tokens: { colors: {}, fonts: {}, spacing: {} },
-    pages: [{
-      id: 'imported_background_page',
-      name: 'Imported page',
-      size: { width: pageWidth, height: pageHeight },
-      background: { imageUrl: args.dataUrl },
-      blocks: [{ id: 'imported_background_free', type: 'free', props: {}, overlays: [] }],
-    }],
-    slots: {},
-    meta: { title: args.templateName ?? 'Imported background' },
-  });
+
+  return applyTemplateImportPlan(plan, { templateName: args.templateName ?? 'Imported background' });
 }
 
 function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
@@ -446,6 +504,9 @@ async function importImage(
       schema,
       message: 'Placed the image as the page background (exact look, locked). Add editable text, images, and fields on top.',
     };
+  }
+  if (source.imageMode === 'reconciled') {
+    return reconcileImageImport(dataUrl, ctx, source.grounded);
   }
   return reconstructImage(dataUrl, source.imageMode, ctx, source.grounded);
 }

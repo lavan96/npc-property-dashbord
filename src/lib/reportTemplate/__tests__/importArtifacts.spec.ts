@@ -65,6 +65,53 @@ describe('loadImportReviewDraft', () => {
     expect(result.draft.fidelity.overallScore).toBe(1);
   });
 
+  it('attaches persisted PDF ImportAsset pages as source-raster review artifacts', async () => {
+    const result = await loadImportReviewDraft({
+      importId: 'import_1',
+      invoke: async () => ({
+        data: payload({
+          importAsset: {
+            fileId: 'pdf_asset_1',
+            fileName: 'source.pdf',
+            fileType: 'pdf',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            pages: [{
+              id: 'pdf_asset_1_page_1',
+              pageIndex: 0,
+              width: 100,
+              height: 100,
+              referenceImageUrl: 'data:image/png;base64,PAGE',
+              dpiScale: 2,
+              source: 'pdf-render',
+            }],
+          },
+          importManifests: [{
+            importId: 'pdf_asset_1',
+            page: { id: 'pdf_asset_1_page_1', pageIndex: 0, width: 100, height: 100, referenceImageUrl: 'data:image/png;base64,PAGE', dpiScale: 2 },
+            palette: [],
+            rawBlocks: [],
+            extractionSummary: { hasPdfTextLayer: false, hasOcrTextLayer: false, hasEmbeddedImages: false, blockCount: 0, textBlockCount: 0, imageBlockCount: 0 },
+            warnings: [],
+          }],
+          artifactPaths: {
+            cdir: 'import_1/cdir.json',
+            cdirFidelity: 'import_1/cdir-fidelity.json',
+            importAsset: 'import_1/import-asset.json',
+            importManifests: 'import_1/import-manifests.json',
+          },
+        }),
+        error: null,
+      }),
+    });
+
+    expect(result.artifactPaths.importAsset).toBe('import_1/import-asset.json');
+    expect(result.artifactPaths.importManifests).toBe('import_1/import-manifests.json');
+    expect(result.importAsset?.fileId).toBe('pdf_asset_1');
+    expect(result.importManifests?.[0].importId).toBe('pdf_asset_1');
+    expect(result.draft.artifacts).toHaveLength(1);
+    expect(result.draft.artifacts[0]).toMatchObject({ kind: 'source-raster', pageId: 'pdf_asset_1_page_1' });
+  });
+
   it('fails clearly when an import has no CDIR artifact', async () => {
     await expect(loadImportReviewDraft({
       importId: 'import_1',

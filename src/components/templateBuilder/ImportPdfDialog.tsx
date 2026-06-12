@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import { ImportReviewDialog } from './ImportReviewDialog';
+import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 interface Props {
   open: boolean;
@@ -97,12 +98,15 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     return Math.round((progress.page / progress.totalPages) * 95);
   })();
 
+  const importAssetSummary = useMemo(() => summarizeImportAsset(result?.importAsset), [result?.importAsset]);
+
   const reviewDraft = useMemo(() => {
     if (!result?.cdir) return null;
     return buildImportReviewDraft({
       id: `review_${result.importId}`,
       cdir: result.cdir,
       fidelity: result.cdirFidelity,
+      artifacts: importAssetToReviewArtifacts(result.importAsset),
     });
   }, [result]);
 
@@ -234,6 +238,23 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 <Stat label="Rasterised" value={result.fidelityReport.rasterizedPages} />
                 <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
               </div>
+
+              {importAssetSummary && (
+                <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
+                  <div className="flex items-center justify-between gap-2 font-medium">
+                    <span>PDF reference asset</span>
+                    <Badge variant="outline">{importAssetSummary.sourcePages}/{importAssetSummary.pageCount} page refs</Badge>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    Rendered source pages were persisted for review, visual diffing, and provider-backed reconciliation.
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <Stat label="Reference pages" value={importAssetSummary.sourcePages} />
+                    <Stat label="Avg DPI scale" value={Number(importAssetSummary.averageDpiScale.toFixed(2))} />
+                  </div>
+                </div>
+              )}
+
               {result.fidelityReport.fontsSubstituted.length > 0 && (
                 <div className="mt-3 text-xs text-muted-foreground flex items-start gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />

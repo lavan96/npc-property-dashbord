@@ -79,6 +79,23 @@ async function uploadJsonArtifact(
   return path;
 }
 
+
+function importAssetSummary(asset: any) {
+  if (!asset || typeof asset !== 'object' || !Array.isArray(asset.pages)) return null;
+  return {
+    fileId: typeof asset.fileId === 'string' ? asset.fileId : null,
+    fileType: typeof asset.fileType === 'string' ? asset.fileType : null,
+    pageCount: asset.pages.length,
+    sourcePages: asset.pages.filter((page: any) => typeof page?.referenceImageUrl === 'string' && page.referenceImageUrl.length > 0).length,
+    dimensions: asset.pages.slice(0, 10).map((page: any) => ({
+      pageIndex: Number.isFinite(Number(page?.pageIndex)) ? Number(page.pageIndex) : null,
+      width: Number.isFinite(Number(page?.width)) ? Number(page.width) : null,
+      height: Number.isFinite(Number(page?.height)) ? Number(page.height) : null,
+      dpiScale: Number.isFinite(Number(page?.dpiScale)) ? Number(page.dpiScale) : null,
+    })),
+  };
+}
+
 function fidelitySummary(report: any) {
   if (!report || typeof report !== 'object') return null;
   return {
@@ -96,11 +113,16 @@ function fidelitySummary(report: any) {
 async function buildImportArtifactMeta(admin: ReturnType<typeof createClient>, importId: string, body: any) {
   const cdirPath = await uploadJsonArtifact(admin, importId, 'cdir', body.cdir);
   const fidelityPath = await uploadJsonArtifact(admin, importId, 'cdir-fidelity', body.cdir_fidelity);
+  const importAssetPath = await uploadJsonArtifact(admin, importId, 'import-asset', body.import_asset);
+  const importManifestsPath = await uploadJsonArtifact(admin, importId, 'import-manifests', body.import_manifests);
   return {
     ...(body.meta && typeof body.meta === 'object' ? body.meta : {}),
     source_checksum: body.source_checksum ?? body.cdir?.source?.checksum ?? null,
     cdir_artifact_path: cdirPath,
     cdir_fidelity_artifact_path: fidelityPath,
+    import_asset_artifact_path: importAssetPath,
+    import_manifests_artifact_path: importManifestsPath,
+    import_asset_summary: importAssetSummary(body.import_asset),
     cdir_fidelity_summary: fidelitySummary(body.cdir_fidelity),
   };
 }
@@ -302,13 +324,19 @@ Deno.serve(async (req) => {
       const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
       const cdir = await readJsonArtifact(admin, meta.cdir_artifact_path);
       const cdirFidelity = await readJsonArtifact(admin, meta.cdir_fidelity_artifact_path);
+      const importAsset = await readJsonArtifact(admin, meta.import_asset_artifact_path);
+      const importManifests = await readJsonArtifact(admin, meta.import_manifests_artifact_path);
       return json({
         record,
         cdir,
         cdirFidelity,
+        importAsset,
+        importManifests,
         artifactPaths: {
           cdir: meta.cdir_artifact_path ?? null,
           cdirFidelity: meta.cdir_fidelity_artifact_path ?? null,
+          importAsset: meta.import_asset_artifact_path ?? null,
+          importManifests: meta.import_manifests_artifact_path ?? null,
         },
       });
     }
