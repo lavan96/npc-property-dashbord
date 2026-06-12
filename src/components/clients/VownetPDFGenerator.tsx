@@ -2281,9 +2281,17 @@ function generateHTMLContent(
             </div>
             <div class="column column-right">
               <div class="section">
-                <div class="section-header gold">Address & Status</div>
+                <div class="section-header gold">Primary — Address & Status</div>
                 <table class="data-table">
-                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Current address</td><td class="value">${(() => {
+                    const formatted = formatAUAddress(client.current_address, client.current_suburb, client.current_state, client.current_postcode);
+                    if (formatted !== '-') return formatted;
+                    // Fall back to owner-occupied property address when the clients row is incomplete
+                    if (client.living_situation && /mortgage|own/i.test(client.living_situation) && ownerOccupied?.address) {
+                      return ownerOccupied.address;
+                    }
+                    return '-';
+                  })()}</td></tr>
                   <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
                   <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
                   <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
@@ -2291,6 +2299,24 @@ function generateHTMLContent(
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
+              ${hasSecondaryContact ? `
+              <div class="section">
+                <div class="section-header">Secondary — Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${(() => {
+                    if (client.secondary_same_address_as_primary) {
+                      return '<span style="color:#6b7280;font-style:italic;">Same as primary</span>';
+                    }
+                    const sec = formatAUAddress(client.secondary_current_address, client.secondary_current_suburb, client.secondary_current_state, client.secondary_current_postcode);
+                    if (sec !== '-') return sec;
+                    return '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
+                  })()}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.secondary_country || client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.secondary_living_situation || client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.secondary_residential_status || '-'}</td></tr>
+                </table>
+              </div>
+              ` : ''}
               ${hasOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
