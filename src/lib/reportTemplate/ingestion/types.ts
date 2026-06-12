@@ -76,7 +76,8 @@ export interface IngestionPlan {
   delegate?:
     | 'extractPdfToTemplate'
     | 'template-design-agent:screenshot_to_block'
-    | 'import-from-url';
+    | 'import-from-url'
+    | 'importOrchestrator:figma-make';
   /** For code inputs — the render tier and current availability. */
   codeTier?: CodeTier;
   available: boolean;
