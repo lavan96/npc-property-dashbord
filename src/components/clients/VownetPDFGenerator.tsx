@@ -1584,7 +1584,7 @@ function generateHTMLContent(
                 const estNote = servicing?.calculationNote || '';
                 return `
                 <tr>
-                  <td class="value">${liab.provider_name || '-'}</td>
+                  <td class="value provider-cell">${normalizeProvider(liab.provider_name)}</td>
                   ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
                   <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
                   ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
