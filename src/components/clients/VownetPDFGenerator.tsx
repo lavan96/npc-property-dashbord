@@ -1482,7 +1482,13 @@ function generateHTMLContent(
     }
     
     const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
-    const totalRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
+    // Use the shared household finance engine so the card-level "Monthly Repayments"
+    // figure matches the Cashflow page (e.g. 3% CC fallback, 5% BNPL, HECS ATO bracket).
+    const servicingById = new Map<string, { monthlyServicing: number; isEstimated: boolean; calculationNote: string }>();
+    liabilityServicingSummary.items.forEach((s) => {
+      if (s.id) servicingById.set(s.id, { monthlyServicing: s.monthlyServicing, isEstimated: s.isEstimated, calculationNote: s.calculationNote });
+    });
+    const totalRepayments = liabilityServicingSummary.totalMonthly;
     const liabsByType: Record<string, LiabilityData[]> = {};
     liabilities.forEach(liab => {
       const type = liab.liability_type || 'Other';
@@ -1499,7 +1505,7 @@ function generateHTMLContent(
           <span class="liab-value negative">${formatCurrency(totalLiabilities)}</span>
         </div>
         <div class="liab-summary-item">
-          <span class="liab-label">MONTHLY REPAYMENTS</span>
+          <span class="liab-label">MONTHLY REPAYMENTS${liabilityServicingSummary.hasEstimated ? ' <span style="font-size:6.5pt;color:#9ca3af;font-weight:500;">(incl. est.)</span>' : ''}</span>
           <span class="liab-value">${formatCurrency(totalRepayments)}</span>
         </div>
       </div>
@@ -1519,12 +1525,13 @@ function generateHTMLContent(
         const isCreditCard = type === 'credit_card';
         const hasAnyLimit = liabList.some(l => (l.credit_limit || 0) > 0);
         const hasAnyRate = liabList.some(l => (l.interest_rate || 0) > 0);
+        const typeLabel = humanizeEnum(type);
         
         return `
         <div class="liability-category">
           <div class="liability-category-header">
             <span class="category-icon">${getLiabilityEmoji(type)}</span>
-            <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+            <span class="category-title">${typeLabel}</span>
           </div>
           <table class="data-table financial-mini alt-rows">
             <thead>
@@ -1541,13 +1548,17 @@ function generateHTMLContent(
                 const utilisation = (isCreditCard && (liab.credit_limit || 0) > 0) 
                   ? Math.round(((liab.current_balance || 0) / liab.credit_limit!) * 100) 
                   : null;
+                const servicing = liab.id ? servicingById.get(liab.id) : undefined;
+                const effectiveRepayment = servicing ? servicing.monthlyServicing : (liab.monthly_repayment || 0);
+                const isEst = !!servicing?.isEstimated;
+                const estNote = servicing?.calculationNote || '';
                 return `
                 <tr>
                   <td class="value">${liab.provider_name || '-'}</td>
                   ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
                   <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
                   ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
-                  <td class="value currency">${formatCurrency(liab.monthly_repayment)}/mo</td>
+                  <td class="value currency">${formatCurrency(effectiveRepayment)}/mo${isEst ? ` <span style="font-size:6.5pt;color:#9ca3af;font-style:italic;" title="${estNote}">est.</span>` : ''}</td>
                 </tr>
               `;}).join('')}
             </tbody>
