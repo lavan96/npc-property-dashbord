@@ -258,6 +258,7 @@ The Team`
       properties: true,
       employment: true,
       income: true,
+      incomeSources: true,
       assets: true,
       liabilities: true,
       expenses: true,
@@ -273,6 +274,7 @@ The Team`
   const properties = secureData?.properties || [];
   const employment = secureData?.employment || [];
   const income = secureData?.income || [];
+  const incomeSources = secureData?.incomeSources || [];
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
   const expenses = secureData?.expenses || [];
