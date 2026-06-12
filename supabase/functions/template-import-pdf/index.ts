@@ -212,44 +212,27 @@ Deno.serve(async (req) => {
       const name = (body.name as string) ?? 'Imported template';
       const schema = body.schema;
       const pageCount = body.page_count ?? null;
-      // Insert into report_templates (service role bypasses RLS)
-      const { data: tpl, error: tplErr } = await admin
-        .from('report_templates')
-        .insert({
-          name,
-          description: `Imported from ${body.source_filename ?? 'PDF'}`,
-          config: {},
-          schema,
-          version: 1,
-          is_active: false,
-          is_default: false,
-        })
-        .select()
-        .single();
-      if (tplErr) {
-        logDbError('finalize.insert_report_templates', tplErr);
-        return json({ error: tplErr.message, details: tplErr.details, hint: tplErr.hint, code: tplErr.code }, 400);
-      }
 
+      // Delegate to the `public.template_finalize` SECURITY DEFINER RPC, which
+      // raises statement_timeout to 5min and writes the template row +
+      // version snapshot + template_imports completion atomically. The default
+      // 10s statement timeout cancels large hybrid/pixel-perfect schemas
+      // (multi-page imports embed base64 page rasters) mid-INSERT.
       const artifactMeta = await buildImportArtifactMeta(admin, importId, body);
-      await admin.from('template_imports').update({
-        status: 'completed',
-        created_template_id: tpl.id,
-        page_count: pageCount,
-        meta: artifactMeta,
-      }).eq('id', importId);
-
-      // Snapshot initial version if the versions table exists.
-      try {
-        const { error: versionErr } = await admin.from('report_template_versions').insert({
-          template_id: tpl.id,
-          version: 1,
-          schema,
-          note: 'Imported from PDF',
-        });
-        logDbError('finalize.insert_report_template_versions', versionErr);
-      } catch (_) { /* ignore if table absent */ }
-
+      const { data: rpcRow, error: rpcErr } = await admin.rpc('template_finalize', {
+        p_import_id: importId,
+        p_name: name,
+        p_description: `Imported from ${body.source_filename ?? 'PDF'}`,
+        p_schema: schema,
+        p_page_count: pageCount,
+        p_meta: artifactMeta ?? {},
+      });
+      if (rpcErr) {
+        logDbError('finalize.rpc_template_finalize', rpcErr);
+        return json({ error: rpcErr.message, details: rpcErr.details, hint: rpcErr.hint, code: rpcErr.code }, 400);
+      }
+      const tpl = Array.isArray(rpcRow) ? rpcRow[0] : rpcRow;
+      if (!tpl) return json({ error: 'Finalize returned no template row' }, 500);
       return json({ template: tpl });
     }
 
