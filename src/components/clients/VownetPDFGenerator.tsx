@@ -565,181 +565,96 @@ export function VownetPDFGenerator({
         const isAutoPage = page.classList.contains('page-auto');
 
         if (isAutoPage) {
-          // Auto-height page: capture at natural height and tile across PDF pages
+          // ── Fluid-height page: single PDF page sized to fit ALL content ──
+          // No tiling, no splits → no truncated tables, no orphan pages.
+          // Content rendered at 80% wholesale (20% smaller) and centred.
           const naturalHeight = page.scrollHeight;
           const canvas = await html2canvasWithTimeout(page, {
             ...renderOptions,
             height: naturalHeight,
-          }, 20000);
-          
-          // Find safe break points by scanning DOM elements (rows, sections)
-          // so we never slice through the middle of a table row
-          const breakableElements = page.querySelectorAll('tr, .section, .section-header-bar, .property-card, .summary-box, .kpi-card');
-          const elementBottoms: number[] = [];
-          breakableElements.forEach((el: Element) => {
-            const rect = (el as HTMLElement).offsetTop + (el as HTMLElement).offsetHeight;
-            elementBottoms.push(rect);
-          });
-          // Sort and deduplicate
-          const sortedBottoms = [...new Set(elementBottoms)].sort((a, b) => a - b);
+          }, 25000);
 
-          // Pull running-header metadata once per page so continuation tiles can repaint it
-          const headerTitleText = (page.querySelector('.page-header .header-title') as HTMLElement | null)?.innerText?.trim() || '';
-          const headerSubtitleText = (page.querySelector('.page-header .header-subtitle') as HTMLElement | null)?.innerText?.trim() || '';
-          const RUNNING_HEADER_MM = 14;       // continuation-tile band height
-          const RUNNING_HEADER_PX = Math.round((RUNNING_HEADER_MM / 297) * PAGE_HEIGHT_PX);
+          const PAGE_WIDTH_MM = 210;
+          const SHRINK = 0.8;                              // 20% wholesale reduction
+          const CONTENT_WIDTH_MM = PAGE_WIDTH_MM * SHRINK; // 168mm
+          const SIDE_MARGIN_MM = (PAGE_WIDTH_MM - CONTENT_WIDTH_MM) / 2;
+          const TOP_MARGIN_MM = 8;
+          const FOOTER_BAND_MM = 14;
 
-          // Build safe split points: find the last element bottom that fits within each page slice.
-          // Continuation tiles lose RUNNING_HEADER_PX of vertical room because the running band is overlaid.
-          const splitPoints: number[] = [0]; // start of first tile
-          {
-            let currentLimit = PAGE_HEIGHT_PX; // first tile keeps the embedded page header
-            while (currentLimit < naturalHeight) {
-              let safeCut = currentLimit;
-              for (let j = sortedBottoms.length - 1; j >= 0; j--) {
-                if (sortedBottoms[j] <= currentLimit && sortedBottoms[j] > splitPoints[splitPoints.length - 1]) {
-                  safeCut = sortedBottoms[j];
-                  break;
-                }
-              }
-              if (safeCut <= splitPoints[splitPoints.length - 1]) {
-                safeCut = currentLimit;
-              }
-              splitPoints.push(safeCut);
-              currentLimit = safeCut + (PAGE_HEIGHT_PX - RUNNING_HEADER_PX);
-            }
-            splitPoints.push(naturalHeight); // final end
+          // Convert captured pixel height → mm at the shrunk width.
+          // Source width is 794px → 168mm when shrunk.
+          const contentHeightMm = (naturalHeight / 794) * CONTENT_WIDTH_MM;
+          const pageHeightMm = TOP_MARGIN_MM + contentHeightMm + FOOTER_BAND_MM;
+
+          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → fluid ${pageHeightMm.toFixed(1)}mm)`);
+
+          if (pdfPageIndex > 0) {
+            pdf.addPage([PAGE_WIDTH_MM, pageHeightMm], 'portrait');
+          } else {
+            // First page: replace the default A4 with our fluid format
+            pdf.deletePage(1);
+            pdf.addPage([PAGE_WIDTH_MM, pageHeightMm], 'portrait');
           }
 
-          // Collapse trailing orphan tile — when content only overflows by a tiny amount
-          // (often just bottom padding / margin), the algorithm produces a near-empty
-          // PDF page. Merge it back into the previous tile so we don't ship a blank page.
-          const MIN_TAIL_PX = 110;
-          if (splitPoints.length >= 3) {
-            const tailHeight = splitPoints[splitPoints.length - 1] - splitPoints[splitPoints.length - 2];
-            if (tailHeight < MIN_TAIL_PX) {
-              // Drop the inner split — keep [..., previousStart, naturalHeight]
-              splitPoints.splice(splitPoints.length - 2, 1);
-            }
+          pdf.addImage(canvas, 'JPEG', SIDE_MARGIN_MM, TOP_MARGIN_MM, CONTENT_WIDTH_MM, contentHeightMm, undefined, 'FAST');
+
+          // Footer band at bottom of the fluid page
+          const footerY = pageHeightMm - 6;
+          const lineY = footerY - 5;
+          pdf.setDrawColor(200, 200, 200);
+          pdf.setLineWidth(0.4);
+          pdf.setFillColor(248, 249, 250);
+          pdf.rect(0, lineY - 1, PAGE_WIDTH_MM, pageHeightMm - lineY + 1, 'F');
+          pdf.line(10, lineY, 200, lineY);
+
+          const _bPhone = __brandSettings?.contactDetails?.phone || '';
+          const _bEmail = __brandSettings?.contactDetails?.email || '';
+          const _bWeb = __brandSettings?.contactDetails?.website || '';
+          const footerDiv = document.createElement('div');
+          footerDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#f8f9fa;padding:4px 40px;font-family:Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;';
+          footerDiv.innerHTML = `
+            <div style="display:flex;gap:18px;font-size:7.5pt;color:#4a5568;">
+              ${_bPhone ? `<span>\u{1F4DE} ${_bPhone}</span>` : ''}
+              ${_bEmail ? `<span>\u{2709}\u{FE0F} ${_bEmail}</span>` : ''}
+              ${_bWeb ? `<span>\u{1F310} ${_bWeb}</span>` : ''}
+            </div>
+            <div style="font-size:6pt;color:#b48c32;font-weight:700;letter-spacing:1.5px;">CONFIDENTIAL</div>
+            <div style="font-size:7.5pt;color:#4a5568;">Page ${pdfPageIndex + 1}</div>
+          `;
+          document.body.appendChild(footerDiv);
+          try {
+            const footerCanvas = await html2canvas(footerDiv, { scale: 2, backgroundColor: '#f8f9fa', useCORS: true });
+            const footerImgH = (footerCanvas.height / footerCanvas.width) * 190;
+            pdf.addImage(footerCanvas, 'PNG', 10, lineY + 0.5, 190, footerImgH);
+            footerCanvas.width = 1;
+            footerCanvas.height = 1;
+          } catch (e) {
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.text([_bPhone && `Ph: ${_bPhone}`, _bEmail, _bWeb].filter(Boolean).join('  |  '), 10, footerY);
+            pdf.setFontSize(6);
+            pdf.setTextColor(180, 140, 50);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('CONFIDENTIAL', 105, footerY + 4, { align: 'center' });
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Page ${pdfPageIndex + 1}`, 200, footerY, { align: 'right' });
           }
+          document.body.removeChild(footerDiv);
 
-          const pagesNeeded = splitPoints.length - 1;
-          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages, splits: ${splitPoints.join(',')})`);
-
-          for (let tile = 0; tile < pagesNeeded; tile++) {
-            if (pdfPageIndex > 0) pdf.addPage();
-
-            const sliceStart = splitPoints[tile];
-            const sliceEnd = splitPoints[tile + 1];
-            const sliceHeight = sliceEnd - sliceStart;
-            const isContinuation = tile > 0;
-
-            // Available drawing area on the PDF page (mm). Continuation tiles reserve
-            // the top band for the running header so it can be overlaid cleanly.
-            const drawTopMm = isContinuation ? RUNNING_HEADER_MM : 0;
-            const drawHeightMm = 297 - drawTopMm;
-            // Tile canvas matches the slice — let jsPDF scale it to drawHeightMm.
-            const tileCanvas = document.createElement('canvas');
-            tileCanvas.width = canvas.width;
-            tileCanvas.height = Math.max(1, Math.round(sliceHeight * renderScale));
-            const ctx = tileCanvas.getContext('2d')!;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
-
-            const srcY = Math.round(sliceStart * renderScale);
-            const srcH = Math.round(sliceHeight * renderScale);
-            ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-
-            // Cap the painted height so a short slice doesn't get stretched to fill the page —
-            // keep its natural pixel ratio and leave whitespace below.
-            const naturalDrawHeightMm = (sliceHeight / PAGE_HEIGHT_PX) * 297;
-            const paintedHeightMm = Math.min(drawHeightMm, naturalDrawHeightMm);
-            pdf.addImage(tileCanvas, 'JPEG', 0, drawTopMm, 210, paintedHeightMm, undefined, 'FAST');
-
-            // Running header band for continuation tiles (so split content keeps the page identity)
-            if (isContinuation && headerTitleText) {
-              pdf.setFillColor(15, 32, 64);                    // navy band
-              pdf.rect(0, 0, 210, RUNNING_HEADER_MM, 'F');
-              pdf.setFillColor(201, 162, 39);                  // gold underline
-              pdf.rect(0, RUNNING_HEADER_MM - 1.2, 210, 1.2, 'F');
-              pdf.setFont('helvetica', 'bold');
-              pdf.setFontSize(11);
-              pdf.setTextColor(255, 255, 255);
-              pdf.text(headerTitleText, 200, RUNNING_HEADER_MM / 2 + 0.5, { align: 'right', baseline: 'middle' });
-              if (headerSubtitleText) {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(7);
-                pdf.setTextColor(232, 200, 110);
-                pdf.text(`${headerSubtitleText} · continued`, 200, RUNNING_HEADER_MM - 3.2, { align: 'right' });
-              } else {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(7);
-                pdf.setTextColor(232, 200, 110);
-                pdf.text('continued', 200, RUNNING_HEADER_MM - 3.2, { align: 'right' });
-              }
-            }
-            
-            // Draw footer on each tiled property page using html2canvas for emoji support
-            const footerY = 291;
-            const lineY = footerY - 5;
-            pdf.setDrawColor(200, 200, 200);
-            pdf.setLineWidth(0.4);
-            pdf.setFillColor(248, 249, 250);
-            pdf.rect(0, lineY - 1, 210, 297 - lineY + 1, 'F');
-            pdf.line(10, lineY, 200, lineY);
-
-            // Render footer HTML with emojis to a canvas
-            const footerDiv = document.createElement('div');
-            footerDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#f8f9fa;padding:4px 40px;font-family:Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;';
-            const _bPhone = __brandSettings?.contactDetails?.phone || '';
-            const _bEmail = __brandSettings?.contactDetails?.email || '';
-            const _bWeb = __brandSettings?.contactDetails?.website || '';
-            footerDiv.innerHTML = `
-              <div style="display:flex;gap:18px;font-size:7.5pt;color:#4a5568;">
-                ${_bPhone ? `<span>\u{1F4DE} ${_bPhone}</span>` : ''}
-                ${_bEmail ? `<span>\u{2709}\u{FE0F} ${_bEmail}</span>` : ''}
-                ${_bWeb ? `<span>\u{1F310} ${_bWeb}</span>` : ''}
-              </div>
-              <div style="font-size:6pt;color:#b48c32;font-weight:700;letter-spacing:1.5px;">CONFIDENTIAL</div>
-              <div style="font-size:7.5pt;color:#4a5568;">Page ${pdfPageIndex}</div>
-            `;
-            document.body.appendChild(footerDiv);
-            try {
-              const footerCanvas = await html2canvas(footerDiv, { scale: 2, backgroundColor: '#f8f9fa', useCORS: true });
-              const footerImgH = (footerCanvas.height / footerCanvas.width) * 190;
-              pdf.addImage(footerCanvas, 'PNG', 10, lineY + 0.5, 190, footerImgH);
-              footerCanvas.width = 1;
-              footerCanvas.height = 1;
-            } catch (e) {
-              // Fallback to plain text if html2canvas fails
-              pdf.setFontSize(7);
-              pdf.setTextColor(74, 85, 104);
-              pdf.setFont('helvetica', 'normal');
-              pdf.text([_bPhone && `Ph: ${_bPhone}`, _bEmail, _bWeb].filter(Boolean).join('  |  '), 10, footerY);
-              pdf.setFontSize(6);
-              pdf.setTextColor(180, 140, 50);
-              pdf.setFont('helvetica', 'bold');
-              pdf.text('CONFIDENTIAL', 105, footerY + 4, { align: 'center' });
-              pdf.setFontSize(7);
-              pdf.setTextColor(74, 85, 104);
-              pdf.setFont('helvetica', 'normal');
-              pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
-            }
-            document.body.removeChild(footerDiv);
-            
-            tileCanvas.width = 1;
-            tileCanvas.height = 1;
-            pdfPageIndex++;
-          }
-          
           canvas.width = 1;
           canvas.height = 1;
+          pdfPageIndex++;
         } else {
-          // Fixed-height page: standard single-page render
+          // Fixed-height page (cover): standard A4 single-page render
           const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
           console.log(`[VownetPDF] Page ${i + 1}/${renderList.length} rendered in ${Date.now() - pageStart}ms`);
 
-          if (pdfPageIndex > 0) pdf.addPage();
+          if (pdfPageIndex > 0) {
+            pdf.addPage('a4', 'portrait');
+          }
+          // pdfPageIndex === 0 → use the default A4 page jsPDF created
           pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
           canvas.width = 1;
           canvas.height = 1;
