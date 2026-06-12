@@ -1485,7 +1485,7 @@ function generateHTMLContent(
     // Use the shared household finance engine so the card-level "Monthly Repayments"
     // figure matches the Cashflow page (e.g. 3% CC fallback, 5% BNPL, HECS ATO bracket).
     const servicingById = new Map<string, { monthlyServicing: number; isEstimated: boolean; calculationNote: string }>();
-    liabilityServicingSummary.items.forEach((s) => {
+    liabilityServicingSummary.items.forEach((s: any) => {
       if (s.id) servicingById.set(s.id, { monthlyServicing: s.monthlyServicing, isEstimated: s.isEstimated, calculationNote: s.calculationNote });
     });
     const totalRepayments = liabilityServicingSummary.totalMonthly;
@@ -1548,7 +1548,8 @@ function generateHTMLContent(
                 const utilisation = (isCreditCard && (liab.credit_limit || 0) > 0) 
                   ? Math.round(((liab.current_balance || 0) / liab.credit_limit!) * 100) 
                   : null;
-                const servicing = liab.id ? servicingById.get(liab.id) : undefined;
+                const liabId = (liab as any).id as string | undefined;
+                const servicing = liabId ? servicingById.get(liabId) : undefined;
                 const effectiveRepayment = servicing ? servicing.monthlyServicing : (liab.monthly_repayment || 0);
                 const isEst = !!servicing?.isEstimated;
                 const estNote = servicing?.calculationNote || '';
