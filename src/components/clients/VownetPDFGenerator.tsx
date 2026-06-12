@@ -44,11 +44,22 @@ interface ClientData {
   secondary_gender?: string | null;
   secondary_dob?: string | null;
   current_address?: string | null;
+  current_suburb?: string | null;
+  current_state?: string | null;
+  current_postcode?: string | null;
   country?: string | null;
   living_situation?: string | null;
   residential_status?: string | null;
   marital_status?: string | null;
   dependents_count?: number | null;
+  secondary_same_address_as_primary?: boolean | null;
+  secondary_current_address?: string | null;
+  secondary_current_suburb?: string | null;
+  secondary_current_state?: string | null;
+  secondary_current_postcode?: string | null;
+  secondary_country?: string | null;
+  secondary_living_situation?: string | null;
+  secondary_residential_status?: string | null;
   total_portfolio_value?: number | null;
   total_debt?: number | null;
   total_monthly_expenditure?: number | null;
@@ -56,6 +67,23 @@ interface ClientData {
   total_monthly_rental_income?: number | null;
   net_monthly_cash_flow?: number | null;
 }
+
+// Format an AU address with safe fallback. Returns '-' when nothing usable.
+const formatAUAddress = (
+  street: string | null | undefined,
+  suburb: string | null | undefined,
+  state: string | null | undefined,
+  postcode: string | null | undefined,
+): string => {
+  const parts: string[] = [];
+  if (street) parts.push(String(street).trim());
+  const locality = [suburb?.trim(), state?.trim()?.toUpperCase(), postcode?.trim()]
+    .filter(Boolean)
+    .join(' ');
+  if (locality) parts.push(locality);
+  const joined = parts.filter(Boolean).join(', ');
+  return joined || '-';
+};
 
 interface PropertyData {
   property_type: string;
@@ -1111,9 +1139,35 @@ function generateHTMLContent(
     `;}).join('');
   };
 
-  // Income tables
-  const primaryIncome = income.find(i => i.contact_type === 'primary');
-  const secondaryIncome = income.find(i => i.contact_type === 'secondary');
+  // Income tables — prefer client_income, fall back to aggregated client_employment so
+  // secondary income appears even when the dedicated income row is missing (audit fix).
+  const employmentToIncome = (empList: EmploymentData[], contactType: 'primary' | 'secondary'): IncomeData | undefined => {
+    if (!empList.length) return undefined;
+    const current = empList.filter(e => e.is_current !== false);
+    const pool = current.length ? current : empList;
+    const totals = pool.reduce((acc, e) => {
+      const annual = e.gross_annual_salary || (e.salary_amount ? (() => {
+        const freq = e.salary_frequency || 'annually';
+        if (freq === 'weekly') return (e.salary_amount || 0) * 52;
+        if (freq === 'fortnightly') return (e.salary_amount || 0) * 26;
+        if (freq === 'monthly') return (e.salary_amount || 0) * 12;
+        return e.salary_amount || 0;
+      })() : 0);
+      acc.gross_salary += annual;
+      acc.bonus += e.bonus || 0;
+      acc.allowance += e.allowance || 0;
+      acc.commission += e.commission || 0;
+      acc.overtime_essential += e.overtime_essential || 0;
+      acc.overtime_non_essential += e.overtime_non_essential || 0;
+      acc.other_taxable_income += e.other_taxable_income || 0;
+      return acc;
+    }, { gross_salary: 0, bonus: 0, allowance: 0, commission: 0, overtime_essential: 0, overtime_non_essential: 0, other_taxable_income: 0 });
+    if (Object.values(totals).every(v => !v)) return undefined;
+    return { contact_type: contactType, salary_frequency: 'annually', ...totals };
+  };
+
+  const primaryIncome = income.find(i => i.contact_type === 'primary') ?? employmentToIncome(primaryEmployment, 'primary');
+  const secondaryIncome = income.find(i => i.contact_type === 'secondary') ?? employmentToIncome(secondaryEmployment, 'secondary');
   
   const generateIncomeTable = (inc: IncomeData | undefined) => {
     if (!inc) {
@@ -2100,6 +2154,16 @@ function generateHTMLContent(
           </div>
         </div>
         <div class="page-content">
+          ${(() => {
+            // Compute non-property assets and non-property liabilities for true Net Worth
+            const nonPropertyAssetsTotal = (assets || []).reduce((sum, a) => {
+              const t = (a.asset_type || '').toLowerCase();
+              const isCreditCard = t.includes('credit') || t.includes('card');
+              return isCreditCard ? sum : sum + (a.value || 0);
+            }, 0);
+            const nonPropertyLiabilitiesTotal = (liabilities || []).reduce((sum, l) => sum + (l.current_balance || 0), 0);
+            const netWorth = summaryEquity + nonPropertyAssetsTotal - nonPropertyLiabilitiesTotal;
+            return `
           <div class="kpi-grid">
             <div class="kpi-card">
               <span class="kpi-icon">🏠</span>
@@ -2117,6 +2181,24 @@ function generateHTMLContent(
               <div class="kpi-value ${summaryEquity >= 0 ? 'positive' : 'negative'}">${formatCurrency(summaryEquity)}</div>
             </div>
           </div>
+          <div class="kpi-grid" style="margin-top:10px;">
+            <div class="kpi-card">
+              <span class="kpi-icon">💎</span>
+              <div class="kpi-label">OTHER ASSETS</div>
+              <div class="kpi-value">${formatCurrency(nonPropertyAssetsTotal)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">📉</span>
+              <div class="kpi-label">OTHER LIABILITIES</div>
+              <div class="kpi-value">${formatCurrency(nonPropertyLiabilitiesTotal)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">🧮</span>
+              <div class="kpi-label">ESTIMATED NET WORTH</div>
+              <div class="kpi-value ${netWorth >= 0 ? 'positive' : 'negative'}">${formatCurrency(netWorth)}</div>
+            </div>
+          </div>`;
+          })()}
           
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
@@ -2132,7 +2214,11 @@ function generateHTMLContent(
                 <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.danger}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Expenditure</td>
               </tr>
               ${totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs</td><td class="value currency">${formatCurrency(Math.round(totalPropertyExpenses))}</td></tr>` : ''}
-              ${totalLiabilityRepayments > 0 ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>` : ''}
+              ${totalLiabilityRepayments > 0
+                ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>`
+                : (liabilities.some(l => (l.current_balance || 0) > 0)
+                    ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Liability Repayments</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>`
+                    : '')}
               ${totalRentalExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Rent Paid (PPOR)</td><td class="value currency">${formatCurrency(Math.round(totalRentalExpenses))}</td></tr>` : ''}
               ${totalLivingExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Living Expenses</td><td class="value currency">${formatCurrency(Math.round(totalLivingExpenses))}</td></tr>` : ''}
               ${totalLivingExpenses === 0 && totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Living Expenses</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>` : ''}
@@ -2227,9 +2313,17 @@ function generateHTMLContent(
             </div>
             <div class="column column-right">
               <div class="section">
-                <div class="section-header gold">Address & Status</div>
+                <div class="section-header gold">Primary — Address & Status</div>
                 <table class="data-table">
-                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Current address</td><td class="value">${(() => {
+                    const formatted = formatAUAddress(client.current_address, client.current_suburb, client.current_state, client.current_postcode);
+                    if (formatted !== '-') return formatted;
+                    // Fall back to owner-occupied property address when the clients row is incomplete
+                    if (client.living_situation && /mortgage|own/i.test(client.living_situation) && ownerOccupied?.address) {
+                      return ownerOccupied.address;
+                    }
+                    return '-';
+                  })()}</td></tr>
                   <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
                   <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
                   <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
@@ -2237,6 +2331,24 @@ function generateHTMLContent(
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
+              ${hasSecondaryContact ? `
+              <div class="section">
+                <div class="section-header">Secondary — Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${(() => {
+                    if (client.secondary_same_address_as_primary) {
+                      return '<span style="color:#6b7280;font-style:italic;">Same as primary</span>';
+                    }
+                    const sec = formatAUAddress(client.secondary_current_address, client.secondary_current_suburb, client.secondary_current_state, client.secondary_current_postcode);
+                    if (sec !== '-') return sec;
+                    return '<span style="color:#9ca3af;font-style:italic;">Not recorded</span>';
+                  })()}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.secondary_country || client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.secondary_living_situation || client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.secondary_residential_status || '-'}</td></tr>
+                </table>
+              </div>
+              ` : ''}
               ${hasOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
