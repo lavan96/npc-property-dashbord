@@ -66,7 +66,11 @@ export function usePdfImportJob(): UsePdfImportJobResult {
     }
   }, []);
 
-  // Realtime subscription for the active job.
+  // Realtime subscription is best-effort (publication is enabled), but the
+  // `pdf_import_jobs` RLS policy is scoped to `auth.uid()`, which is null under
+  // our custom session tokens — so postgres_changes will be filtered out for
+  // most users. We keep the channel for superadmins (who match the policy) and
+  // rely on the dispatcher status poll below as the source of truth.
   useEffect(() => {
     if (!jobId) return;
     cleanupChannel();
@@ -80,15 +84,18 @@ export function usePdfImportJob(): UsePdfImportJobResult {
       .subscribe();
     channelRef.current = channel;
 
-    // Seed initial row + a safety poll in case realtime misses the first update.
+    // Seed initial row + a safety poll via the dispatcher (custom-auth aware).
     let cancelled = false;
     const fetchRow = async () => {
-      const { data } = await supabase
-        .from('pdf_import_jobs')
-        .select('id,status,stage,mode,page_count,duration_ms,ssim_score,error_code,error_text,diagnostics_path,result_payload,started_at,finished_at')
-        .eq('id', jobId)
-        .single();
-      if (!cancelled && data) setJob(data as PdfImportJobRow);
+      const { data, error } = await invokeSecureFunction(
+        'pdf-parse-dispatch',
+        { operation: 'status', job_id: jobId },
+        { timeoutMs: 30_000 },
+      );
+      if (cancelled) return;
+      if (error) return;
+      const row = (data as { job?: PdfImportJobRow } | null)?.job;
+      if (row) setJob(row);
     };
     fetchRow();
     const poll = setInterval(() => {
