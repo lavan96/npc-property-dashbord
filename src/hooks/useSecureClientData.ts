@@ -99,6 +99,7 @@ interface UseSecureClientDataOptions {
     assets?: boolean;
     liabilities?: boolean;
     expenses?: boolean;
+    incomeSources?: boolean;
     notes?: boolean;
     files?: boolean;
     activities?: boolean;
