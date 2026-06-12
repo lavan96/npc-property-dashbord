@@ -1425,13 +1425,21 @@ function generateHTMLContent(
     }
     
     const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
-    // Use the shared household finance engine so the card-level "Monthly Repayments"
-    // figure matches the Cashflow page (e.g. 3% CC fallback, 5% BNPL, HECS ATO bracket).
+    // Source of truth = user-entered monthly_repayment from the dashboard.
+    // Only fall back to the shared servicing engine when the value is genuinely
+    // missing (null/undefined). An explicit 0 means "TBC" and must be respected.
     const servicingById = new Map<string, { monthlyServicing: number; isEstimated: boolean; calculationNote: string }>();
     liabilityServicingSummary.items.forEach((s: any) => {
       if (s.id) servicingById.set(s.id, { monthlyServicing: s.monthlyServicing, isEstimated: s.isEstimated, calculationNote: s.calculationNote });
     });
-    const totalRepayments = liabilityServicingSummary.totalMonthly;
+    const totalRepayments = liabilities.reduce((sum, l) => {
+      const v = (l as any).monthly_repayment;
+      if (v === null || v === undefined) {
+        const srv = (l as any).id ? servicingById.get((l as any).id) : undefined;
+        return sum + (srv?.monthlyServicing || 0);
+      }
+      return sum + (Number(v) || 0);
+    }, 0);
     const liabsByType: Record<string, LiabilityData[]> = {};
     liabilities.forEach(liab => {
       const type = liab.liability_type || 'Other';
@@ -1492,17 +1500,23 @@ function generateHTMLContent(
                   ? Math.round(((liab.current_balance || 0) / liab.credit_limit!) * 100) 
                   : null;
                 const liabId = (liab as any).id as string | undefined;
-                const servicing = liabId ? servicingById.get(liabId) : undefined;
-                const effectiveRepayment = servicing ? servicing.monthlyServicing : (liab.monthly_repayment || 0);
+                const rawRepayment = (liab as any).monthly_repayment;
+                const hasUserValue = rawRepayment !== null && rawRepayment !== undefined;
+                const servicing = (!hasUserValue && liabId) ? servicingById.get(liabId) : undefined;
+                const effectiveRepayment = hasUserValue ? Number(rawRepayment) : (servicing?.monthlyServicing || 0);
+                const isTbc = hasUserValue && Number(rawRepayment) === 0;
                 const isEst = !!servicing?.isEstimated;
                 const estNote = servicing?.calculationNote || '';
+                const repaymentCell = isTbc
+                  ? `<span style="color:#9ca3af;font-style:italic;">TBC</span>`
+                  : `${formatCurrency(effectiveRepayment)}/mo${isEst ? ` <span style="font-size:6.5pt;color:#9ca3af;font-style:italic;" title="${estNote}">est.</span>` : ''}`;
                 return `
                 <tr>
                   <td class="value provider-cell">${normalizeProvider(liab.provider_name)}</td>
                   ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
                   <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
                   ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
-                  <td class="value currency">${formatCurrency(effectiveRepayment)}/mo${isEst ? ` <span style="font-size:6.5pt;color:#9ca3af;font-style:italic;" title="${estNote}">est.</span>` : ''}</td>
+                  <td class="value currency">${repaymentCell}</td>
                 </tr>
               `;}).join('')}
             </tbody>
