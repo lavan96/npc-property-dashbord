@@ -90,6 +90,33 @@ const formatAUAddress = (
   return joined || '-';
 };
 
+// Normalize common provider/lender brand names so the PDF doesn't show typos
+// like "Common Wealth Bank" or inconsistent casing across cards.
+const PROVIDER_NORMALIZATION: Array<[RegExp, string]> = [
+  [/\bcommon\s*wealth\b/i, 'Commonwealth Bank'],
+  [/\bcommonwealth\s*bank(?:ing)?(?:\s*corp(?:oration)?)?\b/i, 'Commonwealth Bank'],
+  [/^\s*cba\s*$/i, 'Commonwealth Bank'],
+  [/\bwest\s*pac\b/i, 'Westpac'],
+  [/^\s*nab\s*$/i, 'NAB'],
+  [/\bnational\s*australia\s*bank\b/i, 'NAB'],
+  [/^\s*anz\s*$/i, 'ANZ'],
+  [/\bing\s*direct\b/i, 'ING'],
+  [/\bmacquarie\s*bank\b/i, 'Macquarie Bank'],
+  [/\bafterpay\b/i, 'Afterpay'],
+  [/\bzip(?:\s*pay|\s*money)?\b/i, 'Zip'],
+  [/\bhumm\b/i, 'Humm'],
+  [/\blatitude\b/i, 'Latitude'],
+];
+const normalizeProvider = (raw: string | null | undefined): string => {
+  if (!raw) return '-';
+  let v = String(raw).trim().replace(/\s+/g, ' ');
+  if (!v) return '-';
+  for (const [pattern, replacement] of PROVIDER_NORMALIZATION) {
+    if (pattern.test(v)) { v = v.replace(pattern, replacement); break; }
+  }
+  return v;
+};
+
 interface PropertyData {
   property_type: string;
   address: string;
