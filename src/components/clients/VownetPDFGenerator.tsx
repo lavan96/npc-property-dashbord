@@ -217,6 +217,10 @@ interface VownetPDFGeneratorProps {
 // Helper functions
 const formatCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
+  // Always render negatives as -$X,XXX (never $-X,XXX)
+  if (value < 0) {
+    return '-$' + Math.abs(value).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
@@ -245,6 +249,90 @@ const properCase = (str: string | null | undefined): string => {
   return str.split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
+};
+
+// Friendly labels for enum-style values stored as snake_case in the DB.
+// Falls back to a Title Case version of the raw value so new enums never
+// leak unmapped strings into the client-facing PDF.
+const ENUM_LABEL_OVERRIDES: Record<string, string> = {
+  // Living situation
+  home_with_mortgage: 'Home with Mortgage',
+  home_owned_outright: 'Home Owned Outright',
+  renting: 'Renting',
+  living_with_parents: 'Living with Parents',
+  boarding: 'Boarding',
+  other: 'Other',
+  // Residential status
+  citizen: 'Australian Citizen',
+  permanent_resident: 'Permanent Resident',
+  temporary_resident: 'Temporary Resident',
+  visa_holder: 'Visa Holder',
+  // Marital status
+  single: 'Single',
+  married: 'Married',
+  de_facto: 'De Facto',
+  defacto: 'De Facto',
+  divorced: 'Divorced',
+  separated: 'Separated',
+  widowed: 'Widowed',
+  // Gender
+  male: 'Male',
+  female: 'Female',
+  non_binary: 'Non-binary',
+  prefer_not_to_say: 'Prefer not to say',
+  // Repayment type
+  interest_only: 'Interest Only',
+  principal_and_interest: 'Principal & Interest',
+  pi: 'Principal & Interest',
+  p_and_i: 'Principal & Interest',
+  // Frequency
+  annual: 'Annual',
+  annually: 'Annual',
+  monthly: 'Monthly',
+  fortnightly: 'Fortnightly',
+  weekly: 'Weekly',
+  quarterly: 'Quarterly',
+};
+
+const humanizeEnum = (raw: string | null | undefined): string => {
+  if (!raw && raw !== 0) return '-';
+  const v = String(raw).trim();
+  if (!v) return '-';
+  const key = v.toLowerCase().replace(/[\s-]+/g, '_');
+  if (ENUM_LABEL_OVERRIDES[key]) return ENUM_LABEL_OVERRIDES[key];
+  return key
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const enumOrNotRecorded = (raw: string | null | undefined): string => {
+  if (!raw || !String(raw).trim() || String(raw).trim() === '-') return NOT_RECORDED;
+  return humanizeEnum(raw);
+};
+
+// ISO-2 / common country codes → display name. Falls back to humanizeEnum.
+const COUNTRY_LABEL_OVERRIDES: Record<string, string> = {
+  au: 'Australia',
+  aus: 'Australia',
+  australia: 'Australia',
+  nz: 'New Zealand',
+  nzl: 'New Zealand',
+  uk: 'United Kingdom',
+  gb: 'United Kingdom',
+  gbr: 'United Kingdom',
+  us: 'United States',
+  usa: 'United States',
+  in: 'India',
+  ind: 'India',
+};
+
+const formatCountry = (raw: string | null | undefined, fallback: string = 'Australia'): string => {
+  if (!raw || !String(raw).trim()) return fallback;
+  const k = String(raw).trim().toLowerCase();
+  if (COUNTRY_LABEL_OVERRIDES[k]) return COUNTRY_LABEL_OVERRIDES[k];
+  return humanizeEnum(raw);
 };
 
 export function VownetPDFGenerator({ 
