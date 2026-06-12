@@ -2016,9 +2016,10 @@ function generateHTMLContent(
           font-size: 10pt;
           flex: 1 1 auto;
           min-width: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          white-space: normal;
+          line-height: 1.25;
         }
         .status-pill {
           flex: 0 0 auto;
@@ -2030,28 +2031,34 @@ function generateHTMLContent(
           text-transform: uppercase;
           color: #fff;
           white-space: nowrap;
+          align-self: flex-start;
         }
         .status-pill-current { background: #16a34a; }
         .status-pill-previous { background: #94a3b8; }
 
         .emp-type-badge, .freq-badge {
+          display: inline-block;
           background: ${NPC_COLORS.goldLight};
           color: ${NPC_COLORS.goldDark};
-          padding: 4px 12px;
+          padding: 3px 10px;
           border-radius: 10px;
           font-size: 7.5pt;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.3px;
-          white-space: nowrap;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          max-width: 100%;
+          line-height: 1.25;
         }
 
         .provider-cell {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 0;
-          min-width: 130px;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          min-width: 110px;
+          line-height: 1.3;
         }
         
         /* Empty State - Compact (neutral; never gold to avoid header-band drift) */
