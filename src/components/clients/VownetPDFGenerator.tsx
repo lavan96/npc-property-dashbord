@@ -12,6 +12,11 @@ import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity
 import { fetchGlobalReportSettings, type ContactDetails, type ProfessionalDisclaimer } from '@/hooks/useGlobalReportSettings';
 import { smartCapitalize } from '@/lib/nameUtils';
 import {
+  buildHouseholdIncome,
+  buildPropertyExpenditure,
+  buildLiabilityServicing,
+} from '@/utils/householdFinance';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
