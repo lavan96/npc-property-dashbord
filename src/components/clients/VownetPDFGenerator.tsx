@@ -2485,7 +2485,7 @@ function generateHTMLContent(
                   <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.secondary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
-                  <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${enumOrNotRecorded(client.secondary_gender)}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
                 </table>
               </div>
