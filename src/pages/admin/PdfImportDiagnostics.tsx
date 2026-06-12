@@ -141,7 +141,8 @@ export default function PdfImportDiagnostics() {
       operation: 'stats',
     });
     if (res.error) {
-      const friendly = describeAuthError(res.error);
+      const msg = res.error.message;
+      const friendly = describeAuthError(msg);
       if (friendly) toast.error(friendly);
       return;
     }
@@ -158,8 +159,9 @@ export default function PdfImportDiagnostics() {
         limit: 100,
       });
       if (res.error) {
-        const friendly = describeAuthError(res.error);
-        toast.error(friendly ?? res.error);
+        const msg = res.error.message;
+        const friendly = describeAuthError(msg);
+        toast.error(friendly ?? msg);
         setRows([]);
         return;
       }
@@ -168,6 +170,7 @@ export default function PdfImportDiagnostics() {
       setLoading(false);
     }
   }, [statusFilter, engineFilter]);
+
 
   useEffect(() => {
     loadStats();
