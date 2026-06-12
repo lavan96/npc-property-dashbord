@@ -6,6 +6,7 @@
  * detection (the new `code` kind) by extension/MIME. No logic is duplicated.
  */
 import { detectReferenceKind } from '../referenceImport';
+import { isFigmaMakeFile } from './makeImport';
 import type { CodeFlavor, CodeTier, IngestionInput, SourceKind } from './types';
 
 const CODE_EXT = /\.(html?|css|s[ac]ss|less|jsx?|mjs|cjs|tsx?|vue|svelte|astro|md|markdown|json|ya?ml|svg|png|jpe?g|webp|gif|avif|woff2?|ttf|otf|zip)$/i;
