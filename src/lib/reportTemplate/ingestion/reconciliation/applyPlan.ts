@@ -25,7 +25,7 @@ function importMeta(plan: TemplateImportPlan, title?: string, baseMeta?: ReportT
   };
 }
 
-function planPageToTemplatePage(page: TemplateImportPlan['pages'][number], override?: Pick<Page, 'id' | 'name'>): Page {
+function planPageToTemplatePage(page: TemplateImportPlan['pages'][number], plan: TemplateImportPlan, override?: Pick<Page, 'id' | 'name'>): Page {
   const pageId = override?.id ?? page.id;
   return {
     id: pageId,
