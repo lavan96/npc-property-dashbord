@@ -280,8 +280,13 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           // Result card
           <div className="space-y-3">
             <Card className="p-4 border-success/40 bg-success/5">
-              <div className="flex items-center gap-2 text-success font-medium">
-                <CheckCircle2 className="h-5 w-5" /> Import complete
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-success font-medium">
+                  <CheckCircle2 className="h-5 w-5" /> Import complete
+                </div>
+                <Badge variant={result.engine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
+                  {result.engine === 'docling' ? <><Zap className="h-3 w-3 mr-1" />Docling</> : <><Cpu className="h-3 w-3 mr-1" />Legacy</>}
+                </Badge>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <Stat label="Pages" value={result.pageCount} />
