@@ -1,4 +1,5 @@
 import type { AcquisitionCosts, FundsToCompleteResult, GstTreatment } from './calculatorTypes';
+import { calculateGstAssessment } from './gstEngine';
 
 const sum = (values: number[]) => values.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 
@@ -7,16 +8,26 @@ export function calculateGstCashflow(purchasePrice: number, treatment: GstTreatm
   return 0;
 }
 
-export function calculateFundsToComplete(purchasePrice: number, costs: AcquisitionCosts, finalLoan: number, availableEquity: number, additionalCapexReserve = 0): FundsToCompleteResult {
+export function calculateFundsToComplete(purchasePrice: number, costs: AcquisitionCosts, finalLoan: number, availableEquity: number, additionalCapexReserve = 0, annualDebtService = 0, ownerBorneOutgoings = 0): FundsToCompleteResult {
   const warnings: string[] = [];
   const acquisitionCostItems = [costs.stampDuty, costs.transferRegistrationFee, costs.mortgageRegistrationFee, costs.pexaSettlementFee, costs.legalConveyancingFee, costs.bankLegalFee, costs.valuationFee, costs.loanApplicationFee, costs.buyersAgentFee, costs.buildingInspection, costs.pestInspection, costs.structuralInspection, costs.fireComplianceInspection, costs.planningZoningReview, costs.environmentalReport, costs.asbestosReport, costs.dueDiligence, costs.otherAcquisitionCosts];
   const totalAcquisitionCosts = sum(acquisitionCostItems);
-  const gstCashflowRequirement = calculateGstCashflow(purchasePrice, costs.gstTreatment, costs.gstCashflowRequired);
-  if (costs.gstTreatment === 'unknown' || costs.gstClaimable === 'unknown' || costs.gstCashflowRequired === 'unknown') warnings.push('GST treatment or settlement cashflow is unknown.');
+  const gst = calculateGstAssessment(purchasePrice, costs);
+  warnings.push(...gst.warnings);
   const capexReserve = Math.max(0, costs.capexReserve + additionalCapexReserve);
-  const totalCostBase = Math.max(0, purchasePrice + totalAcquisitionCosts + gstCashflowRequirement + capexReserve + costs.workingCapitalReserve);
+  const totalCostBase = Math.max(0, purchasePrice + totalAcquisitionCosts + gst.settlementCashflowRequirement + gst.economicCost + capexReserve + costs.workingCapitalReserve);
   const requiredEquity = Math.max(0, totalCostBase - Math.max(0, finalLoan));
   const equitySurplusShortfall = availableEquity - requiredEquity;
   if (equitySurplusShortfall < 0) warnings.push('Available equity is below required funds to complete.');
-  return { totalAcquisitionCosts, gstCashflowRequirement, totalCostBase, requiredEquity, equitySurplusShortfall, warnings };
+  const postSettlementLiquidity = equitySurplusShortfall;
+  const monthlyDebtService = annualDebtService / 12;
+  const monthlyOwnerBorneOutgoings = ownerBorneOutgoings / 12;
+  const monthsDebtServiceCovered = monthlyDebtService > 0 ? postSettlementLiquidity / monthlyDebtService : 0;
+  const monthsOutgoingsCovered = monthlyOwnerBorneOutgoings > 0 ? postSettlementLiquidity / monthlyOwnerBorneOutgoings : 0;
+  const minimumLiquidityRequirement = Math.max(costs.minimumPostSettlementLiquidityReserve ?? 0, monthlyDebtService * (costs.requiredDebtServiceReserveMonths ?? 3), monthlyOwnerBorneOutgoings * (costs.requiredOutgoingsReserveMonths ?? 3));
+  const liquiditySurplusShortfall = postSettlementLiquidity - minimumLiquidityRequirement;
+  const liquidityStatus = postSettlementLiquidity < 0 ? 'insufficient' : liquiditySurplusShortfall >= minimumLiquidityRequirement ? 'strong' : liquiditySurplusShortfall >= 0 ? 'acceptable' : postSettlementLiquidity > 0 ? 'tight' : 'insufficient';
+  if (liquidityStatus === 'tight') warnings.push('Post-settlement liquidity is tight.');
+  if (liquidityStatus === 'insufficient') warnings.push('Post-settlement liquidity is insufficient.');
+  return { totalAcquisitionCosts, gstCashflowRequirement: gst.settlementCashflowRequirement, totalCostBase, requiredEquity, equitySurplusShortfall, capexReserve, postSettlementLiquidity, monthlyDebtService, monthlyOwnerBorneOutgoings, monthsDebtServiceCovered, monthsOutgoingsCovered, minimumLiquidityRequirement, liquiditySurplusShortfall, liquidityStatus, gst, warnings };
 }
