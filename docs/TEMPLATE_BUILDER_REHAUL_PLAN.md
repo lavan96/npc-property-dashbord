@@ -142,10 +142,10 @@ export, analytics, lint/QA, renderer‑capability badges — re‑homed into the
 ## 6. Locked decisions
 
 1. **Renderer‑safe free‑canvas**: free elements = overlays; data = flowing blocks. Zero renderer change.
-2. **Editor V2 behind a `templateEditorV2` feature flag**, reusing the existing `EditorialCanvas`
-   engine. V1 stays default and functional until Phase 8; rollback is one flag. (Most "isolated".)
-3. **@dnd‑kit** for drag‑and‑drop (accessible, React‑native, tree‑shakeable).
-4. **Golden‑render snapshot tests are Phase 0** and gate every subsequent PR.
+2. **Editor V2 behind a `templateEditorV2` feature flag**, reusing the existing `EditorialCanvas` engine. V1 stays default and functional until Phase 8; rollback is one flag. (Most "isolated".)
+3. ~~**@dnd‑kit** for drag‑and‑drop~~ → **Superseded:** ships on **native HTML5 DnD** (`overlayDropFactory.ts` + `onPaletteDrop`). The `@dnd-kit` dep was unnecessary and is **not** installed.
+4. **Golden‑render snapshot tests are Phase 0** and gate every subsequent PR (CI: `.github/workflows/ci.yml`).
+5. **🔴 renderer-file edits are policy-blocked** via `.github/CODEOWNERS`; any PR touching the locked surface requires explicit approval.
 
 ## 7. Phased implementation plan
 
