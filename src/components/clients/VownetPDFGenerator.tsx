@@ -2214,7 +2214,11 @@ function generateHTMLContent(
                 <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.danger}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Expenditure</td>
               </tr>
               ${totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs</td><td class="value currency">${formatCurrency(Math.round(totalPropertyExpenses))}</td></tr>` : ''}
-              ${totalLiabilityRepayments > 0 ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>` : ''}
+              ${totalLiabilityRepayments > 0
+                ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>`
+                : (liabilities.some(l => (l.current_balance || 0) > 0)
+                    ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Liability Repayments</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>`
+                    : '')}
               ${totalRentalExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Rent Paid (PPOR)</td><td class="value currency">${formatCurrency(Math.round(totalRentalExpenses))}</td></tr>` : ''}
               ${totalLivingExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Living Expenses</td><td class="value currency">${formatCurrency(Math.round(totalLivingExpenses))}</td></tr>` : ''}
               ${totalLivingExpenses === 0 && totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Living Expenses</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>` : ''}
