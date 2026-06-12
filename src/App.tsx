@@ -331,6 +331,8 @@ const App = () => (
                 <Route path="admin/report-engine-inspector" element={<ReportEngineInspector />} />
                 <Route path="admin/figma-templates" element={<ModuleGuard moduleKey="templates"><FigmaTemplates /></ModuleGuard>} />
                 <Route path="admin/pdf-import-engine" element={<ModuleGuard moduleKey="templates"><PdfImportEngineAdmin /></ModuleGuard>} />
+                <Route path="admin/pdf-import-diagnostics" element={<ModuleGuard moduleKey="templates"><PdfImportDiagnostics /></ModuleGuard>} />
+
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
