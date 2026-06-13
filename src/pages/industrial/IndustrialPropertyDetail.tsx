@@ -92,6 +92,7 @@ export default function IndustrialPropertyDetail() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
           <TabsTrigger value="capex">Capex</TabsTrigger>
+          <TabsTrigger value="financing">Financing</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
         </TabsList>
 
