@@ -150,6 +150,14 @@ function textItemToBlock(
       : undefined;
   const fontSize = item.font?.size ?? labelDefaultFontSize(item.label, headingLevel);
   const fontWeight = normaliseWeight(item.font?.weight) ?? labelDefaultWeight(item.label);
+  // Phase B: tag page furniture so the plan builder can route it to a master page.
+  const pageRegion: 'header' | 'footer' | undefined =
+    item.label === 'page_header' ? 'header'
+    : item.label === 'page_footer' ? 'footer'
+    : undefined;
+  const masterGroupId = pageRegion
+    ? `docling-master-${pageRegion}-p${pageInfo.page_no}`
+    : undefined;
   return {
     id: blockId(String(item.label ?? 'text'), pageInfo.page_no, index),
     type: labelToBlockType(item.label),
@@ -169,6 +177,8 @@ function textItemToBlock(
       headingLevel,
       listGroupId,
       readingOrder,
+      pageRegion,
+      groupId: masterGroupId,
     },
   };
 }
