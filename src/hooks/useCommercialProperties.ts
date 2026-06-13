@@ -73,7 +73,41 @@ export interface CommercialLease {
   updated_at: string;
 }
 
-type Table = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs';
+export type CommercialCapexCategory =
+  | 'base_building' | 'fit_out' | 'compliance' | 'lifts' | 'hvac'
+  | 'roof' | 'facade' | 'sustainability' | 'other';
+
+export interface CommercialCapexItem {
+  id: string;
+  property_id: string;
+  year: number;
+  amount: number;
+  category: CommercialCapexCategory | string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommercialFinancing {
+  id: string;
+  property_id: string;
+  lender?: string | null;
+  loan_amount?: number | null;
+  loan_balance?: number | null;
+  interest_rate?: number | null;
+  loan_term_years?: number | null;
+  io_period_years?: number | null;
+  repayment_type?: 'pi' | 'io' | 'pi_after_io' | null;
+  lvr_pct?: number | null;
+  upfront_fees?: number | null;
+  ongoing_fees_pa?: number | null;
+  rate_type?: 'variable' | 'fixed' | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+type Table = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs' | 'commercial_capex' | 'commercial_financing';
 
 async function call<T = any>(operation: string, table: Table, payload: any = {}) {
   return invokeSecureFunction<T>('manage-commercial-data', { operation, table, ...payload });
@@ -99,6 +133,26 @@ export const commercialApi = {
     call<CommercialLease>('update', 'commercial_leases', { recordId, data }),
   deleteLease: (recordId: string) =>
     call('delete', 'commercial_leases', { recordId }),
+
+  // Capex
+  listCapex: (propertyId: string) =>
+    call<CommercialCapexItem[]>('list', 'commercial_capex', { propertyId }),
+  createCapex: (data: Partial<CommercialCapexItem>) =>
+    call<CommercialCapexItem>('create', 'commercial_capex', { data }),
+  updateCapex: (recordId: string, data: Partial<CommercialCapexItem>) =>
+    call<CommercialCapexItem>('update', 'commercial_capex', { recordId, data }),
+  deleteCapex: (recordId: string) =>
+    call('delete', 'commercial_capex', { recordId }),
+
+  // Financing (one-to-one with property)
+  listFinancing: (propertyId: string) =>
+    call<CommercialFinancing[]>('list', 'commercial_financing', { propertyId }),
+  createFinancing: (data: Partial<CommercialFinancing>) =>
+    call<CommercialFinancing>('create', 'commercial_financing', { data }),
+  updateFinancing: (recordId: string, data: Partial<CommercialFinancing>) =>
+    call<CommercialFinancing>('update', 'commercial_financing', { recordId, data }),
+  deleteFinancing: (recordId: string) =>
+    call('delete', 'commercial_financing', { recordId }),
 };
 
 export function useCommercialProperties() {
