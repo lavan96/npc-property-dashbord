@@ -25,6 +25,13 @@ export interface PdfImportJobRow {
   result_payload: Record<string, unknown> | null;
   started_at: string | null;
   finished_at: string | null;
+  /** Phase C: incremental raster progress. */
+  pages_completed?: number | null;
+  pages_total?: number | null;
+  /** Phase C: artifacts were reused from a prior identical PDF. */
+  cache_hit?: boolean | null;
+  cache_source_job_id?: string | null;
+  source_file_hash?: string | null;
 }
 
 export interface StartPdfImportInput {
