@@ -5,12 +5,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-type TableName = 'industrial_properties' | 'industrial_tenancies' | 'industrial_capex';
+type TableName = 'industrial_properties' | 'industrial_tenancies' | 'industrial_capex' | 'industrial_financing';
 
 const ALLOWED_TABLES: TableName[] = [
   'industrial_properties',
   'industrial_tenancies',
   'industrial_capex',
+  'industrial_financing',
 ];
 
 type Operation = 'list' | 'get' | 'create' | 'update' | 'delete';
