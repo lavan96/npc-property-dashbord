@@ -6,11 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Factory, Pencil, FileDown, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
+import { industrialApi, useIndustrialFinancing, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
 import { IndustrialPropertyFormModal } from '@/components/industrial/IndustrialPropertyFormModal';
 import { IndustrialRentRollTable } from '@/components/industrial/IndustrialRentRollTable';
 import { IndustrialCapexTable } from '@/components/industrial/IndustrialCapexTable';
 import { IndustrialFinancialSnapshot } from '@/components/industrial/IndustrialFinancialSnapshot';
+import { PropertyFinancingPanel } from '@/components/property/PropertyFinancingPanel';
 import { generateIndustrialInvestmentReport } from '@/utils/industrial/industrialReportPdf';
 
 const SUBTYPE_LABEL: Record<string, string> = {
