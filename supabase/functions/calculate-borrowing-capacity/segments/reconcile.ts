@@ -21,7 +21,9 @@ interface ReconcileArgs {
   clientId: string;
   forceEnabled?: boolean;          // override flag (testing)
   policy?: Partial<SegmentPolicy>;
+  userId?: string | null;          // for observability logs
 }
+
 
 interface FlagShape {
   enabled: boolean;
