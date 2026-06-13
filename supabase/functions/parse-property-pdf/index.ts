@@ -251,7 +251,25 @@ Return JSON format:
   "powerKva": numeric power capacity in kVA,
   "dockDoors": numeric dock doors,
   "groundFloorLoadKpa": numeric floor load in kPa,
-  "conditionRating": "A/B/C/D if stated or infer only if explicitly graded"
+  "conditionRating": "A/B/C/D if stated or infer only if explicitly graded",
+  "detectedAssetClass": "residential | commercial | industrial (auto-detect from content)",
+  "detectedAssetConfidence": numeric 0-1,
+  "passingNoiPa": numeric passing NOI p.a.,
+  "marketNoiPa": numeric market/stabilised NOI p.a.,
+  "passingCapRatePct": numeric passing cap rate as percent (e.g. 6.25),
+  "marketCapRatePct": numeric market cap rate as percent,
+  "vendorAdvisedRentPa": numeric vendor-quoted rent p.a.,
+  "vendorAdvisedOutgoingsPa": numeric vendor-quoted outgoings p.a.,
+  "outgoingsTotalPa": numeric total outgoings p.a.,
+  "outgoingsRecoverablePa": numeric recoverable outgoings p.a.,
+  "vendorAdvisedYieldPct": numeric vendor-quoted yield as percent,
+  "gstTreatment": "going_concern | margin_scheme | standard | input_taxed",
+  "leaseType": "gross | net | semi_gross | triple_net",
+  "leaseExpiryDate": "yyyy-mm-dd",
+  "leaseOptions": "e.g. 3 + 3 + 3 years",
+  "waleYears": numeric weighted average lease expiry,
+  "tenantNames": ["array of named tenants, max 5"],
+  "truckAccess": "poor | average | good | excellent"
 }`;
 }
 
