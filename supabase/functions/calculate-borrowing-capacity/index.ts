@@ -1594,6 +1594,7 @@ Deno.serve(async (req) => {
         supabase,
         clientId,
         forceEnabled: overrides?.forceSegmentEngine === true ? true : undefined,
+        userId: userId && userId !== 'service_role' ? userId : null,
       });
       if (segmentReconciliation.triggered) {
         console.log(`[calculate-borrowing-capacity] Segment engine TRIGGERED: ${segmentReconciliation.segmentBreakdown.length} segment(s), portfolio Δ=$${segmentReconciliation.overlays.portfolioCapacityDelta}`);
