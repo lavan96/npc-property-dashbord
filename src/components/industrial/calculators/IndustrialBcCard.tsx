@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { calculateIndustrialBc } from '@/utils/industrial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -30,6 +32,12 @@ export function IndustrialBcCard() {
   const [minDscr, setMinDscr] = useState('1.35');
   const [liquidity, setLiquidity] = useState('0');
   const [liquidityMult, setLiquidityMult] = useState('0');
+
+  useApplyPrefill((p) => {
+    const px = p.purchasePrice ?? p.valuation;
+    if (px != null) setPropertyValue(String(px));
+    if (p.passingNoi != null) setNoi(String(p.passingNoi));
+  });
 
   const result = useMemo(() => calculateIndustrialBc({
     noi: num(noi),
