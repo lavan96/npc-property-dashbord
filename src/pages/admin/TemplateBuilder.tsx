@@ -150,7 +150,8 @@ export default function TemplateBuilder() {
             preview the actual generated PDF in real time.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          {canEditTemplates && <PdfImportEngineToggle />}
           {canEditTemplates && (
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
