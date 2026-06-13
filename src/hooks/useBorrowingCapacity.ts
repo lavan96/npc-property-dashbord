@@ -136,6 +136,12 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
       queryClient.invalidateQueries({ queryKey: ['client-data', clientId] });
       queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      // ── Phase 3: portfolio segment invalidation (commercial/industrial) ──
+      queryClient.invalidateQueries({ queryKey: ['client-portfolio', 'residential', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-portfolio', 'commercial', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-portfolio', 'industrial', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['commercial-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['industrial-properties', clientId] });
       toast.success('Borrowing capacity calculated successfully');
     },
     onError: (error: Error) => {
