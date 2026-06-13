@@ -39,7 +39,7 @@ export function CapRateCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>Cap Rate & Yield</CardTitle>
-        <CardDescription>Passing, reversionary and Blended Yield / Simple Average Yield. Benchmark only — valuer confirmation required.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">AI Estimate benchmark only</Badge><Button size="sm" variant="outline">Estimate cap rate range</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: Number(valuation) || undefined })} /></div>
+        <CardDescription>Passing, reversionary and Blended Yield / Simple Average Yield. Benchmark only — valuer confirmation required.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">AI Estimate benchmark only</Badge><Button size="sm" variant="outline">Estimate cap rate range</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: valuation || undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
