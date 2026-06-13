@@ -78,6 +78,14 @@ export async function evaluateIndustrialSegment(
     .in('property_id', propIds);
   const tenancies: IndustrialTenancyRow[] = tenancyData || [];
 
+  // Phase Wave-C: prefer relational industrial_financing rows; fall back to legacy JSONB.
+  const { data: financingRows } = await supabase
+    .from('industrial_financing')
+    .select('property_id, lender, loan_amount, loan_balance, interest_rate, loan_term_years, io_period_years, repayment_type, lvr_pct')
+    .in('property_id', propIds);
+  const financingByProp = new Map<string, any>();
+  for (const row of (financingRows || [])) financingByProp.set(row.property_id, row);
+
   let totalNoi = 0;
   let totalDebtService = 0;
   let totalLoanBalance = 0;
@@ -94,7 +102,10 @@ export async function evaluateIndustrialSegment(
     const opexRate = allNet ? 0.10 : 0.20;
     const noi = Math.max(0, grossRent * (1 - opexRate));
 
-    const fin = (p.industrial_financing && typeof p.industrial_financing === 'object') ? p.industrial_financing : {};
+    const relational = financingByProp.get(p.id);
+    const legacy = (p.industrial_financing && typeof p.industrial_financing === 'object') ? p.industrial_financing : {};
+    const fin = relational ?? legacy;
+    const finSource: 'relational' | 'legacy' | 'none' = relational ? 'relational' : (Object.keys(legacy).length ? 'legacy' : 'none');
     const loanBalance = Number(fin.loan_balance ?? fin.loan_amount) || 0;
     const interestRate = Number(fin.interest_rate) || policy.industrial.assessmentRatePct;
     const termYears = Number(fin.loan_term_years) || policy.industrial.amortYears;
