@@ -80,6 +80,8 @@ export interface DoclingTableItem {
   prov?: DoclingProvenance[];
   data: DoclingTableData;
   caption?: string;
+  /** Refs to caption text items linked by the parser. */
+  captions?: Array<DoclingRef | string>;
   confidence?: number;
 }
 
