@@ -4825,6 +4825,47 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_capex: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_capex_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_dcf_runs: {
         Row: {
           capex_schedule: Json
@@ -4897,6 +4938,71 @@ export type Database = {
             foreignKeyName: "commercial_dcf_runs_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "commercial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commercial_financing: {
+        Row: {
+          created_at: string
+          id: string
+          interest_rate: number | null
+          io_period_years: number | null
+          lender: string | null
+          loan_amount: number | null
+          loan_balance: number | null
+          loan_term_years: number | null
+          lvr_pct: number | null
+          notes: string | null
+          ongoing_fees_pa: number | null
+          property_id: string
+          rate_type: string | null
+          repayment_type: string | null
+          updated_at: string
+          upfront_fees: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          io_period_years?: number | null
+          lender?: string | null
+          loan_amount?: number | null
+          loan_balance?: number | null
+          loan_term_years?: number | null
+          lvr_pct?: number | null
+          notes?: string | null
+          ongoing_fees_pa?: number | null
+          property_id: string
+          rate_type?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+          upfront_fees?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          io_period_years?: number | null
+          lender?: string | null
+          loan_amount?: number | null
+          loan_balance?: number | null
+          loan_term_years?: number | null
+          lvr_pct?: number | null
+          notes?: string | null
+          ongoing_fees_pa?: number | null
+          property_id?: string
+          rate_type?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+          upfront_fees?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_financing_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "commercial_properties"
             referencedColumns: ["id"]
           },
@@ -10691,6 +10797,71 @@ export type Database = {
             foreignKeyName: "industrial_capex_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "industrial_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      industrial_financing: {
+        Row: {
+          created_at: string
+          id: string
+          interest_rate: number | null
+          io_period_years: number | null
+          lender: string | null
+          loan_amount: number | null
+          loan_balance: number | null
+          loan_term_years: number | null
+          lvr_pct: number | null
+          notes: string | null
+          ongoing_fees_pa: number | null
+          property_id: string
+          rate_type: string | null
+          repayment_type: string | null
+          updated_at: string
+          upfront_fees: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          io_period_years?: number | null
+          lender?: string | null
+          loan_amount?: number | null
+          loan_balance?: number | null
+          loan_term_years?: number | null
+          lvr_pct?: number | null
+          notes?: string | null
+          ongoing_fees_pa?: number | null
+          property_id: string
+          rate_type?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+          upfront_fees?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          io_period_years?: number | null
+          lender?: string | null
+          loan_amount?: number | null
+          loan_balance?: number | null
+          loan_term_years?: number | null
+          lvr_pct?: number | null
+          notes?: string | null
+          ongoing_fees_pa?: number | null
+          property_id?: string
+          rate_type?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+          upfront_fees?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "industrial_financing_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "industrial_properties"
             referencedColumns: ["id"]
           },
