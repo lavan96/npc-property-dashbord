@@ -86,6 +86,9 @@ export interface RawImportBlock {
     groupId?: string;
     /** Phase B: master-page eligibility — 'header' or 'footer'. */
     pageRegion?: 'header' | 'footer';
+  };
+}
+
 
 export interface RawImportManifest {
   importId: string;
