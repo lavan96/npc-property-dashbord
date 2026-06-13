@@ -6,10 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Building2, Pencil, FileDown, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
+import { commercialApi, useCommercialFinancing, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { RentRollTable } from '@/components/commercial/RentRollTable';
 import { FinancialSnapshot } from '@/components/commercial/FinancialSnapshot';
+import { CommercialCapexTable } from '@/components/commercial/CommercialCapexTable';
+import { PropertyFinancingPanel } from '@/components/property/PropertyFinancingPanel';
 import { generateCommercialInvestmentReport } from '@/utils/commercial/commercialReportPdf';
 
 
