@@ -10,6 +10,7 @@
  *   booking_cancel                  { booking_id, reason? }
  */
 import { createClient } from "npm:@supabase/supabase-js@2.55.0";
+import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,6 +80,21 @@ Deno.serve(async (req) => {
         .update({ status: 'complete', completed_at: new Date().toISOString(), completed_by: portalUser.email || 'client', updated_at: new Date().toISOString() })
         .eq('id', id).select().single();
       if (error) return json({ error: error.message }, 500);
+
+      // Wave B: tell the assigned finance partner(s) the client just finished a step.
+      try {
+        await notifyFinancePortalAssignees({
+          client_id: clientId,
+          notification_type: 'client_onboarding_step_completed',
+          title: 'Client completed an onboarding step',
+          body: data?.label || 'Onboarding step',
+          link_path: `/finance/purchase-files/${data?.purchase_file_id}?tab=onboarding`,
+          metadata: { onboarding_step_id: id, purchase_file_id: data?.purchase_file_id },
+        });
+      } catch (notifyErr) {
+        console.error('[client-portal-batch6] onboarding notify failed', notifyErr);
+      }
+
       return json({ step: data });
     }
 
