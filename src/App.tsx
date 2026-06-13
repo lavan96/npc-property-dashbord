@@ -69,6 +69,7 @@ import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
+import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
