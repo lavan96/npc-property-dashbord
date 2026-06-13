@@ -18,6 +18,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
+import { PdfImportEngineToggle } from '@/components/templateBuilder/PdfImportEngineToggle';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
 import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
@@ -149,7 +150,8 @@ export default function TemplateBuilder() {
             preview the actual generated PDF in real time.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          {canEditTemplates && <PdfImportEngineToggle />}
           {canEditTemplates && (
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
