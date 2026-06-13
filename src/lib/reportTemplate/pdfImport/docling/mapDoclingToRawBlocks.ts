@@ -477,5 +477,16 @@ export function mapDoclingToRawBlocks(
   }
 
   const all = Object.values(byPage).flat();
-  return { byPage, all, pages };
+  // Phase D: surface document outline (TOC). Prefer sidecar-provided `doc.outline`,
+  // fall back to deriving from title/section_header text items.
+  const outline: MappedDoclingBlocks['outline'] = Array.isArray(doc.outline) && doc.outline.length
+    ? doc.outline.map((n) => ({ title: n.title ?? '', level: n.level ?? 1, page_no: n.page_no ?? null }))
+    : (doc.texts ?? [])
+        .filter((t) => t.label === 'title' || t.label === 'section_header')
+        .map((t) => ({
+          title: t.text ?? '',
+          level: t.label === 'title' ? 1 : Math.max(1, Math.min(6, Math.round(t.level ?? 2))),
+          page_no: t.prov?.[0]?.page_no ?? null,
+        }));
+  return { byPage, all, pages, outline };
 }
