@@ -11,6 +11,9 @@ import {
   type ScenarioLiability as SharedScenarioLiability,
   type AcquisitionContext as SharedAcquisitionContext,
 } from '../_shared/scenarioDeltaEngine.ts';
+import { reconcileSegments } from './segments/reconcile.ts';
+
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1583,6 +1586,30 @@ Deno.serve(async (req) => {
 
     console.log(`[calculate-borrowing-capacity] Result: Capacity $${result.borrowingCapacity}, Band: ${result.serviceabilityBand}`);
 
+    // ── Phase 2: Hybrid Segment Reconciliation (commercial/industrial) ──
+    // Flag-gated. When off OR no cmc/ind rows linked → triggered=false → zero overlays.
+    let segmentReconciliation;
+    try {
+      segmentReconciliation = await reconcileSegments({
+        supabase,
+        clientId,
+        forceEnabled: overrides?.forceSegmentEngine === true ? true : undefined,
+      });
+      if (segmentReconciliation.triggered) {
+        console.log(`[calculate-borrowing-capacity] Segment engine TRIGGERED: ${segmentReconciliation.segmentBreakdown.length} segment(s), portfolio Δ=$${segmentReconciliation.overlays.portfolioCapacityDelta}`);
+      }
+    } catch (segErr) {
+      console.warn(`[calculate-borrowing-capacity] Segment reconciliation failed (non-fatal):`, segErr);
+      segmentReconciliation = { enabled: false, triggered: false, segmentBreakdown: [], totals: { additionalAnnualNoi: 0, additionalAnnualDebtService: 0, additionalHeadroom: 0 }, overlays: { extraMonthlyCommitments: 0, extraShadedAnnualIncome: 0, extraDtiDenominator: 0, portfolioCapacityDelta: 0 }, warnings: [`segment engine error: ${(segErr as any)?.message || 'unknown'}`] };
+    }
+
+    // Portfolio capacity (additive — never replaces residential `borrowingCapacity`).
+    // When the segment engine is triggered, this surfaces the hybrid capacity for UI.
+    const portfolioCapacity = segmentReconciliation.triggered
+      ? Math.max(0, result.borrowingCapacity + segmentReconciliation.overlays.portfolioCapacityDelta)
+      : result.borrowingCapacity;
+
+
     // Calculate tax breakdown for the gross income
     const taxBreakdown = getTaxBreakdown(effectiveGrossIncome);
     console.log(`[calculate-borrowing-capacity] Tax breakdown: Marginal rate ${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%, After-tax income $${taxBreakdown.afterTaxIncome}`);
@@ -1887,7 +1914,12 @@ Deno.serve(async (req) => {
       // ── Phase 5: Audit Trail & Explanation ──
       auditTrail,
       explanation,
+      // ── Phase 2: Hybrid segment reconciliation (additive, flag-gated) ──
+      segmentBreakdown: segmentReconciliation.segmentBreakdown,
+      segmentReconciliation,
+      portfolioCapacity,
     };
+
 
     // Save to database if requested
     let assessmentId: string | null = null;
