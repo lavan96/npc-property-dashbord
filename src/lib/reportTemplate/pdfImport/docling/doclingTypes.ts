@@ -83,12 +83,38 @@ export interface DoclingTableItem {
   confidence?: number;
 }
 
+export interface DoclingPictureClassification {
+  predicted_class?: string;
+  /** Some Docling builds emit `predicted_classes: [{class_name, confidence}, …]`. */
+  predicted_classes?: Array<{ class_name?: string; confidence?: number }>;
+  confidence?: number;
+}
+
+export interface DoclingPictureAnnotation {
+  /** e.g. 'description' (SmolVLM caption), 'classification'. */
+  kind?: string;
+  text?: string;
+  provenance?: string; // model name
+  confidence?: number;
+}
+
+export interface DoclingRef {
+  $ref?: string;
+  cref?: string;
+}
+
 export interface DoclingPictureItem {
   self_ref?: string;
   prov?: DoclingProvenance[];
   /** Storage path or data URI for the extracted image, when present. */
   image?: { uri?: string; mimetype?: string; size?: { width: number; height: number } };
   caption?: string;
+  /** Refs to caption text items (Docling links captions explicitly when it can). */
+  captions?: Array<DoclingRef | string>;
+  /** Phase B: picture classifier output (chart, logo, photo, diagram, etc). */
+  classification?: DoclingPictureClassification;
+  /** Phase B: VLM-generated annotations (alt-text / description). */
+  annotations?: DoclingPictureAnnotation[];
   confidence?: number;
 }
 
