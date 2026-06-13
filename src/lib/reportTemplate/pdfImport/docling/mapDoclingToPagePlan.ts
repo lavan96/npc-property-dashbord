@@ -146,7 +146,11 @@ function pagePlanForPage(
   const overlays: Overlay[] = [];
   for (const block of blocks) {
     let locked: boolean;
-    if (opts.mode === 'pixel-perfect') locked = true;
+    if (block.meta?.pageRegion) {
+      // Phase B: page headers/footers always lock — they're master-page furniture
+      // and shouldn't be nudged on individual pages.
+      locked = true;
+    } else if (opts.mode === 'pixel-perfect') locked = true;
     else if (opts.mode === 'hybrid') locked = block.confidence < lockThreshold;
     else locked = false; // semantic
     const ov = blockToOverlay(block, locked);
