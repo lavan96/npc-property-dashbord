@@ -57,7 +57,14 @@ app = FastAPI(title="pdf-parse-service", version=ENGINE_VERSION)
 # Pipeline singleton — built once at module import time so the first /parse
 # request doesn't pay the model-load cost.
 # ---------------------------------------------------------------------------
-def _build_converter() -> DocumentConverter:
+# Phase B: opt-in toggles for the VLM-backed picture description model.
+# Picture classification is cheap (small ConvNeXt) → on by default.
+# Picture description loads SmolVLM (~1.5 GB RAM, 2–4× parse time) → gated.
+ENABLE_PICTURE_CLASSIFICATION = os.environ.get("ENABLE_PICTURE_CLASSIFICATION", "1").strip() not in {"", "0", "false", "False"}
+ENABLE_PICTURE_DESCRIPTION_DEFAULT = os.environ.get("ENABLE_PICTURE_DESCRIPTION", "0").strip() not in {"", "0", "false", "False"}
+
+
+def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     pipeline = PdfPipelineOptions()
     pipeline.do_ocr = True                       # handle scanned pages too
     pipeline.do_table_structure = True           # TableFormer — the reason we picked Docling
@@ -68,6 +75,18 @@ def _build_converter() -> DocumentConverter:
     pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False        # we rasterise on demand via /raster
     pipeline.generate_picture_images = True      # so we can extract embedded images
+    # Phase B: picture enrichments — classification (chart/logo/photo/diagram) and
+    # optional VLM description (alt-text for accessibility + search).
+    if ENABLE_PICTURE_CLASSIFICATION:
+        try:
+            pipeline.do_picture_classification = True
+        except Exception as exc:  # pragma: no cover — defensive: older Docling builds
+            LOG.warning("picture classification not available: %s", exc)
+    if enable_picture_description:
+        try:
+            pipeline.do_picture_description = True
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("picture description not available: %s", exc)
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)}
     )
