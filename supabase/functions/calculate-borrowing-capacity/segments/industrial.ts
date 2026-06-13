@@ -124,7 +124,8 @@ export async function evaluateIndustrialSegment(
     });
 
     if (noi <= 0 && tens.length === 0) warnings.push(`No tenancy on industrial property ${p.id.slice(0, 8)}`);
-    if (loanBalance > 0 && Object.keys(fin).length === 0) warnings.push(`No industrial_financing for property ${p.id.slice(0, 8)} — using policy defaults`);
+    if (loanBalance > 0 && finSource === 'none') warnings.push(`No industrial_financing for property ${p.id.slice(0, 8)} — using policy defaults`);
+    if (finSource === 'legacy') assumptions.push(`Industrial ${p.id.slice(0, 8)}: financing from legacy JSONB column (consider migrating to industrial_financing table)`);
   }
 
   const ar = policy.industrial.assessmentRatePct;
