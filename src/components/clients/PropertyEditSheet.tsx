@@ -527,9 +527,13 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
           <SheetTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Edit Property
+            <span className="ml-2 text-xs font-normal px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+              Residential
+            </span>
           </SheetTitle>
           <SheetDescription>
-            Update property details
+            Update property details. For commercial or industrial assets, use the dedicated property pages —
+            they feed the hybrid borrowing-capacity engine automatically when linked to this client.
           </SheetDescription>
         </SheetHeader>
 

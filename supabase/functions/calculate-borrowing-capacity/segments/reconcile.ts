@@ -21,22 +21,56 @@ interface ReconcileArgs {
   clientId: string;
   forceEnabled?: boolean;          // override flag (testing)
   policy?: Partial<SegmentPolicy>;
+  userId?: string | null;          // for observability logs
 }
 
-async function isFlagEnabled(supabase: any): Promise<boolean> {
+
+interface FlagShape {
+  enabled: boolean;
+  allowlist?: string[];          // client_ids opted in early
+  dragFactorOverride?: number;   // override DEFAULT_SEGMENT_POLICY.commercialDragFactor
+}
+
+async function readFlag(supabase: any): Promise<FlagShape> {
   try {
     const { data } = await supabase
       .from('feature_flags')
       .select('value')
       .eq('key', 'bcSegmentEngine')
       .maybeSingle();
-    if (!data) return false;
+    if (!data) return { enabled: false };
     const v = data.value;
-    if (v && typeof v === 'object' && 'enabled' in v) return !!v.enabled;
-    return !!v;
+    if (v && typeof v === 'object') {
+      return {
+        enabled: !!v.enabled,
+        allowlist: Array.isArray(v.allowlist) ? v.allowlist.filter((x: any) => typeof x === 'string') : undefined,
+        dragFactorOverride: typeof v.dragFactorOverride === 'number' ? v.dragFactorOverride : undefined,
+      };
+    }
+    return { enabled: !!v };
   } catch (_) {
-    return false;
+    return { enabled: false };
   }
+}
+
+async function logHealth(
+  supabase: any,
+  status: 'success' | 'error' | 'skipped',
+  durationMs: number,
+  userId: string | null,
+  clientId: string,
+  errorMessage?: string,
+) {
+  try {
+    await supabase.from('api_health_log').insert({
+      service_name: 'bc-segment-engine',
+      endpoint: `client:${clientId}`,
+      status,
+      response_time_ms: Math.max(0, Math.round(durationMs)),
+      error_message: errorMessage ?? null,
+      user_id: userId,
+    });
+  } catch (_) { /* never let logging break BC calc */ }
 }
 
 function emptyResult(enabled: boolean): ReconciliationResult {
@@ -50,18 +84,34 @@ function emptyResult(enabled: boolean): ReconciliationResult {
   };
 }
 
-export async function reconcileSegments(args: ReconcileArgs): Promise<ReconciliationResult> {
-  const { supabase, clientId, forceEnabled, policy: overrides } = args;
-  const flagOn = forceEnabled ?? await isFlagEnabled(supabase);
 
-  if (!flagOn) return emptyResult(false);
+export async function reconcileSegments(args: ReconcileArgs): Promise<ReconciliationResult> {
+  const { supabase, clientId, forceEnabled, policy: overrides, userId = null } = args;
+  const t0 = Date.now();
+  const flag = await readFlag(supabase);
+  const flagOn = forceEnabled ?? flag.enabled;
+
+  if (!flagOn) {
+    await logHealth(supabase, 'skipped', Date.now() - t0, userId, clientId, 'flag_disabled');
+    return emptyResult(false);
+  }
+
+  // Allowlist gate — when present, only listed clients run the engine.
+  if (!forceEnabled && Array.isArray(flag.allowlist) && flag.allowlist.length > 0 && !flag.allowlist.includes(clientId)) {
+    await logHealth(supabase, 'skipped', Date.now() - t0, userId, clientId, 'not_in_allowlist');
+    return emptyResult(false);
+  }
 
   const policy: SegmentPolicy = {
     ...DEFAULT_SEGMENT_POLICY,
+    commercialDragFactor: flag.dragFactorOverride ?? DEFAULT_SEGMENT_POLICY.commercialDragFactor,
     ...overrides,
     commercial: { ...DEFAULT_SEGMENT_POLICY.commercial, ...overrides?.commercial },
     industrial: { ...DEFAULT_SEGMENT_POLICY.industrial, ...overrides?.industrial },
   };
+
+  try {
+
 
   // Hard timeout budget — fall back to empty if any segment hangs > 6s
   const timeout = <T>(p: Promise<T>, ms = 6000, fallback?: T): Promise<T> =>
@@ -92,12 +142,14 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
   if (commercial.propertyCount > 0) breakdown.push(commercial);
   if (industrial.propertyCount > 0) breakdown.push(industrial);
 
-  if (breakdown.length === 0) return emptyResult(true);
+  if (breakdown.length === 0) {
+    await logHealth(supabase, 'success', Date.now() - t0, userId, clientId, 'no_segments');
+    return emptyResult(true);
+  }
 
   const additionalAnnualNoi = commercial.grossAnnualIncome + industrial.grossAnnualIncome;
   const additionalAnnualDebtService = commercial.annualDebtService + industrial.annualDebtService;
 
-  // Apply commercial drag factor to negative-headroom segments
   const drag = policy.commercialDragFactor;
   const additionalHeadroom = breakdown.reduce((sum, seg) => {
     const factor = seg.headroom < 0 ? drag : 1;
@@ -106,7 +158,7 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
 
   const warnings = [...commercial.warnings, ...industrial.warnings];
 
-  return {
+  const result: ReconciliationResult = {
     enabled: true,
     triggered: true,
     segmentBreakdown: breakdown,
@@ -116,15 +168,21 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
       additionalHeadroom: Math.round(additionalHeadroom),
     },
     overlays: {
-      // Commercial/industrial debt service rolled into residential commitments
       extraMonthlyCommitments: Math.round(additionalAnnualDebtService / 12),
-      // NOI added to shaded income (treated as already net of opex/vacancy)
       extraShadedAnnualIncome: Math.round(additionalAnnualNoi),
-      // DTI denominator overlay — only when policy allows
       extraDtiDenominator: policy.dtiIncludeCommercialNoi ? Math.round(additionalAnnualNoi) : 0,
-      // Net delta to portfolio capacity vs residential-only baseline
       portfolioCapacityDelta: Math.round(additionalHeadroom),
     },
     warnings,
   };
+
+  await logHealth(supabase, 'success', Date.now() - t0, userId, clientId, undefined);
+  return result;
+  } catch (err) {
+    const msg = (err as Error)?.message ?? String(err);
+    console.error('[bc-segment-engine] reconcile failed', msg);
+    await logHealth(supabase, 'error', Date.now() - t0, userId, clientId, msg);
+    // SAFETY NET: never break the residential pipeline — degrade to empty
+    return emptyResult(true);
+  }
 }
