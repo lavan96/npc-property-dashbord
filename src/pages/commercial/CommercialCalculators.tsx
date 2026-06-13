@@ -6,9 +6,12 @@ import { IcrDscrCalculatorCard } from '@/components/commercial/calculators/IcrDs
 import { GstCalculatorCard } from '@/components/commercial/calculators/GstCalculatorCard';
 import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalculatorCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
+import { CalculatorPrefillProvider } from '@/contexts/CalculatorPrefillContext';
+import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
 
 export default function CommercialCalculators() {
   return (
+    <CalculatorPrefillProvider domain="commercial">
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -16,9 +19,11 @@ export default function CommercialCalculators() {
           Commercial / Industrial Calculators
         </h1>
         <p className="text-muted-foreground mt-1">
-          NOI, cap rate, ICR/DSCR, GST, DCF and commercial or industrial borrowing capacity.
+          NOI, cap rate, ICR/DSCR, GST, DCF and commercial or industrial borrowing capacity. Link a saved property to prefill every tab, then push results back when you're happy.
         </p>
       </div>
+
+      <CalculatorPropertyBar />
 
       <Tabs defaultValue="bc" className="w-full">
         <TabsList className="w-full justify-start gap-1 overflow-x-auto">
@@ -54,5 +59,6 @@ export default function CommercialCalculators() {
         <TabsContent value="dcf" className="mt-4"><DcfCalculatorCard /></TabsContent>
       </Tabs>
     </div>
+    </CalculatorPrefillProvider>
   );
 }
