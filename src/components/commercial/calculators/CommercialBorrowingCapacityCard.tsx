@@ -187,7 +187,22 @@ export function CommercialBorrowingCapacityCard() {
             <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Commercial & Industrial Borrowing Capacity</CardTitle>
             <CardDescription>Shared lending engine with commercial and industrial profiles, funds-to-complete, risk overlays, commentary and document checklist.</CardDescription>
           </div>
-          <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+            <SaveBackButton build={() => ({
+              purchase_price: num(purchasePrice),
+              valuation: num(estimatedValue),
+              gfa_sqm: num(buildingArea) || undefined,
+              nla_sqm: num(lettableArea) || undefined,
+              site_area_sqm: num(landArea) || undefined,
+              state: state,
+              asset_class: assetCategory === 'industrial' ? 'industrial' : undefined,
+              industrial_specs: assetCategory === 'industrial' ? {
+                clearance_metres: num(clearance) || undefined,
+                dock_doors: num(rollerDoors) || undefined,
+              } : undefined,
+            })} />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">
