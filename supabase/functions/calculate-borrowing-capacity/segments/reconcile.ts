@@ -142,12 +142,14 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
   if (commercial.propertyCount > 0) breakdown.push(commercial);
   if (industrial.propertyCount > 0) breakdown.push(industrial);
 
-  if (breakdown.length === 0) return emptyResult(true);
+  if (breakdown.length === 0) {
+    await logHealth(supabase, 'success', Date.now() - t0, userId, clientId, 'no_segments');
+    return emptyResult(true);
+  }
 
   const additionalAnnualNoi = commercial.grossAnnualIncome + industrial.grossAnnualIncome;
   const additionalAnnualDebtService = commercial.annualDebtService + industrial.annualDebtService;
 
-  // Apply commercial drag factor to negative-headroom segments
   const drag = policy.commercialDragFactor;
   const additionalHeadroom = breakdown.reduce((sum, seg) => {
     const factor = seg.headroom < 0 ? drag : 1;
@@ -156,7 +158,7 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
 
   const warnings = [...commercial.warnings, ...industrial.warnings];
 
-  return {
+  const result: ReconciliationResult = {
     enabled: true,
     triggered: true,
     segmentBreakdown: breakdown,
@@ -166,15 +168,21 @@ export async function reconcileSegments(args: ReconcileArgs): Promise<Reconcilia
       additionalHeadroom: Math.round(additionalHeadroom),
     },
     overlays: {
-      // Commercial/industrial debt service rolled into residential commitments
       extraMonthlyCommitments: Math.round(additionalAnnualDebtService / 12),
-      // NOI added to shaded income (treated as already net of opex/vacancy)
       extraShadedAnnualIncome: Math.round(additionalAnnualNoi),
-      // DTI denominator overlay — only when policy allows
       extraDtiDenominator: policy.dtiIncludeCommercialNoi ? Math.round(additionalAnnualNoi) : 0,
-      // Net delta to portfolio capacity vs residential-only baseline
       portfolioCapacityDelta: Math.round(additionalHeadroom),
     },
     warnings,
   };
+
+  await logHealth(supabase, 'success', Date.now() - t0, userId, clientId, undefined);
+  return result;
+  } catch (err) {
+    const msg = (err as Error)?.message ?? String(err);
+    console.error('[bc-segment-engine] reconcile failed', msg);
+    await logHealth(supabase, 'error', Date.now() - t0, userId, clientId, msg);
+    // SAFETY NET: never break the residential pipeline — degrade to empty
+    return emptyResult(true);
+  }
 }
