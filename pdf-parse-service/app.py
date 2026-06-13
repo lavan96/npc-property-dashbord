@@ -110,11 +110,33 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
         _safe_set(pipeline, "do_formula_enrichment", True)
     if ENABLE_CODE_ENRICHMENT:
         _safe_set(pipeline, "do_code_enrichment", True)
-    if ENABLE_OCR_FALLBACK:
-        # `force_full_page_ocr` makes Docling re-OCR even when a text layer exists,
-        # which catches text rendered as outlines / hand-scanned hybrids.
-        _safe_set(pipeline.ocr_options if hasattr(pipeline, "ocr_options") else pipeline,
-                  "force_full_page_ocr", True)
+
+    # Wave A: configure OCR aggressively for scanned / hybrid PDFs.
+    ocr_opts = getattr(pipeline, "ocr_options", None)
+    if ocr_opts is not None:
+        if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
+            _safe_set(ocr_opts, "force_full_page_ocr", True)
+        if OCR_LANGS:
+            # Most OCR engines (EasyOCR/Tesseract) accept a list of language codes.
+            _safe_set(ocr_opts, "lang", OCR_LANGS)
+        _safe_set(ocr_opts, "bitmap_area_threshold", BITMAP_AREA_THRESHOLD)
+    else:
+        # Older Docling exposed force_full_page_ocr on the pipeline directly.
+        if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
+            _safe_set(pipeline, "force_full_page_ocr", True)
+
+    # Wave A: pass an AcceleratorOptions when the running Docling version exposes it.
+    try:
+        from docling.datamodel.pipeline_options import AcceleratorOptions, AcceleratorDevice  # type: ignore
+        try:
+            device = getattr(AcceleratorDevice, ACCEL_DEVICE, AcceleratorDevice.AUTO)
+        except Exception:
+            device = AcceleratorDevice.AUTO
+        _safe_set(pipeline, "accelerator_options",
+                  AcceleratorOptions(num_threads=ACCEL_THREADS, device=device))
+    except Exception as exc:  # pragma: no cover — Docling minor without accelerator opts
+        LOG.info("AcceleratorOptions not available in this Docling build: %s", exc)
+
     if LAYOUT_MODEL:
         # Some Docling builds accept `layout_model` directly; others nest under
         # `layout_options`. Try both.
