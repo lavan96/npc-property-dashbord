@@ -1851,6 +1851,9 @@ Deno.serve(async (req) => {
         lmiDepositAmount: overrides?.lmiDepositAmount || null,
         isFirstHomeBuyer: overrides?.isFirstHomeBuyer || false,
         proposedRentalIncome: overrides?.proposedRentalIncome || null,
+        // ── Phase 3: persist hybrid segment results for UI/PDF replay ──
+        _segmentReconciliation: segmentReconciliation,
+        _portfolioCapacity: portfolioCapacity,
       },
       lmiAmount: effectiveLmiAmount,
       lmiMode: effectiveLmiMode,
