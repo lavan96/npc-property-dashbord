@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
+import { BorrowingCapacitySegmentCard } from './BorrowingCapacitySegmentCard';
 
 interface BorrowingCapacityCardProps {
   clientId: string;
