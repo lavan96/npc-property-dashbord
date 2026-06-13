@@ -187,3 +187,35 @@ export function useCommercialLeases(propertyId: string | null) {
   useEffect(() => { refresh(); }, [refresh]);
   return { leases, loading, refresh };
 }
+
+export function useCommercialCapex(propertyId: string | null) {
+  const [items, setItems] = useState<CommercialCapexItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!propertyId) { setItems([]); return; }
+    setLoading(true);
+    const res = await commercialApi.listCapex(propertyId);
+    if (!res.error) setItems(res.data || []);
+    setLoading(false);
+  }, [propertyId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  return { items, loading, refresh };
+}
+
+export function useCommercialFinancing(propertyId: string | null) {
+  const [financing, setFinancing] = useState<CommercialFinancing | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!propertyId) { setFinancing(null); return; }
+    setLoading(true);
+    const res = await commercialApi.listFinancing(propertyId);
+    if (!res.error) setFinancing((res.data && res.data[0]) || null);
+    setLoading(false);
+  }, [propertyId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  return { financing, loading, refresh };
+}
