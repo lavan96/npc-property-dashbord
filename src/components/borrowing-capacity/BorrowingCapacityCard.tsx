@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
+import { BorrowingCapacitySegmentCard } from './BorrowingCapacitySegmentCard';
 
 interface BorrowingCapacityCardProps {
   clientId: string;
@@ -30,9 +31,13 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
     isCalculating,
     calculate,
     getDisplayResult,
+    getSegmentReconciliation,
+    getPortfolioCapacity,
   } = useBorrowingCapacity({ clientId });
 
   const result = getDisplayResult();
+  const segmentReconciliation = getSegmentReconciliation();
+  const portfolioCapacity = getPortfolioCapacity();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -117,102 +122,111 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
   const BandIcon = bandConfig.icon;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
-            Borrowing Capacity
-          </CardTitle>
-          <div className="flex items-center gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Export Snapshot PDF</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Borrowing Capacity
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export Snapshot PDF</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Main Capacity Figure */}
-        <div className="text-center">
-          <div className="text-3xl font-bold text-foreground">
-            {formatCurrency(result.capacity)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Maximum Borrowing Power
-          </p>
-        </div>
-
-        {/* Serviceability Band Badge */}
-        <div className="flex justify-center">
-          <Badge className={bandConfig.color}>
-            <BandIcon className="h-3 w-3 mr-1" />
-            {bandConfig.label}
-          </Badge>
-        </div>
-
-        {/* Quick Metrics */}
-        <div className="grid grid-cols-2 gap-3 text-center">
-          <div className="p-2 rounded-lg bg-secondary/50">
-            <p className="text-xs text-muted-foreground">Monthly Surplus</p>
-            <p className={`text-sm font-semibold ${result.surplus >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {formatCurrency(result.surplus)}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Main Capacity Figure */}
+          <div className="text-center">
+            <div className="text-3xl font-bold text-foreground">
+              {formatCurrency(result.capacity)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Maximum Borrowing Power
             </p>
           </div>
-          <div className="p-2 rounded-lg bg-secondary/50">
-            <p className="text-xs text-muted-foreground">DTI Ratio</p>
-            <p className={`text-sm font-semibold ${result.dtiRatio < 6 ? 'text-success' : result.dtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
-              {result.dtiRatio.toFixed(1)}x
+
+          {/* Serviceability Band Badge */}
+          <div className="flex justify-center">
+            <Badge className={bandConfig.color}>
+              <BandIcon className="h-3 w-3 mr-1" />
+              {bandConfig.label}
+            </Badge>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="p-2 rounded-lg bg-secondary/50">
+              <p className="text-xs text-muted-foreground">Monthly Surplus</p>
+              <p className={`text-sm font-semibold ${result.surplus >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatCurrency(result.surplus)}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg bg-secondary/50">
+              <p className="text-xs text-muted-foreground">DTI Ratio</p>
+              <p className={`text-sm font-semibold ${result.dtiRatio < 6 ? 'text-success' : result.dtiRatio < 8 ? 'text-warning' : 'text-destructive'}`}>
+                {result.dtiRatio.toFixed(1)}x
+              </p>
+            </div>
+          </div>
+
+          {/* Stress Tested Capacity */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <TrendingUp className="h-3 w-3" />
+                Stress-Tested Capacity
+              </span>
+              <span className="font-medium">{formatCurrency(result.stressTested)}</span>
+            </div>
+            <Progress
+              value={(result.stressTested / result.capacity) * 100}
+              className="h-2"
+            />
+          </div>
+
+          {/* Last Calculated */}
+          {result.lastCalculated && (
+            <p className="text-xs text-muted-foreground text-center">
+              Last calculated {formatDistanceToNow(new Date(result.lastCalculated), { addSuffix: true })}
             </p>
-          </div>
-        </div>
+          )}
 
-        {/* Stress Tested Capacity */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <TrendingUp className="h-3 w-3" />
-              Stress-Tested Capacity
-            </span>
-            <span className="font-medium">{formatCurrency(result.stressTested)}</span>
-          </div>
-          <Progress 
-            value={(result.stressTested / result.capacity) * 100} 
-            className="h-2"
-          />
-        </div>
+          {/* Open Full Calculator Button */}
+          {onOpenCalculator && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={onOpenCalculator}
+            >
+              View Full Calculator
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Last Calculated */}
-        {result.lastCalculated && (
-          <p className="text-xs text-muted-foreground text-center">
-            Last calculated {formatDistanceToNow(new Date(result.lastCalculated), { addSuffix: true })}
-          </p>
-        )}
-
-        {/* Open Full Calculator Button */}
-        {onOpenCalculator && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-            onClick={onOpenCalculator}
-          >
-            View Full Calculator
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+      {/* Phase 3 — Hybrid portfolio segment breakdown (commercial/industrial) */}
+      <BorrowingCapacitySegmentCard
+        reconciliation={segmentReconciliation}
+        residentialCapacity={result.capacity}
+        portfolioCapacity={portfolioCapacity}
+      />
+    </div>
   );
 }
