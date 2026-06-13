@@ -93,6 +93,8 @@ export default function CommercialPropertyDetail() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
+          <TabsTrigger value="capex">Capex</TabsTrigger>
+          <TabsTrigger value="financing">Financing</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
         </TabsList>
 
@@ -122,6 +124,14 @@ export default function CommercialPropertyDetail() {
 
         <TabsContent value="rent-roll">
           <RentRollTable propertyId={property.id} />
+        </TabsContent>
+
+        <TabsContent value="capex">
+          <CommercialCapexTable propertyId={property.id} />
+        </TabsContent>
+
+        <TabsContent value="financing">
+          <CommercialFinancingTab propertyId={property.id} />
         </TabsContent>
 
         <TabsContent value="financials">
