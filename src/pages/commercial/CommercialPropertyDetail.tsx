@@ -159,3 +159,24 @@ function Info({ label, value }: { label: string; value: any }) {
     </div>
   );
 }
+
+function CommercialFinancingTab({ propertyId }: { propertyId: string }) {
+  const { financing, loading, refresh } = useCommercialFinancing(propertyId);
+  const handleSave = async (data: any) => {
+    const res = financing?.id
+      ? await commercialApi.updateFinancing(financing.id, data)
+      : await commercialApi.createFinancing(data);
+    if (!res.error) refresh();
+    return res;
+  };
+  return (
+    <PropertyFinancingPanel
+      propertyId={propertyId}
+      value={financing}
+      loading={loading}
+      onSave={handleSave}
+      title="Commercial Loan & Financing"
+    />
+  );
+}
+
