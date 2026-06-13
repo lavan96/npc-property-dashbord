@@ -11,6 +11,9 @@ import {
   type ScenarioLiability as SharedScenarioLiability,
   type AcquisitionContext as SharedAcquisitionContext,
 } from '../_shared/scenarioDeltaEngine.ts';
+import { reconcileSegments } from './segments/reconcile.ts';
+
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
