@@ -193,3 +193,19 @@ export function useIndustrialCapex(propertyId: string | null) {
   useEffect(() => { refresh(); }, [refresh]);
   return { items, loading, refresh };
 }
+
+export function useIndustrialFinancing(propertyId: string | null) {
+  const [financing, setFinancing] = useState<IndustrialFinancing | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!propertyId) { setFinancing(null); return; }
+    setLoading(true);
+    const res = await industrialApi.listFinancing(propertyId);
+    if (!res.error) setFinancing((res.data && res.data[0]) || null);
+    setLoading(false);
+  }, [propertyId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  return { financing, loading, refresh };
+}
