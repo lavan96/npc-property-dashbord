@@ -95,7 +95,7 @@ export function NoiCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>NOI Calculator</CardTitle>
-        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button></div>
+        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button><SaveBackButton build={() => ({ outgoings_recoverable: { council: num(outgoings.council ?? '0'), water: num(outgoings.water ?? '0'), land_tax: num(outgoings.land_tax ?? '0'), insurance: num(outgoings.insurance ?? '0'), management: num(outgoings.management ?? '0'), repairs_maintenance: num(outgoings.repairs_maintenance ?? '0'), utilities: num(outgoings.utilities ?? '0'), cleaning: num(outgoings.cleaning ?? '0'), security: num(outgoings.security ?? '0'), other: num(outgoings.other ?? '0') } })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
