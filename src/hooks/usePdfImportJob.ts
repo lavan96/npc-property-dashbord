@@ -46,6 +46,10 @@ export interface StartPdfImportInput {
   templateId?: string | null;
   sourceFileName?: string;
   sourceFileSizeBytes?: number;
+  /** Phase D: 'off' | 'auto' | 'on' | 'premium'. Defaults to 'auto' (sidecar env). */
+  descriptionTier?: 'off' | 'auto' | 'on' | 'premium';
+  /** Phase D: also persist Markdown export. */
+  includeMarkdown?: boolean;
 }
 
 export interface UsePdfImportJobResult {
@@ -132,6 +136,8 @@ export function usePdfImportJob(): UsePdfImportJobResult {
         template_id: input.templateId ?? null,
         source_file_name: input.sourceFileName,
         source_file_size_bytes: input.sourceFileSizeBytes,
+        description_tier: input.descriptionTier ?? 'auto',
+        include_markdown: input.includeMarkdown ?? false,
       });
       if (invokeErr) throw new Error(invokeErr.message);
       const id = (data as { job_id?: string } | null)?.job_id ?? null;
