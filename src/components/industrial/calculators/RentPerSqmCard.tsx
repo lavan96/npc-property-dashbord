@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { calcRentPerSqm } from '@/utils/industrial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 2 }).format(n || 0);
 const num = (v: string) => v === '' ? 0 : Number(v);
@@ -12,6 +14,12 @@ export function RentPerSqmCard() {
   const [baseRent, setBaseRent] = useState('220000');
   const [gla, setGla] = useState('1800');
   const [outgoings, setOutgoings] = useState('25000');
+
+  useApplyPrefill((p) => {
+    if (p.glaSqm != null) setGla(String(p.glaSqm));
+    if (p.grossPassingRentPa != null) setBaseRent(String(p.grossPassingRentPa));
+    if (p.recoveredOutgoingsPa != null) setOutgoings(String(p.recoveredOutgoingsPa));
+  });
 
   const result = useMemo(() => calcRentPerSqm({
     baseRentPa: num(baseRent),
@@ -24,6 +32,7 @@ export function RentPerSqmCard() {
       <CardHeader>
         <CardTitle>Rent per m² (GLA)</CardTitle>
         <CardDescription>Convert annual rent and outgoings into industrial $/m² benchmarks.</CardDescription>
+        <div className="pt-2"><SaveBackButton build={() => ({ gla_sqm: num(gla) || undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">

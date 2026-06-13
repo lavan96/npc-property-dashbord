@@ -59,6 +59,7 @@ export function IndustrialBcCard() {
         <CardDescription>
           Sizes industrial loans with tighter LVR (60–65%) and stronger coverage (ICR ≥ 1.75x, DSCR ≥ 1.35x).
         </CardDescription>
+        <div className="pt-2"><SaveBackButton build={() => ({ purchase_price: num(propertyValue), current_valuation: num(propertyValue) })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">

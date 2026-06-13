@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { calcSiteMetrics } from '@/utils/industrial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${(n || 0).toFixed(2)}%`;
@@ -16,6 +18,15 @@ export function SiteCoverCard() {
   const [hardstand, setHardstand] = useState('3000');
   const [office, setOffice] = useState('8');
   const [price, setPrice] = useState('9500000');
+
+  useApplyPrefill((p) => {
+    if (p.glaSqm != null) setGla(String(p.glaSqm));
+    if (p.siteAreaSqm != null) setSite(String(p.siteAreaSqm));
+    if (p.hardstandSqm != null) setHardstand(String(p.hardstandSqm));
+    if (p.officePct != null) setOffice(String(p.officePct));
+    const px = p.purchasePrice ?? p.valuation;
+    if (px != null) setPrice(String(px));
+  });
 
   const result = useMemo(() => calcSiteMetrics({
     glaSqm: num(gla),
@@ -33,6 +44,7 @@ export function SiteCoverCard() {
       <CardHeader>
         <CardTitle>Site Cover & $/m²</CardTitle>
         <CardDescription>Industrial site density, hardstand ratio and price-per-area benchmarks.</CardDescription>
+        <div className="pt-2"><SaveBackButton build={() => ({ gla_sqm: num(gla) || undefined, site_area_sqm: num(site) || undefined, hardstand_sqm: num(hardstand) || undefined, office_pct: num(office) || undefined, site_cover_pct: Number(result.siteCoverPct.toFixed(2)) || undefined, purchase_price: num(price) || undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
