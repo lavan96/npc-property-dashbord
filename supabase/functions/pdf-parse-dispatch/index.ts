@@ -510,6 +510,9 @@ Deno.serve(async (req) => {
             has_source_url: Boolean(body.source_url),
             has_source_path: Boolean(body.source_path),
             has_source_base64: Boolean(body.source_base64),
+            // Phase D passthroughs (consumed by runJob).
+            description_tier: typeof body.description_tier === 'string' ? body.description_tier : 'auto',
+            include_markdown: Boolean(body.include_markdown),
           },
         })
         .select('id')
