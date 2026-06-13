@@ -160,3 +160,23 @@ function Info({ label, value }: { label: string; value: any }) {
     </div>
   );
 }
+
+function IndustrialFinancingTab({ propertyId }: { propertyId: string }) {
+  const { financing, loading, refresh } = useIndustrialFinancing(propertyId);
+  const handleSave = async (data: any) => {
+    const res = financing?.id
+      ? await industrialApi.updateFinancing(financing.id, data)
+      : await industrialApi.createFinancing(data);
+    if (!res.error) refresh();
+    return res;
+  };
+  return (
+    <PropertyFinancingPanel
+      propertyId={propertyId}
+      value={financing}
+      loading={loading}
+      onSave={handleSave}
+      title="Industrial Loan & Financing"
+    />
+  );
+}
