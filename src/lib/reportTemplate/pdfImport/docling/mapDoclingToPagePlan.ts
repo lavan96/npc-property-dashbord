@@ -64,18 +64,22 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
     ...(block.meta?.groupId ? { groupId: block.meta.groupId } : {}),
   } as const;
 
-  if (block.type === 'text') {
+  if (block.type === 'text' || block.type === 'formula' || block.type === 'code') {
+    const isCode = block.type === 'code';
+    const isFormula = block.type === 'formula';
     const overlay: TextOverlay = {
       ...base,
       type: 'text',
       content: block.text ?? '',
-      fontFamily: block.style?.fontFamily ?? 'Helvetica',
+      fontFamily: isCode ? 'Menlo, Consolas, monospace'
+        : isFormula ? 'Times, "Times New Roman", serif'
+        : (block.style?.fontFamily ?? 'Helvetica'),
       fontSize: block.style?.fontSize ?? 11,
       fontWeight: (block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold',
-      fontStyle: 'normal',
+      fontStyle: isFormula ? 'italic' : 'normal',
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
-      lineHeight: 1.3,
+      lineHeight: isCode ? 1.4 : 1.3,
       letterSpacing: 0,
     } as TextOverlay;
     return overlay;
@@ -84,7 +88,8 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
     const overlay: ImageOverlay = {
       ...base,
       type: 'image',
-      src: '',
+      // Phase D: wire embedded picture crop URI when the parser provided one.
+      src: block.meta?.imageUri ?? '',
       fit: 'contain',
     } as ImageOverlay;
     return overlay;
