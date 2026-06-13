@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
 import { buildProvenance, logClientActivity } from '../_shared/client-data-provenance.ts'
 import { buildDocumentDedupeKey, createSyncEvent, sha256Hex } from '../_shared/client-sync.ts'
+import { notifyFinancePortalAssignees } from '../_shared/finance-portal-notify.ts'
 
 function extractPortalToken(headers: Headers, formData?: FormData): string | null {
   const headerToken = headers.get('x-portal-session-token');
@@ -201,8 +202,70 @@ Deno.serve(async (req) => {
       versionNumber: fileRecord.version_number,
     });
 
+    // Wave B: auto-link this upload to any open document_requirement_instances for
+    // this client. Matching strategy (cheap, conservative):
+    //   1. exact category match wins
+    //   2. otherwise filename-token overlap against the DRI label
+    // We mark matching DRIs as 'uploaded' and record the client_files id in `notes`
+    // (DRI `document_id` references finance_portal_documents, which we don't have here).
+    let linkedDriIds: string[] = [];
+    try {
+      const { data: openDris } = await supabase
+        .from('document_requirement_instances')
+        .select('id, label, category, status, purchase_file_id')
+        .eq('client_id', clientId)
+        .in('status', ['required', 'requested', 'rejected']);
+      if (openDris && openDris.length > 0) {
+        const filenameLower = (file.name || '').toLowerCase();
+        const fileTokens = new Set(
+          filenameLower.replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(t => t.length >= 4),
+        );
+        const matches = openDris.filter((d: any) => {
+          if (category && d.category && d.category === category) return true;
+          const labelTokens = String(d.label || '').toLowerCase().split(/\s+/).filter(t => t.length >= 4);
+          return labelTokens.some(t => fileTokens.has(t));
+        });
+        if (matches.length > 0) {
+          const ids = matches.map((m: any) => m.id);
+          const { error: linkErr } = await supabase
+            .from('document_requirement_instances')
+            .update({
+              status: 'uploaded',
+              uploaded_at: new Date().toISOString(),
+              notes: `Auto-linked to client portal upload ${fileRecord.id} (${file.name})`,
+              updated_at: new Date().toISOString(),
+            })
+            .in('id', ids);
+          if (!linkErr) linkedDriIds = ids;
+        }
+      }
+    } catch (linkErr) {
+      console.error('[portal-upload-file] DRI auto-link failed', linkErr);
+    }
+
+    // Wave B: notify the assigned finance partner(s) that the client uploaded.
+    try {
+      await notifyFinancePortalAssignees({
+        client_id: clientId,
+        notification_type: linkedDriIds.length > 0 ? 'document_uploaded_against_request' : 'client_uploaded_document',
+        title: linkedDriIds.length > 0
+          ? `Client uploaded ${linkedDriIds.length} requested document${linkedDriIds.length === 1 ? '' : 's'}`
+          : 'Client uploaded a document',
+        body: file.name,
+        link_path: `/clients?clientId=${clientId}&tab=documents`,
+        metadata: {
+          client_files_id: fileRecord.id,
+          file_name: file.name,
+          category,
+          linked_dri_ids: linkedDriIds,
+        },
+      });
+    } catch (notifyErr) {
+      console.error('[portal-upload-file] finance notify failed', notifyErr);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, file: fileRecord }),
+      JSON.stringify({ success: true, file: fileRecord, linked_document_requests: linkedDriIds }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
