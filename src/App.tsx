@@ -69,6 +69,7 @@ import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
+import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
@@ -334,6 +335,7 @@ const App = () => (
                 <Route path="admin/pdf-import-engine" element={<ModuleGuard moduleKey="templates"><PdfImportEngineAdmin /></ModuleGuard>} />
                 <Route path="admin/pdf-import-diagnostics" element={<ModuleGuard moduleKey="templates"><PdfImportDiagnostics /></ModuleGuard>} />
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
+                <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
 
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
