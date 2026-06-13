@@ -133,6 +133,16 @@ export const industrialApi = {
     call<IndustrialCapexItem>('update', 'industrial_capex', { recordId, data }),
   deleteCapex: (recordId: string) =>
     call('delete', 'industrial_capex', { recordId }),
+
+  // Financing (one-to-one with property)
+  listFinancing: (propertyId: string) =>
+    call<IndustrialFinancing[]>('list', 'industrial_financing', { propertyId }),
+  createFinancing: (data: Partial<IndustrialFinancing>) =>
+    call<IndustrialFinancing>('create', 'industrial_financing', { data }),
+  updateFinancing: (recordId: string, data: Partial<IndustrialFinancing>) =>
+    call<IndustrialFinancing>('update', 'industrial_financing', { recordId, data }),
+  deleteFinancing: (recordId: string) =>
+    call('delete', 'industrial_financing', { recordId }),
 };
 
 export function useIndustrialProperties() {
