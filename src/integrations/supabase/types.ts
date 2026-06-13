@@ -5006,6 +5006,7 @@ export type Database = {
           gst_treatment: Database["public"]["Enums"]["commercial_gst_treatment"]
           id: string
           industrial_specs: Json
+          linked_at: string | null
           nla_sqm: number | null
           notes: string | null
           outgoings_recoverable: Json
@@ -5035,6 +5036,7 @@ export type Database = {
           gst_treatment?: Database["public"]["Enums"]["commercial_gst_treatment"]
           id?: string
           industrial_specs?: Json
+          linked_at?: string | null
           nla_sqm?: number | null
           notes?: string | null
           outgoings_recoverable?: Json
@@ -5064,6 +5066,7 @@ export type Database = {
           gst_treatment?: Database["public"]["Enums"]["commercial_gst_treatment"]
           id?: string
           industrial_specs?: Json
+          linked_at?: string | null
           nla_sqm?: number | null
           notes?: string | null
           outgoings_recoverable?: Json
@@ -5082,7 +5085,15 @@ export type Database = {
           year_built?: number | null
           zoning?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "commercial_properties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commission_ledger: {
         Row: {
@@ -10698,6 +10709,8 @@ export type Database = {
           ground_floor_load_kpa: number | null
           hardstand_sqm: number | null
           id: string
+          industrial_financing: Json | null
+          linked_at: string | null
           notes: string | null
           office_pct: number | null
           postcode: string | null
@@ -10729,6 +10742,8 @@ export type Database = {
           ground_floor_load_kpa?: number | null
           hardstand_sqm?: number | null
           id?: string
+          industrial_financing?: Json | null
+          linked_at?: string | null
           notes?: string | null
           office_pct?: number | null
           postcode?: string | null
@@ -10760,6 +10775,8 @@ export type Database = {
           ground_floor_load_kpa?: number | null
           hardstand_sqm?: number | null
           id?: string
+          industrial_financing?: Json | null
+          linked_at?: string | null
           notes?: string | null
           office_pct?: number | null
           postcode?: string | null
@@ -10779,7 +10796,15 @@ export type Database = {
           year_built?: number | null
           zoning?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "industrial_properties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       industrial_tenancies: {
         Row: {
@@ -17622,6 +17647,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_portfolio_properties: {
+        Row: {
+          address: string | null
+          asset_class: string | null
+          client_id: string | null
+          created_at: string | null
+          id: string | null
+          interest_rate: number | null
+          lender_name: string | null
+          linked_at: string | null
+          loan_remaining: number | null
+          monthly_interest_repayment: number | null
+          monthly_rental_income: number | null
+          noi_pa: number | null
+          ownership_percentage: number | null
+          source_table: string | null
+          sub_type: string | null
+          value: number | null
+        }
+        Relationships: []
       }
       purchase_file_activity_feed: {
         Row: {
