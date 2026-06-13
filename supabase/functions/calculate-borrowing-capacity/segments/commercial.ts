@@ -83,12 +83,15 @@ export async function evaluateCommercialSegment(
   if (properties.length === 0) return empty;
 
   const propIds = properties.map(p => p.id);
-  const [leasesRes, dcfRes] = await Promise.all([
+  const [leasesRes, dcfRes, finRes] = await Promise.all([
     supabase.from('commercial_leases').select('property_id, base_rent_pa, outgoings_recovery_pct, status').in('property_id', propIds),
     supabase.from('commercial_dcf_runs').select('property_id, loan_amount, interest_rate, loan_term_years, outputs, updated_at').in('property_id', propIds).order('updated_at', { ascending: false }),
+    supabase.from('commercial_financing').select('property_id, loan_balance, loan_amount, interest_rate, loan_term_years').in('property_id', propIds),
   ]);
   const leases: CommercialLeaseRow[] = leasesRes.data || [];
   const dcfRuns: CommercialDcfRow[] = dcfRes.data || [];
+  const financingByProp = new Map<string, any>();
+  for (const f of (finRes.data || [])) financingByProp.set(f.property_id, f);
 
   // Latest DCF per property
   const latestDcfByProp = new Map<string, CommercialDcfRow>();
