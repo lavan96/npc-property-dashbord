@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { calculateCommercialGst, calculateCommercialGstEngine, type GstTreatment } from '@/utils/commercial';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -21,6 +23,14 @@ export function GstCalculatorCard() {
   const [registered, setRegistered] = useState(true);
   const [goingConcernConfirmed, setGoingConcernConfirmed] = useState(false);
 
+  useApplyPrefill((p) => {
+    if (p.purchasePrice != null) setPrice(String(p.purchasePrice));
+    if (p.gstTreatment) {
+      const t = p.gstTreatment as GstTreatment;
+      if (['going_concern','margin_scheme','standard','input_taxed'].includes(t)) setTreatment(t);
+    }
+  });
+
   const result = useMemo(() => calculateCommercialGst({
     purchasePrice: num(price), treatment, priorCost: num(priorCost), purchaserRegistered: registered,
   }), [price, treatment, priorCost, registered]);
@@ -30,7 +40,7 @@ export function GstCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>GST Treatment</CardTitle>
-        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={assessment.gstVerificationStatus === "Verified" ? "default" : "destructive"}>{assessment.gstVerificationStatus}</Badge><Button size="sm" variant="outline">Estimate / extract from contract</Button></div>
+        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={assessment.gstVerificationStatus === "Verified" ? "default" : "destructive"}>{assessment.gstVerificationStatus}</Badge><Button size="sm" variant="outline">Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: num(price), gst_treatment: treatment })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
