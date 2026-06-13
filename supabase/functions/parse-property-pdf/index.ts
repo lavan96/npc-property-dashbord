@@ -115,6 +115,24 @@ interface StructuredPropertyPayload {
   dockDoors?: number;
   groundFloorLoadKpa?: number;
   conditionRating?: string;
+  detectedAssetClass?: 'residential' | 'commercial' | 'industrial';
+  detectedAssetConfidence?: number;
+  passingNoiPa?: number;
+  marketNoiPa?: number;
+  passingCapRatePct?: number;
+  marketCapRatePct?: number;
+  vendorAdvisedRentPa?: number;
+  vendorAdvisedOutgoingsPa?: number;
+  outgoingsTotalPa?: number;
+  outgoingsRecoverablePa?: number;
+  vendorAdvisedYieldPct?: number;
+  gstTreatment?: string;
+  leaseType?: string;
+  leaseExpiryDate?: string;
+  leaseOptions?: string;
+  waleYears?: number;
+  tenantNames?: string[];
+  truckAccess?: string;
 }
 
 interface PageImage {
