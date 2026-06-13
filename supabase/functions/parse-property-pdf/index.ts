@@ -51,6 +51,25 @@ interface ExtractedPropertyData {
   dockDoors?: number;
   groundFloorLoadKpa?: number;
   conditionRating?: string;
+  // Commercial / industrial enrichment
+  detectedAssetClass?: 'residential' | 'commercial' | 'industrial';
+  detectedAssetConfidence?: number;
+  passingNoiPa?: number;
+  marketNoiPa?: number;
+  passingCapRatePct?: number;
+  marketCapRatePct?: number;
+  vendorAdvisedRentPa?: number;
+  vendorAdvisedOutgoingsPa?: number;
+  outgoingsTotalPa?: number;
+  outgoingsRecoverablePa?: number;
+  leaseType?: string;
+  leaseExpiryDate?: string;
+  leaseOptions?: string;
+  waleYears?: number;
+  tenantNames?: string[];
+  gstTreatment?: string;
+  truckAccess?: string;
+  vendorAdvisedYieldPct?: number;
 }
 
 interface StructuredPropertyPayload {
@@ -121,43 +140,69 @@ const MAX_PARALLEL_BATCHES = 4;
 
 // ============= SYSTEM PROMPT =============
 
-const EXTRACTION_SYSTEM_PROMPT = `You are an expert at extracting property details from Australian real estate documents and brochures.
-Analyze the provided images carefully. These are pages from a property brochure or listing document.
+const EXTRACTION_SYSTEM_PROMPT = `You are an expert Australian property document analyst handling RESIDENTIAL, COMMERCIAL and INDUSTRIAL brochures, Information Memoranda (IMs), contract attachments, rent rolls, lease schedules, and listing flyers.
 
-Extract ALL property information you can find, including:
-- Full street address (including lot numbers like "Lot 123")
-- Suburb name
-- State (NSW, VIC, QLD, WA, SA, TAS, ACT, NT)  
-- Postcode (4-digit Australian format)
-- Property/package price or total price
-- Weekly rent estimate if mentioned
-- Number of bedrooms, bathrooms, car spaces
-- Land size in sqm (look for dimensions or "m²")
-- Building/floor size in sqm
-- Property type (house, apartment, townhouse, land, house & land package, office, retail, warehouse, logistics, manufacturing, mixed use)
-- For commercial and industrial documents: asset class/sub-type, tenure, zoning, GFA/NLA/GLA, site area, parking bays, valuation, estate/building name, site cover, office percentage, hardstand, warehouse clearance, power capacity, dock doors, floor loading and condition rating
-- For house & land packages: separate land and build prices
-- Whether it's a new build (look for "house and land", "new home", "off the plan", "build contract", builder logos, etc.)
+============= MANDATORY 2-STEP PROCESS =============
+STEP 1 — DETECT ASSET CLASS:
+  Determine detectedAssetClass ∈ {residential, commercial, industrial} from visual + textual signals across ALL pages:
+    • Residential: floor plans with bedrooms/bathrooms, "house & land" branding, suburban photography, builder logos, weekly rent quotes.
+    • Commercial: NLA, "office floors", "retail tenancy", "going concern", "WALE", cap rate quoted, named tenants, outgoings schedule, IM cover.
+    • Industrial: GLA, hardstand, clearance/eaves height, dock doors, kVA, racking, "warehouse", "logistics estate", zoning codes IN1/IN2/IN3, three-phase power, container access.
+  Output detectedAssetClass + detectedAssetConfidence (0–1).
 
-ALSO EXTRACT these financial details if mentioned:
-- Council rates (annual amount)
-- Water rates (annual amount)
-- Strata/body corporate fees (annual amount)
-- Building/landlord insurance estimate (annual amount)
-- Property management fee (as percentage, usually 6-10%)
-- Year built or construction year
-- Stamp duty amount if calculated
-- Agent/buyer's agent fee if mentioned
+STEP 2 — STRICT EXTRACTION:
+  Only extract values explicitly stated in the document. NEVER fabricate. NEVER carry over examples. Return null/omit any field not present.
+  Numbers: raw integers/decimals (no $, %, commas). Convert sqft→sqm (×0.0929), ha→sqm (×10000), kW→kVA (×1.25 typical), amps×voltage÷1000→kVA.
 
-Pay special attention to:
-- Header/hero sections with address and key features
-- Floorplans, lease plans, IMs and brochures that show dimensions
-- Price breakdowns showing land + build costs
-- Feature lists and specifications
-- Financial summaries or cost breakdowns
-- Agent contact information that might include suburb/area
+============= UNIVERSAL FIELDS =============
+- Full street address (incl. lot numbers like "Lot 123"), suburb, state (NSW/VIC/QLD/WA/SA/TAS/ACT/NT), 4-digit postcode.
+- Property/package price (total).
+- Property type: residential => house/apartment/townhouse/land/house_and_land. Commercial/industrial => office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other.
+- Year built, agent/agency, key features, condition rating (A/B/C/D only if graded).
 
-Return ONLY valid JSON with these exact fields (use null for values not found).`;
+============= RESIDENTIAL ONLY =============
+- Bedrooms, bathrooms, car spaces; land size and building size (sqm).
+- Weekly rent estimate, council/water/strata, insurance, PM%.
+- House & land split: landPrice, buildPrice. isNewBuild = true only if "brand new"/"off the plan"/"house and land"/named builder.
+- Stamp duty, agent/buyer's agent fee if calculated.
+
+============= COMMERCIAL & INDUSTRIAL — STRUCTURE =============
+- assetClass, assetSubType (e.g. "A-Grade Office", "Distribution Warehouse", "Neighbourhood Childcare"), tenure, zoning, propertyName (estate/building).
+- Areas: gfaSqm (Gross Floor Area), nlaSqm (Net Lettable Area — offices/retail), glaSqm (Gross Lettable Area — industrial), siteAreaSqm, hardstandSqm, siteCoverPct, officePct, parkingBays.
+
+============= COMMERCIAL & INDUSTRIAL — INCOME (CRITICAL) =============
+Pull these ONLY when the document explicitly states them in financial summaries, rent rolls, vendor advices, or cap-rate panels:
+- passingNoiPa: net operating income p.a. as written.
+- marketNoiPa: "market" / "fully leased" NOI estimate.
+- passingCapRatePct & marketCapRatePct: as percent numbers (e.g. 6.25).
+- vendorAdvisedRentPa: gross or net rent p.a. as advised.
+- vendorAdvisedOutgoingsPa, outgoingsTotalPa, outgoingsRecoverablePa.
+- vendorAdvisedYieldPct: vendor-quoted yield as percent.
+- gstTreatment: going_concern | margin_scheme | standard | input_taxed.
+
+============= COMMERCIAL & INDUSTRIAL — LEASE =============
+- leaseType: gross | net | semi_gross | triple_net.
+- leaseExpiryDate: yyyy-mm-dd.
+- leaseOptions: e.g. "3 + 3 + 3 years".
+- waleYears: weighted average lease expiry (numeric).
+- tenantNames: array of named tenants (max 5).
+
+============= INDUSTRIAL SPECS =============
+- clearanceMetres (eaves / internal clearance height).
+- powerKva (from kVA, or derive from amps × voltage ÷ 1000 if voltage stated).
+- dockDoors (recessed loading docks + roller shutters, summed).
+- groundFloorLoadKpa.
+- truckAccess: poor | average | good | excellent (only if explicitly characterised).
+
+============= FOCUS AREAS BY PAGE =============
+- Hero / cover: address, key headline metrics, asset class hints.
+- Floor / lease plans: dimensions, GFA/NLA/GLA, dock doors, office%.
+- Financial summary or "Investment Highlights": NOI, cap rate, WALE, yield.
+- Rent roll / tenancy schedule: tenant names, lease expiry, options.
+- Outgoings schedule: total + recoverable split.
+- Vendor advice / disclaimers: GST treatment, going concern statements.
+
+Return ONLY valid JSON with the fields requested (use null for values not found).`;
 
 function buildUserPrompt(imageCount: number, fileName: string, propertyCategory = 'residential', batchInfo?: string): string {
   const batchNote = batchInfo ? `\n${batchInfo}` : '';
