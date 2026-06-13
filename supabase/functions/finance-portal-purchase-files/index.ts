@@ -11,6 +11,8 @@
  *      global_permissions and assignment.permissions (matches existing finance-portal-client-data)
  */
 import { createClient } from "npm:@supabase/supabase-js@2.55.0";
+import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
+import { notifyClientPortal } from "../_shared/client-portal-notify.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -469,7 +471,17 @@ Deno.serve(async (req) => {
       const perms = await getEffectivePermissions(clientId);
       if (!perms?.purchase_files?.edit) return jsonResponse({ error: 'Forbidden' }, 403);
 
+      // Wave B: capture before-state so we can write status_history + cross-portal notifications.
+      const { data: before } = await supabase
+        .from('purchase_files')
+        .select('finance_status, status, risk_level, lender, settlement_date, finance_clause_date, title')
+        .eq('id', fileId)
+        .maybeSingle();
+
       const update = pickAllowed(payload, PURCHASE_FILE_COLUMNS);
+      // Always bump last_partner_action_at on partner-driven updates.
+      (update as any).last_partner_action_at = new Date().toISOString();
+
       const { data: updated, error } = await supabase
         .from('purchase_files')
         .update(update)
@@ -477,6 +489,62 @@ Deno.serve(async (req) => {
         .select()
         .single();
       if (error) return jsonResponse({ error: error.message }, 500);
+
+      // Wave B: emit history + tri-portal notifications for transitions worth surfacing.
+      try {
+        const transitions: Array<{ field: string; from: any; to: any }> = [];
+        for (const f of ['finance_status', 'status', 'risk_level', 'lender', 'settlement_date', 'finance_clause_date'] as const) {
+          if (before && before[f] !== undefined && (update as any)[f] !== undefined && before[f] !== (update as any)[f]) {
+            transitions.push({ field: f, from: before[f], to: (update as any)[f] });
+          }
+        }
+        for (const t of transitions) {
+          await supabase.from('purchase_file_status_history').insert({
+            purchase_file_id: fileId,
+            event_type: `${t.field}_changed`,
+            from_value: t.from == null ? null : String(t.from),
+            to_value: t.to == null ? null : String(t.to),
+            actor_id: portalUser.id,
+            actor_kind: 'finance_partner',
+            payload: { source: 'finance-portal-purchase-files.update_file' },
+          });
+        }
+
+        const statusChange = transitions.find(t => t.field === 'finance_status');
+        if (statusChange) {
+          const title = before?.title || 'your finance file';
+          const prettyTo = String(statusChange.to || '').replace(/_/g, ' ');
+          // Client in-app
+          await notifyClientPortal({
+            client_id: clientId,
+            title: `Finance status updated · ${title}`,
+            message: `Your broker moved this file to "${prettyTo}".`,
+            type: statusChange.to === 'unconditional_approval' || statusChange.to === 'settled'
+              ? 'success'
+              : statusChange.to === 'at_risk' ? 'warning' : 'info',
+            category: 'status_update',
+            action_url: '/client/finance',
+            dedupe_key: `pf:${fileId}:status:${statusChange.to}`,
+            dedupe_window_minutes: 30,
+            metadata: { purchase_file_id: fileId, from: statusChange.from, to: statusChange.to },
+          });
+          // Other assigned finance partners (skip the actor).
+          await notifyFinancePortalAssignees({
+            client_id: clientId,
+            notification_type: statusChange.to === 'unconditional_approval'
+              ? 'unconditional_approval'
+              : 'finance_status_changed',
+            title: `Finance status → ${prettyTo}`,
+            body: `${title}: ${String(statusChange.from || 'unset').replace(/_/g, ' ')} → ${prettyTo}`,
+            link_path: `/finance/purchase-files/${fileId}`,
+            exclude_portal_user_id: portalUser.id,
+            metadata: { purchase_file_id: fileId, from: statusChange.from, to: statusChange.to },
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[finance-portal-purchase-files] status-change notify failed', notifyErr);
+      }
+
       return jsonResponse({ file: updated });
     }
 
