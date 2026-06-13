@@ -92,8 +92,27 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     )
 
 
-CONVERTER = _build_converter()
-LOG.info("Docling converter ready (version=%s)", ENGINE_VERSION)
+# Default converter (description model resolved by ENABLE_PICTURE_DESCRIPTION env).
+# A second converter is lazily built the first time a request opts in/out of the
+# alternative description setting — avoids reloading models on every request.
+CONVERTER = _build_converter(enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT)
+_CONVERTER_VARIANTS: dict[bool, DocumentConverter] = {ENABLE_PICTURE_DESCRIPTION_DEFAULT: CONVERTER}
+
+
+def _get_converter(enable_picture_description: bool) -> DocumentConverter:
+    cached = _CONVERTER_VARIANTS.get(enable_picture_description)
+    if cached is not None:
+        return cached
+    LOG.info("Building Docling converter variant (picture_description=%s)", enable_picture_description)
+    built = _build_converter(enable_picture_description=enable_picture_description)
+    _CONVERTER_VARIANTS[enable_picture_description] = built
+    return built
+
+
+LOG.info(
+    "Docling converter ready (version=%s, classification=%s, description_default=%s)",
+    ENGINE_VERSION, ENABLE_PICTURE_CLASSIFICATION, ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+)
 
 
 # ---------------------------------------------------------------------------
