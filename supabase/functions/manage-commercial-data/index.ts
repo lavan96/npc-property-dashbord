@@ -5,13 +5,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-type TableName = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs';
+type TableName = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs' | 'commercial_capex' | 'commercial_financing';
 
 const ALLOWED_TABLES: TableName[] = [
   'commercial_properties',
   'commercial_leases',
   'commercial_dcf_runs',
+  'commercial_capex',
+  'commercial_financing',
 ];
+
+// Tables that don't carry user_id directly — ownership checked via property join.
+const PROPERTY_OWNED_TABLES = new Set<TableName>(['commercial_capex', 'commercial_financing']);
 
 type Operation = 'list' | 'get' | 'create' | 'update' | 'delete';
 
