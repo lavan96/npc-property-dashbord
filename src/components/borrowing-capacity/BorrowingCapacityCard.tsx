@@ -31,9 +31,13 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
     isCalculating,
     calculate,
     getDisplayResult,
+    getSegmentReconciliation,
+    getPortfolioCapacity,
   } = useBorrowingCapacity({ clientId });
 
   const result = getDisplayResult();
+  const segmentReconciliation = getSegmentReconciliation();
+  const portfolioCapacity = getPortfolioCapacity();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
