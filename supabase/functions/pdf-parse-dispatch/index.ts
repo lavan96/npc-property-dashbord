@@ -248,6 +248,23 @@ async function runJob(
 
     await setStage(admin, jobId, 'parsing');
 
+    // Phase D: forward optional description tier / serialisation toggles.
+    const requestPayload = (await admin
+      .from('pdf_import_jobs')
+      .select('request_payload')
+      .eq('id', jobId)
+      .maybeSingle()).data?.request_payload as Record<string, unknown> | undefined;
+    const descriptionTier = (requestPayload?.description_tier as string) ?? 'auto';
+    const includeMarkdown = Boolean(requestPayload?.include_markdown);
+    const parseBody: Record<string, unknown> = {
+      url: signedUrl,
+      include_doctags: true,
+      include_markdown: includeMarkdown,
+    };
+    if (descriptionTier === 'on' || descriptionTier === 'premium') {
+      parseBody.enable_picture_description = true;
+    }
+
     // Retry transient 5xx (Cloud Run cold-start / scale-to-zero often returns 503).
     const TRANSIENT = new Set([502, 503, 504, 522, 524]);
     const MAX_ATTEMPTS = 4;
@@ -261,7 +278,7 @@ async function runJob(
             'Content-Type': 'application/json',
             Authorization: `Bearer ${PARSE_TOKEN}`,
           },
-          body: JSON.stringify({ url: signedUrl }),
+          body: JSON.stringify(parseBody),
         });
         if (parseRes.ok) break;
         const text = await parseRes.text().catch(() => '');
@@ -273,16 +290,14 @@ async function runJob(
         lastErr = String((e as Error)?.message ?? e);
         if (attempt === MAX_ATTEMPTS) throw new Error(lastErr);
       }
-      // Exponential backoff: 2s, 5s, 12s (handles ~30s cold-start window).
       const delay = [2000, 5000, 12000][attempt - 1] ?? 5000;
       console.log(`[pdf-parse-dispatch] sidecar transient error (attempt ${attempt}): ${lastErr}; retrying in ${delay}ms`);
       await new Promise((r) => setTimeout(r, delay));
     }
     if (!parseRes || !parseRes.ok) throw new Error(lastErr || 'sidecar /parse failed');
     const parseJson = await parseRes.json();
-    // Sidecar returns an envelope { engine_version, pages, docling_document, ... }.
-    // The frontend mapper expects the DoclingDocument itself, so persist just
-    // that under `docling.json`.
+
+    await setStage(admin, jobId, 'persisting');
     const doclingDoc = parseJson?.docling_document ?? parseJson;
     const doclingPath = await uploadDiagnostic(
       admin,
@@ -291,6 +306,26 @@ async function runJob(
       JSON.stringify(doclingDoc),
       'application/json',
     );
+
+    // Phase D: persist auxiliary artifacts when present.
+    let doctagsPath: string | null = null;
+    let outlinePath: string | null = null;
+    let markdownPath: string | null = null;
+    if (typeof parseJson?.doctags === 'string' && parseJson.doctags.length) {
+      doctagsPath = await uploadDiagnostic(admin, jobId, 'doctags.md', parseJson.doctags, 'text/markdown');
+    }
+    if (Array.isArray(parseJson?.outline) && parseJson.outline.length) {
+      outlinePath = await uploadDiagnostic(
+        admin,
+        jobId,
+        'outline.json',
+        JSON.stringify({ outline: parseJson.outline, page_languages: parseJson?.page_languages ?? {} }),
+        'application/json',
+      );
+    }
+    if (typeof parseJson?.markdown === 'string' && parseJson.markdown.length) {
+      markdownPath = await uploadDiagnostic(admin, jobId, 'document.md', parseJson.markdown, 'text/markdown');
+    }
 
     const pageCount = Array.isArray(parseJson?.pages)
       ? parseJson.pages.length
