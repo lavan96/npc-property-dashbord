@@ -332,6 +332,10 @@ export function mapDoclingToRawBlocks(
 
   // --- Text items: iterate in document order so reading order is preserved.
   // Contiguous list_item runs share a listGroupId.
+  // Phase B: track text blocks by self_ref so figures/tables can link captions.
+  const textBlocksBySelfRef = new Map<string, RawImportBlock>();
+  /** Per-page caption pool keyed for proximity fallback. */
+  const captionPool: Record<number, Array<{ block: RawImportBlock; text: DoclingTextItem }>> = {};
   let textIdx = 0;
   let activeListPage: number | null = null;
   let activeListId: string | null = null;
@@ -357,8 +361,60 @@ export function mapDoclingToRawBlocks(
 
     const order = nextOrder(page.page_no);
     const block = textItemToBlock(text, page, textIdx, order, listGroupId, opts);
-    if (block) byPage[page.page_no]?.push(block);
+    if (block) {
+      byPage[page.page_no]?.push(block);
+      if (text.self_ref) textBlocksBySelfRef.set(text.self_ref, block);
+      if (text.label === 'caption') {
+        (captionPool[page.page_no] ??= []).push({ block, text });
+      }
+    }
     textIdx += 1;
+  }
+
+  /** Resolve a figure's caption refs (or fall back to the nearest caption-labeled text). */
+  const PROXIMITY_PT = 36;
+  let captionGroupSeq = 0;
+  function pairCaption(
+    refs: Array<DoclingRef | string> | undefined,
+    pageNo: number,
+    figureBBox: ImportBBox,
+  ): string | undefined {
+    // 1) explicit refs from the parser
+    const explicit: RawImportBlock[] = [];
+    for (const ref of refs ?? []) {
+      const key = refToString(ref);
+      if (!key) continue;
+      const t = textBlocksBySelfRef.get(key);
+      if (t && t.meta?.label === 'caption') explicit.push(t);
+    }
+    if (explicit.length) {
+      captionGroupSeq += 1;
+      const gid = `docling-figure-p${pageNo}-${captionGroupSeq}`;
+      for (const t of explicit) {
+        t.meta = { ...(t.meta ?? {}), groupId: gid };
+      }
+      return gid;
+    }
+    // 2) proximity fallback — nearest caption above/below within PROXIMITY_PT
+    const pool = captionPool[pageNo] ?? [];
+    let best: { block: RawImportBlock; dist: number } | null = null;
+    for (const entry of pool) {
+      if (entry.block.meta?.groupId) continue; // already paired
+      const cy = entry.block.bbox.y + entry.block.bbox.height / 2;
+      const fyTop = figureBBox.y;
+      const fyBot = figureBBox.y + figureBBox.height;
+      const dist = cy < fyTop ? fyTop - cy : cy > fyBot ? cy - fyBot : 0;
+      if (dist <= PROXIMITY_PT && (!best || dist < best.dist)) {
+        best = { block: entry.block, dist };
+      }
+    }
+    if (best) {
+      captionGroupSeq += 1;
+      const gid = `docling-figure-p${pageNo}-${captionGroupSeq}`;
+      best.block.meta = { ...(best.block.meta ?? {}), groupId: gid };
+      return gid;
+    }
+    return undefined;
   }
 
   // --- Tables (preserve their relative document order on each page).
@@ -369,7 +425,9 @@ export function mapDoclingToRawBlocks(
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { tableIdx += 1; continue; }
     const order = nextOrder(page.page_no);
-    const block = tableItemToBlock(table, page, tableIdx, order, opts);
+    const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
+    const captionGid = pairCaption(table.captions, page.page_no, figureBBox);
+    const block = tableItemToBlock(table, page, tableIdx, order, captionGid, opts);
     if (block) byPage[page.page_no]?.push(block);
     tableIdx += 1;
   }
@@ -382,7 +440,9 @@ export function mapDoclingToRawBlocks(
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { pictureIdx += 1; continue; }
     const order = nextOrder(page.page_no);
-    const block = pictureItemToBlock(picture, page, pictureIdx, order, opts);
+    const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
+    const captionGid = pairCaption(picture.captions, page.page_no, figureBBox);
+    const block = pictureItemToBlock(picture, page, pictureIdx, order, captionGid, opts);
     if (block) byPage[page.page_no]?.push(block);
     pictureIdx += 1;
   }
