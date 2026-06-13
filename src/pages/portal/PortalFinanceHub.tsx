@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Banknote, Calendar, MapPin, Landmark, Clock, ListChecks,
   TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Briefcase, PieChart,
+  FileText, MessageSquare, Mail, Phone,
 } from 'lucide-react';
 
 import { toast } from 'sonner';
@@ -90,9 +91,34 @@ function daysUntil(d: string | null | undefined): number | null {
   return Math.ceil((t - Date.now()) / 86400000);
 }
 
+type DocRequest = {
+  id: string;
+  purchase_file_id: string;
+  purchase_file_title: string | null;
+  label: string;
+  category: string;
+  status: string;
+  requested_at: string | null;
+  expiry_date: string | null;
+  request_message: string | null;
+};
+
+type OutboundMessage = {
+  id: string;
+  channel: string;
+  subject: string | null;
+  body: string | null;
+  status: string;
+  created_at: string;
+  read_at: string | null;
+  delivered_at: string | null;
+};
+
 export default function PortalFinanceHub() {
   const [files, setFiles] = useState<FileRow[]>([]);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [docRequests, setDocRequests] = useState<DocRequest[]>([]);
+  const [messages, setMessages] = useState<OutboundMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
@@ -114,6 +140,8 @@ export default function PortalFinanceHub() {
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
       setFiles((json.purchase_files || []) as FileRow[]);
       setPortfolio((json.portfolio || null) as Portfolio | null);
+      setDocRequests((json.open_document_requests || []) as DocRequest[]);
+      setMessages((json.recent_messages || []) as OutboundMessage[]);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load finance hub');
     } finally {
