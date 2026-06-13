@@ -46,6 +46,10 @@ function overlayId(block: RawImportBlock, suffix = 'ov'): string {
 }
 
 function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null {
+  // Phase B: prefer alt-text / caption for the human-readable layer label.
+  const layerName = block.meta?.altText
+    ?? block.meta?.caption
+    ?? (block.text ? block.text.slice(0, 64) : block.type);
   const base = {
     id: overlayId(block),
     x: block.bbox.x,
@@ -56,7 +60,8 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
     opacity: 1,
     confidence: block.confidence,
     locked,
-    name: block.text ? block.text.slice(0, 48) : block.type,
+    name: layerName,
+    ...(block.meta?.groupId ? { groupId: block.meta.groupId } : {}),
   } as const;
 
   if (block.type === 'text') {
