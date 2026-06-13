@@ -131,6 +131,10 @@ export default function IndustrialPropertyDetail() {
           <IndustrialCapexTable propertyId={property.id} />
         </TabsContent>
 
+        <TabsContent value="financing">
+          <IndustrialFinancingTab propertyId={property.id} />
+        </TabsContent>
+
         <TabsContent value="financials">
           <IndustrialFinancialSnapshot property={property} />
         </TabsContent>
