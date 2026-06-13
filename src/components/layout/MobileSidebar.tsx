@@ -96,6 +96,8 @@ const adminItems = [
   { title: 'Portal Config', url: '/portal-config', icon: Globe, moduleKey: 'portal_config' },
   { title: 'PDF Import Engine', url: '/admin/pdf-import-engine', icon: Cpu, moduleKey: '__superadmin_only__' },
   { title: 'PDF Import Diagnostics', url: '/admin/pdf-import-diagnostics', icon: Activity, moduleKey: '__superadmin_only__' },
+  { title: 'BC Segment Engine', url: '/admin/bc-segment-engine', icon: Gauge, moduleKey: '__superadmin_only__' },
+  { title: 'Reclassify Property', url: '/admin/reclassify-property', icon: Database, moduleKey: '__superadmin_only__' },
 ];
 
 export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
