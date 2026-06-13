@@ -395,7 +395,12 @@ async function runJob(
       result_payload: {
         docling_path: doclingPath,
         rasters_path: rasterPath,
+        doctags_path: doctagsPath,
+        outline_path: outlinePath,
+        markdown_path: markdownPath,
         page_count: pageCount,
+        page_languages: parseJson?.page_languages ?? {},
+        outline_node_count: Array.isArray(parseJson?.outline) ? parseJson.outline.length : 0,
         mode,
         cache_hit: false,
       },
