@@ -198,6 +198,27 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
     return null;
   }, [latestAssessment]);
 
+  // ── Phase 3: Hybrid segment selectors ──
+  // The edge function persists segment results under
+  // `assumptions._segmentReconciliation` / `assumptions._portfolioCapacity`.
+  // These selectors return null when the segment engine wasn't triggered, so
+  // residential-only consumers see a no-op.
+  const getSegmentReconciliation = useCallback(() => {
+    const a: any = (latestAssessment as any)?.assumptions;
+    return (a?._segmentReconciliation as any) || null;
+  }, [latestAssessment]);
+
+  const getPortfolioCapacity = useCallback((): number | null => {
+    const a: any = (latestAssessment as any)?.assumptions;
+    const v = a?._portfolioCapacity;
+    return typeof v === 'number' ? v : null;
+  }, [latestAssessment]);
+
+  const getSegmentBreakdown = useCallback(() => {
+    const recon = getSegmentReconciliation();
+    return (recon?.segmentBreakdown || []) as any[];
+  }, [getSegmentReconciliation]);
+
   return {
     // State
     latestAssessment,
@@ -218,6 +239,10 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
     // Helpers
     getDisplayResult,
     getHemBenchmark,
+    // Phase 3 — hybrid segment helpers (additive)
+    getSegmentReconciliation,
+    getPortfolioCapacity,
+    getSegmentBreakdown,
   };
 }
 
