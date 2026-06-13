@@ -8,6 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { runDcfAssessment } from '@/utils/commercial';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt0 = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -29,6 +31,12 @@ export function DcfCalculatorCard() {
   const [term, setTerm] = useState('25');
   const [annualCapex, setAnnualCapex] = useState('10000');
   const [downtimeMonths, setDowntimeMonths] = useState('3');
+
+  useApplyPrefill((p) => {
+    const px = p.purchasePrice ?? p.valuation;
+    if (px != null) setPrice(String(px));
+    if (p.passingNoi != null) setInitialNoi(String(p.passingNoi));
+  });
 
   const result = useMemo(() => runDcfAssessment({
     purchasePrice: num(price),
@@ -52,7 +60,7 @@ export function DcfCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>Discounted Cash Flow (DCF)</CardTitle>
-        <CardDescription>Scenario-ready DCF with capex, downtime, exit sensitivity, levered and unlevered returns.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">Manual Estimate</Badge><Button size="sm" variant="outline">Estimate for me</Button></div>
+        <CardDescription>Scenario-ready DCF with capex, downtime, exit sensitivity, levered and unlevered returns.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">Manual Estimate</Badge><Button size="sm" variant="outline">Estimate for me</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: num(price) })} /></div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-3">

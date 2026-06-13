@@ -6,6 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { calculateYields, valueFromCap, calculateCapRateEngine } from '@/utils/commercial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -17,6 +19,13 @@ export function CapRateCalculatorCard() {
   const [marketNoi, setMarketNoi] = useState('210000');
   const [price, setPrice] = useState('3000000');
   const [targetCap, setTargetCap] = useState('6.5');
+
+  useApplyPrefill((p) => {
+    if (p.passingNoi != null) setPassingNoi(String(p.passingNoi));
+    if (p.marketNoi != null) setMarketNoi(String(p.marketNoi));
+    const px = p.purchasePrice ?? p.valuation;
+    if (px != null) setPrice(String(px));
+  });
 
   const yields = useMemo(() => calculateYields({
     passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price),
@@ -30,7 +39,7 @@ export function CapRateCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>Cap Rate & Yield</CardTitle>
-        <CardDescription>Passing, reversionary and Blended Yield / Simple Average Yield. Benchmark only — valuer confirmation required.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">AI Estimate benchmark only</Badge><Button size="sm" variant="outline">Estimate cap rate range</Button></div>
+        <CardDescription>Passing, reversionary and Blended Yield / Simple Average Yield. Benchmark only — valuer confirmation required.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">AI Estimate benchmark only</Badge><Button size="sm" variant="outline">Estimate cap rate range</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: valuation || undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">

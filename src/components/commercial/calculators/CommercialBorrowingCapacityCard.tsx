@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
@@ -131,6 +133,32 @@ export function CommercialBorrowingCapacityCard() {
 
   const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
 
+  useApplyPrefill((p) => {
+    setAssetCategory(p.assetCategory);
+    if (p.assetSubtype) setAssetSubtype(p.assetSubtype);
+    if (p.state && ['NSW','VIC','QLD','WA','SA','TAS','ACT','NT'].includes(p.state)) setState(p.state as any);
+    if (p.purchasePrice != null) setPurchasePrice(String(p.purchasePrice));
+    if (p.valuation != null) setEstimatedValue(String(p.valuation));
+    if (p.siteAreaSqm != null) setLandArea(String(p.siteAreaSqm));
+    if (p.gfaSqm != null) setBuildingArea(String(p.gfaSqm));
+    if (p.nlaSqm != null) setLettableArea(String(p.nlaSqm));
+    if (p.clearanceMetres != null) setClearance(String(p.clearanceMetres));
+    if (p.dockDoors != null) setRollerDoors(String(p.dockDoors));
+    if (p.grossPassingRentPa != null) setPassingRent(String(p.grossPassingRentPa));
+    if (p.marketRentPa != null) setMarketRent(String(p.marketRentPa));
+    if (p.recoveredOutgoingsPa != null) setRecoveries(String(p.recoveredOutgoingsPa));
+    if (p.outgoings?.council != null) setRates(String(p.outgoings.council));
+    if (p.outgoings?.water != null) setWater(String(p.outgoings.water));
+    if (p.outgoings?.land_tax != null) setLandTax(String(p.outgoings.land_tax));
+    if (p.outgoings?.insurance != null) setInsurance(String(p.outgoings.insurance));
+    if (p.outgoings?.management != null) setManagement(String(p.outgoings.management));
+    if (p.outgoings?.repairs_maintenance != null) setRepairs(String(p.outgoings.repairs_maintenance));
+    if (p.gstTreatment) {
+      const map: Record<string, typeof gstTreatment> = { going_concern: 'gstFreeGoingConcern', margin_scheme: 'marginScheme', standard: 'gstInclusive', input_taxed: 'unknown' };
+      const v = map[p.gstTreatment]; if (v) setGstTreatment(v);
+    }
+  });
+
   const result = useMemo(() => {
     const inputs: BorrowingInputs = {
       dealProfile: { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined },
@@ -159,7 +187,22 @@ export function CommercialBorrowingCapacityCard() {
             <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Commercial & Industrial Borrowing Capacity</CardTitle>
             <CardDescription>Shared lending engine with commercial and industrial profiles, funds-to-complete, risk overlays, commentary and document checklist.</CardDescription>
           </div>
-          <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+            <SaveBackButton build={() => ({
+              purchase_price: num(purchasePrice),
+              valuation: num(estimatedValue),
+              gfa_sqm: num(buildingArea) || undefined,
+              nla_sqm: num(lettableArea) || undefined,
+              site_area_sqm: num(landArea) || undefined,
+              state: state,
+              asset_class: assetCategory === 'industrial' ? 'industrial' : undefined,
+              industrial_specs: assetCategory === 'industrial' ? {
+                clearance_metres: num(clearance) || undefined,
+                dock_doors: num(rollerDoors) || undefined,
+              } : undefined,
+            })} />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">

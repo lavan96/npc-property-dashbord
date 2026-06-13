@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Building2, Pencil, FileDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Pencil, FileDown, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
@@ -73,6 +73,9 @@ export default function CommercialPropertyDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/commercial/calculators?propertyId=${property.id}`)}>
+            <Calculator className="h-4 w-4 mr-2" /> Send to Calculators
+          </Button>
           <Button onClick={handleGenerateReport} disabled={generating}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
             Generate Report

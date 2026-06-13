@@ -6,6 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -39,6 +41,29 @@ export function NoiCalculatorCard() {
     security: '0', other: '0',
   });
 
+  // Prefill from linked property — recovered outgoings sum and any vendor-quoted gross rent
+  useApplyPrefill((p) => {
+    if (p.grossPassingRentPa != null) setGrossRent(String(p.grossPassingRentPa));
+    if (p.marketRentPa != null) setMarketRent(String(p.marketRentPa));
+    if (p.recoveredOutgoingsPa != null) setRecovered(String(p.recoveredOutgoingsPa));
+    if (p.outgoings) {
+      const og = p.outgoings;
+      setOutgoings(prev => ({
+        ...prev,
+        council: og.council != null ? String(og.council) : prev.council,
+        water: og.water != null ? String(og.water) : prev.water,
+        land_tax: og.land_tax != null ? String(og.land_tax) : prev.land_tax,
+        insurance: og.insurance != null ? String(og.insurance) : prev.insurance,
+        management: og.management != null ? String(og.management) : prev.management,
+        repairs_maintenance: og.repairs_maintenance != null ? String(og.repairs_maintenance) : prev.repairs_maintenance,
+        utilities: og.utilities != null ? String(og.utilities) : prev.utilities,
+        cleaning: og.cleaning != null ? String(og.cleaning) : prev.cleaning,
+        security: og.security != null ? String(og.security) : prev.security,
+        other: og.other != null ? String(og.other) : prev.other,
+      }));
+    }
+  });
+
   const result = useMemo(() => {
     const o: OutgoingsBreakdown = {};
     OUTGOING_KEYS.forEach(k => { (o as any)[k] = num(outgoings[k] ?? '0'); });
@@ -70,7 +95,7 @@ export function NoiCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>NOI Calculator</CardTitle>
-        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button></div>
+        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button><SaveBackButton build={() => ({ outgoings_recoverable: { council: num(outgoings.council ?? '0'), water: num(outgoings.water ?? '0'), land_tax: num(outgoings.land_tax ?? '0'), insurance: num(outgoings.insurance ?? '0'), management: num(outgoings.management ?? '0'), repairs_maintenance: num(outgoings.repairs_maintenance ?? '0'), utilities: num(outgoings.utilities ?? '0'), cleaning: num(outgoings.cleaning ?? '0'), security: num(outgoings.security ?? '0'), other: num(outgoings.other ?? '0') } })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">

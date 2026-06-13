@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { calculateIndustrialBc } from '@/utils/industrial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -31,6 +33,12 @@ export function IndustrialBcCard() {
   const [liquidity, setLiquidity] = useState('0');
   const [liquidityMult, setLiquidityMult] = useState('0');
 
+  useApplyPrefill((p) => {
+    const px = p.purchasePrice ?? p.valuation;
+    if (px != null) setPropertyValue(String(px));
+    if (p.passingNoi != null) setNoi(String(p.passingNoi));
+  });
+
   const result = useMemo(() => calculateIndustrialBc({
     noi: num(noi),
     propertyValue: num(propertyValue),
@@ -51,6 +59,7 @@ export function IndustrialBcCard() {
         <CardDescription>
           Sizes industrial loans with tighter LVR (60–65%) and stronger coverage (ICR ≥ 1.75x, DSCR ≥ 1.35x).
         </CardDescription>
+        <div className="pt-2"><SaveBackButton build={() => ({ purchase_price: num(propertyValue), current_valuation: num(propertyValue) })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">

@@ -55,6 +55,25 @@ type PerplexityListingExtraction = {
   dock_doors: number | null;
   ground_floor_load_kpa: number | null;
   condition_rating: string | null;
+  // ---- Phase: commercial/industrial financial & lease enrichment ----
+  detected_asset_class: 'residential' | 'commercial' | 'industrial' | null;
+  detected_asset_confidence: number | null;
+  passing_noi_pa: number | null;
+  market_noi_pa: number | null;
+  passing_cap_rate_pct: number | null;
+  market_cap_rate_pct: number | null;
+  vendor_advised_rent_pa: number | null;
+  vendor_advised_outgoings_pa: number | null;
+  outgoings_total_pa: number | null;
+  outgoings_recoverable_pa: number | null;
+  lease_type: string | null;
+  lease_expiry_date: string | null;
+  lease_options: string | null;
+  wale_years: number | null;
+  tenant_names: string[] | null;
+  gst_treatment: string | null;
+  truck_access: string | null;
+  vendor_advised_yield_pct: number | null;
 };
 
 function normalizeUrl(input: string): string {
@@ -125,6 +144,25 @@ function toExtractedDetails(extracted: PerplexityListingExtraction, fallbackTitl
   if (typeof extracted.dock_doors === "number") details.extractedDockDoors = extracted.dock_doors;
   if (typeof extracted.ground_floor_load_kpa === "number") details.extractedGroundFloorLoadKpa = extracted.ground_floor_load_kpa;
   if (extracted.condition_rating) details.extractedConditionRating = extracted.condition_rating;
+  // Commercial/industrial enrichment passthrough
+  if (extracted.detected_asset_class) details.detectedAssetClass = extracted.detected_asset_class;
+  if (typeof extracted.detected_asset_confidence === 'number') details.detectedAssetConfidence = extracted.detected_asset_confidence;
+  if (typeof extracted.passing_noi_pa === 'number') details.extractedPassingNoiPa = extracted.passing_noi_pa;
+  if (typeof extracted.market_noi_pa === 'number') details.extractedMarketNoiPa = extracted.market_noi_pa;
+  if (typeof extracted.passing_cap_rate_pct === 'number') details.extractedPassingCapRatePct = extracted.passing_cap_rate_pct;
+  if (typeof extracted.market_cap_rate_pct === 'number') details.extractedMarketCapRatePct = extracted.market_cap_rate_pct;
+  if (typeof extracted.vendor_advised_rent_pa === 'number') details.extractedVendorRentPa = extracted.vendor_advised_rent_pa;
+  if (typeof extracted.vendor_advised_outgoings_pa === 'number') details.extractedVendorOutgoingsPa = extracted.vendor_advised_outgoings_pa;
+  if (typeof extracted.outgoings_total_pa === 'number') details.extractedOutgoingsTotalPa = extracted.outgoings_total_pa;
+  if (typeof extracted.outgoings_recoverable_pa === 'number') details.extractedOutgoingsRecoverablePa = extracted.outgoings_recoverable_pa;
+  if (extracted.lease_type) details.extractedLeaseType = extracted.lease_type;
+  if (extracted.lease_expiry_date) details.extractedLeaseExpiryDate = extracted.lease_expiry_date;
+  if (extracted.lease_options) details.extractedLeaseOptions = extracted.lease_options;
+  if (typeof extracted.wale_years === 'number') details.extractedWaleYears = extracted.wale_years;
+  if (Array.isArray(extracted.tenant_names) && extracted.tenant_names.length) details.extractedTenantNames = extracted.tenant_names;
+  if (extracted.gst_treatment) details.extractedGstTreatment = extracted.gst_treatment;
+  if (extracted.truck_access) details.extractedTruckAccess = extracted.truck_access;
+  if (typeof extracted.vendor_advised_yield_pct === 'number') details.extractedVendorYieldPct = extracted.vendor_advised_yield_pct;
 
   // If we have suburb/state/postcode but no address, build a partial address.
   if (!details.extractedAddress && details.extractedSuburb && details.extractedState) {
@@ -224,7 +262,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
   }
 }
 
-async function extractWithPerplexity(url: string, propertyCategory = 'residential') {
+async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
   const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (!apiKey) {
     return {
@@ -242,32 +280,64 @@ async function extractWithPerplexity(url: string, propertyCategory = 'residentia
     console.log(`[scrape-property-listing] Firecrawl markdown length: ${pageContent.length}`);
   }
 
-  const system =
-    "You extract structured property listing details for Australian real estate listings. CRITICAL RULES: (1) Only extract values explicitly stated in the provided source content. (2) When a field is not clearly present, return null — never guess, never infer from URL slugs, never carry over examples. (3) Numbers must be raw integers/decimals without thousands separators or currency symbols (e.g. 1250000 not \"$1,250,000\"). (4) Never invent agents, prices, sizes, or features.";
+  const system = [
+    "You extract structured property listing details for Australian real estate listings across RESIDENTIAL, COMMERCIAL and INDUSTRIAL asset classes.",
+    "STEP 1 — DETECT ASSET CLASS: First determine detected_asset_class ∈ {residential | commercial | industrial} from explicit signals in the source (zoning code like B6/IN1/IN2, terms like 'NLA', 'GFA', 'cap rate', 'WALE', 'outgoings', 'going concern', 'tenant', 'lease', 'warehouse', 'office', 'retail', 'industrial estate', dock doors, clearance, kVA). Set detected_asset_confidence 0–1. If the user-provided hint says 'auto' (default), trust your detection. If the hint is a specific class, you may still override when evidence clearly contradicts it.",
+    "STEP 2 — STRICT EXTRACTION: Only extract values explicitly stated in the source. NEVER guess, NEVER infer from URL slugs, NEVER carry over examples.",
+    "STEP 3 — NUMBER FORMATTING: Raw integers/decimals only (no $, commas, % signs). Convert sqft→sqm (×0.0929), ha→sqm (×10000), psm/pa rent to total pa when GLA/NLA given.",
+    "STEP 4 — DO NOT FABRICATE agents, prices, sizes, features, tenants, cap rates, NOI, WALE, or yields. Return null when uncertain.",
+  ].join('\n');
 
   const sourceBlock = pageContent
     ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 18000)}\n---\n\n`
     : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
 
   const user = `${sourceBlock}URL: ${url}
-Property category hint: ${propertyCategory}
+Property category hint: ${propertyCategory} ${propertyCategory === 'auto' ? '(auto-detect from content)' : ''}
 
-Extraction rules:
+============= UNIVERSAL FIELDS =============
 - address: exact street address as written on the listing. For suburb-only/area pages, set null and only fill suburb/state/postcode.
-- price_aud: raw integer in AUD (e.g. 1250000). Skip "Contact Agent"/"Offers over"/"Auction" unless an explicit number is shown. If a range is given, use the midpoint.
-- bedrooms/bathrooms/car_spaces: only the integers shown on the listing specs.
-- Sizes (land_size_sqm, build_size_sqm, gfa_sqm, nla_sqm, gla_sqm, site_area_sqm, hardstand_sqm): convert to sqm (1 ha = 10000 sqm; 1 sqft = 0.0929 sqm). Only if explicitly stated.
+- price_aud: raw integer in AUD. Skip "Contact Agent"/"Offers over"/"Auction" unless an explicit number is shown. If a range is given, use the midpoint.
+- Sizes (land_size_sqm, build_size_sqm, gfa_sqm, nla_sqm, gla_sqm, site_area_sqm, hardstand_sqm): convert to sqm. Only if explicitly stated.
 - property_type: residential => house/apartment/townhouse/villa/unit/land/duplex; commercial/industrial => office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other.
-- For commercial/industrial: only extract asset_class, asset_sub_type, tenure, zoning, GFA/NLA/GLA, site_area_sqm, parking_bays, current_valuation, property_name, site_cover_pct, office_pct, hardstand_sqm, clearance_metres, power_kva, dock_doors, ground_floor_load_kpa, condition_rating when explicitly stated.
-- weekly_rent: only if listing states rental return / current lease / rental estimate. Convert monthly (×12/52) or annual (÷52) only for the same property.
+- detected_asset_class & detected_asset_confidence: per STEP 1.
+- agent_name, agency, key_features (max 10), listing_text (2–4 sentence neutral summary), confidence (0–1).
+
+============= RESIDENTIAL ONLY =============
+- bedrooms / bathrooms / car_spaces: integers shown on the listing.
+- weekly_rent: only if listing states rental return / current lease / rental estimate. Convert monthly (×12/52) or annual (÷52).
 - is_new_build: true ONLY if "brand new", "new build", "house & land", "off the plan", or a builder is explicitly named.
 - land_price / build_price: only for explicit H&L packages with split pricing.
-- council_rates, water_rates, strata_fees: annual AUD amounts, only if explicitly stated.
-- insurance_estimate, property_management_percent, year_built: only if explicitly stated.
-- agent_name, agency: only if visible.
-- key_features: short bullet list from the listing's features section (max 10).
-- listing_text: 2–4 sentence summary using only facts from the source.
-- confidence: 0.0–1.0 self-rating of extraction accuracy.
+- council_rates / water_rates / strata_fees / insurance_estimate (annual AUD); property_management_percent; year_built. Only if explicit.
+
+============= COMMERCIAL & INDUSTRIAL =============
+Structure:
+- asset_class: office | retail | industrial | mixed_use | medical | childcare | hospitality | other.
+- asset_sub_type: free-text (e.g. "Distribution Warehouse", "A-Grade Office", "Childcare").
+- tenure: freehold | leasehold | strata. zoning: planning code as printed.
+- property_name (estate/building name), parking_bays, current_valuation (only if explicit).
+
+Areas:
+- gfa_sqm (Gross Floor Area), nla_sqm (Net Lettable Area — offices/retail), gla_sqm (Gross Lettable Area — industrial), site_area_sqm, hardstand_sqm.
+- site_cover_pct, office_pct.
+
+Industrial specs:
+- clearance_metres (eaves height / internal clearance), power_kva (or convert amps×0.69 if voltage given), dock_doors (recessed loading docks + roller doors), ground_floor_load_kpa, truck_access (poor/average/good/excellent if stated), condition_rating (A/B/C/D if explicitly graded).
+
+Lease & income (CRITICAL — only when explicitly stated in source):
+- passing_noi_pa: net operating income p.a. as stated.
+- market_noi_pa: vendor-quoted "market" or "estimated" NOI.
+- passing_cap_rate_pct & market_cap_rate_pct: as a percent number (e.g. 6.25).
+- vendor_advised_rent_pa: vendor-quoted gross or net rent p.a.
+- vendor_advised_outgoings_pa: total outgoings stated.
+- outgoings_total_pa & outgoings_recoverable_pa: separate if both shown.
+- lease_type: gross | net | semi_gross | triple_net | NNN | as printed.
+- lease_expiry_date: ISO format yyyy-mm-dd if stated.
+- lease_options: e.g. "3 + 3 + 3 years" or "two 5-year options".
+- wale_years: weighted average lease expiry in years (numeric).
+- tenant_names: array of named tenants (max 5).
+- vendor_advised_yield_pct: vendor-quoted yield as percent.
+- gst_treatment: going_concern | margin_scheme | standard | input_taxed (lowercase snake_case).
 
 Return null for any field not present in the source.`;
 
@@ -333,6 +403,24 @@ Return null for any field not present in the source.`;
             dock_doors: { type: ["number", "null"] },
             ground_floor_load_kpa: { type: ["number", "null"] },
             condition_rating: { type: ["string", "null"] },
+            detected_asset_class: { type: ["string", "null"] },
+            detected_asset_confidence: { type: ["number", "null"] },
+            passing_noi_pa: { type: ["number", "null"] },
+            market_noi_pa: { type: ["number", "null"] },
+            passing_cap_rate_pct: { type: ["number", "null"] },
+            market_cap_rate_pct: { type: ["number", "null"] },
+            vendor_advised_rent_pa: { type: ["number", "null"] },
+            vendor_advised_outgoings_pa: { type: ["number", "null"] },
+            outgoings_total_pa: { type: ["number", "null"] },
+            outgoings_recoverable_pa: { type: ["number", "null"] },
+            lease_type: { type: ["string", "null"] },
+            lease_expiry_date: { type: ["string", "null"] },
+            lease_options: { type: ["string", "null"] },
+            wale_years: { type: ["number", "null"] },
+            tenant_names: { type: ["array", "null"], items: { type: "string" } },
+            gst_treatment: { type: ["string", "null"] },
+            truck_access: { type: ["string", "null"] },
+            vendor_advised_yield_pct: { type: ["number", "null"] },
           },
           required: [
             "title",
@@ -381,6 +469,24 @@ Return null for any field not present in the source.`;
             "dock_doors",
             "ground_floor_load_kpa",
             "condition_rating",
+            "detected_asset_class",
+            "detected_asset_confidence",
+            "passing_noi_pa",
+            "market_noi_pa",
+            "passing_cap_rate_pct",
+            "market_cap_rate_pct",
+            "vendor_advised_rent_pa",
+            "vendor_advised_outgoings_pa",
+            "outgoings_total_pa",
+            "outgoings_recoverable_pa",
+            "lease_type",
+            "lease_expiry_date",
+            "lease_options",
+            "wale_years",
+            "tenant_names",
+            "gst_treatment",
+            "truck_access",
+            "vendor_advised_yield_pct",
           ],
           additionalProperties: false,
         },
@@ -459,7 +565,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const body = await req.json();
-    const { url, propertyCategory = 'residential' } = body;
+    const { url, propertyCategory = 'auto' } = body;
     
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
