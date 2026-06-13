@@ -118,4 +118,69 @@ describe('docling adapter', () => {
     expect(overlays[0].groupId).toMatch(/master-header/);
     expect(overlays[1].groupId).toMatch(/master-footer/);
   });
+
+  it('Phase D: maps formula/code labels with LaTeX + code language metadata', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'formula',
+          text: 'E = mc^2',
+          latex: 'E = mc^{2}',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 100, r: 300, b: 130, coord_origin: 'TOPLEFT' } }],
+        },
+        {
+          label: 'code',
+          text: 'print("hello")',
+          code_language: 'python',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 150, r: 300, b: 180, coord_origin: 'TOPLEFT' } }],
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    const blocks = mapped.byPage[1];
+    const formula = blocks.find((b) => b.type === 'formula');
+    const code = blocks.find((b) => b.type === 'code');
+    expect(formula?.meta?.latex).toBe('E = mc^{2}');
+    expect(formula?.text).toBe('E = mc^{2}');
+    expect(code?.meta?.codeLanguage).toBe('python');
+  });
+
+  it('Phase D: derives outline from title + section_header text items when sidecar omits it', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'title',
+          text: 'Investment Report',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 60, r: 535, b: 90, coord_origin: 'TOPLEFT' } }],
+        },
+        {
+          label: 'section_header',
+          text: 'Market Summary',
+          level: 2,
+          prov: [{ page_no: 1, bbox: { l: 60, t: 120, r: 535, b: 145, coord_origin: 'TOPLEFT' } }],
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    expect(mapped.outline).toHaveLength(2);
+    expect(mapped.outline[0]).toMatchObject({ title: 'Investment Report', level: 1, page_no: 1 });
+    expect(mapped.outline[1]).toMatchObject({ title: 'Market Summary', level: 2 });
+  });
+
+  it('Phase D: picture meta.imageUri flows into the ImageOverlay src', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      pictures: [
+        {
+          prov: [{ page_no: 1, bbox: { l: 60, t: 200, r: 400, b: 400, coord_origin: 'TOPLEFT' } }],
+          image: { uri: 'data:image/png;base64,iVBORw0KG' },
+        } as DoclingDocument['pictures'] extends (infer U)[] ? U : never,
+      ],
+    };
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-d1', mode: 'semantic' });
+    const img = plan.pages[0].overlays.find((o) => o.id.includes('picture')) as { src?: string } | undefined;
+    expect(img?.src).toBe('data:image/png;base64,iVBORw0KG');
+  });
 });

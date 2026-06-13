@@ -31,7 +31,7 @@ export interface ImportAsset {
   createdAt: string;
 }
 
-export type RawImportBlockType = 'text' | 'image' | 'shape' | 'table' | 'unknown';
+export type RawImportBlockType = 'text' | 'image' | 'shape' | 'table' | 'formula' | 'code' | 'unknown';
 export type RawImportBlockSource = 'pdf-text' | 'ocr' | 'vision' | 'detected' | 'dom';
 
 export interface ImportBBox {
@@ -86,6 +86,16 @@ export interface RawImportBlock {
     groupId?: string;
     /** Phase B: master-page eligibility — 'header' or 'footer'. */
     pageRegion?: 'header' | 'footer';
+    /** Phase D: LaTeX representation for `formula` blocks. */
+    latex?: string;
+    /** Phase D: detected language for `code` blocks (python, sql, …). */
+    codeLanguage?: string;
+    /** Phase D: data URI / storage URI for the extracted picture crop. */
+    imageUri?: string;
+    /** Phase D: BCP-47 language detected for this block. */
+    language?: string;
+    /** Phase D: cross-reference target ($ref form). */
+    xref?: string;
   };
 }
 

@@ -85,7 +85,9 @@ function pickProv(prov: DoclingProvenance[] | undefined, pageNo: number): Doclin
   return onPage ?? prov[0];
 }
 
-function labelToBlockType(_label: DoclingTextLabel | undefined): RawImportBlockType {
+function labelToBlockType(label: DoclingTextLabel | undefined): RawImportBlockType {
+  if (label === 'formula' || label === 'equation') return 'formula';
+  if (label === 'code') return 'code';
   return 'text';
 }
 
@@ -158,13 +160,21 @@ function textItemToBlock(
   const masterGroupId = pageRegion
     ? `docling-master-${pageRegion}-p${pageInfo.page_no}`
     : undefined;
+  const blockType = labelToBlockType(item.label);
+  // Phase D: prefer LaTeX when this is a formula; preserve raw text otherwise.
+  const latex = item.latex ?? item.equation;
+  const codeLanguage = item.code_language;
+  const displayText = blockType === 'formula' && latex ? latex : item.text;
+  // Phase D: capture explicit cross-reference if exactly one ref present.
+  const refList = (item.refs ?? []).map((r) => (typeof r === 'string' ? r : (r.$ref ?? r.cref))).filter(Boolean) as string[];
+  const xref = refList.length === 1 ? refList[0] : undefined;
   return {
     id: blockId(String(item.label ?? 'text'), pageInfo.page_no, index),
-    type: labelToBlockType(item.label),
-    text: item.text,
+    type: blockType,
+    text: displayText,
     bbox,
     style: {
-      fontFamily: item.font?.family ?? DEFAULT_FONT_FAMILY,
+      fontFamily: blockType === 'code' ? 'Menlo, Consolas, monospace' : (item.font?.family ?? DEFAULT_FONT_FAMILY),
       fontSize,
       fontWeight,
       color: item.font?.color ?? '#111111',
@@ -179,6 +189,10 @@ function textItemToBlock(
       readingOrder,
       pageRegion,
       groupId: masterGroupId,
+      latex,
+      codeLanguage,
+      language: item.language,
+      xref,
     },
   };
 }
@@ -286,6 +300,7 @@ function pictureItemToBlock(
   if (bbox.width <= 0 || bbox.height <= 0) return null;
   const altText = pictureAltText(item);
   const pictureClass = topPictureClass(item);
+  const imageUri = item.image?.uri;
   const displayText = altText || item.caption || (pictureClass ? `[${pictureClass}]` : '[image]');
   return {
     id: blockId('picture', pageInfo.page_no, index),
@@ -302,6 +317,7 @@ function pictureItemToBlock(
       altText,
       pictureClass,
       groupId: captionGroupId,
+      imageUri,
     },
   };
 }
@@ -310,6 +326,8 @@ export interface MappedDoclingBlocks {
   byPage: Record<number, RawImportBlock[]>;
   all: RawImportBlock[];
   pages: DoclingPageInfo[];
+  /** Phase D: document outline / TOC. */
+  outline: Array<{ title: string; level: number; page_no?: number | null }>;
 }
 
 export function mapDoclingToRawBlocks(
@@ -459,5 +477,16 @@ export function mapDoclingToRawBlocks(
   }
 
   const all = Object.values(byPage).flat();
-  return { byPage, all, pages };
+  // Phase D: surface document outline (TOC). Prefer sidecar-provided `doc.outline`,
+  // fall back to deriving from title/section_header text items.
+  const outline: MappedDoclingBlocks['outline'] = Array.isArray(doc.outline) && doc.outline.length
+    ? doc.outline.map((n) => ({ title: n.title ?? '', level: n.level ?? 1, page_no: n.page_no ?? null }))
+    : (doc.texts ?? [])
+        .filter((t) => t.label === 'title' || t.label === 'section_header')
+        .map((t) => ({
+          title: t.text ?? '',
+          level: t.label === 'title' ? 1 : Math.max(1, Math.min(6, Math.round(t.level ?? 2))),
+          page_no: t.prov?.[0]?.page_no ?? null,
+        }));
+  return { byPage, all, pages, outline };
 }
