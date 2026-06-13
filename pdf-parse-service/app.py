@@ -197,7 +197,13 @@ async def parse(req: ParseRequest) -> dict:
     from docling.datamodel.base_models import DocumentStream
 
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    result = CONVERTER.convert(stream)
+    use_description = (
+        req.enable_picture_description
+        if req.enable_picture_description is not None
+        else ENABLE_PICTURE_DESCRIPTION_DEFAULT
+    )
+    converter = _get_converter(use_description)
+    result = converter.convert(stream)
     doc = result.document
 
     # Page geometry — used downstream to map bboxes to template overlay coords.
