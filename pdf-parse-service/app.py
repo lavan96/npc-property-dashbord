@@ -137,6 +137,10 @@ async def require_bearer(request: Request, call_next):
 class ParseRequest(BaseModel):
     url: Optional[str] = Field(default=None, description="Signed Supabase Storage URL of the source PDF.")
     pdf_base64: Optional[str] = Field(default=None, description="Inline base64 PDF (no data: prefix).")
+    enable_picture_description: Optional[bool] = Field(
+        default=None,
+        description="Override the ENABLE_PICTURE_DESCRIPTION env default for this request.",
+    )
 
 
 class RasterRequest(BaseModel):
