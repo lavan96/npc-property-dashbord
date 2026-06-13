@@ -13412,6 +13412,57 @@ export type Database = {
           },
         ]
       }
+      property_reclassification_log: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          mapped_payload: Json
+          performed_at: string
+          performed_by: string | null
+          reverted_at: string | null
+          source_property_id: string
+          source_snapshot: Json
+          source_table: string
+          status: string
+          target_property_id: string | null
+          target_table: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mapped_payload?: Json
+          performed_at?: string
+          performed_by?: string | null
+          reverted_at?: string | null
+          source_property_id: string
+          source_snapshot?: Json
+          source_table: string
+          status?: string
+          target_property_id?: string | null
+          target_table: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mapped_payload?: Json
+          performed_at?: string
+          performed_by?: string | null
+          reverted_at?: string | null
+          source_property_id?: string
+          source_snapshot?: Json
+          source_table?: string
+          status?: string
+          target_property_id?: string | null
+          target_table?: string
+        }
+        Relationships: []
+      }
       purchase_file_applicants: {
         Row: {
           created_at: string
