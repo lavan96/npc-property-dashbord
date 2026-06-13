@@ -9,19 +9,16 @@ POST /raster  { url | pdf_base64, dpi, pages? } — rasterises pages to base64 P
 
 Auth
 ----
-Every request must carry `Authorization: Bearer $PDF_PARSE_SERVICE_TOKEN`. The
-matching value is configured as a Supabase edge function secret so only our
-edge function can call this service.
+Every request must carry `Authorization: Bearer $PDF_PARSE_SERVICE_TOKEN`.
 
-Design notes
-------------
-* The Docling pipeline is constructed once at startup; pages and rasters are
-  produced per request. A single Cloud Run instance handles `concurrency=2`
-  (set in the Cloud Run service config) — scale horizontally, never vertically,
-  because Docling models are RAM-heavy.
-* Rasters are returned as base64. The orchestrator (edge function) uploads them
-  to the `pdf-import-diagnostics` Storage bucket and stores only URLs in
-  `report_templates.schema` to keep DB payloads small.
+Phase D additions
+-----------------
+* Formula + code enrichment toggles (LaTeX / code-language detection).
+* Picture-image extraction at images_scale=2.0 so embedded crops are sharp.
+* Optional EasyOCR fallback (heavy) gated by ENABLE_OCR_FALLBACK.
+* DocTags + Markdown serialisations returned alongside the JSON doc.
+* Document outline (TOC), cross-references, and per-page language exposed.
+* Layout-model override via LAYOUT_MODEL env (best-effort across Docling versions).
 """
 
 from __future__ import annotations
@@ -31,7 +28,7 @@ import io
 import logging
 import os
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import pypdfium2 as pdfium
@@ -47,54 +44,79 @@ LOG = logging.getLogger("pdf-parse-service")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
-ENGINE_VERSION = "docling-2.14.0"
-MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB — matches the diagnostics bucket cap.
+ENGINE_VERSION = "docling-2.14.0+phaseD"
+MAX_PDF_BYTES = 50 * 1024 * 1024
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip() not in {"", "0", "false", "False", "no", "NO"}
+
+
+# Phase B/D toggles
+ENABLE_PICTURE_CLASSIFICATION = _env_bool("ENABLE_PICTURE_CLASSIFICATION", True)
+ENABLE_PICTURE_DESCRIPTION_DEFAULT = _env_bool("ENABLE_PICTURE_DESCRIPTION", False)
+ENABLE_FORMULA_ENRICHMENT = _env_bool("ENABLE_FORMULA_ENRICHMENT", True)
+ENABLE_CODE_ENRICHMENT = _env_bool("ENABLE_CODE_ENRICHMENT", True)
+ENABLE_OCR_FALLBACK = _env_bool("ENABLE_OCR_FALLBACK", False)  # heavy; opt-in
+IMAGES_SCALE = float(os.environ.get("DOCLING_IMAGES_SCALE", "2.0"))
+LAYOUT_MODEL = os.environ.get("DOCLING_LAYOUT_MODEL", "").strip() or None
 
 app = FastAPI(title="pdf-parse-service", version=ENGINE_VERSION)
 
 
 # ---------------------------------------------------------------------------
-# Pipeline singleton — built once at module import time so the first /parse
-# request doesn't pay the model-load cost.
+# Pipeline construction
 # ---------------------------------------------------------------------------
-# Phase B: opt-in toggles for the VLM-backed picture description model.
-# Picture classification is cheap (small ConvNeXt) → on by default.
-# Picture description loads SmolVLM (~1.5 GB RAM, 2–4× parse time) → gated.
-ENABLE_PICTURE_CLASSIFICATION = os.environ.get("ENABLE_PICTURE_CLASSIFICATION", "1").strip() not in {"", "0", "false", "False"}
-ENABLE_PICTURE_DESCRIPTION_DEFAULT = os.environ.get("ENABLE_PICTURE_DESCRIPTION", "0").strip() not in {"", "0", "false", "False"}
+def _safe_set(options: object, attr: str, value: Any) -> bool:
+    """Best-effort setter for Docling pipeline flags that vary across releases."""
+    try:
+        setattr(options, attr, value)
+        return True
+    except Exception as exc:  # pragma: no cover
+        LOG.warning("docling option %s=%r not supported: %s", attr, value, exc)
+        return False
 
 
 def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     pipeline = PdfPipelineOptions()
-    pipeline.do_ocr = True                       # handle scanned pages too
-    pipeline.do_table_structure = True           # TableFormer — the reason we picked Docling
-    # Phase A: ACCURATE mode + cell matching → dramatically better cell
-    # structure on financial / comparison tables (the dominant table style in
-    # property reports). Trades ~10–20% extra parse time for a large fidelity win.
+    pipeline.do_ocr = True
+    pipeline.do_table_structure = True
     pipeline.table_structure_options.mode = TableFormerMode.ACCURATE
     pipeline.table_structure_options.do_cell_matching = True
-    pipeline.generate_page_images = False        # we rasterise on demand via /raster
-    pipeline.generate_picture_images = True      # so we can extract embedded images
-    # Phase B: picture enrichments — classification (chart/logo/photo/diagram) and
-    # optional VLM description (alt-text for accessibility + search).
+    pipeline.generate_page_images = False
+    pipeline.generate_picture_images = True
+    # Phase D: crisper picture crops (2× default).
+    _safe_set(pipeline, "images_scale", IMAGES_SCALE)
+    # Phase D: enrichments (defensive — Docling renamed a few of these between minors).
     if ENABLE_PICTURE_CLASSIFICATION:
-        try:
-            pipeline.do_picture_classification = True
-        except Exception as exc:  # pragma: no cover — defensive: older Docling builds
-            LOG.warning("picture classification not available: %s", exc)
+        _safe_set(pipeline, "do_picture_classification", True)
     if enable_picture_description:
-        try:
-            pipeline.do_picture_description = True
-        except Exception as exc:  # pragma: no cover
-            LOG.warning("picture description not available: %s", exc)
+        _safe_set(pipeline, "do_picture_description", True)
+    if ENABLE_FORMULA_ENRICHMENT:
+        _safe_set(pipeline, "do_formula_enrichment", True)
+    if ENABLE_CODE_ENRICHMENT:
+        _safe_set(pipeline, "do_code_enrichment", True)
+    if ENABLE_OCR_FALLBACK:
+        # `force_full_page_ocr` makes Docling re-OCR even when a text layer exists,
+        # which catches text rendered as outlines / hand-scanned hybrids.
+        _safe_set(pipeline.ocr_options if hasattr(pipeline, "ocr_options") else pipeline,
+                  "force_full_page_ocr", True)
+    if LAYOUT_MODEL:
+        # Some Docling builds accept `layout_model` directly; others nest under
+        # `layout_options`. Try both.
+        if not _safe_set(pipeline, "layout_model", LAYOUT_MODEL):
+            layout_opts = getattr(pipeline, "layout_options", None)
+            if layout_opts is not None:
+                _safe_set(layout_opts, "model", LAYOUT_MODEL)
+
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)}
     )
 
 
-# Default converter (description model resolved by ENABLE_PICTURE_DESCRIPTION env).
-# A second converter is lazily built the first time a request opts in/out of the
-# alternative description setting — avoids reloading models on every request.
 CONVERTER = _build_converter(enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT)
 _CONVERTER_VARIANTS: dict[bool, DocumentConverter] = {ENABLE_PICTURE_DESCRIPTION_DEFAULT: CONVERTER}
 
@@ -110,20 +132,27 @@ def _get_converter(enable_picture_description: bool) -> DocumentConverter:
 
 
 LOG.info(
-    "Docling converter ready (version=%s, classification=%s, description_default=%s)",
-    ENGINE_VERSION, ENABLE_PICTURE_CLASSIFICATION, ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+    "Docling converter ready (version=%s, classification=%s, description_default=%s, "
+    "formula=%s, code=%s, ocr_fallback=%s, images_scale=%.2f, layout_model=%s)",
+    ENGINE_VERSION,
+    ENABLE_PICTURE_CLASSIFICATION,
+    ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+    ENABLE_FORMULA_ENRICHMENT,
+    ENABLE_CODE_ENRICHMENT,
+    ENABLE_OCR_FALLBACK,
+    IMAGES_SCALE,
+    LAYOUT_MODEL or "(default)",
 )
 
 
 # ---------------------------------------------------------------------------
-# Auth middleware — refuse anything without the shared bearer.
+# Auth middleware
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def require_bearer(request: Request, call_next):
     if request.url.path in {"/healthz", "/"}:
         return await call_next(request)
     if not SERVICE_TOKEN:
-        # Misconfiguration safety net — never serve traffic without a token in prod.
         return JSONResponse({"error": "service_token_not_configured"}, status_code=503)
     auth = request.headers.get("authorization", "")
     if not auth.lower().startswith("bearer ") or auth.split(" ", 1)[1].strip() != SERVICE_TOKEN:
@@ -135,19 +164,19 @@ async def require_bearer(request: Request, call_next):
 # Schemas
 # ---------------------------------------------------------------------------
 class ParseRequest(BaseModel):
-    url: Optional[str] = Field(default=None, description="Signed Supabase Storage URL of the source PDF.")
-    pdf_base64: Optional[str] = Field(default=None, description="Inline base64 PDF (no data: prefix).")
-    enable_picture_description: Optional[bool] = Field(
-        default=None,
-        description="Override the ENABLE_PICTURE_DESCRIPTION env default for this request.",
-    )
+    url: Optional[str] = Field(default=None)
+    pdf_base64: Optional[str] = Field(default=None)
+    enable_picture_description: Optional[bool] = Field(default=None)
+    # Phase D: caller can ask for a lighter / heavier serialization payload.
+    include_doctags: bool = Field(default=True)
+    include_markdown: bool = Field(default=False)
 
 
 class RasterRequest(BaseModel):
     url: Optional[str] = None
     pdf_base64: Optional[str] = None
     dpi: int = Field(default=144, ge=72, le=300)
-    pages: Optional[list[int]] = Field(default=None, description="1-indexed page numbers. Defaults to all.")
+    pages: Optional[list[int]] = Field(default=None)
     format: str = Field(default="png", pattern="^(png|jpeg)$")
 
 
@@ -175,6 +204,58 @@ async def _resolve_pdf_bytes(url: Optional[str], pdf_base64: Optional[str]) -> b
     return data
 
 
+def _extract_outline(doc: Any) -> list[dict]:
+    """Best-effort document outline / TOC extraction."""
+    outline: list[dict] = []
+    for attr in ("outlines", "outline", "toc"):
+        nodes = getattr(doc, attr, None)
+        if not nodes:
+            continue
+        try:
+            for node in nodes:
+                outline.append({
+                    "title": getattr(node, "title", None) or getattr(node, "text", None) or "",
+                    "level": getattr(node, "level", 1),
+                    "page_no": getattr(node, "page_no", None) or getattr(node, "page", None),
+                })
+            if outline:
+                return outline
+        except Exception:  # pragma: no cover
+            continue
+    # Fallback: derive outline from section_header / title text items.
+    texts = getattr(doc, "texts", None) or []
+    for t in texts:
+        label = getattr(t, "label", None)
+        if label in ("title", "section_header"):
+            prov = getattr(t, "prov", None) or []
+            page_no = prov[0].page_no if prov else None
+            outline.append({
+                "title": getattr(t, "text", "") or "",
+                "level": 1 if label == "title" else max(1, min(6, int(getattr(t, "level", 2) or 2))),
+                "page_no": page_no,
+            })
+    return outline
+
+
+def _extract_languages(doc_dict: dict) -> dict[int, str]:
+    """Aggregate per-page language hints from text items (when Docling provides them)."""
+    counts: dict[int, dict[str, int]] = {}
+    for t in (doc_dict.get("texts") or []):
+        lang = (t.get("language") or t.get("lang") or "").lower().strip()
+        if not lang:
+            continue
+        for p in (t.get("prov") or []):
+            pn = p.get("page_no")
+            if pn is None:
+                continue
+            counts.setdefault(pn, {}).setdefault(lang, 0)
+            counts[pn][lang] += 1
+    out: dict[int, str] = {}
+    for pn, hist in counts.items():
+        out[pn] = max(hist.items(), key=lambda kv: kv[1])[0]
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -193,7 +274,6 @@ async def parse(req: ParseRequest) -> dict:
     pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
     t0 = time.monotonic()
 
-    # Docling accepts a path or a stream-like; the simplest reliable path is via BytesIO.
     from docling.datamodel.base_models import DocumentStream
 
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
@@ -206,7 +286,6 @@ async def parse(req: ParseRequest) -> dict:
     result = converter.convert(stream)
     doc = result.document
 
-    # Page geometry — used downstream to map bboxes to template overlay coords.
     pages_meta: list[dict] = []
     for page_no, page in (doc.pages or {}).items():
         size = page.size
@@ -217,6 +296,30 @@ async def parse(req: ParseRequest) -> dict:
         })
     pages_meta.sort(key=lambda p: p["page_no"])
 
+    doc_dict = doc.export_to_dict()
+
+    # Phase D: surface auxiliary serialisations & document-level structure.
+    extras: dict[str, Any] = {}
+    if req.include_doctags:
+        try:
+            extras["doctags"] = doc.export_to_doctags()
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("doctags export failed: %s", exc)
+    if req.include_markdown:
+        try:
+            extras["markdown"] = doc.export_to_markdown()
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("markdown export failed: %s", exc)
+
+    outline = _extract_outline(doc)
+    page_languages = _extract_languages(doc_dict)
+
+    # Annotate per-page metadata with language when available.
+    for pm in pages_meta:
+        lang = page_languages.get(pm["page_no"])
+        if lang:
+            pm["language"] = lang
+
     parsed_ms = int((time.monotonic() - t0) * 1000)
     LOG.info("Parsed %d-page PDF (%d bytes) in %d ms", len(pages_meta), len(pdf_bytes), parsed_ms)
 
@@ -225,8 +328,10 @@ async def parse(req: ParseRequest) -> dict:
         "parsed_ms": parsed_ms,
         "page_count": len(pages_meta),
         "pages": pages_meta,
-        # `export_to_dict` is the stable JSON serialisation of DoclingDocument.
-        "docling_document": doc.export_to_dict(),
+        "outline": outline,
+        "page_languages": page_languages,
+        "docling_document": doc_dict,
+        **extras,
     }
 
 
