@@ -44,8 +44,8 @@ LOG = logging.getLogger("pdf-parse-service")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
-ENGINE_VERSION = "docling-2.14.0+phaseD"
-MAX_PDF_BYTES = 50 * 1024 * 1024
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveA"
+MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -55,14 +55,25 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip() not in {"", "0", "false", "False", "no", "NO"}
 
 
-# Phase B/D toggles
+# Phase B/D toggles — Wave A raises defaults for maximum extraction quality.
 ENABLE_PICTURE_CLASSIFICATION = _env_bool("ENABLE_PICTURE_CLASSIFICATION", True)
-ENABLE_PICTURE_DESCRIPTION_DEFAULT = _env_bool("ENABLE_PICTURE_DESCRIPTION", False)
+ENABLE_PICTURE_DESCRIPTION_DEFAULT = _env_bool("ENABLE_PICTURE_DESCRIPTION", True)
 ENABLE_FORMULA_ENRICHMENT = _env_bool("ENABLE_FORMULA_ENRICHMENT", True)
 ENABLE_CODE_ENRICHMENT = _env_bool("ENABLE_CODE_ENRICHMENT", True)
-ENABLE_OCR_FALLBACK = _env_bool("ENABLE_OCR_FALLBACK", False)  # heavy; opt-in
+# Wave A: force-OCR is now ON by default so scanned PDFs and outline-rendered text are captured.
+ENABLE_OCR_FALLBACK = _env_bool("ENABLE_OCR_FALLBACK", True)
+FORCE_FULL_PAGE_OCR = _env_bool("DOCLING_FORCE_FULL_PAGE_OCR", True)
+# Multi-language OCR — order matters; first match wins per region.
+OCR_LANGS = [s.strip() for s in os.environ.get("DOCLING_OCR_LANGS", "en,fr,de,es,zh,ja,ko,ar").split(",") if s.strip()]
+# Lower bitmap threshold = OCR runs even on lightly-bitmapped regions.
+BITMAP_AREA_THRESHOLD = float(os.environ.get("DOCLING_BITMAP_AREA_THRESHOLD", "0.05"))
 IMAGES_SCALE = float(os.environ.get("DOCLING_IMAGES_SCALE", "2.0"))
 LAYOUT_MODEL = os.environ.get("DOCLING_LAYOUT_MODEL", "").strip() or None
+# Accelerator: AUTO lets Docling pick CUDA / MPS / CPU as available.
+ACCEL_DEVICE = os.environ.get("DOCLING_ACCEL_DEVICE", "AUTO").strip().upper()
+ACCEL_THREADS = int(os.environ.get("DOCLING_ACCEL_THREADS", os.environ.get("OMP_NUM_THREADS", "4")))
+# Wave A: markdown serialisation is now ON by default so downstream consumers always get it.
+INCLUDE_MARKDOWN_DEFAULT = _env_bool("DOCLING_INCLUDE_MARKDOWN_DEFAULT", True)
 
 app = FastAPI(title="pdf-parse-service", version=ENGINE_VERSION)
 
