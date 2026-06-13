@@ -55,6 +55,25 @@ type PerplexityListingExtraction = {
   dock_doors: number | null;
   ground_floor_load_kpa: number | null;
   condition_rating: string | null;
+  // ---- Phase: commercial/industrial financial & lease enrichment ----
+  detected_asset_class: 'residential' | 'commercial' | 'industrial' | null;
+  detected_asset_confidence: number | null;
+  passing_noi_pa: number | null;
+  market_noi_pa: number | null;
+  passing_cap_rate_pct: number | null;
+  market_cap_rate_pct: number | null;
+  vendor_advised_rent_pa: number | null;
+  vendor_advised_outgoings_pa: number | null;
+  outgoings_total_pa: number | null;
+  outgoings_recoverable_pa: number | null;
+  lease_type: string | null;
+  lease_expiry_date: string | null;
+  lease_options: string | null;
+  wale_years: number | null;
+  tenant_names: string[] | null;
+  gst_treatment: string | null;
+  truck_access: string | null;
+  vendor_advised_yield_pct: number | null;
 };
 
 function normalizeUrl(input: string): string {
@@ -125,6 +144,25 @@ function toExtractedDetails(extracted: PerplexityListingExtraction, fallbackTitl
   if (typeof extracted.dock_doors === "number") details.extractedDockDoors = extracted.dock_doors;
   if (typeof extracted.ground_floor_load_kpa === "number") details.extractedGroundFloorLoadKpa = extracted.ground_floor_load_kpa;
   if (extracted.condition_rating) details.extractedConditionRating = extracted.condition_rating;
+  // Commercial/industrial enrichment passthrough
+  if (extracted.detected_asset_class) details.detectedAssetClass = extracted.detected_asset_class;
+  if (typeof extracted.detected_asset_confidence === 'number') details.detectedAssetConfidence = extracted.detected_asset_confidence;
+  if (typeof extracted.passing_noi_pa === 'number') details.extractedPassingNoiPa = extracted.passing_noi_pa;
+  if (typeof extracted.market_noi_pa === 'number') details.extractedMarketNoiPa = extracted.market_noi_pa;
+  if (typeof extracted.passing_cap_rate_pct === 'number') details.extractedPassingCapRatePct = extracted.passing_cap_rate_pct;
+  if (typeof extracted.market_cap_rate_pct === 'number') details.extractedMarketCapRatePct = extracted.market_cap_rate_pct;
+  if (typeof extracted.vendor_advised_rent_pa === 'number') details.extractedVendorRentPa = extracted.vendor_advised_rent_pa;
+  if (typeof extracted.vendor_advised_outgoings_pa === 'number') details.extractedVendorOutgoingsPa = extracted.vendor_advised_outgoings_pa;
+  if (typeof extracted.outgoings_total_pa === 'number') details.extractedOutgoingsTotalPa = extracted.outgoings_total_pa;
+  if (typeof extracted.outgoings_recoverable_pa === 'number') details.extractedOutgoingsRecoverablePa = extracted.outgoings_recoverable_pa;
+  if (extracted.lease_type) details.extractedLeaseType = extracted.lease_type;
+  if (extracted.lease_expiry_date) details.extractedLeaseExpiryDate = extracted.lease_expiry_date;
+  if (extracted.lease_options) details.extractedLeaseOptions = extracted.lease_options;
+  if (typeof extracted.wale_years === 'number') details.extractedWaleYears = extracted.wale_years;
+  if (Array.isArray(extracted.tenant_names) && extracted.tenant_names.length) details.extractedTenantNames = extracted.tenant_names;
+  if (extracted.gst_treatment) details.extractedGstTreatment = extracted.gst_treatment;
+  if (extracted.truck_access) details.extractedTruckAccess = extracted.truck_access;
+  if (typeof extracted.vendor_advised_yield_pct === 'number') details.extractedVendorYieldPct = extracted.vendor_advised_yield_pct;
 
   // If we have suburb/state/postcode but no address, build a partial address.
   if (!details.extractedAddress && details.extractedSuburb && details.extractedState) {
