@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { calculateCoverage, maxLoanByIcr, calculateIcrDscrEngine } from '@/utils/commercial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -22,6 +23,10 @@ export function IcrDscrCalculatorCard() {
   const [buffer, setBuffer] = useState('1.00');
   const [floorRate, setFloorRate] = useState('0');
   const [proposedLoan, setProposedLoan] = useState('');
+
+  useApplyPrefill((p) => {
+    if (p.passingNoi != null) setNoi(String(p.passingNoi));
+  });
 
   const result = useMemo(() => calculateCoverage({
     noi: num(noi), loanAmount: num(loan), interestRatePct: num(rate), loanTermYears: num(term),
