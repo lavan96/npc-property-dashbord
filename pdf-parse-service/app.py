@@ -166,14 +166,22 @@ def _get_converter(enable_picture_description: bool) -> DocumentConverter:
 
 LOG.info(
     "Docling converter ready (version=%s, classification=%s, description_default=%s, "
-    "formula=%s, code=%s, ocr_fallback=%s, images_scale=%.2f, layout_model=%s)",
+    "formula=%s, code=%s, ocr_fallback=%s, force_full_page_ocr=%s, ocr_langs=%s, "
+    "bitmap_area_threshold=%.3f, images_scale=%.2f, accel_device=%s, accel_threads=%d, "
+    "include_markdown_default=%s, layout_model=%s)",
     ENGINE_VERSION,
     ENABLE_PICTURE_CLASSIFICATION,
     ENABLE_PICTURE_DESCRIPTION_DEFAULT,
     ENABLE_FORMULA_ENRICHMENT,
     ENABLE_CODE_ENRICHMENT,
     ENABLE_OCR_FALLBACK,
+    FORCE_FULL_PAGE_OCR,
+    ",".join(OCR_LANGS) or "(default)",
+    BITMAP_AREA_THRESHOLD,
     IMAGES_SCALE,
+    ACCEL_DEVICE,
+    ACCEL_THREADS,
+    INCLUDE_MARKDOWN_DEFAULT,
     LAYOUT_MODEL or "(default)",
 )
 
