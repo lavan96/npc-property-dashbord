@@ -18,6 +18,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
+import { PdfImportEngineToggle } from '@/components/templateBuilder/PdfImportEngineToggle';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
 import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
