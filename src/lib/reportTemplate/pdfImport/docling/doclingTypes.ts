@@ -36,6 +36,7 @@ export type DoclingTextLabel =
   | 'page_footer'
   | 'code'
   | 'formula'
+  | 'equation'
   | string;
 
 export interface DoclingTextItem {
@@ -54,6 +55,14 @@ export interface DoclingTextItem {
     italic?: boolean;
   };
   confidence?: number;
+  /** Phase D: LaTeX representation produced by the formula enrichment model. */
+  latex?: string;
+  equation?: string;
+  /** Phase D: detected code language. */
+  code_language?: string;
+  language?: string;
+  /** Phase D: explicit cross-references (figure refs, section refs). */
+  refs?: Array<DoclingRef | string>;
 }
 
 export interface DoclingTableCell {
@@ -139,14 +148,21 @@ export interface DoclingDocument {
   texts?: DoclingTextItem[];
   tables?: DoclingTableItem[];
   pictures?: DoclingPictureItem[];
+  /** Phase D: outline / TOC nodes (optional, surfaced via sidecar). */
+  outline?: Array<{ title: string; level: number; page_no?: number | null }>;
 }
 
 /** The envelope our `pdf-parse-service /parse` endpoint returns. */
 export interface DoclingParseResponse {
   engine: 'docling';
   engine_version?: string;
-  pages: Array<{ page_no: number; width: number; height: number }>;
+  pages: Array<{ page_no: number; width: number; height: number; language?: string }>;
   docling_document: DoclingDocument;
+  /** Phase D extras */
+  outline?: Array<{ title: string; level: number; page_no?: number | null }>;
+  page_languages?: Record<number, string>;
+  doctags?: string;
+  markdown?: string;
 }
 
 /** Optional /raster sidecar envelope (one entry per page). */
