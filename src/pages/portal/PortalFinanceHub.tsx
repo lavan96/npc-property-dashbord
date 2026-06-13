@@ -192,12 +192,109 @@ export default function PortalFinanceHub() {
       ) : (
         <div className="space-y-4">
           {portfolio && portfolio.total_files > 1 && <PortfolioSummary portfolio={portfolio} />}
+          {docRequests.length > 0 && <DocumentRequestsCard requests={docRequests} />}
+          {messages.length > 0 && <RecentMessagesCard messages={messages} />}
           <ClientBookingCard financeUserId={partnerId} />
           <ClientOnboardingCard />
           {files.map(f => <FileCard key={f.id} file={f} />)}
         </div>
       )}
     </div>
+  );
+}
+
+function DocumentRequestsCard({ requests }: { requests: DocRequest[] }) {
+  const outstanding = requests.filter(r => r.status === 'required' || r.status === 'requested');
+  const rejected = requests.filter(r => r.status === 'rejected');
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="h-4 w-4" />Documents requested
+          <Badge variant="outline" className="ml-1">{requests.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {rejected.length > 0 && (
+          <p className="text-xs text-destructive">
+            {rejected.length} document{rejected.length === 1 ? '' : 's'} need to be re-supplied — your broker flagged an issue with the previous upload.
+          </p>
+        )}
+        <ul className="divide-y divide-border/60">
+          {requests.slice(0, 10).map(r => (
+            <li key={r.id} className="py-2 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{r.label}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {r.category.replace(/_/g, ' ')}
+                  {r.purchase_file_title ? ` · ${r.purchase_file_title}` : ''}
+                  {r.requested_at ? ` · requested ${fmtDate(r.requested_at)}` : ''}
+                </p>
+                {r.request_message && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">"{r.request_message}"</p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'border whitespace-nowrap',
+                  r.status === 'rejected' ? TONE_CLASS.critical
+                    : r.status === 'requested' ? TONE_CLASS.caution
+                    : TONE_CLASS.progress,
+                )}
+              >
+                {r.status === 'required' ? 'Pending' : r.status === 'requested' ? 'Awaiting upload' : 'Re-upload needed'}
+              </Badge>
+            </li>
+          ))}
+        </ul>
+        <div className="pt-2">
+          <Button asChild size="sm" variant="default">
+            <Link to="/client/documents">Upload documents <ArrowRight className="h-4 w-4 ml-1" /></Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function channelIcon(channel: string) {
+  if (channel === 'sms' || channel === 'whatsapp') return Phone;
+  if (channel === 'email') return Mail;
+  return MessageSquare;
+}
+
+function RecentMessagesCard({ messages }: { messages: OutboundMessage[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />Recent messages from your broker
+          <Badge variant="outline" className="ml-1">{messages.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border/60">
+          {messages.slice(0, 6).map(m => {
+            const Icon = channelIcon(m.channel);
+            const preview = (m.body || '').replace(/<[^>]+>/g, '').slice(0, 180);
+            return (
+              <li key={m.id} className="py-2 flex items-start gap-3">
+                <div className="rounded-md p-1.5 bg-muted text-muted-foreground"><Icon className="h-3.5 w-3.5" /></div>
+                <div className="flex-1 min-w-0">
+                  {m.subject && <p className="text-sm font-medium truncate">{m.subject}</p>}
+                  <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap">{preview || '(no preview)'}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+                    {m.channel} · {new Date(m.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                    {m.read_at ? ' · read' : m.delivered_at ? ' · delivered' : ''}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
