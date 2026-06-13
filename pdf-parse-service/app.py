@@ -210,7 +210,7 @@ class ParseRequest(BaseModel):
     enable_picture_description: Optional[bool] = Field(default=None)
     # Phase D: caller can ask for a lighter / heavier serialization payload.
     include_doctags: bool = Field(default=True)
-    include_markdown: bool = Field(default=False)
+    include_markdown: bool = Field(default_factory=lambda: INCLUDE_MARKDOWN_DEFAULT)
 
 
 class RasterRequest(BaseModel):
