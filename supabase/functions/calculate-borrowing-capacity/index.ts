@@ -1914,7 +1914,12 @@ Deno.serve(async (req) => {
       // ── Phase 5: Audit Trail & Explanation ──
       auditTrail,
       explanation,
+      // ── Phase 2: Hybrid segment reconciliation (additive, flag-gated) ──
+      segmentBreakdown: segmentReconciliation.segmentBreakdown,
+      segmentReconciliation,
+      portfolioCapacity,
     };
+
 
     // Save to database if requested
     let assessmentId: string | null = null;
