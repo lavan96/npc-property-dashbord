@@ -262,7 +262,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
   }
 }
 
-async function extractWithPerplexity(url: string, propertyCategory = 'residential') {
+async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
   const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (!apiKey) {
     return {
@@ -565,7 +565,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const body = await req.json();
-    const { url, propertyCategory = 'residential' } = body;
+    const { url, propertyCategory = 'auto' } = body;
     
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
