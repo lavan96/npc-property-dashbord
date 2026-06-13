@@ -30,11 +30,41 @@ import type {
   DoclingPageInfo,
   DoclingPictureItem,
   DoclingProvenance,
+  DoclingRef,
   DoclingTableCell,
   DoclingTableItem,
   DoclingTextItem,
   DoclingTextLabel,
 } from './doclingTypes';
+
+/** Resolve a Docling ref ($ref / cref / string) to the string self_ref form. */
+function refToString(ref: DoclingRef | string | undefined): string | undefined {
+  if (!ref) return undefined;
+  if (typeof ref === 'string') return ref;
+  return ref.$ref ?? ref.cref;
+}
+
+/** Pick the top classifier label from either schema variant. */
+function topPictureClass(picture: DoclingPictureItem): string | undefined {
+  const c = picture.classification;
+  if (!c) return undefined;
+  if (c.predicted_class) return c.predicted_class;
+  if (Array.isArray(c.predicted_classes) && c.predicted_classes.length) {
+    const sorted = [...c.predicted_classes].sort(
+      (a, b) => (b.confidence ?? 0) - (a.confidence ?? 0),
+    );
+    return sorted[0]?.class_name;
+  }
+  return undefined;
+}
+
+/** First VLM description annotation, if present. */
+function pictureAltText(picture: DoclingPictureItem): string | undefined {
+  const ann = (picture.annotations ?? []).find(
+    (a) => (a.kind ?? '').toLowerCase().includes('descr') && (a.text ?? '').trim().length > 0,
+  );
+  return ann?.text?.trim();
+}
 
 const DEFAULT_FONT_FAMILY = 'Helvetica';
 
@@ -120,6 +150,14 @@ function textItemToBlock(
       : undefined;
   const fontSize = item.font?.size ?? labelDefaultFontSize(item.label, headingLevel);
   const fontWeight = normaliseWeight(item.font?.weight) ?? labelDefaultWeight(item.label);
+  // Phase B: tag page furniture so the plan builder can route it to a master page.
+  const pageRegion: 'header' | 'footer' | undefined =
+    item.label === 'page_header' ? 'header'
+    : item.label === 'page_footer' ? 'footer'
+    : undefined;
+  const masterGroupId = pageRegion
+    ? `docling-master-${pageRegion}-p${pageInfo.page_no}`
+    : undefined;
   return {
     id: blockId(String(item.label ?? 'text'), pageInfo.page_no, index),
     type: labelToBlockType(item.label),
@@ -139,6 +177,8 @@ function textItemToBlock(
       headingLevel,
       listGroupId,
       readingOrder,
+      pageRegion,
+      groupId: masterGroupId,
     },
   };
 }
@@ -196,6 +236,7 @@ function tableItemToBlock(
   pageInfo: DoclingPageInfo,
   index: number,
   readingOrder: number,
+  captionGroupId: string | undefined,
   opts: MapOptions,
 ): RawImportBlock | null {
   const prov = pickProv(item.prov, pageInfo.page_no);
@@ -226,6 +267,7 @@ function tableItemToBlock(
       readingOrder,
       tableData,
       caption: item.caption,
+      groupId: captionGroupId,
     },
   };
 }
@@ -235,16 +277,20 @@ function pictureItemToBlock(
   pageInfo: DoclingPageInfo,
   index: number,
   readingOrder: number,
+  captionGroupId: string | undefined,
   opts: MapOptions,
 ): RawImportBlock | null {
   const prov = pickProv(item.prov, pageInfo.page_no);
   if (!prov) return null;
   const bbox = bboxToTopLeft(prov.bbox, pageInfo.size.height);
   if (bbox.width <= 0 || bbox.height <= 0) return null;
+  const altText = pictureAltText(item);
+  const pictureClass = topPictureClass(item);
+  const displayText = altText || item.caption || (pictureClass ? `[${pictureClass}]` : '[image]');
   return {
     id: blockId('picture', pageInfo.page_no, index),
     type: 'image',
-    text: item.caption ?? '[image]',
+    text: displayText,
     bbox,
     style: { backgroundColor: '#00000000' },
     confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.6,
@@ -253,6 +299,9 @@ function pictureItemToBlock(
       label: 'picture',
       readingOrder,
       caption: item.caption,
+      altText,
+      pictureClass,
+      groupId: captionGroupId,
     },
   };
 }
@@ -283,6 +332,10 @@ export function mapDoclingToRawBlocks(
 
   // --- Text items: iterate in document order so reading order is preserved.
   // Contiguous list_item runs share a listGroupId.
+  // Phase B: track text blocks by self_ref so figures/tables can link captions.
+  const textBlocksBySelfRef = new Map<string, RawImportBlock>();
+  /** Per-page caption pool keyed for proximity fallback. */
+  const captionPool: Record<number, Array<{ block: RawImportBlock; text: DoclingTextItem }>> = {};
   let textIdx = 0;
   let activeListPage: number | null = null;
   let activeListId: string | null = null;
@@ -308,8 +361,60 @@ export function mapDoclingToRawBlocks(
 
     const order = nextOrder(page.page_no);
     const block = textItemToBlock(text, page, textIdx, order, listGroupId, opts);
-    if (block) byPage[page.page_no]?.push(block);
+    if (block) {
+      byPage[page.page_no]?.push(block);
+      if (text.self_ref) textBlocksBySelfRef.set(text.self_ref, block);
+      if (text.label === 'caption') {
+        (captionPool[page.page_no] ??= []).push({ block, text });
+      }
+    }
     textIdx += 1;
+  }
+
+  /** Resolve a figure's caption refs (or fall back to the nearest caption-labeled text). */
+  const PROXIMITY_PT = 36;
+  let captionGroupSeq = 0;
+  function pairCaption(
+    refs: Array<DoclingRef | string> | undefined,
+    pageNo: number,
+    figureBBox: ImportBBox,
+  ): string | undefined {
+    // 1) explicit refs from the parser
+    const explicit: RawImportBlock[] = [];
+    for (const ref of refs ?? []) {
+      const key = refToString(ref);
+      if (!key) continue;
+      const t = textBlocksBySelfRef.get(key);
+      if (t && t.meta?.label === 'caption') explicit.push(t);
+    }
+    if (explicit.length) {
+      captionGroupSeq += 1;
+      const gid = `docling-figure-p${pageNo}-${captionGroupSeq}`;
+      for (const t of explicit) {
+        t.meta = { ...(t.meta ?? {}), groupId: gid };
+      }
+      return gid;
+    }
+    // 2) proximity fallback — nearest caption above/below within PROXIMITY_PT
+    const pool = captionPool[pageNo] ?? [];
+    let best: { block: RawImportBlock; dist: number } | null = null;
+    for (const entry of pool) {
+      if (entry.block.meta?.groupId) continue; // already paired
+      const cy = entry.block.bbox.y + entry.block.bbox.height / 2;
+      const fyTop = figureBBox.y;
+      const fyBot = figureBBox.y + figureBBox.height;
+      const dist = cy < fyTop ? fyTop - cy : cy > fyBot ? cy - fyBot : 0;
+      if (dist <= PROXIMITY_PT && (!best || dist < best.dist)) {
+        best = { block: entry.block, dist };
+      }
+    }
+    if (best) {
+      captionGroupSeq += 1;
+      const gid = `docling-figure-p${pageNo}-${captionGroupSeq}`;
+      best.block.meta = { ...(best.block.meta ?? {}), groupId: gid };
+      return gid;
+    }
+    return undefined;
   }
 
   // --- Tables (preserve their relative document order on each page).
@@ -320,7 +425,9 @@ export function mapDoclingToRawBlocks(
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { tableIdx += 1; continue; }
     const order = nextOrder(page.page_no);
-    const block = tableItemToBlock(table, page, tableIdx, order, opts);
+    const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
+    const captionGid = pairCaption(table.captions, page.page_no, figureBBox);
+    const block = tableItemToBlock(table, page, tableIdx, order, captionGid, opts);
     if (block) byPage[page.page_no]?.push(block);
     tableIdx += 1;
   }
@@ -333,7 +440,9 @@ export function mapDoclingToRawBlocks(
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { pictureIdx += 1; continue; }
     const order = nextOrder(page.page_no);
-    const block = pictureItemToBlock(picture, page, pictureIdx, order, opts);
+    const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
+    const captionGid = pairCaption(picture.captions, page.page_no, figureBBox);
+    const block = pictureItemToBlock(picture, page, pictureIdx, order, captionGid, opts);
     if (block) byPage[page.page_no]?.push(block);
     pictureIdx += 1;
   }

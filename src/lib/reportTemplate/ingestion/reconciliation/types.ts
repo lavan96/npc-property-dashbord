@@ -78,8 +78,17 @@ export interface RawImportBlock {
     };
     /** Caption text linked to this image/table item (when the parser provides it). */
     caption?: string;
+    /** Phase B: VLM-generated alt-text/description for images. */
+    altText?: string;
+    /** Phase B: picture classifier label (e.g. chart, logo, photo, diagram, map). */
+    pictureClass?: string;
+    /** Phase B: stable group id for caption↔figure / header↔footer co-movement. */
+    groupId?: string;
+    /** Phase B: master-page eligibility — 'header' or 'footer'. */
+    pageRegion?: 'header' | 'footer';
   };
 }
+
 
 export interface RawImportManifest {
   importId: string;

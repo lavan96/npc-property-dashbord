@@ -57,7 +57,14 @@ app = FastAPI(title="pdf-parse-service", version=ENGINE_VERSION)
 # Pipeline singleton — built once at module import time so the first /parse
 # request doesn't pay the model-load cost.
 # ---------------------------------------------------------------------------
-def _build_converter() -> DocumentConverter:
+# Phase B: opt-in toggles for the VLM-backed picture description model.
+# Picture classification is cheap (small ConvNeXt) → on by default.
+# Picture description loads SmolVLM (~1.5 GB RAM, 2–4× parse time) → gated.
+ENABLE_PICTURE_CLASSIFICATION = os.environ.get("ENABLE_PICTURE_CLASSIFICATION", "1").strip() not in {"", "0", "false", "False"}
+ENABLE_PICTURE_DESCRIPTION_DEFAULT = os.environ.get("ENABLE_PICTURE_DESCRIPTION", "0").strip() not in {"", "0", "false", "False"}
+
+
+def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     pipeline = PdfPipelineOptions()
     pipeline.do_ocr = True                       # handle scanned pages too
     pipeline.do_table_structure = True           # TableFormer — the reason we picked Docling
@@ -68,13 +75,44 @@ def _build_converter() -> DocumentConverter:
     pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False        # we rasterise on demand via /raster
     pipeline.generate_picture_images = True      # so we can extract embedded images
+    # Phase B: picture enrichments — classification (chart/logo/photo/diagram) and
+    # optional VLM description (alt-text for accessibility + search).
+    if ENABLE_PICTURE_CLASSIFICATION:
+        try:
+            pipeline.do_picture_classification = True
+        except Exception as exc:  # pragma: no cover — defensive: older Docling builds
+            LOG.warning("picture classification not available: %s", exc)
+    if enable_picture_description:
+        try:
+            pipeline.do_picture_description = True
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("picture description not available: %s", exc)
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)}
     )
 
 
-CONVERTER = _build_converter()
-LOG.info("Docling converter ready (version=%s)", ENGINE_VERSION)
+# Default converter (description model resolved by ENABLE_PICTURE_DESCRIPTION env).
+# A second converter is lazily built the first time a request opts in/out of the
+# alternative description setting — avoids reloading models on every request.
+CONVERTER = _build_converter(enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT)
+_CONVERTER_VARIANTS: dict[bool, DocumentConverter] = {ENABLE_PICTURE_DESCRIPTION_DEFAULT: CONVERTER}
+
+
+def _get_converter(enable_picture_description: bool) -> DocumentConverter:
+    cached = _CONVERTER_VARIANTS.get(enable_picture_description)
+    if cached is not None:
+        return cached
+    LOG.info("Building Docling converter variant (picture_description=%s)", enable_picture_description)
+    built = _build_converter(enable_picture_description=enable_picture_description)
+    _CONVERTER_VARIANTS[enable_picture_description] = built
+    return built
+
+
+LOG.info(
+    "Docling converter ready (version=%s, classification=%s, description_default=%s)",
+    ENGINE_VERSION, ENABLE_PICTURE_CLASSIFICATION, ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +137,10 @@ async def require_bearer(request: Request, call_next):
 class ParseRequest(BaseModel):
     url: Optional[str] = Field(default=None, description="Signed Supabase Storage URL of the source PDF.")
     pdf_base64: Optional[str] = Field(default=None, description="Inline base64 PDF (no data: prefix).")
+    enable_picture_description: Optional[bool] = Field(
+        default=None,
+        description="Override the ENABLE_PICTURE_DESCRIPTION env default for this request.",
+    )
 
 
 class RasterRequest(BaseModel):
@@ -155,7 +197,13 @@ async def parse(req: ParseRequest) -> dict:
     from docling.datamodel.base_models import DocumentStream
 
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    result = CONVERTER.convert(stream)
+    use_description = (
+        req.enable_picture_description
+        if req.enable_picture_description is not None
+        else ENABLE_PICTURE_DESCRIPTION_DEFAULT
+    )
+    converter = _get_converter(use_description)
+    result = converter.convert(stream)
     doc = result.document
 
     # Page geometry — used downstream to map bboxes to template overlay coords.
