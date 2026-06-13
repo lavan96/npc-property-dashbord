@@ -30,11 +30,41 @@ import type {
   DoclingPageInfo,
   DoclingPictureItem,
   DoclingProvenance,
+  DoclingRef,
   DoclingTableCell,
   DoclingTableItem,
   DoclingTextItem,
   DoclingTextLabel,
 } from './doclingTypes';
+
+/** Resolve a Docling ref ($ref / cref / string) to the string self_ref form. */
+function refToString(ref: DoclingRef | string | undefined): string | undefined {
+  if (!ref) return undefined;
+  if (typeof ref === 'string') return ref;
+  return ref.$ref ?? ref.cref;
+}
+
+/** Pick the top classifier label from either schema variant. */
+function topPictureClass(picture: DoclingPictureItem): string | undefined {
+  const c = picture.classification;
+  if (!c) return undefined;
+  if (c.predicted_class) return c.predicted_class;
+  if (Array.isArray(c.predicted_classes) && c.predicted_classes.length) {
+    const sorted = [...c.predicted_classes].sort(
+      (a, b) => (b.confidence ?? 0) - (a.confidence ?? 0),
+    );
+    return sorted[0]?.class_name;
+  }
+  return undefined;
+}
+
+/** First VLM description annotation, if present. */
+function pictureAltText(picture: DoclingPictureItem): string | undefined {
+  const ann = (picture.annotations ?? []).find(
+    (a) => (a.kind ?? '').toLowerCase().includes('descr') && (a.text ?? '').trim().length > 0,
+  );
+  return ann?.text?.trim();
+}
 
 const DEFAULT_FONT_FAMILY = 'Helvetica';
 
