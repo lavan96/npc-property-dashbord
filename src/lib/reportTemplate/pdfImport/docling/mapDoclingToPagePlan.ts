@@ -85,12 +85,28 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
     return overlay;
   }
   if (block.type === 'table') {
+    const td = block.meta?.tableData;
+    const numCols = td?.numCols ?? 0;
+    const headerRows = td?.headerRows ?? 0;
+    const firstHeaderRow = headerRows > 0 ? td?.rows[0] ?? [] : [];
+    const columns = Array.from({ length: numCols }, (_, i) => ({
+      key: `c${i}`,
+      label: (firstHeaderRow[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`,
+      align: 'left' as const,
+      format: 'raw' as const,
+    }));
+    // Skip header rows from `rows` (they live in `columns.label`).
+    const bodyRows = (td?.rows ?? []).slice(headerRows).map((row) => {
+      const out = row.slice(0, numCols);
+      while (out.length < numCols) out.push('');
+      return out;
+    });
     const overlay: TableOverlay = {
       ...base,
       type: 'table',
-      columns: [],
-      rows: [],
-      showHeader: true,
+      columns,
+      rows: bodyRows,
+      showHeader: headerRows > 0 || numCols > 0,
       headerHeight: 22,
       rowHeight: 20,
       fontSize: block.style?.fontSize ?? 9,

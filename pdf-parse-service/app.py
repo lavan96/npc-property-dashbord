@@ -40,7 +40,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
 LOG = logging.getLogger("pdf-parse-service")
@@ -61,6 +61,10 @@ def _build_converter() -> DocumentConverter:
     pipeline = PdfPipelineOptions()
     pipeline.do_ocr = True                       # handle scanned pages too
     pipeline.do_table_structure = True           # TableFormer — the reason we picked Docling
+    # Phase A: ACCURATE mode + cell matching → dramatically better cell
+    # structure on financial / comparison tables (the dominant table style in
+    # property reports). Trades ~10–20% extra parse time for a large fidelity win.
+    pipeline.table_structure_options.mode = TableFormerMode.ACCURATE
     pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False        # we rasterise on demand via /raster
     pipeline.generate_picture_images = True      # so we can extract embedded images

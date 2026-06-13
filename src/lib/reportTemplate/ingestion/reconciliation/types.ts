@@ -56,6 +56,29 @@ export interface RawImportBlock {
   };
   confidence: number;
   source: RawImportBlockSource;
+  /**
+   * Optional structural metadata preserved from the parser (Docling, etc).
+   * Consumers may use it to build richer overlays without re-inferring structure.
+   */
+  meta?: {
+    /** Original semantic label (e.g. 'title', 'section_header', 'list_item'). */
+    label?: string;
+    /** Heading depth 1–6 when label is a heading. */
+    headingLevel?: number;
+    /** Stable id grouping contiguous list_items into a single visual list. */
+    listGroupId?: string;
+    /** Monotonic reading-order index within the page (Docling document order). */
+    readingOrder?: number;
+    /** Parsed table cell grid — row-major strings, plus the header row count. */
+    tableData?: {
+      rows: string[][];
+      headerRows: number;
+      numRows: number;
+      numCols: number;
+    };
+    /** Caption text linked to this image/table item (when the parser provides it). */
+    caption?: string;
+  };
 }
 
 export interface RawImportManifest {

@@ -43,6 +43,8 @@ export interface DoclingTextItem {
   label?: DoclingTextLabel;
   text: string;
   prov?: DoclingProvenance[];
+  /** Heading depth (1–6) when label is `section_header` / `title`. */
+  level?: number;
   /** Some Docling versions emit per-item font hints. */
   font?: {
     family?: string;
