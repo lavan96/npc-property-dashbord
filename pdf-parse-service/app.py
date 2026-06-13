@@ -40,7 +40,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
 LOG = logging.getLogger("pdf-parse-service")
