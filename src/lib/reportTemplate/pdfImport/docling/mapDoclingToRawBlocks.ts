@@ -236,6 +236,7 @@ function tableItemToBlock(
   pageInfo: DoclingPageInfo,
   index: number,
   readingOrder: number,
+  captionGroupId: string | undefined,
   opts: MapOptions,
 ): RawImportBlock | null {
   const prov = pickProv(item.prov, pageInfo.page_no);
@@ -266,6 +267,7 @@ function tableItemToBlock(
       readingOrder,
       tableData,
       caption: item.caption,
+      groupId: captionGroupId,
     },
   };
 }
@@ -275,16 +277,20 @@ function pictureItemToBlock(
   pageInfo: DoclingPageInfo,
   index: number,
   readingOrder: number,
+  captionGroupId: string | undefined,
   opts: MapOptions,
 ): RawImportBlock | null {
   const prov = pickProv(item.prov, pageInfo.page_no);
   if (!prov) return null;
   const bbox = bboxToTopLeft(prov.bbox, pageInfo.size.height);
   if (bbox.width <= 0 || bbox.height <= 0) return null;
+  const altText = pictureAltText(item);
+  const pictureClass = topPictureClass(item);
+  const displayText = altText || item.caption || (pictureClass ? `[${pictureClass}]` : '[image]');
   return {
     id: blockId('picture', pageInfo.page_no, index),
     type: 'image',
-    text: item.caption ?? '[image]',
+    text: displayText,
     bbox,
     style: { backgroundColor: '#00000000' },
     confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.6,
@@ -293,6 +299,9 @@ function pictureItemToBlock(
       label: 'picture',
       readingOrder,
       caption: item.caption,
+      altText,
+      pictureClass,
+      groupId: captionGroupId,
     },
   };
 }
