@@ -6,6 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
+import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -37,6 +39,29 @@ export function NoiCalculatorCard() {
     council: '12000', water: '4000', land_tax: '18000', insurance: '6000',
     management: '10000', repairs_maintenance: '8000', utilities: '0', cleaning: '3000',
     security: '0', other: '0',
+  });
+
+  // Prefill from linked property — recovered outgoings sum and any vendor-quoted gross rent
+  useApplyPrefill((p) => {
+    if (p.grossPassingRentPa != null) setGrossRent(String(p.grossPassingRentPa));
+    if (p.marketRentPa != null) setMarketRent(String(p.marketRentPa));
+    if (p.recoveredOutgoingsPa != null) setRecovered(String(p.recoveredOutgoingsPa));
+    if (p.outgoings) {
+      const og = p.outgoings;
+      setOutgoings(prev => ({
+        ...prev,
+        council: og.council != null ? String(og.council) : prev.council,
+        water: og.water != null ? String(og.water) : prev.water,
+        land_tax: og.land_tax != null ? String(og.land_tax) : prev.land_tax,
+        insurance: og.insurance != null ? String(og.insurance) : prev.insurance,
+        management: og.management != null ? String(og.management) : prev.management,
+        repairs_maintenance: og.repairs_maintenance != null ? String(og.repairs_maintenance) : prev.repairs_maintenance,
+        utilities: og.utilities != null ? String(og.utilities) : prev.utilities,
+        cleaning: og.cleaning != null ? String(og.cleaning) : prev.cleaning,
+        security: og.security != null ? String(og.security) : prev.security,
+        other: og.other != null ? String(og.other) : prev.other,
+      }));
+    }
   });
 
   const result = useMemo(() => {
