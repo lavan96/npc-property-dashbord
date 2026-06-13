@@ -6,6 +6,12 @@
 // diagnostics upload) inside EdgeRuntime.waitUntil so we never block the edge
 // request envelope. The UI subscribes to `pdf_import_jobs` via Supabase
 // realtime to render staged progress.
+//
+// Phase C additions:
+//   * SHA-256 file-hash dedupe — identical PDFs in the same mode reuse prior
+//     `docling.json` / `rasters.json` artifacts (instant return, cache_hit=true).
+//   * Per-page raster streaming — rasters are produced one page at a time so
+//     `pages_completed` / `pages_total` advance live in the UI.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import {
@@ -70,6 +76,26 @@ async function uploadDiagnostic(
   return path;
 }
 
+async function downloadDiagnostic(
+  admin: Admin,
+  path: string,
+): Promise<Uint8Array | null> {
+  const objectPath = path.startsWith(`${DIAGNOSTICS_BUCKET}/`)
+    ? path.slice(DIAGNOSTICS_BUCKET.length + 1)
+    : path;
+  const { data, error } = await admin.storage.from(DIAGNOSTICS_BUCKET).download(objectPath);
+  if (error || !data) {
+    console.warn('[pdf-parse-dispatch] cache fetch failed', { path, error });
+    return null;
+  }
+  return new Uint8Array(await data.arrayBuffer());
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function resolveSignedSourceUrl(
   admin: Admin,
   body: Record<string, unknown>,
@@ -111,6 +137,90 @@ async function resolveSignedSourceUrl(
   return { error: 'must supply source_url, source_path, or source_base64' };
 }
 
+async function fetchAndHash(signedUrl: string): Promise<{ hash: string; size: number } | null> {
+  try {
+    const res = await fetch(signedUrl);
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const hash = await sha256Hex(bytes);
+    return { hash, size: bytes.length };
+  } catch (e) {
+    console.warn('[pdf-parse-dispatch] hash fetch failed', e);
+    return null;
+  }
+}
+
+async function findCachedJob(
+  admin: Admin,
+  hash: string,
+  mode: string,
+): Promise<{ id: string; result_payload: Record<string, unknown> | null; page_count: number | null; engine_version: string | null } | null> {
+  const { data } = await admin
+    .from('pdf_import_jobs')
+    .select('id, result_payload, page_count, engine_version, diagnostics_path')
+    .eq('source_file_hash', hash)
+    .eq('mode', mode)
+    .eq('engine', 'docling')
+    .eq('status', 'succeeded')
+    .order('finished_at', { ascending: false })
+    .limit(1);
+  if (!data || !data.length) return null;
+  const row = data[0] as any;
+  // Verify diagnostics still exist.
+  const doclingPath = row?.result_payload?.docling_path ?? row?.diagnostics_path;
+  if (!doclingPath) return null;
+  return row;
+}
+
+async function copyDiagnostic(
+  admin: Admin,
+  srcPath: string,
+  destJobId: string,
+  destName: string,
+): Promise<string | null> {
+  const bytes = await downloadDiagnostic(admin, srcPath);
+  if (!bytes) return null;
+  return uploadDiagnostic(admin, destJobId, destName, bytes, 'application/json');
+}
+
+async function serveFromCache(
+  admin: Admin,
+  jobId: string,
+  cached: { id: string; result_payload: Record<string, unknown> | null; page_count: number | null; engine_version: string | null },
+  mode: string,
+  startedAt: number,
+) {
+  await setStage(admin, jobId, 'cache_hit');
+  const result = (cached.result_payload ?? {}) as Record<string, unknown>;
+  const doclingSrc = (result.docling_path as string) ?? '';
+  const rasterSrc = (result.rasters_path as string) ?? '';
+  const doclingPath = doclingSrc ? await copyDiagnostic(admin, doclingSrc, jobId, 'docling.json') : null;
+  const rasterPath = rasterSrc ? await copyDiagnostic(admin, rasterSrc, jobId, 'rasters.json') : null;
+  const finishedAt = Date.now();
+  const pageCount = cached.page_count ?? null;
+  await updateJob(admin, jobId, {
+    status: 'succeeded',
+    stage: 'parsed',
+    cache_hit: true,
+    cache_source_job_id: cached.id,
+    engine_version: cached.engine_version ?? 'docling',
+    page_count: pageCount,
+    pages_total: pageCount,
+    pages_completed: pageCount,
+    finished_at: new Date(finishedAt).toISOString(),
+    duration_ms: finishedAt - startedAt,
+    diagnostics_path: doclingPath,
+    result_payload: {
+      docling_path: doclingPath,
+      rasters_path: rasterPath,
+      page_count: pageCount,
+      mode,
+      cache_hit: true,
+      cache_source_job_id: cached.id,
+    },
+  });
+}
+
 async function runJob(
   admin: Admin,
   jobId: string,
@@ -120,6 +230,22 @@ async function runJob(
 ) {
   const startedAt = Date.now();
   try {
+    // ---- Phase C: hash + cache lookup --------------------------------------
+    await setStage(admin, jobId, 'hashing');
+    const hashed = await fetchAndHash(signedUrl);
+    if (hashed) {
+      await updateJob(admin, jobId, {
+        source_file_hash: hashed.hash,
+        source_file_size_bytes: hashed.size,
+      });
+      const cached = await findCachedJob(admin, hashed.hash, mode);
+      if (cached) {
+        console.log('[pdf-parse-dispatch] cache hit', { jobId, source: cached.id, hash: hashed.hash });
+        await serveFromCache(admin, jobId, cached, mode, startedAt);
+        return;
+      }
+    }
+
     await setStage(admin, jobId, 'parsing');
 
     // Retry transient 5xx (Cloud Run cold-start / scale-to-zero often returns 503).
@@ -171,43 +297,48 @@ async function runJob(
       : (typeof parseJson?.page_count === 'number' ? parseJson.page_count : null);
     await updateJob(admin, jobId, {
       page_count: pageCount,
+      pages_total: pageCount,
+      pages_completed: 0,
       engine_version: parseJson?.engine_version ?? 'docling',
     });
 
     // Hybrid / pixel-perfect need page rasters; semantic skips this.
+    // Phase C: stream page-by-page so the UI can show real progress.
     let rasterPath: string | null = null;
-    if (mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect') {
+    const needRaster = mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect';
+    if (needRaster && pageCount && pageCount > 0) {
       await setStage(admin, jobId, 'rastering');
       const dpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
       const format = 'png';
-      const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${PARSE_TOKEN}`,
-        },
-        body: JSON.stringify({ url: signedUrl, dpi, format }),
-      });
-      if (!rasterRes.ok) {
-        const text = await rasterRes.text().catch(() => '');
-        throw new Error(`sidecar /raster ${rasterRes.status}: ${text.slice(0, 500)}`);
+      const collected: any[] = [];
+      let engineVersion: string | undefined;
+      for (let pageNo = 1; pageNo <= pageCount; pageNo++) {
+        const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${PARSE_TOKEN}`,
+          },
+          body: JSON.stringify({ url: signedUrl, dpi, format, pages: [pageNo] }),
+        });
+        if (!rasterRes.ok) {
+          const text = await rasterRes.text().catch(() => '');
+          throw new Error(`sidecar /raster page ${pageNo} ${rasterRes.status}: ${text.slice(0, 500)}`);
+        }
+        const rasterJson = await rasterRes.json();
+        engineVersion = engineVersion ?? rasterJson?.engine_version;
+        const pages = Array.isArray(rasterJson?.pages) ? rasterJson.pages : [];
+        for (const p of pages) {
+          collected.push({
+            page_no: p.page_no ?? pageNo,
+            width: p.width ?? p.width_px ?? 0,
+            height: p.height ?? p.height_px ?? 0,
+            image_base64: p.image_base64 ?? p.base64 ?? '',
+          });
+        }
+        await updateJob(admin, jobId, { pages_completed: pageNo });
       }
-      const rasterJson = await rasterRes.json();
-      // Normalize sidecar shape ({ pages:[{page_no, mime, width_px, height_px, base64}] })
-      // into the envelope the frontend `DoclingRasterResponse` typings expect.
-      const normalizedRaster = {
-        format,
-        dpi: rasterJson?.dpi ?? dpi,
-        engine_version: rasterJson?.engine_version,
-        pages: Array.isArray(rasterJson?.pages)
-          ? rasterJson.pages.map((p: any) => ({
-              page_no: p.page_no,
-              width: p.width ?? p.width_px ?? 0,
-              height: p.height ?? p.height_px ?? 0,
-              image_base64: p.image_base64 ?? p.base64 ?? '',
-            }))
-          : [],
-      };
+      const normalizedRaster = { format, dpi, engine_version: engineVersion, pages: collected };
       rasterPath = await uploadDiagnostic(
         admin,
         jobId,
@@ -225,11 +356,13 @@ async function runJob(
       finished_at: new Date(finishedAt).toISOString(),
       duration_ms: finishedAt - startedAt,
       diagnostics_path: doclingPath,
+      pages_completed: pageCount,
       result_payload: {
         docling_path: doclingPath,
         rasters_path: rasterPath,
         page_count: pageCount,
         mode,
+        cache_hit: false,
       },
     });
   } catch (err) {
