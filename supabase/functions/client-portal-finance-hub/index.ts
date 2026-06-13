@@ -254,8 +254,42 @@ Deno.serve(async (req) => {
 
     const portfolio = { ...totals, avg_lvr, status_breakdown, next_milestones };
 
+    // ── Wave A: open document requests visible to the client ──
+    let open_document_requests: any[] = [];
+    {
+      const { data: dris } = await supabase
+        .from('document_requirement_instances')
+        .select('id, purchase_file_id, label, category, status, requested_at, expiry_date, request_message')
+        .eq('client_id', clientId)
+        .eq('visible_to_client', true)
+        .in('status', ['required', 'requested', 'rejected'])
+        .order('requested_at', { ascending: false })
+        .limit(50);
+      open_document_requests = (dris || []).map((d: any) => ({
+        ...d,
+        purchase_file_title: (files || []).find((f: any) => f.id === d.purchase_file_id)?.title ?? null,
+      }));
+    }
+
+    // ── Wave A: recent outbound finance partner messages to this client ──
+    let recent_messages: any[] = [];
+    {
+      const { data: msgs } = await supabase
+        .from('finance_outbound_messages')
+        .select('id, channel, subject, body, status, created_at, read_at, delivered_at')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      recent_messages = msgs || [];
+    }
+
     return new Response(
-      JSON.stringify({ purchase_files: enriched, portfolio }),
+      JSON.stringify({
+        purchase_files: enriched,
+        portfolio,
+        open_document_requests,
+        recent_messages,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
