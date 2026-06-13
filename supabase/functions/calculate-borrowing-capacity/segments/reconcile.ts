@@ -23,20 +23,52 @@ interface ReconcileArgs {
   policy?: Partial<SegmentPolicy>;
 }
 
-async function isFlagEnabled(supabase: any): Promise<boolean> {
+interface FlagShape {
+  enabled: boolean;
+  allowlist?: string[];          // client_ids opted in early
+  dragFactorOverride?: number;   // override DEFAULT_SEGMENT_POLICY.commercialDragFactor
+}
+
+async function readFlag(supabase: any): Promise<FlagShape> {
   try {
     const { data } = await supabase
       .from('feature_flags')
       .select('value')
       .eq('key', 'bcSegmentEngine')
       .maybeSingle();
-    if (!data) return false;
+    if (!data) return { enabled: false };
     const v = data.value;
-    if (v && typeof v === 'object' && 'enabled' in v) return !!v.enabled;
-    return !!v;
+    if (v && typeof v === 'object') {
+      return {
+        enabled: !!v.enabled,
+        allowlist: Array.isArray(v.allowlist) ? v.allowlist.filter((x: any) => typeof x === 'string') : undefined,
+        dragFactorOverride: typeof v.dragFactorOverride === 'number' ? v.dragFactorOverride : undefined,
+      };
+    }
+    return { enabled: !!v };
   } catch (_) {
-    return false;
+    return { enabled: false };
   }
+}
+
+async function logHealth(
+  supabase: any,
+  status: 'success' | 'error' | 'skipped',
+  durationMs: number,
+  userId: string | null,
+  clientId: string,
+  errorMessage?: string,
+) {
+  try {
+    await supabase.from('api_health_log').insert({
+      service_name: 'bc-segment-engine',
+      endpoint: `client:${clientId}`,
+      status,
+      response_time_ms: Math.max(0, Math.round(durationMs)),
+      error_message: errorMessage ?? null,
+      user_id: userId,
+    });
+  } catch (_) { /* never let logging break BC calc */ }
 }
 
 function emptyResult(enabled: boolean): ReconciliationResult {
@@ -49,6 +81,7 @@ function emptyResult(enabled: boolean): ReconciliationResult {
     warnings: [],
   };
 }
+
 
 export async function reconcileSegments(args: ReconcileArgs): Promise<ReconciliationResult> {
   const { supabase, clientId, forceEnabled, policy: overrides } = args;
