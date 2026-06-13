@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
 
     const SINCE_14D = new Date(Date.now() - 14 * 86400000).toISOString();
     const SINCE_7D  = new Date(Date.now() - 7  * 86400000).toISOString();
+    const SINCE_1H  = new Date(Date.now() - 1  * 3600000).toISOString();
+    const SINCE_3D  = new Date(Date.now() - 3  * 86400000).toISOString();
 
     // ── helpers ──
     async function loadDriftClients() {
@@ -166,16 +168,103 @@ Deno.serve(async (req) => {
       return { sampled: results.length, results };
     }
 
-    if (op === 'drift_clients')      return ok(corsHeaders, await loadDriftClients());
-    if (op === 'orphan_pfs')         return ok(corsHeaders, await loadOrphanPfs());
-    if (op === 'stale_pfs')          return ok(corsHeaders, await loadStalePfs());
-    if (op === 'client_portal_gap')  return ok(corsHeaders, await loadClientPortalGap());
-    if (op === 'missing_consents')   return ok(corsHeaders, await loadMissingConsents());
-    if (op === 'handoff_pending')    return ok(corsHeaders, await loadHandoffPending());
-    if (op === 'audit_chain')        return ok(corsHeaders, await loadAuditChain(body.limit || 25));
+    // ── Wave B: cross-portal propagation checks ──
+    async function loadStaleClientNotifications() {
+      const { data } = await supabase
+        .from('client_portal_notifications')
+        .select('id, client_id, title, created_at')
+        .eq('is_read', false)
+        .lt('created_at', SINCE_7D)
+        .limit(500);
+      return { unread_over_7d: data || [] };
+    }
+
+    async function loadStaleFinanceNotifications() {
+      const { data } = await supabase
+        .from('finance_portal_notifications')
+        .select('id, portal_user_id, client_id, notification_type, created_at')
+        .eq('is_read', false)
+        .lt('created_at', SINCE_7D)
+        .limit(500);
+      return { unread_over_7d: data || [] };
+    }
+
+    async function loadDriRequestedWithoutMessage() {
+      // DRIs requested >3d ago with no request_message body explaining what to upload.
+      const { data } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id, purchase_file_id, label, status, requested_at, request_message')
+        .eq('status', 'requested')
+        .lt('requested_at', SINCE_3D)
+        .or('request_message.is.null,request_message.eq.')
+        .limit(500);
+      return { dris: data || [] };
+    }
+
+    async function loadDriUploadedAwaitingVerification() {
+      // DRIs the client uploaded to but never verified by partner (>3d).
+      const { data } = await supabase
+        .from('document_requirement_instances')
+        .select('id, client_id, purchase_file_id, label, uploaded_at, status')
+        .eq('status', 'uploaded')
+        .lt('uploaded_at', SINCE_3D)
+        .limit(500);
+      return { dris: data || [] };
+    }
+
+    async function loadOutboundUndelivered() {
+      // Finance outbound messages sent >1h ago, status still 'sent' but no delivered_at
+      // (provider never confirmed delivery → likely undeliverable).
+      const { data } = await supabase
+        .from('finance_outbound_messages')
+        .select('id, client_id, channel, recipient, status, created_at, delivered_at')
+        .eq('status', 'sent')
+        .is('delivered_at', null)
+        .lt('created_at', SINCE_1H)
+        .limit(500);
+      return { undelivered: data || [] };
+    }
+
+    async function loadPfMissingStatusHistory() {
+      // PFs that have a finance_status set but no purchase_file_status_history row
+      // recording how they got there → notification & audit gap.
+      const { data: pfs } = await supabase
+        .from('purchase_files')
+        .select('id, title, finance_status')
+        .is('archived_at', null)
+        .not('finance_status', 'is', null)
+        .neq('finance_status', 'not_started')
+        .limit(500);
+      const ids = (pfs || []).map((p: any) => p.id);
+      if (!ids.length) return { pfs_without_history: [] };
+      const { data: hist } = await supabase
+        .from('purchase_file_status_history')
+        .select('purchase_file_id, event_type')
+        .in('purchase_file_id', ids)
+        .like('event_type', 'finance_status%');
+      const have = new Set((hist || []).map((h: any) => h.purchase_file_id));
+      return { pfs_without_history: (pfs || []).filter((p: any) => !have.has(p.id)) };
+    }
+
+    if (op === 'drift_clients')                return ok(corsHeaders, await loadDriftClients());
+    if (op === 'orphan_pfs')                   return ok(corsHeaders, await loadOrphanPfs());
+    if (op === 'stale_pfs')                    return ok(corsHeaders, await loadStalePfs());
+    if (op === 'client_portal_gap')            return ok(corsHeaders, await loadClientPortalGap());
+    if (op === 'missing_consents')             return ok(corsHeaders, await loadMissingConsents());
+    if (op === 'handoff_pending')              return ok(corsHeaders, await loadHandoffPending());
+    if (op === 'audit_chain')                  return ok(corsHeaders, await loadAuditChain(body.limit || 25));
+    if (op === 'stale_client_notifications')   return ok(corsHeaders, await loadStaleClientNotifications());
+    if (op === 'stale_finance_notifications')  return ok(corsHeaders, await loadStaleFinanceNotifications());
+    if (op === 'dri_requested_no_message')     return ok(corsHeaders, await loadDriRequestedWithoutMessage());
+    if (op === 'dri_uploaded_unverified')      return ok(corsHeaders, await loadDriUploadedAwaitingVerification());
+    if (op === 'outbound_undelivered')         return ok(corsHeaders, await loadOutboundUndelivered());
+    if (op === 'pf_missing_status_history')    return ok(corsHeaders, await loadPfMissingStatusHistory());
 
     // overview: parallel rollup
-    const [drift, orphan, stale, gap, consents, handoff, chain] = await Promise.all([
+    const [
+      drift, orphan, stale, gap, consents, handoff, chain,
+      staleClientNotif, staleFinanceNotif, driNoMsg, driUploaded, undelivered, pfNoHistory,
+    ] = await Promise.all([
       loadDriftClients(),
       loadOrphanPfs(),
       loadStalePfs(),
@@ -183,6 +272,12 @@ Deno.serve(async (req) => {
       loadMissingConsents(),
       loadHandoffPending(),
       loadAuditChain(10),
+      loadStaleClientNotifications(),
+      loadStaleFinanceNotifications(),
+      loadDriRequestedWithoutMessage(),
+      loadDriUploadedAwaitingVerification(),
+      loadOutboundUndelivered(),
+      loadPfMissingStatusHistory(),
     ]);
 
     const overview = {
@@ -197,6 +292,13 @@ Deno.serve(async (req) => {
         { key: 'missing_consents', label: 'Active portal users missing onboarding consent', count: consents.without_consent.length, severity: gradeCount(consents.without_consent.length, 3, 10) },
         { key: 'handoff_pending', label: 'Unredeemed handoff invites older than 7 days', count: handoff.pending.length, severity: gradeCount(handoff.pending.length, 1, 5) },
         { key: 'audit_chain_broken', label: 'Sampled PFs with broken audit chain', count: chain.results.filter((r: any) => r.status === 'broken_chain').length, severity: 'critical' as const },
+        // ── Wave B propagation checks ──
+        { key: 'stale_client_notifications', label: 'Client portal notifications unread >7d', count: staleClientNotif.unread_over_7d.length, severity: gradeCount(staleClientNotif.unread_over_7d.length, 10, 50) },
+        { key: 'stale_finance_notifications', label: 'Finance portal notifications unread >7d', count: staleFinanceNotif.unread_over_7d.length, severity: gradeCount(staleFinanceNotif.unread_over_7d.length, 10, 50) },
+        { key: 'dri_requested_no_message', label: 'Document requests sent >3d ago with no message', count: driNoMsg.dris.length, severity: gradeCount(driNoMsg.dris.length, 3, 10) },
+        { key: 'dri_uploaded_unverified', label: 'Client-uploaded docs awaiting verification >3d', count: driUploaded.dris.length, severity: gradeCount(driUploaded.dris.length, 3, 10) },
+        { key: 'outbound_undelivered', label: 'Broker messages sent >1h ago with no delivery confirmation', count: undelivered.undelivered.length, severity: gradeCount(undelivered.undelivered.length, 3, 10) },
+        { key: 'pf_missing_status_history', label: 'PFs with finance_status but no audit history', count: pfNoHistory.pfs_without_history.length, severity: gradeCount(pfNoHistory.pfs_without_history.length, 5, 20) },
       ],
       audit_chain_sample: chain,
     };

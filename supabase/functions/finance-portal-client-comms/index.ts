@@ -11,6 +11,7 @@
  */
 import { extractFinanceToken, makeServiceClient, resolveFinancePartner } from '../_shared/finance-portal-session.ts';
 import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
+import { notifyClientPortal } from '../_shared/client-portal-notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -277,6 +278,28 @@ async function sendMessage(supabase: any, partner: any, body: any) {
   }
 
   if (status === 'failed') return json({ error: 'send_failed', details: errorMessage }, 502);
+
+  // Wave B: surface the outbound message in the client portal in-app inbox.
+  // Skips for `portal` channel because the portal already renders portal-thread messages.
+  if (status === 'sent' && channel !== 'portal') {
+    const preview = (text || '').replace(/<[^>]+>/g, '').trim().slice(0, 240) || (subject || '(no preview)');
+    await notifyClientPortal({
+      client_id,
+      title: subject || `New ${channel} from your broker`,
+      message: preview,
+      type: 'info',
+      category: 'finance_message',
+      action_url: '/client/finance',
+      dedupe_key: providerMessageId || logIns.data?.id || undefined,
+      dedupe_window_minutes: 10,
+      metadata: {
+        channel,
+        purchase_file_id: purchase_file_id || null,
+        outbound_message_id: logIns.data?.id || null,
+      },
+    });
+  }
+
   return json({ ok: true, id: logIns.data?.id, tracking_token: trackingToken, provider_message_id: providerMessageId });
 }
 
