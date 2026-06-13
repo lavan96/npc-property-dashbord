@@ -119,9 +119,11 @@ export async function evaluateCommercialSegment(
     const noi = Math.max(0, grossRent - netOpex);
 
     const dcf = latestDcfByProp.get(p.id);
-    const loanBalance = Number(dcf?.loan_amount) || 0;
-    const interestRate = Number(dcf?.interest_rate) || policy.commercial.assessmentRatePct;
-    const termYears = Number(dcf?.loan_term_years) || policy.commercial.amortYears;
+    const fin = financingByProp.get(p.id);
+    // Relational financing wins; DCF is fallback; policy defaults last.
+    const loanBalance = Number(fin?.loan_balance ?? fin?.loan_amount ?? dcf?.loan_amount) || 0;
+    const interestRate = Number(fin?.interest_rate ?? dcf?.interest_rate) || policy.commercial.assessmentRatePct;
+    const termYears = Number(fin?.loan_term_years ?? dcf?.loan_term_years) || policy.commercial.amortYears;
     const value = Number(p.valuation) || Number(p.purchase_price) || 0;
     const debtService = annualPI(loanBalance, Math.max(interestRate, policy.commercial.assessmentRatePct), termYears);
 
@@ -137,7 +139,7 @@ export async function evaluateCommercialSegment(
     });
 
     if (noi <= 0 && propLeases.length === 0) warnings.push(`No active lease on commercial property ${p.id.slice(0, 8)}`);
-    if (loanBalance > 0 && !dcf) warnings.push(`No DCF run on commercial property ${p.id.slice(0, 8)} — using defaults`);
+    if (loanBalance > 0 && !fin && !dcf) warnings.push(`No financing or DCF run on commercial property ${p.id.slice(0, 8)} — using defaults`);
   }
 
   const assessRate = policy.commercial.assessmentRatePct;
