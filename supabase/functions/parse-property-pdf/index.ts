@@ -204,7 +204,7 @@ Pull these ONLY when the document explicitly states them in financial summaries,
 
 Return ONLY valid JSON with the fields requested (use null for values not found).`;
 
-function buildUserPrompt(imageCount: number, fileName: string, propertyCategory = 'residential', batchInfo?: string): string {
+function buildUserPrompt(imageCount: number, fileName: string, propertyCategory = 'auto', batchInfo?: string): string {
   const batchNote = batchInfo ? `\n${batchInfo}` : '';
   return `Extract all ${propertyCategory} property details from these ${imageCount} page(s) of the document "${fileName}".${batchNote}
 
@@ -279,7 +279,7 @@ async function extractWithVision(
   images: PageImage[], 
   openaiKey: string, 
   fileName: string,
-  propertyCategory = 'residential'
+  propertyCategory = 'auto'
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing ${images.length} page images with GPT-4o Vision...`);
   
@@ -294,7 +294,7 @@ async function extractWithVisionSingle(
   images: PageImage[], 
   openaiKey: string, 
   fileName: string,
-  propertyCategory = 'residential',
+  propertyCategory = 'auto',
   batchInfo?: string
 ): Promise<ExtractedPropertyData> {
   const userContent: any[] = [
@@ -373,7 +373,7 @@ async function extractWithVisionBatched(
   images: PageImage[],
   openaiKey: string,
   fileName: string,
-  propertyCategory = 'residential'
+  propertyCategory = 'auto'
 ): Promise<ExtractedPropertyData> {
   // Create batches
   const batches: PageImage[][] = [];
@@ -514,7 +514,7 @@ async function extractFromSingleImage(
   mimeType: string,
   openaiKey: string,
   fileName: string,
-  propertyCategory = 'residential'
+  propertyCategory = 'auto'
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing single image with GPT-4o Vision...`);
   
@@ -788,7 +788,7 @@ Deno.serve(async (req) => {
       imageMimeType,
       fileName,
       base64Content,
-      propertyCategory = 'residential',
+      propertyCategory = 'auto',
     } = body;
     
     const fileNameToUse = fileName || 'document.pdf';
