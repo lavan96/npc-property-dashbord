@@ -79,7 +79,26 @@ export interface IndustrialCapexItem {
   updated_at: string;
 }
 
-type Table = 'industrial_properties' | 'industrial_tenancies' | 'industrial_capex';
+export interface IndustrialFinancing {
+  id: string;
+  property_id: string;
+  lender?: string | null;
+  loan_amount?: number | null;
+  loan_balance?: number | null;
+  interest_rate?: number | null;
+  loan_term_years?: number | null;
+  io_period_years?: number | null;
+  repayment_type?: 'pi' | 'io' | 'pi_after_io' | null;
+  lvr_pct?: number | null;
+  upfront_fees?: number | null;
+  ongoing_fees_pa?: number | null;
+  rate_type?: 'variable' | 'fixed' | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+type Table = 'industrial_properties' | 'industrial_tenancies' | 'industrial_capex' | 'industrial_financing';
 
 async function call<T = any>(operation: string, table: Table, payload: any = {}) {
   return invokeSecureFunction<T>('manage-industrial-data', { operation, table, ...payload });
@@ -114,6 +133,16 @@ export const industrialApi = {
     call<IndustrialCapexItem>('update', 'industrial_capex', { recordId, data }),
   deleteCapex: (recordId: string) =>
     call('delete', 'industrial_capex', { recordId }),
+
+  // Financing (one-to-one with property)
+  listFinancing: (propertyId: string) =>
+    call<IndustrialFinancing[]>('list', 'industrial_financing', { propertyId }),
+  createFinancing: (data: Partial<IndustrialFinancing>) =>
+    call<IndustrialFinancing>('create', 'industrial_financing', { data }),
+  updateFinancing: (recordId: string, data: Partial<IndustrialFinancing>) =>
+    call<IndustrialFinancing>('update', 'industrial_financing', { recordId, data }),
+  deleteFinancing: (recordId: string) =>
+    call('delete', 'industrial_financing', { recordId }),
 };
 
 export function useIndustrialProperties() {
@@ -163,4 +192,20 @@ export function useIndustrialCapex(propertyId: string | null) {
 
   useEffect(() => { refresh(); }, [refresh]);
   return { items, loading, refresh };
+}
+
+export function useIndustrialFinancing(propertyId: string | null) {
+  const [financing, setFinancing] = useState<IndustrialFinancing | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!propertyId) { setFinancing(null); return; }
+    setLoading(true);
+    const res = await industrialApi.listFinancing(propertyId);
+    if (!res.error) setFinancing((res.data && res.data[0]) || null);
+    setLoading(false);
+  }, [propertyId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  return { financing, loading, refresh };
 }

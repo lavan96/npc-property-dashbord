@@ -6,10 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Building2, Pencil, FileDown, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
+import { commercialApi, useCommercialFinancing, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { RentRollTable } from '@/components/commercial/RentRollTable';
 import { FinancialSnapshot } from '@/components/commercial/FinancialSnapshot';
+import { CommercialCapexTable } from '@/components/commercial/CommercialCapexTable';
+import { PropertyFinancingPanel } from '@/components/property/PropertyFinancingPanel';
 import { generateCommercialInvestmentReport } from '@/utils/commercial/commercialReportPdf';
 
 
@@ -91,6 +93,8 @@ export default function CommercialPropertyDetail() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
+          <TabsTrigger value="capex">Capex</TabsTrigger>
+          <TabsTrigger value="financing">Financing</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
         </TabsList>
 
@@ -122,6 +126,14 @@ export default function CommercialPropertyDetail() {
           <RentRollTable propertyId={property.id} />
         </TabsContent>
 
+        <TabsContent value="capex">
+          <CommercialCapexTable propertyId={property.id} />
+        </TabsContent>
+
+        <TabsContent value="financing">
+          <CommercialFinancingTab propertyId={property.id} />
+        </TabsContent>
+
         <TabsContent value="financials">
           <FinancialSnapshot property={property} />
         </TabsContent>
@@ -147,3 +159,24 @@ function Info({ label, value }: { label: string; value: any }) {
     </div>
   );
 }
+
+function CommercialFinancingTab({ propertyId }: { propertyId: string }) {
+  const { financing, loading, refresh } = useCommercialFinancing(propertyId);
+  const handleSave = async (data: any) => {
+    const res = financing?.id
+      ? await commercialApi.updateFinancing(financing.id, data)
+      : await commercialApi.createFinancing(data);
+    if (!res.error) refresh();
+    return res;
+  };
+  return (
+    <PropertyFinancingPanel
+      propertyId={propertyId}
+      value={financing}
+      loading={loading}
+      onSave={handleSave}
+      title="Commercial Loan & Financing"
+    />
+  );
+}
+

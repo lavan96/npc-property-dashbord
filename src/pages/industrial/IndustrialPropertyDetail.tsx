@@ -6,11 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Factory, Pencil, FileDown, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
+import { industrialApi, useIndustrialFinancing, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
 import { IndustrialPropertyFormModal } from '@/components/industrial/IndustrialPropertyFormModal';
 import { IndustrialRentRollTable } from '@/components/industrial/IndustrialRentRollTable';
 import { IndustrialCapexTable } from '@/components/industrial/IndustrialCapexTable';
 import { IndustrialFinancialSnapshot } from '@/components/industrial/IndustrialFinancialSnapshot';
+import { PropertyFinancingPanel } from '@/components/property/PropertyFinancingPanel';
 import { generateIndustrialInvestmentReport } from '@/utils/industrial/industrialReportPdf';
 
 const SUBTYPE_LABEL: Record<string, string> = {
@@ -91,6 +92,7 @@ export default function IndustrialPropertyDetail() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
           <TabsTrigger value="capex">Capex</TabsTrigger>
+          <TabsTrigger value="financing">Financing</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
         </TabsList>
 
@@ -129,6 +131,10 @@ export default function IndustrialPropertyDetail() {
           <IndustrialCapexTable propertyId={property.id} />
         </TabsContent>
 
+        <TabsContent value="financing">
+          <IndustrialFinancingTab propertyId={property.id} />
+        </TabsContent>
+
         <TabsContent value="financials">
           <IndustrialFinancialSnapshot property={property} />
         </TabsContent>
@@ -152,5 +158,25 @@ function Info({ label, value }: { label: string; value: any }) {
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="font-medium mt-0.5">{value}</div>
     </div>
+  );
+}
+
+function IndustrialFinancingTab({ propertyId }: { propertyId: string }) {
+  const { financing, loading, refresh } = useIndustrialFinancing(propertyId);
+  const handleSave = async (data: any) => {
+    const res = financing?.id
+      ? await industrialApi.updateFinancing(financing.id, data)
+      : await industrialApi.createFinancing(data);
+    if (!res.error) refresh();
+    return res;
+  };
+  return (
+    <PropertyFinancingPanel
+      propertyId={propertyId}
+      value={financing}
+      loading={loading}
+      onSave={handleSave}
+      title="Industrial Loan & Financing"
+    />
   );
 }

@@ -5,13 +5,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-type TableName = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs';
+type TableName = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs' | 'commercial_capex' | 'commercial_financing';
 
 const ALLOWED_TABLES: TableName[] = [
   'commercial_properties',
   'commercial_leases',
   'commercial_dcf_runs',
+  'commercial_capex',
+  'commercial_financing',
 ];
+
+// Tables that don't carry user_id directly — ownership checked via property join.
+const PROPERTY_OWNED_TABLES = new Set<TableName>(['commercial_capex', 'commercial_financing']);
 
 type Operation = 'list' | 'get' | 'create' | 'update' | 'delete';
 
@@ -69,8 +74,35 @@ Deno.serve(async (req) => {
   try {
     let result;
 
+    // Helper: assert the caller owns the given commercial property.
+    async function assertPropertyOwned(propertyId: string) {
+      const { data, error } = await supabase
+        .from('commercial_properties')
+        .select('id')
+        .eq('id', propertyId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Property not found or access denied');
+    }
+
+    const isPropertyOwned = PROPERTY_OWNED_TABLES.has(body.table);
+
     switch (body.operation) {
       case 'list': {
+        if (isPropertyOwned) {
+          if (!body.propertyId) throw new Error('propertyId required');
+          await assertPropertyOwned(body.propertyId);
+          const { data, error } = await supabase
+            .from(body.table)
+            .select('*')
+            .eq('property_id', body.propertyId)
+            .order('created_at', { ascending: false })
+            .limit(500);
+          if (error) throw error;
+          result = data;
+          break;
+        }
         let q = supabase.from(body.table).select('*').eq('user_id', userId);
         if (body.table === 'commercial_leases' && body.propertyId) {
           q = q.eq('property_id', body.propertyId);
@@ -89,6 +121,17 @@ Deno.serve(async (req) => {
 
       case 'get': {
         if (!body.recordId) throw new Error('recordId required for get');
+        if (isPropertyOwned) {
+          const { data, error } = await supabase
+            .from(body.table)
+            .select('*, commercial_properties!inner(user_id)')
+            .eq('id', body.recordId)
+            .eq('commercial_properties.user_id', userId)
+            .maybeSingle();
+          if (error) throw error;
+          result = data;
+          break;
+        }
         const { data, error } = await supabase
           .from(body.table)
           .select('*')
@@ -102,9 +145,14 @@ Deno.serve(async (req) => {
 
       case 'create': {
         if (!body.data) throw new Error('data required for create');
-        const payload = { ...body.data, user_id: userId };
-        // Strip undefined / never overwrite id with empty
+        const payload = { ...body.data };
         if (payload.id === '' || payload.id == null) delete payload.id;
+        if (isPropertyOwned) {
+          if (!payload.property_id) throw new Error('property_id required');
+          await assertPropertyOwned(payload.property_id);
+        } else {
+          payload.user_id = userId;
+        }
         const { data, error } = await supabase
           .from(body.table)
           .insert(payload)
@@ -120,6 +168,26 @@ Deno.serve(async (req) => {
         const payload = { ...body.data };
         delete payload.id;
         delete payload.user_id;
+        delete payload.property_id;
+        if (isPropertyOwned) {
+          const { data: rec, error: recErr } = await supabase
+            .from(body.table)
+            .select('id, commercial_properties!inner(user_id)')
+            .eq('id', body.recordId)
+            .eq('commercial_properties.user_id', userId)
+            .maybeSingle();
+          if (recErr) throw recErr;
+          if (!rec) throw new Error('Record not found or access denied');
+          const { data, error } = await supabase
+            .from(body.table)
+            .update(payload)
+            .eq('id', body.recordId)
+            .select()
+            .single();
+          if (error) throw error;
+          result = data;
+          break;
+        }
         const { data, error } = await supabase
           .from(body.table)
           .update(payload)
@@ -134,12 +202,25 @@ Deno.serve(async (req) => {
 
       case 'delete': {
         if (!body.recordId) throw new Error('recordId required for delete');
-        const { error } = await supabase
-          .from(body.table)
-          .delete()
-          .eq('id', body.recordId)
-          .eq('user_id', userId);
-        if (error) throw error;
+        if (isPropertyOwned) {
+          const { data: rec, error: recErr } = await supabase
+            .from(body.table)
+            .select('id, commercial_properties!inner(user_id)')
+            .eq('id', body.recordId)
+            .eq('commercial_properties.user_id', userId)
+            .maybeSingle();
+          if (recErr) throw recErr;
+          if (!rec) throw new Error('Record not found or access denied');
+          const { error } = await supabase.from(body.table).delete().eq('id', body.recordId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from(body.table)
+            .delete()
+            .eq('id', body.recordId)
+            .eq('user_id', userId);
+          if (error) throw error;
+        }
         result = { success: true };
         break;
       }

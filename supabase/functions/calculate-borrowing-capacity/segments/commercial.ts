@@ -83,12 +83,15 @@ export async function evaluateCommercialSegment(
   if (properties.length === 0) return empty;
 
   const propIds = properties.map(p => p.id);
-  const [leasesRes, dcfRes] = await Promise.all([
+  const [leasesRes, dcfRes, finRes] = await Promise.all([
     supabase.from('commercial_leases').select('property_id, base_rent_pa, outgoings_recovery_pct, status').in('property_id', propIds),
     supabase.from('commercial_dcf_runs').select('property_id, loan_amount, interest_rate, loan_term_years, outputs, updated_at').in('property_id', propIds).order('updated_at', { ascending: false }),
+    supabase.from('commercial_financing').select('property_id, loan_balance, loan_amount, interest_rate, loan_term_years').in('property_id', propIds),
   ]);
   const leases: CommercialLeaseRow[] = leasesRes.data || [];
   const dcfRuns: CommercialDcfRow[] = dcfRes.data || [];
+  const financingByProp = new Map<string, any>();
+  for (const f of (finRes.data || [])) financingByProp.set(f.property_id, f);
 
   // Latest DCF per property
   const latestDcfByProp = new Map<string, CommercialDcfRow>();
@@ -116,9 +119,11 @@ export async function evaluateCommercialSegment(
     const noi = Math.max(0, grossRent - netOpex);
 
     const dcf = latestDcfByProp.get(p.id);
-    const loanBalance = Number(dcf?.loan_amount) || 0;
-    const interestRate = Number(dcf?.interest_rate) || policy.commercial.assessmentRatePct;
-    const termYears = Number(dcf?.loan_term_years) || policy.commercial.amortYears;
+    const fin = financingByProp.get(p.id);
+    // Relational financing wins; DCF is fallback; policy defaults last.
+    const loanBalance = Number(fin?.loan_balance ?? fin?.loan_amount ?? dcf?.loan_amount) || 0;
+    const interestRate = Number(fin?.interest_rate ?? dcf?.interest_rate) || policy.commercial.assessmentRatePct;
+    const termYears = Number(fin?.loan_term_years ?? dcf?.loan_term_years) || policy.commercial.amortYears;
     const value = Number(p.valuation) || Number(p.purchase_price) || 0;
     const debtService = annualPI(loanBalance, Math.max(interestRate, policy.commercial.assessmentRatePct), termYears);
 
@@ -134,7 +139,7 @@ export async function evaluateCommercialSegment(
     });
 
     if (noi <= 0 && propLeases.length === 0) warnings.push(`No active lease on commercial property ${p.id.slice(0, 8)}`);
-    if (loanBalance > 0 && !dcf) warnings.push(`No DCF run on commercial property ${p.id.slice(0, 8)} — using defaults`);
+    if (loanBalance > 0 && !fin && !dcf) warnings.push(`No financing or DCF run on commercial property ${p.id.slice(0, 8)} — using defaults`);
   }
 
   const assessRate = policy.commercial.assessmentRatePct;
