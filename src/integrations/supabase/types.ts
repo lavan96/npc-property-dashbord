@@ -12831,6 +12831,8 @@ export type Database = {
       }
       pdf_import_jobs: {
         Row: {
+          cache_hit: boolean
+          cache_source_job_id: string | null
           created_at: string
           diagnostics_path: string | null
           duration_ms: number | null
@@ -12842,8 +12844,11 @@ export type Database = {
           id: string
           mode: string
           page_count: number | null
+          pages_completed: number | null
+          pages_total: number | null
           request_payload: Json
           result_payload: Json
+          source_file_hash: string | null
           source_file_name: string | null
           source_file_path: string
           source_file_size_bytes: number | null
@@ -12857,6 +12862,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cache_hit?: boolean
+          cache_source_job_id?: string | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -12868,8 +12875,11 @@ export type Database = {
           id?: string
           mode?: string
           page_count?: number | null
+          pages_completed?: number | null
+          pages_total?: number | null
           request_payload?: Json
           result_payload?: Json
+          source_file_hash?: string | null
           source_file_name?: string | null
           source_file_path: string
           source_file_size_bytes?: number | null
@@ -12883,6 +12893,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cache_hit?: boolean
+          cache_source_job_id?: string | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -12894,8 +12906,11 @@ export type Database = {
           id?: string
           mode?: string
           page_count?: number | null
+          pages_completed?: number | null
+          pages_total?: number | null
           request_payload?: Json
           result_payload?: Json
+          source_file_hash?: string | null
           source_file_name?: string | null
           source_file_path?: string
           source_file_size_bytes?: number | null
