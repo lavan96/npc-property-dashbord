@@ -169,6 +169,8 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
   useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
 
+  useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
+
   const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
 
   useApplyPrefill((p) => {
