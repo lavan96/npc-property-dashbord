@@ -81,7 +81,7 @@ export function PdfImportEngineToggle() {
           </SelectItem>
           <SelectItem value="legacy">
             <span className="flex items-center gap-1.5">
-              <Cpu className="h-3 w-3" /> Legacy (pdf.js)
+              <Cpu className="h-3 w-3" /> Legacy (pdf.js) · deprecated
             </span>
           </SelectItem>
           <SelectItem value="docling">
