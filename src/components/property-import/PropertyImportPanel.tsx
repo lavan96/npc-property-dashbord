@@ -38,6 +38,22 @@ export interface ImportedPropertyData {
   dockDoors?: number;
   groundFloorLoadKpa?: number;
   conditionRating?: string;
+  passingNoiPa?: number;
+  marketNoiPa?: number;
+  passingCapRatePct?: number;
+  marketCapRatePct?: number;
+  vendorAdvisedRentPa?: number;
+  vendorAdvisedOutgoingsPa?: number;
+  outgoingsTotalPa?: number;
+  outgoingsRecoverablePa?: number;
+  vendorAdvisedYieldPct?: number;
+  leaseType?: string;
+  leaseExpiryDate?: string;
+  leaseOptions?: string;
+  waleYears?: number;
+  tenantNames?: string[];
+  gstTreatment?: string;
+  truckAccess?: string;
   notes?: string;
   sourceUrl?: string;
 }
@@ -57,6 +73,19 @@ function normalizeDetails(raw: any, category: PropertyImportCategory, sourceUrl?
   const propertyType = details.extractedPropertyType || details.propertyType;
   const buildSize = toNumber(details.extractedBuildSize ?? details.buildSize);
   const landSize = toNumber(details.extractedLandSize ?? details.landSize);
+
+  const financialNotes = [
+    toNumber(details.extractedPassingNoiPa ?? details.passingNoiPa) ? `Passing NOI p.a.: $${toNumber(details.extractedPassingNoiPa ?? details.passingNoiPa)!.toLocaleString('en-AU')}` : undefined,
+    toNumber(details.extractedMarketNoiPa ?? details.marketNoiPa) ? `Market NOI p.a.: $${toNumber(details.extractedMarketNoiPa ?? details.marketNoiPa)!.toLocaleString('en-AU')}` : undefined,
+    toNumber(details.extractedPassingCapRatePct ?? details.passingCapRatePct) ? `Passing cap rate: ${toNumber(details.extractedPassingCapRatePct ?? details.passingCapRatePct)}%` : undefined,
+    toNumber(details.extractedVendorYieldPct ?? details.vendorAdvisedYieldPct) ? `Vendor advised yield: ${toNumber(details.extractedVendorYieldPct ?? details.vendorAdvisedYieldPct)}%` : undefined,
+    details.extractedLeaseType || details.leaseType ? `Lease type: ${details.extractedLeaseType || details.leaseType}` : undefined,
+    details.extractedLeaseExpiryDate || details.leaseExpiryDate ? `Lease expiry: ${details.extractedLeaseExpiryDate || details.leaseExpiryDate}` : undefined,
+    details.extractedLeaseOptions || details.leaseOptions ? `Lease options: ${details.extractedLeaseOptions || details.leaseOptions}` : undefined,
+    toNumber(details.extractedWaleYears ?? details.waleYears) ? `WALE: ${toNumber(details.extractedWaleYears ?? details.waleYears)} years` : undefined,
+    Array.isArray(details.extractedTenantNames ?? details.tenantNames) ? `Tenants: ${(details.extractedTenantNames ?? details.tenantNames).join(', ')}` : undefined,
+    details.extractedTruckAccess || details.truckAccess ? `Truck access: ${details.extractedTruckAccess || details.truckAccess}` : undefined,
+  ].filter(Boolean);
 
   const imported: ImportedPropertyData = {
     address,
@@ -84,7 +113,23 @@ function normalizeDetails(raw: any, category: PropertyImportCategory, sourceUrl?
     dockDoors: toNumber(details.extractedDockDoors ?? details.dockDoors),
     groundFloorLoadKpa: toNumber(details.extractedGroundFloorLoadKpa ?? details.groundFloorLoadKpa),
     conditionRating: details.extractedConditionRating || details.conditionRating,
-    notes: details.extractedNotes || details.notes || details.listing_text,
+    passingNoiPa: toNumber(details.extractedPassingNoiPa ?? details.passingNoiPa),
+    marketNoiPa: toNumber(details.extractedMarketNoiPa ?? details.marketNoiPa),
+    passingCapRatePct: toNumber(details.extractedPassingCapRatePct ?? details.passingCapRatePct),
+    marketCapRatePct: toNumber(details.extractedMarketCapRatePct ?? details.marketCapRatePct),
+    vendorAdvisedRentPa: toNumber(details.extractedVendorRentPa ?? details.vendorAdvisedRentPa),
+    vendorAdvisedOutgoingsPa: toNumber(details.extractedVendorOutgoingsPa ?? details.vendorAdvisedOutgoingsPa),
+    outgoingsTotalPa: toNumber(details.extractedOutgoingsTotalPa ?? details.outgoingsTotalPa),
+    outgoingsRecoverablePa: toNumber(details.extractedOutgoingsRecoverablePa ?? details.outgoingsRecoverablePa),
+    vendorAdvisedYieldPct: toNumber(details.extractedVendorYieldPct ?? details.vendorAdvisedYieldPct),
+    leaseType: details.extractedLeaseType || details.leaseType,
+    leaseExpiryDate: details.extractedLeaseExpiryDate || details.leaseExpiryDate,
+    leaseOptions: details.extractedLeaseOptions || details.leaseOptions,
+    waleYears: toNumber(details.extractedWaleYears ?? details.waleYears),
+    tenantNames: Array.isArray(details.extractedTenantNames ?? details.tenantNames) ? (details.extractedTenantNames ?? details.tenantNames) : undefined,
+    gstTreatment: details.extractedGstTreatment || details.gstTreatment,
+    truckAccess: details.extractedTruckAccess || details.truckAccess,
+    notes: [details.extractedNotes || details.notes || details.listing_text, financialNotes.length ? `Imported lease/income details:\n${financialNotes.map(note => `- ${note}`).join('\n')}` : undefined].filter(Boolean).join('\n\n'),
     sourceUrl,
   };
 
