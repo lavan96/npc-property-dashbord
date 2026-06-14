@@ -114,7 +114,10 @@ export async function evaluateCommercialSegment(
   let totalLoanBalance = 0;
   let totalValue = 0;
   const propertyRows: SegmentPropertyRow[] = [];
-  const assumptions: string[] = [`Commercial assessment rate ${policy.commercial.assessmentRatePct}% over ${policy.commercial.amortYears}yr P&I`];
+  const assumptions: string[] = [
+    `Commercial assessment rate ${policy.commercial.assessmentRatePct}% over ${policy.commercial.amortYears}yr P&I`,
+    `Capex reserve amortised over ${capexHorizon} years deducted from NOI per property`,
+  ];
   const warnings: string[] = [];
 
   for (const p of properties) {
