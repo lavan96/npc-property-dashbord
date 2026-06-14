@@ -16,6 +16,7 @@ import {
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
   ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon, MapPinned,
+  Zap, Cpu,
 } from 'lucide-react';
 // Always-mounted editor chrome stays eagerly imported; the heavy on-demand
 // dialogs below are React.lazy + MountOnFirstOpen so they're code-split out of
