@@ -44,7 +44,7 @@ LOG = logging.getLogger("pdf-parse-service")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveA"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 
 
@@ -297,6 +297,48 @@ def _extract_languages(doc_dict: dict) -> dict[int, str]:
     return out
 
 
+def _summarise_doc(doc_dict: dict) -> dict:
+    """Wave D: lightweight roll-up so dispatch + diagnostics can show extraction quality at a glance."""
+    texts = doc_dict.get("texts") or []
+    tables = doc_dict.get("tables") or []
+    pictures = doc_dict.get("pictures") or doc_dict.get("figures") or []
+    total_chars = 0
+    ocr_chars = 0
+    ocr_pages: set[int] = set()
+    conf_sum = 0.0
+    conf_n = 0
+    for t in texts:
+        s = t.get("text") or ""
+        total_chars += len(s)
+        origin = (t.get("origin") or t.get("source") or "").lower()
+        if "ocr" in origin:
+            ocr_chars += len(s)
+            for p in (t.get("prov") or []):
+                pn = p.get("page_no")
+                if pn is not None:
+                    ocr_pages.add(int(pn))
+        conf = t.get("confidence")
+        if isinstance(conf, (int, float)) and 0.0 <= float(conf) <= 1.0:
+            conf_sum += float(conf)
+            conf_n += 1
+    table_cells = 0
+    for tbl in tables:
+        data = tbl.get("data") or {}
+        rows = data.get("table_cells") or data.get("cells") or []
+        if isinstance(rows, list):
+            table_cells += len(rows)
+    return {
+        "text_chars": total_chars,
+        "ocr_chars": ocr_chars,
+        "ocr_pages": sorted(ocr_pages),
+        "avg_text_confidence": round(conf_sum / conf_n, 4) if conf_n else None,
+        "table_count": len(tables),
+        "table_cell_count": table_cells,
+        "picture_count": len(pictures),
+        "text_block_count": len(texts),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -361,8 +403,14 @@ async def parse(req: ParseRequest) -> dict:
         if lang:
             pm["language"] = lang
 
+    summary = _summarise_doc(doc_dict)
     parsed_ms = int((time.monotonic() - t0) * 1000)
-    LOG.info("Parsed %d-page PDF (%d bytes) in %d ms", len(pages_meta), len(pdf_bytes), parsed_ms)
+    LOG.info(
+        "Parsed %d-page PDF (%d bytes) in %d ms — %d texts / %d tables / %d pictures / %d OCR pages",
+        len(pages_meta), len(pdf_bytes), parsed_ms,
+        summary["text_block_count"], summary["table_count"],
+        summary["picture_count"], len(summary["ocr_pages"]),
+    )
 
     return {
         "engine_version": ENGINE_VERSION,
@@ -371,6 +419,7 @@ async def parse(req: ParseRequest) -> dict:
         "pages": pages_meta,
         "outline": outline,
         "page_languages": page_languages,
+        "summary": summary,
         "docling_document": doc_dict,
         **extras,
     }
