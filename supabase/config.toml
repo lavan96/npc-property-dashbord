@@ -815,3 +815,6 @@ request_timeout = 120
 
 [functions.estimate-commercial-noi]
 verify_jwt = true
+
+[functions.estimate-commercial-caprate]
+verify_jwt = true
