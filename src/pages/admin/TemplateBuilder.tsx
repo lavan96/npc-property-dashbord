@@ -5,18 +5,32 @@
  * The visual editor (EditorialCanvas WYSIWYG surface) lives at
  * /admin/template-builder/:id.
  */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers, Upload, History, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, FileText, Edit, Trash2, CheckCircle2, Layers, Upload, History, Loader2, Search, SlidersHorizontal } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useReportTemplates, useReportTemplateMutations } from '@/hooks/useReportTemplates';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { makeBlankTemplate } from '@/lib/reportTemplate/templateSchema';
 import { getAdapter, listAdapters } from '@/lib/reportTemplate/adapters';
+import {
+  DEFAULT_TEMPLATE_LIST_FILTERS,
+  filterAndSortTemplates,
+  formatTemplateDate,
+  getTemplateReportTypeOptions,
+  getTemplateStats,
+  getTemplatePageCount,
+  readTemplateListFiltersFromParams,
+  writeTemplateListFiltersToParams,
+  type TemplateSortOption,
+  type TemplateStatusFilter,
+} from '@/lib/reportTemplate/templateListControls';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
 import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
@@ -34,6 +48,7 @@ const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 
 export default function TemplateBuilder() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: templates = [], isLoading } = useReportTemplates();
   const { create, update, remove } = useReportTemplateMutations();
   const { canEdit, canDelete } = usePermissions();
@@ -50,6 +65,44 @@ export default function TemplateBuilder() {
   const [reviewImportAsset, setReviewImportAsset] = useState<ImportAsset | null>(null);
   const [reviewImportManifests, setReviewImportManifests] = useState<RawImportManifest[] | null>(null);
   const [reconcilingReview, setReconcilingReview] = useState(false);
+  const [filters, setFilters] = useState(() => readTemplateListFiltersFromParams(searchParams));
+  const searchParamString = searchParams.toString();
+  const { search, reportType: reportTypeFilter, status: statusFilter, sort } = filters;
+
+  useEffect(() => {
+    setFilters(readTemplateListFiltersFromParams(new URLSearchParams(searchParamString)));
+  }, [searchParamString]);
+
+  useEffect(() => {
+    const next = writeTemplateListFiltersToParams(filters);
+    if (next.toString() !== searchParamString) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [filters, searchParamString, setSearchParams]);
+
+  const reportTypeOptions = useMemo(() => {
+    return getTemplateReportTypeOptions(templates)
+      .sort((a: string, b: string) => (REPORT_TYPE_LABELS[a] || a).localeCompare(REPORT_TYPE_LABELS[b] || b));
+  }, [templates]);
+
+  const visibleTemplates = useMemo(() => {
+    return filterAndSortTemplates(templates, filters);
+  }, [templates, filters]);
+
+  const templateStats = useMemo(() => getTemplateStats(templates), [templates]);
+
+  const hasTemplateFilters = search.trim() !== '' || reportTypeFilter !== 'all' || statusFilter !== 'all';
+  const clearTemplateFilters = () => {
+    setFilters((current) => ({
+      ...current,
+      search: DEFAULT_TEMPLATE_LIST_FILTERS.search,
+      reportType: DEFAULT_TEMPLATE_LIST_FILTERS.reportType,
+      status: DEFAULT_TEMPLATE_LIST_FILTERS.status,
+    }));
+  };
+  const clearTemplateView = () => {
+    setFilters(DEFAULT_TEMPLATE_LIST_FILTERS);
+  };
 
   const handleCreate = () => {
     if (!canEditTemplates) return;
@@ -227,6 +280,108 @@ export default function TemplateBuilder() {
         </Card>
       )}
 
+      {!isLoading && templates.length > 0 && (
+        <div className="grid gap-3 md:grid-cols-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Total templates</div>
+              <div className="mt-1 text-2xl font-semibold">{templateStats.total}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Active</div>
+              <div className="mt-1 text-2xl font-semibold text-primary">{templateStats.active}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Draft</div>
+              <div className="mt-1 text-2xl font-semibold">{templateStats.draft}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Preview-only</div>
+              <div className="mt-1 text-2xl font-semibold">{templateStats.previewOnly}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {!isLoading && templates.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              Find the right template quickly
+            </div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_150px_170px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setFilters((current) => ({ ...current, search: e.target.value }))}
+                  placeholder="Search by name, description, report type, or tier…"
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={reportTypeFilter}
+                onValueChange={(value) => setFilters((current) => ({ ...current, reportType: value }))}
+              >
+                <SelectTrigger aria-label="Filter by report type">
+                  <SelectValue placeholder="Report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All report types</SelectItem>
+                  {reportTypeOptions.map((type) => (
+                    <SelectItem key={type} value={type}>{REPORT_TYPE_LABELS[type] || type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => setFilters((current) => ({ ...current, status: value as TemplateStatusFilter }))}
+              >
+                <SelectTrigger aria-label="Filter by status">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="active">Active only</SelectItem>
+                  <SelectItem value="draft">Draft only</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={sort}
+                onValueChange={(value) => setFilters((current) => ({ ...current, sort: value as TemplateSortOption }))}
+              >
+                <SelectTrigger aria-label="Sort templates">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="updated_desc">Recently updated</SelectItem>
+                  <SelectItem value="name_asc">Name A–Z</SelectItem>
+                  <SelectItem value="name_desc">Name Z–A</SelectItem>
+                  <SelectItem value="type">Report type</SelectItem>
+                  <SelectItem value="active_first">Active first</SelectItem>
+                  <SelectItem value="pages_desc">Most pages</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Showing {visibleTemplates.length} of {templates.length} template{templates.length === 1 ? '' : 's'}.</span>
+              {hasTemplateFilters && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearTemplateFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[0, 1, 2, 3].map((i) => (
@@ -249,9 +404,23 @@ export default function TemplateBuilder() {
           </CardContent>
         </Card>
       ) : (
+        visibleTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <CardTitle className="text-lg">No templates match your filters</CardTitle>
+              <CardDescription className="mt-2 max-w-md mx-auto">
+                Broaden the search, change the report type/status, or clear filters to view all templates.
+              </CardDescription>
+              <Button variant="outline" className="mt-5" onClick={clearTemplateView}>
+                Clear filters
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((tpl) => {
-            const pageCount = tpl.schema?.pages?.length ?? 0;
+          {visibleTemplates.map((tpl) => {
+            const pageCount = getTemplatePageCount(tpl);
             return (
               <Card key={tpl.id} className="hover:border-primary/40 transition-colors">
                 <CardHeader className="pb-3">
@@ -261,6 +430,9 @@ export default function TemplateBuilder() {
                       <CardDescription className="mt-1 line-clamp-2 text-xs">
                         {tpl.description || 'No description'}
                       </CardDescription>
+                      <div className="mt-2 text-[11px] text-muted-foreground">
+                        Updated {formatTemplateDate(tpl.updated_at)}
+                      </div>
                     </div>
                     {tpl.is_active && (
                       <Badge variant="default" className="text-xs">
@@ -320,6 +492,7 @@ export default function TemplateBuilder() {
             );
           })}
         </div>
+        )
       )}
     </div>
   );
