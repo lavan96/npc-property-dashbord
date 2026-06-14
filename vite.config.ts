@@ -21,7 +21,7 @@ export default defineConfig(() => ({
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-dropdown-menu'],
           'vendor-charts': ['recharts'],
-          'vendor-pdf': ['pdf-lib', 'jspdf', 'pdfjs-dist'],
+          'vendor-pdf': ['pdf-lib', 'jspdf'],
           'vendor-utils': ['date-fns', 'lucide-react', 'zod', 'react-hook-form'],
           'vendor-supabase': ['@supabase/supabase-js'],
         },
