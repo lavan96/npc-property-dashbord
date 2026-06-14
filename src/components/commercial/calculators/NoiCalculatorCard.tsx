@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,8 +8,24 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
-import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { useApplyPrefill, useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+
+interface NoiAiEstimate {
+  marketRentPa?: number;
+  grossPassingRentPa?: number;
+  otherIncomePa?: number;
+  recoveredOutgoingsPa?: number;
+  vacancyAllowancePct?: number;
+  incentiveAdjustment?: number;
+  tenantRiskHaircut?: number;
+  leaseTypeAssumed?: LeaseType | 'unknown';
+  outgoings?: Partial<Record<keyof OutgoingsBreakdown, number>>;
+  ratePerSqm?: number;
+  confidence?: 'high' | 'medium' | 'low';
+  reasoning?: string;
+}
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
