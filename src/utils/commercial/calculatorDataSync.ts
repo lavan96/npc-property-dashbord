@@ -9,5 +9,5 @@ export function resolveSyncedField<T>(profile: CommercialIndustrialDealProfile, 
 }
 
 export function buildGlobalSyncLabel(mode: CalculatorSourceMode): string {
-  return mode === 'global' ? 'Global Input Sync: On' : mode === 'manualOverride' ? 'Manual Override Active' : 'Scenario Override Active';
+  return mode === 'global' ? 'Global Input Sync: On' : mode === 'manualOverride' ? 'Manual Override Active' : mode === 'aiPending' ? 'AI Estimate Pending' : mode === 'savedPropertyLinked' ? 'Saved Property Linked' : 'Scenario Override Active';
 }

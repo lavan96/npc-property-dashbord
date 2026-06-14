@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { AlertTriangle, Building2, Factory, FileCheck2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
+import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
 import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
 import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
@@ -25,17 +27,19 @@ function MoneyRow({ label, value, emph }: { label: string; value: number | strin
   return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{typeof value === 'number' ? fmt(value) : value}</span></div>;
 }
 
-function Field({ label, value, onChange, step = '1' }: { label: string; value: string; onChange: (v: string) => void; step?: string }) {
-  return <div><Label>{label}</Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+function Field({ label, value, onChange, step = '1', tag = 'Manual Estimate' }: { label: string; value: string; onChange: (v: string) => void; step?: string; tag?: string }) {
+  return <div><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{tag}</Badge></div><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
 }
 
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }> }) {
-  return <div><Label>{label}</Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+function SelectField({ label, value, onChange, options, tag = 'Manual Estimate' }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; tag?: string }) {
+  return <div><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{tag}</Badge></div><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 
-export function CommercialBorrowingCapacityCard() {
-  const [assetCategory, setAssetCategory] = useState<AssetCategory>('commercial');
-  const [assetSubtype, setAssetSubtype] = useState('Office');
+export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commercial' }: { initialAssetCategory?: AssetCategory }) {
+  const updateGlobal = useCommercialDealState(s => s.updateGlobal);
+  const sourceMode = useCommercialDealState(s => s.sourceModes.borrowing);
+  const [assetCategory, setAssetCategory] = useState<AssetCategory>(initialAssetCategory);
+  const [assetSubtype, setAssetSubtype] = useState(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office');
   const [purpose, setPurpose] = useState<AcquisitionPurpose>('investment');
   const [leaseStatus, setLeaseStatus] = useState<LeaseStatus>('fullyLeased');
   const [state, setState] = useState<'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'>('NSW');
@@ -131,6 +135,8 @@ export function CommercialBorrowingCapacityCard() {
   const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
   const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
 
+  useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
+
   const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
 
   useApplyPrefill((p) => {
@@ -172,6 +178,19 @@ export function CommercialBorrowingCapacityCard() {
     return calculateCommercialIndustrialBorrowing(inputs);
   }, [assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, gstTreatment, gstCashflow, gstClaimable, goingConcernConfirmed, landholderAcquisition, profile, rate, buffer, floorRate, assessmentBasis, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired]);
 
+
+  useEffect(() => {
+    updateGlobal('dealProfile', { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined });
+    updateGlobal('purchaserStructure', { purchaserType, borrowerEntityName: entityName, guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: num(availableEquity), sponsorLiquidity: num(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda) });
+    updateGlobal('propertyValuation', { purchasePrice: num(purchasePrice), estimatedMarketValue: num(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: num(landArea), buildingArea: num(buildingArea), lettableArea: num(lettableArea), valuationConfidence, clearanceHeight: num(clearance), rollerDoors: num(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition, siteCoverageRatio: num(landArea) > 0 ? num(buildingArea) / num(landArea) : undefined });
+    updateGlobal('leaseIncome', { grossPassingRent: num(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: num(recoveries), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy) });
+    updateGlobal('lendingAssumptions', { profile, contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), assessmentFloorRatePct: num(floorRate), loanTermYears: num(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: num(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true });
+    updateGlobal('acquisitionCosts', { stampDuty: num(stampDuty), transferRegistrationFee: num(transferRegistrationFee), mortgageRegistrationFee: num(mortgageRegistrationFee), pexaSettlementFee: num(pexaSettlementFee), legalConveyancingFee: num(legal), bankLegalFee: num(bankLegal), valuationFee: num(valuationFee), dueDiligence: num(dueDiligence), capexReserve: num(capexReserve), workingCapitalReserve: num(workingCapital), otherAcquisitionCosts: num(otherCosts) + num(autoEstimatedAcquisitionCosts), gstTreatment });
+    updateGlobal('fundsToComplete', result.fundsToComplete);
+    updateGlobal('borrowingOutputs', result);
+    updateGlobal('industrialMetrics', { netRentPerSqm: num(lettableArea) ? num(passingRent) / num(lettableArea) : undefined, grossRentPerSqm: num(lettableArea) ? (num(passingRent) + num(recoveries)) / num(lettableArea) : undefined, siteCover: num(landArea) ? num(buildingArea) / num(landArea) : undefined, gla: num(lettableArea), siteArea: num(landArea) });
+  }, [updateGlobal, result, assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, relatedPartyTenant, gstRegistered, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, profile, rate, buffer, floorRate, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, stampDuty, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, legal, bankLegal, valuationFee, dueDiligence, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, gstTreatment]);
+
   const applyProfile = (next: LenderPolicyProfileKey) => {
     setProfile(next);
     const p = lenderPolicyProfiles[next];
@@ -184,11 +203,11 @@ export function CommercialBorrowingCapacityCard() {
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Commercial & Industrial Borrowing Capacity</CardTitle>
+            <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Borrowing Capacity</CardTitle>
             <CardDescription>Shared lending engine with commercial and industrial profiles, funds-to-complete, risk overlays, commentary and document checklist.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+            <Badge variant="outline" className="px-3 py-1 text-sm">{buildGlobalSyncLabel(sourceMode)}</Badge><Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
             <SaveBackButton build={() => ({
               purchase_price: num(purchasePrice),
               valuation: num(estimatedValue),
