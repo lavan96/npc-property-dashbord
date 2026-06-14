@@ -92,7 +92,7 @@ export const useCommercialDealState = create<DealStateStore>((set) => ({
       ...state.profile,
       [section]: { ...((state.profile[section] as object) ?? {}), [targetKey]: estimate.estimatedValue },
       aiEstimateMetadata: { ...state.profile.aiEstimateMetadata, [estimate.fieldKey]: { ...estimate, accepted: true } as AiEstimateResult },
-      assumptions: { ...state.profile.assumptions, [estimate.fieldKey]: { fieldKey: estimate.fieldKey, confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: estimate.reasoningSummary, verificationRequired: true, requiredDocuments: estimate.requiredDocuments, updatedAt: new Date().toISOString() } as AssumptionProvenance },
+      assumptions: { ...state.profile.assumptions, [estimate.fieldKey]: { fieldKey: estimate.fieldKey, label: estimate.fieldKey, confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: estimate.reasoningSummary, verificationRequired: true, requiredDocuments: estimate.requiredDocuments, updatedAt: new Date().toISOString() } as unknown as AssumptionProvenance },
     } };
   }),
   resetDealProfile: () => set({ profile: defaultProfile }),
