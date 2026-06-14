@@ -7,9 +7,11 @@ import type { IcrDscrEngineResult } from './icrDscrEngine';
 import type { CommercialGstEngineInputs, CommercialGstEngineResult } from './gstEngine';
 import type { DcfAssessmentInputs, DcfAssessmentResult } from './dcfAssessmentEngine';
 import type { BorrowingInputs, BorrowingResult } from './borrowing/calculatorTypes';
+import type { TenYearCashFlowResult } from './tenYearCashFlowTypes';
+import type { ClientScenario } from './clientPortfolioTypes';
 
-export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf';
-export type CalculatorSourceMode = 'global' | 'manualOverride' | 'scenario';
+export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf' | 'tenYearCashFlow' | 'overview' | 'industrialMetrics';
+export type CalculatorSourceMode = 'global' | 'manualOverride' | 'aiPending' | 'savedPropertyLinked' | 'scenario';
 
 export interface CommercialIndustrialDealProfile {
   dealProfile: Partial<BorrowingInputs['dealProfile']>;
@@ -25,6 +27,11 @@ export interface CommercialIndustrialDealProfile {
   gstOutputs?: Partial<CommercialGstEngineResult>;
   acquisitionCosts: Partial<BorrowingInputs['acquisitionCosts']>;
   fundsToComplete?: Partial<BorrowingResult['fundsToComplete']>;
+  borrowingOutputs?: BorrowingResult;
+  industrialMetrics: Record<string, number | string | undefined>;
+  reportPayload?: unknown;
+  tenYearCashFlowOutputs?: TenYearCashFlowResult;
+  clientScenarioOutputs?: ClientScenario;
   dcfInputs: Partial<DcfAssessmentInputs>;
   dcfOutputs?: Partial<DcfAssessmentResult>;
   riskInputs: Record<string, unknown>;
@@ -46,6 +53,7 @@ const defaultProfile: CommercialIndustrialDealProfile = {
   lendingAssumptions: { profile: 'mainstreamCommercialBank', contractInterestRatePct: 7.25, assessmentBufferPct: 1, assessmentFloorRatePct: 0, loanTermYears: 25, interestOnlyPeriodYears: 0, amortisationYears: 25, maxLvr: 0.65, minIcr: 1.5, minDscr: 1.25, minDebtYield: 0.09, debtYieldEnabled: true },
   gstInputs: { treatment: 'unknown', purchasePrice: 3_500_000 },
   acquisitionCosts: { stampDuty: 175_000, transferRegistrationFee: 0, mortgageRegistrationFee: 0, pexaSettlementFee: 0, otherAcquisitionCosts: 0, gstTreatment: 'unknown' },
+  industrialMetrics: {},
   dcfInputs: { purchasePrice: 3_500_000, initialNoi: 220_000, holdPeriodYears: 10, rentalGrowthPct: 3, terminalCapRatePct: 6.5, discountRatePct: 8 },
   riskInputs: {},
   riskOutputs: {},
@@ -65,18 +73,28 @@ interface DealStateStore {
   clearScenarioOverrides: (tab: CalculatorTabKey) => void;
   recordAiEstimate: (estimate: AiEstimateResult) => void;
   appendAiAudit: (event: AiEstimateAuditEvent) => void;
+  acceptAiEstimateIntoGlobal: (estimate: AiEstimateResult, section: keyof CommercialIndustrialDealProfile, fieldKey?: string) => void;
   resetDealProfile: () => void;
 }
 
 export const useCommercialDealState = create<DealStateStore>((set) => ({
   profile: defaultProfile,
-  sourceModes: { borrowing: 'global', noi: 'global', capRate: 'global', icrDscr: 'global', gst: 'global', dcf: 'global' },
+  sourceModes: { overview: 'global', borrowing: 'global', noi: 'global', capRate: 'global', icrDscr: 'global', gst: 'global', dcf: 'global', tenYearCashFlow: 'global', industrialMetrics: 'global' },
   updateGlobal: (section, patch) => set(state => ({ profile: { ...state.profile, [section]: { ...(state.profile[section] as object), ...(patch as object) } } })),
   setSourceMode: (tab, mode) => set(state => ({ sourceModes: { ...state.sourceModes, [tab]: mode } })),
   setScenarioOverride: (tab, fieldKey, value) => set(state => ({ profile: { ...state.profile, scenarioOverrides: { ...state.profile.scenarioOverrides, [tab]: { ...(state.profile.scenarioOverrides[tab] ?? {}), [fieldKey]: value } } } })),
   clearScenarioOverrides: (tab) => set(state => ({ profile: { ...state.profile, scenarioOverrides: { ...state.profile.scenarioOverrides, [tab]: {} } } })),
   recordAiEstimate: (estimate) => set(state => ({ profile: { ...state.profile, aiEstimateMetadata: { ...state.profile.aiEstimateMetadata, [estimate.fieldKey]: estimate } } })),
   appendAiAudit: (event) => set(state => ({ profile: { ...state.profile, aiEstimateAuditLog: [...state.profile.aiEstimateAuditLog, event] } })),
+  acceptAiEstimateIntoGlobal: (estimate, section, fieldKey) => set(state => {
+    const targetKey = fieldKey ?? estimate.fieldKey.split('.').pop() ?? estimate.fieldKey;
+    return { profile: {
+      ...state.profile,
+      [section]: { ...((state.profile[section] as object) ?? {}), [targetKey]: estimate.estimatedValue },
+      aiEstimateMetadata: { ...state.profile.aiEstimateMetadata, [estimate.fieldKey]: { ...estimate, accepted: true } as AiEstimateResult },
+      assumptions: { ...state.profile.assumptions, [estimate.fieldKey]: { fieldKey: estimate.fieldKey, confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: estimate.reasoningSummary, verificationRequired: true, requiredDocuments: estimate.requiredDocuments, updatedAt: new Date().toISOString() } as AssumptionProvenance },
+    } };
+  }),
   resetDealProfile: () => set({ profile: defaultProfile }),
 }));
 
