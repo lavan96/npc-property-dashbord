@@ -1,9 +1,7 @@
 /**
  * Docling-backed PDF importer.
  *
- * Mirrors `extractPdfToTemplate`'s return contract so it can be a drop-in
- * replacement when `feature_flags.pdf_import.engine` resolves to `'docling'`
- * (see `src/lib/featureFlags/pdfImportEngine.ts`).
+ * Produces the canonical template PDF import result contract.
  *
  * Pipeline:
  *   1. `template-import-pdf` → create_import (gives us an importId + audit row).
@@ -16,12 +14,13 @@
  *      `ReportTemplate` via `applyTemplateImportPlan`, and finalize through
  *      `template-import-pdf` so downstream UI sees a normal template.
  */
-import type { ImportOptions, ImportResult } from './extractPdfToTemplate';
+import type { ImportOptions, ImportResult } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { reportTemplateToCdir } from '@/lib/reportTemplate/ingestion/cdir';
 import { buildCdirFidelityReport } from '@/lib/reportTemplate/ingestion/fidelity';
 import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconciliation/applyPlan';
+import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import type {
   DoclingDocument,
@@ -97,7 +96,7 @@ interface JobRow {
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
-  result_payload: { docling_path?: string; rasters_path?: string; mode?: string } | null;
+  result_payload: { docling_path?: string; rasters_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
 }
 
 async function pollJob(
@@ -152,6 +151,14 @@ async function pollJob(
   }
 }
 
+
+function wireModeToDocling(mode: string | null | undefined, fallback: DoclingPlanMode): DoclingPlanMode {
+  if (mode === 'pixel_perfect' || mode === 'pixel-perfect') return 'pixel-perfect';
+  if (mode === 'hybrid') return 'hybrid';
+  if (mode === 'semantic') return 'semantic';
+  return fallback;
+}
+
 function rastersByPage(payload: unknown): DoclingRasterByPage | undefined {
   if (!payload || typeof payload !== 'object') return undefined;
   const env = payload as DoclingRasterResponse;
@@ -193,17 +200,34 @@ export async function extractPdfViaDocling(
   const importId: string = createRes.record.id;
 
   try {
-    onProgress({ phase: 'uploading', message: 'Sending PDF to Docling…' });
+    onProgress({ phase: 'uploading', message: 'Uploading PDF source…' });
     const base64 = bytesToBase64(new Uint8Array(buf));
+    const { data: uploadRes, error: uploadErr } = await invokeSecureFunction(
+      'pdf-parse-dispatch',
+      {
+        operation: 'upload_source',
+        source_base64: base64,
+        source_file_name: file.name,
+      },
+      { timeoutMs: 120_000 },
+    );
+    if (uploadErr) throw new Error(uploadErr.message ?? 'pdf-parse-dispatch upload_source failed');
+    const uploaded = uploadRes as { source_path?: string; source_bucket?: string; source_file_hash?: string } | null;
+    if (!uploaded?.source_path) throw new Error('pdf-parse-dispatch upload_source did not return a source_path');
 
+    onProgress({ phase: 'uploading', message: 'Starting Docling job…' });
     const { data: dispatchRes, error: dispatchErr } = await invokeSecureFunction(
       'pdf-parse-dispatch',
       {
         operation: 'start',
         mode: modeToWire(mode),
-        source_base64: base64,
+        source_path: uploaded.source_path,
+        source_bucket: uploaded.source_bucket,
+        source_file_hash: uploaded.source_file_hash,
         source_file_name: file.name,
         source_file_size_bytes: file.size,
+        redact_pii: Boolean(options.redactPii),
+        pii_redaction_reason: options.redactPii ? 'finance_pdf_import' : null,
       },
       { timeoutMs: 120_000 },
     );
@@ -224,16 +248,25 @@ export async function extractPdfViaDocling(
 
     const doclingDoc = await downloadJson<DoclingDocument>(doclingPath);
     if (!doclingDoc) throw new Error('Failed to download docling.json');
+    if (job.result_payload?.summary && !doclingDoc.summary) {
+      doclingDoc.summary = job.result_payload.summary as DoclingDocument['summary'];
+    }
 
     const rasterPayload = job.result_payload?.rasters_path
       ? await downloadJson<unknown>(job.result_payload.rasters_path)
       : null;
     const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
 
-    onProgress({ phase: 'finalizing', message: 'Mapping Docling → template…' });
+    const effectiveMode = wireModeToDocling(job.result_payload?.mode, mode);
+    onProgress({
+      phase: 'finalizing',
+      message: job.result_payload?.auto_mode_selected
+        ? 'Mapping Docling → template (Pixel-Perfect selected for OCR-heavy PDF)…'
+        : 'Mapping Docling → template…',
+    });
     const plan = mapDoclingToPagePlan(doclingDoc, {
       importId,
-      mode,
+      mode: effectiveMode,
       rastersByPage: rasters,
       engineVersion: job.engine_version ?? 'docling',
     });
@@ -241,6 +274,21 @@ export async function extractPdfViaDocling(
     const template = applyTemplateImportPlan(plan, {
       templateName: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
     });
+    template.meta = {
+      ...(template.meta ?? {}),
+      pdfImport: {
+        engine: 'docling',
+        engineVersion: job.engine_version ?? 'docling',
+        mode: effectiveMode,
+        diagnosticsPath: doclingPath,
+        jobId,
+        importedAt: new Date().toISOString(),
+      },
+    };
+    const schemaValidation = validateReconstructedSchema(template);
+    if (!schemaValidation.ok) {
+      throw new Error(`Docling reconstructed schema failed validation: ${schemaValidation.errors.join('; ')}`);
+    }
 
     const cdir = reportTemplateToCdir(template, {
       kind: 'pdf',
@@ -288,8 +336,8 @@ export async function extractPdfViaDocling(
       cdir,
       cdirFidelity,
       fidelityReport: {
-        semanticPages: mode === 'pixel-perfect' ? 0 : totalPages,
-        rasterizedPages: mode === 'semantic' ? 0 : totalPages,
+        semanticPages: effectiveMode === 'pixel-perfect' ? 0 : totalPages,
+        rasterizedPages: effectiveMode === 'semantic' ? 0 : totalPages,
         textBlocks,
         images,
         vectors: 0,

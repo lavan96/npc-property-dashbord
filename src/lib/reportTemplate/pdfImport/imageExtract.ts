@@ -10,8 +10,8 @@
  * common scale+translate image matrix and a safe approximation for the rare
  * rotated/skewed image (the bitmap is rendered upright into its bounding box).
  *
- * Pure + unit-tested. The impure pdf.js object resolution / canvas decode lives
- * in `extractPdfToTemplate`.
+ * Pure + unit-tested. The impure Docling-era PDF object resolution / canvas decode lives
+ * in `extractPdfViaDocling`.
  */
 import { matMul, applyMatrix, type Matrix } from './vectorExtract';
 

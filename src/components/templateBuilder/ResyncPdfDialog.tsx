@@ -20,16 +20,36 @@ import { toast } from 'sonner';
 import { describeAuthError } from '@/lib/secureInvoke';
 import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
 import {
-  extractPdfToTemplate,
   type FidelityMode,
   type ImportProgress,
   type ImportResult,
-} from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
+  type PdfImportEngine,
+} from '@/lib/reportTemplate/pdfImport/types';
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
+
+
+const STAGE_LABELS: Record<string, string> = {
+  reading: 'Reading source PDF',
+  uploading: 'Uploading to parser',
+  extracting: 'Parsing with engine',
+  rasterizing: 'Rasterising pages',
+  finalizing: 'Mapping and saving template',
+  done: 'Import complete',
+};
+const STAGE_ETA_SECONDS: Record<string, number> = { reading: 5, uploading: 10, extracting: 45, rasterizing: 60, finalizing: 15 };
+
+function progressCopy(progress: ImportProgress | null): { label: string; eta: string } {
+  if (!progress) return { label: 'Waiting to start', eta: '' };
+  const label = STAGE_LABELS[progress.phase] ?? progress.phase;
+  const pageSuffix = progress.page && progress.totalPages ? ` · page ${progress.page}/${progress.totalPages}` : '';
+  const etaSeconds = STAGE_ETA_SECONDS[progress.phase] ?? 20;
+  const eta = progress.phase === 'done' ? 'Done' : `ETA ~${etaSeconds < 60 ? `${etaSeconds}s` : `${Math.round(etaSeconds / 60)}m`}`;
+  return { label: `${label}${pageSuffix}${progress.message ? ` · ${progress.message}` : ''}`, eta };
+}
 
 interface Props {
   open: boolean;
@@ -37,13 +57,15 @@ interface Props {
   templateId: string;
   templateName: string;
   onResynced?: (result: ImportResult) => void;
+  engine?: PdfImportEngine;
 }
 
-export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, onResynced }: Props) {
+export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, onResynced, engine }: Props) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
+  const [redactPii, setRedactPii] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -69,7 +91,9 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
         templateName,
         templateId,
         userId: user?.id ?? null,
+        pdfEngine: engine,
         onProgress: setProgress,
+        redactPii,
       });
       if (outcome.type !== 'persisted') throw new Error('Unexpected import outcome.');
       setResult(outcome.result);
@@ -81,12 +105,14 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
     } finally {
       setBusy(false);
     }
-  }, [file, mode, templateId, templateName, user?.id, onResynced]);
+  }, [file, mode, templateId, templateName, user?.id, onResynced, engine, redactPii]);
 
   const percent = (() => {
     if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
     return Math.round((progress.page / progress.totalPages) * 95);
   })();
+
+  const progressDetails = progressCopy(progress);
 
   const importAssetSummary = useMemo(() => summarizeImportAsset(result?.importAsset), [result?.importAsset]);
 
@@ -110,6 +136,7 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
           <DialogDescription>
             Upload a new version of the source PDF. The template's pages will be replaced and
             the previous schema saved as a version snapshot you can restore from History.
+            {engine === 'docling' ? ' This re-import is pinned to Docling.' : ''}
           </DialogDescription>
         </DialogHeader>
 
@@ -185,11 +212,26 @@ export function ResyncPdfDialog({ open, onOpenChange, templateId, templateName, 
               </RadioGroup>
             </div>
 
+
+            <label className="flex items-start gap-2 rounded-md border bg-muted/20 p-3 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={redactPii}
+                onChange={(e) => setRedactPii(e.target.checked)}
+                disabled={busy}
+              />
+              <span>
+                <span className="font-medium">Redact likely PII before diagnostics</span>
+                <span className="block text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs.</span>
+              </span>
+            </label>
+
             {progress && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="capitalize">{progress.phase}{progress.page && progress.totalPages ? ` page ${progress.page} / ${progress.totalPages}` : ''}</span>
-                  <span>{percent}%</span>
+                  <span>{progressDetails.label}</span>
+                  <span>{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} />
               </div>

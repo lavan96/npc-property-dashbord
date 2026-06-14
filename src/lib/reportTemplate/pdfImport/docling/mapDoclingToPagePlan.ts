@@ -76,7 +76,7 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
         : (block.style?.fontFamily ?? 'Helvetica'),
       fontSize: block.style?.fontSize ?? 11,
       fontWeight: (block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold',
-      fontStyle: isFormula ? 'italic' : 'normal',
+      fontStyle: isFormula ? 'italic' : (block.style?.fontStyle ?? 'normal'),
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
       lineHeight: isCode ? 1.4 : 1.3,
@@ -123,28 +123,67 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
       headerFontWeight: 'bold',
       borderWidth: 0.5,
       cellPadding: 6,
+      cellSpans: (td?.cells ?? [])
+        .filter((cell) => cell.rowSpan > 1 || cell.colSpan > 1)
+        .map((cell) => ({
+          row: cell.row - headerRows,
+          col: cell.col,
+          rowSpan: cell.rowSpan,
+          colSpan: cell.colSpan,
+        }))
+        .filter((cell) => cell.row >= -1),
     } as TableOverlay;
     return overlay;
   }
   return null;
 }
 
-function pageWarnings(blocks: RawImportBlock[], lockThreshold: number): ImportWarning[] {
+function pageWarnings(
+  pageNo: number,
+  blocks: RawImportBlock[],
+  lockThreshold: number,
+  doc: DoclingDocument,
+): ImportWarning[] {
+  const warnings: ImportWarning[] = [];
+  const pageConfidence = doc.summary?.page_confidence?.find((p) => Number(p.page_no) === pageNo);
+  const avgTextConfidence = typeof pageConfidence?.avg_text_confidence === 'number'
+    ? pageConfidence.avg_text_confidence
+    : null;
+  if (avgTextConfidence != null && avgTextConfidence < 0.6) {
+    warnings.push({
+      code: 'docling.page_low_text_confidence',
+      severity: 'warning',
+      pageId: pageId(pageNo),
+      message: `Page ${pageNo} average text confidence is ${Math.round(avgTextConfidence * 100)}%; manual review is required.`,
+    });
+  }
+  if (doc.summary?.ocr_pages?.includes(pageNo)) {
+    warnings.push({
+      code: 'docling.page_ocr_detected',
+      severity: 'info',
+      pageId: pageId(pageNo),
+      message: `Page ${pageNo} used OCR text extraction; verify text fidelity against the page image.`,
+    });
+  }
   const lowConf = blocks.filter((b) => b.confidence < lockThreshold).length;
-  if (!blocks.length) return [];
+  if (!blocks.length) return warnings;
   const ratio = lowConf / blocks.length;
-  if (ratio < 0.2) return [];
-  return [{
-    code: 'docling.low_confidence_majority',
-    severity: 'warning',
-    message: `Docling reported low confidence on ${Math.round(ratio * 100)}% of blocks; review the editable overlays carefully.`,
-  }];
+  if (ratio >= 0.2) {
+    warnings.push({
+      code: 'docling.low_confidence_majority',
+      severity: 'warning',
+      pageId: pageId(pageNo),
+      message: `Docling reported low confidence on ${Math.round(ratio * 100)}% of blocks; review the editable overlays carefully.`,
+    });
+  }
+  return warnings;
 }
 
 function pagePlanForPage(
   page: DoclingPageInfo,
   blocks: RawImportBlock[],
   opts: DoclingPlanOptions,
+  doc: DoclingDocument,
 ): TemplateImportPagePlan {
   const lockThreshold = opts.lockBelowConfidence ?? DEFAULT_LOCK_THRESHOLD;
   const raster = opts.rastersByPage?.[page.page_no];
@@ -173,7 +212,7 @@ function pagePlanForPage(
     },
     overlays,
     sourcePageId: pageId(page.page_no),
-    warnings: pageWarnings(blocks, lockThreshold),
+    warnings: pageWarnings(page.page_no, blocks, lockThreshold, doc),
   };
 }
 
@@ -183,7 +222,7 @@ export function mapDoclingToPagePlan(
 ): TemplateImportPlan {
   const mapped = mapDoclingToRawBlocks(doc);
   const pages: TemplateImportPagePlan[] = mapped.pages.map((page) =>
-    pagePlanForPage(page, mapped.byPage[page.page_no] ?? [], opts),
+    pagePlanForPage(page, mapped.byPage[page.page_no] ?? [], opts, doc),
   );
   const warnings: ImportWarning[] = pages.flatMap((p) => p.warnings);
   const editableElementsCreated = pages.reduce(

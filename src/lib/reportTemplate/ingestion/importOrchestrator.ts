@@ -3,7 +3,7 @@
  * reference" import. All sources (PDF · image · code/ZIP · live URL · Figma
  * .make/.fig) route through `runReferenceImport`, which owns:
  *   - source classification (`classifyReferenceFile`)
- *   - the per-kind pipelines (engines stay where they were: extractPdfToTemplate,
+ *   - the per-kind pipelines (engines stay where they were: extractPdfViaDocling,
  *     the design agent, renderAndGroundCode, the local render fallback)
  *   - consistent staging callbacks, validation, font-face loading, and
  *     actionable error messages (auth, unconfigured service, …)
@@ -18,8 +18,8 @@ import {
   type FidelityMode,
   type ImportProgress,
   type ImportResult,
-} from '../pdfImport/extractPdfToTemplate';
-import { extractPdfToTemplateRouted } from '../pdfImport/extractPdfToTemplateRouted';
+} from '../pdfImport/types';
+import { extractPdfViaDocling } from '../pdfImport/extractPdfViaDocling';
 import { reconstructPdfWithClaude } from './pdfDocumentReconstruct';
 import { renderAndGroundCode, looksLikeJsx, type CodeRenderInput, type InvokeFn } from './codeIngest';
 import { codeFlavorForFile } from './detect';
@@ -76,10 +76,12 @@ export interface ReferenceImportContext {
   templateId?: string;
   templateName?: string;
   userId?: string | null;
-  /** Force a specific PDF extraction engine, bypassing `feature_flags.pdf_import.engine`. */
-  pdfEngine?: 'legacy' | 'docling';
-  /** Whether the current user is a superadmin — used by the engine resolver. */
+  /** PDF imports are Docling-only after Wave F7 legacy retirement. */
+  pdfEngine?: 'docling';
+  /** Whether the current user is a superadmin. */
   isSuperadmin?: boolean;
+  /** Wave F8: request PII redaction in the PDF parser. */
+  redactPii?: boolean;
   onStage?: (stage: string) => void;
   onProgress?: (p: ImportProgress) => void;
   /** Injectable network call (tests). Defaults to the secured invoke. */
@@ -314,14 +316,13 @@ async function importPdf(
   }
 
   ctx.onStage?.('Reading PDF…');
-  const result = await extractPdfToTemplateRouted(source.file, {
+  const result = await extractPdfViaDocling(source.file, {
     mode: source.mode,
     templateName: ctx.templateName,
     userId: ctx.userId ?? null,
     targetTemplateId: ctx.templateId,
     onProgress: ctx.onProgress,
-    engine: ctx.pdfEngine,
-    isSuperadmin: ctx.isSuperadmin,
+    redactPii: ctx.redactPii,
   });
   return {
     type: 'persisted',

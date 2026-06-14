@@ -32,9 +32,9 @@ export const pdfSource: IngestionSource = {
     sourceId: 'pdf',
     kind: 'pdf',
     strategy: 'delegate',
-    delegate: 'extractPdfToTemplate',
+    delegate: 'extractPdfViaDocling',
     available: true,
-    note: 'Routed via feature_flags.pdf_import.engine: legacy in-browser pdf.js extractor or Docling Cloud Run sidecar (extractPdfToTemplateRouted).',
+    note: 'Routed via Docling Cloud Run sidecar (extractPdfViaDocling).',
   }),
 };
 

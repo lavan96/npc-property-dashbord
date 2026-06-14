@@ -793,12 +793,19 @@ request_timeout = 1500
 verify_jwt = false
 request_timeout = 1500
 
+[functions.pdf-import-ssim-score]
+verify_jwt = false
+request_timeout = 1500
+
+[functions.pdf-parse-callback]
+verify_jwt = false
+request_timeout = 1500
+
 [functions.pdf-parse-dispatch]
 # Custom session tokens validated via verifyAuthOrNativeUser; fire-and-forget
 # dispatcher returns within seconds and runs the heavy parse in EdgeRuntime.waitUntil.
 verify_jwt = false
 request_timeout = 120
-
 
 
 

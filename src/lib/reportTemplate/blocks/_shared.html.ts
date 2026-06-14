@@ -401,19 +401,39 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
       const iconGlyph = (k?: string) =>
         k === 'up' ? '▲' : k === 'down' ? '▼' : k === 'flag' ? '⚑' : k === 'star' ? '★' : k === 'dot' ? '●' : '';
       const colGroup = cols.map((c) => c.width != null ? `<col style="width:${Number(c.width)}pt"/>` : `<col/>`).join('');
+      const spans: Array<any> = Array.isArray(o.cellSpans) ? o.cellSpans : [];
+      const spanFor = (row: number, col: number) => spans.find((s) => Number(s.row) === row && Number(s.col) === col);
+      const covered = new Set<string>();
+      const markCovered = (row: number, col: number, rowSpan: number, colSpan: number) => {
+        for (let r = row; r < row + rowSpan; r++) {
+          for (let c = col; c < col + colSpan; c++) {
+            if (r !== row || c !== col) covered.add(`${r}:${c}`);
+          }
+        }
+      };
+      const spanAttrs = (row: number, col: number) => {
+        const span = spanFor(row, col);
+        if (!span) return '';
+        const rowSpan = Math.max(1, Number(span.rowSpan ?? 1));
+        const colSpan = Math.max(1, Number(span.colSpan ?? 1));
+        markCovered(row, col, rowSpan, colSpan);
+        return `${rowSpan > 1 ? ` rowspan="${rowSpan}"` : ''}${colSpan > 1 ? ` colspan="${colSpan}"` : ''}`;
+      };
       const headerCells = cols.map((c, i) => {
+        if (covered.has(`-1:${i}`)) return '';
         const s = styleFor(-1, i);
         const align = s.align ?? c.align ?? 'left';
         const bg = s.bg ?? headerBg;
         const fg = s.color ?? headerColor;
         const fw = s.fontWeight ?? o.headerFontWeight ?? 'bold';
-        return `<th style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.headerHeight ?? 22)}pt">${esc(c.label ?? c.key)}</th>`;
+        return `<th${spanAttrs(-1, i)} style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.headerHeight ?? 22)}pt">${esc(c.label ?? c.key)}</th>`;
       }).join('');
       const bodyRows = rows.map((r, ri) => {
         const baseRowBg = altRowBg && ri % 2 === 1 ? altRowBg : rowBg;
         // Pre-scan for row-scope rule
         const rowRule = cellRules.find((rl) => rl.scope === 'row' && matchRule(r, rl.column) === rl);
         const tds = cols.map((c, ci) => {
+          if (covered.has(`${ri}:${ci}`)) return '';
           const s = styleFor(ri, ci);
           const cellRule = matchRule(r, c.key);
           const applied = rowRule ?? cellRule;
@@ -425,7 +445,7 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
           if (typeof raw === 'string') raw = resolveBindable(raw, ctx);
           const val = fmtCell(raw, c.format);
           const icon = cellRule?.icon && cellRule.icon !== 'none' ? `<span style="margin-right:4pt;opacity:0.85">${iconGlyph(cellRule.icon)}</span>` : '';
-          return `<td style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.rowHeight ?? 20)}pt">${icon}${esc(val)}</td>`;
+          return `<td${spanAttrs(ri, ci)} style="padding:${cp}pt;text-align:${align};background:${bg};color:${fg};font-weight:${fw};border:${bw}pt solid ${borderColor};height:${Number(o.rowHeight ?? 20)}pt">${icon}${esc(val)}</td>`;
         }).join('');
         return `<tr>${tds}</tr>`;
       }).join('');

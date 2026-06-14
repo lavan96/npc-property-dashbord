@@ -4,13 +4,13 @@
  * Designed covers very often paint their background with a PDF *shading*
  * (`sh` operator — axial/radial/mesh gradient). The vector extractor walks
  * path ops only, so these pages imported as BLANK white — and a white page
- * behind white cover text is invisible. This module turns the pdf.js shading
+ * behind white cover text is invisible. This module turns the Docling-era PDF shading
  * IR into an editable `shape` overlay: a CSS `linear-gradient` /
  * `radial-gradient` fill (the HTML renderer + WeasyPrint both support them),
  * or a flat average colour for mesh shadings.
  *
  * Pure + unit-tested. The impure operator-list walk (CTM + clip tracking)
- * lives in `extractPdfToTemplate`.
+ * lives in `extractPdfViaDocling`.
  */
 import { matMul, applyMatrix, type Matrix } from './vectorExtract';
 
@@ -38,7 +38,7 @@ function parseStops(raw: unknown): ShadingStop[] {
 }
 
 /**
- * Parse a pdf.js shading IR (`getOperatorList` argument of `shadingFill`).
+ * Parse a Docling-era PDF shading IR (`getOperatorList` argument of `shadingFill`).
  *
  *   RadialAxial: ['RadialAxial', type(2|3), bbox, colorStops, p0, p1, r0, r1]
  *   Mesh:        ['Mesh', type(4–7), coords, colors(RGB bytes), …]

@@ -11,7 +11,6 @@
  * pop instantly.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -25,6 +24,7 @@ import { toast } from 'sonner';
 import { type ReportTemplate, type Overlay } from '@/lib/reportTemplate/templateSchema';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { convertPdfToImages } from '@/utils/pdfToImages';
 import {
   buildVisualDiffRepairReport,
   runReconciliationRepairPass,
@@ -37,11 +37,6 @@ import {
   type FidelityReport,
   type ConfidenceBand,
 } from '@/lib/reportTemplate/fidelityMetrics';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
 
 interface Props {
   open: boolean;
@@ -159,20 +154,13 @@ export function PdfFidelityDiffDialog({ open, onOpenChange, template, sampleData
     setBusy(true);
     const t = toast.loading('Reading PDF…');
     try {
-      const buf = await f.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buf, useSystemFonts: true }).promise;
-      const sourceImgs: string[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        toast.loading(`Rasterising source page ${i}/${pdf.numPages}…`, { id: t });
-        const page = await pdf.getPage(i);
-        const vp = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        canvas.width = vp.width; canvas.height = vp.height;
-        const ctx = canvas.getContext('2d')!;
-        await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
-        sourceImgs.push(canvas.toDataURL('image/jpeg', 0.85));
-        canvas.width = 0; canvas.height = 0;
+      const rendered = await convertPdfToImages(f, (current, total) => {
+        toast.loading(`Rasterising source page ${current}/${total}…`, { id: t });
+      });
+      if (!rendered.success || rendered.images.length === 0) {
+        throw new Error(rendered.error ?? 'Docling-era raster preview failed to render source pages.');
       }
+      const sourceImgs = rendered.images.map((page) => `data:image/jpeg;base64,${page.base64}`);
       setPdfPages(sourceImgs);
 
       toast.loading('Rendering current template…', { id: t });

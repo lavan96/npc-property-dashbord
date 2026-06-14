@@ -9,8 +9,8 @@
  * `getTextContent` item transforms use. `nearestColor` then attributes a colour
  * to each extracted text span by position.
  *
- * Pure + unit-tested. The impure pdf.js operator-list → command translation
- * lives in `extractPdfToTemplate`.
+ * Pure + unit-tested. The impure Docling-era PDF operator-list → command translation
+ * lives in `extractPdfViaDocling`.
  */
 import { matMul, applyMatrix, type Matrix } from './vectorExtract';
 

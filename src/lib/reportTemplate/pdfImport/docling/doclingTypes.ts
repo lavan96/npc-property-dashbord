@@ -55,6 +55,8 @@ export interface DoclingTextItem {
     italic?: boolean;
   };
   confidence?: number;
+  /** Docling reading-order model index; lower values should be read first. */
+  reading_order?: number;
   /** Phase D: LaTeX representation produced by the formula enrichment model. */
   latex?: string;
   equation?: string;
@@ -92,6 +94,7 @@ export interface DoclingTableItem {
   /** Refs to caption text items linked by the parser. */
   captions?: Array<DoclingRef | string>;
   confidence?: number;
+  reading_order?: number;
 }
 
 export interface DoclingPictureClassification {
@@ -118,7 +121,7 @@ export interface DoclingPictureItem {
   self_ref?: string;
   prov?: DoclingProvenance[];
   /** Storage path or data URI for the extracted image, when present. */
-  image?: { uri?: string; mimetype?: string; size?: { width: number; height: number } };
+  image?: { uri?: string; diagnostics_path?: string; mimetype?: string; size?: { width: number; height: number } };
   caption?: string;
   /** Refs to caption text items (Docling links captions explicitly when it can). */
   captions?: Array<DoclingRef | string>;
@@ -127,6 +130,7 @@ export interface DoclingPictureItem {
   /** Phase B: VLM-generated annotations (alt-text / description). */
   annotations?: DoclingPictureAnnotation[];
   confidence?: number;
+  reading_order?: number;
 }
 
 export interface DoclingPageSize {
@@ -141,6 +145,18 @@ export interface DoclingPageInfo {
   image_uri?: string;
 }
 
+export interface DoclingSummary {
+  text_chars?: number;
+  ocr_chars?: number;
+  ocr_pages?: number[];
+  avg_text_confidence?: number | null;
+  page_confidence?: Array<{ page_no: number; avg_text_confidence?: number | null; text_block_count?: number }>;
+  table_count?: number;
+  table_cell_count?: number;
+  picture_count?: number;
+  text_block_count?: number;
+}
+
 export interface DoclingDocument {
   schema_version?: string;
   origin?: { filename?: string; mimetype?: string };
@@ -148,6 +164,8 @@ export interface DoclingDocument {
   texts?: DoclingTextItem[];
   tables?: DoclingTableItem[];
   pictures?: DoclingPictureItem[];
+  /** Wave F4: parser quality summary surfaced to reconciliation + manual review. */
+  summary?: DoclingSummary;
   /** Phase D: outline / TOC nodes (optional, surfaced via sidecar). */
   outline?: Array<{ title: string; level: number; page_no?: number | null }>;
 }
@@ -163,6 +181,7 @@ export interface DoclingParseResponse {
   page_languages?: Record<number, string>;
   doctags?: string;
   markdown?: string;
+  summary?: DoclingSummary;
 }
 
 /** Optional /raster sidecar envelope (one entry per page). */

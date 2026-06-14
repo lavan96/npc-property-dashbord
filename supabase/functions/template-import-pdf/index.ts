@@ -127,6 +127,38 @@ async function buildImportArtifactMeta(admin: ReturnType<typeof createClient>, i
   };
 }
 
+
+function validateReconstructedSchemaLite(raw: unknown): { ok: boolean; pageCount: number; errors: string[] } {
+  const errors: string[] = [];
+  if (!raw || typeof raw !== 'object') {
+    return { ok: false, pageCount: 0, errors: ['Schema must be an object.'] };
+  }
+  const schema = raw as any;
+  const pages = Array.isArray(schema.pages) ? schema.pages : [];
+  if (pages.length === 0) errors.push('Reconstruction produced no pages.');
+  pages.forEach((page: any, index: number) => {
+    if (!page || typeof page !== 'object') {
+      errors.push(`Page ${index + 1} is not an object.`);
+      return;
+    }
+    if (!page.id || !page.size || !Number.isFinite(Number(page.size.width)) || !Number.isFinite(Number(page.size.height))) {
+      errors.push(`Page ${index + 1} is missing id or valid size.`);
+    }
+    if (!Array.isArray(page.blocks)) errors.push(`Page ${index + 1} is malformed (missing blocks).`);
+  });
+  return { ok: errors.length === 0, pageCount: pages.length, errors };
+}
+
+function schemaValidationErrorResponse(json: (body: unknown, status?: number) => Response, schema: unknown): Response | null {
+  const validation = validateReconstructedSchemaLite(schema);
+  if (validation.ok) return null;
+  return json({
+    error: 'schema_validation_failed',
+    message: 'Reconstructed schema failed server-side validation.',
+    validation,
+  }, 400);
+}
+
 function b64ToBytes(b64: string): Uint8Array {
   const clean = b64.includes(',') ? b64.split(',')[1] : b64;
   const bin = atob(clean);
@@ -211,6 +243,8 @@ Deno.serve(async (req) => {
       const importId = body.import_id as string;
       const name = (body.name as string) ?? 'Imported template';
       const schema = body.schema;
+      const validationError = schemaValidationErrorResponse(json, schema);
+      if (validationError) return validationError;
       const pageCount = body.page_count ?? null;
 
       // Delegate to the `public.template_finalize` SECURITY DEFINER RPC, which
@@ -256,6 +290,8 @@ Deno.serve(async (req) => {
       const schema = body.schema;
       const note = (body.note as string) || 'Re-synced from PDF';
       if (!templateId || !schema) return json({ error: 'template_id and schema required' }, 400);
+      const validationError = schemaValidationErrorResponse(json, schema);
+      if (validationError) return validationError;
 
       // v2 RPC returns only id/name/version. See finalize note above — the
       // legacy version returned the full row (including the multi-MB schema)

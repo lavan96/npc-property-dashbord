@@ -74,7 +74,7 @@ export interface IngestionPlan {
   strategy: 'delegate' | 'render-source';
   /** For `strategy:'delegate'` — the existing pipeline that performs extraction. */
   delegate?:
-    | 'extractPdfToTemplate'
+    | 'extractPdfViaDocling'
     | 'template-design-agent:screenshot_to_block'
     | 'import-from-url'
     | 'importOrchestrator:figma-make';

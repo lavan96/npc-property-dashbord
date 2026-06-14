@@ -11,6 +11,7 @@ export interface PdfImportAssetReconciliationOptions {
   rawBlocksByPage?: Record<number, RawImportBlock[]>;
   paletteByPage?: Record<number, string[]>;
   constraints?: Record<string, unknown>;
+  parserSummary?: ReconciliationRequest['parserSummary'];
   onWarning?: (message: string) => void;
 }
 
@@ -43,6 +44,7 @@ export async function reconcilePdfImportAsset(
     importAsset,
     manifests,
     existingTemplate: options.existingTemplate,
+    parserSummary: options.parserSummary,
     constraints: {
       source: 'pdf-import-asset',
       preserveRenderedPdfPages: true,

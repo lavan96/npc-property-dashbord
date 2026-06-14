@@ -183,4 +183,97 @@ describe('docling adapter', () => {
     const img = plan.pages[0].overlays.find((o) => o.id.includes('picture')) as { src?: string } | undefined;
     expect(img?.src).toBe('data:image/png;base64,iVBORw0KG');
   });
+
+  it('Wave F3: preserves explicit Docling reading_order for multi-column pages', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 600, height: 800 } } },
+      texts: [
+        {
+          label: 'paragraph',
+          text: 'Right column visually higher but read second',
+          reading_order: 2,
+          prov: [{ page_no: 1, bbox: { l: 320, t: 80, r: 560, b: 120, coord_origin: 'TOPLEFT' } }],
+        },
+        {
+          label: 'paragraph',
+          text: 'Left column read first',
+          reading_order: 1,
+          prov: [{ page_no: 1, bbox: { l: 40, t: 160, r: 280, b: 200, coord_origin: 'TOPLEFT' } }],
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    expect(mapped.byPage[1].map((b) => b.text)).toEqual([
+      'Left column read first',
+      'Right column visually higher but read second',
+    ]);
+  });
+
+  it('Wave F3: keeps merged table cell structure in table overlays', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      tables: [
+        {
+          prov: [{ page_no: 1, bbox: { l: 60, t: 100, r: 500, b: 240, coord_origin: 'TOPLEFT' } }],
+          data: {
+            num_rows: 3,
+            num_cols: 3,
+            table_cells: [
+              { text: 'Merged header', start_row_offset_idx: 0, end_row_offset_idx: 1, start_col_offset_idx: 0, end_col_offset_idx: 3, column_header: true },
+              { text: 'A', start_row_offset_idx: 1, end_row_offset_idx: 2, start_col_offset_idx: 0, end_col_offset_idx: 1 },
+              { text: 'B', start_row_offset_idx: 1, end_row_offset_idx: 2, start_col_offset_idx: 1, end_col_offset_idx: 2 },
+              { text: 'C', start_row_offset_idx: 1, end_row_offset_idx: 2, start_col_offset_idx: 2, end_col_offset_idx: 3 },
+            ],
+          },
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    expect(mapped.byPage[1][0].meta?.tableData?.cells?.[0]).toMatchObject({ row: 0, col: 0, colSpan: 3 });
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-f3-table', mode: 'semantic' });
+    const table = plan.pages[0].overlays.find((o) => o.type === 'table') as any;
+    expect(table.cellSpans).toEqual([{ row: -1, col: 0, rowSpan: 1, colSpan: 3 }]);
+  });
+
+  it('Wave F3: maps rotated-page bottom-left bboxes, footnotes, and design-system font hints', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 842, height: 595 } } },
+      texts: [
+        {
+          label: 'footnote',
+          text: '1. Source: Valuer-General.',
+          font: { family: 'TimesNewRomanPSMT', size: 8, italic: true, color: '#333333' },
+          prov: [{ page_no: 1, bbox: { l: 40, b: 20, r: 500, t: 45, coord_origin: 'BOTTOMLEFT' } }],
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    const footnote = mapped.byPage[1][0];
+    expect(footnote.bbox.y).toBe(550);
+    expect(footnote.style?.fontFamily).toContain('Georgia');
+    expect(footnote.style?.fontStyle).toBe('italic');
+    expect(footnote.style?.fontSize).toBe(8);
+  });
+
+  it('Wave F3: preserves TOC and KaTeX-ready formula metadata', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      outline: [{ title: 'Cashflow', level: 2, page_no: 4 }],
+      texts: [
+        {
+          label: 'formula',
+          text: 'Yield = NOI / Value',
+          latex: '\\\\mathrm{Yield}=\\\\frac{NOI}{Value}',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 100, r: 360, b: 135, coord_origin: 'TOPLEFT' } }],
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    expect(mapped.outline).toEqual([{ title: 'Cashflow', level: 2, page_no: 4 }]);
+    expect(mapped.byPage[1][0]).toMatchObject({
+      type: 'formula',
+      text: '\\\\mathrm{Yield}=\\\\frac{NOI}{Value}',
+      meta: { latex: '\\\\mathrm{Yield}=\\\\frac{NOI}{Value}' },
+    });
+  });
 });

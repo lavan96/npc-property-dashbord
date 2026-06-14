@@ -1,19 +1,19 @@
 /**
  * Pure embedded-font → `@font-face` entry builder for PDF reconstruction (R3).
  *
- * pdf.js reconstructs each embedded font program into an sfnt (OpenType) byte
+ * Docling-era PDF reconstructs each embedded font program into an sfnt (OpenType) byte
  * buffer. This module turns that buffer (already base64-encoded by the impure
  * caller) into a `tokens.fontFaces` entry with a `data:` URL, a CSS-safe unique
  * family name, and a derived weight/style — so imported text renders in the
  * SOURCE font instead of a Helvetica substitute.
  *
- * Each embedded program gets its OWN family (unique by pdf.js `loadedName`),
+ * Each embedded program gets its OWN family (unique by Docling-era PDF `loadedName`),
  * carrying exactly one face, declared at its derived weight/style. The text
  * overlay is set to the same weight/style, so the browser matches the single
  * face exactly — no synthetic bold/italic, faithful glyphs.
  *
- * Pure + unit-tested. The impure pdf.js object resolution / base64 lives in
- * `extractPdfToTemplate`.
+ * Pure + unit-tested. The impure Docling-era PDF object resolution / base64 lives in
+ * `extractPdfViaDocling`.
  */
 
 export interface FontFaceEntry {
@@ -26,10 +26,10 @@ export interface FontFaceEntry {
 }
 
 export interface EmbeddedFontInput {
-  loadedName: string;                // pdf.js loadedName (also the commonObjs key)
+  loadedName: string;                // Docling-era PDF loadedName (also the commonObjs key)
   postscriptName?: string;           // font.name, e.g. "ABCDEF+Helvetica-Bold"
   base64: string;                    // base64 of the font bytes
-  mimetype?: string;                 // pdf.js font.mimetype
+  mimetype?: string;                 // Docling-era PDF font.mimetype
   bold?: boolean;
   italic?: boolean;
 }
@@ -47,12 +47,12 @@ export function sanitizeFamilyName(name: string): string {
   return base || 'Font';
 }
 
-/** Reduce a pdf.js loadedName to an alphanumeric uniqueness suffix. */
+/** Reduce a Docling-era PDF loadedName to an alphanumeric uniqueness suffix. */
 export function sanitizeId(loadedName: string): string {
   return (loadedName || '').replace(/[^A-Za-z0-9]+/g, '') || 'x';
 }
 
-/** Map a font/PostScript name (or pdf.js bold flag) to a numeric weight. */
+/** Map a font/PostScript name (or Docling-era PDF bold flag) to a numeric weight. */
 export function deriveWeight(name: string, boldFlag?: boolean): number {
   const n = (name || '').toLowerCase();
   if (/thin|hairline/.test(n)) return 100;
@@ -71,7 +71,7 @@ export function deriveStyle(name: string, italicFlag?: boolean): 'normal' | 'ita
   return italicFlag ? 'italic' : 'normal';
 }
 
-/** Choose a font `data:` MIME from pdf.js' mimetype (defaults to sfnt/otf). */
+/** Choose a font `data:` MIME from Docling-era PDF' mimetype (defaults to sfnt/otf). */
 export function dataUrlMime(mimetype?: string): string {
   const m = (mimetype || '').toLowerCase();
   if (m.includes('woff2')) return 'font/woff2';

@@ -342,6 +342,14 @@ export const TableOverlaySchema = BaseOverlay.extend({
     fontWeight: z.enum(['normal','bold']).optional(),
     align: z.enum(['left','center','right']).optional(),
   })).optional(),
+  // Structural spans from source parsers (Docling TableStructurePrediction).
+  // Renderers that don't support spans can still use `rows` as a graceful fallback.
+  cellSpans: z.array(z.object({
+    row: z.number().int(),
+    col: z.number().int(),
+    rowSpan: z.number().int().min(1).default(1),
+    colSpan: z.number().int().min(1).default(1),
+  })).optional(),
   // Phase 17 — conditional cell rules (data-driven highlighting).
   // Evaluated per-cell against the bound row. First match wins.
   cellRules: z.array(z.object({
@@ -611,6 +619,14 @@ export const ReportTemplateSchema = z.object({
     keywords: BindableStringSchema.optional(),
     lang: z.string().optional(),                  // BCP 47, e.g. "en-AU"
     creator: BindableStringSchema.optional(),
+    pdfImport: z.object({
+      engine: z.enum(['legacy', 'docling']),
+      engineVersion: z.string().optional(),
+      mode: z.string().optional(),
+      diagnosticsPath: z.string().optional(),
+      jobId: z.string().optional(),
+      importedAt: z.string().optional(),
+    }).optional(),
   }).optional(),
 });
 

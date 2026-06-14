@@ -87,7 +87,7 @@ describe('ingestion — resolveSource + planIngestion', () => {
 
   it('plans available delegate pipelines for pdf/image/url', () => {
     expect(planIngestion(file('a.pdf'))).toMatchObject({
-      kind: 'pdf', strategy: 'delegate', delegate: 'extractPdfToTemplate', available: true,
+      kind: 'pdf', strategy: 'delegate', delegate: 'extractPdfViaDocling', available: true,
     });
     expect(planIngestion(file('a.png'))).toMatchObject({
       kind: 'image', strategy: 'delegate', delegate: 'template-design-agent:screenshot_to_block', available: true,
