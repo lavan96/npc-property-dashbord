@@ -126,7 +126,8 @@ export async function evaluateCommercialSegment(
     // Assume opex = 25% of gross rent if no recovery info; net recoveries reduce opex
     const grossOpex = grossRent * 0.25;
     const netOpex = grossOpex * Math.max(0, 1 - (recoveryWeighted / 100));
-    const noi = Math.max(0, grossRent - netOpex);
+    const capexReserve = capexAnnualByProp.get(p.id) ?? 0;
+    const noi = Math.max(0, grossRent - netOpex - capexReserve);
 
     const dcf = latestDcfByProp.get(p.id);
     const fin = financingByProp.get(p.id);
