@@ -74,7 +74,7 @@ export default function IndustrialPropertyDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/industrial/calculators?propertyId=${property.id}`)}>
+          <Button variant="secondary" onClick={() => navigate(`/calculators?domain=industrial&propertyId=${property.id}`)}>
             <Calculator className="h-4 w-4 mr-2" /> Send to Calculators
           </Button>
           <Button onClick={handleGenerateReport} disabled={generating}>

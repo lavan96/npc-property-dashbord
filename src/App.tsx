@@ -91,10 +91,9 @@ import TokenUsageHistory from "./pages/TokenUsageHistory";
 import TokenAuditLog from "./pages/TokenAuditLog";
 import CommercialProperties from "./pages/commercial/CommercialProperties";
 import CommercialPropertyDetail from "./pages/commercial/CommercialPropertyDetail";
-import CommercialCalculators from "./pages/commercial/CommercialCalculators";
 import IndustrialProperties from "./pages/industrial/IndustrialProperties";
 import IndustrialPropertyDetail from "./pages/industrial/IndustrialPropertyDetail";
-import IndustrialCalculators from "./pages/industrial/IndustrialCalculators";
+import PropertyCalculators from "./pages/calculators/PropertyCalculators";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -361,10 +360,11 @@ const App = () => (
                 <Route path="billing/usage" element={<TokenUsageHistory />} />
                 <Route path="admin/token-audit" element={<TokenAuditLog />} />
                 <Route path="commercial" element={<CommercialProperties />} />
-                <Route path="commercial/calculators" element={<CommercialCalculators />} />
+                <Route path="commercial/calculators" element={<PropertyCalculators />} />
                 <Route path="commercial/:id" element={<CommercialPropertyDetail />} />
                 <Route path="industrial" element={<IndustrialProperties />} />
-                <Route path="industrial/calculators" element={<IndustrialCalculators />} />
+                <Route path="industrial/calculators" element={<PropertyCalculators />} />
+                <Route path="calculators" element={<PropertyCalculators />} />
                 <Route path="industrial/:id" element={<IndustrialPropertyDetail />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

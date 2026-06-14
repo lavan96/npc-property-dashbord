@@ -45,7 +45,7 @@ export default function CommercialProperties() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/commercial/calculators')}>Calculators</Button>
+          <Button variant="outline" onClick={() => navigate('/calculators?domain=commercial')}>Calculators</Button>
           <Button onClick={() => { setEditing(null); setOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" /> New Property
           </Button>
