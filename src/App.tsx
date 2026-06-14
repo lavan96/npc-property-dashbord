@@ -358,6 +358,7 @@ const App = () => (
                 <Route path="reports/analytics" element={<ReportsAnalytics />} />
                 <Route path="model-hub" element={<ModelHub />} />
                 <Route path="billing/usage" element={<TokenUsageHistory />} />
+                <Route path="admin/token-audit" element={<TokenAuditLog />} />
                 <Route path="commercial" element={<CommercialProperties />} />
                 <Route path="commercial/calculators" element={<PropertyCalculators />} />
                 <Route path="commercial/:id" element={<CommercialPropertyDetail />} />
