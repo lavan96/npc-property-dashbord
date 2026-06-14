@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { AlertTriangle, Building2, Factory, FileCheck2 } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Circle, Factory, FileCheck2, Link2, ShieldAlert, Sparkles, UserRound, GitBranch } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
 import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
 import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
+import { sampleClientProfiles, summarizeClientPortfolio } from '@/utils/commercial/clientPortfolioEngine';
+import { buildClientScenario, type ProposedScenarioInputs } from '@/utils/commercial/scenarioModellingEngine';
+import { comparePortfolioScenario } from '@/utils/commercial/scenarioComparisonEngine';
+import { buildScenarioReportPayload } from '@/utils/commercial/scenarioReportBuilder';
+import type { ClientScenario, ScenarioStatus, ScenarioType } from '@/utils/commercial/clientPortfolioTypes';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
@@ -27,12 +35,21 @@ function MoneyRow({ label, value, emph }: { label: string; value: number | strin
   return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{typeof value === 'number' ? fmt(value) : value}</span></div>;
 }
 
-function Field({ label, value, onChange, step = '1', tag = 'Manual Estimate' }: { label: string; value: string; onChange: (v: string) => void; step?: string; tag?: string }) {
-  return <div><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{tag}</Badge></div><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+function StatusIcon({ status = 'Manual Estimate' }: { status?: string }) {
+  if (status === 'Verified') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-label="Verified" />;
+  if (status === 'Client Profile Source') return <Link2 className="h-3.5 w-3.5 text-primary" aria-label="Client Profile Source" />;
+  if (status === 'AI Estimate') return <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-label="AI Estimate" />;
+  if (status === 'Overridden') return <GitBranch className="h-3.5 w-3.5 text-sky-300" aria-label="Overridden" />;
+  if (status === 'Specialist Review Required') return <ShieldAlert className="h-3.5 w-3.5 text-red-400" aria-label="Specialist Review Required" />;
+  if (status === 'Unknown') return <AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-label="Unknown" />;
+  return <Circle className="h-2.5 w-2.5 text-muted-foreground" aria-label="Manual Estimate" />;
+}
+function Field({ label, value, onChange, step = '1', status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
+  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
 }
 
-function SelectField({ label, value, onChange, options, tag = 'Manual Estimate' }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; tag?: string }) {
-  return <div><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{tag}</Badge></div><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+function SelectField({ label, value, onChange, options, status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
+  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 
 export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commercial' }: { initialAssetCategory?: AssetCategory }) {
@@ -134,6 +151,23 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [environmentalRisk, setEnvironmentalRisk] = useState<'low' | 'unknown' | 'present' | 'knownContamination'>('unknown');
   const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
   const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
+  const [selectedClientId, setSelectedClientId] = useState('client-001');
+  const [scenarioName, setScenarioName] = useState('Proposed commercial / industrial acquisition');
+  const [scenarioType, setScenarioType] = useState<ScenarioType>('Acquire Commercial Asset');
+  const [scenarioStatus, setScenarioStatus] = useState<ScenarioStatus>('Draft');
+  const [savedScenario, setSavedScenario] = useState<ClientScenario | null>(null);
+  const [assessmentMode, setAssessmentMode] = useState<'propertyOnly' | 'clientScenario'>('propertyOnly');
+  const [includeResidential, setIncludeResidential] = useState(true);
+  const [includeCommercial, setIncludeCommercial] = useState(true);
+  const [includeIndustrial, setIncludeIndustrial] = useState(true);
+  const [includeShares, setIncludeShares] = useState(true);
+  const [includeCash, setIncludeCash] = useState(true);
+  const [includeBusinessFinancials, setIncludeBusinessFinancials] = useState(true);
+  const [includeLiabilities, setIncludeLiabilities] = useState(true);
+  const [includeIncome, setIncludeIncome] = useState(true);
+  const [profileImported, setProfileImported] = useState(false);
+
+  useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
 
   useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
 
@@ -179,6 +213,65 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   }, [assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, gstTreatment, gstCashflow, gstClaimable, goingConcernConfirmed, landholderAcquisition, profile, rate, buffer, floorRate, assessmentBasis, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired]);
 
 
+  const selectedClient = useMemo(() => sampleClientProfiles.find(c => c.clientId === selectedClientId) ?? sampleClientProfiles[0], [selectedClientId]);
+  const currentPortfolio = useMemo(() => summarizeClientPortfolio(selectedClient), [selectedClient]);
+  const scenarioInputs: ProposedScenarioInputs = useMemo(() => ({
+    scenarioName,
+    scenarioType,
+    status: scenarioStatus,
+    purchasePrice: num(purchasePrice),
+    proposedDebt: result.finalRiskAdjustedLoan,
+    requiredEquity: result.fundsToComplete.requiredEquity,
+    annualNoi: result.noi.actualNoi,
+    annualDebtService: result.annualDebtService,
+    annualCashflow: result.noi.actualNoi - result.annualDebtService,
+    selectedProperty: assetSubtype,
+    borrowingResult: result,
+  }), [scenarioName, scenarioType, scenarioStatus, purchasePrice, result, assetSubtype]);
+  const activeScenario = useMemo(() => buildClientScenario(selectedClient, scenarioInputs), [selectedClient, scenarioInputs]);
+  const scenarioComparison = useMemo(() => comparePortfolioScenario(activeScenario.currentPositionSnapshot, activeScenario.resultingPosition), [activeScenario]);
+
+  const importClientProfile = () => {
+    setAssessmentMode('clientScenario');
+    setAvailableEquity(String(currentPortfolio.availableLiquidity));
+    setSponsorLiquidity(String(selectedClient.cashAndOffsets.cashBalance + selectedClient.cashAndOffsets.offsetBalance));
+    if (includeBusinessFinancials && selectedClient.businessFinancials.ebitdaNpbt != null) setBusinessEbitda(String(selectedClient.businessFinancials.ebitdaNpbt));
+    if (includeLiabilities) setBusinessDebt(String(selectedClient.liabilities.businessLoans + selectedClient.liabilities.equipmentFinance + selectedClient.liabilities.vehicleFinance + selectedClient.liabilities.creditCards + selectedClient.liabilities.overdrafts));
+    if (includeIncome) setCurrentRent(String(selectedClient.businessFinancials.existingRent));
+    setProfileImported(true);
+  };
+
+  const saveScenario = (status: ScenarioStatus) => {
+    const scenario = { ...activeScenario, status, auditLog: [...activeScenario.auditLog, { timestamp: new Date().toISOString(), user: 'Calculator user', action: `Scenario saved as ${status}`, source: 'Commercial / Industrial calculator', scenarioId: activeScenario.scenarioId }] };
+    setScenarioStatus(status);
+    setSavedScenario(scenario);
+  };
+
+  const assumptionRows = [
+    { field: 'Available equity', value: fmt(num(availableEquity)), status: profileImported ? 'Client Profile Source' : 'Manual Estimate', source: profileImported ? selectedClient.clientName : 'Calculator input', document: 'Bank statements / portfolio evidence' },
+    { field: 'Business EBITDA / NPBT', value: num(businessEbitda) ? fmt(num(businessEbitda)) : 'Unknown', status: profileImported && num(businessEbitda) ? 'Client Profile Source' : 'Unknown', source: profileImported ? 'Client business financials' : 'Not provided', document: 'Business financial statements / tax returns' },
+    { field: 'Existing liabilities', value: fmt(num(businessDebt)), status: profileImported ? 'Client Profile Source' : 'Manual Estimate', source: profileImported ? 'Client liabilities' : 'Calculator input', document: 'Loan statements / debt schedule' },
+    { field: 'Purchase price', value: fmt(num(purchasePrice)), status: 'Manual Estimate', source: 'Calculator input', document: 'Contract of sale' },
+    { field: 'GST treatment', value: title(gstTreatment), status: gstTreatment === 'unknown' ? 'Specialist Review Required' : 'Manual Estimate', source: 'Calculator input', document: 'GST treatment confirmation' },
+    { field: 'Lease documents', value: title(leaseDocs), status: leaseDocs === 'yes' ? 'Verified' : leaseDocs === 'unknown' ? 'Unknown' : 'Specialist Review Required', source: 'Calculator input', document: 'Lease agreement / rent ledger' },
+  ];
+  useEffect(() => { updateGlobal('clientScenarioOutputs', activeScenario as any); }, [activeScenario, updateGlobal]);
+
+  const scenarioRows = [
+    ['Total asset value', currentPortfolio.totalAssetValue, scenarioComparison.proposed.totalAssetValue, scenarioComparison.difference.totalAssetValue],
+    ['Total debt', currentPortfolio.totalDebt, scenarioComparison.proposed.totalDebt, scenarioComparison.difference.totalDebt],
+    ['Net equity', currentPortfolio.netEquity, scenarioComparison.proposed.netEquity, scenarioComparison.difference.netEquity],
+    ['Weighted LVR', currentPortfolio.weightedLvr, scenarioComparison.proposed.weightedLvr, scenarioComparison.difference.weightedLvr, 'pct'],
+    ['Annual NOI', currentPortfolio.annualNoi, scenarioComparison.proposed.annualNoi, scenarioComparison.difference.annualNoi],
+    ['Annual debt service', currentPortfolio.annualDebtService, scenarioComparison.proposed.annualDebtService, scenarioComparison.difference.annualDebtService],
+    ['Portfolio DSCR', currentPortfolio.portfolioDscr, scenarioComparison.proposed.portfolioDscr, scenarioComparison.difference.portfolioDscr, 'ratio'],
+    ['Available liquidity', currentPortfolio.availableLiquidity, scenarioComparison.proposed.availableLiquidity, scenarioComparison.difference.availableLiquidity],
+    ['Post-settlement liquidity', currentPortfolio.postSettlementLiquidity, scenarioComparison.proposed.postSettlementLiquidity, scenarioComparison.difference.postSettlementLiquidity],
+    ['Borrowing capacity', currentPortfolio.borrowingCapacity, scenarioComparison.proposed.borrowingCapacity, scenarioComparison.difference.borrowingCapacity],
+  ];
+  const formatScenarioValue = (value: any, kind?: string) => value == null ? 'N/A' : kind === 'pct' ? pct(value) : kind === 'ratio' ? `${Number(value).toFixed(2)}x` : fmt(Number(value));
+
+
   useEffect(() => {
     updateGlobal('dealProfile', { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined });
     updateGlobal('purchaserStructure', { purchaserType, borrowerEntityName: entityName, guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: num(availableEquity), sponsorLiquidity: num(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda) });
@@ -206,8 +299,9 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
             <CardTitle className="flex items-center gap-2">{assetCategory === 'industrial' ? <Factory className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />} Borrowing Capacity</CardTitle>
             <CardDescription>Shared lending engine with commercial and industrial profiles, funds-to-complete, risk overlays, commentary and document checklist.</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="px-3 py-1 text-sm">{buildGlobalSyncLabel(sourceMode)}</Badge><Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
+            <Sheet><SheetTrigger asChild><Button size="sm" variant="outline">Assumption Status</Button></SheetTrigger><SheetContent className="w-full sm:max-w-3xl overflow-y-auto"><SheetHeader><SheetTitle>Assumption Status Drawer</SheetTitle><SheetDescription>Review source, status and verification requirements without cluttering each input.</SheetDescription></SheetHeader><div className="mt-4 space-y-3">{assumptionRows.map(row => <div key={row.field} className="rounded-md border bg-muted/20 p-3 text-sm"><div className="flex items-center justify-between gap-3"><div className="font-medium">{row.field}</div><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><StatusIcon status={row.status} />{row.status}</div></div><div className="mt-2 grid sm:grid-cols-2 gap-2 text-xs text-muted-foreground"><div>Current value: <span className="text-foreground">{row.value}</span></div><div>Source: <span className="text-foreground">{row.source}</span></div><div>Last updated: <span className="text-foreground">Current session</span></div><div>Updated by: <span className="text-foreground">Calculator user</span></div><div>Verification required: <span className="text-foreground">{row.status === 'Verified' ? 'No' : 'Yes'}</span></div><div>Required document: <span className="text-foreground">{row.document}</span></div></div><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline">Estimate with AI</Button><Button size="sm" variant="outline">Mark as verified</Button><Button size="sm" variant="outline">Replace manual value</Button><Button size="sm" variant="outline">Revert to client profile</Button><Button size="sm" variant="ghost">View source</Button></div></div>)}</div></SheetContent></Sheet>
             <SaveBackButton build={() => ({
               purchase_price: num(purchasePrice),
               valuation: num(estimatedValue),
@@ -226,6 +320,8 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
       </CardHeader>
       <CardContent className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">
         <div className="space-y-4">
+          <Card className="border-primary/20 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-base flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /> Client Profile Integration</CardTitle><CardDescription>Import a verified client portfolio, run property-only or client-profile scenario assessment, and save scenario outcomes without overwriting verified client data.</CardDescription></div><Badge variant={assessmentMode === 'clientScenario' ? 'default' : 'outline'}>{assessmentMode === 'clientScenario' ? 'Client-profile scenario assessment' : 'Property-only assessment'}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-3 gap-3"><SelectField label="Select client profile" value={selectedClientId} onChange={setSelectedClientId} status="Client Profile Source" options={sampleClientProfiles.map(c => ({ value: c.clientId, label: c.clientName }))} /><SelectField label="Scenario type" value={scenarioType} onChange={setScenarioType} status="Overridden" options={['Acquire Commercial Asset','Acquire Industrial Asset','Owner-Occupied Business Premises','Related-Party Lease Structure','Sell Existing Asset','Refinance Existing Debt','Equity Release','Debt Restructure','Cash Injection','Interest Rate Stress','Vacancy / Rent Stress','Capex Shock','Multi-Asset Strategy'].map(v => ({ value: v, label: v }))} /><div><Label>Scenario name</Label><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} /></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground"><label className="flex items-center gap-2"><input type="checkbox" checked={includeResidential} onChange={e => setIncludeResidential(e.target.checked)} />Residential investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCommercial} onChange={e => setIncludeCommercial(e.target.checked)} />Commercial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIndustrial} onChange={e => setIncludeIndustrial(e.target.checked)} />Industrial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeShares} onChange={e => setIncludeShares(e.target.checked)} />Shares / liquid investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCash} onChange={e => setIncludeCash(e.target.checked)} />Cash / offsets</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeBusinessFinancials} onChange={e => setIncludeBusinessFinancials(e.target.checked)} />Business financials</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeLiabilities} onChange={e => setIncludeLiabilities(e.target.checked)} />Liabilities / loans</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIncome} onChange={e => setIncludeIncome(e.target.checked)} />Income / rent</label></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={importClientProfile}>Import current portfolio</Button><Button size="sm" variant="outline" onClick={() => setAssessmentMode('propertyOnly')}>Run property-only</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Recommended')}>Mark Recommended</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Committed')}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={() => buildScenarioReportPayload(activeScenario)}>Export Scenario Report</Button></div>{savedScenario && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100">Scenario saved as {savedScenario.status}. Current profile data is not overwritten unless committed.</div>}<Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead className="text-right">Current Position</TableHead><TableHead className="text-right">Proposed Scenario</TableHead><TableHead className="text-right">Difference</TableHead></TableRow></TableHeader><TableBody>{scenarioRows.map(([label, current, proposed, diff, kind]) => <TableRow key={String(label)}><TableCell>{label}</TableCell><TableCell className="text-right">{formatScenarioValue(current, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(proposed, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(diff, kind as string)}</TableCell></TableRow>)}</TableBody></Table><div className="grid md:grid-cols-4 gap-2 text-xs"><div className="rounded border bg-muted/20 p-2">Borrowing capacity movement: <span className="font-medium text-primary">{fmt(scenarioComparison.difference.borrowingCapacity)}</span></div><div className="rounded border bg-muted/20 p-2">New limiting factor: <span className="font-medium">{scenarioComparison.proposed.keyConstraint}</span></div><div className="rounded border bg-muted/20 p-2">Portfolio risk: <Badge variant={badgeVariant(scenarioComparison.proposed.riskRating) as any}>{title(scenarioComparison.proposed.riskRating)}</Badge></div><div className="rounded border bg-muted/20 p-2">Audit trail: <span className="font-medium">{activeScenario.auditLog.length} event(s)</span></div></div></CardContent></Card>
+
           <Accordion type="multiple" defaultValue={['deal', 'income', 'assumptions', 'risk']} className="rounded-lg border px-4">
             <AccordionItem value="deal"><AccordionTrigger>1. Deal Profile</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
               <SelectField label="Asset category" value={assetCategory} onChange={(v) => { setAssetCategory(v); setAssetSubtype(v === 'industrial' ? 'Warehouse' : 'Office'); }} options={[{ value: 'commercial', label: 'Commercial Asset Borrowing Capacity' }, { value: 'industrial', label: 'Industrial Asset Borrowing Capacity' }]} />

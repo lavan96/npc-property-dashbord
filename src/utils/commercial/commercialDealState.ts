@@ -8,6 +8,7 @@ import type { CommercialGstEngineInputs, CommercialGstEngineResult } from './gst
 import type { DcfAssessmentInputs, DcfAssessmentResult } from './dcfAssessmentEngine';
 import type { BorrowingInputs, BorrowingResult } from './borrowing/calculatorTypes';
 import type { TenYearCashFlowResult } from './tenYearCashFlowTypes';
+import type { ClientScenario } from './clientPortfolioTypes';
 
 export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf' | 'tenYearCashFlow' | 'overview' | 'industrialMetrics';
 export type CalculatorSourceMode = 'global' | 'manualOverride' | 'aiPending' | 'savedPropertyLinked' | 'scenario';
@@ -30,6 +31,7 @@ export interface CommercialIndustrialDealProfile {
   industrialMetrics: Record<string, number | string | undefined>;
   reportPayload?: unknown;
   tenYearCashFlowOutputs?: TenYearCashFlowResult;
+  clientScenarioOutputs?: ClientScenario;
   dcfInputs: Partial<DcfAssessmentInputs>;
   dcfOutputs?: Partial<DcfAssessmentResult>;
   riskInputs: Record<string, unknown>;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, FileText, Sparkles, TrendingUp } from 'lucide-react';
+import { Calculator, FileText, GitBranch, Sparkles, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,7 @@ function SummaryCard({ label, value }: { label: string; value: string | number |
 }
 
 function OverrideNumber({ label, field, value, update, suffix }: { label: string; field: keyof TenYearCashFlowInputs; value: number; update: (field: keyof TenYearCashFlowInputs, value: number) => void; suffix?: string }) {
-  return <div><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">Overridden</Badge></div><div className="flex items-center gap-2"><Input type="number" value={value} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div></div>;
+  return <div><Label className="flex items-center gap-1.5">{label}<GitBranch className="h-3.5 w-3.5 text-sky-300" aria-label="Overridden" /></Label><div className="flex items-center gap-2"><Input type="number" value={value} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div></div>;
 }
 
 function MetricRows({ years, mode }: { years: TenYearCashFlowYear[]; mode: TenYearCashFlowMode }) {

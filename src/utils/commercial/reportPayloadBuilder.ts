@@ -2,6 +2,7 @@ import type { CommercialIndustrialDealProfile } from './commercialDealState';
 import { buildDynamicDocumentChecklist } from './documentChecklistEngine';
 import { generateGlobalWarnings } from './warningEngine';
 import { buildTenYearCashFlowReportPayload } from './tenYearCashFlowReportBuilder';
+import { buildScenarioReportPayload } from './scenarioReportBuilder';
 
 export interface ReportSectionPayload {
   title: string;
@@ -47,6 +48,7 @@ export function buildCommercialIndustrialReportPayload(profile: CommercialIndust
   const borrowing = profile.borrowingOutputs;
   const documentChecklist = buildDynamicDocumentChecklist(profile);
   const tenYearPayload = profile.tenYearCashFlowOutputs ? buildTenYearCashFlowReportPayload(profile.tenYearCashFlowOutputs) : null;
+  const scenarioPayload = profile.clientScenarioOutputs ? buildScenarioReportPayload(profile.clientScenarioOutputs) : null;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -93,6 +95,7 @@ export function buildCommercialIndustrialReportPayload(profile: CommercialIndust
       section('GST Assessment', { gstInputs: profile.gstInputs, gstOutputs: profile.gstOutputs, borrowingGst: borrowing?.fundsToComplete.gst }),
       section('DCF Assessment', { inputs: profile.dcfInputs, outputs: profile.dcfOutputs }),
       section('10-Year Cash Flow Assessment', tenYearPayload),
+      section('Client Portfolio Scenario Assessment', scenarioPayload),
       ...(profile.dealProfile.assetCategory === 'industrial' ? [section('Industrial Metrics', profile.industrialMetrics)] : []),
       section('Risk Summary', { warnings: borrowing?.warnings, warningGroups: borrowing?.warningGroups, riskOutputs: profile.riskOutputs }),
       section('Fix-the-Deal Summary', borrowing?.reverseCalculators),
