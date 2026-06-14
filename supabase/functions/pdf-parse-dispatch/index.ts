@@ -401,6 +401,7 @@ async function runJob(
         page_count: pageCount,
         page_languages: parseJson?.page_languages ?? {},
         outline_node_count: Array.isArray(parseJson?.outline) ? parseJson.outline.length : 0,
+        summary: parseJson?.summary ?? null,
         mode,
         cache_hit: false,
       },
