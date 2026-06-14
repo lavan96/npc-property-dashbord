@@ -2,7 +2,7 @@
  * Hook + helpers for Commercial Property data via secure edge function.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, type InvokeResult } from '@/lib/secureInvoke';
 
 export type CommercialAssetClass =
   | 'office' | 'retail' | 'industrial' | 'mixed_use'
@@ -109,8 +109,19 @@ export interface CommercialFinancing {
 
 type Table = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs' | 'commercial_capex' | 'commercial_financing';
 
+type EdgeEnvelope<T> = { success?: boolean; data?: T };
+
+function unwrapEdgeEnvelope<T>(res: InvokeResult<EdgeEnvelope<T> | T>): InvokeResult<T> {
+  const payload = res.data;
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return { ...res, data: (payload as EdgeEnvelope<T>).data ?? null };
+  }
+  return res as InvokeResult<T>;
+}
+
 async function call<T = any>(operation: string, table: Table, payload: any = {}) {
-  return invokeSecureFunction<T>('manage-commercial-data', { operation, table, ...payload });
+  const res = await invokeSecureFunction<EdgeEnvelope<T> | T>('manage-commercial-data', { operation, table, ...payload });
+  return unwrapEdgeEnvelope<T>(res);
 }
 
 export const commercialApi = {
