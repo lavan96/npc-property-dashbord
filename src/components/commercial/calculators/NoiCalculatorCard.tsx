@@ -59,6 +59,10 @@ export function NoiCalculatorCard() {
     security: '0', other: '0',
   });
 
+  const [aiEstimate, setAiEstimate] = useState<NoiAiEstimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const { prefill } = useCalculatorPrefill();
+
   // Prefill from linked property — recovered outgoings sum and any vendor-quoted gross rent
   useApplyPrefill((p) => {
     if (p.grossPassingRentPa != null) setGrossRent(String(p.grossPassingRentPa));
