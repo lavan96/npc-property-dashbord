@@ -21,7 +21,11 @@ import { fetchClientProfile, persistClientScenario, persistCommittedScenarioAsse
 import { buildClientScenario, type ProposedScenarioInputs } from '@/utils/commercial/scenarioModellingEngine';
 import { comparePortfolioScenario } from '@/utils/commercial/scenarioComparisonEngine';
 import { buildScenarioReportPayload } from '@/utils/commercial/scenarioReportBuilder';
+import { CommercialBCScenarioAgent, type CommercialScenarioProposal } from '@/components/commercial/calculators/CommercialBCScenarioAgent';
+import { applyCommercialScenarioProposal } from '@/utils/commercial/scenarioApplyEngine';
+import { toast } from 'sonner';
 import type { ClientProfile, ClientScenario, ScenarioStatus, ScenarioType } from '@/utils/commercial/clientPortfolioTypes';
+
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
@@ -264,10 +268,26 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     if (includeBusinessFinancials && selectedClient.businessFinancials.ebitdaNpbt != null && (mode === 'replace' || !num(businessEbitda))) setBusinessEbitda(String(selectedClient.businessFinancials.ebitdaNpbt));
     if (includeLiabilities && (mode === 'replace' || !num(businessDebt))) setBusinessDebt(String(selectedClient.liabilities.businessLoans + selectedClient.liabilities.equipmentFinance + selectedClient.liabilities.vehicleFinance + selectedClient.liabilities.creditCards + selectedClient.liabilities.overdrafts));
     if (includeIncome && (mode === 'replace' || !num(currentRent))) setCurrentRent(String(selectedClient.businessFinancials.existingRent));
+    // Anchor commercial/industrial property data (richest matching asset) into property/income fields.
+    const anchor = assetCategory === 'industrial'
+      ? selectedClient.industrialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0]
+      : selectedClient.commercialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0];
+    if (anchor) {
+      if (anchor.currentValue && (mode === 'replace' || !num(purchasePrice))) setPurchasePrice(String(Math.round(anchor.currentValue)));
+      if (anchor.currentValue && (mode === 'replace' || !num(estimatedValue))) setEstimatedValue(String(Math.round(anchor.currentValue)));
+      if (anchor.annualRent && (mode === 'replace' || !num(passingRent))) setPassingRent(String(Math.round(anchor.annualRent)));
+      if (anchor.annualRent && (mode === 'replace' || !num(marketRent))) setMarketRent(String(Math.round(anchor.annualRent)));
+      if ((anchor as any).gla && (mode === 'replace' || !num(lettableArea))) setLettableArea(String(Math.round((anchor as any).gla)));
+      if ((anchor as any).siteArea && (mode === 'replace' || !num(landArea))) setLandArea(String(Math.round((anchor as any).siteArea)));
+      if ((anchor as any).loanBalance && (mode === 'replace' || !num(proposedLoan))) setProposedLoan(String(Math.round((anchor as any).loanBalance)));
+    }
     setProfileImported(true);
     setPendingImportOpen(false);
-    setSyncMessage(mode === 'replace' ? 'Client profile values replaced scenario inputs and were tagged as Client Profile Source.' : 'Client profile values were applied only where fields were blank, preserving existing manual/verified inputs.');
+    setSyncMessage(mode === 'replace'
+      ? `Replaced calculator inputs with ${selectedClient.clientName}'s portfolio${anchor ? ` (anchor asset: ${anchor.address})` : ''}.`
+      : `Applied ${selectedClient.clientName}'s portfolio to blank fields only${anchor ? `; anchor asset ${anchor.address}.` : '.'}`);
   };
+
 
   const saveScenario = async (status: ScenarioStatus) => {
     const scenario = { ...activeScenario, status, auditLog: [...activeScenario.auditLog, { timestamp: new Date().toISOString(), user: 'Calculator user', action: `Scenario saved as ${status}`, source: 'Commercial / Industrial calculator', scenarioId: activeScenario.scenarioId }] };
@@ -284,6 +304,38 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
       setSyncMessage(`Scenario saved to client profile as ${status}.`);
     }
   };
+
+  const exportScenarioReport = () => {
+    try {
+      const payload = buildScenarioReportPayload(activeScenario);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safe = (scenarioName || 'commercial-bc-scenario').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      a.href = url; a.download = `${safe}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Scenario report downloaded.');
+    } catch (err: any) {
+      toast.error(`Export failed: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
+  const applyAIProposal = (proposal: CommercialScenarioProposal) => {
+    const changed = applyCommercialScenarioProposal(proposal, {
+      setPurchasePrice, setEstimatedValue, setProposedLoan, setAvailableEquity, setSponsorLiquidity,
+      setBusinessEbitda, setBusinessDebt, setCurrentRent, setProposedRent,
+      setPassingRent, setMarketRent, setVacancy, setRecoveries, setRates, setWater, setLandTax, setInsurance, setManagement, setRepairs,
+      setRate, setBuffer, setTerm, setIoPeriod, setAmortisation,
+      setMaxLvr, setMinIcr, setMinDscr, setMinDebtYield,
+      applyProfile: (k: string) => applyProfile(k as LenderPolicyProfileKey),
+      setGstTreatment, setLeaseStatus, setGuarantees, setRelatedPartyTenant, setScenarioType,
+    });
+    setScenarioName(proposal.name);
+    setAssessmentMode('clientScenario');
+    setSyncMessage(`AI cascade applied (${changed.length} field${changed.length === 1 ? '' : 's'}): ${changed.join(', ') || 'no recognised fields'}.`);
+  };
+
 
   const assumptionRows = [
     { field: 'Available equity', value: fmt(num(availableEquity)), status: profileImported ? 'Client Profile Source' : 'Manual Estimate', source: profileImported ? selectedClient.clientName : 'Calculator input', document: 'Bank statements / portfolio evidence' },
@@ -358,7 +410,32 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
       </CardHeader>
       <CardContent className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">
         <div className="space-y-4">
-          <Card className="border-primary/20 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-base flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /> Client Profile Integration</CardTitle><CardDescription>Import a verified client portfolio, run property-only or client-profile scenario assessment, and save scenario outcomes without overwriting verified client data.</CardDescription></div><Badge variant={assessmentMode === 'clientScenario' ? 'default' : 'outline'}>{assessmentMode === 'clientScenario' ? 'Client-profile scenario assessment' : 'Property-only assessment'}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-3 gap-3"><SelectField label="Select client profile" value={selectedClientId} onChange={setSelectedClientId} status="Client Profile Source" options={clientOptions.map(c => ({ value: c.clientId, label: `${c.clientName}${c.source === 'sample' ? ' (sample fallback)' : ''}` }))} /><SelectField label="Scenario type" value={scenarioType} onChange={setScenarioType} status="Overridden" options={['Acquire Commercial Asset','Acquire Industrial Asset','Owner-Occupied Business Premises','Related-Party Lease Structure','Sell Existing Asset','Refinance Existing Debt','Equity Release','Debt Restructure','Cash Injection','Interest Rate Stress','Vacancy / Rent Stress','Capex Shock','Multi-Asset Strategy'].map(v => ({ value: v, label: v }))} /><div><Label>Scenario name</Label><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} /></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground"><label className="flex items-center gap-2"><input type="checkbox" checked={includeResidential} onChange={e => setIncludeResidential(e.target.checked)} />Residential investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCommercial} onChange={e => setIncludeCommercial(e.target.checked)} />Commercial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIndustrial} onChange={e => setIncludeIndustrial(e.target.checked)} />Industrial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeShares} onChange={e => setIncludeShares(e.target.checked)} />Shares / liquid investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCash} onChange={e => setIncludeCash(e.target.checked)} />Cash / offsets</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeBusinessFinancials} onChange={e => setIncludeBusinessFinancials(e.target.checked)} />Business financials</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeLiabilities} onChange={e => setIncludeLiabilities(e.target.checked)} />Liabilities / loans</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIncome} onChange={e => setIncludeIncome(e.target.checked)} />Income / rent</label></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={importClientProfile} disabled={clientLoading}>{clientLoading ? 'Loading profile...' : 'Import current portfolio'}</Button><Button size="sm" variant="outline" onClick={() => setAssessmentMode('propertyOnly')}>Run property-only</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Recommended')}>Mark Recommended</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Committed')}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={() => buildScenarioReportPayload(activeScenario)}>Export Scenario Report</Button></div><div className="rounded-md border border-primary/20 bg-background/40 p-2 text-xs text-muted-foreground">{syncMessage}{lastPersistedScenarioId ? ` Persisted scenario ID: ${lastPersistedScenarioId}.` : ''}</div>{savedScenario && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100">Scenario saved as {savedScenario.status}. Current profile data is not overwritten unless committed.</div>}<Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead className="text-right">Current Position</TableHead><TableHead className="text-right">Proposed Scenario</TableHead><TableHead className="text-right">Difference</TableHead></TableRow></TableHeader><TableBody>{scenarioRows.map(([label, current, proposed, diff, kind]) => <TableRow key={String(label)}><TableCell>{label}</TableCell><TableCell className="text-right">{formatScenarioValue(current, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(proposed, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(diff, kind as string)}</TableCell></TableRow>)}</TableBody></Table><div className="grid md:grid-cols-4 gap-2 text-xs"><div className="rounded border bg-muted/20 p-2">Borrowing capacity movement: <span className="font-medium text-primary">{fmt(scenarioComparison.difference.borrowingCapacity)}</span></div><div className="rounded border bg-muted/20 p-2">New limiting factor: <span className="font-medium">{scenarioComparison.proposed.keyConstraint}</span></div><div className="rounded border bg-muted/20 p-2">Portfolio risk: <Badge variant={badgeVariant(scenarioComparison.proposed.riskRating) as any}>{title(scenarioComparison.proposed.riskRating)}</Badge></div><div className="rounded border bg-muted/20 p-2">Audit trail: <span className="font-medium">{activeScenario.auditLog.length} event(s)</span></div></div></CardContent></Card>
+          <Card className="border-primary/20 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-base flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /> Client Profile Integration</CardTitle><CardDescription>Import a verified client portfolio, run property-only or client-profile scenario assessment, and save scenario outcomes without overwriting verified client data.</CardDescription></div><Badge variant={assessmentMode === 'clientScenario' ? 'default' : 'outline'}>{assessmentMode === 'clientScenario' ? 'Client-profile scenario assessment' : 'Property-only assessment'}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-3 gap-3"><SelectField label="Select client profile" value={selectedClientId} onChange={setSelectedClientId} status="Client Profile Source" options={clientOptions.map(c => ({ value: c.clientId, label: `${c.clientName}${c.source === 'sample' ? ' (sample fallback)' : ''}` }))} /><SelectField label="Scenario type" value={scenarioType} onChange={setScenarioType} status="Overridden" options={['Acquire Commercial Asset','Acquire Industrial Asset','Owner-Occupied Business Premises','Related-Party Lease Structure','Sell Existing Asset','Refinance Existing Debt','Equity Release','Debt Restructure','Cash Injection','Interest Rate Stress','Vacancy / Rent Stress','Capex Shock','Multi-Asset Strategy'].map(v => ({ value: v, label: v }))} /><div><Label>Scenario name</Label><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} /></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground"><label className="flex items-center gap-2"><input type="checkbox" checked={includeResidential} onChange={e => setIncludeResidential(e.target.checked)} />Residential investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCommercial} onChange={e => setIncludeCommercial(e.target.checked)} />Commercial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIndustrial} onChange={e => setIncludeIndustrial(e.target.checked)} />Industrial investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeShares} onChange={e => setIncludeShares(e.target.checked)} />Shares / liquid investments</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeCash} onChange={e => setIncludeCash(e.target.checked)} />Cash / offsets</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeBusinessFinancials} onChange={e => setIncludeBusinessFinancials(e.target.checked)} />Business financials</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeLiabilities} onChange={e => setIncludeLiabilities(e.target.checked)} />Liabilities / loans</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeIncome} onChange={e => setIncludeIncome(e.target.checked)} />Income / rent</label></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={importClientProfile} disabled={clientLoading}>{clientLoading ? 'Loading profile...' : 'Import current portfolio'}</Button><Button size="sm" variant="outline" onClick={() => setAssessmentMode('propertyOnly')}>Run property-only</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Recommended')}>Mark Recommended</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Committed')}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={exportScenarioReport}>Export Scenario Report</Button></div><div className="rounded-md border border-primary/20 bg-background/40 p-2 text-xs text-muted-foreground">{syncMessage}{lastPersistedScenarioId ? ` Persisted scenario ID: ${lastPersistedScenarioId}.` : ''}</div>{savedScenario && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100">Scenario saved as {savedScenario.status}. Current profile data is not overwritten unless committed.</div>}<Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead className="text-right">Current Position</TableHead><TableHead className="text-right">Proposed Scenario</TableHead><TableHead className="text-right">Difference</TableHead></TableRow></TableHeader><TableBody>{scenarioRows.map(([label, current, proposed, diff, kind]) => <TableRow key={String(label)}><TableCell>{label}</TableCell><TableCell className="text-right">{formatScenarioValue(current, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(proposed, kind as string)}</TableCell><TableCell className="text-right">{formatScenarioValue(diff, kind as string)}</TableCell></TableRow>)}</TableBody></Table><div className="grid md:grid-cols-4 gap-2 text-xs"><div className="rounded border bg-muted/20 p-2">Borrowing capacity movement: <span className="font-medium text-primary">{fmt(scenarioComparison.difference.borrowingCapacity)}</span></div><div className="rounded border bg-muted/20 p-2">New limiting factor: <span className="font-medium">{scenarioComparison.proposed.keyConstraint}</span></div><div className="rounded border bg-muted/20 p-2">Portfolio risk: <Badge variant={badgeVariant(scenarioComparison.proposed.riskRating) as any}>{title(scenarioComparison.proposed.riskRating)}</Badge></div><div className="rounded border bg-muted/20 p-2">Audit trail: <span className="font-medium">{activeScenario.auditLog.length} event(s)</span></div></div></CardContent></Card>
+
+          <CommercialBCScenarioAgent
+            clientId={selectedClientId}
+            snapshot={{
+              assetCategory, assetSubtype, state, purpose, leaseStatus,
+              purchasePrice: num(purchasePrice),
+              estimatedValue: num(estimatedValue),
+              proposedLoan: num(proposedLoan),
+              availableEquity: num(availableEquity),
+              sponsorLiquidity: num(sponsorLiquidity),
+              businessEbitda: num(businessEbitda),
+              businessDebt: num(businessDebt),
+              marketRent: num(marketRent),
+              vacancy: num(vacancy),
+              rate: num(rate), buffer: num(buffer), term: num(term),
+              maxLvr: num(maxLvr), minDscr: num(minDscr), minIcr: num(minIcr),
+              profile, gstTreatment,
+              riskRating: result.riskRating,
+              borrowingCapacity: result.finalRiskAdjustedLoan,
+              dscr: result.dscr, icr: result.icr,
+              noi: result.noi.actualNoi,
+              client: { id: selectedClientId, name: selectedClient.clientName },
+            }}
+            onApply={applyAIProposal}
+          />
 
 
           <AlertDialog open={pendingImportOpen} onOpenChange={setPendingImportOpen}>
