@@ -79,12 +79,24 @@ export async function evaluateIndustrialSegment(
   const tenancies: IndustrialTenancyRow[] = tenancyData || [];
 
   // Phase Wave-C: prefer relational industrial_financing rows; fall back to legacy JSONB.
-  const { data: financingRows } = await supabase
-    .from('industrial_financing')
-    .select('property_id, lender, loan_amount, loan_balance, interest_rate, loan_term_years, io_period_years, repayment_type, lvr_pct')
-    .in('property_id', propIds);
+  // Wave E: also pull industrial_capex so NOI is net of reserve.
+  const [finRes, capexRes] = await Promise.all([
+    supabase
+      .from('industrial_financing')
+      .select('property_id, lender, loan_amount, loan_balance, interest_rate, loan_term_years, io_period_years, repayment_type, lvr_pct')
+      .in('property_id', propIds),
+    supabase.from('industrial_capex').select('property_id, year, amount').in('property_id', propIds),
+  ]);
   const financingByProp = new Map<string, any>();
-  for (const row of (financingRows || [])) financingByProp.set(row.property_id, row);
+  for (const row of (finRes.data || [])) financingByProp.set(row.property_id, row);
+  const capexHorizon = 5;
+  const capexAnnualByProp = new Map<string, number>();
+  for (const c of (capexRes.data || [])) {
+    const amt = Number(c.amount) || 0;
+    if (amt <= 0) continue;
+    const prev = capexAnnualByProp.get(c.property_id) ?? 0;
+    capexAnnualByProp.set(c.property_id, prev + amt / capexHorizon);
+  }
 
   let totalNoi = 0;
   let totalDebtService = 0;
@@ -92,7 +104,10 @@ export async function evaluateIndustrialSegment(
   let totalValue = 0;
   const rows: SegmentPropertyRow[] = [];
   const warnings: string[] = [];
-  const assumptions = [`Industrial assessment rate ${policy.industrial.assessmentRatePct}% over ${policy.industrial.amortYears}yr P&I`];
+  const assumptions = [
+    `Industrial assessment rate ${policy.industrial.assessmentRatePct}% over ${policy.industrial.amortYears}yr P&I`,
+    `Capex reserve amortised over ${capexHorizon} years deducted from NOI per property`,
+  ];
 
   for (const p of properties) {
     const tens = tenancies.filter(t => t.property_id === p.id);
