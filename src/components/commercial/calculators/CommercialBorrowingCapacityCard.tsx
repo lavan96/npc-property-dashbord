@@ -264,10 +264,26 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     if (includeBusinessFinancials && selectedClient.businessFinancials.ebitdaNpbt != null && (mode === 'replace' || !num(businessEbitda))) setBusinessEbitda(String(selectedClient.businessFinancials.ebitdaNpbt));
     if (includeLiabilities && (mode === 'replace' || !num(businessDebt))) setBusinessDebt(String(selectedClient.liabilities.businessLoans + selectedClient.liabilities.equipmentFinance + selectedClient.liabilities.vehicleFinance + selectedClient.liabilities.creditCards + selectedClient.liabilities.overdrafts));
     if (includeIncome && (mode === 'replace' || !num(currentRent))) setCurrentRent(String(selectedClient.businessFinancials.existingRent));
+    // Anchor commercial/industrial property data (richest matching asset) into property/income fields.
+    const anchor = assetCategory === 'industrial'
+      ? selectedClient.industrialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0]
+      : selectedClient.commercialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0];
+    if (anchor) {
+      if (anchor.currentValue && (mode === 'replace' || !num(purchasePrice))) setPurchasePrice(String(Math.round(anchor.currentValue)));
+      if (anchor.currentValue && (mode === 'replace' || !num(estimatedValue))) setEstimatedValue(String(Math.round(anchor.currentValue)));
+      if (anchor.annualRent && (mode === 'replace' || !num(passingRent))) setPassingRent(String(Math.round(anchor.annualRent)));
+      if (anchor.annualRent && (mode === 'replace' || !num(marketRent))) setMarketRent(String(Math.round(anchor.annualRent)));
+      if ((anchor as any).gla && (mode === 'replace' || !num(lettableArea))) setLettableArea(String(Math.round((anchor as any).gla)));
+      if ((anchor as any).siteArea && (mode === 'replace' || !num(landArea))) setLandArea(String(Math.round((anchor as any).siteArea)));
+      if ((anchor as any).loanBalance && (mode === 'replace' || !num(proposedLoan))) setProposedLoan(String(Math.round((anchor as any).loanBalance)));
+    }
     setProfileImported(true);
     setPendingImportOpen(false);
-    setSyncMessage(mode === 'replace' ? 'Client profile values replaced scenario inputs and were tagged as Client Profile Source.' : 'Client profile values were applied only where fields were blank, preserving existing manual/verified inputs.');
+    setSyncMessage(mode === 'replace'
+      ? `Replaced calculator inputs with ${selectedClient.clientName}'s portfolio${anchor ? ` (anchor asset: ${anchor.address})` : ''}.`
+      : `Applied ${selectedClient.clientName}'s portfolio to blank fields only${anchor ? `; anchor asset ${anchor.address}.` : '.'}`);
   };
+
 
   const saveScenario = async (status: ScenarioStatus) => {
     const scenario = { ...activeScenario, status, auditLog: [...activeScenario.auditLog, { timestamp: new Date().toISOString(), user: 'Calculator user', action: `Scenario saved as ${status}`, source: 'Commercial / Industrial calculator', scenarioId: activeScenario.scenarioId }] };
