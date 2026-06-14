@@ -305,6 +305,38 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     }
   };
 
+  const exportScenarioReport = () => {
+    try {
+      const payload = buildScenarioReportPayload(activeScenario);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safe = (scenarioName || 'commercial-bc-scenario').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      a.href = url; a.download = `${safe}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Scenario report downloaded.');
+    } catch (err: any) {
+      toast.error(`Export failed: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
+  const applyAIProposal = (proposal: CommercialScenarioProposal) => {
+    const changed = applyCommercialScenarioProposal(proposal, {
+      setPurchasePrice, setEstimatedValue, setProposedLoan, setAvailableEquity, setSponsorLiquidity,
+      setBusinessEbitda, setBusinessDebt, setCurrentRent, setProposedRent,
+      setPassingRent, setMarketRent, setVacancy, setRecoveries, setRates, setWater, setLandTax, setInsurance, setManagement, setRepairs,
+      setRate, setBuffer, setTerm, setIoPeriod, setAmortisation,
+      setMaxLvr, setMinIcr, setMinDscr, setMinDebtYield,
+      applyProfile: (k: string) => applyProfile(k as LenderPolicyProfileKey),
+      setGstTreatment, setLeaseStatus, setGuarantees, setRelatedPartyTenant, setScenarioType,
+    });
+    setScenarioName(proposal.name);
+    setAssessmentMode('clientScenario');
+    setSyncMessage(`AI cascade applied (${changed.length} field${changed.length === 1 ? '' : 's'}): ${changed.join(', ') || 'no recognised fields'}.`);
+  };
+
+
   const assumptionRows = [
     { field: 'Available equity', value: fmt(num(availableEquity)), status: profileImported ? 'Client Profile Source' : 'Manual Estimate', source: profileImported ? selectedClient.clientName : 'Calculator input', document: 'Bank statements / portfolio evidence' },
     { field: 'Business EBITDA / NPBT', value: num(businessEbitda) ? fmt(num(businessEbitda)) : 'Unknown', status: profileImported && num(businessEbitda) ? 'Client Profile Source' : 'Unknown', source: profileImported ? 'Client business financials' : 'Not provided', document: 'Business financial statements / tax returns' },
