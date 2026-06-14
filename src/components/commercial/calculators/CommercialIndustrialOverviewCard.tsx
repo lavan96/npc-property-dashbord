@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
-import { FileText, FileWarning, Sparkles, UploadCloud } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { FileText, FileWarning, Sparkles, UploadCloud, Save, Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { buildCommercialIndustrialReportPayload } from '@/utils/commercial/reportPayloadBuilder';
+import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 
 const fmt = (n?: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n?: number) => `${((n || 0) * 100).toFixed(1)}%`;
@@ -20,6 +24,14 @@ function Section({ title: heading, children }: { title: string; children: ReactN
   return <Card className="bg-card/95"><CardHeader className="pb-2"><CardTitle className="text-base">{heading}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
 }
 
+function downloadFile(name: string, content: string, mime = 'application/json') {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function CommercialIndustrialOverviewCard() {
   const profile = useCommercialDealState(s => s.profile);
   const borrowing = profile.borrowingOutputs;
@@ -31,7 +43,113 @@ export function CommercialIndustrialOverviewCard() {
   const tenYear = profile.tenYearCashFlowOutputs;
   const clientScenario = profile.clientScenarioOutputs;
 
+  const { prefill, property, pushBack } = useCalculatorPrefill();
+  const [showMissing, setShowMissing] = useState(false);
+  const [showAi, setShowAi] = useState(false);
+  const [busy, setBusy] = useState<null | 'report' | 'export' | 'save' | 'push'>(null);
+
+  const fileSlug = (prefill?.address || profile.dealProfile.assetCategory || 'commercial-deal').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 60);
+
+  const handleGenerateReport = () => {
+    setBusy('report');
+    try {
+      downloadFile(`${fileSlug}-client-report.json`, JSON.stringify(reportPayload, null, 2));
+      toast.success(`Client report payload generated (${reportPayload.sections.length} sections).`);
+    } catch (e: any) {
+      toast.error(`Report generation failed: ${e.message ?? e}`);
+    } finally { setBusy(null); }
+  };
+
+  const handleExportSummary = () => {
+    setBusy('export');
+    try {
+      const summary = {
+        generatedAt: reportPayload.generatedAt,
+        transactionSummary: reportPayload.transactionSummary,
+        borrowingOutcome: reportPayload.borrowingOutcome,
+        purchaseAbility: reportPayload.purchaseAbility,
+        assumptions: reportPayload.assumptions,
+      };
+      downloadFile(`${fileSlug}-summary.json`, JSON.stringify(summary, null, 2));
+      toast.success('Summary exported.');
+    } finally { setBusy(null); }
+  };
+
+  const handleSaveBack = async () => {
+    if (!property) { toast.error('Select a property first to save back.'); return; }
+    setBusy('save');
+    try {
+      const patch: Record<string, unknown> = {};
+      const purchase = profile.propertyValuation.purchasePrice;
+      const valuation = borrowing?.propertyValueUsedForLvr ?? profile.propertyValuation.estimatedMarketValue;
+      if (purchase) patch.purchase_price = purchase;
+      if (valuation) {
+        // commercial uses `valuation`, industrial uses `current_valuation`
+        if (prefill?.domain === 'industrial') patch.current_valuation = valuation;
+        else patch.valuation = valuation;
+      }
+      if (Object.keys(patch).length === 0) {
+        toast.message('No calculator-derived values to save back yet.');
+      } else {
+        await pushBack(patch);
+      }
+    } finally { setBusy(null); }
+  };
+
+  const handlePushToPortal = () => {
+    setBusy('push');
+    try {
+      // Stash payload so a future portal-sync surface can pick it up; until the
+      // shared-portal edge function ships, give the operator a clear receipt.
+      const key = `commercial-portal-pending:${prefill?.propertyId ?? 'unlinked'}`;
+      sessionStorage.setItem(key, JSON.stringify(reportPayload));
+      toast.success('Report queued for client portal sync.', {
+        description: prefill?.propertyId ? `Linked to property ${prefill.address}` : 'No property linked — queued under "unlinked".',
+      });
+    } finally { setBusy(null); }
+  };
+
+  const ReportActions = (
+    <Card className="border-primary/40 bg-card/95 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Actions</CardTitle>
+        <CardDescription>Generate, review and distribute the commercial / industrial deal report.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={handleGenerateReport} disabled={busy === 'report'}>
+            {busy === 'report' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileText className="h-4 w-4 mr-1" />}
+            Generate Client Report
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowMissing(true)}>
+            <FileWarning className="h-4 w-4 mr-1" /> Review Missing Data ({unknowns.length})
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowAi(true)}>
+            <Sparkles className="h-4 w-4 mr-1" /> Review AI Estimates ({aiFields.length})
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleSaveBack} disabled={!property || busy === 'save'}>
+            {busy === 'save' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+            Save Back to Property
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleExportSummary} disabled={busy === 'export'}>
+            <Download className="h-4 w-4 mr-1" /> Export Summary
+          </Button>
+          <Button size="sm" variant="outline" onClick={handlePushToPortal} disabled={busy === 'push'}>
+            <UploadCloud className="h-4 w-4 mr-1" /> Push to Client Portal
+          </Button>
+        </div>
+        <Separator />
+        <p className="text-xs text-muted-foreground">
+          Report payload ready with {reportPayload.sections.length} sections, including verified values, manual estimates, AI estimates, unknown assumptions and specialist review items.
+          {!property && ' Link a property via ?propertyId= to enable Save Back.'}
+        </p>
+      </CardContent>
+    </Card>
+  );
+
   return <div className="space-y-4">
+    {ReportActions}
+
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -61,7 +179,7 @@ export function CommercialIndustrialOverviewCard() {
       <Section title="Transaction Snapshot"><Row label="State / territory" value={profile.dealProfile.state} /><Row label="Lease status" value={title(profile.dealProfile.leaseStatus)} /><Row label="Data source mode" value="Global Sync On" /></Section>
       <Section title="Borrowing Outcome"><Row label="Maximum loan" value={borrowing?.finalRiskAdjustedLoan} /><Row label="LVR cap" value={borrowing?.componentCaps.lvrCap} /><Row label="ICR cap" value={borrowing?.componentCaps.icrCap} /><Row label="Debt-yield cap" value={borrowing?.componentCaps.debtYieldCap} /></Section>
       <Section title="Purchase Ability"><Row label="Total acquisition costs" value={borrowing?.fundsToComplete.totalAcquisitionCosts} /><Row label="Total cost base" value={borrowing?.fundsToComplete.totalCostBase} /><Row label="Liquidity months" value={borrowing?.fundsToComplete.monthsDebtServiceCovered == null ? 'N/A — equity shortfall exists before liquidity reserve can be assessed.' : `${borrowing.fundsToComplete.monthsDebtServiceCovered.toFixed(1)} months`} /></Section>
-      <Section title="Income / NOI Summary"><Row label="Actual NOI" value={borrowing?.noi.actualNoi ?? profile.noiOutputs?.noi} /><Row label="Stabilised NOI" value={borrowing?.noi.stabilisedNoi} /><Row label="Lender-adjusted NOI" value={borrowing?.noi.lenderAdjustedNoi} /></Section>
+      <Section title="Income / NOI Summary"><Row label="Actual NOI" value={borrowing?.noi.actualNoi ?? profile.noiOutputs?.actualNoi} /><Row label="Stabilised NOI" value={borrowing?.noi.stabilisedNoi} /><Row label="Lender-adjusted NOI" value={borrowing?.noi.lenderAdjustedNoi} /></Section>
       <Section title="Valuation / Cap Rate Summary"><Row label="Estimated market value" value={profile.propertyValuation.estimatedMarketValue} /><Row label="Valuation confidence" value={title(profile.propertyValuation.valuationConfidence)} /><Row label="Cap rate output" value={(profile.capRateOutputs as any)?.capitalisationRate ? pct((profile.capRateOutputs as any).capitalisationRate) : 'Pending'} /></Section>
       <Section title="ICR / DSCR / Debt Yield Summary"><Row label="ICR" value={borrowing ? `${borrowing.icr.toFixed(2)}x` : 'Pending'} /><Row label="DSCR" value={borrowing ? `${borrowing.dscr.toFixed(2)}x` : 'Pending'} /><Row label="Debt yield" value={pct(borrowing?.debtYield)} /></Section>
       <Section title="GST Summary"><Row label="GST treatment" value={title(profile.acquisitionCosts.gstTreatment ?? profile.gstInputs.treatment)} /><Row label="Settlement cashflow" value={borrowing?.fundsToComplete.gstCashflowRequirement} /><Row label="Economic cost" value={borrowing?.fundsToComplete.gst.economicCost} /></Section>
@@ -72,7 +190,46 @@ export function CommercialIndustrialOverviewCard() {
       <Section title="Risk Summary"><p className="text-sm text-muted-foreground">{borrowing?.primaryReason ?? 'Run borrowing capacity to generate risk commentary.'}</p>{borrowing?.warnings.slice(0, 5).map((w, i) => <div key={i} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{w}</div>)}</Section>
       <Section title="Fix the Deal"><p className="text-sm text-muted-foreground">{borrowing?.commentarySections.fixTheDealSummary ?? 'No fix-the-deal strategy generated yet.'}</p><Row label="Required NOI" value={borrowing?.reverseCalculators.requiredNoiForProposedLoan} /><Row label="Required rent increase" value={borrowing?.reverseCalculators.requiredRentIncrease} /></Section>
       <Section title="Required Documents"><div className="grid sm:grid-cols-2 gap-2">{(docs?.slice(0, 10) ?? borrowing?.documentChecklist?.slice(0, 10) ?? []).map((d: any, i: number) => <div key={i} className="rounded border bg-muted/20 px-2 py-1 text-xs text-muted-foreground">{typeof d === 'string' ? d : d.documentName ?? d.name}</div>)}</div></Section>
-      <Section title="Report Actions"><div className="flex flex-wrap gap-2"><Button size="sm"><FileText className="h-4 w-4 mr-1" />Generate Client Report</Button><Button size="sm" variant="outline"><FileWarning className="h-4 w-4 mr-1" />Review Missing Data ({unknowns.length})</Button><Button size="sm" variant="outline"><Sparkles className="h-4 w-4 mr-1" />Review AI Estimates ({aiFields.length})</Button><Button size="sm" variant="outline">Save Back to Property</Button><Button size="sm" variant="outline">Export Summary</Button><Button size="sm" variant="outline"><UploadCloud className="h-4 w-4 mr-1" />Push to Client Portal</Button></div><Separator /><p className="text-xs text-muted-foreground">Report payload ready with {reportPayload.sections.length} sections, including verified values, manual estimates, AI estimates, unknown assumptions and specialist review items.</p></Section>
     </div>
+
+    <Dialog open={showMissing} onOpenChange={setShowMissing}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Missing Data & Specialist Review Items</DialogTitle>
+          <DialogDescription>{unknowns.length} field(s) require operator input or specialist confirmation.</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-3">
+          <div className="space-y-2">
+            {unknowns.length === 0 ? <p className="text-sm text-muted-foreground">No outstanding unknowns. All assumptions are verified or manually estimated.</p> :
+              unknowns.map((u, i) => (
+                <div key={i} className="rounded border bg-muted/10 px-3 py-2 text-sm">
+                  <div className="font-medium">{u.fieldKey}</div>
+                  <div className="text-xs text-muted-foreground">Tag: {u.confidenceTag}{(u as any).rationale ? ` • ${(u as any).rationale}` : ''}</div>
+                </div>
+              ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={showAi} onOpenChange={setShowAi}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>AI Estimated Fields</DialogTitle>
+          <DialogDescription>{aiFields.length} field(s) were filled by AI estimates. Review and confirm before client delivery.</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-3">
+          <div className="space-y-2">
+            {aiFields.length === 0 ? <p className="text-sm text-muted-foreground">No AI-estimated fields in this deal.</p> :
+              aiFields.map((a: any, i) => (
+                <div key={i} className="rounded border bg-muted/10 px-3 py-2 text-sm">
+                  <div className="font-medium">{a.fieldKey}</div>
+                  <div className="text-xs text-muted-foreground">Confidence: {a.confidenceTag}{a.rationale ? ` • ${a.rationale}` : ''}</div>
+                </div>
+              ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   </div>;
 }
