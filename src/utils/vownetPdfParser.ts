@@ -13,7 +13,7 @@ export type PdfParseProgress =
 
 /**
  * Parse a VowNet PDF file into structured client data.
- * 1. Extract text client-side using pdfjs-dist
+ * 1. Extract text client-side using PDF parser
  * 2. Send to edge function for AI-powered structured extraction
  */
 export async function parseVownetPdf(

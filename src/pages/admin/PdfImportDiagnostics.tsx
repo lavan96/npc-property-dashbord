@@ -70,11 +70,23 @@ interface JobRow {
   started_at: string | null;
   finished_at: string | null;
   duration_ms: number | null;
+  cloud_run_ms: number | null;
+  bytes_in: number | null;
+  bytes_out: number | null;
   page_count: number | null;
   ssim_score: number | null;
   error_code: string | null;
   error_text: string | null;
   diagnostics_path: string | null;
+  result_payload: {
+    summary?: {
+      text_chars?: number;
+      ocr_chars?: number;
+      table_count?: number;
+      avg_text_confidence?: number | null;
+    } | null;
+    ssim_path?: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +102,19 @@ interface StatsResponse {
   };
   latency: { p50_ms: number | null; p95_ms: number | null };
   ssim: { avg: number | null; sample_count: number };
+  summary: {
+    text_chars: number;
+    avg_ocr_ratio: number | null;
+    table_count: number;
+    avg_confidence: number | null;
+  };
+  cohorts: {
+    byEngineVersion: Record<string, number>;
+    byUser: Record<string, number>;
+    byFileSizeBucket: Record<string, number>;
+    byPageCount: Record<string, number>;
+  };
+  cost: { cloud_run_ms: number; bytes_in: number; bytes_out: number };
 }
 
 const STATUS_COLOR: Record<StatusValue, string> = {
@@ -134,6 +159,7 @@ export default function PdfImportDiagnostics() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [engineFilter, setEngineFilter] = useState<string>('all');
+  const [engineVersionFilter, setEngineVersionFilter] = useState<string>('all');
   const [downloading, setDownloading] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
@@ -156,6 +182,7 @@ export default function PdfImportDiagnostics() {
         operation: 'list',
         status: statusFilter === 'all' ? null : statusFilter,
         engine: engineFilter === 'all' ? null : engineFilter,
+        engineVersion: engineVersionFilter === 'all' ? null : engineVersionFilter,
         limit: 100,
       });
       if (res.error) {
@@ -169,7 +196,7 @@ export default function PdfImportDiagnostics() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, engineFilter]);
+  }, [statusFilter, engineFilter, engineVersionFilter]);
 
 
   useEffect(() => {
@@ -218,7 +245,7 @@ export default function PdfImportDiagnostics() {
       const res = await invokeSecureFunction<{ signedUrl: string }>('pdf-import-diagnostics', {
         operation: 'download',
         diagnosticsPath: path,
-        expiresIn: 600,
+        expiresIn: 300,
       });
       if (res.error || !res.data?.signedUrl) {
         toast.error(res.error?.message ?? 'Failed to sign URL');
@@ -235,6 +262,22 @@ export default function PdfImportDiagnostics() {
     if (!stats || stats.totals.total === 0) return null;
     return (stats.totals.succeeded / stats.totals.total) * 100;
   }, [stats]);
+
+  const engineVersions = useMemo(() => {
+    const versions = new Set<string>();
+    rows.forEach((row) => {
+      if (row.engine_version) versions.add(row.engine_version);
+    });
+    Object.keys(stats?.cohorts.byEngineVersion ?? {}).forEach((version) => {
+      if (version !== '(unset)') versions.add(version);
+    });
+    return Array.from(versions).sort();
+  }, [rows, stats]);
+
+  const topCohort = (items: Record<string, number> | undefined) => {
+    const entries = Object.entries(items ?? {}).sort((a, b) => b[1] - a[1]);
+    return entries[0] ? `${entries[0][0]} · ${entries[0][1]}` : '—';
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -322,6 +365,76 @@ export default function PdfImportDiagnostics() {
         </Card>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Text chars</div>
+            <div className="text-2xl font-bold">{stats?.summary.text_chars?.toLocaleString() ?? '—'}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Avg OCR %</div>
+            <div className="text-2xl font-bold">
+              {stats?.summary.avg_ocr_ratio !== null && stats?.summary.avg_ocr_ratio !== undefined
+                ? `${Math.round(stats.summary.avg_ocr_ratio * 100)}%`
+                : '—'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Tables</div>
+            <div className="text-2xl font-bold">{stats?.summary.table_count ?? '—'}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Avg confidence</div>
+            <div className="text-2xl font-bold">
+              {stats?.summary.avg_confidence !== null && stats?.summary.avg_confidence !== undefined
+                ? stats.summary.avg_confidence.toFixed(2)
+                : '—'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Cloud Run ms</div>
+            <div className="text-2xl font-bold">{formatMs(stats?.cost.cloud_run_ms ?? null)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">I/O bytes</div>
+            <div className="text-sm font-semibold">
+              {formatBytes(stats?.cost.bytes_in ?? null)} / {formatBytes(stats?.cost.bytes_out ?? null)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Top user cohort</div>
+            <div className="text-sm font-semibold truncate">{topCohort(stats?.cohorts.byUser)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Top file-size bucket</div>
+            <div className="text-sm font-semibold">{topCohort(stats?.cohorts.byFileSizeBucket)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-xs text-muted-foreground">Top page-count bucket</div>
+            <div className="text-sm font-semibold">{topCohort(stats?.cohorts.byPageCount)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Recent imports</CardTitle>
@@ -351,6 +464,17 @@ export default function PdfImportDiagnostics() {
                 <SelectItem value="docling">Docling</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={engineVersionFilter} onValueChange={setEngineVersionFilter}>
+              <SelectTrigger className="w-[220px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All engine versions</SelectItem>
+                {engineVersions.map((version) => (
+                  <SelectItem key={version} value={version}>{version}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -365,7 +489,12 @@ export default function PdfImportDiagnostics() {
                   <TableHead>Status</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead className="text-right">Pages</TableHead>
+                  <TableHead className="text-right">Chars</TableHead>
+                  <TableHead className="text-right">OCR</TableHead>
+                  <TableHead className="text-right">Tables</TableHead>
+                  <TableHead className="text-right">Conf.</TableHead>
                   <TableHead className="text-right">Duration</TableHead>
+                  <TableHead className="text-right">Run ms</TableHead>
                   <TableHead className="text-right">SSIM</TableHead>
                   <TableHead className="text-right">Diagnostics</TableHead>
                 </TableRow>
@@ -373,13 +502,13 @@ export default function PdfImportDiagnostics() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12">
+                    <TableCell colSpan={15} className="text-center py-12">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
                       No imports match the current filter.
                     </TableCell>
                   </TableRow>
@@ -437,7 +566,26 @@ export default function PdfImportDiagnostics() {
                         {row.page_count ?? '—'}
                       </TableCell>
                       <TableCell className="text-right text-sm">
+                        {row.result_payload?.summary?.text_chars?.toLocaleString() ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {row.result_payload?.summary?.text_chars
+                          ? `${Math.round(((row.result_payload.summary.ocr_chars ?? 0) / row.result_payload.summary.text_chars) * 100)}%`
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {row.result_payload?.summary?.table_count ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {row.result_payload?.summary?.avg_text_confidence !== null && row.result_payload?.summary?.avg_text_confidence !== undefined
+                          ? row.result_payload.summary.avg_text_confidence.toFixed(2)
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
                         {formatMs(row.duration_ms)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {formatMs(row.cloud_run_ms)}
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {row.ssim_score !== null && row.ssim_score !== undefined

@@ -33,7 +33,7 @@ both work well — pick the one closest to your users).
 export GCP_PROJECT=<YOUR_GCP_PROJECT_ID>
 export REGION=us-central1
 export SERVICE=pdf-parse-service
-export IMAGE=gcr.io/$GCP_PROJECT/$SERVICE:phaseD
+export IMAGE=gcr.io/$GCP_PROJECT/$SERVICE:docling-2.14.0-phaseD-waveD
 ```
 
 ---
@@ -91,15 +91,17 @@ gcloud run deploy "$SERVICE" \
   --cpu 2 \
   --memory 4Gi \
   --concurrency 2 \
-  --timeout 600 \
+  --timeout 300 \
   --min-instances 0 \
-  --max-instances 5 \
+  --max-instances 10 \
+  --startup-probe-http-path /healthz \
   --set-env-vars "PDF_PARSE_SERVICE_TOKEN=$PDF_PARSE_SERVICE_TOKEN" \
   --set-env-vars "ENABLE_PICTURE_CLASSIFICATION=true" \
   --set-env-vars "ENABLE_PICTURE_DESCRIPTION=false" \
   --set-env-vars "ENABLE_FORMULA_ENRICHMENT=true" \
   --set-env-vars "ENABLE_CODE_ENRICHMENT=true" \
   --set-env-vars "ENABLE_OCR_FALLBACK=true" \
+  --set-env-vars "DOCLING_PREWARM_ON_STARTUP=true" \
   --set-env-vars "DOCLING_IMAGES_SCALE=2.0" \
   --set-env-vars "DOCLING_TABLE_MODE=ACCURATE"
 ```
@@ -111,7 +113,14 @@ Notes:
   bypassed but our app-level auth blocks anything else.
 - `--concurrency 2` keeps Docling memory bounded (each request can hold
   ~1.5 GB while parsing a large PDF).
-- `--timeout 600` covers worst-case OCR fallback on a 100-page scanned PDF.
+- `--timeout 300` is the production request deadline; very large scanned PDFs
+  should fail cleanly with the sidecar error taxonomy instead of monopolising a
+  worker indefinitely.
+- `--max-instances 10` bounds worst-case parallel Docling memory use while
+  still allowing twenty in-flight requests at `--concurrency 2`.
+- `--startup-probe-http-path /healthz` lets Cloud Run defer traffic until the
+  FastAPI process is accepting requests; app startup also pre-warms Docling with
+  a one-page sample unless `DOCLING_PREWARM_ON_STARTUP=false`.
 - Bump `--min-instances 1` only once usage justifies the ~$25/mo idle cost —
   cold starts are ~30 s.
 
@@ -140,17 +149,18 @@ curl -s -X POST "$PDF_PARSE_SERVICE_URL/parse" \
   -H "Authorization: Bearer $PDF_PARSE_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://arxiv.org/pdf/2206.01062.pdf"}' \
-  | jq '{engine: .engine_version, pages: (.pages|length), has_outline: (.outline|length>0), has_doctags: (.doctags|length>0)}'
+  | jq '{engine: .engine_version, pages: (.pages|length), has_outline: (.outline|length>0), has_doctags: (.doctags|length>0), has_summary: (.summary != null)}'
 ```
 
 Expected output:
 
 ```json
 {
-  "engine": "docling-2.14.0+phaseD",
+  "engine": "docling-2.14.0+phaseD+waveD",
   "pages": 9,
   "has_outline": true,
-  "has_doctags": true
+  "has_doctags": true,
+  "has_summary": true
 }
 ```
 
@@ -208,7 +218,14 @@ Any change to `pdf-parse-service/app.py`, `requirements.txt`, or `Dockerfile`:
 cd pdf-parse-service
 export IMAGE=gcr.io/$GCP_PROJECT/$SERVICE:phaseD-$(date +%Y%m%d-%H%M)
 gcloud builds submit --tag "$IMAGE" .
-gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION"
+gcloud run deploy "$SERVICE" \
+  --image "$IMAGE" \
+  --region "$REGION" \
+  --concurrency 2 \
+  --timeout 300 \
+  --min-instances 0 \
+  --max-instances 10 \
+  --startup-probe-http-path /healthz
 ```
 
 Cloud Run will roll the new revision in atomically and drain the old one.
@@ -234,6 +251,7 @@ gcloud run services update-traffic "$SERVICE" \
 | `ENABLE_FORMULA_ENRICHMENT` | `true` | Emit LaTeX for detected formulas. |
 | `ENABLE_CODE_ENRICHMENT` | `true` | Detect code blocks + language. |
 | `ENABLE_OCR_FALLBACK` | `false` | Run EasyOCR on text-less pages (heavy). |
+| `DOCLING_PREWARM_ON_STARTUP` | `true` | Convert a one-page sample at boot so Docling models are loaded before the first real import. |
 | `DOCLING_IMAGES_SCALE` | `2.0` | Picture crop DPI multiplier (1.0 = 72 dpi). |
 | `DOCLING_LAYOUT_MODEL` | _(unset)_ | Override layout model id, e.g. `docling-models/layout-heron`. |
 | `DOCLING_TABLE_MODE` | `ACCURATE` | `FAST` or `ACCURATE` TableFormer mode. |
@@ -250,3 +268,13 @@ Override per deploy with `--update-env-vars KEY=VALUE` on `gcloud run deploy`.
   `pdf-import-diagnostics` Storage bucket.
 - Cloud Run free tier covers ~2 M requests/month at this size; expect
   <$15/mo until you cross ~50 K imports.
+
+### Sidecar token rotation runbook
+
+1. Generate the replacement token: `openssl rand -hex 48`.
+2. Redeploy Cloud Run with the current `PDF_PARSE_SERVICE_TOKEN` and the replacement as `PDF_PARSE_SERVICE_TOKEN_NEXT`.
+3. Update the Supabase edge-function secret `PDF_PARSE_SERVICE_TOKEN` to the replacement token.
+4. Run `/healthz`, `/parse`, and `/raster` smoke tests and verify request IDs in Cloud Run logs.
+5. Redeploy Cloud Run with the replacement as `PDF_PARSE_SERVICE_TOKEN` and remove `PDF_PARSE_SERVICE_TOKEN_NEXT`.
+
+During the grace window, the sidecar accepts either bearer token. Do not leave `PDF_PARSE_SERVICE_TOKEN_NEXT` set after rotation is complete.

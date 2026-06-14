@@ -7,7 +7,7 @@
 // re-checking the superadmin role server-side.
 //
 // Operations:
-//   - { operation: 'list',     status?, engine?, limit? }    -> { rows }
+//   - { operation: 'list',     status?, engine?, engineVersion?, limit? } -> { rows }
 //   - { operation: 'get',      jobId }                       -> { row }
 //   - { operation: 'download', diagnosticsPath, expiresIn? } -> { signedUrl }
 //   - { operation: 'stats' }                                 -> { totals, recent }
@@ -55,18 +55,20 @@ Deno.serve(async (req) => {
     if (operation === 'list') {
       const status = typeof body.status === 'string' ? body.status : null;
       const engine = typeof body.engine === 'string' ? body.engine : null;
+      const engineVersion = typeof body.engineVersion === 'string' ? body.engineVersion : null;
       const limit = Math.min(Math.max(Number(body.limit) || 50, 1), 200);
 
       let q = admin
         .from('pdf_import_jobs')
         .select(
-          'id,user_id,template_id,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,page_count,ssim_score,error_code,error_text,diagnostics_path,created_at,updated_at',
+          'id,user_id,template_id,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,ssim_score,error_code,error_text,diagnostics_path,result_payload,created_at,updated_at',
         )
         .order('created_at', { ascending: false })
         .limit(limit);
 
       if (status) q = q.eq('status', status);
       if (engine) q = q.eq('engine', engine);
+      if (engineVersion) q = q.eq('engine_version', engineVersion);
 
       const { data, error } = await q;
       if (error) return json({ error: error.message }, 500);
@@ -88,15 +90,30 @@ Deno.serve(async (req) => {
     if (operation === 'download') {
       const path = body.diagnosticsPath as string;
       if (!path) return json({ error: 'diagnosticsPath required' }, 400);
-      const expiresIn = Math.min(Math.max(Number(body.expiresIn) || 600, 60), 3600);
+      const expiresIn = Math.min(Math.max(Number(body.expiresIn) || 300, 60), 300);
       // Strip the bucket prefix if the caller passed the full storage path.
       const objectPath = path.startsWith(`${DIAGNOSTICS_BUCKET}/`)
         ? path.slice(DIAGNOSTICS_BUCKET.length + 1)
         : path;
+      const { data: jobRow } = await admin
+        .from('pdf_import_jobs')
+        .select('id,source_file_hash,source_file_name')
+        .eq('id', objectPath.split('/')[0])
+        .maybeSingle();
       const { data, error } = await admin.storage
         .from(DIAGNOSTICS_BUCKET)
         .createSignedUrl(objectPath, expiresIn);
       if (error) return json({ error: error.message }, 500);
+      await admin.from('pdf_import_audit_log').insert({
+        job_id: jobRow?.id ?? null,
+        actor_id: auth.userId === 'service_role' ? null : auth.userId,
+        action: 'diagnostics_download_signed',
+        diagnostics_path: objectPath,
+        file_hash: jobRow?.source_file_hash ?? null,
+        metadata: { expires_in: expiresIn, source_file_name: jobRow?.source_file_name ?? null },
+      }).then(({ error: auditError }) => {
+        if (auditError) console.warn('[pdf-import-diagnostics] audit insert failed', auditError);
+      });
       return json({ signedUrl: data?.signedUrl, expiresIn });
     }
 
@@ -105,7 +122,7 @@ Deno.serve(async (req) => {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await admin
         .from('pdf_import_jobs')
-        .select('status,engine,duration_ms,ssim_score,created_at')
+        .select('status,engine,engine_version,duration_ms,cloud_run_ms,bytes_in,bytes_out,ssim_score,page_count,source_file_size_bytes,user_id,result_payload,created_at')
         .gte('created_at', since)
         .limit(1000);
       if (error) return json({ error: error.message }, 500);
@@ -130,10 +147,63 @@ Deno.serve(async (req) => {
         .map((r) => Number(r.ssim_score))
         .filter((n) => Number.isFinite(n));
       const avgSsim = ssim.length ? ssim.reduce((a, b) => a + b, 0) / ssim.length : null;
+      const byEngineVersion: Record<string, number> = {};
+      const byUser: Record<string, number> = {};
+      const byFileSizeBucket: Record<string, number> = {};
+      const byPageCount: Record<string, number> = {};
+      const summary = {
+        text_chars: 0,
+        ocr_ratio_sum: 0,
+        ocr_ratio_count: 0,
+        table_count: 0,
+        confidence_sum: 0,
+        confidence_count: 0,
+      };
+      let cloudRunMs = 0;
+      let bytesIn = 0;
+      let bytesOut = 0;
+      for (const r of rows as any[]) {
+        const ev = r.engine_version || '(unset)';
+        byEngineVersion[ev] = (byEngineVersion[ev] ?? 0) + 1;
+        byUser[r.user_id || '(unknown)'] = (byUser[r.user_id || '(unknown)'] ?? 0) + 1;
+        const size = Number(r.source_file_size_bytes ?? r.bytes_in ?? 0);
+        const sizeBucket = size < 1024 * 1024 ? '<1MB' : size < 10 * 1024 * 1024 ? '1-10MB' : size < 50 * 1024 * 1024 ? '10-50MB' : '50MB+';
+        byFileSizeBucket[sizeBucket] = (byFileSizeBucket[sizeBucket] ?? 0) + 1;
+        const pc = Number(r.page_count ?? 0);
+        const pageBucket = pc <= 1 ? '1 page' : pc <= 5 ? '2-5 pages' : pc <= 20 ? '6-20 pages' : '21+ pages';
+        byPageCount[pageBucket] = (byPageCount[pageBucket] ?? 0) + 1;
+        cloudRunMs += Number(r.cloud_run_ms) || 0;
+        bytesIn += Number(r.bytes_in) || 0;
+        bytesOut += Number(r.bytes_out) || 0;
+        const s = r.result_payload?.summary;
+        if (s && typeof s === 'object') {
+          summary.text_chars += Number(s.text_chars) || 0;
+          summary.table_count += Number(s.table_count) || 0;
+          const ocrChars = Number(s.ocr_chars) || 0;
+          const textChars = Number(s.text_chars) || 0;
+          if (textChars > 0) {
+            summary.ocr_ratio_sum += ocrChars / textChars;
+            summary.ocr_ratio_count += 1;
+          }
+          const conf = Number(s.avg_text_confidence);
+          if (Number.isFinite(conf)) {
+            summary.confidence_sum += conf;
+            summary.confidence_count += 1;
+          }
+        }
+      }
       return json({
         totals,
         latency: { p50_ms: p50, p95_ms: p95 },
         ssim: { avg: avgSsim, sample_count: ssim.length },
+        summary: {
+          text_chars: summary.text_chars,
+          avg_ocr_ratio: summary.ocr_ratio_count ? summary.ocr_ratio_sum / summary.ocr_ratio_count : null,
+          table_count: summary.table_count,
+          avg_confidence: summary.confidence_count ? summary.confidence_sum / summary.confidence_count : null,
+        },
+        cohorts: { byEngineVersion, byUser, byFileSizeBucket, byPageCount },
+        cost: { cloud_run_ms: cloudRunMs, bytes_in: bytesIn, bytes_out: bytesOut },
       });
     }
 

@@ -25,9 +25,13 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import logging
 import os
+import re
 import time
+import uuid
+from contextvars import ContextVar
 from typing import Any, Optional
 
 import httpx
@@ -40,12 +44,46 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
+REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class JsonRequestFormatter(logging.Formatter):
+    """Emit one JSON object per log line so Cloud Run can index request fields."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "severity": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "request_id": getattr(record, "request_id", REQUEST_ID.get()),
+        }
+        for key in ("method", "path", "status_code", "duration_ms", "error_code", "retryable"):
+            if hasattr(record, key):
+                payload[key] = getattr(record, key)
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+handler = logging.StreamHandler()
+handler.setFormatter(JsonRequestFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
 LOG = logging.getLogger("pdf-parse-service")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
+SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
+SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
 ENGINE_VERSION = "docling-2.14.0+phaseD+waveD"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
+
+
+class SidecarError(Exception):
+    def __init__(self, status_code: int, error_code: str, message: str, *, retryable: bool = False):
+        self.status_code = status_code
+        self.error_code = error_code
+        self.message = message
+        self.retryable = retryable
+        super().__init__(message)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -53,6 +91,9 @@ def _env_bool(name: str, default: bool) -> bool:
     if raw is None:
         return default
     return raw.strip() not in {"", "0", "false", "False", "no", "NO"}
+
+
+PREWARM_ON_STARTUP = _env_bool("DOCLING_PREWARM_ON_STARTUP", True)
 
 
 # Phase B/D toggles — Wave A raises defaults for maximum extraction quality.
@@ -186,19 +227,110 @@ LOG.info(
 )
 
 
+def _build_prewarm_pdf() -> bytes:
+    """Build a tiny valid one-page PDF with correct xref offsets."""
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length 44 >>\nstream\nBT /F1 12 Tf 40 120 Td (Docling warmup) Tj ET\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for idx, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out.extend(f"{idx} 0 obj\n".encode("ascii"))
+        out.extend(obj)
+        out.extend(b"\nendobj\n")
+    xref_at = len(out)
+    out.extend(f"xref\n0 {len(offsets)}\n".encode("ascii"))
+    out.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        out.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    out.extend(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_at}\n%%EOF\n".encode("ascii"))
+    return bytes(out)
+
+
+@app.on_event("startup")
+async def prewarm_docling() -> None:
+    """Load Docling models at boot so the first user request avoids model-load latency."""
+    if not PREWARM_ON_STARTUP:
+        LOG.info("Docling startup prewarm disabled")
+        return
+    started = time.monotonic()
+    from docling.datamodel.base_models import DocumentStream
+
+    try:
+        stream = DocumentStream(name="prewarm.pdf", stream=io.BytesIO(_build_prewarm_pdf()))
+        CONVERTER.convert(stream)
+        LOG.info("Docling startup prewarm complete", extra={"duration_ms": int((time.monotonic() - started) * 1000)})
+    except Exception as exc:  # pragma: no cover — startup should remain healthy; healthz reveals process state.
+        LOG.warning("Docling startup prewarm failed: %s", exc, extra={"duration_ms": int((time.monotonic() - started) * 1000)})
+
+
 # ---------------------------------------------------------------------------
 # Auth middleware
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def require_bearer(request: Request, call_next):
-    if request.url.path in {"/healthz", "/"}:
-        return await call_next(request)
-    if not SERVICE_TOKEN:
-        return JSONResponse({"error": "service_token_not_configured"}, status_code=503)
-    auth = request.headers.get("authorization", "")
-    if not auth.lower().startswith("bearer ") or auth.split(" ", 1)[1].strip() != SERVICE_TOKEN:
-        return JSONResponse({"error": "unauthorised"}, status_code=401)
-    return await call_next(request)
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    token = REQUEST_ID.set(request_id)
+    started = time.monotonic()
+    try:
+        if request.url.path in {"/healthz", "/"}:
+            response = await call_next(request)
+        elif not SERVICE_TOKENS:
+            response = error_response(503, "service_token_not_configured", "PDF_PARSE_SERVICE_TOKEN is not configured.", retryable=True)
+        else:
+            auth = request.headers.get("authorization", "")
+            if not auth.lower().startswith("bearer ") or auth.split(" ", 1)[1].strip() not in SERVICE_TOKENS:
+                response = error_response(401, "unauthorised", "Invalid bearer token.", retryable=False)
+            else:
+                response = await call_next(request)
+        response.headers["X-Request-Id"] = request_id
+        LOG.info(
+            "request complete",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": int((time.monotonic() - started) * 1000),
+            },
+        )
+        return response
+    finally:
+        REQUEST_ID.reset(token)
+
+
+def error_response(status_code: int, error_code: str, message: str, *, retryable: bool) -> JSONResponse:
+    return JSONResponse(
+        {"error_code": error_code, "message": message, "retryable": retryable},
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(SidecarError)
+async def sidecar_error_handler(_request: Request, exc: SidecarError) -> JSONResponse:
+    LOG.warning(
+        exc.message,
+        extra={"error_code": exc.error_code, "retryable": exc.retryable},
+    )
+    return error_response(exc.status_code, exc.error_code, exc.message, retryable=exc.retryable)
+
+
+@app.exception_handler(HTTPException)
+async def http_error_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    status = int(exc.status_code)
+    retryable = status in {408, 429, 500, 502, 503, 504}
+    return error_response(status, f"http_{status}", str(exc.detail), retryable=retryable)
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    LOG.exception("Unhandled sidecar error", extra={"error_code": "internal_error", "retryable": True})
+    return error_response(500, "internal_error", str(exc), retryable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +343,7 @@ class ParseRequest(BaseModel):
     # Phase D: caller can ask for a lighter / heavier serialization payload.
     include_doctags: bool = Field(default=True)
     include_markdown: bool = Field(default_factory=lambda: INCLUDE_MARKDOWN_DEFAULT)
+    redact_pii: bool = Field(default=False)
 
 
 class RasterRequest(BaseModel):
@@ -226,24 +359,66 @@ class RasterRequest(BaseModel):
 # ---------------------------------------------------------------------------
 async def _resolve_pdf_bytes(url: Optional[str], pdf_base64: Optional[str]) -> bytes:
     if not url and not pdf_base64:
-        raise HTTPException(status_code=400, detail="Either `url` or `pdf_base64` is required.")
+        raise SidecarError(400, "missing_source", "Either `url` or `pdf_base64` is required.")
     if pdf_base64:
         try:
             data = base64.b64decode(pdf_base64, validate=True)
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid base64: {exc}") from exc
+            raise SidecarError(400, "invalid_base64", f"Invalid base64: {exc}") from exc
     else:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.get(url)  # type: ignore[arg-type]
-            if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail=f"Source URL returned {resp.status_code}")
-            data = resp.content
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.get(url)  # type: ignore[arg-type]
+        except httpx.TimeoutException as exc:
+            raise SidecarError(504, "source_fetch_timeout", "Timed out fetching source PDF.", retryable=True) from exc
+        except httpx.RequestError as exc:
+            raise SidecarError(502, "source_fetch_error", f"Could not fetch source PDF: {exc}", retryable=True) from exc
+        if resp.status_code != 200:
+            retryable = resp.status_code in {408, 429, 500, 502, 503, 504}
+            raise SidecarError(
+                502 if retryable else 400,
+                "source_fetch_bad_status",
+                f"Source URL returned {resp.status_code}.",
+                retryable=retryable,
+            )
+        data = resp.content
     if len(data) > MAX_PDF_BYTES:
-        raise HTTPException(status_code=413, detail=f"PDF exceeds {MAX_PDF_BYTES} bytes")
+        raise SidecarError(413, "pdf_too_large", f"PDF exceeds {MAX_PDF_BYTES} bytes")
     if not data.startswith(b"%PDF"):
-        raise HTTPException(status_code=400, detail="Payload is not a PDF.")
+        raise SidecarError(400, "invalid_pdf", "Payload is not a PDF.")
     return data
 
+
+
+PII_PATTERNS = [
+    (re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE), "[redacted-email]"),
+    (re.compile(r"\b(?:\+?61|0)[2-478](?:[ -]?\d){8}\b"), "[redacted-phone]"),
+    (re.compile(r"\b(?:\d[ -]?){13,19}\b"), "[redacted-number]"),
+    (re.compile(r"\b(?:BSB|Account(?: Number)?|Acct)[:# ]+[0-9 -]{4,}\b", re.IGNORECASE), "[redacted-account]"),
+    (re.compile(r"\b(?:TFN|Tax File Number)[:# ]+[0-9 -]{8,}\b", re.IGNORECASE), "[redacted-tax-id]"),
+]
+
+def _redact_text(value: str) -> str:
+    out = value
+    for pattern, replacement in PII_PATTERNS:
+        out = pattern.sub(replacement, out)
+    return out
+
+def _redact_docling_pii(node: Any) -> int:
+    redactions = 0
+    if isinstance(node, dict):
+        for key, value in list(node.items()):
+            if key in {"text", "caption", "orig", "markdown"} and isinstance(value, str):
+                redacted = _redact_text(value)
+                if redacted != value:
+                    node[key] = redacted
+                    redactions += 1
+            else:
+                redactions += _redact_docling_pii(value)
+    elif isinstance(node, list):
+        for item in node:
+            redactions += _redact_docling_pii(item)
+    return redactions
 
 def _extract_outline(doc: Any) -> list[dict]:
     """Best-effort document outline / TOC extraction."""
@@ -307,6 +482,7 @@ def _summarise_doc(doc_dict: dict) -> dict:
     ocr_pages: set[int] = set()
     conf_sum = 0.0
     conf_n = 0
+    page_conf: dict[int, dict[str, float | int]] = {}
     for t in texts:
         s = t.get("text") or ""
         total_chars += len(s)
@@ -319,8 +495,16 @@ def _summarise_doc(doc_dict: dict) -> dict:
                     ocr_pages.add(int(pn))
         conf = t.get("confidence")
         if isinstance(conf, (int, float)) and 0.0 <= float(conf) <= 1.0:
-            conf_sum += float(conf)
+            conf_value = float(conf)
+            conf_sum += conf_value
             conf_n += 1
+            for p in (t.get("prov") or []):
+                pn = p.get("page_no")
+                if pn is None:
+                    continue
+                bucket = page_conf.setdefault(int(pn), {"sum": 0.0, "count": 0})
+                bucket["sum"] = float(bucket["sum"]) + conf_value
+                bucket["count"] = int(bucket["count"]) + 1
     table_cells = 0
     for tbl in tables:
         data = tbl.get("data") or {}
@@ -332,6 +516,14 @@ def _summarise_doc(doc_dict: dict) -> dict:
         "ocr_chars": ocr_chars,
         "ocr_pages": sorted(ocr_pages),
         "avg_text_confidence": round(conf_sum / conf_n, 4) if conf_n else None,
+        "page_confidence": [
+            {
+                "page_no": page_no,
+                "avg_text_confidence": round(float(vals["sum"]) / int(vals["count"]), 4) if int(vals["count"]) else None,
+                "text_block_count": int(vals["count"]),
+            }
+            for page_no, vals in sorted(page_conf.items())
+        ],
         "table_count": len(tables),
         "table_cell_count": table_cells,
         "picture_count": len(pictures),
@@ -366,7 +558,10 @@ async def parse(req: ParseRequest) -> dict:
         else ENABLE_PICTURE_DESCRIPTION_DEFAULT
     )
     converter = _get_converter(use_description)
-    result = converter.convert(stream)
+    try:
+        result = converter.convert(stream)
+    except Exception as exc:
+        raise SidecarError(500, "docling_convert_failed", f"Docling conversion failed: {exc}", retryable=True) from exc
     doc = result.document
 
     pages_meta: list[dict] = []
@@ -380,17 +575,18 @@ async def parse(req: ParseRequest) -> dict:
     pages_meta.sort(key=lambda p: p["page_no"])
 
     doc_dict = doc.export_to_dict()
+    pii_redactions = _redact_docling_pii(doc_dict) if req.redact_pii else 0
 
     # Phase D: surface auxiliary serialisations & document-level structure.
     extras: dict[str, Any] = {}
     if req.include_doctags:
         try:
-            extras["doctags"] = doc.export_to_doctags()
+            extras["doctags"] = _redact_text(doc.export_to_doctags()) if req.redact_pii else doc.export_to_doctags()
         except Exception as exc:  # pragma: no cover
             LOG.warning("doctags export failed: %s", exc)
     if req.include_markdown:
         try:
-            extras["markdown"] = doc.export_to_markdown()
+            extras["markdown"] = _redact_text(doc.export_to_markdown()) if req.redact_pii else doc.export_to_markdown()
         except Exception as exc:  # pragma: no cover
             LOG.warning("markdown export failed: %s", exc)
 
@@ -404,6 +600,8 @@ async def parse(req: ParseRequest) -> dict:
             pm["language"] = lang
 
     summary = _summarise_doc(doc_dict)
+    if req.redact_pii:
+        summary["pii_redaction"] = {"enabled": True, "redaction_count": pii_redactions}
     parsed_ms = int((time.monotonic() - t0) * 1000)
     LOG.info(
         "Parsed %d-page PDF (%d bytes) in %d ms — %d texts / %d tables / %d pictures / %d OCR pages",
@@ -430,7 +628,10 @@ async def raster(req: RasterRequest) -> dict:
     pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
     t0 = time.monotonic()
 
-    pdf = pdfium.PdfDocument(pdf_bytes)
+    try:
+        pdf = pdfium.PdfDocument(pdf_bytes)
+    except Exception as exc:
+        raise SidecarError(400, "raster_pdf_open_failed", f"Could not open PDF for rastering: {exc}") from exc
     total = len(pdf)
     page_indices = (
         [p - 1 for p in req.pages if 1 <= p <= total] if req.pages else list(range(total))
@@ -440,8 +641,11 @@ async def raster(req: RasterRequest) -> dict:
     images: list[dict] = []
     for idx in page_indices:
         page = pdf[idx]
-        bitmap = page.render(scale=scale)
-        pil_img = bitmap.to_pil()
+        try:
+            bitmap = page.render(scale=scale)
+            pil_img = bitmap.to_pil()
+        except Exception as exc:
+            raise SidecarError(500, "raster_page_failed", f"Could not raster page {idx + 1}: {exc}", retryable=True) from exc
         buf = io.BytesIO()
         if req.format == "jpeg":
             pil_img.convert("RGB").save(buf, format="JPEG", quality=88, optimize=True)

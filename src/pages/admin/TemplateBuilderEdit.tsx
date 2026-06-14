@@ -77,6 +77,7 @@ import { getThemePreset } from '@/lib/reportTemplate/themePresets';
 import { STARTER_PAGE_PRESETS, getStarterPreset } from '@/lib/reportTemplate/starterTemplates';
 import { SAMPLE_DATA_PRESETS, DEFAULT_SAMPLE_DATA_PRESET } from '@/lib/reportTemplate/sampleDataPresets';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -117,6 +118,7 @@ import {
   type ReportStructureTemplateLike,
 } from '@/lib/reportTemplate/cascadeMap';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import type { PdfImportEngine } from '@/lib/reportTemplate/pdfImport/types';
 import { supabase } from '@/integrations/supabase/client';
 import { lintTemplate, type LintIssue } from '@/lib/reportTemplate/lintTemplate';
 import { useTemplateAnalysis } from '@/hooks/templateBuilder/useTemplateAnalysis';
@@ -219,6 +221,7 @@ export default function TemplateBuilderEdit() {
   const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showComponentLib, setShowComponentLib] = useState(false);
   const [showResync, setShowResync] = useState(false);
+  const [resyncEngine, setResyncEngine] = useState<PdfImportEngine | undefined>(undefined);
   const [showReferenceImport, setShowReferenceImport] = useState(false);
   // V2 (Canva-style) editor flag — gates drag-and-drop drop-to-place. ON by
   // default since rehaul Phase 8; `?editorV2=0` / localStorage is the kill-switch.
@@ -448,6 +451,8 @@ export default function TemplateBuilderEdit() {
     };
   }, [id]);
 
+  const pdfImportMeta = template.meta?.pdfImport;
+  const isLegacyPdfImport = pdfImportMeta?.engine === 'legacy';
   const activePage = useMemo<Page | null>(
     () => template.pages.find((p) => p.id === activePageId) ?? null,
     [template, activePageId],
@@ -1583,6 +1588,29 @@ export default function TemplateBuilderEdit() {
             className="text-base font-semibold border-0 bg-transparent focus-visible:bg-muted/30 focus-visible:ring-1 max-w-xs"
             placeholder="Template name"
           />
+          {pdfImportMeta && (
+            <div className="hidden lg:flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 text-xs">
+              {pdfImportMeta.engine === 'docling' ? <Zap className="h-3.5 w-3.5 text-primary" /> : <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
+              <span>Engine:</span>
+              <Badge variant={pdfImportMeta.engine === 'docling' ? 'default' : 'secondary'} className="h-5 px-1.5 text-[10px]">
+                {pdfImportMeta.engine === 'docling' ? `Docling · ${pdfImportMeta.engineVersion ?? 'v2.14'}` : 'Legacy pdf.js'}
+              </Badge>
+              {isSuperadmin && pdfImportMeta.diagnosticsPath && (
+                <a className="text-primary underline-offset-2 hover:underline" href="/admin/pdf-import-diagnostics">Diagnostics</a>
+              )}
+              {isLegacyPdfImport && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[11px]"
+                  onClick={() => { setResyncEngine('docling'); setShowResync(true); }}
+                >
+                  Re-import with Docling
+                </Button>
+              )}
+            </div>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1767,9 +1795,14 @@ export default function TemplateBuilderEdit() {
               <DropdownMenuItem onSelect={() => setShowDesignAgent(true)}>
                 <Sparkles className="h-4 w-4 mr-2" /> Reconstruct from image (AI)
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowResync(true)}>
+              <DropdownMenuItem onSelect={() => { setResyncEngine(undefined); setShowResync(true); }}>
                 <RefreshCw className="h-4 w-4 mr-2" /> Import / re-sync from PDF
               </DropdownMenuItem>
+              {isLegacyPdfImport && (
+                <DropdownMenuItem onSelect={() => { setResyncEngine('docling'); setShowResync(true); }}>
+                  <Zap className="h-4 w-4 mr-2" /> Re-import with Docling
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={() => setShowAIAuthor(true)}>
                 <Wand2 className="h-4 w-4 mr-2" /> Generate a page with AI
               </DropdownMenuItem>
@@ -3169,6 +3202,7 @@ export default function TemplateBuilderEdit() {
             onOpenChange={setShowResync}
             templateId={id}
             templateName={name}
+            engine={resyncEngine}
             onResynced={() => {
               // Force the editor to reload the freshly resynced template.
               window.location.reload();

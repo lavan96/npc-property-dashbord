@@ -501,7 +501,7 @@ export default function ReportQA() {
 
       updateProgress(10, 'processing');
 
-      // --- Client-side text extraction using pdfjs-dist ---
+      // --- Client-side text extraction using PDF parser ---
       // This runs entirely in the browser, no edge function timeouts
       const result = await extractPdfTextClientSide(file, (current, total) => {
         const pct = 10 + Math.round((current / Math.max(total, 1)) * 80);

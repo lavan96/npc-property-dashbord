@@ -5,9 +5,9 @@
  * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
  * progress + a fidelity report card when finished.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Cpu, Zap } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,17 +15,35 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { describeAuthError } from '@/lib/secureInvoke';
 import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
-import { extractPdfToTemplate, type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
-import { resolvePdfImportEngine, type PdfImportEngine } from '@/lib/featureFlags/pdfImportEngine';
+import { type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/types';
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { saveImportReviewDecision, type ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
+
+
+const STAGE_LABELS: Record<string, string> = {
+  reading: 'Reading source PDF',
+  uploading: 'Uploading to parser',
+  extracting: 'Parsing with engine',
+  rasterizing: 'Rasterising pages',
+  finalizing: 'Mapping and saving template',
+  done: 'Import complete',
+};
+const STAGE_ETA_SECONDS: Record<string, number> = { reading: 5, uploading: 10, extracting: 45, rasterizing: 60, finalizing: 15 };
+
+function progressCopy(progress: ImportProgress | null): { label: string; eta: string } {
+  if (!progress) return { label: 'Waiting to start', eta: '' };
+  const label = STAGE_LABELS[progress.phase] ?? progress.phase;
+  const pageSuffix = progress.page && progress.totalPages ? ` · page ${progress.page}/${progress.totalPages}` : '';
+  const etaSeconds = STAGE_ETA_SECONDS[progress.phase] ?? 20;
+  const eta = progress.phase === 'done' ? 'Done' : `ETA ~${etaSeconds < 60 ? `${etaSeconds}s` : `${Math.round(etaSeconds / 60)}m`}`;
+  return { label: `${label}${pageSuffix}${progress.message ? ` · ${progress.message}` : ''}`, eta };
+}
 
 interface Props {
   open: boolean;
@@ -38,27 +56,12 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
-  const [engineChoice, setEngineChoice] = useState<'auto' | PdfImportEngine>('auto');
-  const [resolvedEngine, setResolvedEngine] = useState<PdfImportEngine>('legacy');
+  const [redactPii, setRedactPii] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [recordedDecision, setRecordedDecision] = useState<ImportReviewDecisionRecord | null>(null);
-
-  // Resolve which engine the feature flag picks for the current user, so the UI
-  // can tell them up-front whether they'll go through pdf.js or Docling.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    resolvePdfImportEngine({ userId: user?.id ?? null, isSuperadmin })
-      .then((e) => { if (!cancelled) setResolvedEngine(e); })
-      .catch(() => { if (!cancelled) setResolvedEngine('legacy'); });
-    return () => { cancelled = true; };
-  }, [open, user?.id, isSuperadmin]);
-
-  const effectiveEngine: PdfImportEngine =
-    engineChoice === 'auto' ? resolvedEngine : engineChoice;
 
   const reset = () => {
     setFile(null);
@@ -99,24 +102,26 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         templateName: file.name.replace(/\.pdf$/i, ''),
         userId: user?.id ?? null,
         isSuperadmin,
-        pdfEngine: engineChoice === 'auto' ? undefined : engineChoice,
         onProgress: setProgress,
+        redactPii,
       });
       if (outcome.type !== 'persisted') throw new Error('Unexpected import outcome.');
       setResult(outcome.result);
       setRecordedDecision(null);
-      toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'} via ${outcome.result.engine ?? effectiveEngine}.`);
+      toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'} via Docling.`);
     } catch (err) {
       toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }
-  }, [file, mode, user?.id, isSuperadmin, engineChoice, effectiveEngine]);
+  }, [file, mode, user?.id, isSuperadmin, redactPii]);
 
   const percent = (() => {
     if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
     return Math.round((progress.page / progress.totalPages) * 95);
   })();
+
+  const progressDetails = progressCopy(progress);
 
   const importAssetSummary = useMemo(() => summarizeImportAsset(result?.importAsset), [result?.importAsset]);
 
@@ -215,16 +220,15 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                 </Card>
-                <Card className={`p-3 ${effectiveEngine === 'docling' ? 'opacity-50' : 'cursor-pointer'}`} onClick={() => !busy && effectiveEngine !== 'docling' && setMode('ocr')}>
+                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
                   <div className="flex items-start gap-3">
-                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" disabled={effectiveEngine === 'docling'} />
+                    <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
                     <div className="flex-1">
                       <Label htmlFor="m-ocr" className="font-medium cursor-pointer flex items-center gap-2">
-                        OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Tesseract</Badge>
+                        OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Docling native</Badge>
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        For scans and image-only PDFs. Rasterises each page and recognises text via Tesseract (English). Slower.
-                        {effectiveEngine === 'docling' && <span className="block mt-1 italic">Docling engine OCRs scanned pages automatically — switch the engine below to use Tesseract.</span>}
+                        For scans and image-only PDFs. Docling uses native OCR and parser confidence signals.
                       </p>
                     </div>
                   </div>
@@ -232,45 +236,39 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               </RadioGroup>
             </div>
 
-            {/* Engine selector */}
+            {/* Engine status */}
             <div className="rounded-md border bg-muted/30 p-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 text-sm">
-                  {effectiveEngine === 'docling' ? <Zap className="h-4 w-4 text-primary" /> : <Cpu className="h-4 w-4 text-muted-foreground" />}
-                  <span className="font-medium">Extraction engine</span>
-                  <Badge variant={effectiveEngine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
-                    {effectiveEngine === 'docling' ? 'Docling (cloud)' : 'Legacy (pdf.js)'}
-                  </Badge>
-                  {engineChoice === 'auto' && (
-                    <span className="text-[11px] text-muted-foreground">resolved from feature flag</span>
-                  )}
-                </div>
-                <Select value={engineChoice} onValueChange={(v) => setEngineChoice(v as 'auto' | PdfImportEngine)} disabled={busy}>
-                  <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto ({resolvedEngine})</SelectItem>
-                    <SelectItem value="legacy">Legacy (pdf.js)</SelectItem>
-                    <SelectItem value="docling">Docling (cloud)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2 text-sm">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="font-medium">Extraction engine</span>
+                <Badge variant="default" className="text-[10px]">Docling (cloud)</Badge>
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                {effectiveEngine === 'docling'
-                  ? 'Runs on the Cloud Run Docling sidecar. Handles complex layouts and tables, OCRs scanned pages automatically, and streams progress from `pdf_import_jobs`.'
-                  : 'Runs entirely in the browser via pdf.js. Best for fonts/colour fidelity on digital-native PDFs and for the dedicated Tesseract OCR mode.'}
+                Legacy pdf.js routing has been retired. All template PDF imports now use the Cloud Run Docling sidecar, including native OCR, high-DPI rastering, diagnostics, and job-ledger telemetry.
               </p>
             </div>
+
+
+            <label className="flex items-start gap-2 rounded-md border bg-muted/20 p-3 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={redactPii}
+                onChange={(e) => setRedactPii(e.target.checked)}
+                disabled={busy}
+              />
+              <span>
+                <span className="font-medium">Redact likely PII before diagnostics</span>
+                <span className="block text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs.</span>
+              </span>
+            </label>
 
             {/* Progress */}
             {progress && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="capitalize">
-                    {progress.phase}
-                    {progress.page && progress.totalPages ? ` · page ${progress.page} / ${progress.totalPages}` : ''}
-                    {progress.message ? ` · ${progress.message}` : ''}
-                  </span>
-                  <span>{percent}%</span>
+                  <span>{progressDetails.label}</span>
+                  <span>{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} />
               </div>
@@ -284,9 +282,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 <div className="flex items-center gap-2 text-success font-medium">
                   <CheckCircle2 className="h-5 w-5" /> Import complete
                 </div>
-                <Badge variant={result.engine === 'docling' ? 'default' : 'secondary'} className="text-[10px]">
-                  {result.engine === 'docling' ? <><Zap className="h-3 w-3 mr-1" />Docling</> : <><Cpu className="h-3 w-3 mr-1" />Legacy</>}
-                </Badge>
+                <Badge variant="default" className="text-[10px]"><Zap className="h-3 w-3 mr-1" />Docling</Badge>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <Stat label="Pages" value={result.pageCount} />

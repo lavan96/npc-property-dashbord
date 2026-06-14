@@ -2,7 +2,7 @@
  * "Start from a reference" — unified import & reconstruction (rehaul Phase 3).
  *
  * One entry point that accepts a PDF or an image (drag, click, or paste) and:
- *   - PDF  → `extractPdfToTemplate` (fidelity mode chooser + staged progress),
+ *   - PDF  → `extractPdfViaDocling` (fidelity mode chooser + staged progress),
  *            re-syncing the current template.
  *   - image → the AI vision reconstructor (`template-design-agent`
  *            `screenshot_to_block`) → editable native blocks.
@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   type FidelityMode,
   type ImportProgress,
-} from '@/lib/reportTemplate/pdfImport/extractPdfToTemplate';
+} from '@/lib/reportTemplate/pdfImport/types';
 import { type ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 import { type ReferenceKind } from '@/lib/reportTemplate/referenceImport';
 import { Input } from '@/components/ui/input';

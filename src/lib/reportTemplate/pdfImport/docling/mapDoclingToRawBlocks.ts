@@ -68,6 +68,14 @@ function pictureAltText(picture: DoclingPictureItem): string | undefined {
 
 const DEFAULT_FONT_FAMILY = 'Helvetica';
 
+function nearestDesignFont(family: string | undefined, label?: DoclingTextLabel): string {
+  const f = (family ?? '').toLowerCase();
+  if (label === 'code' || /mono|courier|consolas|menlo|source code/.test(f)) return 'Menlo, Consolas, monospace';
+  if (/serif|times|georgia|garamond|playfair|cambria/.test(f)) return 'Georgia, "Times New Roman", serif';
+  if (/inter|arial|helvetica|roboto|lato|open sans|source sans|calibri/.test(f)) return 'Inter, Arial, sans-serif';
+  return label === 'title' || label === 'section_header' ? 'Inter, Arial, sans-serif' : DEFAULT_FONT_FAMILY;
+}
+
 function bboxToTopLeft(bbox: DoclingBBox, pageHeight: number): ImportBBox {
   const width = Math.max(0, bbox.r - bbox.l);
   const height = Math.max(0, bbox.t - bbox.b !== 0 ? Math.abs(bbox.t - bbox.b) : 0);
@@ -152,6 +160,7 @@ function textItemToBlock(
       : undefined;
   const fontSize = item.font?.size ?? labelDefaultFontSize(item.label, headingLevel);
   const fontWeight = normaliseWeight(item.font?.weight) ?? labelDefaultWeight(item.label);
+  const fontStyle = item.font?.italic ? 'italic' : 'normal';
   // Phase B: tag page furniture so the plan builder can route it to a master page.
   const pageRegion: 'header' | 'footer' | undefined =
     item.label === 'page_header' ? 'header'
@@ -174,9 +183,10 @@ function textItemToBlock(
     text: displayText,
     bbox,
     style: {
-      fontFamily: blockType === 'code' ? 'Menlo, Consolas, monospace' : (item.font?.family ?? DEFAULT_FONT_FAMILY),
+      fontFamily: nearestDesignFont(item.font?.family, item.label),
       fontSize,
       fontWeight,
+      fontStyle,
       color: item.font?.color ?? '#111111',
       textAlign: 'left',
     },
@@ -197,9 +207,20 @@ function textItemToBlock(
   };
 }
 
+type DoclingMappedTableCell = {
+  text: string;
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+  columnHeader?: boolean;
+  rowHeader?: boolean;
+};
+
 /** Build a dense row-major string grid from Docling's sparse `table_cells`. */
 function buildTableGrid(item: DoclingTableItem): {
   rows: string[][];
+  cells: DoclingMappedTableCell[];
   headerRows: number;
   numRows: number;
   numCols: number;
@@ -209,13 +230,26 @@ function buildTableGrid(item: DoclingTableItem): {
   const grid: string[][] = Array.from({ length: numRows }, () => Array<string>(numCols).fill(''));
   const cells: DoclingTableCell[] = item.data?.table_cells
     ?? (item.data?.grid ? item.data.grid.flat() : []);
+  const structuralCells: DoclingMappedTableCell[] = [];
 
-  for (const cell of cells) {
-    const r0 = cell.start_row_offset_idx ?? 0;
-    const c0 = cell.start_col_offset_idx ?? 0;
+  for (const [idx, cell] of cells.entries()) {
+    const hasExplicitPosition = cell.start_row_offset_idx !== undefined || cell.start_col_offset_idx !== undefined;
+    const inferredRow = numCols > 0 ? Math.floor(idx / numCols) : 0;
+    const inferredCol = numCols > 0 ? idx % numCols : 0;
+    const r0 = cell.start_row_offset_idx ?? (hasExplicitPosition ? 0 : inferredRow);
+    const c0 = cell.start_col_offset_idx ?? (hasExplicitPosition ? 0 : inferredCol);
     const r1 = cell.end_row_offset_idx ?? r0 + (cell.row_span ?? 1);
     const c1 = cell.end_col_offset_idx ?? c0 + (cell.col_span ?? 1);
     const text = (cell.text ?? '').trim();
+    structuralCells.push({
+      text,
+      row: r0,
+      col: c0,
+      rowSpan: Math.max(1, r1 - r0),
+      colSpan: Math.max(1, c1 - c0),
+      ...(cell.column_header ? { columnHeader: true } : {}),
+      ...(cell.row_header ? { rowHeader: true } : {}),
+    });
     for (let r = r0; r < r1 && r < numRows; r += 1) {
       for (let c = c0; c < c1 && c < numCols; c += 1) {
         // Only the anchor cell gets the text; merged spans leave duplicates blank
@@ -242,7 +276,7 @@ function buildTableGrid(item: DoclingTableItem): {
     }
   }
 
-  return { rows: grid, headerRows, numRows, numCols };
+  return { rows: grid, cells: structuralCells, headerRows, numRows, numCols };
 }
 
 function tableItemToBlock(
@@ -301,6 +335,7 @@ function pictureItemToBlock(
   const altText = pictureAltText(item);
   const pictureClass = topPictureClass(item);
   const imageUri = item.image?.uri;
+  const imageDiagnosticsPath = item.image?.diagnostics_path;
   const displayText = altText || item.caption || (pictureClass ? `[${pictureClass}]` : '[image]');
   return {
     id: blockId('picture', pageInfo.page_no, index),
@@ -318,6 +353,7 @@ function pictureItemToBlock(
       pictureClass,
       groupId: captionGroupId,
       imageUri,
+      imageDiagnosticsPath,
     },
   };
 }
@@ -377,7 +413,7 @@ export function mapDoclingToRawBlocks(
       activeListId = null;
     }
 
-    const order = nextOrder(page.page_no);
+    const order = typeof text.reading_order === 'number' ? text.reading_order : nextOrder(page.page_no);
     const block = textItemToBlock(text, page, textIdx, order, listGroupId, opts);
     if (block) {
       byPage[page.page_no]?.push(block);
@@ -442,7 +478,7 @@ export function mapDoclingToRawBlocks(
     if (!prov) { tableIdx += 1; continue; }
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { tableIdx += 1; continue; }
-    const order = nextOrder(page.page_no);
+    const order = typeof table.reading_order === 'number' ? table.reading_order : nextOrder(page.page_no);
     const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
     const captionGid = pairCaption(table.captions, page.page_no, figureBBox);
     const block = tableItemToBlock(table, page, tableIdx, order, captionGid, opts);
@@ -457,7 +493,7 @@ export function mapDoclingToRawBlocks(
     if (!prov) { pictureIdx += 1; continue; }
     const page = pages.find((p) => p.page_no === prov.page_no);
     if (!page) { pictureIdx += 1; continue; }
-    const order = nextOrder(page.page_no);
+    const order = typeof picture.reading_order === 'number' ? picture.reading_order : nextOrder(page.page_no);
     const figureBBox = bboxToTopLeft(prov.bbox, page.size.height);
     const captionGid = pairCaption(picture.captions, page.page_no, figureBBox);
     const block = pictureItemToBlock(picture, page, pictureIdx, order, captionGid, opts);

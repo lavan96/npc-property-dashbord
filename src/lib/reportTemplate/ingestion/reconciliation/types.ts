@@ -50,6 +50,7 @@ export interface RawImportBlock {
     fontFamily?: string;
     fontSize?: number;
     fontWeight?: number | 'normal' | 'bold';
+    fontStyle?: 'normal' | 'italic';
     color?: string;
     backgroundColor?: string;
     textAlign?: 'left' | 'center' | 'right' | 'justify';
@@ -75,6 +76,15 @@ export interface RawImportBlock {
       headerRows: number;
       numRows: number;
       numCols: number;
+      cells?: Array<{
+        text: string;
+        row: number;
+        col: number;
+        rowSpan: number;
+        colSpan: number;
+        columnHeader?: boolean;
+        rowHeader?: boolean;
+      }>;
     };
     /** Caption text linked to this image/table item (when the parser provides it). */
     caption?: string;
@@ -92,6 +102,8 @@ export interface RawImportBlock {
     codeLanguage?: string;
     /** Phase D: data URI / storage URI for the extracted picture crop. */
     imageUri?: string;
+    /** Wave F3: diagnostics-bucket object path for the extracted picture crop. */
+    imageDiagnosticsPath?: string;
     /** Phase D: BCP-47 language detected for this block. */
     language?: string;
     /** Phase D: cross-reference target ($ref form). */
@@ -193,12 +205,28 @@ export interface PlanValidationResult {
   warnings: ImportWarning[];
 }
 
+export interface ParserQualitySummary {
+  engine?: string;
+  engineVersion?: string | null;
+  textChars?: number;
+  ocrChars?: number;
+  ocrPages?: number[];
+  totalPages?: number;
+  ocrRatio?: number | null;
+  avgTextConfidence?: number | null;
+  tableCount?: number;
+  pictureCount?: number;
+  lowConfidencePages?: Array<{ pageNo: number; avgTextConfidence: number }>;
+}
+
 export interface ReconciliationRequest {
   importAsset: ImportAsset;
   manifests: RawImportManifest[];
   vision?: VisionLayoutAnalysis[];
   existingTemplate?: ReportTemplate;
   constraints?: Record<string, unknown>;
+  /** Wave F4: parser quality roll-up (Docling summary) used by AI reconciliation. */
+  parserSummary?: ParserQualitySummary;
 }
 
 export type TemplateImportPatch =

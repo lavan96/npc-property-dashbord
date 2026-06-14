@@ -1,7 +1,7 @@
 /**
  * Heuristics for choosing the PDF reconstruction strategy (plan §7a).
  *
- * Deterministic `extractPdfToTemplate` is ideal for digital PDFs, but a *scanned*
+ * Deterministic `extractPdfViaDocling` is ideal for digital PDFs, but a *scanned*
  * (image-only) PDF extracts almost no live text. These pure helpers detect that
  * "thin" case so the UI can recommend routing the PDF straight to Claude (which
  * reads PDFs natively) instead of producing an empty template.

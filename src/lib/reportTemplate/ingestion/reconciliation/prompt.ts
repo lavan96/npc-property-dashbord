@@ -34,6 +34,13 @@ export function buildReconciliationPrompt(request: ReconciliationRequest): Recon
       importAsset: compactImportAsset(request.importAsset),
       manifests: request.manifests,
       vision: request.vision ?? [],
+      parserSummary: request.parserSummary ?? null,
+      qualityInstructions: request.parserSummary
+        ? [
+            'Use parserSummary to preserve fidelity: low avgTextConfidence or high OCR ratio means prefer locked/raster-backed elements and add manual-review warnings.',
+            'If lowConfidencePages is non-empty, set manualReviewRequired=true and include page-level warnings for those pages.',
+          ]
+        : [],
       constraints: request.constraints ?? {},
       requiredOutput: 'TemplateImportPlan JSON only',
     }),

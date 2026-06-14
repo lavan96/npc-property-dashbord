@@ -13027,8 +13027,13 @@ export type Database = {
       }
       pdf_import_jobs: {
         Row: {
+          attempts: Json
+          bytes_in: number | null
+          bytes_out: number | null
           cache_hit: boolean
           cache_source_job_id: string | null
+          callback_received_at: string | null
+          cloud_run_ms: number | null
           created_at: string
           diagnostics_path: string | null
           duration_ms: number | null
@@ -13038,6 +13043,7 @@ export type Database = {
           error_text: string | null
           finished_at: string | null
           id: string
+          idempotency_key: string | null
           mode: string
           page_count: number | null
           pages_completed: number | null
@@ -13054,12 +13060,18 @@ export type Database = {
           started_at: string | null
           status: string
           template_id: string | null
+          timed_out_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          attempts?: Json
+          bytes_in?: number | null
+          bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
+          callback_received_at?: string | null
+          cloud_run_ms?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -13069,6 +13081,7 @@ export type Database = {
           error_text?: string | null
           finished_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mode?: string
           page_count?: number | null
           pages_completed?: number | null
@@ -13085,12 +13098,18 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          timed_out_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          attempts?: Json
+          bytes_in?: number | null
+          bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
+          callback_received_at?: string | null
+          cloud_run_ms?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -13100,6 +13119,7 @@ export type Database = {
           error_text?: string | null
           finished_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mode?: string
           page_count?: number | null
           pages_completed?: number | null
@@ -13116,6 +13136,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          timed_out_at?: string | null
           updated_at?: string
           user_id?: string
         }

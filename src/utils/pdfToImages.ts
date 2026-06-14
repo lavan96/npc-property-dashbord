@@ -10,7 +10,7 @@
  */
 
 // NOTE: We intentionally load PDF.js from a CDN at runtime.
-// Reason: pdfjs-dist includes an optional native dependency (canvas) that can
+// Reason: PDF.js includes an optional native dependency (canvas) that can
 // cause bun installs in CI to timeout, preventing preview/publish.
 
 const PDFJS_VERSION = '4.4.168';

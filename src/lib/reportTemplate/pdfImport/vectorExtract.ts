@@ -5,9 +5,9 @@
  * overlays — so a logo, icon or divider imports as *vector paths you can
  * recolour and reshape*, not a flattened JPEG.
  *
- * The module is deliberately free of any `pdfjs-dist` import so it is fully
- * unit-testable and independent of pdf.js operator-code values: the impure
- * caller (`extractPdfToTemplate`) translates pdf.js' `getOperatorList()` into
+ * The module is deliberately free of any `PDF parser` import so it is fully
+ * unit-testable and independent of Docling-era PDF operator-code values: the impure
+ * caller (`extractPdfViaDocling`) translates Docling-era PDF' `getOperatorList()` into
  * the abstract `DrawCommand[]` stream this module interprets, passing the
  * concrete path-op codes through `decodeConstructPath`.
  *
@@ -73,7 +73,7 @@ export interface VectorOverlaySpec {
 const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-// ─── matrix maths (mirrors pdf.js Util.transform / applyTransform) ─────────────
+// ─── matrix maths (mirrors Docling-era PDF Util.transform / applyTransform) ─────────────
 
 /** Concatenate CTM with a local transform: result == Util.transform(ctm, m). */
 export function matMul(ctm: Matrix, m: Matrix): Matrix {
@@ -110,7 +110,7 @@ export interface PathOpCodes {
 }
 
 /**
- * Decode a pdf.js `constructPath` payload (`ops` codes + flat `coords`) into
+ * Decode a Docling-era PDF `constructPath` payload (`ops` codes + flat `coords`) into
  * user-space segments. Converts the abbreviated cubics (`v`,`y`) into full
  * cubics by tracking the current point, so downstream only sees m/l/c/re/h.
  */
