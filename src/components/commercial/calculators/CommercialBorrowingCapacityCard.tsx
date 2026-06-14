@@ -21,7 +21,11 @@ import { fetchClientProfile, persistClientScenario, persistCommittedScenarioAsse
 import { buildClientScenario, type ProposedScenarioInputs } from '@/utils/commercial/scenarioModellingEngine';
 import { comparePortfolioScenario } from '@/utils/commercial/scenarioComparisonEngine';
 import { buildScenarioReportPayload } from '@/utils/commercial/scenarioReportBuilder';
+import { CommercialBCScenarioAgent, type CommercialScenarioProposal } from '@/components/commercial/calculators/CommercialBCScenarioAgent';
+import { applyCommercialScenarioProposal } from '@/utils/commercial/scenarioApplyEngine';
+import { toast } from 'sonner';
 import type { ClientProfile, ClientScenario, ScenarioStatus, ScenarioType } from '@/utils/commercial/clientPortfolioTypes';
+
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
