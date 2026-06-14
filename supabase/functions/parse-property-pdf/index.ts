@@ -146,9 +146,9 @@ interface PageImage {
 
 /**
  * Max images per single API call. GPT-4o can handle ~20 images but
- * we keep it at 8 to stay well within token limits and improve reliability.
+ * we keep it at 10 to balance coverage, token limits and reliability.
  */
-const VISION_BATCH_SIZE = 8;
+const VISION_BATCH_SIZE = 10;
 
 /**
  * Max concurrent batch calls. We run 4 batches in parallel to keep large
@@ -343,7 +343,8 @@ async function extractWithVisionSingle(
         { role: 'user', content: userContent as any },
       ],
       temperature: 0.1,
-      maxTokens: 3000,
+      maxTokens: 4500,
+      responseFormat: { type: 'json_object' },
     });
 
     if (!response.ok) {
@@ -568,7 +569,8 @@ async function extractFromSingleImage(
       },
     ],
     temperature: 0.1,
-    maxTokens: 3000,
+    maxTokens: 4500,
+    responseFormat: { type: 'json_object' },
   });
 
   if (!response.ok) {

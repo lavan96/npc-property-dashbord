@@ -91,7 +91,7 @@ import TokenUsageHistory from "./pages/TokenUsageHistory";
 import TokenAuditLog from "./pages/TokenAuditLog";
 import CommercialProperties from "./pages/commercial/CommercialProperties";
 import CommercialPropertyDetail from "./pages/commercial/CommercialPropertyDetail";
-import IndustrialProperties from "./pages/industrial/IndustrialProperties";
+
 import IndustrialPropertyDetail from "./pages/industrial/IndustrialPropertyDetail";
 import PropertyCalculators from "./pages/calculators/PropertyCalculators";
 import NotFound from "./pages/NotFound";
@@ -362,7 +362,7 @@ const App = () => (
                 <Route path="commercial" element={<CommercialProperties />} />
                 <Route path="commercial/calculators" element={<PropertyCalculators />} />
                 <Route path="commercial/:id" element={<CommercialPropertyDetail />} />
-                <Route path="industrial" element={<IndustrialProperties />} />
+                <Route path="industrial" element={<CommercialProperties />} />
                 <Route path="industrial/calculators" element={<PropertyCalculators />} />
                 <Route path="calculators" element={<PropertyCalculators />} />
                 <Route path="industrial/:id" element={<IndustrialPropertyDetail />} />

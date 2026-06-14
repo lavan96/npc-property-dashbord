@@ -235,9 +235,11 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
       },
       body: JSON.stringify({
         url,
-        formats: ["markdown"],
-        onlyMainContent: true,
-        waitFor: 2500,
+        formats: ["markdown", "html", "links"],
+        onlyMainContent: false,
+        waitFor: 5000,
+        timeout: 45000,
+        mobile: false,
         location: { country: "AU", languages: ["en-AU", "en"] },
       }),
     });
@@ -248,7 +250,8 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     }
     const j = await resp.json();
     const root = j?.data ?? j;
-    const markdown: string = root?.markdown || "";
+    const markdownParts = [root?.markdown, root?.html ? `\n\n## Raw HTML text fallback\n${String(root.html).replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}` : ''].filter(Boolean);
+    const markdown: string = markdownParts.join('\n\n');
     const title: string | undefined = root?.metadata?.title;
     const description: string | undefined = root?.metadata?.description;
     if (!markdown || markdown.length < 80) {
@@ -289,7 +292,7 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
   ].join('\n');
 
   const sourceBlock = pageContent
-    ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 18000)}\n---\n\n`
+    ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 32000)}\n---\n\n`
     : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
 
   const user = `${sourceBlock}URL: ${url}
