@@ -113,11 +113,116 @@ export function NoiCalculatorCard() {
     confidenceTags: ['Manual Estimate'],
   }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut]);
 
+  const applyEstimate = (e: NoiAiEstimate) => {
+    if (e.marketRentPa != null) setMarketRent(String(Math.round(e.marketRentPa)));
+    if (e.grossPassingRentPa != null) setGrossRent(String(Math.round(e.grossPassingRentPa)));
+    else if (e.marketRentPa != null) setGrossRent(String(Math.round(e.marketRentPa)));
+    if (e.otherIncomePa != null) setOther(String(Math.round(e.otherIncomePa)));
+    if (e.recoveredOutgoingsPa != null) setRecovered(String(Math.round(e.recoveredOutgoingsPa)));
+    if (e.vacancyAllowancePct != null) setVacancy(String(e.vacancyAllowancePct));
+    if (e.incentiveAdjustment != null) setIncentiveAdjustment(String(Math.round(e.incentiveAdjustment)));
+    if (e.tenantRiskHaircut != null) setTenantRiskHaircut(String(Math.round(e.tenantRiskHaircut)));
+    if (e.leaseTypeAssumed && e.leaseTypeAssumed !== 'unknown') setLeaseType(e.leaseTypeAssumed as LeaseType);
+    if (e.outgoings) {
+      setOutgoings(prev => {
+        const next = { ...prev };
+        OUTGOING_KEYS.forEach(k => {
+          const v = (e.outgoings as any)?.[k];
+          if (v != null && !Number.isNaN(Number(v))) next[k] = String(Math.round(Number(v)));
+        });
+        return next;
+      });
+    }
+  };
+
+  const requestEstimate = async () => {
+    if (!prefill) {
+      toast.error('Select a property in the Overview tab to anchor the AI estimate.');
+      return;
+    }
+    setEstimating(true);
+    try {
+      const snapshot = {
+        propertyId: prefill.propertyId,
+        address: prefill.address,
+        state: prefill.state,
+        assetCategory: prefill.assetCategory,
+        assetSubtype: prefill.assetSubtype,
+        gstTreatment: prefill.gstTreatment,
+        purchasePrice: prefill.purchasePrice,
+        valuation: prefill.valuation,
+        gfaSqm: prefill.gfaSqm,
+        nlaSqm: prefill.nlaSqm,
+        glaSqm: prefill.glaSqm,
+        siteAreaSqm: prefill.siteAreaSqm,
+        hardstandSqm: prefill.hardstandSqm,
+        officePct: prefill.officePct,
+        parkingBays: prefill.parkingBays,
+        clearanceMetres: prefill.clearanceMetres,
+        yearBuilt: prefill.yearBuilt,
+        zoning: prefill.zoning,
+        current: {
+          grossRent: num(grossRent), marketRent: num(marketRent), recovered: num(recovered),
+          other: num(other), vacancy: num(vacancy), leaseType,
+          outgoings: Object.fromEntries(OUTGOING_KEYS.map(k => [k, num(outgoings[k] ?? '0')])),
+        },
+      };
+      const { data, error } = await invokeSecureFunction<{ success: boolean; estimate?: NoiAiEstimate; error?: string }>(
+        'estimate-commercial-noi',
+        { snapshot },
+      );
+      if (error || !data?.success || !data.estimate) {
+        toast.error(data?.error || error?.message || 'Failed to generate NOI estimate');
+        return;
+      }
+      setAiEstimate(data.estimate);
+      const conf = data.estimate.confidence ?? 'medium';
+      toast.success(`AI estimate ready (${conf} confidence). Click "Accept AI estimate" to apply.`, {
+        description: data.estimate.reasoning?.slice(0, 200),
+      });
+    } catch (err: any) {
+      toast.error(err?.message || 'AI estimate failed');
+    } finally {
+      setEstimating(false);
+    }
+  };
+
+  const acceptEstimate = () => {
+    if (!aiEstimate) {
+      toast.info('Run "Estimate for me" first to generate an AI estimate.');
+      return;
+    }
+    applyEstimate(aiEstimate);
+    toast.success('AI estimate applied to NOI inputs.');
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>NOI Calculator</CardTitle>
-        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">{assessment.confidenceTag}</Badge><Button size="sm" variant="outline">Estimate for me</Button><Button size="sm" variant="outline">Accept AI estimate</Button><SaveBackButton build={() => ({ outgoings_recoverable: { council: num(outgoings.council ?? '0'), water: num(outgoings.water ?? '0'), land_tax: num(outgoings.land_tax ?? '0'), insurance: num(outgoings.insurance ?? '0'), management: num(outgoings.management ?? '0'), repairs_maintenance: num(outgoings.repairs_maintenance ?? '0'), utilities: num(outgoings.utilities ?? '0'), cleaning: num(outgoings.cleaning ?? '0'), security: num(outgoings.security ?? '0'), other: num(outgoings.other ?? '0') } })} /></div>
+        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription>
+        <div className="flex flex-wrap gap-2 pt-2 items-center">
+          <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
+          <Badge variant="secondary">{assessment.confidenceTag}</Badge>
+          {prefill ? (
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 max-w-[260px] truncate" title={prefill.address}>Anchored: {prefill.address}</Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-400">No property selected</Badge>
+          )}
+          <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !prefill}>
+            {estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+            Estimate for me
+          </Button>
+          <Button size="sm" variant="outline" onClick={acceptEstimate} disabled={!aiEstimate}>Accept AI estimate</Button>
+          <SaveBackButton build={() => ({ outgoings_recoverable: { council: num(outgoings.council ?? '0'), water: num(outgoings.water ?? '0'), land_tax: num(outgoings.land_tax ?? '0'), insurance: num(outgoings.insurance ?? '0'), management: num(outgoings.management ?? '0'), repairs_maintenance: num(outgoings.repairs_maintenance ?? '0'), utilities: num(outgoings.utilities ?? '0'), cleaning: num(outgoings.cleaning ?? '0'), security: num(outgoings.security ?? '0'), other: num(outgoings.other ?? '0') } })} />
+        </div>
+        {aiEstimate?.reasoning && (
+          <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-2 text-xs text-muted-foreground">
+            <span className="font-medium text-primary">AI rationale ({aiEstimate.confidence}):</span> {aiEstimate.reasoning}
+            {aiEstimate.ratePerSqm ? <div className="mt-1">Implied rate: ${Math.round(aiEstimate.ratePerSqm)}/sqm</div> : null}
+          </div>
+        )}
+      </CardHeader>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
