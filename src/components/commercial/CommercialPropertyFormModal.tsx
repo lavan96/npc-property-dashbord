@@ -111,7 +111,7 @@ export function CommercialPropertyFormModal({ open, onClose, property, onSaved }
       year_built: data.yearBuilt ?? prev.year_built,
       purchase_price: data.price ?? prev.purchase_price,
       valuation: data.valuation ?? prev.valuation,
-      gst_treatment: data.gstTreatment ?? prev.gst_treatment,
+      gst_treatment: (data.gstTreatment as typeof prev.gst_treatment) ?? prev.gst_treatment,
       notes: [prev.notes, data.notes, data.sourceUrl ? `Source: ${data.sourceUrl}` : ''].filter(Boolean).join('\n\n'),
     }));
   };
