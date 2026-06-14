@@ -37,7 +37,6 @@ import {
   Cpu,
   Coins,
   Inbox,
-  Factory,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,8 +56,7 @@ import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
-  { title: 'Commercial', url: '/commercial', icon: Building2, moduleKey: '__always__' },
-  { title: 'Industrial', url: '/industrial', icon: Factory, moduleKey: '__always__' },
+  { title: 'Commercial / Industrial', url: '/commercial', icon: Building2, moduleKey: '__always__' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
@@ -117,7 +115,13 @@ export function DashboardSidebar() {
   const { hasModuleAccess, isSuperadmin, loading: permissionsLoading } = usePermissions();
   const isCollapsed = state === 'collapsed';
   
-  const isActive = (path: string) => currentPath === path;
+  const isActive = (path: string) => {
+    if (path === '/commercial') {
+      return currentPath === '/commercial' || currentPath.startsWith('/commercial/') || currentPath === '/industrial' || currentPath.startsWith('/industrial/');
+    }
+
+    return currentPath === path;
+  };
 
   // While permissions are loading, show all items to prevent flash
   // Once loaded, filter based on actual permissions
