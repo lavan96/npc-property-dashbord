@@ -59,7 +59,39 @@ function MetricRows({ years, mode }: { years: TenYearCashFlowYear[]; mode: TenYe
 }
 
 export function TenYearCashFlowCard() {
-  const profile = useCommercialDealState(s => s.profile);
+  const dealProfile = useCommercialDealState(s => s.profile.dealProfile);
+  const purchaserStructure = useCommercialDealState(s => s.profile.purchaserStructure);
+  const propertyValuation = useCommercialDealState(s => s.profile.propertyValuation);
+  const leaseIncome = useCommercialDealState(s => s.profile.leaseIncome);
+  const operatingExpenses = useCommercialDealState(s => s.profile.operatingExpenses);
+  const lendingAssumptions = useCommercialDealState(s => s.profile.lendingAssumptions);
+  const acquisitionCosts = useCommercialDealState(s => s.profile.acquisitionCosts);
+  const fundsToComplete = useCommercialDealState(s => s.profile.fundsToComplete);
+  const borrowingOutputs = useCommercialDealState(s => s.profile.borrowingOutputs);
+  const dcfInputs = useCommercialDealState(s => s.profile.dcfInputs);
+  const profile = useMemo(() => ({
+    dealProfile,
+    purchaserStructure,
+    propertyValuation,
+    leaseIncome,
+    operatingExpenses,
+    lendingAssumptions,
+    acquisitionCosts,
+    fundsToComplete,
+    borrowingOutputs,
+    dcfInputs,
+    capRateOutputs: undefined,
+    gstInputs: {},
+    debtInputs: {},
+    industrialMetrics: {},
+    riskInputs: {},
+    riskOutputs: {},
+    aiEstimateMetadata: {},
+    documentVerificationStatus: {},
+    scenarioOverrides: {},
+    assumptions: {},
+    aiEstimateAuditLog: [],
+  }), [dealProfile, purchaserStructure, propertyValuation, leaseIncome, operatingExpenses, lendingAssumptions, acquisitionCosts, fundsToComplete, borrowingOutputs, dcfInputs]);
   const updateGlobal = useCommercialDealState(s => s.updateGlobal);
   const sourceMode = useCommercialDealState(s => s.sourceModes.tenYearCashFlow);
   const setSourceMode = useCommercialDealState(s => s.setSourceMode);
