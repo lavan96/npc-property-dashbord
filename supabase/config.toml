@@ -395,6 +395,10 @@ verify_jwt = true
 [functions.manage-bc-scenarios]
 verify_jwt = true
 
+[functions.commercial-bc-scenario-agent]
+verify_jwt = true
+
+
 [functions.cdr-lending-rates-service]
 verify_jwt = false
 request_timeout = 120
