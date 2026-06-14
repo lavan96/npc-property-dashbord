@@ -44,7 +44,7 @@ LOG = logging.getLogger("pdf-parse-service")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveA"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 
 
