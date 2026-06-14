@@ -115,7 +115,8 @@ export async function evaluateIndustrialSegment(
     // Industrial: typical net-leased; if recovery_type is 'net' assume opex passes through fully (~10% opex), else 20%.
     const allNet = tens.length > 0 && tens.every(t => (t.outgoings_recovery_type || '').toLowerCase().includes('net'));
     const opexRate = allNet ? 0.10 : 0.20;
-    const noi = Math.max(0, grossRent * (1 - opexRate));
+    const capexReserve = capexAnnualByProp.get(p.id) ?? 0;
+    const noi = Math.max(0, grossRent * (1 - opexRate) - capexReserve);
 
     const relational = financingByProp.get(p.id);
     const legacy = (p.industrial_financing && typeof p.industrial_financing === 'object') ? p.industrial_financing : {};
