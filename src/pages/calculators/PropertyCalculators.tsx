@@ -17,7 +17,7 @@ import { IcrDscrCalculatorCard } from '@/components/commercial/calculators/IcrDs
 import { GstCalculatorCard } from '@/components/commercial/calculators/GstCalculatorCard';
 import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalculatorCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
-import { IndustrialBcCard } from '@/components/industrial/calculators/IndustrialBcCard';
+import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
 import { SiteCoverCard } from '@/components/industrial/calculators/SiteCoverCard';
 import {
@@ -86,15 +86,15 @@ export default function PropertyCalculators() {
 
         <CalculatorPropertyBar />
 
-        <Tabs defaultValue="bc-com" className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
           <TabsList className="w-full justify-start gap-1 overflow-x-auto">
-            <TabsTrigger value="bc-com" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Borrowing Capacity</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Commercial</span>
+            <TabsTrigger value="overview" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+              <span className="whitespace-nowrap">Overview</span>
+              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Report</span>
             </TabsTrigger>
-            <TabsTrigger value="bc-ind" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <TabsTrigger value="borrowing" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
               <span className="whitespace-nowrap">Borrowing Capacity</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Industrial</span>
+              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Unified</span>
             </TabsTrigger>
             <TabsTrigger value="noi" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
               <span className="whitespace-nowrap">Net Operating Income</span>
@@ -116,25 +116,20 @@ export default function PropertyCalculators() {
               <span className="whitespace-nowrap">Discounted Cash Flow</span>
               <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(DCF)</span>
             </TabsTrigger>
-            <TabsTrigger value="rent" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">$/m² Rent</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Industrial</span>
-            </TabsTrigger>
-            <TabsTrigger value="site" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Site Cover</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Industrial</span>
-            </TabsTrigger>
+            {domain === 'industrial' && <TabsTrigger value="rent" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+              <span className="whitespace-nowrap">Industrial Metrics</span>
+              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">$/m² + Site Cover</span>
+            </TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="bc-com" className="mt-4"><CommercialBorrowingCapacityCard /></TabsContent>
-          <TabsContent value="bc-ind" className="mt-4"><IndustrialBcCard /></TabsContent>
+          <TabsContent value="overview" className="mt-4"><CommercialIndustrialOverviewCard /></TabsContent>
+          <TabsContent value="borrowing" className="mt-4"><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></TabsContent>
           <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
           <TabsContent value="cap" className="mt-4"><CapRateCalculatorCard /></TabsContent>
           <TabsContent value="icr" className="mt-4"><IcrDscrCalculatorCard /></TabsContent>
           <TabsContent value="gst" className="mt-4"><GstCalculatorCard /></TabsContent>
           <TabsContent value="dcf" className="mt-4"><DcfCalculatorCard /></TabsContent>
-          <TabsContent value="rent" className="mt-4"><RentPerSqmCard /></TabsContent>
-          <TabsContent value="site" className="mt-4"><SiteCoverCard /></TabsContent>
+          {domain === 'industrial' && <TabsContent value="rent" className="mt-4"><div className="grid xl:grid-cols-2 gap-4"><RentPerSqmCard /><SiteCoverCard /></div></TabsContent>}
         </Tabs>
       </div>
     </CalculatorPrefillProvider>
