@@ -403,8 +403,14 @@ async def parse(req: ParseRequest) -> dict:
         if lang:
             pm["language"] = lang
 
+    summary = _summarise_doc(doc_dict)
     parsed_ms = int((time.monotonic() - t0) * 1000)
-    LOG.info("Parsed %d-page PDF (%d bytes) in %d ms", len(pages_meta), len(pdf_bytes), parsed_ms)
+    LOG.info(
+        "Parsed %d-page PDF (%d bytes) in %d ms — %d texts / %d tables / %d pictures / %d OCR pages",
+        len(pages_meta), len(pdf_bytes), parsed_ms,
+        summary["text_block_count"], summary["table_count"],
+        summary["picture_count"], len(summary["ocr_pages"]),
+    )
 
     return {
         "engine_version": ENGINE_VERSION,
@@ -413,6 +419,7 @@ async def parse(req: ParseRequest) -> dict:
         "pages": pages_meta,
         "outline": outline,
         "page_languages": page_languages,
+        "summary": summary,
         "docling_document": doc_dict,
         **extras,
     }
