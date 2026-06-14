@@ -60,7 +60,7 @@ export function DcfCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>Discounted Cash Flow (DCF)</CardTitle>
-        <CardDescription>Scenario-ready DCF with capex, downtime, exit sensitivity, levered and unlevered returns.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="secondary">Manual Estimate</Badge><Button size="sm" variant="outline">Estimate for me</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: num(price) })} /></div>
+        <CardDescription>Scenario-ready DCF with capex, downtime, exit sensitivity, levered and unlevered returns.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><span className="text-xs text-muted-foreground">Assumptions tracked in status drawer</span><Button size="sm" variant="outline">Estimate for me</Button><SaveBackButton build={() => ({ purchase_price: num(price), valuation: num(price) })} /></div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-3">
