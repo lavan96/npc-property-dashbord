@@ -7,8 +7,9 @@ import type { IcrDscrEngineResult } from './icrDscrEngine';
 import type { CommercialGstEngineInputs, CommercialGstEngineResult } from './gstEngine';
 import type { DcfAssessmentInputs, DcfAssessmentResult } from './dcfAssessmentEngine';
 import type { BorrowingInputs, BorrowingResult } from './borrowing/calculatorTypes';
+import type { TenYearCashFlowResult } from './tenYearCashFlowTypes';
 
-export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf' | 'overview' | 'industrialMetrics';
+export type CalculatorTabKey = 'borrowing' | 'noi' | 'capRate' | 'icrDscr' | 'gst' | 'dcf' | 'tenYearCashFlow' | 'overview' | 'industrialMetrics';
 export type CalculatorSourceMode = 'global' | 'manualOverride' | 'aiPending' | 'savedPropertyLinked' | 'scenario';
 
 export interface CommercialIndustrialDealProfile {
@@ -28,6 +29,7 @@ export interface CommercialIndustrialDealProfile {
   borrowingOutputs?: BorrowingResult;
   industrialMetrics: Record<string, number | string | undefined>;
   reportPayload?: unknown;
+  tenYearCashFlowOutputs?: TenYearCashFlowResult;
   dcfInputs: Partial<DcfAssessmentInputs>;
   dcfOutputs?: Partial<DcfAssessmentResult>;
   riskInputs: Record<string, unknown>;
@@ -75,7 +77,7 @@ interface DealStateStore {
 
 export const useCommercialDealState = create<DealStateStore>((set) => ({
   profile: defaultProfile,
-  sourceModes: { overview: 'global', borrowing: 'global', noi: 'global', capRate: 'global', icrDscr: 'global', gst: 'global', dcf: 'global', industrialMetrics: 'global' },
+  sourceModes: { overview: 'global', borrowing: 'global', noi: 'global', capRate: 'global', icrDscr: 'global', gst: 'global', dcf: 'global', tenYearCashFlow: 'global', industrialMetrics: 'global' },
   updateGlobal: (section, patch) => set(state => ({ profile: { ...state.profile, [section]: { ...(state.profile[section] as object), ...(patch as object) } } })),
   setSourceMode: (tab, mode) => set(state => ({ sourceModes: { ...state.sourceModes, [tab]: mode } })),
   setScenarioOverride: (tab, fieldKey, value) => set(state => ({ profile: { ...state.profile, scenarioOverrides: { ...state.profile.scenarioOverrides, [tab]: { ...(state.profile.scenarioOverrides[tab] ?? {}), [fieldKey]: value } } } })),

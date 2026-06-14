@@ -1,0 +1,5 @@
+import { createAiEstimate } from './aiEstimateEngine';
+export const cashFlowAiEstimateButtons = ['Estimate rent growth','Estimate vacancy allowance','Estimate outgoings growth','Estimate capex reserve','Estimate major capex timing','Estimate lease downtime','Estimate tenant incentives','Estimate terminal cap rate','Estimate business rent avoided','Estimate occupancy cost ratio benchmark','Estimate owner-occupier savings','Generate investor commentary','Generate owner-occupier commentary','Generate related-party lease commentary','Generate 10-year executive summary'];
+export function createCashFlowAiEstimate(fieldKey: string, estimatedValue: number | string) {
+  return createAiEstimate({ fieldKey, estimatedValue, confidence: 'medium', confidenceTag: 'AI Estimate', impactAreas: ['10-year cash flow'], sourceBasis: ['AI estimate pending user acceptance and document verification.'], requiredDocuments: ['Lease agreement', 'Rent ledger', 'Valuation', 'Accountant confirmation where tax is affected'] });
+}

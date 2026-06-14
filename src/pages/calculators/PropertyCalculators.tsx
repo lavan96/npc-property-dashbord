@@ -16,6 +16,7 @@ import { CapRateCalculatorCard } from '@/components/commercial/calculators/CapRa
 import { IcrDscrCalculatorCard } from '@/components/commercial/calculators/IcrDscrCalculatorCard';
 import { GstCalculatorCard } from '@/components/commercial/calculators/GstCalculatorCard';
 import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalculatorCard';
+import { TenYearCashFlowCard } from '@/components/commercial/calculators/TenYearCashFlowCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
 import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
@@ -116,6 +117,10 @@ export default function PropertyCalculators() {
               <span className="whitespace-nowrap">Discounted Cash Flow</span>
               <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(DCF)</span>
             </TabsTrigger>
+            <TabsTrigger value="ten-year" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+              <span className="whitespace-nowrap">10-Year Cash Flow</span>
+              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Report</span>
+            </TabsTrigger>
             {domain === 'industrial' && <TabsTrigger value="rent" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
               <span className="whitespace-nowrap">Industrial Metrics</span>
               <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">$/m² + Site Cover</span>
@@ -129,6 +134,7 @@ export default function PropertyCalculators() {
           <TabsContent value="icr" className="mt-4"><IcrDscrCalculatorCard /></TabsContent>
           <TabsContent value="gst" className="mt-4"><GstCalculatorCard /></TabsContent>
           <TabsContent value="dcf" className="mt-4"><DcfCalculatorCard /></TabsContent>
+          <TabsContent value="ten-year" className="mt-4"><TenYearCashFlowCard /></TabsContent>
           {domain === 'industrial' && <TabsContent value="rent" className="mt-4"><div className="grid xl:grid-cols-2 gap-4"><RentPerSqmCard /><SiteCoverCard /></div></TabsContent>}
         </Tabs>
       </div>
