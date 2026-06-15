@@ -1,8 +1,9 @@
 // pdf-parse-callback — service-token completion endpoint for Docling sidecar callbacks.
 //
-// Wave F2 introduces callback completion so the UI can rely on realtime changes
-// to pdf_import_jobs instead of polling dispatch. The sidecar should POST a
-// completed/failed payload here with X-Request-Id set to the job id.
+// Wave F-Option-3: the sidecar uploads all artifacts to the diagnostics bucket
+// itself, then POSTs the completion payload here. This endpoint just merges
+// the payload into pdf_import_jobs and flips status → succeeded / failed. The
+// edge dispatcher's wall-clock budget is no longer coupled to Docling runtime.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createTokenAuthCorsHeaders } from '../_shared/auth.ts';
@@ -26,33 +27,58 @@ Deno.serve(async (req) => {
     return json({ error: 'unauthorised' }, 401);
   }
 
-  const body = await req.json().catch(() => ({}));
-  const jobId = String(body.job_id ?? req.headers.get('x-request-id') ?? '');
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const jobId = String((body as any).job_id ?? req.headers.get('x-request-id') ?? '');
   if (!jobId) return json({ error: 'job_id required' }, 400);
 
-  const status = body.status === 'failed' ? 'failed' : 'succeeded';
+  const status = (body as any).status === 'failed' ? 'failed' : 'succeeded';
   const now = new Date().toISOString();
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  // Fetch existing row so we can preserve started_at/duration math.
+  const { data: existing } = await admin
+    .from('pdf_import_jobs')
+    .select('started_at,result_payload')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  const startedAt = existing?.started_at ? new Date(existing.started_at).getTime() : Date.now();
+  const duration = Date.now() - startedAt;
+
   const patch: Record<string, unknown> = {
     status,
     stage: status === 'failed' ? 'failed' : 'parsed',
     callback_received_at: now,
     finished_at: now,
+    duration_ms: duration,
     updated_at: now,
   };
 
   if (status === 'failed') {
-    patch.error_code = typeof body.error_code === 'string' ? body.error_code : 'sidecar_callback_failed';
-    patch.error_text = String(body.message ?? body.error_text ?? 'Sidecar callback reported failure.').slice(0, 2000);
+    const b = body as any;
+    patch.error_code = typeof b.error_code === 'string' ? b.error_code : 'sidecar_callback_failed';
+    patch.error_text = String(b.message ?? b.error_text ?? 'Sidecar callback reported failure.').slice(0, 2000);
   } else {
-    if (typeof body.engine_version === 'string') patch.engine_version = body.engine_version;
-    if (typeof body.page_count === 'number') {
-      patch.page_count = body.page_count;
-      patch.pages_total = body.page_count;
-      patch.pages_completed = body.page_count;
+    const b = body as any;
+    if (typeof b.engine_version === 'string') patch.engine_version = b.engine_version;
+    if (typeof b.page_count === 'number') {
+      patch.page_count = b.page_count;
+      patch.pages_total = b.page_count;
+      patch.pages_completed = b.page_count;
     }
-    if (body.result_payload && typeof body.result_payload === 'object') {
-      patch.result_payload = body.result_payload;
+    if (typeof b.bytes_in === 'number') patch.bytes_in = b.bytes_in;
+    if (typeof b.bytes_out === 'number') patch.bytes_out = b.bytes_out;
+    if (typeof b.cloud_run_ms === 'number') patch.cloud_run_ms = b.cloud_run_ms;
+    if (typeof b.effective_mode === 'string') patch.mode = b.effective_mode;
+    if (b.result_payload && typeof b.result_payload === 'object') {
+      // Merge with anything dispatcher already wrote (e.g. cache_hit short-circuit).
+      const prior = (existing?.result_payload && typeof existing.result_payload === 'object')
+        ? existing.result_payload as Record<string, unknown>
+        : {};
+      patch.result_payload = { ...prior, ...b.result_payload };
+      if (typeof (b.result_payload as any).docling_path === 'string') {
+        patch.diagnostics_path = (b.result_payload as any).docling_path;
+      }
     }
   }
 
