@@ -407,6 +407,11 @@ export default function Overview() {
               </>
             )}
           </Button>
+          <FlattenPdfIconButton
+            getPdfBlob={async () => generateOverviewSnapshotPDF(buildSnapshotData())}
+            filename={`Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`}
+            disabled={isExporting || isLoading}
+          />
           <OverviewFilters 
             filters={filters}
             setFilters={setFilters}
