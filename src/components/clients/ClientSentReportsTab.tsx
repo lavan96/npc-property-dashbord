@@ -324,6 +324,20 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                           <Download className="h-3.5 w-3.5" />
                         )}
                       </Button>
+                      {report.storage_path && /\.pdf$/i.test(report.storage_path) && (
+                        <FlattenPdfIconButton
+                          getPdfBlob={async () => {
+                            const r = await secureStorageDownload('client-files', report.storage_path);
+                            if (!r.success || !r.blob) throw new Error(r.error || 'Download failed');
+                            return r.blob;
+                          }}
+                          filename={`${(report.report_title || 'Report').replace(/\s+/g, '_')}.pdf`}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={downloadingId === report.id}
+                        />
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
