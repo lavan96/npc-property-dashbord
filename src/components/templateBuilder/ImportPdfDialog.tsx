@@ -38,11 +38,12 @@ const STAGE_ETA_SECONDS: Record<string, number> = { reading: 5, uploading: 10, e
 
 function progressCopy(progress: ImportProgress | null): { label: string; eta: string } {
   if (!progress) return { label: 'Waiting to start', eta: '' };
-  const label = STAGE_LABELS[progress.phase] ?? progress.phase;
-  const pageSuffix = progress.page && progress.totalPages ? ` · page ${progress.page}/${progress.totalPages}` : '';
+  const label = progress.message
+    ?? STAGE_LABELS[progress.phase]
+    ?? progress.phase;
   const etaSeconds = STAGE_ETA_SECONDS[progress.phase] ?? 20;
   const eta = progress.phase === 'done' ? 'Done' : `ETA ~${etaSeconds < 60 ? `${etaSeconds}s` : `${Math.round(etaSeconds / 60)}m`}`;
-  return { label: `${label}${pageSuffix}${progress.message ? ` · ${progress.message}` : ''}`, eta };
+  return { label, eta };
 }
 
 interface Props {
@@ -117,8 +118,16 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   }, [file, mode, user?.id, isSuperadmin, redactPii]);
 
   const percent = (() => {
-    if (!progress?.page || !progress?.totalPages) return progress ? 5 : 0;
-    return Math.round((progress.page / progress.totalPages) * 95);
+    if (!progress) return 0;
+    const total = progress.pagesTotal ?? progress.totalPages ?? 0;
+    const done = progress.pagesCompleted ?? progress.page ?? 0;
+    if (total > 0) return Math.min(99, Math.round((done / total) * 95));
+    if (progress.phase === 'done') return 100;
+    if (progress.phase === 'finalizing') return 90;
+    if (progress.phase === 'rasterizing') return 55;
+    if (progress.phase === 'extracting') return 30;
+    if (progress.phase === 'uploading') return 15;
+    return 5;
   })();
 
   const progressDetails = progressCopy(progress);
@@ -266,11 +275,24 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
             {/* Progress */}
             {progress && (
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{progressDetails.label}</span>
-                  <span>{percent}% · {progressDetails.eta}</span>
+                <div className="flex justify-between text-xs text-muted-foreground gap-2">
+                  <span className="truncate">{progressDetails.label}</span>
+                  <span className="whitespace-nowrap">{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} />
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <Badge variant="outline" className="font-mono">stage: {progress.stage ?? progress.phase}</Badge>
+                  {progress.pagesTotal ? (
+                    <Badge variant="outline">pages {progress.pagesCompleted ?? 0}/{progress.pagesTotal}</Badge>
+                  ) : null}
+                  <Badge variant="outline">Docling (cloud)</Badge>
+                </div>
+                {progress.warning && (
+                  <div className="rounded-md border border-warning/40 bg-warning/5 px-2 py-1 text-[11px] text-warning flex items-start gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{progress.warning}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

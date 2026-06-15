@@ -9,6 +9,14 @@ export interface ImportProgress {
   page?: number;
   totalPages?: number;
   message?: string;
+  /** Raw dispatcher stage (`hashing`, `parsing`, `persisting`, `rastering`, `finalizing`, `parsed`, `cache_hit`, …). */
+  stage?: string | null;
+  /** Pages rasterised so far (hybrid / pixel-perfect only). */
+  pagesCompleted?: number | null;
+  /** Total pages reported by the parser. */
+  pagesTotal?: number | null;
+  /** Last transient warning (e.g. Cloud Run cold-start retry). */
+  warning?: string | null;
 }
 
 export interface ImportOptions {

@@ -151,8 +151,16 @@ export function ReferenceImportDialog({
   }, [open]);
 
   const pdfPercent = (() => {
-    if (!progress?.page || !progress?.totalPages) return progress ? 8 : 0;
-    return Math.round((progress.page / progress.totalPages) * 95);
+    if (!progress) return 0;
+    const total = progress.pagesTotal ?? progress.totalPages ?? 0;
+    const done = progress.pagesCompleted ?? progress.page ?? 0;
+    if (total > 0) return Math.min(99, Math.round((done / total) * 95));
+    if (progress.phase === 'done') return 100;
+    if (progress.phase === 'finalizing') return 90;
+    if (progress.phase === 'rasterizing') return 55;
+    if (progress.phase === 'extracting') return 30;
+    if (progress.phase === 'uploading') return 15;
+    return 8;
   })();
 
   /** Shared context every import pipeline receives. */
@@ -600,13 +608,43 @@ export function ReferenceImportDialog({
               </div>
             )}
 
+            {/* Engine indicator — always visible for PDF imports so the operator
+                knows exactly which extractor is running. */}
+            {kind === 'pdf' && (
+              <div className="rounded-md border bg-muted/30 p-2.5 text-[11px] flex items-center gap-2 flex-wrap">
+                <span className="font-medium">Engine</span>
+                <Badge variant="default" className="text-[10px]">Docling (cloud)</Badge>
+                <Badge variant="outline" className="text-[10px]">Mode: {mode}</Badge>
+                <Badge variant="outline" className="text-[10px]">Picture descriptions: on</Badge>
+                <span className="text-muted-foreground">Native OCR, figures &amp; markdown enabled.</span>
+              </div>
+            )}
+
             {(stage || progress) && (
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="capitalize">{stage ?? `${progress?.phase}${progress?.page && progress?.totalPages ? ` page ${progress.page}/${progress.totalPages}` : ''}`}</span>
-                  {kind === 'pdf' && <span>{pdfPercent}%</span>}
+                <div className="flex justify-between text-xs text-muted-foreground gap-2">
+                  <span className="truncate">
+                    {progress?.message
+                      ?? stage
+                      ?? `${progress?.phase}${progress?.page && progress?.totalPages ? ` page ${progress.page}/${progress.totalPages}` : ''}`}
+                  </span>
+                  {kind === 'pdf' && <span className="whitespace-nowrap">{pdfPercent}%</span>}
                 </div>
                 {kind === 'pdf' ? <Progress value={pdfPercent} /> : <Progress value={undefined} className="animate-pulse" />}
+                {progress && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <Badge variant="outline" className="font-mono">stage: {progress.stage ?? progress.phase}</Badge>
+                    {progress.pagesTotal ? (
+                      <Badge variant="outline">pages {progress.pagesCompleted ?? 0}/{progress.pagesTotal}</Badge>
+                    ) : null}
+                  </div>
+                )}
+                {progress?.warning && (
+                  <div className="rounded-md border border-warning/40 bg-warning/5 px-2 py-1 text-[11px] text-warning flex items-start gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{progress.warning}</span>
+                  </div>
+                )}
               </div>
             )}
 
