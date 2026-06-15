@@ -1367,14 +1367,25 @@ export default function ReportViewer() {
             )}
           </div>
         </div>
-        <Button 
-          onClick={handleDownloadPDF}
-          disabled={downloading}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          {downloading ? 'Generating...' : 'Download PDF'}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={() => { void handleDownloadPDF(); }}
+            disabled={downloading}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? 'Generating...' : 'Download PDF'}
+          </Button>
+          <FlattenPdfIconButton
+            getPdfBlob={async () => {
+              const blob = await handleDownloadPDF({ returnBlob: true });
+              if (!(blob instanceof Blob)) throw new Error('Failed to generate PDF');
+              return blob;
+            }}
+            filename={report ? `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf` : 'report.pdf'}
+            disabled={downloading}
+          />
+        </div>
       </div>
 
       {/* Report Content */}
