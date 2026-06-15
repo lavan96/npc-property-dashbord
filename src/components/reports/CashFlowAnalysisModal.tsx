@@ -1634,7 +1634,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [primaryMetrics, allComparisonMetrics, report, comparisonReports, investorProfile, projections]);
 
   // PDF Export function for comparison (supports multiple properties)
-  const exportComparisonPDF = useCallback(async () => {
+  const exportComparisonPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || comparisonReports.length === 0) return;
 
     try {
