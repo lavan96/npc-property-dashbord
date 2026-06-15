@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { tryRouteThroughTemplateBuilder } from "@/lib/reportTemplate/compassRoute";
+import { FlattenPdfIconButton } from "@/components/common/FlattenPdfIconButton";
+import { fetchPdfBlob } from "@/lib/pdf/downloadPdf";
 import type { PdfDesignOptions } from "./premiumPdfDesign";
 
 interface PremiumPdfButtonProps {
