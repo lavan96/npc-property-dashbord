@@ -375,15 +375,19 @@ async function runJob(
       .select('request_payload')
       .eq('id', jobId)
       .maybeSingle()).data?.request_payload as Record<string, unknown> | undefined;
-    const descriptionTier = (requestPayload?.description_tier as string) ?? 'auto';
-    const includeMarkdown = Boolean(requestPayload?.include_markdown);
+    // Wave F8: always-on picture descriptions + markdown serialisation so the
+    // reconstruction pipeline has the richest possible Docling output (figures,
+    // captions, page-level markdown). Callers can still pin tier='off' to opt
+    // out for very large jobs, but the default is now 'on'.
+    const descriptionTier = (requestPayload?.description_tier as string) ?? 'on';
+    const includeMarkdown = requestPayload?.include_markdown === false ? false : true;
     const parseBody: Record<string, unknown> = {
       url: signedUrl,
       include_doctags: true,
       include_markdown: includeMarkdown,
       redact_pii: Boolean(requestPayload?.redact_pii),
     };
-    if (descriptionTier === 'on' || descriptionTier === 'premium') {
+    if (descriptionTier !== 'off') {
       parseBody.enable_picture_description = true;
     }
 
