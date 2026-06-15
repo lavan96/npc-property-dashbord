@@ -18308,6 +18308,7 @@ export type Database = {
         }[]
       }
       pause_migration_job: { Args: { p_job_id: string }; Returns: undefined }
+      pdf_import_watchdog_sweep: { Args: never; Returns: number }
       read_migration_control_signal: {
         Args: { p_job_id: string }
         Returns: string

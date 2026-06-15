@@ -391,10 +391,19 @@ async function runJob(
       include_doctags: true,
       include_markdown: includeMarkdown,
       redact_pii: Boolean(requestPayload?.redact_pii),
+      // Wave F2/Option-2 scaffold: hand the sidecar a callback URL it can POST to
+      // when it finishes asynchronously. Edge-function background tasks have a
+      // ~150–400s wall-clock cap; sidecars that complete after that window can
+      // reconcile via pdf-parse-callback. Sidecars that ignore these fields keep
+      // working synchronously as today.
+      callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-callback`,
+      callback_token: PARSE_TOKEN,
+      job_id: jobId,
     };
     if (descriptionTier !== 'off') {
       parseBody.enable_picture_description = true;
     }
+
 
     // Retry transient 5xx (Cloud Run cold-start / scale-to-zero often returns 503).
     const TRANSIENT = new Set([408, 429, 500, 502, 503, 504, 522, 524]);
