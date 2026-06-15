@@ -277,32 +277,32 @@ export default function Overview() {
   }, [fetchData]);
 
   // ─── Export snapshot PDF ───
+  const buildSnapshotData = useCallback(() => ({
+    kpis,
+    contentStats,
+    totalListings: allListings.length,
+    filters,
+    suburbData: suburbData.slice(0, 15),
+    propertyTypeData,
+    agencyData: agencyData.slice(0, 10),
+    recentListings: recentListings.map(l => ({
+      address: l.address,
+      suburb: l.suburb,
+      postcode: l.zipCode || extractPostcode(l.address || '') || undefined,
+      price: l.price,
+      propertyType: l.propertyType,
+      beds: l.beds,
+      baths: l.baths,
+      source: l.source,
+    })),
+  }), [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
+
   const handleExportSnapshot = useCallback(async () => {
     if (isExporting) return;
     setIsExporting(true);
     const toastId = toast.loading('Generating Overview Snapshot PDF...');
     try {
-      const snapshotData = {
-        kpis,
-        contentStats,
-        totalListings: allListings.length,
-        filters,
-        suburbData: suburbData.slice(0, 15),
-        propertyTypeData,
-        agencyData: agencyData.slice(0, 10),
-        recentListings: recentListings.map(l => ({
-          address: l.address,
-          suburb: l.suburb,
-          postcode: l.zipCode || extractPostcode(l.address || '') || undefined,
-          price: l.price,
-          propertyType: l.propertyType,
-          beds: l.beds,
-          baths: l.baths,
-          source: l.source,
-        })),
-      };
-
-      const pdfBlob = await generateOverviewSnapshotPDF(snapshotData);
+      const pdfBlob = await generateOverviewSnapshotPDF(buildSnapshotData());
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -318,7 +318,7 @@ export default function Overview() {
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting, allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
+  }, [isExporting, buildSnapshotData]);
 
   // ─── Error state ───
   if (error) {
