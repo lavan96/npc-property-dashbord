@@ -151,8 +151,16 @@ export function ReferenceImportDialog({
   }, [open]);
 
   const pdfPercent = (() => {
-    if (!progress?.page || !progress?.totalPages) return progress ? 8 : 0;
-    return Math.round((progress.page / progress.totalPages) * 95);
+    if (!progress) return 0;
+    const total = progress.pagesTotal ?? progress.totalPages ?? 0;
+    const done = progress.pagesCompleted ?? progress.page ?? 0;
+    if (total > 0) return Math.min(99, Math.round((done / total) * 95));
+    if (progress.phase === 'done') return 100;
+    if (progress.phase === 'finalizing') return 90;
+    if (progress.phase === 'rasterizing') return 55;
+    if (progress.phase === 'extracting') return 30;
+    if (progress.phase === 'uploading') return 15;
+    return 8;
   })();
 
   /** Shared context every import pipeline receives. */
