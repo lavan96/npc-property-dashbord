@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { FileText, Loader2, History, Settings2, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
