@@ -27,8 +27,15 @@ const PARSE_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 const SOURCE_BUCKET = 'template-import-assets';
 const ENGINE = 'docling';
-const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD';
+const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+waveG';
 const MAX_SIDECAR_ATTEMPTS = 3;
+
+// Wave G chunked thresholds. <=20 pages → monolithic /parse callback.
+// 21–60 → 10-page chunks. >60 → 5-page chunks. OCR-heavy halves the size.
+const CHUNK_MONOLITHIC_MAX = 20;
+const CHUNK_SIZE_MEDIUM = 10;
+const CHUNK_SIZE_LARGE = 5;
+const STUCK_PARSING_MINUTES = 15;
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
