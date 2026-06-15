@@ -29,7 +29,7 @@ import type {
 } from './docling/doclingTypes';
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 10 * 60_000;
+const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
 const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
