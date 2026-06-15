@@ -371,7 +371,161 @@ async function serveFromCache(
   });
 }
 
-async function runJob(
+// ---------------------------------------------------------------------------
+// Wave G — chunked pipeline planning and dispatch.
+// ---------------------------------------------------------------------------
+interface SourceDescriptor {
+  kind: 'storage' | 'url';
+  bucket?: string;
+  path?: string;
+  url?: string;
+}
+
+interface PlanResult {
+  page_count: number;
+  scanned_page_ratio: number;
+  ocr_hint: boolean;
+  byte_size: number;
+}
+
+async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanResult | null> {
+  try {
+    const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/plan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PARSE_TOKEN}`,
+        'X-Request-Id': jobId,
+      },
+      body: JSON.stringify({ url: signedUrl }),
+    });
+    if (!res.ok) {
+      console.warn('[pdf-parse-dispatch] /plan returned', res.status);
+      return null;
+    }
+    return await res.json() as PlanResult;
+  } catch (e) {
+    console.warn('[pdf-parse-dispatch] /plan exception', e);
+    return null;
+  }
+}
+
+function planChunks(pageCount: number, ocrHint: boolean): Array<{ page_start: number; page_end: number }> {
+  if (pageCount <= 0) return [];
+  let size = pageCount <= CHUNK_MONOLITHIC_MAX
+    ? pageCount
+    : pageCount <= 60
+      ? CHUNK_SIZE_MEDIUM
+      : CHUNK_SIZE_LARGE;
+  // OCR-heavy PDFs: halve the chunk size to keep memory + runtime per request safe.
+  if (ocrHint && size > 2) size = Math.max(2, Math.floor(size / 2));
+  const ranges: Array<{ page_start: number; page_end: number }> = [];
+  for (let s = 1; s <= pageCount; s += size) {
+    ranges.push({ page_start: s, page_end: Math.min(pageCount, s + size - 1) });
+  }
+  return ranges;
+}
+
+async function dispatchChunkToSidecar(
+  admin: Admin,
+  jobId: string,
+  chunk: { id: string; chunk_index: number; page_start: number; page_end: number; attempts: number },
+  signedUrl: string,
+  mode: string,
+  requestPayload: Record<string, unknown>,
+): Promise<boolean> {
+  await admin.from('pdf_import_chunks').update({
+    status: 'dispatched',
+    attempts: (chunk.attempts ?? 0) + 1,
+    dispatched_at: new Date().toISOString(),
+  }).eq('id', chunk.id);
+  const body = {
+    job_id: jobId,
+    chunk_id: chunk.id,
+    chunk_index: chunk.chunk_index,
+    page_start: chunk.page_start,
+    page_end: chunk.page_end,
+    url: signedUrl,
+    mode,
+    callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
+    callback_token: PARSE_TOKEN,
+    enable_picture_description: requestPayload?.description_tier !== 'off',
+    include_doctags: true,
+    include_markdown: requestPayload?.include_markdown !== false,
+    redact_pii: Boolean(requestPayload?.redact_pii),
+    raster_dpi: (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144,
+    raster_format: 'png',
+  };
+  try {
+    const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse-chunk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PARSE_TOKEN}`,
+        'X-Request-Id': jobId,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 202) {
+      const text = await res.text().catch(() => '');
+      console.error('[pdf-parse-dispatch] /parse-chunk non-202', { jobId, chunkIndex: chunk.chunk_index, status: res.status, text: text.slice(0, 300) });
+      await admin.from('pdf_import_chunks').update({
+        status: 'failed',
+        error_code: `dispatch_http_${res.status}`,
+        error_text: text.slice(0, 500),
+      }).eq('id', chunk.id);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[pdf-parse-dispatch] /parse-chunk exception', e);
+    await admin.from('pdf_import_chunks').update({
+      status: 'failed',
+      error_code: 'dispatch_exception',
+      error_text: String((e as Error)?.message ?? e).slice(0, 500),
+    }).eq('id', chunk.id);
+    return false;
+  }
+}
+
+async function runChunkedDispatch(
+  admin: Admin,
+  jobId: string,
+  signedUrl: string,
+  mode: string,
+  pageCount: number,
+  ocrHint: boolean,
+  requestPayload: Record<string, unknown>,
+): Promise<void> {
+  const ranges = planChunks(pageCount, ocrHint);
+  if (!ranges.length) {
+    throw new Error(`chunk plan produced no ranges (pageCount=${pageCount})`);
+  }
+  await updateJob(admin, jobId, {
+    chunked: true,
+    chunks_total: ranges.length,
+    pages_total: pageCount,
+    page_count: pageCount,
+  });
+  const inserts = ranges.map((r, i) => ({
+    job_id: jobId,
+    chunk_index: i + 1,
+    page_start: r.page_start,
+    page_end: r.page_end,
+    status: 'pending',
+  }));
+  const { data: chunkRows, error } = await admin
+    .from('pdf_import_chunks')
+    .insert(inserts)
+    .select('id, chunk_index, page_start, page_end, attempts');
+  if (error || !chunkRows) {
+    throw new Error(`chunk insert failed: ${error?.message ?? 'unknown'}`);
+  }
+  // Dispatch in chunk_index order. Sidecar runs concurrently; Cloud Run scales.
+  for (const c of chunkRows as any[]) {
+    await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, requestPayload);
+  }
+}
   admin: Admin,
   jobId: string,
   signedUrl: string,
