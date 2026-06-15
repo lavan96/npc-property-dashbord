@@ -4,7 +4,44 @@ export type ScenarioStatus = 'Draft' | 'Recommended' | 'Committed' | 'Archived';
 export type ScenarioType = 'Base Current Position' | 'Acquire Commercial Asset' | 'Acquire Industrial Asset' | 'Owner-Occupied Business Premises' | 'Related-Party Lease Structure' | 'Sell Existing Asset' | 'Refinance Existing Debt' | 'Equity Release' | 'Debt Restructure' | 'Cash Injection' | 'Interest Rate Stress' | 'Vacancy / Rent Stress' | 'Capex Shock' | 'Multi-Asset Strategy';
 export type AssumptionStatus = 'Verified' | 'Client Profile Source' | 'Manual Estimate' | 'AI Estimate' | 'Unknown' | 'Overridden' | 'Specialist Review Required';
 
-export interface ClientPortfolioAsset { id: string; address: string; assetType: 'residential' | 'commercial' | 'industrial'; subtype?: string; ownershipEntity?: string; currentValue: number; loanBalance: number; annualRent?: number; expenses?: number; noi?: number; tenant?: string; wale?: number; leaseStatus?: string; capRate?: number; icr?: number; dscr?: number; debtYield?: number; gla?: number; siteArea?: number; siteCover?: number; hardstand?: number; environmentalStatus?: AssumptionStatus; asbestosStatus?: AssumptionStatus; }
+export interface ClientPortfolioAsset {
+  id: string;
+  address: string;
+  assetType: 'residential' | 'commercial' | 'industrial';
+  propertyType?: string;
+  subtype?: string;
+  assetSubtype?: string;
+  industrialSubtype?: string;
+  ownershipEntity?: string;
+  currentValue: number;
+  loanBalance: number;
+  lender?: string;
+  rate?: number;
+  repaymentType?: 'principalAndInterest' | 'interestOnly' | 'lineOfCredit' | 'unknown';
+  annualRent?: number;
+  expenses?: number;
+  equity?: number;
+  lvr?: number;
+  cashflow?: number;
+  noi?: number;
+  tenant?: string;
+  wale?: number;
+  leaseStatus?: string;
+  capRate?: number;
+  icr?: number;
+  dscr?: number;
+  debtYield?: number;
+  gla?: number;
+  siteArea?: number;
+  siteCover?: number;
+  hardstand?: number;
+  environmentalStatus?: AssumptionStatus | string;
+  asbestosStatus?: AssumptionStatus | string;
+}
+
+export interface ResidentialAsset extends ClientPortfolioAsset { assetType: 'residential'; propertyType: string; }
+export interface CommercialAsset extends ClientPortfolioAsset { assetType: 'commercial'; assetSubtype?: string; noi: number; }
+export interface IndustrialAsset extends ClientPortfolioAsset { assetType: 'industrial'; industrialSubtype?: string; noi: number; gla?: number; siteArea?: number; siteCover?: number; hardstand?: number; }
 export interface SharePortfolio { portfolioValue: number; listedShares: number; etfs: number; managedFunds: number; dividendIncome: number; marginLoan: number; liquidityHaircutPct: number; availableLiquidValue: number; }
 export interface CashAndOffsets { cashBalance: number; offsetBalance: number; businessCash: number; availableEquityContribution: number; postSettlementLiquidity: number; }
 export interface ClientLiabilities { residentialLoans: number; commercialLoans: number; businessLoans: number; equipmentFinance: number; vehicleFinance: number; creditCards: number; overdrafts: number; atoPaymentPlans: number; personalLoans: number; directorGuarantees: number; relatedPartyLoans: number; annualDebtService: number; }
@@ -13,7 +50,7 @@ export interface ClientScenarioAuditEvent { timestamp: string; user: string; act
 
 export interface ClientProfile {
   clientId: string; clientName: string; lastUpdated: string; personalIncome: number; businessIncome: number; ownershipStructures: string[];
-  residentialAssets: ClientPortfolioAsset[]; commercialAssets: ClientPortfolioAsset[]; industrialAssets: ClientPortfolioAsset[];
+  residentialAssets: ResidentialAsset[]; commercialAssets: CommercialAsset[]; industrialAssets: IndustrialAsset[];
   sharePortfolio: SharePortfolio; cashAndOffsets: CashAndOffsets; otherInvestments: number; liabilities: ClientLiabilities; existingLoans: ClientLiabilities; businessFinancials: BusinessFinancials; guarantors: string[]; taxProfile: Record<string, unknown>; gstProfile: Record<string, unknown>; latestBorrowingCapacity?: number; scenarios: ClientScenario[];
 }
 
