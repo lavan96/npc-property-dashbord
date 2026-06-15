@@ -32,14 +32,29 @@ import type { AssumptionStatus, ClientProfile, ClientScenario, ScenarioStatus, S
 
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
+const fmtMaybe = (v: string | number | null | undefined) => (v === '' || v == null || !Number.isFinite(Number(v)) ? 'N/A' : fmt(Number(v)));
 const pct = (n: number) => `${((n || 0) * 100).toFixed(1)}%`;
 const num = (v: string) => (v === '' ? 0 : Number(v));
 const set = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => setter(e.target.value);
+const hasValue = (v: string) => v.trim() !== '';
+const valueOrUndefined = (v: string) => hasValue(v) ? num(v) : undefined;
 const badgeVariant = (r: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
 const commercialSubtypes = ['Office', 'Retail', 'Medical', 'Childcare', 'Showroom', 'Hospitality', 'Mixed-use commercial', 'Other commercial'];
 const industrialSubtypes = ['Warehouse', 'Factory', 'Logistics facility', 'Cold storage', 'Workshop', 'Storage yard', 'Manufacturing facility', 'Last-mile facility', 'Other industrial'];
+
+const blankClientProfile: ClientProfile = {
+  clientId: '', clientName: 'No client selected', lastUpdated: '', personalIncome: 0, businessIncome: 0, ownershipStructures: [],
+  residentialAssets: [], commercialAssets: [], industrialAssets: [],
+  sharePortfolio: { portfolioValue: 0, listedShares: 0, etfs: 0, managedFunds: 0, dividendIncome: 0, marginLoan: 0, liquidityHaircutPct: 20, availableLiquidValue: 0 },
+  cashAndOffsets: { cashBalance: 0, offsetBalance: 0, businessCash: 0, availableEquityContribution: 0, postSettlementLiquidity: 0 },
+  otherInvestments: 0,
+  liabilities: { residentialLoans: 0, commercialLoans: 0, businessLoans: 0, equipmentFinance: 0, vehicleFinance: 0, creditCards: 0, overdrafts: 0, atoPaymentPlans: 0, personalLoans: 0, directorGuarantees: 0, relatedPartyLoans: 0, annualDebtService: 0 },
+  existingLoans: { residentialLoans: 0, commercialLoans: 0, businessLoans: 0, equipmentFinance: 0, vehicleFinance: 0, creditCards: 0, overdrafts: 0, atoPaymentPlans: 0, personalLoans: 0, directorGuarantees: 0, relatedPartyLoans: 0, annualDebtService: 0 },
+  businessFinancials: { businessRevenue: 0, ebitdaNpbt: null, addbacks: 0, directorDrawings: 0, existingRent: 0, existingDebtService: 0, equipmentFinance: 0, workingCapitalRequirement: 0, basAvailable: false, financialsAvailable: false, taxReturnsAvailable: false },
+  guarantors: [], taxProfile: {}, gstProfile: {}, scenarios: [],
+};
 
 function MoneyRow({ label, value, emph }: { label: string; value: number | string; emph?: boolean }) {
   return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{typeof value === 'number' ? fmt(value) : value}</span></div>;
@@ -68,7 +83,7 @@ function ClientProfileCombobox({ value, options, loading, onChange }: { value: s
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return options;
-    return options.filter(o => o.clientName.toLowerCase().includes(q) || o.clientId.toLowerCase().includes(q));
+    return options.filter(o => [o.clientName, o.clientId, o.entityName, o.email, o.phone, o.ownershipEntity].filter(Boolean).some(part => String(part).toLowerCase().includes(q)));
   }, [options, query]);
   const selected = options.find(o => o.clientId === value);
   return (
@@ -93,7 +108,7 @@ function ClientProfileCombobox({ value, options, loading, onChange }: { value: s
             ) : filtered.map(o => (
               <button key={o.clientId} type="button" onClick={() => { onChange(o.clientId); setOpen(false); setQuery(''); }} className={cn('w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors text-left', value === o.clientId && 'bg-accent')}>
                 <Check className={cn('h-3.5 w-3.5 shrink-0', value === o.clientId ? 'opacity-100 text-primary' : 'opacity-0')} />
-                <span className="truncate flex-1">{o.clientName}</span>
+                <span className="truncate flex-1"><span className="block truncate">{o.clientName}</span>{(o.entityName || o.email || o.phone || o.ownershipEntity) && <span className="block truncate text-[10px] text-muted-foreground">{[o.entityName, o.email, o.phone, o.ownershipEntity].filter(Boolean).join(' • ')}</span>}</span>
                 {o.source === 'sample' && <span className="text-[10px] text-muted-foreground shrink-0">sample</span>}
               </button>
             ))}
@@ -108,18 +123,18 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const updateGlobal = useCommercialDealState(s => s.updateGlobal);
   const sourceMode = useCommercialDealState(s => s.sourceModes.borrowing);
   const [assetCategory, setAssetCategory] = useState<AssetCategory>(initialAssetCategory);
-  const [assetSubtype, setAssetSubtype] = useState(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office');
+  const [assetSubtype, setAssetSubtype] = useState('');
   const [purpose, setPurpose] = useState<AcquisitionPurpose>('investment');
   const [leaseStatus, setLeaseStatus] = useState<LeaseStatus>('fullyLeased');
   const [state, setState] = useState<'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'>('NSW');
   const [proposedLoan, setProposedLoan] = useState('');
   const [purchaserType, setPurchaserType] = useState<PurchaserStructure>('company');
-  const [entityName, setEntityName] = useState('Acquisition SPV Pty Ltd');
+  const [entityName, setEntityName] = useState('');
   const [guarantees, setGuarantees] = useState<'yes' | 'no' | 'unknown'>('yes');
   const [gstRegistered, setGstRegistered] = useState<'yes' | 'no' | 'unknown'>('unknown');
   const [relatedPartyTenant, setRelatedPartyTenant] = useState<'yes' | 'no'>('no');
-  const [availableEquity, setAvailableEquity] = useState('1100000');
-  const [sponsorLiquidity, setSponsorLiquidity] = useState('500000');
+  const [availableEquity, setAvailableEquity] = useState('');
+  const [sponsorLiquidity, setSponsorLiquidity] = useState('');
   const [liquidityMult, setLiquidityMult] = useState('0');
   const [businessDebt, setBusinessDebt] = useState('0');
   const [businessEbitda, setBusinessEbitda] = useState('0');
@@ -127,54 +142,54 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [proposedRent, setProposedRent] = useState('0');
   const [smsfBalance, setSmsfBalance] = useState('0');
 
-  const [purchasePrice, setPurchasePrice] = useState('3500000');
-  const [estimatedValue, setEstimatedValue] = useState('3500000');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [estimatedValue, setEstimatedValue] = useState('');
   const [bankValue, setBankValue] = useState('');
   const [conservativeValue, setConservativeValue] = useState<'yes' | 'no'>('yes');
-  const [landArea, setLandArea] = useState('1200');
-  const [buildingArea, setBuildingArea] = useState('900');
-  const [lettableArea, setLettableArea] = useState('850');
+  const [landArea, setLandArea] = useState('');
+  const [buildingArea, setBuildingArea] = useState('');
+  const [lettableArea, setLettableArea] = useState('');
   const [valuationConfidence, setValuationConfidence] = useState<'low' | 'medium' | 'high'>('medium');
-  const [clearance, setClearance] = useState('7.5');
-  const [rollerDoors, setRollerDoors] = useState('2');
+  const [clearance, setClearance] = useState('');
+  const [rollerDoors, setRollerDoors] = useState('');
   const [truckAccess, setTruckAccess] = useState<'poor' | 'average' | 'good' | 'excellent'>('good');
   const [powerCapacity, setPowerCapacity] = useState<'unknown' | 'singlePhase' | 'threePhase' | 'highCapacity' | 'substationPresent'>('unknown');
   const [slabCondition, setSlabCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
   const [roofCondition, setRoofCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
 
-  const [passingRent, setPassingRent] = useState('250000');
+  const [passingRent, setPassingRent] = useState('');
   const [otherIncome, setOtherIncome] = useState('0');
-  const [recoveries, setRecoveries] = useState('45000');
-  const [marketRent, setMarketRent] = useState('250000');
-  const [vacancy, setVacancy] = useState('3');
+  const [recoveries, setRecoveries] = useState('');
+  const [marketRent, setMarketRent] = useState('');
+  const [vacancy, setVacancy] = useState('');
   const [incentives, setIncentives] = useState('0');
   const [arrearsAdj, setArrearsAdj] = useState('0');
-  const [nonRecoverable, setNonRecoverable] = useState('15000');
-  const [rates, setRates] = useState('12000');
-  const [water, setWater] = useState('2500');
-  const [landTax, setLandTax] = useState('8000');
-  const [insurance, setInsurance] = useState('6000');
-  const [management, setManagement] = useState('7000');
-  const [repairs, setRepairs] = useState('5000');
-  const [wale, setWale] = useState('3.5');
+  const [nonRecoverable, setNonRecoverable] = useState('');
+  const [rates, setRates] = useState('');
+  const [water, setWater] = useState('');
+  const [landTax, setLandTax] = useState('');
+  const [insurance, setInsurance] = useState('');
+  const [management, setManagement] = useState('');
+  const [repairs, setRepairs] = useState('');
+  const [wale, setWale] = useState('');
   const [tenantCovenant, setTenantCovenant] = useState<'government' | 'nationalTenant' | 'listedCompany' | 'establishedSme' | 'newBusiness' | 'relatedParty' | 'weakUnknown'>('establishedSme');
   const [rentOverMarket, setRentOverMarket] = useState<'yes' | 'no' | 'unknown'>('no');
   const [aboveMarketPct, setAboveMarketPct] = useState('0');
   const [noiBasis, setNoiBasis] = useState<'actual' | 'stabilised' | 'lenderAdjusted'>('lenderAdjusted');
 
-  const [stampDuty, setStampDuty] = useState('175000');
-  const [transferRegistrationFee, setTransferRegistrationFee] = useState('180');
-  const [mortgageRegistrationFee, setMortgageRegistrationFee] = useState('180');
-  const [pexaSettlementFee, setPexaSettlementFee] = useState('150');
+  const [stampDuty, setStampDuty] = useState('');
+  const [transferRegistrationFee, setTransferRegistrationFee] = useState('');
+  const [mortgageRegistrationFee, setMortgageRegistrationFee] = useState('');
+  const [pexaSettlementFee, setPexaSettlementFee] = useState('');
   const [autoEstimatedAcquisitionCosts, setAutoEstimatedAcquisitionCosts] = useState('0');
-  const [legal, setLegal] = useState('12000');
-  const [bankLegal, setBankLegal] = useState('8000');
-  const [valuationFee, setValuationFee] = useState('6000');
-  const [dueDiligence, setDueDiligence] = useState('10000');
+  const [legal, setLegal] = useState('');
+  const [bankLegal, setBankLegal] = useState('');
+  const [valuationFee, setValuationFee] = useState('');
+  const [dueDiligence, setDueDiligence] = useState('');
   const [environmentalCost, setEnvironmentalCost] = useState('0');
   const [asbestosCost, setAsbestosCost] = useState('0');
-  const [capexReserve, setCapexReserve] = useState('50000');
-  const [workingCapital, setWorkingCapital] = useState('25000');
+  const [capexReserve, setCapexReserve] = useState('');
+  const [workingCapital, setWorkingCapital] = useState('');
   const [otherCosts, setOtherCosts] = useState('0');
   const [gstTreatment, setGstTreatment] = useState<'gstInclusive' | 'plusGst' | 'gstFreeGoingConcern' | 'marginScheme' | 'unknown'>('unknown');
   const [gstCashflow, setGstCashflow] = useState<'yes' | 'no' | 'unknown'>('unknown');
@@ -183,13 +198,13 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [landholderAcquisition, setLandholderAcquisition] = useState<'yes' | 'no' | 'unknown'>('no');
 
   const [profile, setProfile] = useState<LenderPolicyProfileKey>('mainstreamCommercialBank');
-  const [rate, setRate] = useState('7.25');
-  const [buffer, setBuffer] = useState('1.00');
+  const [rate, setRate] = useState('');
+  const [buffer, setBuffer] = useState('');
   const [floorRate, setFloorRate] = useState('0');
   const [assessmentBasis, setAssessmentBasis] = useState<'contractPlusBuffer' | 'higherOfBufferAndFloor' | 'interestOnlyAssessment' | 'principalAndInterestAssessment' | 'custom'>('contractPlusBuffer');
-  const [term, setTerm] = useState('25');
+  const [term, setTerm] = useState('');
   const [ioPeriod, setIoPeriod] = useState('0');
-  const [amortisation, setAmortisation] = useState('25');
+  const [amortisation, setAmortisation] = useState('');
   const [maxLvr, setMaxLvr] = useState('0.65');
   const [minIcr, setMinIcr] = useState('1.50');
   const [minDscr, setMinDscr] = useState('1.25');
@@ -203,7 +218,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [environmentalRisk, setEnvironmentalRisk] = useState<'low' | 'unknown' | 'present' | 'knownContamination'>('unknown');
   const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
   const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
-  const [selectedClientId, setSelectedClientId] = useState('client-001');
+  const [selectedClientId, setSelectedClientId] = useState('');
   const [scenarioName, setScenarioName] = useState('Proposed commercial / industrial acquisition');
   const [scenarioType, setScenarioType] = useState<ScenarioType>('Acquire Commercial Asset');
   const [scenarioStatus, setScenarioStatus] = useState<ScenarioStatus>('Draft');
@@ -223,7 +238,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [includeLatestBorrowingCapacity, setIncludeLatestBorrowingCapacity] = useState(true);
   const [profileImported, setProfileImported] = useState(false);
   const [clientOptions, setClientOptions] = useState<ClientProfileOption[]>(sampleClientProfiles.map(c => ({ clientId: c.clientId, clientName: c.clientName, source: 'sample' as const })));
-  const [selectedClientProfile, setSelectedClientProfile] = useState<ClientProfile>(sampleClientProfiles[0]);
+  const [selectedClientProfile, setSelectedClientProfile] = useState<ClientProfile | null>(null);
   const [clientLoading, setClientLoading] = useState(false);
   const [syncMessage, setSyncMessage] = useState('Client profile data has not been imported yet.');
   const [pendingImportOpen, setPendingImportOpen] = useState(false);
@@ -231,7 +246,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [commitConfirmOpen, setCommitConfirmOpen] = useState(false);
   const [globalInputSync, setGlobalInputSync] = useState(true);
 
-  useEffect(() => { setAssetCategory(initialAssetCategory); setAssetSubtype(initialAssetCategory === 'industrial' ? 'Warehouse' : 'Office'); }, [initialAssetCategory]);
+  useEffect(() => { setAssetCategory(initialAssetCategory); }, [initialAssetCategory]);
 
   const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
 
@@ -242,6 +257,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   }, []);
 
   useEffect(() => {
+    if (!selectedClientId) { setSelectedClientProfile(null); setProfileImported(false); setSyncMessage('No client profile selected. Search and select a client before importing portfolio data.'); return; }
     let alive = true;
     setClientLoading(true);
     fetchClientProfile(selectedClientId).then(profile => {
@@ -283,9 +299,9 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const result = useMemo(() => {
     const inputs: BorrowingInputs = {
       dealProfile: { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined },
-      purchaserStructure: { purchaserType, borrowerEntityName: entityName, corporateTrustee: purchaserType.includes('Trust') ? 'yes' : 'notApplicable', guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: num(availableEquity), sponsorLiquidity: num(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda), existingRentPaid: num(currentRent), proposedRentPayable: num(proposedRent), smsfBalance: num(smsfBalance), smsfSpecialistReviewRequired: purchaserType === 'smsf' },
-      propertyValuation: { purchasePrice: num(purchasePrice), estimatedMarketValue: num(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: num(landArea), buildingArea: num(buildingArea), lettableArea: num(lettableArea), valuationConfidence, clearanceHeight: num(clearance), rollerDoors: num(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition },
-      income: { grossPassingRent: num(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: num(recoveries), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy), incentivesAdjustment: num(incentives), tenantArrearsAdjustment: num(arrearsAdj), nonRecoverableExpenses: num(nonRecoverable), councilRates: num(rates), water: num(water), landTax: num(landTax), insurance: num(insurance), strataOwnersCorp: 0, managementFees: num(management), repairsMaintenance: num(repairs), utilities: 0, cleaning: 0, security: 0, otherExpenses: 0, wale: num(wale), tenantCovenant, rentOverMarket, percentageAboveMarket: num(aboveMarketPct), noiBasis },
+      purchaserStructure: { purchaserType, borrowerEntityName: entityName, corporateTrustee: purchaserType.includes('Trust') ? 'yes' : 'notApplicable', guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: valueOrUndefined(availableEquity), sponsorLiquidity: valueOrUndefined(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda), existingRentPaid: num(currentRent), proposedRentPayable: num(proposedRent), smsfBalance: num(smsfBalance), smsfSpecialistReviewRequired: purchaserType === 'smsf' },
+      propertyValuation: { purchasePrice: valueOrUndefined(purchasePrice), estimatedMarketValue: valueOrUndefined(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: valueOrUndefined(landArea), buildingArea: valueOrUndefined(buildingArea), lettableArea: valueOrUndefined(lettableArea), valuationConfidence, clearanceHeight: valueOrUndefined(clearance), rollerDoors: valueOrUndefined(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition },
+      income: { grossPassingRent: valueOrUndefined(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: valueOrUndefined(recoveries), marketRent: valueOrUndefined(marketRent), vacancyAllowancePct: valueOrUndefined(vacancy), incentivesAdjustment: num(incentives), tenantArrearsAdjustment: num(arrearsAdj), nonRecoverableExpenses: num(nonRecoverable), councilRates: num(rates), water: num(water), landTax: num(landTax), insurance: num(insurance), strataOwnersCorp: 0, managementFees: num(management), repairsMaintenance: num(repairs), utilities: 0, cleaning: 0, security: 0, otherExpenses: 0, wale: num(wale), tenantCovenant, rentOverMarket, percentageAboveMarket: num(aboveMarketPct), noiBasis },
       acquisitionCosts: { depositPaid: 0, stampDuty: num(stampDuty), transferRegistrationFee: num(transferRegistrationFee), mortgageRegistrationFee: num(mortgageRegistrationFee), pexaSettlementFee: num(pexaSettlementFee), legalConveyancingFee: num(legal), bankLegalFee: num(bankLegal), valuationFee: num(valuationFee), loanApplicationFee: 0, buyersAgentFee: 0, buildingInspection: 0, pestInspection: 0, structuralInspection: assetCategory === 'industrial' ? 5000 : 0, fireComplianceInspection: 2500, planningZoningReview: 2500, environmentalReport: num(environmentalCost), asbestosReport: num(asbestosCost), dueDiligence: num(dueDiligence), capexReserve: num(capexReserve), workingCapitalReserve: num(workingCapital), otherAcquisitionCosts: num(otherCosts) + num(autoEstimatedAcquisitionCosts), gstTreatment, gstAmount: 0, gstClaimable, gstCashflowRequired: gstCashflow, goingConcernConfirmed, landholderAcquisition, vicCommercialIndustrialPropertyTax: state === 'VIC' ? 'yes' : 'no', saQualifyingNonResidentialLand: state === 'SA' ? 'yes' : 'no' },
       lendingAssumptions: { profile, contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), assessmentFloorRatePct: num(floorRate), assessmentBasis, repaymentType: assessmentBasis === 'interestOnlyAssessment' ? 'interestOnly' : 'principalAndInterest', exitStrategy: 'unknown', loanTermYears: num(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: num(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true },
       riskInputs: { tenantStrength, vacancyLevel, buildingCondition, zoningCertainty: zoning, leaseDocumentationComplete: leaseDocs, environmentalRisk, asbestosRisk, capexRequired, rentComparedToMarket: rentOverMarket === 'yes' ? 'materiallyOver' : 'belowOrAtMarket' },
@@ -294,7 +310,15 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   }, [assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, gstTreatment, gstCashflow, gstClaimable, goingConcernConfirmed, landholderAcquisition, profile, rate, buffer, floorRate, assessmentBasis, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired]);
 
 
-  const selectedClient = selectedClientProfile;
+  const selectedClient = selectedClientProfile ?? blankClientProfile;
+  const missingPropertyFields = useMemo(() => [
+    ['Purchase price / property value', purchasePrice || estimatedValue],
+    ['Annual rent / NOI input', passingRent || marketRent],
+    ['Interest rate', rate],
+    ['Loan term', term],
+  ].filter(([, value]) => !hasValue(String(value))).map(([label]) => label), [purchasePrice, estimatedValue, passingRent, marketRent, rate, term]);
+  const propertyInfoIncomplete = missingPropertyFields.length > 0;
+  const missingPropertyMessage = 'Property-level information is incomplete. Add or import property details before relying on this calculation.';
   const portfolioImportToggles = useMemo(() => ({ residential: includeResidential, commercial: includeCommercial, industrial: includeIndustrial, shares: includeShares, cash: includeCash, businessFinancials: includeBusinessFinancials, liabilities: includeLiabilities, income: includeIncome, existingLoans: includeExistingLoans }), [includeResidential, includeCommercial, includeIndustrial, includeShares, includeCash, includeBusinessFinancials, includeLiabilities, includeIncome, includeExistingLoans]);
   const scenarioClient = useMemo(() => applyPortfolioImportToggles(selectedClient, portfolioImportToggles), [selectedClient, portfolioImportToggles]);
   const currentPortfolio = useMemo(() => summarizeClientPortfolio(scenarioClient), [scenarioClient]);
@@ -308,7 +332,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     annualNoi: result.noi.actualNoi,
     annualDebtService: result.annualDebtService,
     annualCashflow: result.noi.actualNoi - result.annualDebtService,
-    selectedProperty: assetSubtype,
+    selectedProperty: assetSubtype || undefined,
     borrowingResult: result,
   }), [scenarioName, scenarioType, scenarioStatus, purchasePrice, result, assetSubtype]);
   const activeScenario = useMemo(() => buildClientScenario(scenarioClient, scenarioInputs), [scenarioClient, scenarioInputs]);
@@ -325,10 +349,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const runPropertyOnly = () => {
     setAssessmentMode('propertyOnly');
     setProfileImported(false);
+    if (propertyInfoIncomplete) { setSyncMessage(`${missingPropertyMessage} Missing: ${missingPropertyFields.join(', ')}.`); toast.warning('Required property-level data is missing.'); return; }
     setSyncMessage(`Property-only assessment run. Capacity ${fmt(result.finalRiskAdjustedLoan)} calculated without requiring a client profile.`);
     toast.success('Property-only borrowing capacity updated.');
   };
   const importLatestBorrowingCapacity = () => {
+    if (!selectedClientId) { setSyncMessage('Select a client profile before importing latest borrowing capacity.'); toast.error('Select a client profile first.'); return; }
     if (!selectedClient.latestBorrowingCapacity) { setSyncMessage('No latest borrowing capacity assessment is available for this client profile.'); return; }
     setProposedLoan(String(Math.round(selectedClient.latestBorrowingCapacity)));
     setAssessmentMode('clientScenario');
@@ -341,33 +367,22 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     if (includeCash && (mode === 'replace' || !sponsorLiquidity)) setSponsorLiquidity(String(scenarioClient.cashAndOffsets.cashBalance + scenarioClient.cashAndOffsets.offsetBalance));
     if (includeBusinessFinancials && scenarioClient.businessFinancials.ebitdaNpbt != null && (mode === 'replace' || !num(businessEbitda))) setBusinessEbitda(String(scenarioClient.businessFinancials.ebitdaNpbt));
     if (includeLiabilities && (mode === 'replace' || !num(businessDebt))) setBusinessDebt(String(scenarioClient.liabilities.businessLoans + scenarioClient.liabilities.equipmentFinance + scenarioClient.liabilities.vehicleFinance + scenarioClient.liabilities.creditCards + scenarioClient.liabilities.overdrafts));
-    if (includeExistingLoans && (mode === 'replace' || !num(proposedLoan))) setProposedLoan(String(scenarioClient.existingLoans.commercialLoans + scenarioClient.existingLoans.businessLoans));
     if (includeIncome && (mode === 'replace' || !num(currentRent))) setCurrentRent(String(scenarioClient.businessFinancials.existingRent));
-    // Anchor commercial/industrial property data (richest matching asset) into property/income fields.
-    const anchor = assetCategory === 'industrial'
-      ? scenarioClient.industrialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0]
-      : scenarioClient.commercialAssets?.slice().sort((a: any, b: any) => (b.currentValue ?? 0) - (a.currentValue ?? 0))[0];
-    if (anchor) {
-      if (anchor.currentValue && (mode === 'replace' || !num(purchasePrice))) setPurchasePrice(String(Math.round(anchor.currentValue)));
-      if (anchor.currentValue && (mode === 'replace' || !num(estimatedValue))) setEstimatedValue(String(Math.round(anchor.currentValue)));
-      if (anchor.annualRent && (mode === 'replace' || !num(passingRent))) setPassingRent(String(Math.round(anchor.annualRent)));
-      if (anchor.annualRent && (mode === 'replace' || !num(marketRent))) setMarketRent(String(Math.round(anchor.annualRent)));
-      if ((anchor as any).gla && (mode === 'replace' || !num(lettableArea))) setLettableArea(String(Math.round((anchor as any).gla)));
-      if ((anchor as any).siteArea && (mode === 'replace' || !num(landArea))) setLandArea(String(Math.round((anchor as any).siteArea)));
-      if ((anchor as any).loanBalance && (mode === 'replace' || !num(proposedLoan))) setProposedLoan(String(Math.round((anchor as any).loanBalance)));
-    }
+    // Current portfolio import intentionally updates current-position/client values only.
+    // Property-level transaction inputs remain blank unless a specific property record, manual input, scenario option, or accepted AI estimate supplies them.
     setProfileImported(true);
     setPendingImportOpen(false);
     setSyncMessage(mode === 'replace'
-      ? `Replaced calculator inputs with ${selectedClient.clientName}'s portfolio using active toggles; imported values tagged Client Profile Source${anchor ? ` (anchor asset: ${anchor.address})` : ''}.`
-      : `Created scenario override from ${selectedClient.clientName}'s portfolio using active toggles; imported values tagged Client Profile Source${anchor ? `; anchor asset ${anchor.address}.` : '.'}`);
+      ? `Replaced calculator inputs with ${selectedClient.clientName}'s portfolio using active toggles; imported values tagged Client Profile Source.`
+      : `Created scenario override from ${selectedClient.clientName}'s portfolio using active toggles; imported values tagged Client Profile Source.`);
     toast.success('Current portfolio imported with active toggles.');
   };
 
 
   const saveScenario = async (status: ScenarioStatus) => {
     if (!scenarioName.trim()) { setSyncMessage('Scenario name is required before saving.'); toast.error('Enter a scenario name before saving.'); return; }
-    if (status !== 'Committed' && !selectedClientId) { setSyncMessage('Select a client profile before saving this scenario.'); toast.error('Select a client profile first.'); return; }
+    if (propertyInfoIncomplete) { setSyncMessage(`${missingPropertyMessage} Scenario saved only after required fields are supplied. Missing: ${missingPropertyFields.join(', ')}.`); toast.warning('Complete property-level fields before saving a reliable scenario.'); return; }
+    if (!selectedClientId) { setSyncMessage('Select a client profile before saving this scenario.'); toast.error('Select a client profile first.'); return; }
     const scenario = { ...activeScenario, status, auditLog: [...activeScenario.auditLog, { timestamp: new Date().toISOString(), user: 'Calculator user', action: `Scenario saved as ${status}`, source: 'Commercial / Industrial calculator', scenarioId: activeScenario.scenarioId }] };
     setScenarioStatus(status);
     setSavedScenario(scenario);
@@ -393,7 +408,8 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
       a.href = url; a.download = `${safe}-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success('Scenario report downloaded.');
+      if (propertyInfoIncomplete) setSyncMessage(`${missingPropertyMessage} Export flags missing fields: ${missingPropertyFields.join(', ')}.`);
+      toast.success(propertyInfoIncomplete ? 'Scenario report downloaded with missing-data warning.' : 'Scenario report downloaded.');
     } catch (err: any) {
       toast.error(`Export failed: ${err?.message || 'Unknown error'}`);
     }
@@ -432,14 +448,14 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   useEffect(() => {
     if (!globalInputSync) return;
     updateGlobal('dealProfile', { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined });
-    updateGlobal('purchaserStructure', { purchaserType, borrowerEntityName: entityName, guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: num(availableEquity), sponsorLiquidity: num(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda) });
-    updateGlobal('propertyValuation', { purchasePrice: num(purchasePrice), estimatedMarketValue: num(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: num(landArea), buildingArea: num(buildingArea), lettableArea: num(lettableArea), valuationConfidence, clearanceHeight: num(clearance), rollerDoors: num(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition, siteCoverageRatio: num(landArea) > 0 ? num(buildingArea) / num(landArea) : undefined });
-    updateGlobal('leaseIncome', { grossPassingRent: num(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: num(recoveries), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy) });
-    updateGlobal('lendingAssumptions', { profile, contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), assessmentFloorRatePct: num(floorRate), loanTermYears: num(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: num(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true });
-    updateGlobal('acquisitionCosts', { stampDuty: num(stampDuty), transferRegistrationFee: num(transferRegistrationFee), mortgageRegistrationFee: num(mortgageRegistrationFee), pexaSettlementFee: num(pexaSettlementFee), legalConveyancingFee: num(legal), bankLegalFee: num(bankLegal), valuationFee: num(valuationFee), dueDiligence: num(dueDiligence), capexReserve: num(capexReserve), workingCapitalReserve: num(workingCapital), otherAcquisitionCosts: num(otherCosts) + num(autoEstimatedAcquisitionCosts), gstTreatment });
+    updateGlobal('purchaserStructure', { purchaserType, borrowerEntityName: entityName, guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: valueOrUndefined(availableEquity), sponsorLiquidity: valueOrUndefined(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda) });
+    updateGlobal('propertyValuation', { purchasePrice: valueOrUndefined(purchasePrice), estimatedMarketValue: valueOrUndefined(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: valueOrUndefined(landArea), buildingArea: valueOrUndefined(buildingArea), lettableArea: valueOrUndefined(lettableArea), valuationConfidence, clearanceHeight: valueOrUndefined(clearance), rollerDoors: valueOrUndefined(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition, siteCoverageRatio: num(landArea) > 0 ? num(buildingArea) / num(landArea) : undefined });
+    updateGlobal('leaseIncome', { grossPassingRent: valueOrUndefined(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: valueOrUndefined(recoveries), marketRent: valueOrUndefined(marketRent), vacancyAllowancePct: valueOrUndefined(vacancy) });
+    updateGlobal('lendingAssumptions', { profile, contractInterestRatePct: valueOrUndefined(rate), assessmentBufferPct: valueOrUndefined(buffer), assessmentFloorRatePct: num(floorRate), loanTermYears: valueOrUndefined(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: valueOrUndefined(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true });
+    updateGlobal('acquisitionCosts', { stampDuty: valueOrUndefined(stampDuty), transferRegistrationFee: valueOrUndefined(transferRegistrationFee), mortgageRegistrationFee: valueOrUndefined(mortgageRegistrationFee), pexaSettlementFee: valueOrUndefined(pexaSettlementFee), legalConveyancingFee: valueOrUndefined(legal), bankLegalFee: valueOrUndefined(bankLegal), valuationFee: valueOrUndefined(valuationFee), dueDiligence: valueOrUndefined(dueDiligence), capexReserve: valueOrUndefined(capexReserve), workingCapitalReserve: valueOrUndefined(workingCapital), otherAcquisitionCosts: num(otherCosts) + num(autoEstimatedAcquisitionCosts), gstTreatment });
     updateGlobal('fundsToComplete', result.fundsToComplete);
     updateGlobal('borrowingOutputs', result);
-    updateGlobal('industrialMetrics', { netRentPerSqm: num(lettableArea) ? num(passingRent) / num(lettableArea) : undefined, grossRentPerSqm: num(lettableArea) ? (num(passingRent) + num(recoveries)) / num(lettableArea) : undefined, siteCover: num(landArea) ? num(buildingArea) / num(landArea) : undefined, gla: num(lettableArea), siteArea: num(landArea) });
+    updateGlobal('industrialMetrics', { netRentPerSqm: num(lettableArea) ? num(passingRent) / num(lettableArea) : undefined, grossRentPerSqm: num(lettableArea) ? (num(passingRent) + num(recoveries)) / num(lettableArea) : undefined, siteCover: num(landArea) ? num(buildingArea) / num(landArea) : undefined, gla: valueOrUndefined(lettableArea), siteArea: valueOrUndefined(landArea) });
   }, [updateGlobal, result, assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, relatedPartyTenant, gstRegistered, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, profile, rate, buffer, floorRate, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, stampDuty, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, legal, bankLegal, valuationFee, dueDiligence, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, gstTreatment, globalInputSync]);
 
   const applyProfile = (next: LenderPolicyProfileKey) => {
@@ -461,16 +477,16 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
             <Button size="sm" variant="outline" className="px-3 py-1 text-sm" onClick={() => { setGlobalInputSync(v => !v); setSyncMessage(globalInputSync ? 'Global Input Sync: Off. Shared deal inputs will not overwrite scenario values.' : 'Global Input Sync: On. Shared commercial/industrial deal inputs are synced without clearing scenario values.'); }}>{globalInputSync ? buildGlobalSyncLabel(sourceMode) : 'Global Input Sync: Off'}</Button><Badge variant={badgeVariant(result.riskRating) as any} className="px-3 py-1 text-sm">{title(result.riskRating)}</Badge>
             <Sheet><SheetTrigger asChild><Button size="sm" variant="outline">Assumption Status</Button></SheetTrigger><SheetContent className="w-full sm:max-w-3xl overflow-y-auto"><SheetHeader><SheetTitle>Assumption Status Drawer</SheetTitle><SheetDescription>Review source, status and verification requirements without cluttering each input.</SheetDescription></SheetHeader><div className="mt-4 space-y-3">{assumptionRows.map(row => <div key={row.field} className="rounded-md border bg-muted/20 p-3 text-sm"><div className="flex items-center justify-between gap-3"><div className="font-medium">{row.field}</div><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><StatusIcon status={row.status} />{row.status}</div></div><div className="mt-2 grid sm:grid-cols-2 gap-2 text-xs text-muted-foreground"><div>Current value: <span className="text-foreground">{row.value}</span></div><div>Source: <span className="text-foreground">{row.source}</span></div><div>Last updated: <span className="text-foreground">Current session</span></div><div>Updated by: <span className="text-foreground">Calculator user</span></div><div>Verification required: <span className="text-foreground">{row.status === 'Verified' ? 'No' : 'Yes'}</span></div><div>Required document: <span className="text-foreground">{row.document}</span></div></div><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSyncMessage(`${row.field}: AI estimate queued for review; value will not update until accepted.`)}>Estimate with AI</Button><Button size="sm" variant="outline" onClick={() => setSyncMessage(`${row.field}: marked verified for this scenario audit trail.`)}>Mark as verified</Button><Button size="sm" variant="outline" onClick={() => setSyncMessage(`${row.field}: manual replacement mode selected.`)}>Replace manual value</Button><Button size="sm" variant="outline" onClick={() => applyClientProfileImport('scenario')}>Revert to client profile</Button><Button size="sm" variant="ghost" onClick={() => setSyncMessage(`${row.field} source: ${row.source}; required document: ${row.document}.`)}>View source</Button></div></div>)}</div></SheetContent></Sheet>
             <SaveBackButton build={() => ({
-              purchase_price: num(purchasePrice),
-              valuation: num(estimatedValue),
-              gfa_sqm: num(buildingArea) || undefined,
-              nla_sqm: num(lettableArea) || undefined,
-              site_area_sqm: num(landArea) || undefined,
+              purchase_price: valueOrUndefined(purchasePrice),
+              valuation: valueOrUndefined(estimatedValue),
+              gfa_sqm: valueOrUndefined(buildingArea),
+              nla_sqm: valueOrUndefined(lettableArea),
+              site_area_sqm: valueOrUndefined(landArea),
               state: state,
               asset_class: assetCategory === 'industrial' ? 'industrial' : undefined,
               industrial_specs: assetCategory === 'industrial' ? {
-                clearance_metres: num(clearance) || undefined,
-                dock_doors: num(rollerDoors) || undefined,
+                clearance_metres: valueOrUndefined(clearance),
+                dock_doors: valueOrUndefined(rollerDoors),
               } : undefined,
             })} />
           </div>
@@ -484,23 +500,25 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
             clientId={selectedClientId}
             snapshot={{
               assetCategory, assetSubtype, state, purpose, leaseStatus,
-              purchasePrice: num(purchasePrice),
-              estimatedValue: num(estimatedValue),
-              proposedLoan: num(proposedLoan),
-              availableEquity: num(availableEquity),
-              sponsorLiquidity: num(sponsorLiquidity),
-              businessEbitda: num(businessEbitda),
-              businessDebt: num(businessDebt),
-              marketRent: num(marketRent),
-              vacancy: num(vacancy),
-              rate: num(rate), buffer: num(buffer), term: num(term),
+              purchasePrice: valueOrUndefined(purchasePrice),
+              estimatedValue: valueOrUndefined(estimatedValue),
+              proposedLoan: valueOrUndefined(proposedLoan),
+              availableEquity: valueOrUndefined(availableEquity),
+              sponsorLiquidity: valueOrUndefined(sponsorLiquidity),
+              businessEbitda: valueOrUndefined(businessEbitda),
+              businessDebt: valueOrUndefined(businessDebt),
+              marketRent: valueOrUndefined(marketRent),
+              vacancy: valueOrUndefined(vacancy),
+              rate: valueOrUndefined(rate), buffer: valueOrUndefined(buffer), term: valueOrUndefined(term),
               maxLvr: num(maxLvr), minDscr: num(minDscr), minIcr: num(minIcr),
               profile, gstTreatment,
               riskRating: result.riskRating,
               borrowingCapacity: result.finalRiskAdjustedLoan,
               dscr: result.dscr, icr: result.icr,
               noi: result.noi.actualNoi,
-              client: { id: selectedClientId, name: selectedClient.clientName },
+              client: selectedClientId ? { id: selectedClientId, name: selectedClient.clientName } : undefined,
+              missingPropertyWarning: propertyInfoIncomplete ? missingPropertyMessage : undefined,
+              missingPropertyFields,
             }}
             onApply={applyAIProposal}
           />
@@ -623,9 +641,9 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
         <div className="space-y-4">
           <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-6 space-y-4">
-            <div className="flex justify-between gap-4"><div><p className="text-sm text-muted-foreground">Maximum risk-adjusted loan</p><p className="text-3xl font-bold text-primary">{fmt(result.finalRiskAdjustedLoan)}</p></div><div className="space-y-2 text-right"><div><p className="text-sm text-muted-foreground">Credit assessment</p><Badge variant={badgeVariant(result.creditAssessmentStatus) as any}>{result.creditAssessmentStatusLabel}</Badge></div><div><p className="text-sm text-muted-foreground">Purchase ability</p><Badge variant={badgeVariant(result.overallStatus) as any}>{result.purchaseAbilityStatusLabel}</Badge></div></div></div>
+            <div className="flex justify-between gap-4"><div><p className="text-sm text-muted-foreground">Maximum risk-adjusted loan</p><p className="text-3xl font-bold text-primary">{propertyInfoIncomplete ? 'N/A' : fmt(result.finalRiskAdjustedLoan)}</p></div><div className="space-y-2 text-right"><div><p className="text-sm text-muted-foreground">Credit assessment</p><Badge variant={badgeVariant(result.creditAssessmentStatus) as any}>{result.creditAssessmentStatusLabel}</Badge></div><div><p className="text-sm text-muted-foreground">Purchase ability</p><Badge variant={badgeVariant(result.overallStatus) as any}>{result.purchaseAbilityStatusLabel}</Badge></div></div></div>
             <Separator />
-            <p className="rounded-md border border-primary/20 bg-background/50 p-2 text-xs text-muted-foreground">{result.proposedLoanSupportabilityMessage}{proposedLoan ? ` Supportability gap: ${fmt(result.loanSupportabilityGap)}` : ""}</p><div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm"><MoneyRow label="Property-supported loan" value={result.propertySupportedLoan} /><MoneyRow label="Sponsor-supported uplift" value={result.sponsorSupportedUplift} /><MoneyRow label="Binding constraint" value={title(result.bindingConstraint)} /><MoneyRow label="Implied LVR" value={pct(result.impliedLvr)} /><MoneyRow label="Assessment rate" value={pct(result.assessmentRate)} /><MoneyRow label="Debt yield" value={pct(result.debtYield)} /><MoneyRow label="ICR" value={`${result.icr.toFixed(2)}x`} /><MoneyRow label="DSCR" value={`${result.dscr.toFixed(2)}x`} /></div>
+            <p className="rounded-md border border-primary/20 bg-background/50 p-2 text-xs text-muted-foreground">{result.proposedLoanSupportabilityMessage}{proposedLoan ? ` Supportability gap: ${fmt(result.loanSupportabilityGap)}` : ""}</p>{propertyInfoIncomplete && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{missingPropertyMessage} Missing: {missingPropertyFields.join(', ')}.</div>}<div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm"><MoneyRow label="Property-supported loan" value={propertyInfoIncomplete ? 'N/A' : result.propertySupportedLoan} /><MoneyRow label="Sponsor-supported uplift" value={result.sponsorSupportedUplift} /><MoneyRow label="Binding constraint" value={title(result.bindingConstraint)} /><MoneyRow label="Implied LVR" value={pct(result.impliedLvr)} /><MoneyRow label="Assessment rate" value={pct(result.assessmentRate)} /><MoneyRow label="Debt yield" value={pct(result.debtYield)} /><MoneyRow label="ICR" value={`${result.icr.toFixed(2)}x`} /><MoneyRow label="DSCR" value={`${result.dscr.toFixed(2)}x`} /></div>
           </CardContent></Card>
 
           <Card><CardHeader><CardTitle className="text-base">Borrowing Capacity Output</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><MoneyRow label="LVR cap" value={result.componentCaps.lvrCap} /><MoneyRow label="ICR cap" value={result.componentCaps.icrCap} /><MoneyRow label="DSCR cap" value={result.componentCaps.dscrCap} /><MoneyRow label="Debt yield cap" value={result.componentCaps.debtYieldCap} />{result.componentCaps.liquidityCap != null && <MoneyRow label="Liquidity cap" value={result.componentCaps.liquidityCap} />}<Separator /><MoneyRow label="Annual interest" value={result.annualInterest} /><MoneyRow label="Annual debt service" value={result.annualDebtService} /></CardContent></Card>
@@ -642,7 +660,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
           <Card><CardHeader><CardTitle className="text-base">Covenant Pressure / Fix the Deal</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><MoneyRow label="Covenant pressure" value={title(result.covenantPressure.status)} /><MoneyRow label="LVR headroom" value={pct(result.covenantPressure.lvrHeadroom)} /><MoneyRow label="ICR headroom" value={`${result.covenantPressure.icrHeadroom.toFixed(2)}x`} /><MoneyRow label="DSCR headroom" value={`${result.covenantPressure.dscrHeadroom.toFixed(2)}x`} /><Separator /><MoneyRow label="Required NOI for proposed loan" value={result.reverseCalculators.requiredNoiForProposedLoan} /><MoneyRow label="Required equity" value={result.reverseCalculators.requiredEquityForCurrentPurchasePrice} /><MoneyRow label="Indicative equity gap / price-reduction equivalent" value={result.reverseCalculators.indicativeEquityGapPriceReductionEquivalent} /><MoneyRow label="Required purchase price to fit available equity" value={result.reverseCalculators.requiredPurchasePriceToFitAvailableEquity} /><MoneyRow label="Required rent increase" value={result.reverseCalculators.requiredRentIncrease} /></CardContent></Card>
 
-          <Card><CardHeader><CardTitle className="text-base">Purchase Ability / Funds to Complete</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><MoneyRow label="Purchase price" value={num(purchasePrice)} /><MoneyRow label="Acquisition costs" value={result.fundsToComplete.totalAcquisitionCosts} /><MoneyRow label="GST settlement cashflow requirement" value={result.fundsToComplete.gstCashflowRequirement} /><MoneyRow label="GST economic cost" value={result.fundsToComplete.gst.economicCost} /><MoneyRow label="GST claimable amount" value={result.fundsToComplete.gst.claimableAmount} /><MoneyRow label="Total cost base" value={result.fundsToComplete.totalCostBase} emph /><MoneyRow label="Final loan" value={result.finalRiskAdjustedLoan} /><MoneyRow label="Required equity" value={result.fundsToComplete.requiredEquity} emph /><MoneyRow label="Available equity" value={num(availableEquity)} /><MoneyRow label="Equity surplus / shortfall" value={result.fundsToComplete.equitySurplusShortfall} emph /><MoneyRow label="Post-settlement liquidity" value={result.fundsToComplete.postSettlementLiquidity} /><MoneyRow label="Liquidity surplus / shortfall" value={result.fundsToComplete.liquiditySurplusShortfall} /><MoneyRow label="Months debt service covered" value={result.fundsToComplete.monthsDebtServiceCovered == null ? "N/A — equity shortfall exists before liquidity reserve can be assessed." : `${result.fundsToComplete.monthsDebtServiceCovered.toFixed(1)} months`} /><MoneyRow label="Months outgoings covered" value={result.fundsToComplete.monthsOutgoingsCovered == null ? "N/A — equity shortfall exists before liquidity reserve can be assessed." : `${result.fundsToComplete.monthsOutgoingsCovered.toFixed(1)} months`} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-base">Purchase Ability / Funds to Complete</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><MoneyRow label="Purchase price" value={fmtMaybe(purchasePrice)} /><MoneyRow label="Acquisition costs" value={result.fundsToComplete.totalAcquisitionCosts} /><MoneyRow label="GST settlement cashflow requirement" value={result.fundsToComplete.gstCashflowRequirement} /><MoneyRow label="GST economic cost" value={result.fundsToComplete.gst.economicCost} /><MoneyRow label="GST claimable amount" value={result.fundsToComplete.gst.claimableAmount} /><MoneyRow label="Total cost base" value={result.fundsToComplete.totalCostBase} emph /><MoneyRow label="Final loan" value={result.finalRiskAdjustedLoan} /><MoneyRow label="Required equity" value={result.fundsToComplete.requiredEquity} emph /><MoneyRow label="Available equity" value={num(availableEquity)} /><MoneyRow label="Equity surplus / shortfall" value={result.fundsToComplete.equitySurplusShortfall} emph /><MoneyRow label="Post-settlement liquidity" value={result.fundsToComplete.postSettlementLiquidity} /><MoneyRow label="Liquidity surplus / shortfall" value={result.fundsToComplete.liquiditySurplusShortfall} /><MoneyRow label="Months debt service covered" value={result.fundsToComplete.monthsDebtServiceCovered == null ? "N/A — equity shortfall exists before liquidity reserve can be assessed." : `${result.fundsToComplete.monthsDebtServiceCovered.toFixed(1)} months`} /><MoneyRow label="Months outgoings covered" value={result.fundsToComplete.monthsOutgoingsCovered == null ? "N/A — equity shortfall exists before liquidity reserve can be assessed." : `${result.fundsToComplete.monthsOutgoingsCovered.toFixed(1)} months`} /></CardContent></Card>
 
           <Card><CardHeader><CardTitle className="text-base">Risk Summary & Commentary</CardTitle><CardDescription>{result.primaryReason}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="space-y-2 text-sm leading-relaxed text-muted-foreground">{Object.entries(result.commentarySections).map(([heading, text]) => text ? <p key={heading}><span className="font-semibold text-foreground">{title(heading)}:</span> {text}</p> : null)}</div>{result.warnings.length > 0 && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3"><div className="flex items-center gap-2 text-sm font-medium text-amber-200"><AlertTriangle className="h-4 w-4" /> Grouped warnings</div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{Object.entries(result.warningGroups).map(([group, items]) => items.length ? <div key={group}><span className="font-medium text-foreground">{title(group)}</span><ul>{items.slice(0, 4).map((w, i) => <li key={i}>• {w}</li>)}</ul></div> : null)}</div></div>}<p className="text-sm font-medium">Next action: {result.requiredNextAction}</p></CardContent></Card>
 

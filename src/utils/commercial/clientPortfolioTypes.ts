@@ -2,7 +2,7 @@ import type { BorrowingResult } from './borrowing/calculatorTypes';
 
 export type ScenarioStatus = 'Draft' | 'Recommended' | 'Committed' | 'Archived';
 export type ScenarioType = 'Base Current Position' | 'Acquire Commercial Asset' | 'Acquire Industrial Asset' | 'Owner-Occupied Business Premises' | 'Related-Party Lease Structure' | 'Sell Existing Asset' | 'Refinance Existing Debt' | 'Equity Release' | 'Debt Restructure' | 'Cash Injection' | 'Interest Rate Stress' | 'Vacancy / Rent Stress' | 'Capex Shock' | 'Multi-Asset Strategy';
-export type AssumptionStatus = 'Verified' | 'Client Profile Source' | 'Manual Estimate' | 'AI Estimate' | 'Unknown' | 'Overridden' | 'Specialist Review Required';
+export type AssumptionStatus = 'Verified' | 'Property Record Source' | 'Client Profile Source' | 'Global Deal Source' | 'Manual Estimate' | 'AI Estimate' | 'Unknown' | 'Overridden' | 'Specialist Review Required';
 
 export interface ClientPortfolioAsset {
   id: string;
