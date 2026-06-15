@@ -668,7 +668,10 @@ async function runJob(
       error_text: String((err as Error)?.message ?? err).slice(0, 2000),
     });
   } finally {
-    if (cleanup) await cleanup().catch(() => undefined);
+    // For chunked jobs the source must outlive this invocation (chunk callbacks
+    // re-sign / re-fetch it). Cleanup is deferred until finalize, where the
+    // source is already gone from the URL-signed temporary path naturally.
+    if (cleanup && !chunkedRan) await cleanup().catch(() => undefined);
   }
 }
 
