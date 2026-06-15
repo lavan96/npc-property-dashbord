@@ -37,7 +37,7 @@ export function buildScenarioWarnings(client: ClientProfile, proposed: Portfolio
   if (!hasAnyLiability(client)) warnings.push('Liabilities are missing; scenario cannot be marked fully reliable.');
   if (client.businessFinancials?.ebitdaNpbt == null || !client.businessFinancials?.financialsAvailable) warnings.push('Business financials missing; business servicing cannot be applied.');
   if (proposed.postSettlementLiquidity < 0) warnings.push('Post-settlement liquidity is negative; liquidity months are N/A until funding is confirmed.');
-  if (proposed.requiredEquity > proposed.availableLiquidity + proposed.requiredEquity) warnings.push('Proposed acquisition creates an equity shortfall; purchase ability must be Red.');
+  if (proposed.postSettlementLiquidity < 0) warnings.push('Proposed acquisition creates an equity shortfall; purchase ability must be Red.');
   const structures = (client.ownershipStructures ?? []).join(' ').toLowerCase();
   if (/(smsf|trust|company)/.test(structures)) warnings.push('Specialist review required for SMSF, trust or company ownership structure.');
   if (inputs.borrowingResult?.warnings?.some(w => /estimate|estimated|AI/i.test(String(w)))) warnings.push('Scenario uses estimated assumptions; final report must disclose AI-estimated assumptions.');
