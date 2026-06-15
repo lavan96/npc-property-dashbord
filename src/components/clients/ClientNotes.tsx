@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { supabase } from '@/integrations/supabase/client';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
