@@ -581,116 +581,33 @@ async function runJob(
         return rasterJson;
       };
 
-      if (pageCount > 20) {
-        const groups: number[][] = [];
-        for (let pageNo = 1; pageNo <= pageCount; pageNo += 4) {
-          groups.push(Array.from({ length: Math.min(4, pageCount - pageNo + 1) }, (_, i) => pageNo + i));
-        }
-        for (let i = 0; i < groups.length; i += 3) {
-          const batch = groups.slice(i, i + 3);
-          const results = await Promise.all(batch.map((g) => rasterPageGroup(g)));
-          for (const rasterJson of results) {
-            cloudRunMs += Number(rasterJson?.raster_ms) || 0;
-            engineVersion = engineVersion ?? rasterJson?.engine_version;
-            const pages = Array.isArray(rasterJson?.pages) ? rasterJson.pages : [];
-            for (const page of pages) {
-              collected.push({
-                page_no: page.page_no ?? 0,
-                width: page.width ?? page.width_px ?? 0,
-                height: page.height ?? page.height_px ?? 0,
-                image_base64: page.image_base64 ?? page.base64 ?? '',
-              });
-            }
-          }
-          await updateJob(admin, jobId, { pages_completed: Math.min(pageCount, batch.flat().at(-1) ?? 0) });
-        }
-        collected.sort((a, b) => Number(a.page_no) - Number(b.page_no));
-      } else {
-      for (let pageNo = 1; pageNo <= pageCount; pageNo++) {
-        let rasterJson: any = null;
-        let rasterErr = '';
-        for (let attempt = 1; attempt <= MAX_SIDECAR_ATTEMPTS; attempt++) {
-          const attemptStarted = Date.now();
-          try {
-            const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${PARSE_TOKEN}`,
-                'X-Request-Id': jobId,
-              },
-              body: JSON.stringify({ url: signedUrl, dpi, format, pages: [pageNo] }),
-            });
-            const text = await rasterRes.text().catch(() => '');
-            if (rasterRes.ok) {
-              await appendAttempt(admin, jobId, {
-                endpoint: '/raster',
-                page_no: pageNo,
-                attempt,
-                status: rasterRes.status,
-                ok: true,
-                duration_ms: Date.now() - attemptStarted,
-              });
-              rasterJson = JSON.parse(text);
-              break;
-            }
-            let retryable = TRANSIENT.has(rasterRes.status);
-            let errorCode = `http_${rasterRes.status}`;
-            try {
-              const errJson = JSON.parse(text);
-              if (typeof errJson?.retryable === 'boolean') retryable = errJson.retryable;
-              if (typeof errJson?.error_code === 'string') errorCode = errJson.error_code;
-            } catch (_ignored) {
-              // Non-JSON errors fall back to HTTP status retryability.
-            }
-            rasterErr = `sidecar /raster page ${pageNo} ${rasterRes.status}: ${text.slice(0, 500)}`;
-            await appendAttempt(admin, jobId, {
-              endpoint: '/raster',
-              page_no: pageNo,
-              attempt,
-              status: rasterRes.status,
-              ok: false,
-              error_code: errorCode,
-              retryable,
-              duration_ms: Date.now() - attemptStarted,
-            });
-            if (!retryable || attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(rasterErr);
-          } catch (e) {
-            rasterErr = String((e as Error)?.message ?? e);
-            if (rasterErr.startsWith('sidecar /raster')) {
-              throw new Error(rasterErr);
-            } else {
-              await appendAttempt(admin, jobId, {
-                endpoint: '/raster',
-                page_no: pageNo,
-                attempt,
-                ok: false,
-                error_code: 'fetch_exception',
-                retryable: attempt < MAX_SIDECAR_ATTEMPTS,
-                message: rasterErr.slice(0, 500),
-                duration_ms: Date.now() - attemptStarted,
-              });
-            }
-            if (attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(rasterErr);
-          }
-          const delay = [1000, 3000][attempt - 1] ?? 3000;
-          await new Promise((r) => setTimeout(r, delay));
-        }
-        if (!rasterJson) throw new Error(rasterErr || `sidecar /raster page ${pageNo} failed`);
-        cloudRunMs += Number(rasterJson?.raster_ms) || 0;
-        engineVersion = engineVersion ?? rasterJson?.engine_version;
-        const pages = Array.isArray(rasterJson?.pages) ? rasterJson.pages : [];
-        for (const p of pages) {
-          collected.push({
-            page_no: p.page_no ?? pageNo,
-            width: p.width ?? p.width_px ?? 0,
-            height: p.height ?? p.height_px ?? 0,
-            image_base64: p.image_base64 ?? p.base64 ?? '',
-          });
-        }
-        await updateJob(admin, jobId, { pages_completed: pageNo });
+      // Wave F8: batched-parallel raster for ALL page counts. Previously a
+      // ≤20-page hybrid run rasterised page-by-page and routinely blew past
+      // the client poll window. Now we always run groups of 4 in parallel
+      // batches of 3 groups (max 12 concurrent pages).
+      const groups: number[][] = [];
+      for (let pageNo = 1; pageNo <= pageCount; pageNo += 4) {
+        groups.push(Array.from({ length: Math.min(4, pageCount - pageNo + 1) }, (_, i) => pageNo + i));
       }
+      for (let i = 0; i < groups.length; i += 3) {
+        const batch = groups.slice(i, i + 3);
+        const results = await Promise.all(batch.map((g) => rasterPageGroup(g)));
+        for (const rasterJson of results) {
+          cloudRunMs += Number(rasterJson?.raster_ms) || 0;
+          engineVersion = engineVersion ?? rasterJson?.engine_version;
+          const pages = Array.isArray(rasterJson?.pages) ? rasterJson.pages : [];
+          for (const page of pages) {
+            collected.push({
+              page_no: page.page_no ?? 0,
+              width: page.width ?? page.width_px ?? 0,
+              height: page.height ?? page.height_px ?? 0,
+              image_base64: page.image_base64 ?? page.base64 ?? '',
+            });
+          }
+        }
+        await updateJob(admin, jobId, { pages_completed: Math.min(pageCount, batch.flat().at(-1) ?? 0) });
       }
+      collected.sort((a, b) => Number(a.page_no) - Number(b.page_no));
       const normalizedRaster = { format, dpi, engine_version: engineVersion, pages: collected };
       const rasterBody = JSON.stringify(normalizedRaster);
       rasterPath = await uploadDiagnostic(
