@@ -24,8 +24,7 @@ async function loadPdfjs(): Promise<typeof import('pdfjs-dist')> {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const pdfjs = await import('pdfjs-dist');
-      // @ts-expect-error — Vite-flavoured worker URL import
-      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url' as string)).default as string;
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
       return pdfjs;
     })();
