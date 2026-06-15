@@ -2108,6 +2108,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
       pdf.text('This AI-powered analysis is for informational purposes only and should not be considered financial advice.', margin, yPos);
 
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
+
       pdf.save(`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`);
 
       toast({
