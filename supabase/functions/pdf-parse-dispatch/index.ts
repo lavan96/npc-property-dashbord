@@ -739,12 +739,15 @@ Deno.serve(async (req) => {
       const hash = await sha256Hex(bytes);
       const filename = String(body.source_file_name || 'source.pdf').replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
       const path = `pdf-import-sources/${hash}/${filename || 'source.pdf'}`;
-      await ensureSourceBucket(admin);
+      // Diagnostics bucket already allows application/pdf; the legacy
+      // template-import-assets bucket is image-only on existing projects
+      // and was rejecting "mime type application/pdf is not supported".
+      await ensureDiagnosticsBucket(admin);
       const { error: upErr } = await admin.storage
-        .from(SOURCE_BUCKET)
+        .from(DIAGNOSTICS_BUCKET)
         .upload(path, bytes, { contentType: 'application/pdf', upsert: true });
       if (upErr) return json({ error: upErr.message }, 500);
-      return json({ source_path: path, source_bucket: SOURCE_BUCKET, source_file_hash: hash, bytes: bytes.byteLength });
+      return json({ source_path: path, source_bucket: DIAGNOSTICS_BUCKET, source_file_hash: hash, bytes: bytes.byteLength });
     }
 
     if (operation === 'start') {
