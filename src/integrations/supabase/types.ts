@@ -13038,6 +13038,7 @@ export type Database = {
           error_text: string | null
           finished_at: string | null
           id: string
+          idempotency_key: string | null
           mode: string
           page_count: number | null
           pages_completed: number | null
@@ -13069,6 +13070,7 @@ export type Database = {
           error_text?: string | null
           finished_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mode?: string
           page_count?: number | null
           pages_completed?: number | null
@@ -13100,6 +13102,7 @@ export type Database = {
           error_text?: string | null
           finished_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mode?: string
           page_count?: number | null
           pages_completed?: number | null
