@@ -1897,6 +1897,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
       pdf.text('This comparison is for informational purposes only.', margin, yPos);
 
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
+
       pdf.save(`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`);
 
       logActivityDirect({
