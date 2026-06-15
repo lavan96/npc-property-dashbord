@@ -374,8 +374,6 @@ async function runJob(
 ) {
   const startedAt = Date.now();
   let bytesIn: number | null = null;
-  let bytesOut = 0;
-  let cloudRunMs = 0;
   try {
     // ---- Phase C: hash + cache lookup --------------------------------------
     await setStage(admin, jobId, 'hashing');
@@ -397,47 +395,47 @@ async function runJob(
       }
     }
 
+    // ---- Wave F-Option-3: callback dispatch --------------------------------
+    // Hand the entire parse + raster + upload pipeline to the sidecar. It uploads
+    // artifacts straight to the diagnostics bucket and POSTs pdf-parse-callback
+    // when finished. The dispatcher returns within seconds — wall-clock budget
+    // is no longer coupled to Docling runtime.
     await setStage(admin, jobId, 'parsing');
 
-    // Phase D: forward optional description tier / serialisation toggles.
     const requestPayload = (await admin
       .from('pdf_import_jobs')
       .select('request_payload')
       .eq('id', jobId)
       .maybeSingle()).data?.request_payload as Record<string, unknown> | undefined;
-    // Wave F8: always-on picture descriptions + markdown serialisation so the
-    // reconstruction pipeline has the richest possible Docling output (figures,
-    // captions, page-level markdown). Callers can still pin tier='off' to opt
-    // out for very large jobs, but the default is now 'on'.
     const descriptionTier = (requestPayload?.description_tier as string) ?? 'on';
     const includeMarkdown = requestPayload?.include_markdown === false ? false : true;
+    const allowModeOverride = requestPayload?.allow_mode_override !== false;
+    const rasterDpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
+
     const parseBody: Record<string, unknown> = {
       url: signedUrl,
       include_doctags: true,
       include_markdown: includeMarkdown,
       redact_pii: Boolean(requestPayload?.redact_pii),
-      // Wave F2/Option-2 scaffold: hand the sidecar a callback URL it can POST to
-      // when it finishes asynchronously. Edge-function background tasks have a
-      // ~150–400s wall-clock cap; sidecars that complete after that window can
-      // reconcile via pdf-parse-callback. Sidecars that ignore these fields keep
-      // working synchronously as today.
       callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-callback`,
       callback_token: PARSE_TOKEN,
       job_id: jobId,
+      mode,
+      raster_dpi: rasterDpi,
+      raster_format: 'png',
+      allow_mode_override: allowModeOverride,
     };
     if (descriptionTier !== 'off') {
       parseBody.enable_picture_description = true;
     }
 
-
-    // Retry transient 5xx (Cloud Run cold-start / scale-to-zero often returns 503).
     const TRANSIENT = new Set([408, 429, 500, 502, 503, 504, 522, 524]);
-    let parseRes: Response | null = null;
+    let dispatched = false;
     let lastErr = '';
     for (let attempt = 1; attempt <= MAX_SIDECAR_ATTEMPTS; attempt++) {
       const attemptStarted = Date.now();
       try {
-        parseRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse`, {
+        const parseRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -447,15 +445,19 @@ async function runJob(
           body: JSON.stringify(parseBody),
         });
         const text = await parseRes.text().catch(() => '');
-        if (parseRes.ok) {
+        // 202 = sidecar accepted async job (Option-3 callback mode).
+        // 200 = legacy sync sidecar (no callback wiring) — treat as failure since
+        //       we no longer process sync payloads here.
+        if (parseRes.status === 202) {
           await appendAttempt(admin, jobId, {
             endpoint: '/parse',
             attempt,
             status: parseRes.status,
             ok: true,
             duration_ms: Date.now() - attemptStarted,
+            mode: 'callback',
           });
-          parseRes = new Response(text, { status: parseRes.status, headers: parseRes.headers });
+          dispatched = true;
           break;
         }
         let retryable = TRANSIENT.has(parseRes.status);
@@ -465,7 +467,7 @@ async function runJob(
           if (typeof errJson?.retryable === 'boolean') retryable = errJson.retryable;
           if (typeof errJson?.error_code === 'string') errorCode = errJson.error_code;
         } catch (_ignored) {
-          // Non-JSON errors fall back to HTTP status retryability.
+          // non-JSON error
         }
         lastErr = `sidecar /parse ${parseRes.status}: ${text.slice(0, 500)}`;
         await appendAttempt(admin, jobId, {
@@ -477,14 +479,10 @@ async function runJob(
           retryable,
           duration_ms: Date.now() - attemptStarted,
         });
-        if (!retryable || attempt === MAX_SIDECAR_ATTEMPTS) {
-          throw new Error(lastErr);
-        }
+        if (!retryable || attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(lastErr);
       } catch (e) {
         lastErr = String((e as Error)?.message ?? e);
-        if (lastErr.startsWith('sidecar /parse')) {
-          throw new Error(lastErr);
-        } else {
+        if (!lastErr.startsWith('sidecar /parse')) {
           await appendAttempt(admin, jobId, {
             endpoint: '/parse',
             attempt,
@@ -498,212 +496,25 @@ async function runJob(
         if (attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(lastErr);
       }
       const delay = [2000, 5000][attempt - 1] ?? 5000;
-      console.log(`[pdf-parse-dispatch] sidecar transient error (attempt ${attempt}): ${lastErr}; retrying in ${delay}ms`);
+      console.log(`[pdf-parse-dispatch] sidecar transient (attempt ${attempt}); retrying in ${delay}ms`);
       await new Promise((r) => setTimeout(r, delay));
     }
-    if (!parseRes || !parseRes.ok) throw new Error(lastErr || 'sidecar /parse failed');
-    const parseJson = await parseRes.json();
-    cloudRunMs += Number(parseJson?.parsed_ms) || 0;
+    if (!dispatched) throw new Error(lastErr || 'sidecar /parse dispatch failed');
 
-    await setStage(admin, jobId, 'persisting');
-    const doclingDoc = parseJson?.docling_document ?? parseJson;
-    if (parseJson?.summary && doclingDoc && typeof doclingDoc === 'object') {
-      doclingDoc.summary = parseJson.summary;
-    }
-    bytesOut += await uploadDoclingPictureAssets(admin, jobId, doclingDoc);
-    const doclingBody = JSON.stringify(doclingDoc);
-    const doclingPath = await uploadDiagnostic(
-      admin,
-      jobId,
-      'docling.json',
-      doclingBody,
-      'application/json',
-    );
-    bytesOut += byteLength(doclingBody);
-    // Checkpoint: persist diagnostics path immediately so a dispatcher death
-    // after this point leaves enough proof-of-work for the watchdog to recover.
-    await updateJob(admin, jobId, { diagnostics_path: doclingPath });
-
-    // Phase D: persist auxiliary artifacts when present.
-    let doctagsPath: string | null = null;
-    let outlinePath: string | null = null;
-    let markdownPath: string | null = null;
-    if (typeof parseJson?.doctags === 'string' && parseJson.doctags.length) {
-      doctagsPath = await uploadDiagnostic(admin, jobId, 'doctags.md', parseJson.doctags, 'text/markdown');
-      bytesOut += byteLength(parseJson.doctags);
-    }
-    if (Array.isArray(parseJson?.outline) && parseJson.outline.length) {
-      const outlineBody = JSON.stringify({ outline: parseJson.outline, page_languages: parseJson?.page_languages ?? {} });
-      outlinePath = await uploadDiagnostic(
-        admin,
-        jobId,
-        'outline.json',
-        outlineBody,
-        'application/json',
-      );
-      bytesOut += byteLength(outlineBody);
-    }
-    if (typeof parseJson?.markdown === 'string' && parseJson.markdown.length) {
-      markdownPath = await uploadDiagnostic(admin, jobId, 'document.md', parseJson.markdown, 'text/markdown');
-      bytesOut += byteLength(parseJson.markdown);
-    }
-
-    const pageCount = Array.isArray(parseJson?.pages)
-      ? parseJson.pages.length
-      : (typeof parseJson?.page_count === 'number' ? parseJson.page_count : null);
-    let effectiveMode = mode;
-    if (shouldForcePixelPerfect(parseJson?.summary, pageCount, mode, requestPayload)) {
-      effectiveMode = 'pixel_perfect';
-      await appendAttempt(admin, jobId, {
-        endpoint: 'dispatch',
-        ok: true,
-        event: 'mode_auto_selected',
-        from_mode: mode,
-        to_mode: effectiveMode,
-        reason: 'ocr_pages_ratio_gt_0_3',
-        ocr_page_ratio: ocrPageRatio(parseJson?.summary, pageCount),
-      });
-    }
+    // Job is now in the sidecar's hands; pdf-parse-callback will finalize.
     await updateJob(admin, jobId, {
-      page_count: pageCount,
-      pages_total: pageCount,
-      pages_completed: 0,
-      engine_version: parseJson?.engine_version ?? 'docling',
-      mode: effectiveMode,
-    });
-
-    // Hybrid / pixel-perfect need page rasters; semantic skips this.
-    // Phase C: stream page-by-page so the UI can show real progress.
-    let rasterPath: string | null = null;
-    const needRaster = effectiveMode === 'hybrid' || effectiveMode === 'pixel_perfect' || effectiveMode === 'pixel-perfect';
-    if (needRaster && pageCount && pageCount > 0) {
-      await setStage(admin, jobId, 'rastering');
-      const dpi = (effectiveMode === 'pixel_perfect' || effectiveMode === 'pixel-perfect') ? 200 : 144;
-      const format = 'png';
-      const collected: any[] = [];
-      let engineVersion: string | undefined;
-      const rasterPageGroup = async (pageNos: number[]) => {
-        let rasterJson: any = null;
-        let rasterErr = '';
-        for (let attempt = 1; attempt <= MAX_SIDECAR_ATTEMPTS; attempt++) {
-          const attemptStarted = Date.now();
-          try {
-            const rasterRes = await fetch(`${PARSE_URL.replace(/\/$/, '')}/raster`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${PARSE_TOKEN}`,
-                'X-Request-Id': jobId,
-              },
-              body: JSON.stringify({ url: signedUrl, dpi, format, pages: pageNos }),
-            });
-            const text = await rasterRes.text().catch(() => '');
-            if (rasterRes.ok) {
-              await appendAttempt(admin, jobId, {
-                endpoint: '/raster',
-                page_range: pageNos,
-                attempt,
-                status: rasterRes.status,
-                ok: true,
-                duration_ms: Date.now() - attemptStarted,
-              });
-              rasterJson = JSON.parse(text);
-              break;
-            }
-            rasterErr = `sidecar /raster pages ${pageNos.join(',')} ${rasterRes.status}: ${text.slice(0, 500)}`;
-            await appendAttempt(admin, jobId, { endpoint: '/raster', page_range: pageNos, attempt, status: rasterRes.status, ok: false, duration_ms: Date.now() - attemptStarted });
-          } catch (e) {
-            rasterErr = String((e as Error)?.message ?? e);
-            await appendAttempt(admin, jobId, { endpoint: '/raster', page_range: pageNos, attempt, ok: false, error_code: 'fetch_exception', retryable: attempt < MAX_SIDECAR_ATTEMPTS, message: rasterErr.slice(0, 500), duration_ms: Date.now() - attemptStarted });
-          }
-          if (attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(rasterErr);
-          await new Promise((r) => setTimeout(r, [1000, 3000][attempt - 1] ?? 3000));
-        }
-        if (!rasterJson) throw new Error(rasterErr || `sidecar /raster pages ${pageNos.join(',')} failed`);
-        return rasterJson;
-      };
-
-      // Wave F8: batched-parallel raster for ALL page counts. Previously a
-      // ≤20-page hybrid run rasterised page-by-page and routinely blew past
-      // the client poll window. Now we always run groups of 4 in parallel
-      // batches of 3 groups (max 12 concurrent pages).
-      const groups: number[][] = [];
-      for (let pageNo = 1; pageNo <= pageCount; pageNo += 4) {
-        groups.push(Array.from({ length: Math.min(4, pageCount - pageNo + 1) }, (_, i) => pageNo + i));
-      }
-      for (let i = 0; i < groups.length; i += 3) {
-        const batch = groups.slice(i, i + 3);
-        const results = await Promise.all(batch.map((g) => rasterPageGroup(g)));
-        for (const rasterJson of results) {
-          cloudRunMs += Number(rasterJson?.raster_ms) || 0;
-          engineVersion = engineVersion ?? rasterJson?.engine_version;
-          const pages = Array.isArray(rasterJson?.pages) ? rasterJson.pages : [];
-          for (const page of pages) {
-            collected.push({
-              page_no: page.page_no ?? 0,
-              width: page.width ?? page.width_px ?? 0,
-              height: page.height ?? page.height_px ?? 0,
-              image_base64: page.image_base64 ?? page.base64 ?? '',
-            });
-          }
-        }
-        await updateJob(admin, jobId, { pages_completed: Math.min(pageCount, batch.flat().at(-1) ?? 0) });
-      }
-      collected.sort((a, b) => Number(a.page_no) - Number(b.page_no));
-      const normalizedRaster = { format, dpi, engine_version: engineVersion, pages: collected };
-      const rasterBody = JSON.stringify(normalizedRaster);
-      rasterPath = await uploadDiagnostic(
-        admin,
-        jobId,
-        'rasters.json',
-        rasterBody,
-        'application/json',
-      );
-      bytesOut += byteLength(rasterBody);
-    }
-
-    // Collapsed finalize: one atomic write flips stage + status together so
-    // a dispatcher death between "rastering" and "succeeded" can no longer
-    // strand a fully-processed job in a non-terminal state. (Previously we
-    // ran setStage('finalizing') first, which created a ~tens-of-seconds
-    // gap that routinely lost the wall-clock budget race and left the
-    // watchdog to mark completed work as failed.)
-    const finishedAt = Date.now();
-    await updateJob(admin, jobId, {
-      status: 'succeeded',
-      stage: 'parsed',
-      finished_at: new Date(finishedAt).toISOString(),
-      duration_ms: finishedAt - startedAt,
-      cloud_run_ms: cloudRunMs || null,
+      stage: 'parsing',
       bytes_in: bytesIn,
-      bytes_out: bytesOut || null,
-      diagnostics_path: doclingPath,
-      pages_completed: pageCount,
-      result_payload: {
-        docling_path: doclingPath,
-        rasters_path: rasterPath,
-        doctags_path: doctagsPath,
-        outline_path: outlinePath,
-        markdown_path: markdownPath,
-        page_count: pageCount,
-        page_languages: parseJson?.page_languages ?? {},
-        outline_node_count: Array.isArray(parseJson?.outline) ? parseJson.outline.length : 0,
-        summary: parseJson?.summary ?? null,
-        mode: effectiveMode,
-        requested_mode: mode,
-        auto_mode_selected: effectiveMode !== mode,
-        cache_hit: false,
-      },
     });
   } catch (err) {
     const finishedAt = Date.now();
-    console.error('[pdf-parse-dispatch] job failed', { jobId, err });
+    console.error('[pdf-parse-dispatch] dispatch failed', { jobId, err });
     await updateJob(admin, jobId, {
       status: 'failed',
       stage: 'failed',
       finished_at: new Date(finishedAt).toISOString(),
       duration_ms: finishedAt - startedAt,
-      error_code: 'sidecar_error',
+      error_code: 'sidecar_dispatch_error',
       error_text: String((err as Error)?.message ?? err).slice(0, 2000),
     });
   } finally {
