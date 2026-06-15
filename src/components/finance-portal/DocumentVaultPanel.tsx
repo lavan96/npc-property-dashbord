@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
