@@ -6,6 +6,7 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_s
 
 interface Snapshot {
   propertyId?: string;
+  dealId?: string;
   address?: string;
   state?: string | null;
   assetCategory?: string;
@@ -38,12 +39,14 @@ Given a specific property snapshot, return a defensible 2025 capitalisation-rate
 - Liquidity / risk premium for the sub-market
 
 Hard rules:
-- capRateLowPct, capRateMidPct, capRateHighPct and targetCapRatePct are percentages (e.g. 6.25 means 6.25%).
+- Return structured data for this specific property, not generic commentary.
+- capRateRange.low, capRateRange.mid, capRateRange.high and recommendedTargetCapRate are percentages (e.g. 6.25 means 6.25%).
 - The range must be plausible (low < mid < high) and within 3.5% – 12% for AU commercial/industrial assets.
-- targetCapRatePct must sit inside [low, high] and reflect the most likely transactional cap for this asset today.
+- recommendedTargetCapRate must sit inside [low, high] and reflect the most likely transactional cap for this asset today.
 - If passingNoi / marketNoi are present, the implied value at targetCapRatePct should be sense-checked against any purchasePrice / valuation; mention any material gap in reasoning.
 - Never invent comparable transactions or tenant covenants not present in the snapshot.
-- If the snapshot lacks critical data, still return a best-evidence estimate and flag confidence as 'low'.`;
+- If the snapshot lacks critical data, still return a best-evidence estimate, include the missingInputs list, include the warning phrase "AI cap rate estimate accuracy is limited because key property details are missing.", and flag confidence as 'Low'.
+- requiresValuerConfirmation must always be true.`;
 
 Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get('origin') || '');
@@ -71,16 +74,23 @@ Deno.serve(async (req) => {
         parameters: {
           type: 'object',
           properties: {
-            capRateLowPct: { type: 'number', description: 'Low end of the market cap-rate range (%).' },
-            capRateMidPct: { type: 'number', description: 'Mid of the market cap-rate range (%).' },
-            capRateHighPct: { type: 'number', description: 'High end of the market cap-rate range (%).' },
-            targetCapRatePct: { type: 'number', description: 'Single recommended target cap rate (%).' },
-            impliedValueAtTarget: { type: 'number', description: 'Implied AUD value at targetCapRatePct using marketNoi if provided.' },
-            evidenceBasis: { type: 'string', description: 'Short label of evidence type used (e.g. "Metro industrial 2025 yield band").' },
-            confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-            reasoning: { type: 'string', description: '2-4 sentences explaining yield assumptions, covenant, grade, liquidity.' },
+            propertyId: { type: 'string' },
+            dealId: { type: 'string' },
+            estimateType: { type: 'string', enum: ['CAP_RATE_RANGE'] },
+            summary: { type: 'string' },
+            capRateRange: { type: 'object', properties: { low: { type: 'number' }, mid: { type: 'number' }, high: { type: 'number' } }, required: ['low', 'mid', 'high'] },
+            recommendedTargetCapRate: { type: 'number' },
+            confidence: { type: 'string', enum: ['High', 'Medium', 'Low'] },
+            supportingInputsUsed: { type: 'array', items: { type: 'string' } },
+            missingInputs: { type: 'array', items: { type: 'string' } },
+            reasoningSummary: { type: 'string' },
+            warnings: { type: 'array', items: { type: 'string' } },
+            requiredDocuments: { type: 'array', items: { type: 'string' } },
+            requiresValuerConfirmation: { type: 'boolean' },
+            estimatedFields: { type: 'array', items: { type: 'object', properties: { field: { type: 'string' }, currentValue: { type: 'number' }, estimatedValue: { type: 'number' }, unit: { type: 'string' }, confidence: { type: 'string', enum: ['High', 'Medium', 'Low'] }, sourceStatusBefore: { type: 'string' }, sourceStatusAfter: { type: 'string' }, reasoningSummary: { type: 'string' }, requiresSpecialistReview: { type: 'boolean' }, requiredDocument: { type: 'string' }, shouldOverwrite: { type: 'boolean' } } } },
+            recommendedNextAction: { type: 'string' },
           },
-          required: ['capRateLowPct', 'capRateMidPct', 'capRateHighPct', 'targetCapRatePct', 'confidence', 'reasoning'],
+          required: ['propertyId', 'dealId', 'estimateType', 'summary', 'capRateRange', 'recommendedTargetCapRate', 'confidence', 'supportingInputsUsed', 'missingInputs', 'reasoningSummary', 'warnings', 'requiredDocuments', 'requiresValuerConfirmation', 'estimatedFields', 'recommendedNextAction'],
         },
       },
     }];
@@ -125,6 +135,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Failed to parse AI estimate' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    estimate = { ...estimate, propertyId: estimate.propertyId || snap.propertyId || '', dealId: estimate.dealId || snap.dealId || snap.propertyId || '', estimateType: 'CAP_RATE_RANGE', requiresValuerConfirmation: true };
     return new Response(JSON.stringify({ success: true, estimate }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('[estimate-commercial-caprate] fatal', err);
