@@ -883,6 +883,15 @@ export function VownetPDFGenerator({
           <Download className="h-4 w-4 mr-2" />
           Export Client Details as PDF
         </DropdownMenuItem>
+        <FlattenPdfMenuItem
+          getPdfBlob={async () => {
+            const b = await generatePDF(true);
+            if (!b) throw new Error('Failed to generate client details PDF');
+            return b;
+          }}
+          filename={`Vownet_Form_${clientName.replace(/\s+/g, '_')}.pdf`}
+          disabled={isDisabled}
+        />
         {onEmailClick && (
           <>
             <DropdownMenuSeparator />
