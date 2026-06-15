@@ -107,7 +107,7 @@ export async function flattenPdfBlob(
     }
   } finally {
     await srcDoc.cleanup().catch(() => {});
-    srcDoc.destroy().catch(() => {});
+    (srcDoc as unknown as { destroy?: () => Promise<void> }).destroy?.().catch(() => {});
   }
 
   const bytes = await out.save();
