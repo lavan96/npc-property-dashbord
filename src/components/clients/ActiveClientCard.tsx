@@ -138,6 +138,22 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
   const notes = data?.pages.flatMap((page) => page.notes) || [];
 
+  // Two-way realtime sync with ClientNotes (and any other open tab): any insert/update/delete
+  // on this client's notes refetches the shared ['client-notes', clientId] cache.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`client-notes-${client.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_notes', filter: `client_id=eq.${client.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-notes', client.id] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [client.id, queryClient]);
+
   // Toggle note expansion
   const toggleNoteExpansion = (noteId: string) => {
     setExpandedNotes(prev => {
