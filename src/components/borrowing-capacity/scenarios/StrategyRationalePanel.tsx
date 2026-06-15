@@ -254,6 +254,11 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
                   </>
                 )}
               </Button>
+              <FlattenPdfIconButton
+                getPdfBlob={async () => (await generateStrategyRationalePDF(report, pdfContext!)).blob}
+                filename={`strategy-rationale.pdf`}
+                disabled={downloading}
+              />
             )}
           </div>
         </div>
