@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
