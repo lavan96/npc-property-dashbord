@@ -915,14 +915,33 @@ Deno.serve(async (req) => {
         return json({ error: insertErr?.message ?? 'job insert failed' }, 500);
       }
 
+      // Build a SourceDescriptor so chunk callbacks can re-sign on retry/recovery.
+      let source: SourceDescriptor | undefined;
+      if (typeof body.source_path === 'string' && body.source_path) {
+        source = { kind: 'storage', bucket: (body.source_bucket as string) || SOURCE_BUCKET, path: body.source_path as string };
+      } else if (typeof body.source_url === 'string' && body.source_url) {
+        source = { kind: 'url', url: body.source_url as string };
+      }
+      // base64 → resolveSignedSourceUrl persisted it to DIAGNOSTICS_BUCKET inbox.
+      // We can't recover the inbox path cleanly here, so chunked + base64 will
+      // need a small follow-up. For now record kind='url' (signed) which is OK
+      // for single-attempt dispatch but not for stuck recovery.
+
       // Fire-and-forget background processing.
       // @ts-expect-error EdgeRuntime is provided by Supabase's Deno runtime.
       EdgeRuntime.waitUntil(runJob(admin, jobRow.id, sourceRes.url, mode, sourceRes.cleanup, {
         hash: typeof body.source_file_hash === 'string' ? body.source_file_hash : null,
         size: Number(body.source_file_size_bytes) || null,
-      }));
+      }, source));
 
       return json({ job_id: jobRow.id, status: 'queued', idempotency_key: idempotencyKey });
+    }
+
+    if (operation === 'recover') {
+      // Stuck-job recovery — re-dispatch chunks past their last_event_at
+      // cutoff, mark monolithic stalls as recoverable_failed. Returns a report.
+      const result = await recoverStuckJobs(admin);
+      return json({ ok: true, ...result });
     }
 
     return json({ error: `unknown operation: ${operation}` }, 400);
