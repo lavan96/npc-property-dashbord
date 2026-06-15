@@ -83,6 +83,20 @@ export * from './scenarioComparisonEngine';
 export * from './scenarioReportBuilder';
 export * from './clientPortfolioRepository';
 
-export { applyScenarioToClientProfile, syncScenarioFromClientProfile } from './scenarioSyncEngine';
+export {
+  createScenarioAuditEvent,
+  saveScenarioToClientProfile,
+  buildClientScenarioOutputSummary,
+  importClientProfileField,
+  saveBackToPropertyRecord,
+  acceptAiEstimateForScenario,
+} from './scenarioSyncEngine';
+export type {
+  SyncConflictResolution,
+  ScenarioAuditAction,
+  FieldPatch,
+  ScenarioSaveOptions,
+  PropertySaveOptions,
+} from './scenarioSyncEngine';
 // Note: commitScenarioToClientProfile intentionally NOT re-exported here — the
 // canonical export lives in ./clientProfileSyncEngine (re-exported above).
