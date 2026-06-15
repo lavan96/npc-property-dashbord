@@ -3205,18 +3205,30 @@ export function PortfolioAnalysisPDFGenerator({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Portfolio Performance Analysis</span>
-              <Button 
-                onClick={downloadPDF} 
-                disabled={isDownloading}
-                size="sm"
-              >
-                {isDownloading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => downloadPDF()} 
+                  disabled={isDownloading}
+                  size="sm"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download & Save PDF
+                </Button>
+                <Button
+                  onClick={() => downloadPDF({ flattenOnly: true })}
+                  disabled={isDownloading}
+                  variant="outline"
+                  size="sm"
+                  title="Download a flattened (image-only) copy without saving to Reports"
+                >
                   <Download className="h-4 w-4 mr-2" />
-                )}
-                Download & Save PDF
-              </Button>
+                  Flattened PDF
+                </Button>
+              </div>
             </DialogTitle>
             <DialogDescription>
               Comprehensive analysis of {clientName}'s investment property portfolio
