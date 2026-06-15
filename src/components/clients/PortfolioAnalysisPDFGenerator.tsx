@@ -3087,69 +3087,71 @@ export function PortfolioAnalysisPDFGenerator({
         URL.revokeObjectURL(url);
       }
       
-      // Save report metadata to database via secure function
-      console.log('📊 Saving report metadata to database...');
+      // Save report metadata to database via secure function (skip when flatten-only)
       let reportPersisted = false;
-      try {
-        const { error: insertError } = await invokeSecureFunction('manage-client-data', {
-          operation: 'create',
-          table: 'portfolio_analysis_reports',
-          clientId: clientId,
-          data: {
-            client_id: clientId,
-            client_name: analysisData.clientName,
-            health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
-            overall_health: analysisData.analysis?.executiveSummary?.overallHealth || null,
-            portfolio_value: analysisData.portfolioMetrics?.totalValue || null,
-            total_equity: analysisData.portfolioMetrics?.totalEquity || null,
-            net_monthly_cashflow: analysisData.portfolioMetrics?.netMonthlyCashflow || null,
-            total_properties: analysisData.portfolioMetrics?.totalProperties || null,
-            average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
-            average_yield: analysisData.portfolioMetrics?.averageYield || null,
-            report_data: analysisData as any,
-            pdf_file_path: uploadedFilePath,
-            status: 'completed',
-          }
-        });
+      if (!flattenOnly) {
+        console.log('📊 Saving report metadata to database...');
+        try {
+          const { error: insertError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'portfolio_analysis_reports',
+            clientId: clientId,
+            data: {
+              client_id: clientId,
+              client_name: analysisData.clientName,
+              health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
+              overall_health: analysisData.analysis?.executiveSummary?.overallHealth || null,
+              portfolio_value: analysisData.portfolioMetrics?.totalValue || null,
+              total_equity: analysisData.portfolioMetrics?.totalEquity || null,
+              net_monthly_cashflow: analysisData.portfolioMetrics?.netMonthlyCashflow || null,
+              total_properties: analysisData.portfolioMetrics?.totalProperties || null,
+              average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
+              average_yield: analysisData.portfolioMetrics?.averageYield || null,
+              report_data: analysisData as any,
+              pdf_file_path: uploadedFilePath,
+              status: 'completed',
+            }
+          });
 
-        if (insertError) {
-          console.error('Failed to save portfolio_analysis_reports metadata:', insertError);
-          toast.error('PDF downloaded, but failed to save report history.');
-        } else {
-          reportPersisted = true;
-          console.log('✓ Report saved to portfolio_analysis_reports with PDF path:', uploadedFilePath);
+          if (insertError) {
+            console.error('Failed to save portfolio_analysis_reports metadata:', insertError);
+            toast.error('PDF downloaded, but failed to save report history.');
+          } else {
+            reportPersisted = true;
+            console.log('✓ Report saved to portfolio_analysis_reports with PDF path:', uploadedFilePath);
 
-          if (uploadedFilePath) {
-            const { error: fileIndexError } = await invokeSecureFunction('manage-client-data', {
-              operation: 'create',
-              table: 'client_files',
-              clientId,
-              data: {
-                category: 'report',
-                file_name: fileName,
-                file_path: uploadedFilePath,
-                file_type: 'application/pdf',
-                file_size: blob.size,
-                description: `Portfolio Performance Analysis - ${new Date().toLocaleDateString('en-AU')}`,
-                report_type: 'portfolio',
-              },
-            });
+            if (uploadedFilePath) {
+              const { error: fileIndexError } = await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_files',
+                clientId,
+                data: {
+                  category: 'report',
+                  file_name: fileName,
+                  file_path: uploadedFilePath,
+                  file_type: 'application/pdf',
+                  file_size: blob.size,
+                  description: `Portfolio Performance Analysis - ${new Date().toLocaleDateString('en-AU')}`,
+                  report_type: 'portfolio',
+                },
+              });
 
-            if (fileIndexError) {
-              console.error('Failed to index report in client_files:', fileIndexError);
-              toast.error('Report saved, but file indexing failed.');
-            } else {
-              console.log('✓ Report indexed in client_files');
+              if (fileIndexError) {
+                console.error('Failed to index report in client_files:', fileIndexError);
+                toast.error('Report saved, but file indexing failed.');
+              } else {
+                console.log('✓ Report indexed in client_files');
+              }
             }
           }
+        } catch (dbError) {
+          console.error('Database save error:', dbError);
+          toast.error('PDF downloaded, but report save failed.');
         }
-      } catch (dbError) {
-        console.error('Database save error:', dbError);
-        toast.error('PDF downloaded, but report save failed.');
       }
 
       console.log('✅ PDF generation complete!');
-      toast.success(reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally');
+      toast.success(flattenOnly ? 'Flattened PDF downloaded' : (reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally'));
       logActivityDirect({
         actionType: 'portfolio_report_generated',
         entityType: 'portfolio_report',
