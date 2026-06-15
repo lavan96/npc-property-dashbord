@@ -275,11 +275,24 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
             {/* Progress */}
             {progress && (
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{progressDetails.label}</span>
-                  <span>{percent}% · {progressDetails.eta}</span>
+                <div className="flex justify-between text-xs text-muted-foreground gap-2">
+                  <span className="truncate">{progressDetails.label}</span>
+                  <span className="whitespace-nowrap">{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} />
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <Badge variant="outline" className="font-mono">stage: {progress.stage ?? progress.phase}</Badge>
+                  {progress.pagesTotal ? (
+                    <Badge variant="outline">pages {progress.pagesCompleted ?? 0}/{progress.pagesTotal}</Badge>
+                  ) : null}
+                  <Badge variant="outline">Docling (cloud)</Badge>
+                </div>
+                {progress.warning && (
+                  <div className="rounded-md border border-warning/40 bg-warning/5 px-2 py-1 text-[11px] text-warning flex items-start gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{progress.warning}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
