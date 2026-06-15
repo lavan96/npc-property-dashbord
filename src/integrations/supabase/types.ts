@@ -13027,6 +13027,9 @@ export type Database = {
       }
       pdf_import_jobs: {
         Row: {
+          attempts: Json
+          bytes_in: number | null
+          bytes_out: number | null
           cache_hit: boolean
           cache_source_job_id: string | null
           created_at: string
@@ -13059,6 +13062,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempts?: Json
+          bytes_in?: number | null
+          bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
           created_at?: string
@@ -13091,6 +13097,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempts?: Json
+          bytes_in?: number | null
+          bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
           created_at?: string
@@ -18003,6 +18012,10 @@ export type Database = {
           id: string
           row_count: number
         }[]
+      }
+      append_pdf_import_attempt: {
+        Args: { p_attempt: Json; p_job_id: string }
+        Returns: undefined
       }
       bump_finance_partner_activity: {
         Args: { _contact_id: string }
