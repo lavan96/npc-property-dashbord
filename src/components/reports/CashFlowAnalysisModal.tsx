@@ -5172,12 +5172,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={exportAiAnalysisPDF}
+                            onClick={() => exportAiAnalysisPDF()}
                             className="gap-1"
                           >
                             <Download className="h-3 w-3" />
                             Export PDF
                           </Button>
+                          <FlattenPdfIconButton
+                            getPdfBlob={async () => {
+                              const b = await exportAiAnalysisPDF({ returnBlob: true });
+                              if (!b) throw new Error('Failed to generate AI analysis PDF');
+                              return b;
+                            }}
+                            filename={`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`}
+                          />
                         </>
                       )}
                       <Button
