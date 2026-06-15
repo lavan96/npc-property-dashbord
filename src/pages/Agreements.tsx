@@ -335,6 +335,14 @@ export default function Agreements() {
                               <Download className="h-4 w-4 mr-2" />
                               Download Agreement
                             </DropdownMenuItem>
+                            <FlattenPdfMenuItem
+                              getPdfBlob={async () => {
+                                const { pdf_url } = await fetchAgreementPreview(agreement.id);
+                                if (!pdf_url) throw new Error('Agreement PDF not yet generated');
+                                return fetchPdfBlob(pdf_url);
+                              }}
+                              filename={`Agreement_${agreement.buyer_names.replace(/\s+/g, '_')}_${format(new Date(agreement.agreement_date), 'yyyy-MM-dd')}.pdf`}
+                            />
                             <DropdownMenuItem onClick={() => handleViewClient(agreement.client_id)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
