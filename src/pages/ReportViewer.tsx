@@ -280,7 +280,7 @@ export default function ReportViewer() {
     });
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !reportRef.current) return;
 
     logActivityDirect({
