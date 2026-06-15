@@ -587,6 +587,7 @@ async function runJob(
       });
       await runChunkedDispatch(admin, jobId, signedUrl, mode, plan.page_count, plan.ocr_hint, requestPayload);
       await updateJob(admin, jobId, { bytes_in: bytesIn });
+      chunkedRan = true;
       return;
     }
 
