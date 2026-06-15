@@ -10,6 +10,7 @@ export interface ReportSectionPayload {
   verifiedInputs: string[];
   manualEstimateInputs: string[];
   aiEstimatedInputs: string[];
+  clientProfileSourceInputs: string[];
   unknownInputs: string[];
   specialistReviewItems: string[];
   manualOverrides: string[];
@@ -24,6 +25,7 @@ export interface CommercialIndustrialReportPayload {
     verifiedValues: string[];
     manualEstimates: string[];
     aiEstimates: string[];
+    clientProfileSourceValues: string[];
     unknownAssumptions: string[];
     specialistReviewItems: string[];
     manualOverrides: string[];
@@ -40,6 +42,7 @@ export function buildCommercialIndustrialReportPayload(profile: CommercialIndust
     verifiedInputs: keysByTag(profile, 'Verified'),
     manualEstimateInputs: keysByTag(profile, 'Manual Estimate'),
     aiEstimatedInputs: keysByTag(profile, 'AI Estimate'),
+    clientProfileSourceInputs: keysByTag(profile, 'Client Profile Source'),
     unknownInputs: keysByTag(profile, 'Unknown'),
     specialistReviewItems: keysByTag(profile, 'Specialist Review Required'),
     manualOverrides,
@@ -80,6 +83,7 @@ export function buildCommercialIndustrialReportPayload(profile: CommercialIndust
       verifiedValues: baseMeta.verifiedInputs,
       manualEstimates: baseMeta.manualEstimateInputs,
       aiEstimates: baseMeta.aiEstimatedInputs,
+      clientProfileSourceValues: baseMeta.clientProfileSourceInputs,
       unknownAssumptions: baseMeta.unknownInputs,
       specialistReviewItems: baseMeta.specialistReviewItems,
       manualOverrides,

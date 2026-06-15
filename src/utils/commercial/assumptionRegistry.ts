@@ -1,6 +1,7 @@
 export type AssumptionConfidenceTag =
   | 'Verified'
   | 'Manual Estimate'
+  | 'Client Profile Source'
   | 'AI Estimate'
   | 'Unknown'
   | 'Overridden'
@@ -20,6 +21,7 @@ export interface AssumptionProvenance {
 export const CONFIDENCE_BADGE_CLASS: Record<AssumptionConfidenceTag, string> = {
   Verified: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
   'Manual Estimate': 'bg-amber-500/15 text-amber-300 border-amber-500/40',
+  'Client Profile Source': 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40',
   'AI Estimate': 'bg-sky-500/15 text-sky-300 border-sky-500/40',
   Unknown: 'bg-slate-500/15 text-slate-300 border-slate-500/40',
   Overridden: 'bg-purple-500/15 text-purple-300 border-purple-500/40',
@@ -32,6 +34,7 @@ export function deriveCalculatedConfidence(tags: AssumptionConfidenceTag[]): Ass
   if (tags.includes('Unknown')) return 'Unknown';
   if (tags.includes('Overridden')) return 'Overridden';
   if (tags.includes('AI Estimate')) return 'AI Estimate';
+  if (tags.includes('Client Profile Source')) return 'Client Profile Source';
   if (tags.includes('Manual Estimate')) return 'Manual Estimate';
   if (tags.length && tags.every(t => t === 'Verified')) return 'Verified';
   return 'Calculated';

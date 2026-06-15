@@ -82,3 +82,5 @@ export * from './scenarioModellingEngine';
 export * from './scenarioComparisonEngine';
 export * from './scenarioReportBuilder';
 export * from './clientPortfolioRepository';
+
+export * from './scenarioSyncEngine';

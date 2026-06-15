@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { buildCommercialIndustrialReportPayload } from '@/utils/commercial/reportPayloadBuilder';
+import { buildScenarioReportPayload } from '@/utils/commercial/scenarioReportBuilder';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 
 const fmt = (n?: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -34,6 +35,7 @@ function downloadFile(name: string, content: string, mime = 'application/json') 
 
 export function CommercialIndustrialOverviewCard() {
   const profile = useCommercialDealState(s => s.profile);
+  const updateGlobal = useCommercialDealState(s => s.updateGlobal);
   const borrowing = profile.borrowingOutputs;
   const reportPayload = buildCommercialIndustrialReportPayload(profile);
   const isIndustrial = profile.dealProfile.assetCategory === 'industrial';
@@ -94,6 +96,41 @@ export function CommercialIndustrialOverviewCard() {
         await pushBack(patch);
       }
     } finally { setBusy(null); }
+  };
+
+
+  const handleSaveScenarioStatus = (status: 'Draft' | 'Recommended' | 'Committed') => {
+    if (!clientScenario) { toast.error('Run or select a client scenario before saving.'); return; }
+    if (status === 'Committed' && !confirm('Commit this scenario to the client profile current position? Draft and Recommended scenarios will not overwrite current position.')) return;
+    const nextScenario = {
+      ...clientScenario,
+      status,
+      auditLog: [...clientScenario.auditLog, {
+        timestamp: new Date().toISOString(),
+        user: 'Calculator user',
+        action: status === 'Committed' ? 'scenario_commit' : 'scenario_status_change',
+        field: 'status',
+        previousValue: clientScenario.status,
+        newValue: status,
+        source: 'Overview tab action',
+        scenarioId: clientScenario.scenarioId,
+      }],
+    };
+    updateGlobal('clientScenarioOutputs', nextScenario as any);
+    toast.success(status === 'Committed' ? 'Scenario committed with audit trail.' : `Scenario saved as ${status}.`);
+  };
+
+  const handleExportScenarioReport = () => {
+    if (!clientScenario) { toast.error('No client scenario is available to export.'); return; }
+    downloadFile(`${fileSlug}-scenario-report.json`, JSON.stringify(buildScenarioReportPayload(clientScenario), null, 2));
+    toast.success('Scenario report exported.');
+  };
+
+  const handleClientFacingSummary = () => {
+    if (!clientScenario) { toast.error('No client scenario is available to summarise.'); return; }
+    const report = buildScenarioReportPayload(clientScenario) as any;
+    downloadFile(`${fileSlug}-client-facing-scenario-summary.json`, JSON.stringify({ generatedAt: report.generatedAt, scenario: report.scenario, summary: clientScenario.reportSummary, recommendedNextSteps: report.narrative.recommendedNextSteps, requiredDocuments: clientScenario.requiredDocuments, warnings: clientScenario.warnings }, null, 2));
+    toast.success('Client-facing summary generated.');
   };
 
   const handlePushToPortal = () => {
@@ -184,7 +221,7 @@ export function CommercialIndustrialOverviewCard() {
       <Section title="ICR / DSCR / Debt Yield Summary"><Row label="ICR" value={borrowing ? `${borrowing.icr.toFixed(2)}x` : 'Pending'} /><Row label="DSCR" value={borrowing ? `${borrowing.dscr.toFixed(2)}x` : 'Pending'} /><Row label="Debt yield" value={pct(borrowing?.debtYield)} /></Section>
       <Section title="GST Summary"><Row label="GST treatment" value={title(profile.acquisitionCosts.gstTreatment ?? profile.gstInputs.treatment)} /><Row label="Settlement cashflow" value={borrowing?.fundsToComplete.gstCashflowRequirement} /><Row label="Economic cost" value={borrowing?.fundsToComplete.gst.economicCost} /></Section>
       <Section title="DCF Summary"><Row label="Hold period" value={profile.dcfInputs.holdPeriodYears ? `${profile.dcfInputs.holdPeriodYears} years` : 'Pending'} /><Row label="Rental growth" value={profile.dcfInputs.rentalGrowthPct ? `${profile.dcfInputs.rentalGrowthPct}%` : 'Pending'} /><Row label="Exit cap" value={profile.dcfInputs.terminalCapRatePct ? `${profile.dcfInputs.terminalCapRatePct}%` : 'Pending'} /></Section>
-      <Section title="Client Scenario Summary"><Row label="Selected client" value={clientScenario?.clientId} /><Row label="Scenario name" value={clientScenario?.scenarioName} /><Row label="Scenario type" value={clientScenario?.scenarioType} /><Row label="Scenario status" value={clientScenario?.status} /><Row label="Borrowing capacity movement" value={clientScenario ? clientScenario.resultingPosition.borrowingCapacity - clientScenario.currentPositionSnapshot.borrowingCapacity : undefined} /><Row label="Purchase ability" value={borrowing?.purchaseAbilityStatusLabel} /><Row label="Key constraint" value={clientScenario?.resultingPosition.keyConstraint} /><Row label="Risk rating" value={clientScenario?.resultingPosition.riskRating} /><Row label="Recommended next action" value={borrowing?.requiredNextAction} /><div className="flex flex-wrap gap-2 pt-2"><Button size="sm" variant="outline">Save Scenario</Button><Button size="sm" variant="outline">Mark as Recommended</Button><Button size="sm" variant="outline">Commit to Client Profile</Button><Button size="sm" variant="outline">Export Scenario Report</Button><Button size="sm" variant="outline">Generate Client-Facing Summary</Button></div></Section>
+      <Section title="Client Scenario Summary"><Row label="Selected client" value={clientScenario?.clientId} /><Row label="Scenario name" value={clientScenario?.scenarioName} /><Row label="Scenario type" value={clientScenario?.scenarioType} /><Row label="Scenario status" value={clientScenario?.status} /><Row label="Borrowing capacity movement" value={clientScenario ? clientScenario.resultingPosition.borrowingCapacity - clientScenario.currentPositionSnapshot.borrowingCapacity : undefined} /><Row label="Purchase ability" value={borrowing?.purchaseAbilityStatusLabel} /><Row label="Key constraint" value={clientScenario?.resultingPosition.keyConstraint} /><Row label="Risk rating" value={clientScenario?.resultingPosition.riskRating} /><Row label="Recommended next action" value={borrowing?.requiredNextAction} /><div className="flex flex-wrap gap-2 pt-2"><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Recommended')}>Mark as Recommended</Button><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Committed')}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={handleExportScenarioReport}>Export Scenario Report</Button><Button size="sm" variant="outline" onClick={handleClientFacingSummary}>Generate Client-Facing Summary</Button></div></Section>
       <Section title="10-Year Cash Flow Summary"><Row label="Cash flow mode" value={title(tenYear?.summary.mode)} /><Row label="Year 1 pre-tax cashflow" value={tenYear?.summary.year1PreTaxCashflow} /><Row label="Year 1 after-tax cashflow" value={tenYear?.summary.year1AfterTaxCashflow} /><Row label="Year 10 property value" value={tenYear?.summary.year10PropertyValue} /><Row label="Year 10 loan balance" value={tenYear?.summary.year10LoanBalance} /><Row label="Year 10 equity" value={tenYear?.summary.year10Equity} /><Row label="Cumulative cashflow" value={tenYear?.summary.cumulativeAfterTaxCashflow} /><Row label="Levered IRR" value={tenYear?.summary.leveredIrr == null ? 'N/A' : `${(tenYear.summary.leveredIrr * 100).toFixed(1)}%`} /><Row label="Equity multiple" value={tenYear?.summary.equityMultiple == null ? 'N/A' : `${tenYear.summary.equityMultiple.toFixed(2)}x`} /><Row label="Business DSCR" value={tenYear?.summary.businessDscr == null ? 'N/A' : `${tenYear.summary.businessDscr.toFixed(2)}x`} /><Row label="Occupancy cost ratio" value={tenYear?.summary.occupancyCostRatio == null ? 'N/A' : `${(tenYear.summary.occupancyCostRatio * 100).toFixed(1)}%`} />{tenYear?.warnings.slice(0, 4).map((w, i) => <div key={i} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{w}</div>)}</Section>
       {isIndustrial && <Section title="Industrial Metrics Summary"><Row label="GLA" value={profile.propertyValuation.lettableArea ? `${profile.propertyValuation.lettableArea} m²` : 'Unknown'} /><Row label="Site area" value={profile.propertyValuation.landArea ? `${profile.propertyValuation.landArea} m²` : 'Unknown'} /><Row label="Site cover" value={profile.propertyValuation.siteCoverageRatio ? pct(profile.propertyValuation.siteCoverageRatio) : 'Unknown'} /><Row label="Industrial usability" value={title(borrowing?.riskRating)} /></Section>}
       <Section title="Risk Summary"><p className="text-sm text-muted-foreground">{borrowing?.primaryReason ?? 'Run borrowing capacity to generate risk commentary.'}</p>{borrowing?.warnings.slice(0, 5).map((w, i) => <div key={i} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{w}</div>)}</Section>
