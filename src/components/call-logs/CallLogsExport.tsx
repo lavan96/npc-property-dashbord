@@ -316,10 +316,18 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
             </p>
           </div>
 
-          <Button onClick={handleExport} className="w-full">
-            <Download className="w-4 h-4 mr-2" />
-            Export {exportFormat.toUpperCase()}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button onClick={handleExport} className="flex-1">
+              <Download className="w-4 h-4 mr-2" />
+              Export {exportFormat.toUpperCase()}
+            </Button>
+            {exportFormat === 'pdf' && (
+              <FlattenPdfIconButton
+                getPdfBlob={async () => buildPdfDoc().output('blob')}
+                filename={callLogsPdfFilename()}
+              />
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
