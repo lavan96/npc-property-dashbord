@@ -293,6 +293,8 @@ export async function extractPdfViaDocling(
         source_file_size_bytes: file.size,
         redact_pii: Boolean(options.redactPii),
         pii_redaction_reason: options.redactPii ? 'finance_pdf_import' : null,
+        description_tier: 'on',
+        include_markdown: true,
       },
       { timeoutMs: 120_000 },
     );
