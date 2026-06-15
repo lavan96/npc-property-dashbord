@@ -139,6 +139,21 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const notes = data?.pages.flatMap((page) => page.notes) || [];
 
+  // Two-way realtime sync with the Client Tracker quick-notes card (and any other open tab).
+  useEffect(() => {
+    const channel = supabase
+      .channel(`client-notes-${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_notes', filter: `client_id=eq.${clientId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [clientId, queryClient]);
+
   const addNoteMutation = useMutation({
     mutationFn: async () => {
       if (!visibility) throw new Error('Choose a visibility');
