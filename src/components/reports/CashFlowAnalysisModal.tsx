@@ -1925,7 +1925,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, aiAnalysis, toast]);
 
   // Export AI Analysis Only as PDF
-  const exportAiAnalysisPDF = useCallback(async () => {
+  const exportAiAnalysisPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !aiAnalysis) return;
 
     try {
