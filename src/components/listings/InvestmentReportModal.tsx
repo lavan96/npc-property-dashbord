@@ -256,40 +256,39 @@ export function InvestmentReportModal({
   };
 
   const downloadPDF = () => {
+  const buildPdfDoc = () => {
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Property Investment Analysis', margin, 30);
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Property: ${propertyAddress}`, margin, 45);
+    pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 55);
+    pdf.setFontSize(10);
+    const lines = pdf.splitTextToSize(reportContent, maxWidth);
+    let yPosition = 70;
+    const lineHeight = 6;
+    lines.forEach((line: string) => {
+      if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      pdf.text(line, margin, yPosition);
+      yPosition += lineHeight;
+    });
+    return pdf;
+  };
+
+  const pdfFilename = `investment-report-${propertyAddress.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+
+  const downloadPDF = () => {
     try {
-      const pdf = new jsPDF();
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
-      
-      // Add title
-      pdf.setFontSize(16);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Property Investment Analysis', margin, 30);
-      
-      pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
-      pdf.text(`Property: ${propertyAddress}`, margin, 45);
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 55);
-      
-      // Add content
-      pdf.setFontSize(10);
-      const lines = pdf.splitTextToSize(reportContent, maxWidth);
-      
-      let yPosition = 70;
-      const lineHeight = 6;
-      
-      lines.forEach((line: string) => {
-        if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        pdf.text(line, margin, yPosition);
-        yPosition += lineHeight;
-      });
-      
-      pdf.save(`investment-report-${propertyAddress.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
-      
+      const pdf = buildPdfDoc();
+      pdf.save(pdfFilename);
       toast({
         title: "PDF Downloaded",
         description: "Investment report downloaded successfully.",
