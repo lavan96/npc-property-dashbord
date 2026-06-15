@@ -9,8 +9,8 @@ export function calculateCapRateEngine(i: CapRateEngineInputs): CapRateEngineRes
   if (i.targetCapRatePct <= 0) warnings.push('Capitalisation rate is zero; implied value not calculated.');
   if (i.aiBenchmark) warnings.push('AI cap-rate estimate is benchmark only — valuer confirmation required.');
   const impliedValue = i.targetCapRatePct > 0 ? i.selectedNoi / (i.targetCapRatePct / 100) : 0;
-  const valuationGap = i.price - impliedValue;
-  if (impliedValue > 0 && Math.abs(valuationGap) / impliedValue > 0.1) warnings.push('Purchase price differs materially from implied value; valuation risk exists.');
+  const valuationGap = impliedValue - i.price;
+  if (impliedValue > 0 && Math.abs(valuationGap) / impliedValue > 0.1) warnings.push('Purchase price/value differs materially from implied value; valuation risk exists.');
   const passingYield = y(i.passingNoi);
   const reversionaryYield = y(i.marketNoi);
   const blendedYield = round2((passingYield + reversionaryYield) / 2);

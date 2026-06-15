@@ -94,7 +94,7 @@ export function buildCommercialIndustrialReportPayload(profile: CommercialIndust
       section('Borrowing Outcome', borrowing),
       section('Purchase Ability', borrowing?.fundsToComplete),
       section('Income / NOI Assessment', { inputs: profile.leaseIncome, outputs: profile.noiOutputs ?? borrowing?.noi }),
-      section('Cap Rate / Valuation Assessment', { valuation: profile.propertyValuation, outputs: profile.capRateOutputs }),
+      section('Cap Rate / Valuation Assessment', { valuation: profile.propertyValuation, outputs: profile.capRateOutputs, assumptionStatuses: (profile.capRateOutputs as any)?.assumptionStatuses, aiEstimateWarning: baseMeta.aiEstimatedInputs.some(k => k.includes('capRate')) ? 'AI cap-rate estimate is benchmark only — valuer confirmation required.' : undefined, valuerConfirmationRequired: baseMeta.aiEstimatedInputs.some(k => k.includes('capRate')) || (profile.capRateOutputs as any)?.benchmarkLabel }),
       section('ICR / DSCR / Debt Yield Assessment', borrowing ? { icr: borrowing.icr, dscr: borrowing.dscr, debtYield: borrowing.debtYield, assessmentRate: borrowing.assessmentRate } : null),
       section('GST Assessment', { gstInputs: profile.gstInputs, gstOutputs: profile.gstOutputs, borrowingGst: borrowing?.fundsToComplete.gst }),
       section('DCF Assessment', { inputs: profile.dcfInputs, outputs: profile.dcfOutputs }),

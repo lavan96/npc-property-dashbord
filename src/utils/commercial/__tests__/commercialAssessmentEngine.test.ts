@@ -30,6 +30,7 @@ describe('Commercial / Industrial Assessment Engine', () => {
     expect(r.reversionaryYield).toBe(8);
     expect(r.blendedYield).toBe(7.5);
     expect(r.impliedValue).toBeCloseTo(1_000_000, 0);
+    expect(r.valuationGap).toBeCloseTo(0, 0);
     expect(r.valueSensitivity).toHaveLength(2);
   });
 
