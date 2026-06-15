@@ -637,7 +637,12 @@ async function runJob(
       bytesOut += byteLength(rasterBody);
     }
 
-    await setStage(admin, jobId, 'finalizing');
+    // Collapsed finalize: one atomic write flips stage + status together so
+    // a dispatcher death between "rastering" and "succeeded" can no longer
+    // strand a fully-processed job in a non-terminal state. (Previously we
+    // ran setStage('finalizing') first, which created a ~tens-of-seconds
+    // gap that routinely lost the wall-clock budget race and left the
+    // watchdog to mark completed work as failed.)
     const finishedAt = Date.now();
     await updateJob(admin, jobId, {
       status: 'succeeded',
