@@ -971,6 +971,10 @@ export function EnhancedInvestmentReportModal({
                   <Button variant="outline" size="sm" onClick={downloadPDF}>
                     <Download className="h-4 w-4 mr-2" />Download PDF
                   </Button>
+                  <FlattenPdfIconButton
+                    getPdfBlob={async () => buildPdfDoc().output('blob')}
+                    filename={pdfFilename}
+                  />
                   {reportId && (
                     <Button variant="outline" size="sm" onClick={viewInGeneratedReports}>
                       <Eye className="h-4 w-4 mr-2" />View Report
