@@ -255,7 +255,6 @@ export function InvestmentReportModal({
     }
   };
 
-  const downloadPDF = () => {
   const buildPdfDoc = () => {
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
