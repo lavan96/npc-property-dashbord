@@ -495,6 +495,9 @@ async function runJob(
       'application/json',
     );
     bytesOut += byteLength(doclingBody);
+    // Checkpoint: persist diagnostics path immediately so a dispatcher death
+    // after this point leaves enough proof-of-work for the watchdog to recover.
+    await updateJob(admin, jobId, { diagnostics_path: doclingPath });
 
     // Phase D: persist auxiliary artifacts when present.
     let doctagsPath: string | null = null;
