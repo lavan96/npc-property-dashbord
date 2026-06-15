@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
 import { Download, FileText, Home, Loader2, Mail, Send, Users, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -882,6 +883,15 @@ export function VownetPDFGenerator({
           <Download className="h-4 w-4 mr-2" />
           Export Client Details as PDF
         </DropdownMenuItem>
+        <FlattenPdfMenuItem
+          getPdfBlob={async () => {
+            const b = await generatePDF(true);
+            if (!b) throw new Error('Failed to generate client details PDF');
+            return b;
+          }}
+          filename={`Vownet_Form_${clientName.replace(/\s+/g, '_')}.pdf`}
+          disabled={isDisabled}
+        />
         {onEmailClick && (
           <>
             <DropdownMenuSeparator />

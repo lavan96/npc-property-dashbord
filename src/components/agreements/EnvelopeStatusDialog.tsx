@@ -5,6 +5,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -124,10 +125,29 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
             </span>
             <div className="flex items-center gap-2 shrink-0">
               {envelope?.status === 'completed' && (
-                <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="gap-1">
-                  {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  Download Signed PDF
-                </Button>
+                <>
+                  <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="gap-1">
+                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Download Signed PDF
+                  </Button>
+                  <FlattenPdfIconButton
+                    getPdfBlob={async () => {
+                      const fn = scope === 'agreement' ? 'manage-agency-agreements' : 'manage-generated-documents';
+                      const payload = scope === 'agreement'
+                        ? { action: 'download_signed', agreement_id: recordId }
+                        : { action: 'download_signed', id: recordId };
+                      const { data, error: invErr } = await invokeSecureFunction<any>(fn, payload);
+                      if (invErr) throw new Error(invErr.message);
+                      if (!data?.success) throw new Error(data?.error || 'Download failed');
+                      const bin = atob(data.pdf_base64);
+                      const bytes = new Uint8Array(bin.length);
+                      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                      return new Blob([bytes], { type: 'application/pdf' });
+                    }}
+                    filename={title ? `${title.replace(/\s+/g, '_')}-signed.pdf` : 'signed.pdf'}
+                    disabled={downloading}
+                  />
+                </>
               )}
               <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}

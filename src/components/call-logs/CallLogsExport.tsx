@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -121,12 +122,11 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
     setOpen(false);
   };
 
-  const exportToPDF = () => {
+  const buildPdfDoc = () => {
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     let yPos = 20;
 
-    // Title
     pdf.setFontSize(20);
     pdf.setTextColor(0, 0, 0);
     pdf.text('Call Logs Report', pageWidth / 2, yPos, { align: 'center' });
@@ -138,7 +138,6 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
     yPos += 15;
 
     if (includeAnalytics) {
-      // Analytics Summary
       pdf.setFontSize(14);
       pdf.setTextColor(0, 0, 0);
       pdf.text('Analytics Summary', 14, yPos);
@@ -157,14 +156,12 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
         ['Squad Calls', stats.squadCalls.toString()],
       ];
 
-      // Draw analytics in a grid
       const colWidth = (pageWidth - 28) / 4;
       analyticsData.forEach((item, index) => {
         const col = index % 4;
         const row = Math.floor(index / 4);
         const x = 14 + col * colWidth;
         const y = yPos + row * 15;
-        
         pdf.setFontSize(8);
         pdf.setTextColor(100, 100, 100);
         pdf.text(item[0], x, y);
@@ -172,23 +169,21 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
         pdf.setTextColor(0, 0, 0);
         pdf.text(item[1], x, y + 5);
       });
-      
+
       yPos += 40;
     }
 
-    // Call Logs Table Header
     pdf.setFontSize(14);
     pdf.setTextColor(0, 0, 0);
     pdf.text('Call Details', 14, yPos);
     yPos += 8;
 
-    // Table headers
     const headers = ['Customer', 'Phone', 'Agent', 'Direction', 'Outcome', 'Duration', 'Cost'];
     const colWidths = [35, 30, 30, 22, 25, 20, 18];
-    
+
     pdf.setFillColor(240, 240, 240);
     pdf.rect(14, yPos - 4, pageWidth - 28, 8, 'F');
-    
+
     pdf.setFontSize(8);
     pdf.setTextColor(60, 60, 60);
     let xPos = 14;
@@ -198,14 +193,9 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
     });
     yPos += 8;
 
-    // Table rows
     pdf.setTextColor(0, 0, 0);
     calls.slice(0, 40).forEach((call, index) => {
-      if (yPos > 270) {
-        pdf.addPage();
-        yPos = 20;
-      }
-
+      if (yPos > 270) { pdf.addPage(); yPos = 20; }
       const row = [
         (call.customer_name || 'Unknown').substring(0, 15),
         (call.phone_number || '-').substring(0, 12),
@@ -213,15 +203,12 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
         call.call_direction || '-',
         call.call_outcome || '-',
         formatDuration(call.duration_seconds),
-        `$${call.cost?.toFixed(2) || '0.00'}`
+        `$${call.cost?.toFixed(2) || '0.00'}`,
       ];
-
-      // Alternate row background
       if (index % 2 === 0) {
         pdf.setFillColor(248, 248, 248);
         pdf.rect(14, yPos - 4, pageWidth - 28, 7, 'F');
       }
-
       pdf.setFontSize(7);
       xPos = 14;
       row.forEach((cell, i) => {
@@ -238,12 +225,15 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
       pdf.text(`... and ${calls.length - 40} more calls`, 14, yPos);
     }
 
-    pdf.save(`call-logs-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    return pdf;
+  };
 
-    toast({
-      title: 'Export Complete',
-      description: `Exported call logs to PDF`,
-    });
+  const callLogsPdfFilename = () => `call-logs-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+
+  const exportToPDF = () => {
+    const pdf = buildPdfDoc();
+    pdf.save(callLogsPdfFilename());
+    toast({ title: 'Export Complete', description: `Exported call logs to PDF` });
     setOpen(false);
   };
 
@@ -326,10 +316,18 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
             </p>
           </div>
 
-          <Button onClick={handleExport} className="w-full">
-            <Download className="w-4 h-4 mr-2" />
-            Export {exportFormat.toUpperCase()}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button onClick={handleExport} className="flex-1">
+              <Download className="w-4 h-4 mr-2" />
+              Export {exportFormat.toUpperCase()}
+            </Button>
+            {exportFormat === 'pdf' && (
+              <FlattenPdfIconButton
+                getPdfBlob={async () => buildPdfDoc().output('blob')}
+                filename={callLogsPdfFilename()}
+              />
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

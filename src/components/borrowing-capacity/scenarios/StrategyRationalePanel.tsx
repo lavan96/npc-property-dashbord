@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { Separator } from '@/components/ui/separator';
 import {
   ScrollText,
@@ -234,25 +235,32 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
               )}
             </Button>
             {pdfContext && (
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={handleDownloadPDF}
-                disabled={downloading}
-              >
-                {downloading ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Generating…
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="h-3.5 w-3.5 mr-1.5" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                      Download PDF
+                    </>
+                  )}
+                </Button>
+                <FlattenPdfIconButton
+                  getPdfBlob={async () => (await generateStrategyRationalePDF(report, pdfContext!)).blob}
+                  filename={`strategy-rationale.pdf`}
+                  disabled={downloading}
+                />
+              </>
             )}
           </div>
         </div>

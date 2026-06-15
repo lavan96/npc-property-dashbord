@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -550,6 +552,22 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
                   <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Download">
                     <Download className="h-4 w-4" />
                   </Button>
+                  {(doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.original_filename)) && (
+                    <FlattenPdfIconButton
+                      getPdfBlob={async () => {
+                        const { data, error } = await invokeFinanceFunction('finance-portal-documents', {
+                          operation: 'get_download_url',
+                          client_id: clientId,
+                          document_id: doc.id,
+                        });
+                        if (error || !data?.success) throw new Error(data?.error || error?.message || 'Failed to get URL');
+                        return fetchPdfBlob(data.url);
+                      }}
+                      filename={doc.original_filename}
+                      variant="ghost"
+                      size="icon"
+                    />
+                  )}
                   {permission.delete && (
                     <Button
                       variant="ghost"

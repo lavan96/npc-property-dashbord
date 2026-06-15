@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -337,9 +339,23 @@ export default function FinancePortalCommissions() {
                           <Button size="sm" variant="outline" onClick={() => markPaid(s.id)}>Mark paid</Button>
                         )}
                         {s.pdf_storage_path && (
-                          <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.pdf_storage_path!)}>
-                            <Download className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.pdf_storage_path!)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <FlattenPdfIconButton
+                              getPdfBlob={async () => {
+                                const { data, error } = await invokeSecureFunction('finance-portal-commissions', {
+                                  operation: 'admin_get_signed_url', path: s.pdf_storage_path,
+                                });
+                                if (error || !data?.url) throw new Error(error?.message || 'No URL');
+                                return fetchPdfBlob(data.url);
+                              }}
+                              filename={`commission-statement-${s.id}.pdf`}
+                              variant="ghost"
+                              size="sm"
+                            />
+                          </>
                         )}
                       </TableCell>
                     </TableRow>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { FileText, Loader2, History, Settings2, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -193,12 +195,19 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
               <p className="truncate text-[11px] text-muted-foreground">{generationState.fileName}</p>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <a href={generationState.downloadUrl} download={generationState.fileName}>
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </a>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href={generationState.downloadUrl} download={generationState.fileName}>
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
+              </a>
+            </Button>
+            <FlattenPdfIconButton
+              getPdfBlob={() => fetchPdfBlob(generationState.downloadUrl)}
+              filename={generationState.fileName}
+              size="sm"
+            />
+          </div>
         </div>
       )}
 

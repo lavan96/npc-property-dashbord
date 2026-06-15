@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -277,60 +278,64 @@ export function EnhancedInvestmentReportModal({
     }
   };
 
+  const buildPdfDoc = () => {
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Enhanced Property Investment Analysis', margin, 30);
+
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Property: ${propertyAddress}`, margin, 45);
+    pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 55);
+
+    if (enhancedData?.financials) {
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Key Financial Metrics:', margin, 70);
+      pdf.setFont(undefined, 'normal');
+
+      const metrics = [
+        `Gross Yield: ${enhancedData.financials.keyMetrics?.grossRentalYield}%`,
+        `Net Yield: ${enhancedData.financials.keyMetrics?.netRentalYield}%`,
+        `Weekly Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet}`,
+        `LVR: ${enhancedData.financials.keyMetrics?.lvr}%`,
+      ];
+
+      metrics.forEach((metric, index) => {
+        pdf.text(metric, margin, 80 + (index * 6));
+      });
+    }
+
+    pdf.setFontSize(10);
+    const lines = pdf.splitTextToSize(reportContent, maxWidth);
+
+    let yPosition = enhancedData?.financials ? 110 : 70;
+    const lineHeight = 6;
+
+    lines.forEach((line: string) => {
+      if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      pdf.text(line, margin, yPosition);
+      yPosition += lineHeight;
+    });
+
+    return pdf;
+  };
+
+  const pdfFilename = `enhanced-investment-report-${propertyAddress.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+
   const downloadPDF = () => {
     try {
-      const pdf = new jsPDF();
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
-      
-      // Add title
-      pdf.setFontSize(16);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Enhanced Property Investment Analysis', margin, 30);
-      
-      pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
-      pdf.text(`Property: ${propertyAddress}`, margin, 45);
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 55);
-      
-      // Add enhanced data summary if available
-      if (enhancedData?.financials) {
-        pdf.setFontSize(10);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('Key Financial Metrics:', margin, 70);
-        pdf.setFont(undefined, 'normal');
-        
-        const metrics = [
-          `Gross Yield: ${enhancedData.financials.keyMetrics?.grossRentalYield}%`,
-          `Net Yield: ${enhancedData.financials.keyMetrics?.netRentalYield}%`,
-          `Weekly Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet}`,
-          `LVR: ${enhancedData.financials.keyMetrics?.lvr}%`
-        ];
-        
-        metrics.forEach((metric, index) => {
-          pdf.text(metric, margin, 80 + (index * 6));
-        });
-      }
-      
-      // Add content
-      pdf.setFontSize(10);
-      const lines = pdf.splitTextToSize(reportContent, maxWidth);
-      
-      let yPosition = enhancedData?.financials ? 110 : 70;
-      const lineHeight = 6;
-      
-      lines.forEach((line: string) => {
-        if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        pdf.text(line, margin, yPosition);
-        yPosition += lineHeight;
-      });
-      
-      pdf.save(`enhanced-investment-report-${propertyAddress.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
-      
+      const pdf = buildPdfDoc();
+      pdf.save(pdfFilename);
+
       toast({
         title: "Enhanced PDF Downloaded",
         description: "Investment report with financial data downloaded successfully.",
@@ -967,6 +972,10 @@ export function EnhancedInvestmentReportModal({
                   <Button variant="outline" size="sm" onClick={downloadPDF}>
                     <Download className="h-4 w-4 mr-2" />Download PDF
                   </Button>
+                  <FlattenPdfIconButton
+                    getPdfBlob={async () => buildPdfDoc().output('blob')}
+                    filename={pdfFilename}
+                  />
                   {reportId && (
                     <Button variant="outline" size="sm" onClick={viewInGeneratedReports}>
                       <Eye className="h-4 w-4 mr-2" />View Report

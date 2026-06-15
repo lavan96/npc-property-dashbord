@@ -1248,15 +1248,23 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 }
 
 // ─── Data fetching & orchestration ───────────────────────────────────────────
-export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[], overrides?: BorrowingCapacityPDFOverrides) {
-  toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
+export async function fetchAndGenerateBorrowingCapacityPDF(
+  clientId: string,
+  clientName: string,
+  scenarioPresets?: any[],
+  overrides?: BorrowingCapacityPDFOverrides,
+  options?: { returnBlob?: boolean },
+): Promise<{ blob: Blob; fileName: string } | undefined> {
+  const returnBlob = !!options?.returnBlob;
+  if (!returnBlob) toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
 
   try {
-    const { latestAssessment, assessmentHistory, incomeSources, liabilities, expenses, properties, client } = 
+    const { latestAssessment, assessmentHistory, incomeSources, liabilities, expenses, properties, client } =
       await fetchLatestBorrowingCapacity(clientId);
 
     if (!latestAssessment && !overrides?.assessment) {
-      toast.error('No borrowing capacity assessment found. Please calculate capacity first.', { id: 'bc-pdf' });
+      if (!returnBlob) toast.error('No borrowing capacity assessment found. Please calculate capacity first.', { id: 'bc-pdf' });
+      else throw new Error('No borrowing capacity assessment found');
       return;
     }
 
@@ -1280,7 +1288,7 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
             lmiAmount: latestAssessment.lmi_amount,
             lmiMode: latestAssessment.lmi_mode,
           },
-          saveResult: false, // Don't save — just generate audit/explanation
+          saveResult: false,
         });
         if (!calcError && calcData?.success && calcData.data) {
           enrichedAssessment = {
@@ -1294,7 +1302,7 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       }
     }
 
-    await generateBorrowingCapacityPDF({
+    const result = await generateBorrowingCapacityPDF({
       clientId,
       clientName,
       assessment: enrichedAssessment,
@@ -1304,11 +1312,14 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       properties: overrides?.properties ?? properties,
       client: overrides?.client ?? client,
       scenarioPresets,
+      returnBlob,
     });
 
-    toast.success('PDF downloaded successfully!', { id: 'bc-pdf' });
+    if (!returnBlob) toast.success('PDF downloaded successfully!', { id: 'bc-pdf' });
+    return result;
   } catch (err: any) {
     console.error('Borrowing Capacity PDF generation failed:', err);
-    toast.error(`PDF generation failed: ${err.message}`, { id: 'bc-pdf' });
+    if (!returnBlob) toast.error(`PDF generation failed: ${err.message}`, { id: 'bc-pdf' });
+    if (returnBlob) throw err;
   }
 }

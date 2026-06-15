@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { CheckCircle, XCircle, Clock, FileText, Download, Loader2, RefreshCw } from 'lucide-react';
@@ -183,19 +184,29 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
                   </div>
 
                   {report.status === 'completed' && report.report_data && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 ml-2 shrink-0"
-                      onClick={() => handleRedownload(report)}
-                      disabled={downloadingId === report.id}
-                    >
-                      {downloadingId === report.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-1 ml-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleRedownload(report)}
+                        disabled={downloadingId === report.id}
+                      >
+                        {downloadingId === report.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <FlattenPdfIconButton
+                        getPdfBlob={async () => await generateMarketIntelligencePDF(report.report_data as MarketIntelligenceReportData)}
+                        filename={`Market_Intelligence_Report_${(report.report_period || 'Report').replace(/\s+/g, '_')}.pdf`}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={downloadingId === report.id}
+                      />
+                    </div>
                   )}
                 </div>
               ))}

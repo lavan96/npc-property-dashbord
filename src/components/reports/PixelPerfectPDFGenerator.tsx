@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -3585,14 +3586,21 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
   }));
 
   return (
-    <Button
-      onClick={generatePixelPerfectPDF}
-      disabled={isGenerating}
-      className="gap-2"
-    >
-      <Download className="h-4 w-4" />
-      {isGenerating ? 'Generating PDF...' : 'Download Client PDF'}
-    </Button>
+    <div className="inline-flex items-center gap-1">
+      <Button
+        onClick={generatePixelPerfectPDF}
+        disabled={isGenerating}
+        className="gap-2"
+      >
+        <Download className="h-4 w-4" />
+        {isGenerating ? 'Generating PDF...' : 'Download Client PDF'}
+      </Button>
+      <FlattenPdfIconButton
+        getPdfBlob={async () => (await generateCore()).blob}
+        filename={`${(report as any)?.address || 'investment-report'}.pdf`}
+        disabled={isGenerating}
+      />
+    </div>
   );
 });
 

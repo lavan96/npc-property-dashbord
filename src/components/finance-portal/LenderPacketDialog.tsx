@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import JSZip from 'jszip';
 import jsPDF from 'jspdf';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileLock2 } from 'lucide-react';
+import { flattenPdfBlob } from '@/lib/pdf/flattenPdf';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -168,31 +170,40 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
     return doc.output('arraybuffer') as unknown as Uint8Array;
   };
 
-  const build = async () => {
+  const build = async (flatten: boolean = false) => {
     if (!manifest) return;
     const included = manifest.files.filter(f => selected.has(f.sequence));
     if (!included.length) { toast.error('Select at least one document'); return; }
     setBuilding(true);
     try {
       const zip = new JSZip();
+      if (flatten) toast.loading('Flattening each PDF…', { id: 'lender-flatten' });
       // Fetch all files in parallel
       const blobs = await Promise.all(included.map(async (f) => {
         const res = await fetch(f.signed_url);
         if (!res.ok) throw new Error(`Failed to fetch ${f.original_filename}`);
-        return { f, blob: await res.blob() };
+        let blob = await res.blob();
+        if (flatten && (f.mime_type === 'application/pdf' || /\.pdf$/i.test(f.original_filename))) {
+          blob = await flattenPdfBlob(blob);
+        }
+        return { f, blob };
       }));
       for (const { f, blob } of blobs) {
         zip.file(f.packet_filename, blob);
       }
-      // Cover sheet
-      const cover = buildCoverSheet(manifest, included);
+      // Cover sheet — flatten too if requested
+      const coverBytes = buildCoverSheet(manifest, included);
+      let cover: Blob = new Blob([(coverBytes as Uint8Array).slice().buffer], { type: 'application/pdf' });
+      if (flatten) {
+        cover = await flattenPdfBlob(cover);
+      }
       zip.file('00 - Cover Sheet.pdf', cover);
 
       const out = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(out);
       const a = document.createElement('a');
       const safeTitle = (manifest.meta.file?.title || 'Lender Packet').replace(/[^a-zA-Z0-9._ -]/g, '_');
-      const filename = `${safeTitle} - Lender Packet.zip`;
+      const filename = `${safeTitle}${flatten ? ' - Flattened' : ''} - Lender Packet.zip`;
       a.href = url;
       a.download = filename;
       a.click();
@@ -214,9 +225,11 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
         });
       } catch (e) { console.warn('packet history failed', e); }
 
-      toast.success(`Packet built: ${included.length + 1} files`);
+      if (flatten) toast.dismiss('lender-flatten');
+      toast.success(`${flatten ? 'Flattened packet' : 'Packet'} built: ${included.length + 1} files`);
       onOpenChange(false);
     } catch (e: any) {
+      if (flatten) toast.dismiss('lender-flatten');
       toast.error(e.message || 'Build failed');
     } finally {
       setBuilding(false);
@@ -332,7 +345,11 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
 
         <DialogFooter className="flex-shrink-0">
           <Button variant="ghost" onClick={() => close(false)}>Cancel</Button>
-          <Button onClick={build} disabled={!manifest || building || selected.size === 0} className="gap-1.5">
+          <Button variant="outline" onClick={() => { void build(true); }} disabled={!manifest || building || selected.size === 0} className="gap-1.5" title="Each PDF inside the ZIP will be rasterised — no selectable text">
+            {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileLock2 className="h-4 w-4" />}
+            Build Flattened ZIP
+          </Button>
+          <Button onClick={() => { void build(false); }} disabled={!manifest || building || selected.size === 0} className="gap-1.5">
             {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Build ZIP ({selected.size} + cover)
           </Button>

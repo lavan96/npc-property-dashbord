@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
@@ -280,7 +281,7 @@ export default function ReportViewer() {
     });
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !reportRef.current) return;
 
     logActivityDirect({
@@ -1221,6 +1222,9 @@ export default function ReportViewer() {
 
       // ── Save ──
       const fileName = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
       pdf.save(fileName);
 
       toast({
@@ -1363,14 +1367,25 @@ export default function ReportViewer() {
             )}
           </div>
         </div>
-        <Button 
-          onClick={handleDownloadPDF}
-          disabled={downloading}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          {downloading ? 'Generating...' : 'Download PDF'}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={() => { void handleDownloadPDF(); }}
+            disabled={downloading}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? 'Generating...' : 'Download PDF'}
+          </Button>
+          <FlattenPdfIconButton
+            getPdfBlob={async () => {
+              const blob = await handleDownloadPDF({ returnBlob: true });
+              if (!(blob instanceof Blob)) throw new Error('Failed to generate PDF');
+              return blob;
+            }}
+            filename={report ? `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf` : 'report.pdf'}
+            disabled={downloading}
+          />
+        </div>
       </div>
 
       {/* Report Content */}

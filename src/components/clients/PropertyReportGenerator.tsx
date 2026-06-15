@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { FileText, Loader2, Download, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -248,51 +249,54 @@ Provide a comprehensive property investment analysis. Return valid JSON:
     }
   };
 
-  const downloadPDF = async () => {
-    if (!reportData) return;
-    
-    setIsDownloading(true);
-    
-    try {
-      const container = document.getElementById('property-report-content');
-      if (!container) throw new Error('Content not found');
+  const buildPdf = async () => {
+    const container = document.getElementById('property-report-content');
+    if (!container) throw new Error('Content not found');
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
 
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
 
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = 297;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
+    const imgWidth = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageHeight = 297;
 
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
+    }
+    return pdf;
+  };
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+  const pdfFilename = () => {
+    const shortAddress = property.address.split(',')[0].replace(/\s+/g, '_');
+    return `Property_Report_${shortAddress}_${new Date().toISOString().split('T')[0]}.pdf`;
+  };
 
-      const shortAddress = property.address.split(',')[0].replace(/\s+/g, '_');
-      const fileName = `Property_Report_${shortAddress}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
-      
+  const downloadPDF = async () => {
+    if (!reportData) return;
+    setIsDownloading(true);
+    try {
+      const pdf = await buildPdf();
+      pdf.save(pdfFilename());
       toast.success('PDF downloaded successfully');
       onComplete?.();
-      
     } catch (error: any) {
       console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF');
@@ -324,18 +328,25 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                 <MapPin className="h-5 w-5" />
                 Property Investment Report
               </span>
-              <Button 
-                onClick={downloadPDF} 
-                disabled={isDownloading}
-                size="sm"
-              >
-                {isDownloading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Download PDF
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={downloadPDF}
+                  disabled={isDownloading}
+                  size="sm"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download PDF
+                </Button>
+                <FlattenPdfIconButton
+                  getPdfBlob={async () => (await buildPdf()).output('blob')}
+                  filename={pdfFilename()}
+                  disabled={isDownloading || !reportData}
+                />
+              </div>
             </DialogTitle>
             <DialogDescription>
               Investment analysis for {property.address}

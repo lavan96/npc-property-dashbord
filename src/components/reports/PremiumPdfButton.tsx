@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { tryRouteThroughTemplateBuilder } from "@/lib/reportTemplate/compassRoute";
+import { FlattenPdfIconButton } from "@/components/common/FlattenPdfIconButton";
+import { fetchPdfBlob } from "@/lib/pdf/downloadPdf";
 import type { PdfDesignOptions } from "./premiumPdfDesign";
 
 interface PremiumPdfButtonProps {
@@ -95,20 +97,42 @@ export function PremiumPdfButton({
     }
   };
 
+  const renderForFlatten = useCallback(async (): Promise<{ blob: Blob; fileName: string }> => {
+    const routed = await tryRouteThroughTemplateBuilder(reportId);
+    const result = routed
+      ? { data: { fileUrl: routed.fileUrl, fileName: routed.fileName }, error: null as any }
+      : await invokeSecureFunction<{ fileUrl: string; fileName: string }>(
+          "render-investment-report-pdf",
+          { reportId, includeCharts, includeHeroImages, includeSparklines, designOptions },
+          { timeoutMs: 240_000 },
+        );
+    const { data, error } = result;
+    if (error || !data?.fileUrl) throw new Error(error?.message || "PDF generation failed");
+    const blob = await fetchPdfBlob(data.fileUrl);
+    return { blob, fileName: data.fileName || `investment-report-${reportId}.pdf` };
+  }, [reportId, includeCharts, includeHeroImages, includeSparklines, designOptions]);
+
   return (
-    <Button
-      variant="default"
-      size="sm"
-      onClick={handleClick}
-      disabled={loading}
-      className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60"
-    >
-      {loading ? (
-        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-      ) : (
-        <Sparkles className="h-4 w-4 mr-1" />
-      )}
-      {loading ? "Rendering…" : "Premium PDF"}
-    </Button>
+    <div className="inline-flex items-center gap-1">
+      <Button
+        variant="default"
+        size="sm"
+        onClick={handleClick}
+        disabled={loading}
+        className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60"
+      >
+        {loading ? (
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4 mr-1" />
+        )}
+        {loading ? "Rendering…" : "Premium PDF"}
+      </Button>
+      <FlattenPdfIconButton
+        getPdfBlob={async () => (await renderForFlatten()).blob}
+        filename={`investment-report-${reportId}.pdf`}
+        disabled={loading}
+      />
+    </div>
   );
 }
