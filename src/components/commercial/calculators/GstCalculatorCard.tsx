@@ -40,7 +40,7 @@ export function GstCalculatorCard() {
     <Card>
       <CardHeader>
         <CardTitle>GST Treatment</CardTitle>
-        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={assessment.gstVerificationStatus === "Verified" ? "default" : "destructive"}>{assessment.gstVerificationStatus}</Badge><Button size="sm" variant="outline">Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: num(price), gst_treatment: treatment })} /></div>
+        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={assessment.gstVerificationStatus === "Verified" ? "default" : "destructive"}>{assessment.gstVerificationStatus}</Badge><Button size="sm" variant="outline" disabled title="Contract extraction is not configured for this workspace yet; review GST assumptions manually or save linked property values.">Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: num(price), gst_treatment: treatment })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
