@@ -26,6 +26,8 @@ interface Snapshot {
   zoning?: string | null;
   // Current entered values – AI should respect these unless clearly wrong
   current?: Record<string, number | string | null | undefined>;
+  currentNoiInputs?: Record<string, any>;
+  missingFields?: string[];
 }
 
 const SYSTEM_PROMPT = `You are an Australian commercial / industrial property valuer specialising in Net Operating Income (NOI) inputs for lender-grade feasibilities.
@@ -45,7 +47,77 @@ Hard rules:
 - outgoings line items must sum to a realistic % of marketRentPa (typically 12–25% for commercial, 5–12% for industrial).
 - incentiveAdjustment and tenantRiskHaircut are positive AUD amounts representing deductions to stabilise NOI.
 - Never invent tenant names, lease terms, or evidence not present in the snapshot.
-- If the snapshot lacks critical data, still return your best evidence-based estimate and flag low confidence in 'confidence'.`;
+- If the snapshot lacks critical data, still return your best evidence-based estimate and flag low confidence in 'confidence'.
+Return structured field estimates for review; do not recommend overwriting verified, property-source, or client-profile-source values unless explicitly requested in the snapshot.`;
+
+
+function buildStructuredNoiEstimate(snap: Snapshot, estimate: any) {
+  const current = snap.currentNoiInputs ?? snap.current ?? {};
+  const statuses = current.statuses ?? {};
+  const protectedStatuses = ['Verified', 'Client Profile Source', 'Property Record Source'];
+  const confidenceMap: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
+  const confidence = confidenceMap[String(estimate.confidence || 'medium').toLowerCase()] || 'Medium';
+  const currentValue = (field: string) => {
+    if (field in current) return current[field];
+    if (current.outgoings && field in current.outgoings) return current.outgoings[field];
+    return null;
+  };
+  const isMissing = (value: unknown) => value == null || value === '' || value === 'unknown' || Number(value) === 0;
+  const mk = (field: string, estimatedValue: unknown, unit = 'AUD pa') => {
+    if (estimatedValue == null || estimatedValue === 'unknown') return null;
+    const sourceStatusBefore = statuses[field] ?? (isMissing(currentValue(field)) ? 'Unknown' : 'Manual Estimate');
+    return {
+      field,
+      currentValue: currentValue(field),
+      estimatedValue,
+      unit,
+      confidence,
+      sourceStatusBefore,
+      sourceStatusAfter: 'AI Estimate',
+      reasoningSummary: estimate.reasoning || `Estimated from selected property context for ${snap.address || snap.propertyId || 'the selected property'}.`,
+      requiresSpecialistReview: confidence === 'Low',
+      requiredDocument: confidence === 'Low' ? 'Current lease, rent roll and outgoings statement' : '',
+      shouldOverwrite: !protectedStatuses.includes(sourceStatusBefore) && isMissing(currentValue(field)),
+    };
+  };
+  const fields = [
+    mk('marketRent', estimate.marketRentPa),
+    mk('grossRent', estimate.grossPassingRentPa ?? estimate.marketRentPa),
+    mk('other', estimate.otherIncomePa),
+    mk('recovered', estimate.recoveredOutgoingsPa),
+    mk('vacancy', estimate.vacancyAllowancePct, '%'),
+    mk('incentiveAdjustment', estimate.incentiveAdjustment),
+    mk('tenantRiskHaircut', estimate.tenantRiskHaircut),
+    mk('leaseType', estimate.leaseTypeAssumed, ''),
+    ...Object.entries(estimate.outgoings ?? {}).map(([field, value]) => mk(field, value)),
+  ].filter(Boolean);
+  const warnings = [];
+  if (!snap.address || !snap.assetSubtype || !(snap.glaSqm || snap.nlaSqm || snap.gfaSqm) || !snap.siteAreaSqm) warnings.push('AI estimate accuracy is limited because key property details are missing.');
+  if (!current.leaseType || current.leaseType === 'unknown') warnings.push('No verified lease data available; lease type requires specialist review.');
+  if (confidence === 'Low') warnings.push('AI estimate confidence is low; specialist review required.');
+  const requiredDocuments = confidence === 'Low' ? ['Current lease', 'Rent roll', 'Outgoings statement'] : [];
+  return {
+    propertyId: snap.propertyId ?? '',
+    dealId: (snap as any).dealId ?? snap.propertyId ?? '',
+    estimateType: 'NOI',
+    summary: estimate.reasoning || 'Property-aware NOI estimate generated for review.',
+    estimatedFields: fields,
+    calculatedOutputs: {
+      potentialGrossIncome: null,
+      vacancyLoss: null,
+      recoveredOutgoings: estimate.recoveredOutgoingsPa ?? null,
+      effectiveGrossIncome: null,
+      totalOutgoings: Object.values(estimate.outgoings ?? {}).reduce((a: number, b: any) => a + (Number(b) || 0), 0),
+      ownerBorneOutgoings: null,
+      actualNOI: null,
+      stabilisedNOI: null,
+      lenderAdjustedNOI: null,
+    },
+    warnings,
+    requiredDocuments,
+    recommendedNextAction: 'Review proposed fields, accept selected estimates only, and verify protected assumptions against source documents.',
+  };
+}
 
 Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get('origin') || '');
@@ -146,7 +218,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Failed to parse AI estimate' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ success: true, estimate }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, estimate: buildStructuredNoiEstimate(snap, estimate), rawEstimate: estimate }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('[estimate-commercial-noi] fatal', err);
     return new Response(JSON.stringify({ success: false, error: err?.message || 'Unknown error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
