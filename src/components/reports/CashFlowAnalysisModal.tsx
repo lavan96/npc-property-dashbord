@@ -4020,6 +4020,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <FileText className="h-4 w-4 mr-2" />
                         Generate PDF
                       </Button>
+                      <FlattenPdfIconButton
+                        inline
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        label="Generate Flattened PDF"
+                        getPdfBlob={async () => {
+                          const b = await exportSingleReportPDF({ returnBlob: true });
+                          if (!b) throw new Error('Failed to generate cash flow PDF');
+                          return b;
+                        }}
+                        filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+                      />
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
