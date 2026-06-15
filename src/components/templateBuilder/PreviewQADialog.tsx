@@ -109,9 +109,17 @@ export function PreviewQADialog({ open, onOpenChange, template, sampleData, cust
             <div className="px-3 py-2 border-b text-xs font-medium flex items-center justify-between">
               <span>PDF preview {pdfSize ? `(${(pdfSize / 1024).toFixed(0)} KB)` : ''}</span>
               {pdfUrl && (
-                <a href={pdfUrl} download="template-preview.pdf" className="inline-flex items-center text-xs hover:underline">
-                  <Download className="h-3.5 w-3.5 mr-1" /> Download
-                </a>
+                <div className="flex items-center gap-1">
+                  <a href={pdfUrl} download="template-preview.pdf" className="inline-flex items-center text-xs hover:underline">
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download
+                  </a>
+                  <FlattenPdfIconButton
+                    getPdfBlob={() => fetchPdfBlob(pdfUrl)}
+                    filename="template-preview.pdf"
+                    variant="ghost"
+                    size="sm"
+                  />
+                </div>
               )}
             </div>
             {pdfUrl ? (
