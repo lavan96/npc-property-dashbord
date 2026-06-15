@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import JSZip from 'jszip';
 import jsPDF from 'jspdf';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileLock2 } from 'lucide-react';
+import { flattenPdfBlob } from '@/lib/pdf/flattenPdf';
 import { cn } from '@/lib/utils';
 
 interface Props {
