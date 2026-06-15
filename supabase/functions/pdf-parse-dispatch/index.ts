@@ -70,15 +70,40 @@ async function appendAttempt(
   await updateJob(admin, jobId, { attempts: [...attempts, enriched] });
 }
 
+const DIAGNOSTICS_ALLOWED_MIME = [
+  'application/json',
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'text/markdown',
+  'text/plain',
+  'text/html',
+  'application/octet-stream',
+];
+
 async function ensureDiagnosticsBucket(admin: Admin) {
   const { data } = await admin.storage.getBucket(DIAGNOSTICS_BUCKET);
-  if (data) return;
-  const { error } = await admin.storage.createBucket(DIAGNOSTICS_BUCKET, {
-    public: false,
-    fileSizeLimit: 52428800,
-    allowedMimeTypes: ['application/json', 'application/pdf', 'image/png', 'image/jpeg'],
-  });
-  if (error) console.error('[pdf-parse-dispatch] ensureDiagnosticsBucket failed', error);
+  if (!data) {
+    const { error } = await admin.storage.createBucket(DIAGNOSTICS_BUCKET, {
+      public: false,
+      fileSizeLimit: 52428800,
+      allowedMimeTypes: DIAGNOSTICS_ALLOWED_MIME,
+    });
+    if (error) console.error('[pdf-parse-dispatch] ensureDiagnosticsBucket create failed', error);
+    return;
+  }
+  // Bucket already exists — ensure the markdown/text mime types are whitelisted so
+  // Docling's `document.md` / `doctags.md` artifacts can be uploaded.
+  const current = (data as any).allowed_mime_types as string[] | null | undefined;
+  const missing = DIAGNOSTICS_ALLOWED_MIME.some((m) => !current?.includes(m));
+  if (missing) {
+    const { error } = await admin.storage.updateBucket(DIAGNOSTICS_BUCKET, {
+      public: false,
+      fileSizeLimit: 52428800,
+      allowedMimeTypes: DIAGNOSTICS_ALLOWED_MIME,
+    });
+    if (error) console.error('[pdf-parse-dispatch] ensureDiagnosticsBucket update failed', error);
+  }
 }
 
 async function ensureSourceBucket(admin: Admin) {
