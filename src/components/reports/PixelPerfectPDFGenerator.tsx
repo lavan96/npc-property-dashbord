@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
