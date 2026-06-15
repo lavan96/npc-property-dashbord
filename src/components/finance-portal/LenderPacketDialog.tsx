@@ -345,7 +345,11 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
 
         <DialogFooter className="flex-shrink-0">
           <Button variant="ghost" onClick={() => close(false)}>Cancel</Button>
-          <Button onClick={build} disabled={!manifest || building || selected.size === 0} className="gap-1.5">
+          <Button variant="outline" onClick={() => { void build(true); }} disabled={!manifest || building || selected.size === 0} className="gap-1.5" title="Each PDF inside the ZIP will be rasterised — no selectable text">
+            {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileLock2 className="h-4 w-4" />}
+            Build Flattened ZIP
+          </Button>
+          <Button onClick={() => { void build(false); }} disabled={!manifest || building || selected.size === 0} className="gap-1.5">
             {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Build ZIP ({selected.size} + cover)
           </Button>
