@@ -440,10 +440,11 @@ export function PortfolioAnalysisPDFGenerator({
   };
 
   // ============= PDF GENERATION ENGINE (Phase 1) =============
-  const downloadPDF = async () => {
+  const downloadPDF = async (opts?: { flattenOnly?: boolean }) => {
     if (!analysisData) return;
-    
+    const flattenOnly = opts?.flattenOnly === true;
     setIsDownloading(true);
+    
     
     try {
       console.log('📄 Starting Portfolio Analysis PDF generation with pdf-lib...');
@@ -3047,101 +3048,110 @@ export function PortfolioAnalysisPDFGenerator({
       const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
       const storagePath = `portfolio-reports/${clientId}/${fileName}`;
       
-      // Upload PDF to Supabase Storage via secure function
-      console.log('📤 Uploading PDF to storage...');
+      // Upload PDF to Supabase Storage via secure function (skip when flatten-only)
       let uploadedFilePath: string | null = null;
-      try {
-        const uploadResult = await secureStorageUpload(
-          'client-files',
-          storagePath,
-          blob,
-          { contentType: 'application/pdf', upsert: true }
-        );
-        
-        if (!uploadResult.success) {
-          console.error('Storage upload error:', uploadResult.error);
-          toast.error('Failed to upload PDF to storage, but will still download locally');
-        } else {
-          uploadedFilePath = uploadResult.path || storagePath;
-          console.log('✓ PDF uploaded to storage:', uploadedFilePath);
+      if (!flattenOnly) {
+        console.log('📤 Uploading PDF to storage...');
+        try {
+          const uploadResult = await secureStorageUpload(
+            'client-files',
+            storagePath,
+            blob,
+            { contentType: 'application/pdf', upsert: true }
+          );
+          
+          if (!uploadResult.success) {
+            console.error('Storage upload error:', uploadResult.error);
+            toast.error('Failed to upload PDF to storage, but will still download locally');
+          } else {
+            uploadedFilePath = uploadResult.path || storagePath;
+            console.log('✓ PDF uploaded to storage:', uploadedFilePath);
+          }
+        } catch (storageError) {
+          console.error('Storage upload exception:', storageError);
         }
-      } catch (storageError) {
-        console.error('Storage upload exception:', storageError);
       }
       
-      // Download the PDF locally as well
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Download the PDF locally (flattened if requested)
+      if (flattenOnly) {
+        const { flattenAndDownloadPdf } = await import('@/lib/pdf/downloadPdf');
+        await flattenAndDownloadPdf(blob, fileName);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       
-      // Save report metadata to database via secure function
-      console.log('📊 Saving report metadata to database...');
+      // Save report metadata to database via secure function (skip when flatten-only)
       let reportPersisted = false;
-      try {
-        const { error: insertError } = await invokeSecureFunction('manage-client-data', {
-          operation: 'create',
-          table: 'portfolio_analysis_reports',
-          clientId: clientId,
-          data: {
-            client_id: clientId,
-            client_name: analysisData.clientName,
-            health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
-            overall_health: analysisData.analysis?.executiveSummary?.overallHealth || null,
-            portfolio_value: analysisData.portfolioMetrics?.totalValue || null,
-            total_equity: analysisData.portfolioMetrics?.totalEquity || null,
-            net_monthly_cashflow: analysisData.portfolioMetrics?.netMonthlyCashflow || null,
-            total_properties: analysisData.portfolioMetrics?.totalProperties || null,
-            average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
-            average_yield: analysisData.portfolioMetrics?.averageYield || null,
-            report_data: analysisData as any,
-            pdf_file_path: uploadedFilePath,
-            status: 'completed',
-          }
-        });
+      if (!flattenOnly) {
+        console.log('📊 Saving report metadata to database...');
+        try {
+          const { error: insertError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'portfolio_analysis_reports',
+            clientId: clientId,
+            data: {
+              client_id: clientId,
+              client_name: analysisData.clientName,
+              health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
+              overall_health: analysisData.analysis?.executiveSummary?.overallHealth || null,
+              portfolio_value: analysisData.portfolioMetrics?.totalValue || null,
+              total_equity: analysisData.portfolioMetrics?.totalEquity || null,
+              net_monthly_cashflow: analysisData.portfolioMetrics?.netMonthlyCashflow || null,
+              total_properties: analysisData.portfolioMetrics?.totalProperties || null,
+              average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
+              average_yield: analysisData.portfolioMetrics?.averageYield || null,
+              report_data: analysisData as any,
+              pdf_file_path: uploadedFilePath,
+              status: 'completed',
+            }
+          });
 
-        if (insertError) {
-          console.error('Failed to save portfolio_analysis_reports metadata:', insertError);
-          toast.error('PDF downloaded, but failed to save report history.');
-        } else {
-          reportPersisted = true;
-          console.log('✓ Report saved to portfolio_analysis_reports with PDF path:', uploadedFilePath);
+          if (insertError) {
+            console.error('Failed to save portfolio_analysis_reports metadata:', insertError);
+            toast.error('PDF downloaded, but failed to save report history.');
+          } else {
+            reportPersisted = true;
+            console.log('✓ Report saved to portfolio_analysis_reports with PDF path:', uploadedFilePath);
 
-          if (uploadedFilePath) {
-            const { error: fileIndexError } = await invokeSecureFunction('manage-client-data', {
-              operation: 'create',
-              table: 'client_files',
-              clientId,
-              data: {
-                category: 'report',
-                file_name: fileName,
-                file_path: uploadedFilePath,
-                file_type: 'application/pdf',
-                file_size: blob.size,
-                description: `Portfolio Performance Analysis - ${new Date().toLocaleDateString('en-AU')}`,
-                report_type: 'portfolio',
-              },
-            });
+            if (uploadedFilePath) {
+              const { error: fileIndexError } = await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_files',
+                clientId,
+                data: {
+                  category: 'report',
+                  file_name: fileName,
+                  file_path: uploadedFilePath,
+                  file_type: 'application/pdf',
+                  file_size: blob.size,
+                  description: `Portfolio Performance Analysis - ${new Date().toLocaleDateString('en-AU')}`,
+                  report_type: 'portfolio',
+                },
+              });
 
-            if (fileIndexError) {
-              console.error('Failed to index report in client_files:', fileIndexError);
-              toast.error('Report saved, but file indexing failed.');
-            } else {
-              console.log('✓ Report indexed in client_files');
+              if (fileIndexError) {
+                console.error('Failed to index report in client_files:', fileIndexError);
+                toast.error('Report saved, but file indexing failed.');
+              } else {
+                console.log('✓ Report indexed in client_files');
+              }
             }
           }
+        } catch (dbError) {
+          console.error('Database save error:', dbError);
+          toast.error('PDF downloaded, but report save failed.');
         }
-      } catch (dbError) {
-        console.error('Database save error:', dbError);
-        toast.error('PDF downloaded, but report save failed.');
       }
 
       console.log('✅ PDF generation complete!');
-      toast.success(reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally');
+      toast.success(flattenOnly ? 'Flattened PDF downloaded' : (reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally'));
       logActivityDirect({
         actionType: 'portfolio_report_generated',
         entityType: 'portfolio_report',
@@ -3195,18 +3205,30 @@ export function PortfolioAnalysisPDFGenerator({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Portfolio Performance Analysis</span>
-              <Button 
-                onClick={downloadPDF} 
-                disabled={isDownloading}
-                size="sm"
-              >
-                {isDownloading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => downloadPDF()} 
+                  disabled={isDownloading}
+                  size="sm"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download & Save PDF
+                </Button>
+                <Button
+                  onClick={() => downloadPDF({ flattenOnly: true })}
+                  disabled={isDownloading}
+                  variant="outline"
+                  size="sm"
+                  title="Download a flattened (image-only) copy without saving to Reports"
+                >
                   <Download className="h-4 w-4 mr-2" />
-                )}
-                Download & Save PDF
-              </Button>
+                  Flattened PDF
+                </Button>
+              </div>
             </DialogTitle>
             <DialogDescription>
               Comprehensive analysis of {clientName}'s investment property portfolio

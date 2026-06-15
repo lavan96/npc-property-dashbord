@@ -29,6 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { 
   get10YearLoanProjection, 
   type MortgageInput, 
@@ -1634,7 +1635,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [primaryMetrics, allComparisonMetrics, report, comparisonReports, investorProfile, projections]);
 
   // PDF Export function for comparison (supports multiple properties)
-  const exportComparisonPDF = useCallback(async () => {
+  const exportComparisonPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || comparisonReports.length === 0) return;
 
     try {
@@ -1897,6 +1898,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
       pdf.text('This comparison is for informational purposes only.', margin, yPos);
 
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
+
       pdf.save(`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`);
 
       logActivityDirect({
@@ -1921,7 +1926,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, aiAnalysis, toast]);
 
   // Export AI Analysis Only as PDF
-  const exportAiAnalysisPDF = useCallback(async () => {
+  const exportAiAnalysisPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !aiAnalysis) return;
 
     try {
@@ -2103,6 +2108,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos = margin;
       }
       pdf.text('This AI-powered analysis is for informational purposes only and should not be considered financial advice.', margin, yPos);
+
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
 
       pdf.save(`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`);
 
@@ -4011,6 +4020,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <FileText className="h-4 w-4 mr-2" />
                         Generate PDF
                       </Button>
+                      <FlattenPdfIconButton
+                        inline
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        label="Generate Flattened PDF"
+                        getPdfBlob={async () => {
+                          const b = await exportSingleReportPDF({ returnBlob: true });
+                          if (!b) throw new Error('Failed to generate cash flow PDF');
+                          return b;
+                        }}
+                        filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+                      />
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -4902,15 +4924,25 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold">Investment Metrics Comparison ({comparisonReports.length + 1} Properties)</h4>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportComparisonPDF}
-                        className="gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Export PDF
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportComparisonPDF()}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Export PDF
+                        </Button>
+                        <FlattenPdfIconButton
+                          getPdfBlob={async () => {
+                            const b = await exportComparisonPDF({ returnBlob: true });
+                            if (!b) throw new Error('Failed to generate comparison PDF');
+                            return b;
+                          }}
+                          filename={`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`}
+                        />
+                      </div>
                     </div>
                     
                     {/* Metrics Table */}
@@ -5153,12 +5185,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={exportAiAnalysisPDF}
+                            onClick={() => exportAiAnalysisPDF()}
                             className="gap-1"
                           >
                             <Download className="h-3 w-3" />
                             Export PDF
                           </Button>
+                          <FlattenPdfIconButton
+                            getPdfBlob={async () => {
+                              const b = await exportAiAnalysisPDF({ returnBlob: true });
+                              if (!b) throw new Error('Failed to generate AI analysis PDF');
+                              return b;
+                            }}
+                            filename={`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`}
+                          />
                         </>
                       )}
                       <Button
