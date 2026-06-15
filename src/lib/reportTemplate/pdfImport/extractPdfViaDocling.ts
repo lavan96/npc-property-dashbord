@@ -14,7 +14,7 @@
  *      `ReportTemplate` via `applyTemplateImportPlan`, and finalize through
  *      `template-import-pdf` so downstream UI sees a normal template.
  */
-import type { ImportOptions, ImportResult } from './types';
+import type { ImportOptions, ImportProgress, ImportResult } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { reportTemplateToCdir } from '@/lib/reportTemplate/ingestion/cdir';
