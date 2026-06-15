@@ -185,8 +185,6 @@ export function CommercialIndustrialOverviewCard() {
   );
 
   return <div className="space-y-4">
-    {ReportActions}
-
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -211,6 +209,8 @@ export function CommercialIndustrialOverviewCard() {
         <Row label="Key next action" value={borrowing?.requiredNextAction} />
       </CardContent>
     </Card>
+
+    {ReportActions}
 
     <div className="grid lg:grid-cols-2 gap-4">
       <Section title="Transaction Snapshot"><Row label="State / territory" value={profile.dealProfile.state} /><Row label="Lease status" value={title(profile.dealProfile.leaseStatus)} /><Row label="Data source mode" value="Global Sync On" /></Section>
