@@ -1221,6 +1221,9 @@ export default function ReportViewer() {
 
       // ── Save ──
       const fileName = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
       pdf.save(fileName);
 
       toast({
