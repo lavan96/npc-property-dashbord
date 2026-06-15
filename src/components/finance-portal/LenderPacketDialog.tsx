@@ -192,9 +192,10 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
         zip.file(f.packet_filename, blob);
       }
       // Cover sheet — flatten too if requested
-      let cover: Blob | Uint8Array = buildCoverSheet(manifest, included);
+      const coverBytes = buildCoverSheet(manifest, included);
+      let cover: Blob = new Blob([(coverBytes as Uint8Array).slice().buffer], { type: 'application/pdf' });
       if (flatten) {
-        cover = await flattenPdfBlob(new Blob([cover], { type: 'application/pdf' }));
+        cover = await flattenPdfBlob(cover);
       }
       zip.file('00 - Cover Sheet.pdf', cover);
 
