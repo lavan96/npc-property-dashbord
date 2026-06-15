@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { supabase } from '@/integrations/supabase/client';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
@@ -137,6 +138,21 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
   });
 
   const notes = data?.pages.flatMap((page) => page.notes) || [];
+
+  // Two-way realtime sync with the Client Tracker quick-notes card (and any other open tab).
+  useEffect(() => {
+    const channel = supabase
+      .channel(`client-notes-${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_notes', filter: `client_id=eq.${clientId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [clientId, queryClient]);
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {

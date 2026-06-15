@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -130,13 +130,29 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['active-client-notes', client.id],
+    queryKey: ['client-notes', client.id],
     queryFn: ({ pageParam = 0 }) => fetchNotesSecure(client.id, pageParam),
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
   });
 
   const notes = data?.pages.flatMap((page) => page.notes) || [];
+
+  // Two-way realtime sync with ClientNotes (and any other open tab): any insert/update/delete
+  // on this client's notes refetches the shared ['client-notes', clientId] cache.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`client-notes-${client.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_notes', filter: `client_id=eq.${client.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['client-notes', client.id] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [client.id, queryClient]);
 
   // Toggle note expansion
   const toggleNoteExpansion = (noteId: string) => {
@@ -234,7 +250,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
       return fallbackResult.data.result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
+      queryClient.invalidateQueries({ queryKey: ['client-notes', client.id] });
       setNewNoteContent('');
       setNewNoteType('general');
       setIsAddingNote(false);
@@ -270,7 +286,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
       throw new Error(fnError?.message || 'Failed to update note');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
+      queryClient.invalidateQueries({ queryKey: ['client-notes', client.id] });
       setEditingNoteId(null);
       setEditNoteContent('');
       toast.success('Note updated');
@@ -301,7 +317,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
       throw new Error(fnError?.message || 'Failed to delete note');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
+      queryClient.invalidateQueries({ queryKey: ['client-notes', client.id] });
       toast.success('Note deleted');
     },
     onError: (error: any) => {
@@ -389,7 +405,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <FollowUpFlag
               clientId={client.id}
               followUpDate={client.follow_up_date}
-              invalidateKeys={[['active-client-notes', client.id]]}
+              invalidateKeys={[['client-notes', client.id]]}
             />
             <div className="min-w-0 flex-1">
               <CardTitle className="text-lg truncate">
