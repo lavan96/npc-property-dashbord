@@ -19,6 +19,20 @@ Phase D additions
 * DocTags + Markdown serialisations returned alongside the JSON doc.
 * Document outline (TOC), cross-references, and per-page language exposed.
 * Layout-model override via LAYOUT_MODEL env (best-effort across Docling versions).
+
+Wave F-Option-3 (callback / async) additions
+--------------------------------------------
+When `/parse` receives `callback_url` + `callback_token` + `job_id`, the sidecar
+runs parse (and optional rasterise) as a BackgroundTask, uploads artifacts
+directly to the Supabase `pdf-import-diagnostics` bucket via the Storage REST
+API, and POSTs the completion payload to `callback_url`. The HTTP response to
+`/parse` returns immediately with 202 so the edge dispatcher's wall-clock
+budget is freed.
+
+Required additional env for callback uploads:
+    SUPABASE_URL                       Base URL for the Supabase REST API.
+    SUPABASE_SERVICE_ROLE_KEY          Service role key (storage upload auth).
+    PDF_DIAGNOSTICS_BUCKET             Defaults to "pdf-import-diagnostics".
 """
 
 from __future__ import annotations
@@ -36,7 +50,7 @@ from typing import Any, Optional
 
 import httpx
 import pypdfium2 as pdfium
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -73,8 +87,13 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
+
+# Wave F-Option-3 storage upload config.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+DIAGNOSTICS_BUCKET = os.environ.get("PDF_DIAGNOSTICS_BUCKET", "pdf-import-diagnostics").strip()
 
 
 class SidecarError(Exception):
@@ -140,9 +159,7 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False
     pipeline.generate_picture_images = True
-    # Phase D: crisper picture crops (2× default).
     _safe_set(pipeline, "images_scale", IMAGES_SCALE)
-    # Phase D: enrichments (defensive — Docling renamed a few of these between minors).
     if ENABLE_PICTURE_CLASSIFICATION:
         _safe_set(pipeline, "do_picture_classification", True)
     if enable_picture_description:
@@ -152,21 +169,17 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
     if ENABLE_CODE_ENRICHMENT:
         _safe_set(pipeline, "do_code_enrichment", True)
 
-    # Wave A: configure OCR aggressively for scanned / hybrid PDFs.
     ocr_opts = getattr(pipeline, "ocr_options", None)
     if ocr_opts is not None:
         if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
             _safe_set(ocr_opts, "force_full_page_ocr", True)
         if OCR_LANGS:
-            # Most OCR engines (EasyOCR/Tesseract) accept a list of language codes.
             _safe_set(ocr_opts, "lang", OCR_LANGS)
         _safe_set(ocr_opts, "bitmap_area_threshold", BITMAP_AREA_THRESHOLD)
     else:
-        # Older Docling exposed force_full_page_ocr on the pipeline directly.
         if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
             _safe_set(pipeline, "force_full_page_ocr", True)
 
-    # Wave A: pass an AcceleratorOptions when the running Docling version exposes it.
     try:
         from docling.datamodel.pipeline_options import AcceleratorOptions, AcceleratorDevice  # type: ignore
         try:
@@ -175,12 +188,10 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
             device = AcceleratorDevice.AUTO
         _safe_set(pipeline, "accelerator_options",
                   AcceleratorOptions(num_threads=ACCEL_THREADS, device=device))
-    except Exception as exc:  # pragma: no cover — Docling minor without accelerator opts
+    except Exception as exc:  # pragma: no cover
         LOG.info("AcceleratorOptions not available in this Docling build: %s", exc)
 
     if LAYOUT_MODEL:
-        # Some Docling builds accept `layout_model` directly; others nest under
-        # `layout_options`. Try both.
         if not _safe_set(pipeline, "layout_model", LAYOUT_MODEL):
             layout_opts = getattr(pipeline, "layout_options", None)
             if layout_opts is not None:
@@ -206,29 +217,13 @@ def _get_converter(enable_picture_description: bool) -> DocumentConverter:
 
 
 LOG.info(
-    "Docling converter ready (version=%s, classification=%s, description_default=%s, "
-    "formula=%s, code=%s, ocr_fallback=%s, force_full_page_ocr=%s, ocr_langs=%s, "
-    "bitmap_area_threshold=%.3f, images_scale=%.2f, accel_device=%s, accel_threads=%d, "
-    "include_markdown_default=%s, layout_model=%s)",
+    "Docling converter ready (version=%s, callback_upload_configured=%s)",
     ENGINE_VERSION,
-    ENABLE_PICTURE_CLASSIFICATION,
-    ENABLE_PICTURE_DESCRIPTION_DEFAULT,
-    ENABLE_FORMULA_ENRICHMENT,
-    ENABLE_CODE_ENRICHMENT,
-    ENABLE_OCR_FALLBACK,
-    FORCE_FULL_PAGE_OCR,
-    ",".join(OCR_LANGS) or "(default)",
-    BITMAP_AREA_THRESHOLD,
-    IMAGES_SCALE,
-    ACCEL_DEVICE,
-    ACCEL_THREADS,
-    INCLUDE_MARKDOWN_DEFAULT,
-    LAYOUT_MODEL or "(default)",
+    bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY),
 )
 
 
 def _build_prewarm_pdf() -> bytes:
-    """Build a tiny valid one-page PDF with correct xref offsets."""
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -254,7 +249,6 @@ def _build_prewarm_pdf() -> bytes:
 
 @app.on_event("startup")
 async def prewarm_docling() -> None:
-    """Load Docling models at boot so the first user request avoids model-load latency."""
     if not PREWARM_ON_STARTUP:
         LOG.info("Docling startup prewarm disabled")
         return
@@ -265,7 +259,7 @@ async def prewarm_docling() -> None:
         stream = DocumentStream(name="prewarm.pdf", stream=io.BytesIO(_build_prewarm_pdf()))
         CONVERTER.convert(stream)
         LOG.info("Docling startup prewarm complete", extra={"duration_ms": int((time.monotonic() - started) * 1000)})
-    except Exception as exc:  # pragma: no cover — startup should remain healthy; healthz reveals process state.
+    except Exception as exc:  # pragma: no cover
         LOG.warning("Docling startup prewarm failed: %s", exc, extra={"duration_ms": int((time.monotonic() - started) * 1000)})
 
 
@@ -313,10 +307,7 @@ def error_response(status_code: int, error_code: str, message: str, *, retryable
 
 @app.exception_handler(SidecarError)
 async def sidecar_error_handler(_request: Request, exc: SidecarError) -> JSONResponse:
-    LOG.warning(
-        exc.message,
-        extra={"error_code": exc.error_code, "retryable": exc.retryable},
-    )
+    LOG.warning(exc.message, extra={"error_code": exc.error_code, "retryable": exc.retryable})
     return error_response(exc.status_code, exc.error_code, exc.message, retryable=exc.retryable)
 
 
@@ -340,10 +331,20 @@ class ParseRequest(BaseModel):
     url: Optional[str] = Field(default=None)
     pdf_base64: Optional[str] = Field(default=None)
     enable_picture_description: Optional[bool] = Field(default=None)
-    # Phase D: caller can ask for a lighter / heavier serialization payload.
     include_doctags: bool = Field(default=True)
     include_markdown: bool = Field(default_factory=lambda: INCLUDE_MARKDOWN_DEFAULT)
     redact_pii: bool = Field(default=False)
+    # Wave F-Option-3 callback fields. When all three are present, sidecar runs
+    # parse + raster in a BackgroundTask, uploads artifacts to Supabase Storage,
+    # and POSTs completion to `callback_url`. Sidecar returns 202 immediately.
+    callback_url: Optional[str] = Field(default=None)
+    callback_token: Optional[str] = Field(default=None)
+    job_id: Optional[str] = Field(default=None)
+    # Hybrid / pixel-perfect → also rasterise in the same background task.
+    mode: Optional[str] = Field(default=None)
+    raster_dpi: Optional[int] = Field(default=None, ge=72, le=300)
+    raster_format: str = Field(default="png", pattern="^(png|jpeg)$")
+    allow_mode_override: bool = Field(default=True)
 
 
 class RasterRequest(BaseModel):
@@ -389,7 +390,6 @@ async def _resolve_pdf_bytes(url: Optional[str], pdf_base64: Optional[str]) -> b
     return data
 
 
-
 PII_PATTERNS = [
     (re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE), "[redacted-email]"),
     (re.compile(r"\b(?:\+?61|0)[2-478](?:[ -]?\d){8}\b"), "[redacted-phone]"),
@@ -421,7 +421,6 @@ def _redact_docling_pii(node: Any) -> int:
     return redactions
 
 def _extract_outline(doc: Any) -> list[dict]:
-    """Best-effort document outline / TOC extraction."""
     outline: list[dict] = []
     for attr in ("outlines", "outline", "toc"):
         nodes = getattr(doc, attr, None)
@@ -438,7 +437,6 @@ def _extract_outline(doc: Any) -> list[dict]:
                 return outline
         except Exception:  # pragma: no cover
             continue
-    # Fallback: derive outline from section_header / title text items.
     texts = getattr(doc, "texts", None) or []
     for t in texts:
         label = getattr(t, "label", None)
@@ -454,7 +452,6 @@ def _extract_outline(doc: Any) -> list[dict]:
 
 
 def _extract_languages(doc_dict: dict) -> dict[int, str]:
-    """Aggregate per-page language hints from text items (when Docling provides them)."""
     counts: dict[int, dict[str, int]] = {}
     for t in (doc_dict.get("texts") or []):
         lang = (t.get("language") or t.get("lang") or "").lower().strip()
@@ -473,7 +470,6 @@ def _extract_languages(doc_dict: dict) -> dict[int, str]:
 
 
 def _summarise_doc(doc_dict: dict) -> dict:
-    """Wave D: lightweight roll-up so dispatch + diagnostics can show extraction quality at a glance."""
     texts = doc_dict.get("texts") or []
     tables = doc_dict.get("tables") or []
     pictures = doc_dict.get("pictures") or doc_dict.get("figures") or []
@@ -531,32 +527,12 @@ def _summarise_doc(doc_dict: dict) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-@app.get("/healthz")
-def healthz() -> dict:
-    return {"ok": True, "engine_version": ENGINE_VERSION}
-
-
-@app.get("/")
-def root() -> dict:
-    return {"service": "pdf-parse-service", "engine_version": ENGINE_VERSION}
-
-
-@app.post("/parse")
-async def parse(req: ParseRequest) -> dict:
-    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
-    t0 = time.monotonic()
-
+def _do_parse(pdf_bytes: bytes, *, use_description: bool, include_doctags: bool, include_markdown: bool, redact_pii: bool) -> dict:
+    """Synchronous Docling parse — shared by /parse sync path and async background path."""
     from docling.datamodel.base_models import DocumentStream
 
+    t0 = time.monotonic()
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    use_description = (
-        req.enable_picture_description
-        if req.enable_picture_description is not None
-        else ENABLE_PICTURE_DESCRIPTION_DEFAULT
-    )
     converter = _get_converter(use_description)
     try:
         result = converter.convert(stream)
@@ -567,40 +543,33 @@ async def parse(req: ParseRequest) -> dict:
     pages_meta: list[dict] = []
     for page_no, page in (doc.pages or {}).items():
         size = page.size
-        pages_meta.append({
-            "page_no": page_no,
-            "width": size.width,
-            "height": size.height,
-        })
+        pages_meta.append({"page_no": page_no, "width": size.width, "height": size.height})
     pages_meta.sort(key=lambda p: p["page_no"])
 
     doc_dict = doc.export_to_dict()
-    pii_redactions = _redact_docling_pii(doc_dict) if req.redact_pii else 0
+    pii_redactions = _redact_docling_pii(doc_dict) if redact_pii else 0
 
-    # Phase D: surface auxiliary serialisations & document-level structure.
     extras: dict[str, Any] = {}
-    if req.include_doctags:
+    if include_doctags:
         try:
-            extras["doctags"] = _redact_text(doc.export_to_doctags()) if req.redact_pii else doc.export_to_doctags()
+            extras["doctags"] = _redact_text(doc.export_to_doctags()) if redact_pii else doc.export_to_doctags()
         except Exception as exc:  # pragma: no cover
             LOG.warning("doctags export failed: %s", exc)
-    if req.include_markdown:
+    if include_markdown:
         try:
-            extras["markdown"] = _redact_text(doc.export_to_markdown()) if req.redact_pii else doc.export_to_markdown()
+            extras["markdown"] = _redact_text(doc.export_to_markdown()) if redact_pii else doc.export_to_markdown()
         except Exception as exc:  # pragma: no cover
             LOG.warning("markdown export failed: %s", exc)
 
     outline = _extract_outline(doc)
     page_languages = _extract_languages(doc_dict)
-
-    # Annotate per-page metadata with language when available.
     for pm in pages_meta:
         lang = page_languages.get(pm["page_no"])
         if lang:
             pm["language"] = lang
 
     summary = _summarise_doc(doc_dict)
-    if req.redact_pii:
+    if redact_pii:
         summary["pii_redaction"] = {"enabled": True, "redaction_count": pii_redactions}
     parsed_ms = int((time.monotonic() - t0) * 1000)
     LOG.info(
@@ -623,21 +592,15 @@ async def parse(req: ParseRequest) -> dict:
     }
 
 
-@app.post("/raster")
-async def raster(req: RasterRequest) -> dict:
-    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+def _do_raster(pdf_bytes: bytes, *, dpi: int, fmt: str, pages: Optional[list[int]] = None) -> dict:
     t0 = time.monotonic()
-
     try:
         pdf = pdfium.PdfDocument(pdf_bytes)
     except Exception as exc:
         raise SidecarError(400, "raster_pdf_open_failed", f"Could not open PDF for rastering: {exc}") from exc
     total = len(pdf)
-    page_indices = (
-        [p - 1 for p in req.pages if 1 <= p <= total] if req.pages else list(range(total))
-    )
-
-    scale = req.dpi / 72.0
+    page_indices = [p - 1 for p in pages if 1 <= p <= total] if pages else list(range(total))
+    scale = dpi / 72.0
     images: list[dict] = []
     for idx in page_indices:
         page = pdf[idx]
@@ -647,7 +610,7 @@ async def raster(req: RasterRequest) -> dict:
         except Exception as exc:
             raise SidecarError(500, "raster_page_failed", f"Could not raster page {idx + 1}: {exc}", retryable=True) from exc
         buf = io.BytesIO()
-        if req.format == "jpeg":
+        if fmt == "jpeg":
             pil_img.convert("RGB").save(buf, format="JPEG", quality=88, optimize=True)
             mime = "image/jpeg"
         else:
@@ -660,13 +623,290 @@ async def raster(req: RasterRequest) -> dict:
             "height_px": pil_img.height,
             "base64": base64.b64encode(buf.getvalue()).decode("ascii"),
         })
-
     raster_ms = int((time.monotonic() - t0) * 1000)
-    LOG.info("Rasterised %d pages @ %d DPI in %d ms", len(images), req.dpi, raster_ms)
+    LOG.info("Rasterised %d pages @ %d DPI in %d ms", len(images), dpi, raster_ms)
+    return {"engine_version": ENGINE_VERSION, "raster_ms": raster_ms, "dpi": dpi, "format": fmt, "pages": images}
 
-    return {
-        "engine_version": ENGINE_VERSION,
-        "raster_ms": raster_ms,
-        "dpi": req.dpi,
-        "pages": images,
+
+# ---------------------------------------------------------------------------
+# Wave F-Option-3 storage upload helpers
+# ---------------------------------------------------------------------------
+def _ocr_ratio(summary: dict, page_count: int) -> float:
+    if not page_count:
+        return 0.0
+    return len(summary.get("ocr_pages") or []) / float(page_count)
+
+
+async def _storage_upload(client: httpx.AsyncClient, object_path: str, body: bytes, content_type: str) -> Optional[str]:
+    """Upload a single artifact to the Supabase Storage REST API. Returns the object path on success."""
+    if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
+        LOG.error("Storage upload skipped — SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing")
+        return None
+    url = f"{SUPABASE_URL}/storage/v1/object/{DIAGNOSTICS_BUCKET}/{object_path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Content-Type": content_type,
+        "x-upsert": "true",
+        "cache-control": "3600",
     }
+    try:
+        resp = await client.post(url, content=body, headers=headers)
+        if resp.status_code >= 300:
+            LOG.error("storage upload failed %s: %s", resp.status_code, resp.text[:300])
+            return None
+        return object_path
+    except Exception as exc:
+        LOG.error("storage upload exception: %s", exc)
+        return None
+
+
+def _parse_data_uri(uri: str) -> Optional[tuple[str, bytes, str]]:
+    m = re.match(r"^data:([^;,]+);base64,(.+)$", uri or "")
+    if not m:
+        return None
+    mime = m.group(1)
+    try:
+        data = base64.b64decode(m.group(2))
+    except Exception:
+        return None
+    ext = "jpg" if "jpeg" in mime else ("png" if "png" in mime else "")
+    if not ext:
+        return None
+    return mime, data, ext
+
+
+async def _upload_picture_assets(client: httpx.AsyncClient, job_id: str, doclingDoc: dict) -> int:
+    pictures = doclingDoc.get("pictures") if isinstance(doclingDoc, dict) else None
+    if not isinstance(pictures, list):
+        return 0
+    total = 0
+    for i, pic in enumerate(pictures):
+        image = pic.get("image") if isinstance(pic, dict) else None
+        uri = image.get("uri") if isinstance(image, dict) else None
+        parsed = _parse_data_uri(uri) if isinstance(uri, str) else None
+        if not parsed:
+            continue
+        mime, data, ext = parsed
+        path = f"{job_id}/images/picture-{i+1}.{ext}"
+        ok = await _storage_upload(client, path, data, mime)
+        if ok:
+            image["diagnostics_path"] = path
+            total += len(data)
+    return total
+
+
+async def _post_callback(client: httpx.AsyncClient, callback_url: str, callback_token: str, job_id: str, payload: dict) -> None:
+    headers = {
+        "Authorization": f"Bearer {callback_token}",
+        "Content-Type": "application/json",
+        "X-Request-Id": job_id,
+    }
+    try:
+        resp = await client.post(callback_url, json=payload, headers=headers, timeout=30)
+        if resp.status_code >= 300:
+            LOG.error("callback POST failed %s: %s", resp.status_code, resp.text[:500])
+    except Exception as exc:
+        LOG.error("callback POST exception: %s", exc)
+
+
+async def _run_async_job(req: ParseRequest) -> None:
+    """Background task: parse + optional raster, upload artifacts, POST callback."""
+    job_id = req.job_id or "unknown"
+    callback_url = req.callback_url or ""
+    callback_token = req.callback_token or ""
+    started = time.monotonic()
+    bytes_in = 0
+    bytes_out = 0
+    cloud_run_ms = 0
+    try:
+        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        bytes_in = len(pdf_bytes)
+
+        use_description = (
+            req.enable_picture_description
+            if req.enable_picture_description is not None
+            else ENABLE_PICTURE_DESCRIPTION_DEFAULT
+        )
+
+        parse_result = _do_parse(
+            pdf_bytes,
+            use_description=use_description,
+            include_doctags=req.include_doctags,
+            include_markdown=req.include_markdown,
+            redact_pii=req.redact_pii,
+        )
+        cloud_run_ms += int(parse_result.get("parsed_ms") or 0)
+
+        page_count = int(parse_result.get("page_count") or 0)
+        summary = parse_result.get("summary") or {}
+        requested_mode = (req.mode or "semantic").lower()
+        effective_mode = requested_mode
+        # Auto-promote hybrid → pixel_perfect when OCR ratio > 0.3.
+        if (
+            requested_mode == "hybrid"
+            and req.allow_mode_override
+            and _ocr_ratio(summary, page_count) > 0.3
+        ):
+            effective_mode = "pixel_perfect"
+
+        async with httpx.AsyncClient(timeout=120) as client:
+            doclingDoc = parse_result.get("docling_document") or {}
+            if isinstance(doclingDoc, dict) and summary:
+                doclingDoc["summary"] = summary
+            picture_bytes = await _upload_picture_assets(client, job_id, doclingDoc)
+            bytes_out += picture_bytes
+
+            docling_body = json.dumps(doclingDoc).encode("utf-8")
+            docling_path = await _storage_upload(client, f"{job_id}/docling.json", docling_body, "application/json")
+            bytes_out += len(docling_body)
+
+            doctags_path = None
+            markdown_path = None
+            outline_path = None
+            if parse_result.get("doctags"):
+                body = str(parse_result["doctags"]).encode("utf-8")
+                doctags_path = await _storage_upload(client, f"{job_id}/doctags.md", body, "text/markdown")
+                bytes_out += len(body)
+            if parse_result.get("markdown"):
+                body = str(parse_result["markdown"]).encode("utf-8")
+                markdown_path = await _storage_upload(client, f"{job_id}/document.md", body, "text/markdown")
+                bytes_out += len(body)
+            outline = parse_result.get("outline") or []
+            if outline:
+                body = json.dumps({"outline": outline, "page_languages": parse_result.get("page_languages") or {}}).encode("utf-8")
+                outline_path = await _storage_upload(client, f"{job_id}/outline.json", body, "application/json")
+                bytes_out += len(body)
+
+            # Raster pass (hybrid / pixel_perfect)
+            rasters_path = None
+            if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
+                dpi = req.raster_dpi or (200 if "pixel" in effective_mode else 144)
+                raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=req.raster_format)
+                cloud_run_ms += int(raster_result.get("raster_ms") or 0)
+                normalized = {
+                    "format": raster_result.get("format"),
+                    "dpi": raster_result.get("dpi"),
+                    "engine_version": raster_result.get("engine_version"),
+                    "pages": [
+                        {
+                            "page_no": p.get("page_no"),
+                            "width": p.get("width_px"),
+                            "height": p.get("height_px"),
+                            "image_base64": p.get("base64"),
+                        }
+                        for p in raster_result.get("pages") or []
+                    ],
+                }
+                body = json.dumps(normalized).encode("utf-8")
+                rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
+                bytes_out += len(body)
+
+            duration_ms = int((time.monotonic() - started) * 1000)
+            await _post_callback(client, callback_url, callback_token, job_id, {
+                "job_id": job_id,
+                "status": "succeeded",
+                "engine_version": parse_result.get("engine_version"),
+                "page_count": page_count,
+                "bytes_in": bytes_in,
+                "bytes_out": bytes_out,
+                "cloud_run_ms": cloud_run_ms,
+                "duration_ms": duration_ms,
+                "requested_mode": requested_mode,
+                "effective_mode": effective_mode,
+                "auto_mode_selected": effective_mode != requested_mode,
+                "ocr_page_ratio": _ocr_ratio(summary, page_count),
+                "result_payload": {
+                    "docling_path": docling_path,
+                    "rasters_path": rasters_path,
+                    "doctags_path": doctags_path,
+                    "markdown_path": markdown_path,
+                    "outline_path": outline_path,
+                    "page_count": page_count,
+                    "page_languages": parse_result.get("page_languages") or {},
+                    "outline_node_count": len(outline),
+                    "summary": summary,
+                    "mode": effective_mode,
+                    "requested_mode": requested_mode,
+                    "auto_mode_selected": effective_mode != requested_mode,
+                    "cache_hit": False,
+                },
+            })
+    except SidecarError as exc:
+        LOG.warning("async job failed (sidecar error): %s", exc.message)
+        async with httpx.AsyncClient(timeout=30) as client:
+            await _post_callback(client, callback_url, callback_token, job_id, {
+                "job_id": job_id,
+                "status": "failed",
+                "error_code": exc.error_code,
+                "message": exc.message,
+                "retryable": exc.retryable,
+            })
+    except Exception as exc:
+        LOG.exception("async job unhandled failure")
+        async with httpx.AsyncClient(timeout=30) as client:
+            await _post_callback(client, callback_url, callback_token, job_id, {
+                "job_id": job_id,
+                "status": "failed",
+                "error_code": "sidecar_async_unhandled",
+                "message": str(exc)[:500],
+                "retryable": True,
+            })
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+@app.get("/healthz")
+def healthz() -> dict:
+    return {
+        "ok": True,
+        "engine_version": ENGINE_VERSION,
+        "callback_upload_configured": bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY),
+    }
+
+
+@app.get("/")
+def root() -> dict:
+    return {"service": "pdf-parse-service", "engine_version": ENGINE_VERSION}
+
+
+@app.post("/parse")
+async def parse(req: ParseRequest, background_tasks: BackgroundTasks):
+    # Wave F-Option-3: callback mode — when callback fields are present, run as
+    # background task and return 202 immediately so the edge dispatcher never
+    # waits on Docling. Requires storage upload env to be configured.
+    if req.callback_url and req.callback_token and req.job_id:
+        if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
+            raise SidecarError(
+                503,
+                "callback_upload_not_configured",
+                "Callback mode requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on the sidecar.",
+                retryable=False,
+            )
+        background_tasks.add_task(_run_async_job, req)
+        return JSONResponse(
+            {"accepted": True, "job_id": req.job_id, "engine_version": ENGINE_VERSION, "mode": "callback"},
+            status_code=202,
+        )
+
+    # Legacy synchronous mode (backwards compatible).
+    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+    use_description = (
+        req.enable_picture_description
+        if req.enable_picture_description is not None
+        else ENABLE_PICTURE_DESCRIPTION_DEFAULT
+    )
+    return _do_parse(
+        pdf_bytes,
+        use_description=use_description,
+        include_doctags=req.include_doctags,
+        include_markdown=req.include_markdown,
+        redact_pii=req.redact_pii,
+    )
+
+
+@app.post("/raster")
+async def raster(req: RasterRequest) -> dict:
+    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+    return _do_raster(pdf_bytes, dpi=req.dpi, fmt=req.format, pages=req.pages)
