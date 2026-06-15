@@ -130,7 +130,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['active-client-notes', client.id],
+    queryKey: ['client-notes', client.id],
     queryFn: ({ pageParam = 0 }) => fetchNotesSecure(client.id, pageParam),
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
