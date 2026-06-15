@@ -440,10 +440,9 @@ export function PortfolioAnalysisPDFGenerator({
   };
 
   // ============= PDF GENERATION ENGINE (Phase 1) =============
-  const downloadPDF = async () => {
+  const downloadPDF = async (opts?: { flattenOnly?: boolean }) => {
     if (!analysisData) return;
-    
-    setIsDownloading(true);
+    const flattenOnly = opts?.flattenOnly === true;
     
     try {
       console.log('📄 Starting Portfolio Analysis PDF generation with pdf-lib...');
