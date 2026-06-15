@@ -788,8 +788,8 @@ Deno.serve(async (req) => {
             has_source_path: Boolean(body.source_path),
             has_source_base64: Boolean(body.source_base64),
             // Phase D passthroughs (consumed by runJob).
-            description_tier: typeof body.description_tier === 'string' ? body.description_tier : 'auto',
-            include_markdown: Boolean(body.include_markdown),
+            description_tier: typeof body.description_tier === 'string' ? body.description_tier : 'on',
+            include_markdown: body.include_markdown === false ? false : true,
             redact_pii: Boolean(body.redact_pii),
             pii_redaction_reason: typeof body.pii_redaction_reason === 'string' ? body.pii_redaction_reason.slice(0, 120) : null,
             allow_mode_override: body.allow_mode_override !== false,
