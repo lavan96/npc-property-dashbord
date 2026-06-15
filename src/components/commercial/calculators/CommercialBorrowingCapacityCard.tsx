@@ -61,6 +61,48 @@ function SelectField({ label, value, onChange, options, status = 'Manual Estimat
   return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 
+function ClientProfileCombobox({ value, options, loading, onChange }: { value: string; options: ClientProfileOption[]; loading?: boolean; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(o => o.clientName.toLowerCase().includes(q) || o.clientId.toLowerCase().includes(q));
+  }, [options, query]);
+  const selected = options.find(o => o.clientId === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-10 font-normal">
+          <span className={cn('truncate text-sm', !selected && 'text-muted-foreground')}>
+            {selected ? `${selected.clientName}${selected.source === 'sample' ? ' (sample)' : ''}` : (loading ? 'Loading…' : 'Select client profile…')}
+          </span>
+          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <div className="p-2 border-b flex items-center gap-2">
+          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <Input autoFocus placeholder="Type to search clients…" value={query} onChange={(e) => setQuery(e.target.value)} className="border-0 h-8 p-0 text-sm focus-visible:ring-0 shadow-none" />
+        </div>
+        <ScrollArea className="max-h-[260px]">
+          <div className="p-1">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">{loading ? 'Loading…' : 'No clients found'}</p>
+            ) : filtered.map(o => (
+              <button key={o.clientId} type="button" onClick={() => { onChange(o.clientId); setOpen(false); setQuery(''); }} className={cn('w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors text-left', value === o.clientId && 'bg-accent')}>
+                <Check className={cn('h-3.5 w-3.5 shrink-0', value === o.clientId ? 'opacity-100 text-primary' : 'opacity-0')} />
+                <span className="truncate flex-1">{o.clientName}</span>
+                {o.source === 'sample' && <span className="text-[10px] text-muted-foreground shrink-0">sample</span>}
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commercial' }: { initialAssetCategory?: AssetCategory }) {
   const updateGlobal = useCommercialDealState(s => s.updateGlobal);
   const sourceMode = useCommercialDealState(s => s.sourceModes.borrowing);
