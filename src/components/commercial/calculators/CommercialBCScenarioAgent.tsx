@@ -47,7 +47,13 @@ export interface CommercialBCSnapshot {
   icr?: number;
   noi?: number;
   client?: { id?: string; name?: string };
+  missingPropertyWarning?: string;
+  missingPropertyFields?: string[];
 }
+
+const stripBlankSnapshot = (snapshot: CommercialBCSnapshot) => Object.fromEntries(
+  Object.entries(snapshot).filter(([, value]) => value !== undefined && value !== null && value !== '' && (!Array.isArray(value) || value.length > 0))
+) as CommercialBCSnapshot;
 
 interface ChatMessage { role: 'user' | 'assistant'; content: string; }
 
@@ -112,7 +118,7 @@ export function CommercialBCScenarioAgent({ snapshot, clientId, onApply }: Props
       const { data, error } = await invokeSecureFunction('commercial-bc-scenario-agent', {
         prompt: text,
         history: messages,
-        snapshot,
+        snapshot: stripBlankSnapshot(snapshot),
         clientId,
       });
       if (error) throw new Error(error.message);
