@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,39 +9,23 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
 import { useApplyPrefill, useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
-interface NoiAiEstimate {
-  marketRentPa?: number;
-  grossPassingRentPa?: number;
-  otherIncomePa?: number;
-  recoveredOutgoingsPa?: number;
-  vacancyAllowancePct?: number;
-  incentiveAdjustment?: number;
-  tenantRiskHaircut?: number;
-  leaseTypeAssumed?: LeaseType | 'unknown';
-  outgoings?: Partial<Record<keyof OutgoingsBreakdown, number>>;
-  ratePerSqm?: number;
-  confidence?: 'high' | 'medium' | 'low';
-  reasoning?: string;
-}
+type AssumptionStatus = 'Verified' | 'Client Profile Source' | 'Property Record Source' | 'Manual Estimate' | 'AI Estimate' | 'Unknown' | 'Overridden' | 'Specialist Review Required';
+type NoiFieldKey = 'grossRent' | 'recovered' | 'other' | 'vacancy' | 'leaseType' | 'noiBasis' | 'marketRent' | 'incentiveAdjustment' | 'tenantRiskHaircut' | keyof OutgoingsBreakdown;
+type Confidence = 'High' | 'Medium' | 'Low';
+interface NoiAiEstimateField { field: NoiFieldKey; currentValue: number | string | null; estimatedValue: number | string | null; unit: string; confidence: Confidence; sourceStatusBefore: AssumptionStatus; sourceStatusAfter: 'AI Estimate'; reasoningSummary: string; requiresSpecialistReview: boolean; requiredDocument: string; shouldOverwrite: boolean; accepted?: boolean; }
+interface StructuredNoiAiEstimate { propertyId: string; dealId: string; estimateType: 'NOI'; summary: string; estimatedFields: NoiAiEstimateField[]; calculatedOutputs: { potentialGrossIncome: number | null; vacancyLoss: number | null; recoveredOutgoings: number | null; effectiveGrossIncome: number | null; totalOutgoings: number | null; ownerBorneOutgoings: number | null; actualNOI: number | null; stabilisedNOI: number | null; lenderAdjustedNOI: number | null; }; warnings: string[]; requiredDocuments: string[]; recommendedNextAction: string; }
+interface LegacyNoiAiEstimate { marketRentPa?: number; grossPassingRentPa?: number; otherIncomePa?: number; recoveredOutgoingsPa?: number; vacancyAllowancePct?: number; incentiveAdjustment?: number; tenantRiskHaircut?: number; leaseTypeAssumed?: LeaseType | 'unknown'; outgoings?: Partial<Record<keyof OutgoingsBreakdown, number>>; ratePerSqm?: number; confidence?: 'high' | 'medium' | 'low'; reasoning?: string; }
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
-
+const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 const num = (v: string) => (v === '' ? 0 : Number(v));
+const isBlank = (v: string) => v === '' || Number(v) === 0 || v === 'unknown';
+const protectedStatuses: AssumptionStatus[] = ['Verified', 'Client Profile Source', 'Property Record Source'];
 
-const OUTGOING_KEYS: Array<keyof OutgoingsBreakdown> = [
-  'council', 'water', 'land_tax', 'insurance', 'management',
-  'repairs_maintenance', 'utilities', 'cleaning', 'security', 'other',
-];
-
-const labelMap: Record<keyof OutgoingsBreakdown, string> = {
-  council: 'Council Rates', water: 'Water', land_tax: 'Land Tax',
-  insurance: 'Insurance', management: 'Management', repairs_maintenance: 'Repairs & Maint.',
-  utilities: 'Utilities', cleaning: 'Cleaning', security: 'Security', other: 'Other',
-};
+const OUTGOING_KEYS: Array<keyof OutgoingsBreakdown> = ['council', 'water', 'land_tax', 'insurance', 'management', 'repairs_maintenance', 'utilities', 'cleaning', 'security', 'other'];
+const labelMap: Record<keyof OutgoingsBreakdown, string> = { council: 'Council Rates', water: 'Water', land_tax: 'Land Tax', insurance: 'Insurance', management: 'Management', repairs_maintenance: 'Repairs & Maint.', utilities: 'Utilities', cleaning: 'Cleaning', security: 'Security', other: 'Other' };
+const fieldLabels: Record<string, string> = { grossRent: 'Gross Rental Income (PA)', recovered: 'Recovered Outgoings', other: 'Other Income', vacancy: 'Vacancy Allowance %', leaseType: 'Lease Type', noiBasis: 'NOI Basis', marketRent: 'Market Rent', incentiveAdjustment: 'Tenant incentive adjustment', tenantRiskHaircut: 'Tenant risk haircut', ...labelMap };
 
 export function NoiCalculatorCard() {
   const [grossRent, setGrossRent] = useState('250000');
@@ -53,228 +37,64 @@ export function NoiCalculatorCard() {
   const [marketRent, setMarketRent] = useState('260000');
   const [incentiveAdjustment, setIncentiveAdjustment] = useState('5000');
   const [tenantRiskHaircut, setTenantRiskHaircut] = useState('2500');
-  const [outgoings, setOutgoings] = useState<Record<string, string>>({
-    council: '12000', water: '4000', land_tax: '18000', insurance: '6000',
-    management: '10000', repairs_maintenance: '8000', utilities: '0', cleaning: '3000',
-    security: '0', other: '0',
-  });
-
-  const [aiEstimate, setAiEstimate] = useState<NoiAiEstimate | null>(null);
+  const [outgoings, setOutgoings] = useState<Record<string, string>>({ council: '12000', water: '4000', land_tax: '18000', insurance: '6000', management: '10000', repairs_maintenance: '8000', utilities: '0', cleaning: '3000', security: '0', other: '0' });
+  const [statuses, setStatuses] = useState<Record<string, AssumptionStatus>>({ grossRent: 'Manual Estimate', recovered: 'Manual Estimate', other: 'Manual Estimate', vacancy: 'Manual Estimate', leaseType: 'Unknown', noiBasis: 'Manual Estimate', marketRent: 'Manual Estimate', incentiveAdjustment: 'Manual Estimate', tenantRiskHaircut: 'Manual Estimate', council: 'Manual Estimate', water: 'Manual Estimate', land_tax: 'Manual Estimate', insurance: 'Manual Estimate', management: 'Manual Estimate', repairs_maintenance: 'Manual Estimate', utilities: 'Unknown', cleaning: 'Manual Estimate', security: 'Unknown' });
+  const [aiEstimate, setAiEstimate] = useState<StructuredNoiAiEstimate | null>(null);
   const [estimating, setEstimating] = useState(false);
-  const { prefill } = useCalculatorPrefill();
+  const [syncOn, setSyncOn] = useState(true);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { prefill, property, pushBack } = useCalculatorPrefill();
+  const audit = (action: string, field: string, previousValue: unknown, newValue: unknown, source = 'NOI Calculator') => console.info('NOI audit', { action, field, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId ?? '', dealId: prefill?.propertyId ?? '', scenarioId: undefined });
+  const setField = (field: string, value: string, setter: (v: any) => void, status: AssumptionStatus = 'Manual Estimate') => { const prev = field === 'grossRent' ? grossRent : field === 'recovered' ? recovered : field === 'other' ? other : field === 'vacancy' ? vacancy : field === 'marketRent' ? marketRent : field === 'incentiveAdjustment' ? incentiveAdjustment : field === 'tenantRiskHaircut' ? tenantRiskHaircut : field === 'leaseType' ? leaseType : field === 'noiBasis' ? noiBasis : outgoings[field]; setter(value); setStatuses(s => ({ ...s, [field]: status })); audit('manual NOI field edit', field, prev, value, status); };
 
-  // Prefill from linked property — recovered outgoings sum and any vendor-quoted gross rent
   useApplyPrefill((p) => {
-    if (p.grossPassingRentPa != null) setGrossRent(String(p.grossPassingRentPa));
-    if (p.marketRentPa != null) setMarketRent(String(p.marketRentPa));
-    if (p.recoveredOutgoingsPa != null) setRecovered(String(p.recoveredOutgoingsPa));
-    if (p.outgoings) {
-      const og = p.outgoings;
-      setOutgoings(prev => ({
-        ...prev,
-        council: og.council != null ? String(og.council) : prev.council,
-        water: og.water != null ? String(og.water) : prev.water,
-        land_tax: og.land_tax != null ? String(og.land_tax) : prev.land_tax,
-        insurance: og.insurance != null ? String(og.insurance) : prev.insurance,
-        management: og.management != null ? String(og.management) : prev.management,
-        repairs_maintenance: og.repairs_maintenance != null ? String(og.repairs_maintenance) : prev.repairs_maintenance,
-        utilities: og.utilities != null ? String(og.utilities) : prev.utilities,
-        cleaning: og.cleaning != null ? String(og.cleaning) : prev.cleaning,
-        security: og.security != null ? String(og.security) : prev.security,
-        other: og.other != null ? String(og.other) : prev.other,
-      }));
-    }
+    if (!syncOn) return;
+    const apply = (field: string, current: string, incoming: unknown, setter: (v: string) => void) => { if (incoming != null && isBlank(current) && !protectedStatuses.includes(statuses[field])) { setter(String(incoming)); setStatuses(s => ({ ...s, [field]: 'Property Record Source' })); audit('global input sync applied', field, current, incoming, 'Property Record Source'); } };
+    apply('grossRent', grossRent, p.grossPassingRentPa, setGrossRent); apply('marketRent', marketRent, p.marketRentPa, setMarketRent); apply('recovered', recovered, p.recoveredOutgoingsPa, setRecovered);
+    if (p.outgoings) setOutgoings(prev => { const next = { ...prev }; OUTGOING_KEYS.forEach(k => { if (p.outgoings?.[k] != null && isBlank(prev[k] ?? '')) { next[k] = String(p.outgoings[k]); setStatuses(s => ({ ...s, [k]: 'Property Record Source' })); audit('global input sync applied', String(k), prev[k], p.outgoings?.[k], 'Property Record Source'); } }); return next; });
   });
 
-  const result = useMemo(() => {
-    const o: OutgoingsBreakdown = {};
-    OUTGOING_KEYS.forEach(k => { (o as any)[k] = num(outgoings[k] ?? '0'); });
-    return calculateNoi({
-      grossRentalIncome: num(grossRent),
-      recoveredOutgoings: num(recovered),
-      otherIncome: num(other),
-      vacancyAllowancePct: num(vacancy),
-      outgoings: o,
-    });
-  }, [grossRent, recovered, other, vacancy, outgoings]);
+  const result = useMemo(() => { const o: OutgoingsBreakdown = {}; OUTGOING_KEYS.forEach(k => { (o as any)[k] = num(outgoings[k] ?? '0'); }); return calculateNoi({ grossRentalIncome: num(grossRent), recoveredOutgoings: num(recovered), otherIncome: num(other), vacancyAllowancePct: num(vacancy), outgoings: o }); }, [grossRent, recovered, other, vacancy, outgoings]);
+  const statusTags = useMemo(() => Object.values(statuses).filter((v, i, a) => a.indexOf(v) === i) as any, [statuses]);
+  const assessment = useMemo(() => calculateNoiEngine({ dataSourceMode: aiEstimate ? 'aiEstimate' : 'global', leaseType, grossPassingRent: num(grossRent), otherIncome: num(other), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy), recoveredOutgoings: num(recovered), outgoings: OUTGOING_KEYS.map(k => ({ name: labelMap[k], amount: num(outgoings[k] ?? '0'), recoverablePct: num(recovered) > 0 ? 100 : 0 })), incentiveAdjustment: num(incentiveAdjustment), tenantRiskHaircut: num(tenantRiskHaircut), leaseDocsVerified: leaseType !== 'unknown', confidenceTags: statusTags.filter(t => t !== 'Property Record Source') }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut, statusTags, aiEstimate]);
 
-  const assessment = useMemo(() => calculateNoiEngine({
-    dataSourceMode: 'global',
-    leaseType,
-    grossPassingRent: num(grossRent),
-    otherIncome: num(other),
-    marketRent: num(marketRent),
-    vacancyAllowancePct: num(vacancy),
-    recoveredOutgoings: num(recovered),
-    outgoings: OUTGOING_KEYS.map(k => ({ name: labelMap[k], amount: num(outgoings[k] ?? '0'), recoverablePct: num(recovered) > 0 ? 100 : 0 })),
-    incentiveAdjustment: num(incentiveAdjustment),
-    tenantRiskHaircut: num(tenantRiskHaircut),
-    leaseDocsVerified: leaseType !== 'unknown',
-    confidenceTags: ['Manual Estimate'],
-  }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut]);
-
-  const applyEstimate = (e: NoiAiEstimate) => {
-    if (e.marketRentPa != null) setMarketRent(String(Math.round(e.marketRentPa)));
-    if (e.grossPassingRentPa != null) setGrossRent(String(Math.round(e.grossPassingRentPa)));
-    else if (e.marketRentPa != null) setGrossRent(String(Math.round(e.marketRentPa)));
-    if (e.otherIncomePa != null) setOther(String(Math.round(e.otherIncomePa)));
-    if (e.recoveredOutgoingsPa != null) setRecovered(String(Math.round(e.recoveredOutgoingsPa)));
-    if (e.vacancyAllowancePct != null) setVacancy(String(e.vacancyAllowancePct));
-    if (e.incentiveAdjustment != null) setIncentiveAdjustment(String(Math.round(e.incentiveAdjustment)));
-    if (e.tenantRiskHaircut != null) setTenantRiskHaircut(String(Math.round(e.tenantRiskHaircut)));
-    if (e.leaseTypeAssumed && e.leaseTypeAssumed !== 'unknown') setLeaseType(e.leaseTypeAssumed as LeaseType);
-    if (e.outgoings) {
-      setOutgoings(prev => {
-        const next = { ...prev };
-        OUTGOING_KEYS.forEach(k => {
-          const v = (e.outgoings as any)?.[k];
-          if (v != null && !Number.isNaN(Number(v))) next[k] = String(Math.round(Number(v)));
-        });
-        return next;
-      });
-    }
+  const currentValue = (f: NoiFieldKey) => f === 'grossRent' ? num(grossRent) : f === 'recovered' ? num(recovered) : f === 'other' ? num(other) : f === 'vacancy' ? num(vacancy) : f === 'marketRent' ? num(marketRent) : f === 'incentiveAdjustment' ? num(incentiveAdjustment) : f === 'tenantRiskHaircut' ? num(tenantRiskHaircut) : f === 'leaseType' ? leaseType : f === 'noiBasis' ? noiBasis : num(outgoings[f] ?? '0');
+  const normaliseEstimate = (estimate: LegacyNoiAiEstimate | StructuredNoiAiEstimate, snapshot: any): StructuredNoiAiEstimate => {
+    if ((estimate as StructuredNoiAiEstimate).estimatedFields) { const structured = estimate as StructuredNoiAiEstimate; return { ...structured, estimatedFields: structured.estimatedFields.map(f => ({ ...f, accepted: f.accepted ?? (!protectedStatuses.includes(f.sourceStatusBefore) && isBlank(String(f.currentValue ?? ''))) })) }; }
+    const e = estimate as LegacyNoiAiEstimate; const conf: Confidence = e.confidence === 'high' ? 'High' : e.confidence === 'low' ? 'Low' : 'Medium';
+    const pairs: Array<[NoiFieldKey, any, string]> = [['marketRent', e.marketRentPa, 'AUD pa'], ['grossRent', e.grossPassingRentPa, 'AUD pa'], ['other', e.otherIncomePa, 'AUD pa'], ['recovered', e.recoveredOutgoingsPa, 'AUD pa'], ['vacancy', e.vacancyAllowancePct, '%'], ['incentiveAdjustment', e.incentiveAdjustment, 'AUD pa'], ['tenantRiskHaircut', e.tenantRiskHaircut, 'AUD pa'], ['leaseType', e.leaseTypeAssumed, '']];
+    OUTGOING_KEYS.forEach(k => pairs.push([k, e.outgoings?.[k], 'AUD pa']));
+    const fields = pairs.filter(([, v]) => v != null && v !== 'unknown').map(([field, v, unit]) => ({ field, currentValue: currentValue(field), estimatedValue: typeof v === 'number' ? Math.round(v) : v, unit, confidence: conf, sourceStatusBefore: statuses[field] ?? 'Unknown', sourceStatusAfter: 'AI Estimate' as const, reasoningSummary: e.reasoning || `Estimated from selected property context (${snapshot.address || snapshot.propertyId}).`, requiresSpecialistReview: conf === 'Low', requiredDocument: conf === 'Low' ? 'Current lease, rent roll and outgoings statement' : '', shouldOverwrite: !protectedStatuses.includes(statuses[field]) && isBlank(String(currentValue(field))), accepted: !protectedStatuses.includes(statuses[field]) && isBlank(String(currentValue(field))) }));
+    return { propertyId: snapshot.propertyId || '', dealId: snapshot.dealId || snapshot.propertyId || '', estimateType: 'NOI', summary: e.reasoning || 'Property-aware NOI estimate generated for review.', estimatedFields: fields, calculatedOutputs: { potentialGrossIncome: assessment.potentialGrossIncome, vacancyLoss: assessment.vacancyLoss, recoveredOutgoings: assessment.recoveredOutgoings, effectiveGrossIncome: assessment.effectiveGrossIncome, totalOutgoings: assessment.totalOperatingExpenses, ownerBorneOutgoings: assessment.ownerBorneExpenses, actualNOI: assessment.actualNoi, stabilisedNOI: assessment.stabilisedNoi, lenderAdjustedNOI: assessment.lenderAdjustedNoi }, warnings: [], requiredDocuments: conf === 'Low' ? ['Current lease', 'Rent roll', 'Outgoings statement'] : [], recommendedNextAction: 'Review proposed fields, accept selected estimates, then verify against source documents.' };
   };
 
   const requestEstimate = async () => {
-    if (!prefill) {
-      toast.error('Select a property in the Overview tab to anchor the AI estimate.');
-      return;
-    }
-    setEstimating(true);
+    if (!prefill) { toast.error('Select a property in the Overview tab to anchor the AI estimate.'); return; }
+    setEstimating(true); audit('AI estimate requested', 'NOI', null, null, 'Selected property');
     try {
-      const snapshot = {
-        propertyId: prefill.propertyId,
-        address: prefill.address,
-        state: prefill.state,
-        assetCategory: prefill.assetCategory,
-        assetSubtype: prefill.assetSubtype,
-        gstTreatment: prefill.gstTreatment,
-        purchasePrice: prefill.purchasePrice,
-        valuation: prefill.valuation,
-        gfaSqm: prefill.gfaSqm,
-        nlaSqm: prefill.nlaSqm,
-        glaSqm: prefill.glaSqm,
-        siteAreaSqm: prefill.siteAreaSqm,
-        hardstandSqm: prefill.hardstandSqm,
-        officePct: prefill.officePct,
-        parkingBays: prefill.parkingBays,
-        clearanceMetres: prefill.clearanceMetres,
-        yearBuilt: prefill.yearBuilt,
-        zoning: prefill.zoning,
-        current: {
-          grossRent: num(grossRent), marketRent: num(marketRent), recovered: num(recovered),
-          other: num(other), vacancy: num(vacancy), leaseType,
-          outgoings: Object.fromEntries(OUTGOING_KEYS.map(k => [k, num(outgoings[k] ?? '0')])),
-        },
-      };
-      const { data, error } = await invokeSecureFunction<{ success: boolean; estimate?: NoiAiEstimate; error?: string }>(
-        'estimate-commercial-noi',
-        { snapshot },
-      );
-      if (error || !data?.success || !data.estimate) {
-        toast.error(data?.error || error?.message || 'Failed to generate NOI estimate');
-        return;
-      }
-      setAiEstimate(data.estimate);
-      const conf = data.estimate.confidence ?? 'medium';
-      toast.success(`AI estimate ready (${conf} confidence). Click "Accept AI estimate" to apply.`, {
-        description: data.estimate.reasoning?.slice(0, 200),
-      });
-    } catch (err: any) {
-      toast.error(err?.message || 'AI estimate failed');
-    } finally {
-      setEstimating(false);
-    }
+      const missing = ['address', 'assetSubtype', 'glaSqm', 'siteAreaSqm'].filter(k => !(prefill as any)[k]);
+      const snapshot = { propertyId: prefill.propertyId, dealId: prefill.propertyId, address: prefill.address, state: prefill.state, assetCategory: prefill.assetCategory, assetSubtype: prefill.assetSubtype, gstTreatment: prefill.gstTreatment, purchasePrice: prefill.purchasePrice, valuation: prefill.valuation, gfaSqm: prefill.gfaSqm, nlaSqm: prefill.nlaSqm, glaSqm: prefill.glaSqm, siteAreaSqm: prefill.siteAreaSqm, siteCoverPct: prefill.siteCoverPct, hardstandSqm: prefill.hardstandSqm, officePct: prefill.officePct, parkingBays: prefill.parkingBays, clearanceMetres: prefill.clearanceMetres, yearBuilt: prefill.yearBuilt, zoning: prefill.zoning, tenant: (property as any)?.tenant, leaseStatus: (property as any)?.lease_status, wale: prefill.walesYears ?? (property as any)?.wale, leaseExpiry: (property as any)?.lease_expiry, capRate: (property as any)?.cap_rate, selectedClient: (property as any)?.client_name, ownershipEntity: (property as any)?.ownership_entity, linkedPropertyRecord: property, currentNoiInputs: { grossRent: num(grossRent), marketRent: num(marketRent), recovered: num(recovered), other: num(other), vacancy: num(vacancy), leaseType, noiBasis, incentiveAdjustment: num(incentiveAdjustment), tenantRiskHaircut: num(tenantRiskHaircut), outgoings: Object.fromEntries(OUTGOING_KEYS.map(k => [k, num(outgoings[k] ?? '0')])), statuses }, missingFields: Object.entries(statuses).filter(([k, v]) => v === 'Unknown' || isBlank(String(currentValue(k as NoiFieldKey)))).map(([k]) => k), verifiedAssumptions: Object.entries(statuses).filter(([, v]) => v === 'Verified' || v === 'Property Record Source' || v === 'Client Profile Source') };
+      const { data, error } = await invokeSecureFunction<{ success: boolean; estimate?: LegacyNoiAiEstimate | StructuredNoiAiEstimate; error?: string }>('estimate-commercial-noi', { snapshot });
+      if (error || !data?.success || !data.estimate) { toast.error(data?.error || error?.message || 'Failed to generate NOI estimate'); return; }
+      const structured = normaliseEstimate(data.estimate, snapshot);
+      if (missing.length) structured.warnings.unshift('AI estimate accuracy is limited because key property details are missing.');
+      setAiEstimate(structured); setReviewOpen(true); audit('AI estimate generated', 'NOI', null, structured, 'AI Estimate');
+      toast.success('AI estimate ready for review. Existing NOI inputs were not overwritten.');
+    } catch (err: any) { toast.error(err?.message || 'AI estimate failed'); } finally { setEstimating(false); }
   };
 
-  const acceptEstimate = () => {
-    if (!aiEstimate) {
-      toast.info('Run "Estimate for me" first to generate an AI estimate.');
-      return;
-    }
-    applyEstimate(aiEstimate);
-    toast.success('AI estimate applied to NOI inputs.');
+  const updateProposal = (idx: number, patch: Partial<NoiAiEstimateField>) => setAiEstimate(e => e ? { ...e, estimatedFields: e.estimatedFields.map((f, i) => i === idx ? { ...f, ...patch } : f) } : e);
+  const applyAccepted = () => {
+    if (!aiEstimate) { toast.info('Run "Estimate for me" first to generate an AI estimate.'); return; }
+    let applied = 0;
+    aiEstimate.estimatedFields.filter(f => f.accepted).forEach(f => { if (protectedStatuses.includes(f.sourceStatusBefore) && !f.shouldOverwrite) return; const v = String(f.estimatedValue ?? ''); const setMap: any = { grossRent: setGrossRent, recovered: setRecovered, other: setOther, vacancy: setVacancy, marketRent: setMarketRent, incentiveAdjustment: setIncentiveAdjustment, tenantRiskHaircut: setTenantRiskHaircut, leaseType: setLeaseType, noiBasis: setNoiBasis }; const prev = currentValue(f.field); if (setMap[f.field]) setMap[f.field](v); else setOutgoings(p => ({ ...p, [f.field]: v })); setStatuses(s => ({ ...s, [f.field]: 'AI Estimate' })); audit('AI estimate accepted', f.field, prev, v, 'AI Estimate'); applied += 1; });
+    aiEstimate.estimatedFields.filter(f => !f.accepted).forEach(f => audit('AI estimate rejected', f.field, f.estimatedValue, null, 'AI Estimate'));
+    setAiEstimate(null); setReviewOpen(false); toast.success(`${applied} AI NOI estimate${applied === 1 ? '' : 's'} applied and recalculated.`);
   };
+  const openSpecialistReview = () => { setReviewOpen(true); toast.info('Specialist review details opened.'); audit('specialist review required flag added/removed', 'NOI', null, assessment.warnings, 'NOI Calculator'); };
+  const saveBack = async () => { setSaving(true); try { const patch = { outgoings_recoverable: Object.fromEntries(OUTGOING_KEYS.map(k => [k, num(outgoings[k] ?? '0')])), noi_outputs: { actualNOI: assessment.actualNoi, stabilisedNOI: assessment.stabilisedNoi, lenderAdjustedNOI: assessment.lenderAdjustedNoi, potentialGrossIncome: assessment.potentialGrossIncome, vacancyLoss: assessment.vacancyLoss, recoveredOutgoings: assessment.recoveredOutgoings, effectiveGrossIncome: assessment.effectiveGrossIncome, totalOutgoings: assessment.totalOperatingExpenses, ownerBorneOutgoings: assessment.ownerBorneExpenses, assumptionStatuses: statuses }, gross_passing_rent_pa: num(grossRent), market_rent_pa: num(marketRent), recovered_outgoings_pa: num(recovered), vacancy_allowance_pct: num(vacancy) }; const res = await pushBack(patch); if (res.ok) audit('NOI values saved back to property', 'NOI', null, patch, 'Property Record Source'); } finally { setSaving(false); } };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>NOI Calculator</CardTitle>
-        <CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription>
-        <div className="flex flex-wrap gap-2 pt-2 items-center">
-          <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
-          <Badge variant="secondary">{assessment.confidenceTag}</Badge>
-          {prefill ? (
-            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 max-w-[260px] truncate" title={prefill.address}>Anchored: {prefill.address}</Badge>
-          ) : (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-400">No property selected</Badge>
-          )}
-          <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !prefill}>
-            {estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-            Estimate for me
-          </Button>
-          <Button size="sm" variant="outline" onClick={acceptEstimate} disabled={!aiEstimate}>Accept AI estimate</Button>
-          <SaveBackButton build={() => ({ outgoings_recoverable: { council: num(outgoings.council ?? '0'), water: num(outgoings.water ?? '0'), land_tax: num(outgoings.land_tax ?? '0'), insurance: num(outgoings.insurance ?? '0'), management: num(outgoings.management ?? '0'), repairs_maintenance: num(outgoings.repairs_maintenance ?? '0'), utilities: num(outgoings.utilities ?? '0'), cleaning: num(outgoings.cleaning ?? '0'), security: num(outgoings.security ?? '0'), other: num(outgoings.other ?? '0') } })} />
-        </div>
-        {aiEstimate?.reasoning && (
-          <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-2 text-xs text-muted-foreground">
-            <span className="font-medium text-primary">AI rationale ({aiEstimate.confidence}):</span> {aiEstimate.reasoning}
-            {aiEstimate.ratePerSqm ? <div className="mt-1">Implied rate: ${Math.round(aiEstimate.ratePerSqm)}/sqm</div> : null}
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="grid lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Gross Rental Income (PA)</Label><Input type="number" value={grossRent} onChange={e => setGrossRent(e.target.value)} /></div>
-            <div><Label>Recovered Outgoings</Label><Input type="number" value={recovered} onChange={e => setRecovered(e.target.value)} /></div>
-            <div><Label>Other Income</Label><Input type="number" value={other} onChange={e => setOther(e.target.value)} /></div>
-            <div><Label>Vacancy Allowance %</Label><Input type="number" value={vacancy} onChange={e => setVacancy(e.target.value)} /></div>
-            <div><Label>Lease Type</Label><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setLeaseType(e.target.value as LeaseType)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></div>
-            <div><Label>NOI Basis</Label><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setNoiBasis(e.target.value as NoiBasis)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></div>
-            <div><Label>Market Rent</Label><Input type="number" value={marketRent} onChange={e => setMarketRent(e.target.value)} /></div>
-            <div><Label>Tenant incentive adjustment</Label><Input type="number" value={incentiveAdjustment} onChange={e => setIncentiveAdjustment(e.target.value)} /></div>
-            <div><Label>Tenant risk haircut</Label><Input type="number" value={tenantRiskHaircut} onChange={e => setTenantRiskHaircut(e.target.value)} /></div>
-          </div>
-          <Separator />
-          <div>
-            <Label className="mb-2 block">Operating Expenses (PA)</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {OUTGOING_KEYS.map(k => (
-                <div key={k}>
-                  <Label className="text-xs text-muted-foreground">{labelMap[k]}</Label>
-                  <Input type="number" value={outgoings[k] ?? ''} onChange={e => setOutgoings(prev => ({ ...prev, [k]: e.target.value }))} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="space-y-3 bg-muted/40 rounded-lg p-4">
-          <Row label="Potential Gross Income" value={fmt(result.potentialGrossIncome)} />
-          <Row label="Vacancy Loss" value={`- ${fmt(result.vacancyLoss)}`} />
-          <Row label="Recovered Outgoings" value={`+ ${fmt(result.recoveredOutgoings)}`} />
-          <Row label="Effective Gross Income" value={fmt(result.effectiveGrossIncome)} bold />
-          <Separator />
-          <Row label="Total Outgoings" value={`- ${fmt(result.totalOutgoings)}`} />
-          <Row label="Owner-Borne Outgoings" value={fmt(result.netOutgoings)} muted />
-          <Separator />
-          <Row label="Legacy NOI" value={fmt(result.noi)} />
-          <Row label="Actual NOI" value={fmt(assessment.actualNoi)} highlight />
-          <Row label="Stabilised NOI" value={fmt(assessment.stabilisedNoi)} highlight />
-          <Row label="Lender-Adjusted NOI" value={fmt(assessment.lenderAdjustedNoi)} highlight />
-          <Separator />
-          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">NOI Bridge</div>{assessment.bridge.map(item => <div key={item.label} className="flex justify-between"><span>{item.label}</span><span>{fmt(item.amount)}</span></div>)}</div>
-          {assessment.warnings.length > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">{assessment.warnings.map(w => <div key={w}>• {w}</div>)}</div>}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <Card><CardHeader><CardTitle>NOI Calculator</CardTitle><CardDescription>Effective Gross Income minus operating expenses, with Actual, Stabilised and Lender-Adjusted NOI connected to the global deal profile.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Button size="sm" variant="outline" className="border-primary/40 text-primary" onClick={() => { setSyncOn(v => !v); toast.info(!syncOn ? 'Global Input Sync: On' : 'Global Input Sync: Off'); }}>Global Input Sync: {syncOn ? 'On' : 'Off'}</Button><Button size="sm" variant="outline" onClick={openSpecialistReview}>Specialist Review Required</Button><Badge variant="secondary">{assessment.confidenceTag}</Badge>{prefill ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 max-w-[260px] truncate" title={prefill.address}>Anchored: {prefill.address}</Badge> : <Badge variant="outline" className="border-amber-500/40 text-amber-400">No property selected</Badge>}<Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !prefill}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate for me</Button><Button size="sm" variant="outline" onClick={applyAccepted} disabled={!aiEstimate}>Accept AI estimate</Button><Button size="sm" variant="outline" onClick={saveBack} disabled={!prefill || saving}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save back to property</Button></div>{reviewOpen && <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-2 text-xs text-muted-foreground"><div className="flex justify-between gap-2"><span className="font-medium text-primary">AI estimate / specialist review</span>{aiEstimate && <Button size="sm" variant="outline" onClick={() => setAiEstimate(e => e ? { ...e, estimatedFields: e.estimatedFields.map(f => ({ ...f, accepted: true, shouldOverwrite: !protectedStatuses.includes(f.sourceStatusBefore) || f.shouldOverwrite })) } : e)}>Accept all proposed</Button>}</div>{aiEstimate ? <div className="mt-2 space-y-2"><p>{aiEstimate.summary}</p>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-300">• {w}</div>)}{aiEstimate.estimatedFields.map((f, idx) => <div key={`${f.field}-${idx}`} className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded border border-border/60 p-2"><div><b>{fieldLabels[f.field]}</b><div>{f.sourceStatusBefore} → {f.sourceStatusAfter}</div></div><div>Current: {String(f.currentValue ?? '—')}</div><div><Input className="h-8" value={String(f.estimatedValue ?? '')} onChange={e => updateProposal(idx, { estimatedValue: e.target.value })} /></div><div>Confidence: {f.confidence}</div><div>{f.reasoningSummary}{f.requiredDocument ? <div>Required: {f.requiredDocument}</div> : null}{protectedStatuses.includes(f.sourceStatusBefore) ? <div className="text-amber-300">Protected source — tick overwrite to apply.</div> : null}</div><div className="flex gap-2"><label className="flex items-center gap-1"><input type="checkbox" checked={!!f.accepted} onChange={e => updateProposal(idx, { accepted: e.target.checked })} />Accept</label>{protectedStatuses.includes(f.sourceStatusBefore) && <label className="flex items-center gap-1"><input type="checkbox" checked={!!f.shouldOverwrite} onChange={e => updateProposal(idx, { shouldOverwrite: e.target.checked })} />Overwrite</label>}</div></div>)}</div> : <div className="mt-2">{assessment.warnings.length ? assessment.warnings.map(w => <div key={w}>• {w}</div>) : 'No current specialist review items.'}</div>}</div>}</CardHeader><CardContent className="grid lg:grid-cols-2 gap-6"><div className="space-y-4"><div className="grid grid-cols-2 gap-3"><div><Label>Gross Rental Income (PA)</Label><Input type="number" value={grossRent} onChange={e => setField('grossRent', e.target.value, setGrossRent)} /></div><div><Label>Recovered Outgoings</Label><Input type="number" value={recovered} onChange={e => setField('recovered', e.target.value, setRecovered)} /></div><div><Label>Other Income</Label><Input type="number" value={other} onChange={e => setField('other', e.target.value, setOther)} /></div><div><Label>Vacancy Allowance %</Label><Input type="number" value={vacancy} onChange={e => setField('vacancy', e.target.value, setVacancy)} /></div><div><Label>Lease Type</Label><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setField('leaseType', e.target.value, setLeaseType)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></div><div><Label>NOI Basis</Label><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setField('noiBasis', e.target.value, setNoiBasis)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></div><div><Label>Market Rent</Label><Input type="number" value={marketRent} onChange={e => setField('marketRent', e.target.value, setMarketRent)} /></div><div><Label>Tenant incentive adjustment</Label><Input type="number" value={incentiveAdjustment} onChange={e => setField('incentiveAdjustment', e.target.value, setIncentiveAdjustment)} /></div><div><Label>Tenant risk haircut</Label><Input type="number" value={tenantRiskHaircut} onChange={e => setField('tenantRiskHaircut', e.target.value, setTenantRiskHaircut)} /></div></div><Separator /><div><Label className="mb-2 block">Operating Expenses (PA)</Label><div className="grid grid-cols-2 gap-2">{OUTGOING_KEYS.map(k => <div key={k}><Label className="text-xs text-muted-foreground">{labelMap[k]}</Label><Input type="number" value={outgoings[k] ?? ''} onChange={e => setField(String(k), e.target.value, (v: string) => setOutgoings(prev => ({ ...prev, [k]: v })))} /></div>)}</div></div></div><div className="space-y-3 bg-muted/40 rounded-lg p-4"><Row label="Potential Gross Income" value={fmt(result.potentialGrossIncome)} /><Row label="Vacancy Loss" value={`- ${fmt(result.vacancyLoss)}`} /><Row label="Recovered Outgoings" value={`+ ${fmt(result.recoveredOutgoings)}`} /><Row label="Effective Gross Income" value={fmt(result.effectiveGrossIncome)} bold /><Separator /><Row label="Total Outgoings" value={`- ${fmt(result.totalOutgoings)}`} /><Row label="Owner-Borne Outgoings" value={fmt(result.netOutgoings)} muted /><Separator /><Row label="Legacy NOI" value={fmt(result.noi)} /><Row label="Actual NOI" value={fmt(assessment.actualNoi)} highlight /><Row label="Stabilised NOI" value={fmt(assessment.stabilisedNoi)} highlight /><Row label="Lender-Adjusted NOI" value={fmt(assessment.lenderAdjustedNoi)} highlight /><Separator /><div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">NOI Bridge</div>{assessment.bridge.map(item => <div key={item.label} className="flex justify-between"><span>{item.label}</span><span>{fmt(item.amount)}</span></div>)}</div>{assessment.warnings.length > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">{assessment.warnings.map(w => <div key={w}>• {w}</div>)}</div>}</div></CardContent></Card>;
 }
-
-function Row({ label, value, bold, muted, highlight }: { label: string; value: string; bold?: boolean; muted?: boolean; highlight?: boolean }) {
-  return (
-    <div className={`flex justify-between items-center ${highlight ? 'text-lg font-bold text-primary' : bold ? 'font-semibold' : ''} ${muted ? 'text-muted-foreground text-sm' : ''}`}>
-      <span>{label}</span><span>{value}</span>
-    </div>
-  );
-}
+function Row({ label, value, bold, muted, highlight }: { label: string; value: string; bold?: boolean; muted?: boolean; highlight?: boolean }) { return <div className={`flex justify-between items-center ${highlight ? 'text-lg font-bold text-primary' : bold ? 'font-semibold' : ''} ${muted ? 'text-muted-foreground text-sm' : ''}`}><span>{label}</span><span>{value}</span></div>; }
