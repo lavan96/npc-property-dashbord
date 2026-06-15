@@ -13025,6 +13025,90 @@ export type Database = {
           },
         ]
       }
+      pdf_import_chunks: {
+        Row: {
+          artifact_paths: Json
+          attempts: number
+          chunk_index: number
+          created_at: string
+          dispatched_at: string | null
+          duration_ms: number | null
+          error_code: string | null
+          error_text: string | null
+          finished_at: string | null
+          id: string
+          job_id: string
+          last_event_at: string
+          max_attempts: number
+          page_count: number | null
+          page_end: number
+          page_start: number
+          parent_chunk_id: string | null
+          status: string
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          artifact_paths?: Json
+          attempts?: number
+          chunk_index: number
+          created_at?: string
+          dispatched_at?: string | null
+          duration_ms?: number | null
+          error_code?: string | null
+          error_text?: string | null
+          finished_at?: string | null
+          id?: string
+          job_id: string
+          last_event_at?: string
+          max_attempts?: number
+          page_count?: number | null
+          page_end: number
+          page_start: number
+          parent_chunk_id?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          artifact_paths?: Json
+          attempts?: number
+          chunk_index?: number
+          created_at?: string
+          dispatched_at?: string | null
+          duration_ms?: number | null
+          error_code?: string | null
+          error_text?: string | null
+          finished_at?: string | null
+          id?: string
+          job_id?: string
+          last_event_at?: string
+          max_attempts?: number
+          page_count?: number | null
+          page_end?: number
+          page_start?: number
+          parent_chunk_id?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_chunks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_chunks_parent_chunk_id_fkey"
+            columns: ["parent_chunk_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_chunks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdf_import_jobs: {
         Row: {
           attempts: Json
@@ -13032,6 +13116,11 @@ export type Database = {
           bytes_out: number | null
           cache_hit: boolean
           cache_source_job_id: string | null
+          callback_received_at: string | null
+          chunked: boolean
+          chunks_completed: number
+          chunks_failed: number
+          chunks_total: number | null
           created_at: string
           diagnostics_path: string | null
           duration_ms: number | null
@@ -13046,6 +13135,7 @@ export type Database = {
           page_count: number | null
           pages_completed: number | null
           pages_total: number | null
+          plan_payload: Json
           request_payload: Json
           result_payload: Json
           source_file_hash: string | null
@@ -13067,6 +13157,11 @@ export type Database = {
           bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
+          callback_received_at?: string | null
+          chunked?: boolean
+          chunks_completed?: number
+          chunks_failed?: number
+          chunks_total?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -13081,6 +13176,7 @@ export type Database = {
           page_count?: number | null
           pages_completed?: number | null
           pages_total?: number | null
+          plan_payload?: Json
           request_payload?: Json
           result_payload?: Json
           source_file_hash?: string | null
@@ -13102,6 +13198,11 @@ export type Database = {
           bytes_out?: number | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
+          callback_received_at?: string | null
+          chunked?: boolean
+          chunks_completed?: number
+          chunks_failed?: number
+          chunks_total?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -13116,6 +13217,7 @@ export type Database = {
           page_count?: number | null
           pages_completed?: number | null
           pages_total?: number | null
+          plan_payload?: Json
           request_payload?: Json
           result_payload?: Json
           source_file_hash?: string | null

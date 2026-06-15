@@ -87,7 +87,7 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 
 # Wave F-Option-3 storage upload config.
@@ -910,3 +910,293 @@ async def parse(req: ParseRequest, background_tasks: BackgroundTasks):
 async def raster(req: RasterRequest) -> dict:
     pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
     return _do_raster(pdf_bytes, dpi=req.dpi, fmt=req.format, pages=req.pages)
+
+
+# ---------------------------------------------------------------------------
+# Chunked pipeline (Wave G) — additive; legacy /parse path untouched.
+# ---------------------------------------------------------------------------
+# A 100+ page PDF is too heavy to parse in a single Cloud Run invocation
+# (memory + 300s timeout). The dispatcher plans page ranges and fans them out
+# to /parse-chunk. Each chunk runs Docling on a small temporary PDF carved out
+# with pypdfium2, uploads its artifacts to chunks/<chunk_index>/ in the
+# diagnostics bucket, and POSTs to a Supabase chunk-callback edge function.
+
+class PlanRequest(BaseModel):
+    url: Optional[str] = None
+    pdf_base64: Optional[str] = None
+    sample_pages: int = Field(default=3, ge=1, le=10)
+
+
+class ChunkRequest(BaseModel):
+    job_id: str
+    chunk_id: str
+    chunk_index: int
+    page_start: int = Field(ge=1)
+    page_end: int = Field(ge=1)
+    url: Optional[str] = None
+    pdf_base64: Optional[str] = None
+    mode: str = Field(default="semantic")
+    callback_url: str
+    callback_token: str
+    enable_picture_description: Optional[bool] = None
+    include_doctags: bool = True
+    include_markdown: bool = True
+    redact_pii: bool = False
+    raster_dpi: Optional[int] = Field(default=None, ge=72, le=300)
+    raster_format: str = Field(default="png", pattern="^(png|jpeg)$")
+
+
+def _extract_page_range(pdf_bytes: bytes, page_start: int, page_end: int) -> tuple[bytes, int]:
+    """Carve [page_start, page_end] (1-based, inclusive) into a new in-memory PDF.
+
+    Returns (bytes, actual_page_count). Raises SidecarError on out-of-range.
+    """
+    try:
+        src = pdfium.PdfDocument(pdf_bytes)
+    except Exception as exc:
+        raise SidecarError(400, "source_fetch_error", f"Could not open source PDF: {exc}", retryable=False) from exc
+    total = len(src)
+    start = max(1, page_start)
+    end = min(total, page_end)
+    if start > end:
+        raise SidecarError(400, "chunk_out_of_range", f"page range {page_start}-{page_end} outside 1-{total}", retryable=False)
+    try:
+        dst = pdfium.PdfDocument.new()
+        dst.import_pages(src, pages=list(range(start - 1, end)))
+        buf = io.BytesIO()
+        dst.save(buf)
+        return buf.getvalue(), (end - start + 1)
+    except Exception as exc:
+        raise SidecarError(500, "chunk_extract_failed", f"Failed to extract chunk: {exc}", retryable=True) from exc
+
+
+def _quick_ocr_hint(pdf_bytes: bytes, sample_pages: int = 3) -> dict:
+    """Cheap heuristic: sample up to N pages and check if pypdfium can pull text.
+
+    A page with very little extractable text → likely scanned/needs OCR. The
+    dispatcher uses this to pick smaller chunk sizes (OCR is ~5× slower).
+    """
+    try:
+        pdf = pdfium.PdfDocument(pdf_bytes)
+    except Exception as exc:
+        raise SidecarError(400, "source_fetch_error", f"Could not open PDF for planning: {exc}", retryable=False) from exc
+    n = len(pdf)
+    if n == 0:
+        return {"page_count": 0, "ocr_hint": False, "scanned_page_ratio": 0.0}
+    sample = min(sample_pages, n)
+    # Sample evenly across the document.
+    indices = sorted({int(round(i * (n - 1) / max(1, sample - 1))) for i in range(sample)})
+    low_text = 0
+    for idx in indices:
+        try:
+            tp = pdf[idx].get_textpage()
+            text = tp.get_text_range()
+            tp.close()
+        except Exception:
+            text = ""
+        if len((text or "").strip()) < 40:
+            low_text += 1
+    ratio = low_text / float(len(indices))
+    return {
+        "page_count": n,
+        "scanned_page_ratio": round(ratio, 3),
+        "ocr_hint": ratio >= 0.5,
+    }
+
+
+async def _post_chunk_callback(
+    callback_url: str,
+    callback_token: str,
+    job_id: str,
+    payload: dict,
+) -> None:
+    headers = {
+        "Authorization": f"Bearer {callback_token}",
+        "Content-Type": "application/json",
+        "X-Request-Id": job_id,
+    }
+    # Retry callback up to 3× on transient failures so a flaky edge bounce
+    # doesn't leave the dispatcher waiting on a chunk that already finished.
+    for attempt in range(1, 4):
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(callback_url, json=payload, headers=headers)
+                if resp.status_code < 300:
+                    return
+                LOG.error("chunk callback failed %s (attempt %d): %s", resp.status_code, attempt, resp.text[:300])
+                if resp.status_code < 500 and resp.status_code != 429:
+                    return  # 4xx (not 429) is permanent
+        except Exception as exc:
+            LOG.error("chunk callback exception (attempt %d): %s", attempt, exc)
+        await __import__("asyncio").sleep(2 ** attempt)
+
+
+async def _run_chunk_job(req: ChunkRequest) -> None:
+    started = time.monotonic()
+    artifacts: dict[str, Optional[str]] = {}
+    bytes_in = 0
+    bytes_out = 0
+    try:
+        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        bytes_in = len(pdf_bytes)
+        chunk_pdf, actual_pages = _extract_page_range(pdf_bytes, req.page_start, req.page_end)
+
+        use_description = (
+            req.enable_picture_description
+            if req.enable_picture_description is not None
+            else ENABLE_PICTURE_DESCRIPTION_DEFAULT
+        )
+        parse_result = _do_parse(
+            chunk_pdf,
+            use_description=use_description,
+            include_doctags=req.include_doctags,
+            include_markdown=req.include_markdown,
+            redact_pii=req.redact_pii,
+        )
+
+        prefix = f"{req.job_id}/chunks/{req.chunk_index:04d}"
+        async with httpx.AsyncClient(timeout=120) as client:
+            doclingDoc = parse_result.get("docling_document") or {}
+            picture_bytes = await _upload_picture_assets(client, f"{req.job_id}/chunks/{req.chunk_index:04d}", doclingDoc)
+            bytes_out += picture_bytes
+
+            docling_body = json.dumps(doclingDoc).encode("utf-8")
+            artifacts["docling_path"] = await _storage_upload(client, f"{prefix}/docling.json", docling_body, "application/json")
+            bytes_out += len(docling_body)
+            if parse_result.get("doctags"):
+                body = str(parse_result["doctags"]).encode("utf-8")
+                artifacts["doctags_path"] = await _storage_upload(client, f"{prefix}/doctags.md", body, "text/markdown")
+                bytes_out += len(body)
+            if parse_result.get("markdown"):
+                body = str(parse_result["markdown"]).encode("utf-8")
+                artifacts["markdown_path"] = await _storage_upload(client, f"{prefix}/document.md", body, "text/markdown")
+                bytes_out += len(body)
+            outline = parse_result.get("outline") or []
+            outline_body = json.dumps({
+                "outline": outline,
+                "page_languages": parse_result.get("page_languages") or {},
+            }).encode("utf-8")
+            artifacts["outline_path"] = await _storage_upload(client, f"{prefix}/outline.json", outline_body, "application/json")
+            bytes_out += len(outline_body)
+
+            # Raster the chunk only when the mode demands page images.
+            mode = (req.mode or "semantic").lower()
+            if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
+                dpi = req.raster_dpi or (200 if "pixel" in mode else 144)
+                try:
+                    raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=req.raster_format)
+                    normalized = {
+                        "format": raster_result.get("format"),
+                        "dpi": raster_result.get("dpi"),
+                        "engine_version": raster_result.get("engine_version"),
+                        # NOTE: chunk-local page_no — finalizer rebases to global page numbers.
+                        "pages": [
+                            {
+                                "page_no": p.get("page_no"),
+                                "global_page_no": req.page_start + int(p.get("page_no", 1)) - 1,
+                                "width": p.get("width_px"),
+                                "height": p.get("height_px"),
+                                "image_base64": p.get("base64"),
+                            }
+                            for p in raster_result.get("pages") or []
+                        ],
+                    }
+                    raster_body = json.dumps(normalized).encode("utf-8")
+                    artifacts["rasters_path"] = await _storage_upload(client, f"{prefix}/rasters.json", raster_body, "application/json")
+                    bytes_out += len(raster_body)
+                except SidecarError as exc:
+                    LOG.warning("chunk raster failed (continuing): %s", exc.message)
+
+        duration_ms = int((time.monotonic() - started) * 1000)
+        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+            "job_id": req.job_id,
+            "chunk_id": req.chunk_id,
+            "chunk_index": req.chunk_index,
+            "status": "succeeded",
+            "engine_version": ENGINE_VERSION,
+            "page_start": req.page_start,
+            "page_end": req.page_end,
+            "actual_pages": actual_pages,
+            "artifact_paths": artifacts,
+            "summary": parse_result.get("summary") or {},
+            "bytes_in": bytes_in,
+            "bytes_out": bytes_out,
+            "duration_ms": duration_ms,
+        })
+    except SidecarError as exc:
+        LOG.warning("chunk job %s/%d failed: %s", req.job_id, req.chunk_index, exc.message)
+        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+            "job_id": req.job_id,
+            "chunk_id": req.chunk_id,
+            "chunk_index": req.chunk_index,
+            "status": "failed",
+            "error_code": exc.error_code,
+            "message": exc.message,
+            "retryable": exc.retryable,
+            "page_start": req.page_start,
+            "page_end": req.page_end,
+            "duration_ms": int((time.monotonic() - started) * 1000),
+        })
+    except MemoryError as exc:
+        LOG.exception("chunk job %s/%d OOM", req.job_id, req.chunk_index)
+        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+            "job_id": req.job_id,
+            "chunk_id": req.chunk_id,
+            "chunk_index": req.chunk_index,
+            "status": "failed",
+            "error_code": "chunk_oom",
+            "message": str(exc)[:300],
+            "retryable": True,
+            "page_start": req.page_start,
+            "page_end": req.page_end,
+        })
+    except Exception as exc:
+        LOG.exception("chunk job %s/%d unhandled", req.job_id, req.chunk_index)
+        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+            "job_id": req.job_id,
+            "chunk_id": req.chunk_id,
+            "chunk_index": req.chunk_index,
+            "status": "failed",
+            "error_code": "chunk_unhandled",
+            "message": str(exc)[:500],
+            "retryable": True,
+            "page_start": req.page_start,
+            "page_end": req.page_end,
+        })
+
+
+@app.post("/plan")
+async def plan(req: PlanRequest) -> dict:
+    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+    hint = _quick_ocr_hint(pdf_bytes, sample_pages=req.sample_pages)
+    return {
+        "engine_version": ENGINE_VERSION,
+        "page_count": hint["page_count"],
+        "scanned_page_ratio": hint["scanned_page_ratio"],
+        "ocr_hint": hint["ocr_hint"],
+        "byte_size": len(pdf_bytes),
+    }
+
+
+@app.post("/parse-chunk")
+async def parse_chunk(req: ChunkRequest, background_tasks: BackgroundTasks):
+    if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
+        raise SidecarError(
+            503,
+            "callback_upload_not_configured",
+            "/parse-chunk requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on the sidecar.",
+            retryable=False,
+        )
+    background_tasks.add_task(_run_chunk_job, req)
+    return JSONResponse(
+        {
+            "accepted": True,
+            "job_id": req.job_id,
+            "chunk_id": req.chunk_id,
+            "chunk_index": req.chunk_index,
+            "page_start": req.page_start,
+            "page_end": req.page_end,
+            "engine_version": ENGINE_VERSION,
+        },
+        status_code=202,
+    )

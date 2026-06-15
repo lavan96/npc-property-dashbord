@@ -27,8 +27,15 @@ const PARSE_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 const SOURCE_BUCKET = 'template-import-assets';
 const ENGINE = 'docling';
-const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD';
+const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+waveG';
 const MAX_SIDECAR_ATTEMPTS = 3;
+
+// Wave G chunked thresholds. <=20 pages → monolithic /parse callback.
+// 21–60 → 10-page chunks. >60 → 5-page chunks. OCR-heavy halves the size.
+const CHUNK_MONOLITHIC_MAX = 20;
+const CHUNK_SIZE_MEDIUM = 10;
+const CHUNK_SIZE_LARGE = 5;
+const STUCK_PARSING_MINUTES = 15;
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
@@ -364,6 +371,162 @@ async function serveFromCache(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Wave G — chunked pipeline planning and dispatch.
+// ---------------------------------------------------------------------------
+interface SourceDescriptor {
+  kind: 'storage' | 'url';
+  bucket?: string;
+  path?: string;
+  url?: string;
+}
+
+interface PlanResult {
+  page_count: number;
+  scanned_page_ratio: number;
+  ocr_hint: boolean;
+  byte_size: number;
+}
+
+async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanResult | null> {
+  try {
+    const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/plan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PARSE_TOKEN}`,
+        'X-Request-Id': jobId,
+      },
+      body: JSON.stringify({ url: signedUrl }),
+    });
+    if (!res.ok) {
+      console.warn('[pdf-parse-dispatch] /plan returned', res.status);
+      return null;
+    }
+    return await res.json() as PlanResult;
+  } catch (e) {
+    console.warn('[pdf-parse-dispatch] /plan exception', e);
+    return null;
+  }
+}
+
+function planChunks(pageCount: number, ocrHint: boolean): Array<{ page_start: number; page_end: number }> {
+  if (pageCount <= 0) return [];
+  let size = pageCount <= CHUNK_MONOLITHIC_MAX
+    ? pageCount
+    : pageCount <= 60
+      ? CHUNK_SIZE_MEDIUM
+      : CHUNK_SIZE_LARGE;
+  // OCR-heavy PDFs: halve the chunk size to keep memory + runtime per request safe.
+  if (ocrHint && size > 2) size = Math.max(2, Math.floor(size / 2));
+  const ranges: Array<{ page_start: number; page_end: number }> = [];
+  for (let s = 1; s <= pageCount; s += size) {
+    ranges.push({ page_start: s, page_end: Math.min(pageCount, s + size - 1) });
+  }
+  return ranges;
+}
+
+async function dispatchChunkToSidecar(
+  admin: Admin,
+  jobId: string,
+  chunk: { id: string; chunk_index: number; page_start: number; page_end: number; attempts: number },
+  signedUrl: string,
+  mode: string,
+  requestPayload: Record<string, unknown>,
+): Promise<boolean> {
+  await admin.from('pdf_import_chunks').update({
+    status: 'dispatched',
+    attempts: (chunk.attempts ?? 0) + 1,
+    dispatched_at: new Date().toISOString(),
+  }).eq('id', chunk.id);
+  const body = {
+    job_id: jobId,
+    chunk_id: chunk.id,
+    chunk_index: chunk.chunk_index,
+    page_start: chunk.page_start,
+    page_end: chunk.page_end,
+    url: signedUrl,
+    mode,
+    callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
+    callback_token: PARSE_TOKEN,
+    enable_picture_description: requestPayload?.description_tier !== 'off',
+    include_doctags: true,
+    include_markdown: requestPayload?.include_markdown !== false,
+    redact_pii: Boolean(requestPayload?.redact_pii),
+    raster_dpi: (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144,
+    raster_format: 'png',
+  };
+  try {
+    const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/parse-chunk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${PARSE_TOKEN}`,
+        'X-Request-Id': jobId,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 202) {
+      const text = await res.text().catch(() => '');
+      console.error('[pdf-parse-dispatch] /parse-chunk non-202', { jobId, chunkIndex: chunk.chunk_index, status: res.status, text: text.slice(0, 300) });
+      await admin.from('pdf_import_chunks').update({
+        status: 'failed',
+        error_code: `dispatch_http_${res.status}`,
+        error_text: text.slice(0, 500),
+      }).eq('id', chunk.id);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[pdf-parse-dispatch] /parse-chunk exception', e);
+    await admin.from('pdf_import_chunks').update({
+      status: 'failed',
+      error_code: 'dispatch_exception',
+      error_text: String((e as Error)?.message ?? e).slice(0, 500),
+    }).eq('id', chunk.id);
+    return false;
+  }
+}
+
+async function runChunkedDispatch(
+  admin: Admin,
+  jobId: string,
+  signedUrl: string,
+  mode: string,
+  pageCount: number,
+  ocrHint: boolean,
+  requestPayload: Record<string, unknown>,
+): Promise<void> {
+  const ranges = planChunks(pageCount, ocrHint);
+  if (!ranges.length) {
+    throw new Error(`chunk plan produced no ranges (pageCount=${pageCount})`);
+  }
+  await updateJob(admin, jobId, {
+    chunked: true,
+    chunks_total: ranges.length,
+    pages_total: pageCount,
+    page_count: pageCount,
+  });
+  const inserts = ranges.map((r, i) => ({
+    job_id: jobId,
+    chunk_index: i + 1,
+    page_start: r.page_start,
+    page_end: r.page_end,
+    status: 'pending',
+  }));
+  const { data: chunkRows, error } = await admin
+    .from('pdf_import_chunks')
+    .insert(inserts)
+    .select('id, chunk_index, page_start, page_end, attempts');
+  if (error || !chunkRows) {
+    throw new Error(`chunk insert failed: ${error?.message ?? 'unknown'}`);
+  }
+  // Dispatch in chunk_index order. Sidecar runs concurrently; Cloud Run scales.
+  for (const c of chunkRows as any[]) {
+    await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, requestPayload);
+  }
+}
+
 async function runJob(
   admin: Admin,
   jobId: string,
@@ -371,9 +534,11 @@ async function runJob(
   mode: string,
   cleanup?: () => Promise<void>,
   knownSource?: { hash?: string | null; size?: number | null },
+  source?: SourceDescriptor,
 ) {
   const startedAt = Date.now();
   let bytesIn: number | null = null;
+  let chunkedRan = false;
   try {
     // ---- Phase C: hash + cache lookup --------------------------------------
     await setStage(admin, jobId, 'hashing');
@@ -395,18 +560,39 @@ async function runJob(
       }
     }
 
-    // ---- Wave F-Option-3: callback dispatch --------------------------------
-    // Hand the entire parse + raster + upload pipeline to the sidecar. It uploads
-    // artifacts straight to the diagnostics bucket and POSTs pdf-parse-callback
-    // when finished. The dispatcher returns within seconds — wall-clock budget
-    // is no longer coupled to Docling runtime.
-    await setStage(admin, jobId, 'parsing');
-
-    const requestPayload = (await admin
+    const requestPayload = ((await admin
       .from('pdf_import_jobs')
       .select('request_payload')
       .eq('id', jobId)
-      .maybeSingle()).data?.request_payload as Record<string, unknown> | undefined;
+      .maybeSingle()).data?.request_payload ?? {}) as Record<string, unknown>;
+
+    // ---- Wave G: planning (page count + OCR hint) --------------------------
+    await setStage(admin, jobId, 'planning');
+    const plan = await callSidecarPlan(signedUrl, jobId);
+    const planRecord: Record<string, unknown> = plan ?? {};
+    if (source) planRecord.source = source;
+    await updateJob(admin, jobId, { plan_payload: planRecord });
+
+    const forceChunked = requestPayload?.force_chunked === true;
+    const useChunked = forceChunked || (plan && plan.page_count > CHUNK_MONOLITHIC_MAX);
+
+    if (useChunked && plan) {
+      // ---- Chunked path -----------------------------------------------------
+      await setStage(admin, jobId, 'parsing');
+      await appendAttempt(admin, jobId, {
+        endpoint: '/parse-chunk',
+        kind: 'chunked_plan',
+        page_count: plan.page_count,
+        ocr_hint: plan.ocr_hint,
+      });
+      await runChunkedDispatch(admin, jobId, signedUrl, mode, plan.page_count, plan.ocr_hint, requestPayload);
+      await updateJob(admin, jobId, { bytes_in: bytesIn });
+      chunkedRan = true;
+      return;
+    }
+
+    // ---- Wave F-Option-3: monolithic callback dispatch (small docs) -------
+    await setStage(admin, jobId, 'parsing');
     const descriptionTier = (requestPayload?.description_tier as string) ?? 'on';
     const includeMarkdown = requestPayload?.include_markdown === false ? false : true;
     const allowModeOverride = requestPayload?.allow_mode_override !== false;
@@ -425,9 +611,7 @@ async function runJob(
       raster_format: 'png',
       allow_mode_override: allowModeOverride,
     };
-    if (descriptionTier !== 'off') {
-      parseBody.enable_picture_description = true;
-    }
+    if (descriptionTier !== 'off') parseBody.enable_picture_description = true;
 
     const TRANSIENT = new Set([408, 429, 500, 502, 503, 504, 522, 524]);
     let dispatched = false;
@@ -445,18 +629,8 @@ async function runJob(
           body: JSON.stringify(parseBody),
         });
         const text = await parseRes.text().catch(() => '');
-        // 202 = sidecar accepted async job (Option-3 callback mode).
-        // 200 = legacy sync sidecar (no callback wiring) — treat as failure since
-        //       we no longer process sync payloads here.
         if (parseRes.status === 202) {
-          await appendAttempt(admin, jobId, {
-            endpoint: '/parse',
-            attempt,
-            status: parseRes.status,
-            ok: true,
-            duration_ms: Date.now() - attemptStarted,
-            mode: 'callback',
-          });
+          await appendAttempt(admin, jobId, { endpoint: '/parse', attempt, status: 202, ok: true, duration_ms: Date.now() - attemptStarted, mode: 'callback' });
           dispatched = true;
           break;
         }
@@ -466,46 +640,22 @@ async function runJob(
           const errJson = JSON.parse(text);
           if (typeof errJson?.retryable === 'boolean') retryable = errJson.retryable;
           if (typeof errJson?.error_code === 'string') errorCode = errJson.error_code;
-        } catch (_ignored) {
-          // non-JSON error
-        }
+        } catch (_ignored) { /* non-JSON */ }
         lastErr = `sidecar /parse ${parseRes.status}: ${text.slice(0, 500)}`;
-        await appendAttempt(admin, jobId, {
-          endpoint: '/parse',
-          attempt,
-          status: parseRes.status,
-          ok: false,
-          error_code: errorCode,
-          retryable,
-          duration_ms: Date.now() - attemptStarted,
-        });
+        await appendAttempt(admin, jobId, { endpoint: '/parse', attempt, status: parseRes.status, ok: false, error_code: errorCode, retryable, duration_ms: Date.now() - attemptStarted });
         if (!retryable || attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(lastErr);
       } catch (e) {
         lastErr = String((e as Error)?.message ?? e);
         if (!lastErr.startsWith('sidecar /parse')) {
-          await appendAttempt(admin, jobId, {
-            endpoint: '/parse',
-            attempt,
-            ok: false,
-            error_code: 'fetch_exception',
-            retryable: attempt < MAX_SIDECAR_ATTEMPTS,
-            message: lastErr.slice(0, 500),
-            duration_ms: Date.now() - attemptStarted,
-          });
+          await appendAttempt(admin, jobId, { endpoint: '/parse', attempt, ok: false, error_code: 'fetch_exception', retryable: attempt < MAX_SIDECAR_ATTEMPTS, message: lastErr.slice(0, 500), duration_ms: Date.now() - attemptStarted });
         }
         if (attempt === MAX_SIDECAR_ATTEMPTS) throw new Error(lastErr);
       }
       const delay = [2000, 5000][attempt - 1] ?? 5000;
-      console.log(`[pdf-parse-dispatch] sidecar transient (attempt ${attempt}); retrying in ${delay}ms`);
       await new Promise((r) => setTimeout(r, delay));
     }
     if (!dispatched) throw new Error(lastErr || 'sidecar /parse dispatch failed');
-
-    // Job is now in the sidecar's hands; pdf-parse-callback will finalize.
-    await updateJob(admin, jobId, {
-      stage: 'parsing',
-      bytes_in: bytesIn,
-    });
+    await updateJob(admin, jobId, { stage: 'parsing', bytes_in: bytesIn });
   } catch (err) {
     const finishedAt = Date.now();
     console.error('[pdf-parse-dispatch] dispatch failed', { jobId, err });
@@ -518,8 +668,101 @@ async function runJob(
       error_text: String((err as Error)?.message ?? err).slice(0, 2000),
     });
   } finally {
-    if (cleanup) await cleanup().catch(() => undefined);
+    // For chunked jobs the source must outlive this invocation (chunk callbacks
+    // re-sign / re-fetch it). Cleanup is deferred until finalize, where the
+    // source is already gone from the URL-signed temporary path naturally.
+    if (cleanup && !chunkedRan) await cleanup().catch(() => undefined);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Stuck-job recovery — invoked manually (admin) or by a cron schedule.
+// ---------------------------------------------------------------------------
+async function recoverStuckJobs(admin: Admin): Promise<{ requeued: number; failed: number; jobs: Array<{ job_id: string; action: string }> }> {
+  const cutoff = new Date(Date.now() - STUCK_PARSING_MINUTES * 60_000).toISOString();
+  const results: Array<{ job_id: string; action: string }> = [];
+  let requeued = 0;
+  let failed = 0;
+
+  // Monolithic stuck (Option-3 path with no callback after N minutes).
+  const { data: monolithicStuck } = await admin
+    .from('pdf_import_jobs')
+    .select('id, stage_started_at, chunked, plan_payload, mode, request_payload')
+    .eq('status', 'parsing')
+    .eq('chunked', false)
+    .lt('stage_started_at', cutoff)
+    .limit(25);
+  for (const row of (monolithicStuck as any[]) ?? []) {
+    await updateJob(admin, row.id, {
+      status: 'recoverable_failed',
+      stage: 'failed',
+      error_code: 'callback_failed',
+      error_text: `monolithic parse exceeded ${STUCK_PARSING_MINUTES}m without callback`,
+      finished_at: new Date().toISOString(),
+    });
+    results.push({ job_id: row.id, action: 'mark_recoverable_failed' });
+    failed++;
+  }
+
+  // Chunked stuck — re-dispatch any 'dispatched'/'parsing' chunks past cutoff.
+  const { data: stuckChunks } = await admin
+    .from('pdf_import_chunks')
+    .select('id, job_id, chunk_index, page_start, page_end, attempts, max_attempts, status, last_event_at')
+    .in('status', ['dispatched', 'parsing'])
+    .lt('last_event_at', cutoff)
+    .limit(100);
+  // Group by job for re-dispatch.
+  const byJob = new Map<string, any[]>();
+  for (const c of (stuckChunks as any[]) ?? []) {
+    if (!byJob.has(c.job_id)) byJob.set(c.job_id, []);
+    byJob.get(c.job_id)!.push(c);
+  }
+  for (const [jobId, chunks] of byJob) {
+    const { data: job } = await admin
+      .from('pdf_import_jobs')
+      .select('mode, request_payload, plan_payload')
+      .eq('id', jobId)
+      .maybeSingle();
+    const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
+    const src = (plan?.source ?? {}) as SourceDescriptor;
+    let signedUrl: string | null = null;
+    if (src.kind === 'storage' && src.bucket && src.path) {
+      const { data } = await admin.storage.from(src.bucket).createSignedUrl(src.path, 1200);
+      signedUrl = data?.signedUrl ?? null;
+    } else if (src.kind === 'url' && src.url) {
+      signedUrl = src.url;
+    }
+    if (!signedUrl) {
+      for (const c of chunks) {
+        await admin.from('pdf_import_chunks').update({
+          status: 'fatal',
+          error_code: 'source_fetch_error',
+          error_text: 'could not re-sign source for stuck recovery',
+        }).eq('id', c.id);
+        failed++;
+        results.push({ job_id: jobId, action: 'fatal_no_source' });
+      }
+      continue;
+    }
+    const mode = (job as any)?.mode ?? 'semantic';
+    const requestPayload = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
+    for (const c of chunks) {
+      if ((c.attempts ?? 0) >= (c.max_attempts ?? 3)) {
+        await admin.from('pdf_import_chunks').update({
+          status: 'fatal',
+          error_code: 'chunk_retry_exhausted',
+        }).eq('id', c.id);
+        failed++;
+        results.push({ job_id: jobId, action: 'fatal_max_attempts' });
+        continue;
+      }
+      const ok = await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, requestPayload);
+      results.push({ job_id: jobId, action: ok ? 'redispatched' : 'redispatch_failed' });
+      if (ok) requeued++;
+      else failed++;
+    }
+  }
+  return { requeued, failed, jobs: results };
 }
 
 Deno.serve(async (req) => {
@@ -672,14 +915,33 @@ Deno.serve(async (req) => {
         return json({ error: insertErr?.message ?? 'job insert failed' }, 500);
       }
 
+      // Build a SourceDescriptor so chunk callbacks can re-sign on retry/recovery.
+      let source: SourceDescriptor | undefined;
+      if (typeof body.source_path === 'string' && body.source_path) {
+        source = { kind: 'storage', bucket: (body.source_bucket as string) || SOURCE_BUCKET, path: body.source_path as string };
+      } else if (typeof body.source_url === 'string' && body.source_url) {
+        source = { kind: 'url', url: body.source_url as string };
+      }
+      // base64 → resolveSignedSourceUrl persisted it to DIAGNOSTICS_BUCKET inbox.
+      // We can't recover the inbox path cleanly here, so chunked + base64 will
+      // need a small follow-up. For now record kind='url' (signed) which is OK
+      // for single-attempt dispatch but not for stuck recovery.
+
       // Fire-and-forget background processing.
       // @ts-expect-error EdgeRuntime is provided by Supabase's Deno runtime.
       EdgeRuntime.waitUntil(runJob(admin, jobRow.id, sourceRes.url, mode, sourceRes.cleanup, {
         hash: typeof body.source_file_hash === 'string' ? body.source_file_hash : null,
         size: Number(body.source_file_size_bytes) || null,
-      }));
+      }, source));
 
       return json({ job_id: jobRow.id, status: 'queued', idempotency_key: idempotencyKey });
+    }
+
+    if (operation === 'recover') {
+      // Stuck-job recovery — re-dispatch chunks past their last_event_at
+      // cutoff, mark monolithic stalls as recoverable_failed. Returns a report.
+      const result = await recoverStuckJobs(admin);
+      return json({ ok: true, ...result });
     }
 
     return json({ error: `unknown operation: ${operation}` }, 400);
