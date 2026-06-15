@@ -443,6 +443,8 @@ export function PortfolioAnalysisPDFGenerator({
   const downloadPDF = async (opts?: { flattenOnly?: boolean }) => {
     if (!analysisData) return;
     const flattenOnly = opts?.flattenOnly === true;
+    setIsDownloading(true);
+    
     
     try {
       console.log('📄 Starting Portfolio Analysis PDF generation with pdf-lib...');
