@@ -538,6 +538,7 @@ async function runJob(
 ) {
   const startedAt = Date.now();
   let bytesIn: number | null = null;
+  let chunkedRan = false;
   try {
     // ---- Phase C: hash + cache lookup --------------------------------------
     await setStage(admin, jobId, 'hashing');
