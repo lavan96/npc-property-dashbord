@@ -4911,15 +4911,25 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold">Investment Metrics Comparison ({comparisonReports.length + 1} Properties)</h4>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportComparisonPDF}
-                        className="gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Export PDF
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportComparisonPDF()}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Export PDF
+                        </Button>
+                        <FlattenPdfIconButton
+                          getPdfBlob={async () => {
+                            const b = await exportComparisonPDF({ returnBlob: true });
+                            if (!b) throw new Error('Failed to generate comparison PDF');
+                            return b;
+                          }}
+                          filename={`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`}
+                        />
+                      </div>
                     </div>
                     
                     {/* Metrics Table */}
