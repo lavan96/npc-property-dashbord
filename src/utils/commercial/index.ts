@@ -83,4 +83,6 @@ export * from './scenarioComparisonEngine';
 export * from './scenarioReportBuilder';
 export * from './clientPortfolioRepository';
 
-export * from './scenarioSyncEngine';
+export { applyScenarioToClientProfile, syncScenarioFromClientProfile } from './scenarioSyncEngine';
+// Note: commitScenarioToClientProfile intentionally NOT re-exported here — the
+// canonical export lives in ./clientProfileSyncEngine (re-exported above).
