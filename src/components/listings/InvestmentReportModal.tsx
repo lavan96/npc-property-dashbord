@@ -535,6 +535,10 @@ export function InvestmentReportModal({
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                   </Button>
+                  <FlattenPdfIconButton
+                    getPdfBlob={async () => buildPdfDoc().output('blob')}
+                    filename={pdfFilename}
+                  />
                   {reportId && (
                     <Button
                       variant="outline"
