@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { AlertTriangle, Building2, CheckCircle2, Circle, Factory, FileCheck2, Link2, ShieldAlert, Sparkles, UserRound, GitBranch } from 'lucide-react';
+import { AlertTriangle, Building2, Check, ChevronsUpDown, Circle, CheckCircle2, Factory, FileCheck2, Link2, Search, ShieldAlert, Sparkles, UserRound, GitBranch } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
