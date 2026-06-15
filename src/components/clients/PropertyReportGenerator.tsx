@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { FileText, Loader2, Download, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
