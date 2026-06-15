@@ -868,15 +868,28 @@ export function ClientReportsTab({
 
                 {/* Download PDF for borrowing capacity assessments */}
                 {report.type === 'borrowing' && report.source === 'borrowing_assessment' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 sm:h-8 sm:w-8"
-                    onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName)}
-                    title="Download PDF"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
+                      onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName)}
+                      title="Download PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <FlattenPdfIconButton
+                      getPdfBlob={async () => {
+                        const res = await fetchAndGenerateBorrowingCapacityPDF(clientId, clientName, undefined, undefined, { returnBlob: true });
+                        if (!res?.blob) throw new Error('No PDF produced');
+                        return res.blob;
+                      }}
+                      filename={`borrowing-capacity-${clientName || clientId}.pdf`}
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
+                    />
+                  </>
                 )}
 
                 {report.fileUrl && (
@@ -899,6 +912,19 @@ export function ClientReportsTab({
                     >
                       <Download className="h-4 w-4" />
                     </Button>
+                    <FlattenPdfIconButton
+                      getPdfBlob={async () => {
+                        const r = await secureStorageDownload('client-files', report.fileUrl!);
+                        if (r.success && r.blob) return r.blob;
+                        const r2 = await secureStorageDownload('investment-reports', report.fileUrl!);
+                        if (r2.success && r2.blob) return r2.blob;
+                        throw new Error('Unable to fetch source PDF');
+                      }}
+                      filename={report.name || 'report.pdf'}
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
