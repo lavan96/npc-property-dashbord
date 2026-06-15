@@ -281,6 +281,11 @@ function ocrPageRatio(summary: any, pageCount: number | null): number {
 
 function shouldForcePixelPerfect(summary: any, pageCount: number | null, requestedMode: string, requestPayload: Record<string, unknown> | undefined): boolean {
   if (requestedMode === 'pixel_perfect' || requestedMode === 'pixel-perfect') return false;
+  // Honor explicit user choices. Semantic = "I want editable overlays even if the
+  // PDF is scanned/flattened" — Docling's internal OCR still produces text blocks
+  // we can place as editable text. Auto-promotion only applies to 'hybrid' (the
+  // default), where the user has not committed to either extreme.
+  if (requestedMode === 'semantic') return false;
   if (requestPayload?.allow_mode_override === false) return false;
   return ocrPageRatio(summary, pageCount) > 0.3;
 }
