@@ -328,18 +328,25 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                 <MapPin className="h-5 w-5" />
                 Property Investment Report
               </span>
-              <Button 
-                onClick={downloadPDF} 
-                disabled={isDownloading}
-                size="sm"
-              >
-                {isDownloading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Download PDF
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={downloadPDF}
+                  disabled={isDownloading}
+                  size="sm"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download PDF
+                </Button>
+                <FlattenPdfIconButton
+                  getPdfBlob={async () => (await buildPdf()).output('blob')}
+                  filename={pdfFilename()}
+                  disabled={isDownloading || !reportData}
+                />
+              </div>
             </DialogTitle>
             <DialogDescription>
               Investment analysis for {property.address}
