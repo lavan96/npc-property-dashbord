@@ -38,11 +38,12 @@ const STAGE_ETA_SECONDS: Record<string, number> = { reading: 5, uploading: 10, e
 
 function progressCopy(progress: ImportProgress | null): { label: string; eta: string } {
   if (!progress) return { label: 'Waiting to start', eta: '' };
-  const label = STAGE_LABELS[progress.phase] ?? progress.phase;
-  const pageSuffix = progress.page && progress.totalPages ? ` · page ${progress.page}/${progress.totalPages}` : '';
+  const label = progress.message
+    ?? STAGE_LABELS[progress.phase]
+    ?? progress.phase;
   const etaSeconds = STAGE_ETA_SECONDS[progress.phase] ?? 20;
   const eta = progress.phase === 'done' ? 'Done' : `ETA ~${etaSeconds < 60 ? `${etaSeconds}s` : `${Math.round(etaSeconds / 60)}m`}`;
-  return { label: `${label}${pageSuffix}${progress.message ? ` · ${progress.message}` : ''}`, eta };
+  return { label, eta };
 }
 
 interface Props {
