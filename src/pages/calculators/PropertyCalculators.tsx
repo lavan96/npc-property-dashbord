@@ -26,6 +26,9 @@ import {
   type CalculatorDomain,
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
+import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export default function PropertyCalculators() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -85,57 +88,62 @@ export default function PropertyCalculators() {
           </div>
         </div>
 
-        <CalculatorPropertyBar />
+        <div className="space-y-3">
+          <CalculatorPropertyBar />
+          <div className="rounded-lg border border-primary/20 bg-card/70 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="outline" className="border-primary/30 text-primary">Global Input Sync available in calculators</Badge>
+                <Badge variant="secondary">Assumptions, warnings and save-back actions stay tab-specific</Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled title="Open a calculator tab to review that tab's assumption status.">Assumption Status</Button>
+                <Button size="sm" variant="outline" disabled title="Save-back is available inside tabs once a property is linked.">Save Back to Property</Button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full justify-start gap-1 overflow-x-auto">
-            <TabsTrigger value="overview" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Overview</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Report</span>
-            </TabsTrigger>
-            <TabsTrigger value="borrowing" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+          <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/70 p-1">
+          <TabsList className="h-auto min-w-max w-full justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="overview" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Overview</TabsTrigger>
+            <TabsTrigger value="borrowing" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <span className="whitespace-nowrap">Borrowing Capacity</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Unified</span>
             </TabsTrigger>
-            <TabsTrigger value="noi" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Net Operating Income</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(NOI)</span>
+            <TabsTrigger value="noi" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <span className="whitespace-nowrap">NOI</span>
             </TabsTrigger>
-            <TabsTrigger value="cap" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Capitalisation Rate</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(Cap Rate)</span>
+            <TabsTrigger value="cap" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <span className="whitespace-nowrap">Cap Rate</span>
             </TabsTrigger>
-            <TabsTrigger value="icr" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Interest / Debt Service Coverage</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(ICR / DSCR)</span>
+            <TabsTrigger value="icr" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <span className="whitespace-nowrap">ICR / DSCR</span>
             </TabsTrigger>
-            <TabsTrigger value="gst" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Goods &amp; Services Tax</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(GST)</span>
+            <TabsTrigger value="gst" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <span className="whitespace-nowrap">GST</span>
             </TabsTrigger>
-            <TabsTrigger value="dcf" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
-              <span className="whitespace-nowrap">Discounted Cash Flow</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">(DCF)</span>
+            <TabsTrigger value="dcf" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <span className="whitespace-nowrap">DCF</span>
             </TabsTrigger>
-            <TabsTrigger value="ten-year" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            <TabsTrigger value="ten-year" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <span className="whitespace-nowrap">10-Year Cash Flow</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">Report</span>
             </TabsTrigger>
-            {domain === 'industrial' && <TabsTrigger value="rent" className="min-h-[54px] shrink-0 flex-col gap-0.5 px-3 py-2 text-center text-xs leading-tight md:text-sm">
+            {domain === 'industrial' && <TabsTrigger value="rent" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <span className="whitespace-nowrap">Industrial Metrics</span>
-              <span className="whitespace-nowrap text-[11px] leading-none opacity-80 md:text-xs">$/m² + Site Cover</span>
             </TabsTrigger>}
           </TabsList>
+          </div>
 
-          <TabsContent value="overview" className="mt-4"><CommercialIndustrialOverviewCard /></TabsContent>
-          <TabsContent value="borrowing" className="mt-4"><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></TabsContent>
-          <TabsContent value="noi" className="mt-4"><NoiCalculatorCard /></TabsContent>
-          <TabsContent value="cap" className="mt-4"><CapRateCalculatorCard /></TabsContent>
-          <TabsContent value="icr" className="mt-4"><IcrDscrCalculatorCard /></TabsContent>
-          <TabsContent value="gst" className="mt-4"><GstCalculatorCard /></TabsContent>
-          <TabsContent value="dcf" className="mt-4"><DcfCalculatorCard /></TabsContent>
-          <TabsContent value="ten-year" className="mt-4"><TenYearCashFlowCard /></TabsContent>
-          {domain === 'industrial' && <TabsContent value="rent" className="mt-4"><div className="grid xl:grid-cols-2 gap-4"><RentPerSqmCard /><SiteCoverCard /></div></TabsContent>}
+          <TabsContent value="overview" className="mt-4"><CalculatorTabShell title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="borrowing" className="mt-4"><CalculatorTabShell title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell></TabsContent>
+          <TabsContent value="noi" className="mt-4"><CalculatorTabShell title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="cap" className="mt-4"><CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="icr" className="mt-4"><CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
+          {domain === 'industrial' && <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together for industrial assets only." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Blank GLA, site area or hardstand fields remain empty until imported or entered; placeholder text is not used in calculations.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid xl:grid-cols-2 gap-4"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>}
         </Tabs>
       </div>
     </CalculatorPrefillProvider>
