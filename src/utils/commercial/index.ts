@@ -77,7 +77,13 @@ export * from './cashFlowCommentaryGenerator';
 export * from './clientPortfolioTypes';
 export * from './clientPortfolioEngine';
 export * from './clientScenarioEngine';
-export * from './clientProfileSyncEngine';
+export {
+  commitScenarioToClientProfile,
+  isPopulatedCalculatorValue,
+  countProfileImportConflicts,
+  buildClientProfileImportAudit,
+} from './clientProfileSyncEngine';
+export type { ClientProfileImportMode, CalculatorFieldSnapshot } from './clientProfileSyncEngine';
 export * from './scenarioModellingEngine';
 export * from './scenarioComparisonEngine';
 export * from './scenarioReportBuilder';
