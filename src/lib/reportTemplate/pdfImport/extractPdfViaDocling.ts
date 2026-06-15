@@ -91,12 +91,64 @@ interface JobRow {
   status: string;
   stage: string | null;
   page_count: number | null;
+  pages_completed?: number | null;
+  pages_total?: number | null;
   duration_ms: number | null;
   engine_version: string | null;
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
   result_payload: { docling_path?: string; rasters_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
+  attempts?: Array<{ endpoint?: string; ok?: boolean; status?: number; attempt?: number; error_code?: string; retryable?: boolean; message?: string } | unknown> | null;
+}
+
+function stageToPhase(stage: string | null): ImportProgress['phase'] {
+  switch (stage) {
+    case 'rastering':
+    case 'rasterizing':
+      return 'rasterizing';
+    case 'finalizing':
+    case 'parsed':
+    case 'persisting':
+      return 'finalizing';
+    case 'hashing':
+    case 'queued':
+    case 'cache_hit':
+      return 'uploading';
+    default:
+      return 'extracting';
+  }
+}
+
+function stageLabel(stage: string | null): string {
+  if (!stage) return 'Working…';
+  switch (stage) {
+    case 'queued': return 'Queued';
+    case 'hashing': return 'Hashing source';
+    case 'parsing': return 'Docling parsing';
+    case 'persisting': return 'Saving Docling output';
+    case 'rastering':
+    case 'rasterizing':
+      return 'Rasterising pages';
+    case 'finalizing': return 'Finalising';
+    case 'parsed': return 'Done';
+    case 'cache_hit': return 'Cache hit — reusing prior parse';
+    default: return stage;
+  }
+}
+
+function latestSidecarWarning(attempts: JobRow['attempts']): string | null {
+  if (!Array.isArray(attempts)) return null;
+  for (let i = attempts.length - 1; i >= 0; i--) {
+    const a = attempts[i] as any;
+    if (!a || a.ok) continue;
+    const ep = a.endpoint ?? 'sidecar';
+    const status = a.status ? ` ${a.status}` : '';
+    const reason = a.message ? ` — ${String(a.message).slice(0, 160)}` : '';
+    const retry = a.retryable === false ? ' (giving up)' : ' (retrying)';
+    return `${ep}${status}${retry}${reason}`;
+  }
+  return null;
 }
 
 async function pollJob(
@@ -105,6 +157,8 @@ async function pollJob(
 ): Promise<JobRow> {
   const start = Date.now();
   let lastStage: string | null = null;
+  let lastPages = -1;
+  let lastWarning: string | null = null;
   let consecutiveErrors = 0;
   let lastError: string | null = null;
   // Poll via `pdf-parse-dispatch { operation: 'status' }` rather than direct
@@ -131,21 +185,32 @@ async function pollJob(
       consecutiveErrors = 0;
       const row = (data as { job?: JobRow } | null)?.job;
       if (row) {
-        if (row.stage && row.stage !== lastStage) {
+        const pages = row.pages_completed ?? 0;
+        const total = row.pages_total ?? row.page_count ?? null;
+        const warning = latestSidecarWarning(row.attempts);
+        const stageChanged = row.stage !== lastStage;
+        const pagesChanged = pages !== lastPages;
+        const warningChanged = warning !== lastWarning;
+        if (stageChanged || pagesChanged || warningChanged) {
           lastStage = row.stage;
+          lastPages = pages;
+          lastWarning = warning;
           onProgress?.({
-            phase: row.stage === 'rastering' ? 'rasterizing'
-              : row.stage === 'finalizing' ? 'finalizing'
-              : row.stage === 'parsed' ? 'finalizing'
-              : 'extracting',
-            message: `Docling: ${row.stage}`,
+            phase: stageToPhase(row.stage),
+            stage: row.stage,
+            page: pages || undefined,
+            totalPages: total ?? undefined,
+            pagesCompleted: pages,
+            pagesTotal: total,
+            warning,
+            message: `${stageLabel(row.stage)}${total ? ` · ${pages}/${total} pages` : ''}`,
           });
         }
         if (TERMINAL_STATUS.has(row.status)) return row;
       }
     }
     if (Date.now() - start > POLL_TIMEOUT_MS) {
-      throw new Error('Docling parse timed out after 10 minutes');
+      throw new Error(`Docling parse timed out after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes (last stage: ${lastStage ?? 'unknown'})`);
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
