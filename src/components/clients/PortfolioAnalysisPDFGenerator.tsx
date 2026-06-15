@@ -3048,37 +3048,44 @@ export function PortfolioAnalysisPDFGenerator({
       const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
       const storagePath = `portfolio-reports/${clientId}/${fileName}`;
       
-      // Upload PDF to Supabase Storage via secure function
-      console.log('📤 Uploading PDF to storage...');
+      // Upload PDF to Supabase Storage via secure function (skip when flatten-only)
       let uploadedFilePath: string | null = null;
-      try {
-        const uploadResult = await secureStorageUpload(
-          'client-files',
-          storagePath,
-          blob,
-          { contentType: 'application/pdf', upsert: true }
-        );
-        
-        if (!uploadResult.success) {
-          console.error('Storage upload error:', uploadResult.error);
-          toast.error('Failed to upload PDF to storage, but will still download locally');
-        } else {
-          uploadedFilePath = uploadResult.path || storagePath;
-          console.log('✓ PDF uploaded to storage:', uploadedFilePath);
+      if (!flattenOnly) {
+        console.log('📤 Uploading PDF to storage...');
+        try {
+          const uploadResult = await secureStorageUpload(
+            'client-files',
+            storagePath,
+            blob,
+            { contentType: 'application/pdf', upsert: true }
+          );
+          
+          if (!uploadResult.success) {
+            console.error('Storage upload error:', uploadResult.error);
+            toast.error('Failed to upload PDF to storage, but will still download locally');
+          } else {
+            uploadedFilePath = uploadResult.path || storagePath;
+            console.log('✓ PDF uploaded to storage:', uploadedFilePath);
+          }
+        } catch (storageError) {
+          console.error('Storage upload exception:', storageError);
         }
-      } catch (storageError) {
-        console.error('Storage upload exception:', storageError);
       }
       
-      // Download the PDF locally as well
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Download the PDF locally (flattened if requested)
+      if (flattenOnly) {
+        const { flattenAndDownloadPdf } = await import('@/lib/pdf/downloadPdf');
+        await flattenAndDownloadPdf(blob, fileName);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       
       // Save report metadata to database via secure function
       console.log('📊 Saving report metadata to database...');
