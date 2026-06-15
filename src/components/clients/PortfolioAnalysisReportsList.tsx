@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { smartCapitalize } from '@/lib/nameUtils';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
+import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
