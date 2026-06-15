@@ -363,6 +363,15 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               <Download className="h-4 w-4 mr-2" />
                               Download PDF
                             </DropdownMenuItem>
+                            <FlattenPdfMenuItem
+                              disabled={!report.pdf_file_path}
+                              getPdfBlob={async () => {
+                                const r = await secureStorageDownload('client-files', report.pdf_file_path!);
+                                if (!r.success || !r.blob) throw new Error(r.error || 'Download failed');
+                                return r.blob;
+                              }}
+                              filename={`Portfolio_Analysis_${smartCapitalize(report.client_name).replace(/\s+/g, '_')}.pdf`}
+                            />
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => setReportToDelete(report)}
