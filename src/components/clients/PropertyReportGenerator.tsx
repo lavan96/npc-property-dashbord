@@ -249,51 +249,54 @@ Provide a comprehensive property investment analysis. Return valid JSON:
     }
   };
 
-  const downloadPDF = async () => {
-    if (!reportData) return;
-    
-    setIsDownloading(true);
-    
-    try {
-      const container = document.getElementById('property-report-content');
-      if (!container) throw new Error('Content not found');
+  const buildPdf = async () => {
+    const container = document.getElementById('property-report-content');
+    if (!container) throw new Error('Content not found');
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
 
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
 
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = 297;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
+    const imgWidth = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageHeight = 297;
 
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
+    }
+    return pdf;
+  };
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+  const pdfFilename = () => {
+    const shortAddress = property.address.split(',')[0].replace(/\s+/g, '_');
+    return `Property_Report_${shortAddress}_${new Date().toISOString().split('T')[0]}.pdf`;
+  };
 
-      const shortAddress = property.address.split(',')[0].replace(/\s+/g, '_');
-      const fileName = `Property_Report_${shortAddress}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
-      
+  const downloadPDF = async () => {
+    if (!reportData) return;
+    setIsDownloading(true);
+    try {
+      const pdf = await buildPdf();
+      pdf.save(pdfFilename());
       toast.success('PDF downloaded successfully');
       onComplete?.();
-      
     } catch (error: any) {
       console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF');
