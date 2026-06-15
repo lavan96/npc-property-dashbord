@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { CheckCircle, XCircle, Clock, FileText, Download, Loader2, RefreshCw } from 'lucide-react';
