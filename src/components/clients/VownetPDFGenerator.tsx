@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
 import { Download, FileText, Home, Loader2, Mail, Send, Users, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
