@@ -236,13 +236,13 @@ export default function TemplateImportQuality() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="h-4 w-4 mx-auto animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No imports match the current filters.
                     </TableCell>
                   </TableRow>
