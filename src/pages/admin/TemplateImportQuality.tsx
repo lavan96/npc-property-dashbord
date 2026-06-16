@@ -227,9 +227,11 @@ export default function TemplateImportQuality() {
                   <TableHead className="text-right">Overall</TableHead>
                   <TableHead>Final mode</TableHead>
                   <TableHead className="text-right">Repairs</TableHead>
+                  <TableHead>Providers</TableHead>
                   <TableHead>Flags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
+
               </TableHeader>
               <TableBody>
                 {loading && rows.length === 0 ? (
