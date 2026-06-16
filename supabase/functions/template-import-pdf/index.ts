@@ -411,6 +411,138 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // ---------- Phase 5: Visual Import Quality persistence ----------
+    if (operation === 'save_visual_quality') {
+      const importId = body.import_id as string;
+      const report = body.report;
+      if (!importId || !report || typeof report !== 'object') {
+        return json({ error: 'import_id and report are required' }, 400);
+      }
+      await ensureArtifactBucket(admin);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      // Upload per-page rasters (any subset of source/generated/diff).
+      const pages = Array.isArray(body.pages) ? body.pages : [];
+      let uploaded = 0;
+      for (const page of pages) {
+        const pageNumber = Number(page?.page_number);
+        if (!Number.isFinite(pageNumber)) continue;
+        const padded = String(pageNumber).padStart(3, '0');
+        for (const kind of ['source', 'generated', 'diff'] as const) {
+          const b64 = page?.[`${kind}_b64`];
+          if (typeof b64 !== 'string' || b64.length === 0) continue;
+          const path = `${importId}/pages/page-${padded}-${kind}.png`;
+          const { error: upErr } = await admin.storage
+            .from(ARTIFACT_BUCKET)
+            .upload(path, b64ToBytes(b64), { contentType: 'image/png', upsert: true });
+          if (upErr) { logDbError(`save_visual_quality.page_${padded}_${kind}`, upErr); continue; }
+          uploaded += 1;
+        }
+      }
+
+      const summaryPath = `${importId}/visual-quality.json`;
+      const summaryPayload = {
+        ...report,
+        artifactPaths: {
+          summary: summaryPath,
+          sourceRasters: `${importId}/pages`,
+          generatedRasters: `${importId}/pages`,
+          diffRasters: `${importId}/pages`,
+        },
+      };
+      const { error: sumErr } = await admin.storage
+        .from(ARTIFACT_BUCKET)
+        .upload(summaryPath, new TextEncoder().encode(JSON.stringify(summaryPayload)), {
+          contentType: 'application/json',
+          upsert: true,
+        });
+      if (sumErr) {
+        logDbError('save_visual_quality.summary', sumErr);
+        return json({ error: sumErr.message }, 400);
+      }
+
+      const currentMeta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const nextMeta = {
+        ...currentMeta,
+        visual_quality_artifact_path: summaryPath,
+        visual_quality_summary: {
+          overallScore: report.overallScore ?? null,
+          pageCount: Array.isArray(report.pages) ? report.pages.length : 0,
+          manualReviewRequired: !!report.manualReviewRequired,
+          finalMode: report.finalMode ?? null,
+          repairPassesApplied: report.repairPassesApplied ?? 0,
+          generatedAt: report.generatedAt ?? new Date().toISOString(),
+        },
+      };
+      const { error: upMetaErr } = await admin
+        .from('template_imports')
+        .update({ meta: nextMeta })
+        .eq('id', importId);
+      if (upMetaErr) logDbError('save_visual_quality.update_meta', upMetaErr);
+
+      return json({ ok: true, summary_path: summaryPath, uploaded_count: uploaded });
+    }
+
+    if (operation === 'get_visual_quality') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const summaryPath = meta.visual_quality_artifact_path as string | null | undefined;
+      if (!summaryPath) return json(null);
+
+      const report = await readJsonArtifact(admin, summaryPath);
+      if (!report) return json(null);
+
+      const pageNumbers: number[] = Array.isArray(report.pages)
+        ? report.pages
+            .map((p: any) => Number(p?.pageNumber))
+            .filter((n: number) => Number.isFinite(n))
+        : [];
+      const signed: Record<string, string> = {};
+      for (const pageNumber of pageNumbers) {
+        const padded = String(pageNumber).padStart(3, '0');
+        for (const kind of ['source', 'generated', 'diff'] as const) {
+          const path = `${importId}/pages/page-${padded}-${kind}.png`;
+          const { data: s } = await admin.storage
+            .from(ARTIFACT_BUCKET)
+            .createSignedUrl(path, 3600);
+          if (s?.signedUrl) signed[`${pageNumber}:${kind}`] = s.signedUrl;
+        }
+      }
+
+      return json({
+        importId,
+        report,
+        artifactPaths: {
+          summary: summaryPath,
+          sourceRasters: `${importId}/pages`,
+          generatedRasters: `${importId}/pages`,
+          diffRasters: `${importId}/pages`,
+        },
+        signedUrls: signed,
+      });
+    }
+
     return json({ error: 'unknown operation' }, 400);
   } catch (e) {
     return json({ error: String((e as Error).message ?? e) }, 500);
