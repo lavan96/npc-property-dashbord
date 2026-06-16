@@ -22,6 +22,7 @@ import { buildCdirFidelityReport } from '@/lib/reportTemplate/ingestion/fidelity
 import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconciliation/applyPlan';
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
+import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
 import type {
   DoclingDocument,
   DoclingRasterByPage,
