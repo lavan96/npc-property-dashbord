@@ -46,12 +46,27 @@ async function ensureAssetBucket(admin: ReturnType<typeof createClient>) {
 }
 
 async function ensureArtifactBucket(admin: ReturnType<typeof createClient>) {
+  const allowedMimeTypes = ['application/json', 'image/png', 'image/jpeg', 'image/webp'];
+  const fileSizeLimit = 25 * 1024 * 1024;
   const { data } = await admin.storage.getBucket(ARTIFACT_BUCKET);
-  if (data) return;
+  if (data) {
+    // Widen MIME allowlist in-place — Phase 5 added raster persistence.
+    const current = (data as { allowed_mime_types?: string[] | null }).allowed_mime_types ?? [];
+    const missing = allowedMimeTypes.some((m) => !current.includes(m));
+    if (missing) {
+      const { error } = await admin.storage.updateBucket(ARTIFACT_BUCKET, {
+        public: false,
+        fileSizeLimit,
+        allowedMimeTypes,
+      });
+      if (error) logDbError('ensure_artifact_bucket.update_mime', error);
+    }
+    return;
+  }
   await admin.storage.createBucket(ARTIFACT_BUCKET, {
     public: false,
-    fileSizeLimit: 25 * 1024 * 1024,
-    allowedMimeTypes: ['application/json'],
+    fileSizeLimit,
+    allowedMimeTypes,
   });
 }
 
