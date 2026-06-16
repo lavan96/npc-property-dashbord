@@ -1,0 +1,51 @@
+/**
+ * Visual Import Quality Contract (Phase 2).
+ *
+ * Public entry point for the visual quality gate that sits on top of CDIR.
+ * Phase 4 will produce the metrics; Phase 5 will persist them; Phase 6 will
+ * drive the AI repair loop off `recommendedAction`.
+ *
+ * Consumers should import from this barrel, never the individual files:
+ *
+ *   import {
+ *     scorePage,
+ *     aggregateImportQuality,
+ *     QUALITY_THRESHOLDS,
+ *     type VisualImportQualityReport,
+ *   } from '@/lib/reportTemplate/ingestion/visualQuality';
+ */
+export type {
+  VisualImportFinalMode,
+  VisualImportQualityReport,
+  VisualPageQualityReport,
+  VisualRecommendedAction,
+  VisualWarning,
+  VisualWarningSeverity,
+} from './schema';
+
+export {
+  QUALITY_SCORE_WEIGHTS,
+  QUALITY_THRESHOLDS,
+  METRIC_WARNING_THRESHOLDS,
+  recommendActionForScore,
+  warningForMetric,
+  type MetricKey,
+  type QualityThresholdKey,
+} from './thresholds';
+
+export {
+  computePageOverallScore,
+  scorePage,
+  aggregateImportQuality,
+  countPagesNeedingReview,
+  type PageMetricInput,
+  type AggregateOptions,
+} from './score';
+
+export {
+  loadVisualQuality,
+  visualQualityPaths,
+  type LoadVisualQualityResult,
+  type PersistedVisualQuality,
+  type VisualQualityArtifactPaths,
+} from './persist';
