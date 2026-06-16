@@ -194,7 +194,12 @@ export async function runVisualDiff(input: VisualDiffInput): Promise<VisualImpor
     const renderedBounds = flattenCdirLayerBounds(
       (page.layers ?? []).map((l) => ({
         id: l.id,
-        bounds: l.bounds,
+        bounds: {
+          x: l.bounds?.x ?? 0,
+          y: l.bounds?.y ?? 0,
+          width: l.bounds?.width ?? 0,
+          height: l.bounds?.height ?? 0,
+        },
         children: (l as { children?: unknown }).children,
       })),
     );

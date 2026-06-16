@@ -78,7 +78,7 @@ export async function rasterizePdfPages(
   if (!pdfjs) return [];
 
   const data = pdfBlob instanceof Blob ? await pdfBlob.arrayBuffer() : pdfBlob;
-  const loadingTask = pdfjs.getDocument({ data, isEvalSupported: false, disableFontFace: false });
+  const loadingTask = pdfjs.getDocument({ data, disableFontFace: false } as unknown as Parameters<typeof pdfjs.getDocument>[0]);
   const doc = await loadingTask.promise;
 
   const pageFilter = opts.pageNumbers && opts.pageNumbers.length > 0
