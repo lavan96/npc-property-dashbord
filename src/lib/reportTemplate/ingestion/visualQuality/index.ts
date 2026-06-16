@@ -44,10 +44,15 @@ export {
 
 export {
   loadVisualQuality,
+  saveVisualQuality,
+  imageDataToPngBase64,
   visualQualityPaths,
   type LoadVisualQualityResult,
   type PersistedVisualQuality,
+  type SaveVisualQualityResult,
+  type SaveVisualQualityOptions,
   type VisualQualityArtifactPaths,
+  type VisualQualityPageRasters,
 } from './persist';
 
 // Phase 4 — visual diff harness
