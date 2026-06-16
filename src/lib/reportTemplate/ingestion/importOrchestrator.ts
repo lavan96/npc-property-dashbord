@@ -316,22 +316,36 @@ async function importPdf(
   }
 
   ctx.onStage?.('Reading PDF…');
-  const result = await extractPdfViaDocling(source.file, {
+  // Phase 10: route through the multi-service dispatcher so recoverable
+  // failures escalate transparently (pixel fallback → WeasyPrint reverse).
+  // The audit trail is persisted to template_imports.meta.provider_attempts
+  // for the diagnostics dashboard.
+  const { dispatchImport } = await import('../pdfImport/providers/dispatch');
+  const dispatched = await dispatchImport(source.file, {
     mode: source.mode,
     templateName: ctx.templateName,
     userId: ctx.userId ?? null,
     targetTemplateId: ctx.templateId,
     onProgress: ctx.onProgress,
     redactPii: ctx.redactPii,
+    onAttempt: (a) => {
+      if (a.outcome === 'failure' && a.error) {
+        ctx.onStage?.(`Provider "${a.providerId}" failed (${a.error.kind}) — trying fallback…`);
+      } else if (a.outcome === 'success') {
+        ctx.onStage?.(`Imported via "${a.providerId}".`);
+      }
+    },
   });
+  const result = dispatched.result;
   return {
     type: 'persisted',
     result,
     message: ctx.templateId
       ? 'PDF re-synced. Previous version snapshotted to History.'
-      : `Imported ${result.pageCount} page${result.pageCount === 1 ? '' : 's'} from the PDF.`,
+      : `Imported ${result.pageCount} page${result.pageCount === 1 ? '' : 's'} from the PDF${dispatched.usedFallback ? ` (via fallback after ${dispatched.attempts.length - 1} attempt${dispatched.attempts.length === 2 ? '' : 's'})` : ''}.`,
   };
 }
+
 
 /** Faithful/redesign screenshot reconstruction through the design agent. */
 async function reconstructImage(

@@ -47,7 +47,15 @@ interface ImportRow {
     textAccuracy?: number | null;
     warningCount?: number | null;
   } | null;
+  provider_attempts: Array<{
+    providerId: string;
+    engine: string;
+    outcome: 'success' | 'failure' | 'skipped';
+    durationMs: number;
+    error?: { kind: string; message: string };
+  }> | null;
 }
+
 
 interface StatsResponse {
   total: number;
@@ -219,20 +227,22 @@ export default function TemplateImportQuality() {
                   <TableHead className="text-right">Overall</TableHead>
                   <TableHead>Final mode</TableHead>
                   <TableHead className="text-right">Repairs</TableHead>
+                  <TableHead>Providers</TableHead>
                   <TableHead>Flags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
+
               </TableHeader>
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="h-4 w-4 mx-auto animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No imports match the current filters.
                     </TableCell>
                   </TableRow>
@@ -262,6 +272,24 @@ export default function TemplateImportQuality() {
                       </TableCell>
                       <TableCell className="text-xs">{vq?.finalMode ?? '—'}</TableCell>
                       <TableCell className="text-right">{vq?.repairPassesApplied ?? 0}</TableCell>
+                      <TableCell className="text-xs">
+                        {row.provider_attempts && row.provider_attempts.length > 0 ? (
+                          <div className="flex flex-wrap gap-1" title={row.provider_attempts.map(a => `${a.providerId}: ${a.outcome}${a.error ? ` (${a.error.kind})` : ''} · ${a.durationMs}ms`).join('\n')}>
+                            {row.provider_attempts.map((a, i) => (
+                              <Badge
+                                key={i}
+                                variant={a.outcome === 'success' ? 'default' : a.outcome === 'failure' ? 'destructive' : 'outline'}
+                                className="text-[10px] px-1 py-0"
+                              >
+                                {a.providerId}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+
                       <TableCell>
                         {vq?.manualReviewRequired && (
                           <Badge variant="destructive" className="gap-1">
