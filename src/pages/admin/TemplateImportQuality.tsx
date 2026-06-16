@@ -47,7 +47,15 @@ interface ImportRow {
     textAccuracy?: number | null;
     warningCount?: number | null;
   } | null;
+  provider_attempts: Array<{
+    providerId: string;
+    engine: string;
+    outcome: 'success' | 'failure' | 'skipped';
+    durationMs: number;
+    error?: { kind: string; message: string };
+  }> | null;
 }
+
 
 interface StatsResponse {
   total: number;
