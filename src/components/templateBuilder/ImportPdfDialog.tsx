@@ -216,19 +216,20 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                     </div>
                   </div>
                 </Card>
-                <Card className="p-3 cursor-pointer border-primary/30" onClick={() => !busy && setMode('hybrid')}>
+                <Card className="p-3 cursor-pointer border-primary/40 bg-primary/5" onClick={() => !busy && setMode('hybrid')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="hybrid" id="m-hybrid" className="mt-1" />
                     <div className="flex-1">
                       <Label htmlFor="m-hybrid" className="font-medium cursor-pointer flex items-center gap-2">
-                        Hybrid <Badge variant="default" className="text-[10px]">Recommended</Badge>
+                        Hybrid <Badge variant="default" className="text-[10px]">Recommended default</Badge>
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Editable extraction + a hidden, locked source raster per page. Toggle it visible in the Layers panel to trace against the original.
+                        Production default. Preserves source-page fidelity using a locked raster reference per page, while generating editable overlays wherever extraction confidence is high. Safest choice for design-heavy reports — falls back gracefully when Docling misses layout, shapes, or spacing.
                       </p>
                     </div>
                   </div>
                 </Card>
+
                 <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
