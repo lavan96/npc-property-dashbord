@@ -543,6 +543,81 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---------- Phase 8: Diagnostics — list visual-quality reports ----------
+    if (operation === 'list_visual_quality') {
+      const limit = Math.min(Number(body.limit) || 50, 200);
+      const onlyWithReport = body.only_with_report !== false;
+      const manualReviewOnly = !!body.manual_review_only;
+      const minScore = Number.isFinite(Number(body.min_score)) ? Number(body.min_score) : null;
+      const maxScore = Number.isFinite(Number(body.max_score)) ? Number(body.max_score) : null;
+      const finalMode = typeof body.final_mode === 'string' ? body.final_mode : null;
+
+      let query = admin
+        .from('template_imports')
+        .select('id,user_id,status,fidelity_mode,source_filename,page_count,created_at,meta,error')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (authedUserId && auth.userId !== 'service_role') {
+        query = query.eq('user_id', authedUserId);
+      }
+      const { data: rows, error: listErr } = await query;
+      if (listErr) return json({ error: listErr.message }, 500);
+
+      const enriched = (rows ?? []).map((row: any) => {
+        const meta = (row.meta && typeof row.meta === 'object') ? row.meta : {};
+        const vq = (meta.visual_quality_summary && typeof meta.visual_quality_summary === 'object')
+          ? meta.visual_quality_summary
+          : null;
+        return {
+          id: row.id,
+          user_id: row.user_id,
+          status: row.status,
+          fidelity_mode: row.fidelity_mode,
+          source_filename: row.source_filename,
+          page_count: row.page_count,
+          created_at: row.created_at,
+          error: row.error ?? null,
+          visual_quality_artifact_path: meta.visual_quality_artifact_path ?? null,
+          visual_quality: vq,
+          cdir_fidelity_summary: meta.cdir_fidelity_summary ?? null,
+        };
+      });
+
+      const filtered = enriched.filter((r) => {
+        if (onlyWithReport && !r.visual_quality) return false;
+        if (manualReviewOnly && !r.visual_quality?.manualReviewRequired) return false;
+        if (finalMode && r.visual_quality?.finalMode !== finalMode) return false;
+        const score = r.visual_quality?.overallScore;
+        if (minScore !== null && (typeof score !== 'number' || score < minScore)) return false;
+        if (maxScore !== null && (typeof score !== 'number' || score > maxScore)) return false;
+        return true;
+      });
+
+      const scoreList = filtered
+        .map((r) => r.visual_quality?.overallScore)
+        .filter((n: any): n is number => typeof n === 'number');
+      const avgScore = scoreList.length
+        ? scoreList.reduce((a, b) => a + b, 0) / scoreList.length
+        : null;
+      const stats = {
+        total: filtered.length,
+        with_report: filtered.filter((r) => !!r.visual_quality).length,
+        manual_review: filtered.filter((r) => r.visual_quality?.manualReviewRequired).length,
+        avg_score: avgScore,
+        repair_passes_total: filtered.reduce(
+          (sum, r) => sum + (Number(r.visual_quality?.repairPassesApplied) || 0),
+          0,
+        ),
+        by_final_mode: filtered.reduce<Record<string, number>>((acc, r) => {
+          const mode = r.visual_quality?.finalMode ?? 'unknown';
+          acc[mode] = (acc[mode] ?? 0) + 1;
+          return acc;
+        }, {}),
+      };
+
+      return json({ rows: filtered, stats });
+    }
+
     return json({ error: 'unknown operation' }, 400);
   } catch (e) {
     return json({ error: String((e as Error).message ?? e) }, 500);
