@@ -608,8 +608,10 @@ Deno.serve(async (req) => {
           visual_quality_artifact_path: meta.visual_quality_artifact_path ?? null,
           visual_quality: vq,
           cdir_fidelity_summary: meta.cdir_fidelity_summary ?? null,
+          provider_attempts: Array.isArray(meta.provider_attempts) ? meta.provider_attempts : null,
         };
       });
+
 
       const filtered = enriched.filter((r) => {
         if (onlyWithReport && !r.visual_quality) return false;
