@@ -411,6 +411,34 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // ---------- Phase 9: append arbitrary meta patch (provider audit trail) ----------
+    if (operation === 'append_meta') {
+      const importId = body.import_id as string;
+      const patch = body.meta_patch;
+      if (!importId || !patch || typeof patch !== 'object') {
+        return json({ error: 'import_id and meta_patch required' }, 400);
+      }
+      const { data: rec, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (rec?.user_id && authedUserId && rec.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+      const currentMeta = ((rec.meta && typeof rec.meta === 'object') ? rec.meta : {}) as any;
+      const nextMeta = { ...currentMeta, ...patch };
+      const { error: upErr } = await admin
+        .from('template_imports')
+        .update({ meta: nextMeta })
+        .eq('id', importId);
+      if (upErr) return json({ error: upErr.message }, 400);
+      return json({ ok: true });
+    }
+
+
+
     // ---------- Phase 5: Visual Import Quality persistence ----------
     if (operation === 'save_visual_quality') {
       const importId = body.import_id as string;
