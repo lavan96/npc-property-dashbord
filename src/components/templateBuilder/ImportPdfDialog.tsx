@@ -56,7 +56,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const { user, isSuperadmin } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<FidelityMode>('semantic'); // R1: clean editable text by default
+  const [mode, setMode] = useState<FidelityMode>('hybrid'); // Phase 1: Hybrid is the production default — editable overlays with locked source raster fallback
   const [redactPii, setRedactPii] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [busy, setBusy] = useState(false);
