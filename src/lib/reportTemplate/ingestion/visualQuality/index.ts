@@ -49,3 +49,23 @@ export {
   type PersistedVisualQuality,
   type VisualQualityArtifactPaths,
 } from './persist';
+
+// Phase 4 — visual diff harness
+export {
+  runVisualDiff,
+  compareImages,
+  buildDiffImage,
+  measureTextCoverage,
+  measureLayoutMetrics,
+  flattenCdirLayerBounds,
+  rasterizePdfPages,
+  rasterizeFromHtmlImage,
+  type VisualDiffInput,
+  type RenderedPageRaster,
+  type DoclingExpectationsLike,
+  type ImageMetricsResult,
+  type TextCoverageResult,
+  type LayoutMetricsResult,
+  type RasterisedPage,
+  type RasterizePdfOptions,
+} from './diff';
