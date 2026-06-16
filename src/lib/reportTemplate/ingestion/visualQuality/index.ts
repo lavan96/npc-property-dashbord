@@ -74,3 +74,19 @@ export {
   type RasterisedPage,
   type RasterizePdfOptions,
 } from './diff';
+
+// Phase 6 — repair loop
+export {
+  runRepairLoop,
+  applyPatch,
+  applyPatches,
+  doclingRepairSolver,
+  type RunRepairLoopOptions,
+  type ApplyPatchResult,
+  type RepairOp,
+  type RepairPatch,
+  type RepairSolver,
+  type RepairContext,
+  type RepairPassReport,
+  type RepairLoopResult,
+} from './repair';
