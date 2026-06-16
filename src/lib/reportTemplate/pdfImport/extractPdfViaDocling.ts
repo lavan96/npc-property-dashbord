@@ -22,6 +22,7 @@ import { buildCdirFidelityReport } from '@/lib/reportTemplate/ingestion/fidelity
 import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconciliation/applyPlan';
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
+import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
 import type {
   DoclingDocument,
   DoclingRasterByPage,
@@ -362,7 +363,11 @@ export async function extractPdfViaDocling(
       checksum: sourceChecksum,
       filename: file.name,
     });
-    const cdirFidelity = buildCdirFidelityReport(cdir, { expectedText: [], expectedBounds: [] });
+    // Phase 3: Feed real text and bounds expectations into CDIR fidelity so
+    // `textAccuracy` and `medianPositionDrift` are measured against the
+    // source Docling document instead of empty arrays.
+    const doclingExpectations = buildDoclingExpectations(doclingDoc);
+    const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
     const totalPages = job.page_count ?? template.pages.length;
 
     const finRes = options.targetTemplateId
