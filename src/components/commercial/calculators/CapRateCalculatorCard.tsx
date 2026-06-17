@@ -16,8 +16,12 @@ import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 
+const PENDING = 'Pending';
 const num = (v: string) => (v === '' ? 0 : Number(v));
+const hasPositiveNumber = (v: string) => Number.isFinite(Number(v)) && Number(v) > 0;
 const pct = (n: number) => `${Number.isFinite(n) ? n.toFixed(2).replace(/\.00$/, '') : '0'}%`;
+const displayPct = (n: number, ready: boolean) => ready && Number.isFinite(n) ? pct(n) : PENDING;
+const displayMoney = (n: number, ready: boolean) => ready && Number.isFinite(n) && n !== 0 ? fmt(n) : PENDING;
 
 type AssumptionStatus = 'Verified' | 'Property Record Source' | 'Client Profile Source' | 'Global Deal Source' | 'Manual Estimate' | 'AI Estimate' | 'Unknown' | 'Overridden' | 'Specialist Review Required' | 'Valuer Confirmation Required';
 type CapField = 'passingNoi' | 'marketNoi' | 'price' | 'targetCap';
@@ -82,7 +86,7 @@ function normaliseEstimate(raw: any, snapshot: any, sourceBefore: string): CapRa
 export function CapRateCalculatorCard() {
   const { prefill, property } = useCalculatorPrefill();
   const { profile, updateGlobal, setSourceMode, appendAiAudit } = useCommercialDealState();
-  const [fields, setFields] = useState<Record<CapField, FieldState>>({ passingNoi: field('180000'), marketNoi: field('210000'), price: field('3000000'), targetCap: field('6.5') });
+  const [fields, setFields] = useState<Record<CapField, FieldState>>({ passingNoi: field(''), marketNoi: field(''), price: field(''), targetCap: field('') });
   const [estimating, setEstimating] = useState(false);
   const [aiEstimate, setAiEstimate] = useState<CapRateAiEstimate | null>(null);
   const [proposedCap, setProposedCap] = useState('');
@@ -122,6 +126,15 @@ export function CapRateCalculatorCard() {
   const setManual = (key: CapField, value: string) => setFields(prev => { audit('manual cap rate/yield field edit', key, prev[key].value, value, 'Manual Estimate'); return { ...prev, [key]: { value, status: 'Manual Estimate', dirty: true } }; });
 
   const passingNoi = fields.passingNoi.value, marketNoi = fields.marketNoi.value, price = fields.price.value, targetCap = fields.targetCap.value;
+  const hasPassingNoi = hasPositiveNumber(passingNoi);
+  const hasMarketNoi = hasPositiveNumber(marketNoi);
+  const hasPrice = hasPositiveNumber(price);
+  const hasTargetCap = hasPositiveNumber(targetCap);
+  const hasSelectedNoi = hasPassingNoi || hasMarketNoi;
+  const hasYieldInputs = hasPrice && hasSelectedNoi;
+  const hasImpliedValueInputs = hasSelectedNoi && hasTargetCap;
+  const hasValuationGapInputs = hasImpliedValueInputs && hasPrice;
+  const canEstimateCapRate = Boolean(prefill && prefill.address && prefill.state && prefill.assetSubtype && hasPrice && hasSelectedNoi);
   const sensitivityRates = useMemo(() => {
     const target = num(targetCap);
     return target > 0 ? [target - 1, target - 0.5, target, target + 0.5, target + 1].filter(r => r > 0).map(r => Number(r.toFixed(2))) : [5.5, 6, 6.5, 7, 7.5];
@@ -153,6 +166,7 @@ export function CapRateCalculatorCard() {
 
   const requestEstimate = async () => {
     if (!prefill) { toast.error('Select a property in the Overview tab to anchor the AI cap-rate estimate.'); return; }
+    if (!canEstimateCapRate) { toast.error('Add property details, NOI and price/value before estimating a cap-rate range.'); return; }
     setEstimating(true); audit('AI cap rate estimate requested', 'targetCapRatePct', num(targetCap), null, 'AI Estimate');
     try {
       const snapshot = buildSnapshot();
@@ -166,6 +180,7 @@ export function CapRateCalculatorCard() {
   };
 
   const acceptEstimate = (value?: number | null) => {
+    if (!canEstimateCapRate) { toast.error('Add property details, NOI and price/value before accepting an AI benchmark.'); return; }
     const accepted = value ?? num(proposedCap);
     if (!accepted) { toast.error('Enter a cap rate to apply.'); return; }
     setFields(prev => ({ ...prev, targetCap: { value: String(accepted), status: 'AI Estimate', dirty: true } }));
@@ -185,31 +200,32 @@ export function CapRateCalculatorCard() {
           <Button size="sm" variant="outline" className="border-primary/40 text-primary" onClick={() => prefill && applySupportingPrefill(prefill, true)} disabled={!prefill}>Global Input Sync: On</Button>
           <Button size="sm" variant="secondary" onClick={() => setShowBenchmark(v => !v)}>AI Estimate benchmark only</Button>
           {prefill ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 max-w-[260px] truncate" title={prefill.address}>Anchored: {prefill.address}</Badge> : <Badge variant="outline" className="border-amber-500/40 text-amber-400">No property selected</Badge>}
-          <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !prefill}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
+          <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !canEstimateCapRate}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
           <SaveBackButton build={() => { audit('cap rate outputs saved back to property', 'capRate', null, capAssessment, 'Save back to property'); updateGlobal('capRateOutputs', { ...capAssessment, reversionSpread: reversionarySpread, targetCapRatePct: num(targetCap), assumptionStatuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.status])) } as any); const capRateNote = `Cap rate outputs saved ${new Date().toISOString()}: ${JSON.stringify({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap), passingYield: yields.passingYield, reversionaryYield: yields.reversionaryYield, blendedYield: yields.blendedYield, reversionSpread: reversionarySpread, impliedValue: capAssessment.impliedValue, valuationGap: capAssessment.valuationGap, valueSensitivity: capAssessment.valueSensitivity, assumptionStatuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.status])) })}`;
-            return prefill?.domain === 'industrial' ? { purchase_price: num(price), current_valuation: capAssessment.impliedValue || undefined, notes: capRateNote } : { purchase_price: num(price), valuation: capAssessment.impliedValue || undefined, notes: capRateNote }; }} />
+            return prefill?.domain === 'industrial' ? { purchase_price: hasPrice ? num(price) : undefined, current_valuation: capAssessment.impliedValue || undefined, notes: capRateNote } : { purchase_price: hasPrice ? num(price) : undefined, valuation: capAssessment.impliedValue || undefined, notes: capRateNote }; }} />
         </div>
         {showBenchmark && <div className="mt-2 rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100">AI cap-rate outputs are benchmark-only estimates. They do not replace an independent valuation and remain tagged as Valuer Confirmation Required until verified.</div>}
-        {aiEstimate && <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-2"><div><span className="font-medium text-primary">AI cap-rate range ({aiEstimate.confidence}):</span> {pct(aiEstimate.capRateRange.low ?? 0)} – {pct(aiEstimate.capRateRange.high ?? 0)} · recommended <span className="font-semibold text-primary">{pct(aiEstimate.recommendedTargetCapRate ?? 0)}</span></div><div>{aiEstimate.reasoningSummary}</div><div>Supporting inputs: {aiEstimate.supportingInputsUsed.join(', ') || 'None supplied'}.</div><div>Missing inputs: {aiEstimate.missingInputs.join(', ') || 'None flagged'}.</div>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-200">{w}</div>)}<div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end"><Button size="sm" variant="outline" onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low</Button><Button size="sm" variant="outline" onClick={() => acceptEstimate(aiEstimate.capRateRange.mid)}>Accept mid</Button><Button size="sm" variant="outline" onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high</Button><div><Label>Edit proposed %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" onClick={() => acceptEstimate()}>Apply</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject / keep current</Button></div></div>}
+        {aiEstimate && <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-2"><div><span className="font-medium text-primary">AI cap-rate range ({aiEstimate.confidence}):</span> {pct(aiEstimate.capRateRange.low ?? 0)} – {pct(aiEstimate.capRateRange.high ?? 0)} · recommended <span className="font-semibold text-primary">{pct(aiEstimate.recommendedTargetCapRate ?? 0)}</span></div><div>{aiEstimate.reasoningSummary}</div><div>Supporting inputs: {aiEstimate.supportingInputsUsed.join(', ') || 'None supplied'}.</div><div>Missing inputs: {aiEstimate.missingInputs.join(', ') || 'None flagged'}.</div>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-200">{w}</div>)}<div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end"><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.mid)}>Accept mid</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high</Button><div><Label>Edit proposed %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" disabled={!canEstimateCapRate} onClick={() => acceptEstimate()}>Apply</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject / keep current</Button></div></div>}
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <InputBlock label="Passing NOI (PA)" state={fields.passingNoi} onChange={v => setManual('passingNoi', v)} />
-          <InputBlock label="Market NOI (PA)" state={fields.marketNoi} onChange={v => setManual('marketNoi', v)} />
-          <InputBlock label="Price / Value" state={fields.price} onChange={v => setManual('price', v)} />
+          <InputBlock label="Passing NOI (PA)" state={fields.passingNoi} onChange={v => setManual('passingNoi', v)} placeholder="Pulled from NOI tab or enter manually" />
+          <InputBlock label="Market NOI (PA)" state={fields.marketNoi} onChange={v => setManual('marketNoi', v)} placeholder="Pulled from stabilised NOI or enter manually" />
+          <InputBlock label="Price / Value" state={fields.price} onChange={v => setManual('price', v)} placeholder="Pulled from property profile or enter manually" />
           <Separator />
-          <InputBlock label="Target Cap Rate %" state={fields.targetCap} onChange={v => setManual('targetCap', v)} step="0.1" />
+          <InputBlock label="Target Cap Rate %" state={fields.targetCap} onChange={v => setManual('targetCap', v)} step="0.1" placeholder="Enter target cap rate or estimate benchmark" />
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
-          <Row label="Passing Yield" value={pct(yields.passingYield)} />
-          <Row label="Reversionary Yield" value={pct(yields.reversionaryYield)} />
-          <Row label="Blended Yield / Simple Average Yield" value={pct(yields.blendedYield)} bold />
-          <Row label="Reversion Spread" value={pct(reversionarySpread)} muted />
+          {!hasYieldInputs && !hasImpliedValueInputs && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-3 text-sm"><div className="font-medium text-amber-100">Awaiting cap rate inputs</div><p className="mt-1 text-xs text-amber-100/80">Link a property or enter NOI, value and target cap rate to calculate yield and implied value.</p></div>}
+          <Row label="Passing Yield" value={displayPct(yields.passingYield, hasPassingNoi && hasPrice)} />
+          <Row label="Reversionary Yield" value={displayPct(yields.reversionaryYield, hasMarketNoi && hasPrice)} />
+          <Row label="Blended Yield / Simple Average Yield" value={displayPct(yields.blendedYield, hasPassingNoi && hasMarketNoi && hasPrice)} bold />
+          <Row label="Reversion Spread" value={displayPct(reversionarySpread, hasPassingNoi && hasMarketNoi && hasPrice)} muted />
           <Separator />
-          <Row label={`Implied Value @ ${targetCap || 0}%`} value={fmt(capAssessment.impliedValue)} highlight />
-          <Row label="Valuation Gap" value={fmt(capAssessment.valuationGap)} />
+          <Row label={hasTargetCap ? `Implied Value @ ${targetCap}%` : 'Implied Value'} value={displayMoney(capAssessment.impliedValue, hasImpliedValueInputs)} highlight />
+          <Row label="Valuation Gap" value={displayMoney(capAssessment.valuationGap, hasValuationGapInputs)} />
           <Separator />
-          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">Value Sensitivity</div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="flex justify-between"><span>{pct(row.capRatePct)}</span><span>{fmt(row.impliedValue)}</span></div>)}</div>
+          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">Value Sensitivity</div>{hasImpliedValueInputs ? capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="flex justify-between"><span>{pct(row.capRatePct)}</span><span>{displayMoney(row.impliedValue, true)}</span></div>) : <div className="flex justify-between"><span>Cap-rate sensitivity</span><span>{PENDING}</span></div>}</div>
           {warnings.map(w => <p key={w} className="text-xs text-amber-200">{w}</p>)}
           <p className="text-xs text-amber-200">Benchmark only — valuer confirmation required.</p>
         </div>
@@ -218,8 +234,8 @@ export function CapRateCalculatorCard() {
   );
 }
 
-function InputBlock({ label, state, onChange, step }: { label: string; state: FieldState; onChange: (v: string) => void; step?: string }) {
-  return <div><div className="flex items-center justify-between"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{state.status}</Badge></div><Input type="number" step={step} value={state.value} onChange={e => onChange(e.target.value)} /></div>;
+function InputBlock({ label, state, onChange, step, placeholder }: { label: string; state: FieldState; onChange: (v: string) => void; step?: string; placeholder?: string }) {
+  return <div><div className="flex items-center justify-between"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{state.status}</Badge></div><Input type="number" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} /></div>;
 }
 
 function Row({ label, value, bold, muted, highlight }: { label: string; value: string; bold?: boolean; muted?: boolean; highlight?: boolean }) {
