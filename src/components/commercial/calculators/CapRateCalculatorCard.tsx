@@ -420,7 +420,6 @@ export function CapRateCalculatorCard() {
   const sourceSummary = prefill ? `Linked property: ${prefill.address || prefill.propertyId || 'property record'}` : 'Manual entry / no property linked';
   const syncStatus = prefill ? 'Global input sync on' : 'Manual entry only';
   const assumptionStatus = readinessStatus;
-  const hasSensitivity = capAssessment.selectedNoi !== null && capAssessment.valueSensitivity.length > 0;
 
   return (
     <Card className="border-primary/10 bg-background/95 shadow-xl">
