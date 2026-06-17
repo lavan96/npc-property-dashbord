@@ -463,9 +463,14 @@ export async function extractPdfViaDocling(
     });
 
 
-    const template = applyTemplateImportPlan(plan, {
+    const rawTemplate = applyTemplateImportPlan(plan, {
       templateName: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
     });
+
+    // Sanitize: strip any embedded raster/image bytes that may have leaked into
+    // the reconstructed schema. The template-import-pdf resync/finalize payload
+    // must only reference storage paths, never embed data:image / base64 blobs.
+    const template = stripEmbeddedImageData(rawTemplate);
     template.meta = {
       ...(template.meta ?? {}),
       pdfImport: {
@@ -486,41 +491,49 @@ export async function extractPdfViaDocling(
       throw new Error(`Docling reconstructed schema failed validation: ${schemaValidation.errors.join('; ')}`);
     }
 
-    const cdir = reportTemplateToCdir(template, {
-      kind: 'pdf',
-      checksum: sourceChecksum,
-      filename: file.name,
-    });
+    const cdir = stripEmbeddedImageData(
+      reportTemplateToCdir(template, {
+        kind: 'pdf',
+        checksum: sourceChecksum,
+        filename: file.name,
+      }),
+    );
     // Phase 3: Feed real text and bounds expectations into CDIR fidelity so
     // `textAccuracy` and `medianPositionDrift` are measured against the
     // source Docling document instead of empty arrays.
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
-    const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
+    const cdirFidelity = stripEmbeddedImageData(buildCdirFidelityReport(cdir, doclingExpectations));
     const totalPages = job.page_count ?? template.pages.length;
 
     // Payload diagnostics — guard against the resync timeout we hit when
-    // raster data leaked into the schema. If something starts re-embedding
-    // base64/data URLs, fail fast with a clear message instead of waiting
-    // for an upstream timeout.
-    const schemaJson = JSON.stringify(template);
-    const cdirJson = JSON.stringify(cdir);
-    const fidelityJson = JSON.stringify(cdirFidelity);
-    const schemaBytes = new TextEncoder().encode(schemaJson).length;
-    const cdirBytes = new TextEncoder().encode(cdirJson).length;
-    const fidelityBytes = new TextEncoder().encode(fidelityJson).length;
-    const schemaHasDataImage = schemaJson.includes('data:image');
-    const schemaHasBase64 = /;base64,/.test(schemaJson);
-    console.log('[docling] resync payload sizes', {
-      schemaBytes,
-      cdirBytes,
-      fidelityBytes,
-      schemaHasDataImage,
-      schemaHasBase64,
+    // raster data leaks into the schema. After sanitization, dataImage and
+    // base64 must both be false; otherwise fail fast with a clear message.
+    const schemaInspection = inspectEmbeddedImageData(template);
+    const cdirInspection = inspectEmbeddedImageData(cdir);
+    const fidelityInspection = inspectEmbeddedImageData(cdirFidelity);
+    console.info('[PDF_IMPORT_DEBUG] sanitized payload sizes', {
+      schema: schemaInspection,
+      cdir: cdirInspection,
+      fidelity: fidelityInspection,
     });
     const MAX_PAYLOAD_BYTES = 50 * 1024 * 1024;
-    if (schemaBytes > MAX_PAYLOAD_BYTES || schemaHasDataImage || schemaHasBase64) {
+    if (
+      schemaInspection.dataImage ||
+      schemaInspection.base64 ||
+      cdirInspection.dataImage ||
+      cdirInspection.base64 ||
+      fidelityInspection.dataImage ||
+      fidelityInspection.base64
+    ) {
       throw new Error(
-        `Refusing to resync: schema payload too heavy (schemaBytes=${schemaBytes}, dataImage=${schemaHasDataImage}, base64=${schemaHasBase64}). Raster data must stay in storage references, not embedded in the schema.`,
+        `Refusing to resync: sanitized payload still contains embedded image data ` +
+        `(schemaBytes=${schemaInspection.bytes}, schemaDataImage=${schemaInspection.dataImage}, schemaBase64=${schemaInspection.base64}, ` +
+        `cdirDataImage=${cdirInspection.dataImage}, cdirBase64=${cdirInspection.base64}). Raster data must stay in storage references.`,
+      );
+    }
+    if (schemaInspection.bytes > MAX_PAYLOAD_BYTES) {
+      throw new Error(
+        `Refusing to resync: schema payload exceeds ${MAX_PAYLOAD_BYTES} bytes (schemaBytes=${schemaInspection.bytes}).`,
       );
     }
 
