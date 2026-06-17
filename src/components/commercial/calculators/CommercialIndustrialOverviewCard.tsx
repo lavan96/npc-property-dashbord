@@ -12,8 +12,8 @@ import { buildCommercialIndustrialReportPayload } from '@/utils/commercial/repor
 import { buildScenarioReportPayload } from '@/utils/commercial/scenarioReportBuilder';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 
-const fmt = (n?: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
-const pct = (n?: number) => `${((n || 0) * 100).toFixed(1)}%`;
+const fmt = (n?: number) => n == null ? 'N/A' : new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
+const pct = (n?: number) => n == null ? 'N/A' : `${(n * 100).toFixed(1)}%`;
 const title = (v?: string) => (v || 'Unknown').replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => (r === 'green' || r === 'supportable' ? 'default' : r === 'amber' || r === 'supportableSubjectToVerification' ? 'secondary' : 'destructive');
 
@@ -44,6 +44,7 @@ export function CommercialIndustrialOverviewCard() {
   const unknowns = Object.values(profile.assumptions).filter(a => a.confidenceTag === 'Unknown' || a.confidenceTag === 'Specialist Review Required');
   const tenYear = profile.tenYearCashFlowOutputs;
   const clientScenario = profile.clientScenarioOutputs;
+  const hasIncompletePropertyInfo = !profile.propertyValuation.purchasePrice || !profile.propertyValuation.estimatedMarketValue || unknowns.length > 0;
 
   const { prefill, property, pushBack } = useCalculatorPrefill();
   const [showMissing, setShowMissing] = useState(false);
@@ -184,15 +185,36 @@ export function CommercialIndustrialOverviewCard() {
     </Card>
   );
 
-  return <div className="space-y-4">
+  return <div className="space-y-5">
+    {ReportActions}
+
+    {hasIncompletePropertyInfo && (
+      <Card className="border-amber-500/30 bg-amber-500/10">
+        <CardContent className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-amber-100">Property-level information is incomplete.</div>
+            <p className="text-xs text-amber-100/80">Add or import property details before relying on this calculation.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowMissing(true)}>
+              Review Missing Data ({unknowns.length})
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowAi(true)}>
+              Review AI Estimates ({aiFields.length})
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
     <Card className="border-primary/30 bg-primary/5">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Commercial / Industrial Assessment Overview</CardTitle><CardDescription>Read-only client-facing summary generated from the shared global deal state. Deterministic calculator outputs remain the source of truth.</CardDescription></div>
           <div className="flex flex-wrap gap-2"><Badge variant={badgeVariant(borrowing?.creditAssessmentStatus) as any}>{borrowing?.creditAssessmentStatusLabel ?? 'Credit status pending'}</Badge><Badge variant={badgeVariant(borrowing?.overallStatus) as any}>{borrowing?.purchaseAbilityStatusLabel ?? 'Purchase ability pending'}</Badge></div>
         </div>
       </CardHeader>
-      <CardContent className="grid md:grid-cols-4 gap-3">
+      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Row label="Asset domain" value={title(profile.dealProfile.assetCategory)} />
         <Row label="Asset subtype" value={profile.dealProfile.assetSubtype} />
         <Row label="Acquisition purpose" value={title(profile.dealProfile.acquisitionPurpose)} />
@@ -209,8 +231,6 @@ export function CommercialIndustrialOverviewCard() {
         <Row label="Key next action" value={borrowing?.requiredNextAction} />
       </CardContent>
     </Card>
-
-    {ReportActions}
 
     <div className="grid lg:grid-cols-2 gap-4">
       <Section title="Transaction Snapshot"><Row label="State / territory" value={profile.dealProfile.state} /><Row label="Lease status" value={title(profile.dealProfile.leaseStatus)} /><Row label="Data source mode" value="Global Sync On" /></Section>
