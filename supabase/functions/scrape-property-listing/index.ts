@@ -437,7 +437,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     const description: string | undefined = root?.metadata?.description;
     if (!markdown || markdown.length < 80 || isBadScrapeContent(markdown)) {
       console.warn("[scrape-property-listing] Firecrawl returned empty/short markdown:", markdown.length);
-      return null;
+      continue;
     }
     return { markdown, title, description };
   } catch (e) {
@@ -449,7 +449,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
 
 async function scrapeWithReaderMode(url: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
   try {
-    const target = `https://r.jina.ai/http://${url}`;
+    const target = `https://r.jina.ai/http://${url.replace(/^https?:\/\//i, '')}`;
     const resp = await fetch(target, {
       method: 'GET',
       headers: { Accept: 'text/markdown,text/plain,*/*' },
