@@ -27,6 +27,10 @@ const displayMoney = (n: number | null, ready: boolean) => ready && n !== null &
 
 type FieldSource = 'Blank' | 'Scraped' | 'NOI Tab' | 'Property Profile' | 'AI Benchmark' | 'Manual' | 'User Override' | 'Verified';
 type CapField = 'passingNoi' | 'marketNoi' | 'price' | 'targetCap';
+type CapRateReadinessStatus = 'Awaiting Cap Rate Inputs' | 'Preliminary Yield Estimate' | 'Cap Rate Assessment Ready' | 'Specialist Review Recommended' | 'Verified Benchmark';
+type WarningCategory = 'NOI' | 'Valuation' | 'Benchmark' | 'Lease' | 'Data Source' | 'Property Record' | 'Verification';
+type WarningSeverity = 'Critical' | 'Required' | 'Recommended';
+interface CapRateWarning { category: WarningCategory; severity: WarningSeverity; message: string }
 
 interface CapRateAiEstimate {
   propertyId: string;
@@ -53,6 +57,8 @@ interface PendingSource extends SourceCandidate { noticedAt: string }
 interface FieldState { value: string; source: FieldSource; dirty: boolean; originalValue?: string; originalSource?: FieldSource; sourceDetail?: string; pendingSource?: PendingSource }
 const field = (value: string, source: FieldSource = value ? 'Manual' : 'Blank', sourceDetail?: string): FieldState => ({ value, source, sourceDetail, dirty: false });
 const sourceBadge = (source: FieldSource) => ({ Blank: 'Blank', Scraped: 'Scraped', 'NOI Tab': 'From NOI', 'Property Profile': 'From Property', 'AI Benchmark': 'AI Benchmark', Manual: 'Manual', 'User Override': 'Override', Verified: 'Verified' }[source]);
+const severityRank: Record<WarningSeverity, number> = { Critical: 0, Required: 1, Recommended: 2 };
+const warningKey = (warning: CapRateWarning) => `${warning.category}:${warning.severity}:${warning.message}`;
 
 function firstNumber(...values: unknown[]) {
   for (const v of values) {
@@ -223,20 +229,60 @@ export function CapRateCalculatorCard() {
   const capAssessment = useMemo(() => calculateCapRateEngine({ passingNoi, marketNoi, selectedNoi: marketNoi || passingNoi, stabilisedNoi: (profile.noiOutputs as any)?.stabilisedNoi ?? (profile.noiOutputs as any)?.stabilisedNOI, lenderAdjustedNoi: (profile.noiOutputs as any)?.lenderAdjustedNoi ?? (profile.noiOutputs as any)?.lenderAdjustedNOI, price, targetCapRatePct: targetCap, valuationBasis: 'market', sensitivityCapRatesPct: sensitivityRates, aiBenchmark: fields.targetCap.source === 'AI Benchmark' }), [passingNoi, marketNoi, profile.noiOutputs, price, targetCap, sensitivityRates, fields.targetCap.source]);
   const reversionarySpread = yields.reversionaryYield !== null && yields.passingYield !== null ? Number((yields.reversionaryYield - yields.passingYield).toFixed(2)) : null;
 
-  const warnings = useMemo(() => {
-    const list = [...capAssessment.warnings];
-    if (!prefill) list.push('Property record not linked.');
-    if (prefill && (!prefill.address || !prefill.assetSubtype || !prefill.state)) list.push('Selected property missing key details.');
-    if (num(passingNoi) === null) list.push('Passing NOI is missing.');
-    if (num(marketNoi) === null) list.push('Market NOI is missing.');
-    if (num(price) === null) list.push('Price/value is missing.');
-    if (num(targetCap) === null) list.push('Target cap rate is missing.');
-    if (num(marketNoi) !== null && num(passingNoi) !== null && num(marketNoi)! < num(passingNoi)!) list.push('Market NOI is lower than passing NOI.');
-    if (reversionarySpread !== null && Math.abs(reversionarySpread) > 2) list.push('Reversion spread is unusually high.');
-    if (num(price) !== null && capAssessment.impliedValue !== null && capAssessment.impliedValue > num(price)! * 1.15) list.push('Implied value materially exceeds purchase price/value.');
-    if (fields.targetCap.source === 'AI Benchmark') list.push('AI benchmark requires valuer confirmation.');
-    return Array.from(new Set(list));
-  }, [capAssessment, fields.targetCap.source, marketNoi, passingNoi, prefill, price, reversionarySpread, targetCap]);
+  const anyCapRateDataEntered = [passingNoi, marketNoi, price, targetCap].some(value => parseCapRateNumber(value) !== null) || Boolean(prefill) || Boolean(aiEstimate);
+  const capWarnings = useMemo<CapRateWarning[]>(() => {
+    if (!anyCapRateDataEntered) return [];
+    const rawProperty = (property ?? {}) as Record<string, any>;
+    const list: CapRateWarning[] = [];
+    const add = (warning: CapRateWarning) => list.push(warning);
+    const parsedPassingNoi = num(passingNoi);
+    const parsedMarketNoi = num(marketNoi);
+    const parsedPrice = num(price);
+    const parsedTargetCap = num(targetCap);
+    const hasNoi = parsedPassingNoi !== null || parsedMarketNoi !== null;
+    const materiallyDifferentNoi = parsedPassingNoi !== null && parsedMarketNoi !== null && Math.abs(parsedMarketNoi - parsedPassingNoi) / Math.max(Math.abs(parsedPassingNoi), 1) > 0.2;
+    const marketNoiAbovePassing = parsedPassingNoi !== null && parsedMarketNoi !== null && parsedMarketNoi > parsedPassingNoi * 1.15;
+    const valuationGapMaterial = capAssessment.valuationGapPct !== null && Math.abs(capAssessment.valuationGapPct) >= 0.1;
+    const expectedLow = firstNumber(aiEstimate?.capRateRange.low, (profile.capRateOutputs as any)?.benchmarkLowPct, rawProperty.benchmark_cap_rate_low, rawProperty.cap_rate_low);
+    const expectedHigh = firstNumber(aiEstimate?.capRateRange.high, (profile.capRateOutputs as any)?.benchmarkHighPct, rawProperty.benchmark_cap_rate_high, rawProperty.cap_rate_high);
+    const targetOutsideBenchmark = parsedTargetCap !== null && expectedLow && expectedHigh && (parsedTargetCap < expectedLow || parsedTargetCap > expectedHigh);
+    const leaseStatus = rawProperty.lease_status || rawProperty.leaseStatus || profile.leaseIncome?.leaseStatus;
+    const propertyRisk = String(rawProperty.risk_rating || rawProperty.riskRating || rawProperty.property_risk || rawProperty.propertyRisk || '').toLowerCase();
+
+    if (!prefill && parsedPrice !== null && fields.price.source === 'Manual') add({ category: 'Data Source', severity: 'Required', message: 'Price / value is manually entered and not linked to property profile.' });
+    if (hasNoi && parsedPrice === null) add({ category: 'Valuation', severity: 'Critical', message: 'Price / value is missing while NOI is available.' });
+    if (!hasNoi && parsedPrice !== null) add({ category: 'NOI', severity: 'Critical', message: 'NOI is missing while price / value is available.' });
+    if (fields.targetCap.source === 'AI Benchmark') add({ category: 'Benchmark', severity: 'Required', message: 'Benchmark cap rate is AI-estimated and requires valuer confirmation.' });
+    if (fields.targetCap.source !== 'Verified' && parsedTargetCap !== null) add({ category: 'Verification', severity: 'Required', message: 'No valuer confirmation has been provided.' });
+    if (fields.passingNoi.source === 'User Override' || fields.marketNoi.source === 'User Override') add({ category: 'NOI', severity: 'Recommended', message: 'NOI source has been overridden. Review assumption history.' });
+    if (materiallyDifferentNoi) add({ category: 'NOI', severity: 'Recommended', message: 'Passing NOI and Market NOI materially differ. Review income assumptions.' });
+    if (marketNoiAbovePassing) add({ category: 'NOI', severity: 'Required', message: 'Market NOI is higher than passing NOI. Review reversionary assumptions.' });
+    if (targetOutsideBenchmark) add({ category: 'Benchmark', severity: 'Required', message: 'Target Cap Rate is materially outside the expected benchmark range.' });
+    if (!leaseStatus || leaseStatus === 'unknown') add({ category: 'Lease', severity: 'Required', message: 'Lease status is unknown.' });
+    if (propertyRisk.includes('high') || propertyRisk.includes('red')) add({ category: 'Property Record', severity: 'Required', message: 'Property record risk is high. Specialist review recommended.' });
+    if (valuationGapMaterial) add({ category: 'Valuation', severity: 'Required', message: 'Valuation gap is material. Confirm evidence before reporting.' });
+    capAssessment.warnings.forEach(message => {
+      const lower = message.toLowerCase();
+      const severity: WarningSeverity = lower.includes('target cap rate is missing') ? 'Recommended' : lower.includes('missing') || lower.includes('invalid') ? 'Critical' : 'Recommended';
+      add({ category: 'Valuation', severity, message });
+    });
+
+    return Array.from(new Map(list.map(w => [warningKey(w), w])).values()).sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+  }, [aiEstimate, anyCapRateDataEntered, capAssessment, fields, marketNoi, passingNoi, prefill, price, profile.capRateOutputs, profile.leaseIncome, property, targetCap]);
+  const warnings = capWarnings.map(w => w.message);
+
+  const readinessStatus = useMemo<CapRateReadinessStatus>(() => {
+    const sourceValuesConfirmed = Object.values(fields).some(field => field.source === 'Verified' || field.source === 'NOI Tab' || field.source === 'Property Profile' || field.source === 'Scraped');
+    if (!anyCapRateDataEntered || (!hasSelectedNoi && !hasPrice)) return 'Awaiting Cap Rate Inputs';
+    if (hasSelectedNoi && hasPrice && hasTargetCap && fields.targetCap.source === 'Verified' && Boolean(prefill) && sourceValuesConfirmed) return 'Verified Benchmark';
+    if (capWarnings.some(w => w.severity === 'Critical' || w.severity === 'Required')) return 'Specialist Review Recommended';
+    if (hasSelectedNoi && hasPrice && hasTargetCap) return 'Cap Rate Assessment Ready';
+    if (hasSelectedNoi && hasPrice) return 'Preliminary Yield Estimate';
+    return 'Awaiting Cap Rate Inputs';
+  }, [anyCapRateDataEntered, capWarnings, fields, hasPrice, hasSelectedNoi, hasTargetCap, prefill]);
+
+  const priorityWarnings = capWarnings.slice(0, 3);
+
 
   const buildSnapshot = () => {
     const missingInputs = ['address', 'assetSubtype', 'state', 'glaSqm', 'siteAreaSqm', 'walesYears', 'passingNoi', 'marketNoi', 'price'].filter(k => !({ ...prefill, price: num(price), passingNoi: num(passingNoi), marketNoi: num(marketNoi) } as any)?.[k]);
@@ -282,8 +328,7 @@ export function CapRateCalculatorCard() {
         : 'Benchmark pending';
   const sourceSummary = prefill ? `Linked property: ${prefill.address || prefill.propertyId || 'property record'}` : 'Manual entry / no property linked';
   const syncStatus = prefill ? 'Global input sync on' : 'Manual entry only';
-  const assumptionStatus = fields.targetCap.source === 'Verified' ? 'Verified' : fields.targetCap.source === 'AI Benchmark' ? 'Valuer confirmation required' : hasTargetCap ? 'Manual / review' : 'Pending';
-  const priorityWarnings = warnings.slice(0, 3);
+  const assumptionStatus = readinessStatus;
   const hasSensitivity = capAssessment.selectedNoi !== null && capAssessment.valueSensitivity.length > 0;
 
   return (
@@ -291,7 +336,7 @@ export function CapRateCalculatorCard() {
       <CardHeader className="space-y-4">
         <div>
           <CardTitle>Capitalisation Rate</CardTitle>
-          <CardDescription>Yield, cap rate, implied value, valuation gap and benchmark sensitivity.</CardDescription>
+          <CardDescription>Yield, cap rate, implied value, valuation gap and benchmark sensitivity.</CardDescription><Badge variant="outline" className="mt-2 w-fit border-primary/30 text-primary">{readinessStatus}</Badge>
         </div>
 
         <div className="rounded-lg border border-primary/15 bg-muted/30 p-3">
@@ -370,9 +415,9 @@ export function CapRateCalculatorCard() {
               <Button size="sm" variant="secondary" onClick={() => setShowAssumptions(v => !v)}>Assumption Status</Button>
             </div>
             <div className="mt-3 space-y-1">
-              {priorityWarnings.length ? priorityWarnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>) : <p className="text-xs text-muted-foreground">No priority warnings.</p>}
+              {priorityWarnings.length ? priorityWarnings.map(w => <p key={warningKey(w)} className="text-xs text-amber-200">• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority warnings.</p>}
             </div>
-            {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{warnings.length ? warnings.map(w => <div key={w}>• {w}</div>) : <div>No detailed warnings.</div>}</div>}
+            {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)}><Badge variant="outline" className="mr-2 text-[10px]">{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
           </div>
         </section>
 
