@@ -497,17 +497,24 @@ Return null for any field not present in the source.`;
     },
   };
 
-  const { callLLMRaw } = await import('../_shared/llmRouter.ts');
-  const routerResp = await callLLMRaw({
-    agentKey: 'listing_scrape',
-    messages: body.messages as any,
-    temperature: body.temperature,
-    maxTokens: body.max_tokens,
-    responseFormat: body.response_format,
-  });
-  const resp = { ok: routerResp.ok, status: routerResp.status, json: routerResp.json, text: routerResp.text } as any;
+  // Call Perplexity DIRECTLY (bypass router) so structured JSON schema is preserved
+  // and we guarantee sonar-pro is used. The LLM router's native Perplexity caller
+  // drops `response_format`, which would lose DB-schema-aligned JSON enforcement.
+  const perplexityKey = Deno.env.get('PERPLEXITY_API_KEY');
+  if (!perplexityKey) {
+    return { ok: false as const, status: 500, error: 'PERPLEXITY_API_KEY not configured', raw: '' };
+  }
 
-  const rawText = await resp.text();
+  const pplxResp = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${perplexityKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rawText = await pplxResp.text();
   let parsed: any = null;
   try {
     parsed = JSON.parse(rawText);
@@ -515,13 +522,13 @@ Return null for any field not present in the source.`;
     // keep raw
   }
 
-  if (!resp.ok) {
+  if (!pplxResp.ok) {
     const message =
       parsed?.error?.message ||
       parsed?.message ||
-      `Perplexity request failed with status ${resp.status}`;
+      `Perplexity request failed with status ${pplxResp.status}`;
 
-    return { ok: false as const, status: resp.status, error: message, raw: rawText };
+    return { ok: false as const, status: pplxResp.status, error: message, raw: rawText };
   }
 
   const content = parsed?.choices?.[0]?.message?.content as string | undefined;
