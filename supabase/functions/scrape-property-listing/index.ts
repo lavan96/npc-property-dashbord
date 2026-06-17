@@ -516,9 +516,10 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
     "8. OUTPUT: Return JSON only. Match the schema exactly. Every required key must appear (use null when absent).",
   ].join('\n');
 
+  const listingHints = deriveListingHints(url);
   const sourceBlock = pageContent
     ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 60000)}\n---\n\n`
-    : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
+    : `NOTE: The listing page could not be scraped directly. Use web search restricted to the listing domain. Locate the exact property listing by URL, property ID, and address hint. If the exact listing is not found, return nulls rather than using generic commercial real estate pages.\nProperty ID hint: ${listingHints.propertyId ?? 'unknown'}\nAddress hint: ${listingHints.addressHint ?? 'unknown'}\n\n`;
 
   const user = `${sourceBlock}URL: ${url}
 Property category hint: ${propertyCategory} ${propertyCategory === 'auto' ? '(auto-detect from content)' : ''}
@@ -604,6 +605,7 @@ Return JSON only.`;
     temperature: 0,
     top_p: 0.9,
     max_tokens: 6000,
+    ...(pageContent || !listingHints.hostname ? {} : { search_domain_filter: [listingHints.hostname] }),
     response_format: {
       type: "json_schema",
       json_schema: {
