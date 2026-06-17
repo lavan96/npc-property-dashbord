@@ -408,6 +408,20 @@ export function CapRateCalculatorCard() {
   };
   const rejectEstimate = () => { audit('AI cap rate estimate rejected', 'targetCapRatePct', aiEstimate?.recommendedTargetCapRate, targetCap, 'AI Estimate'); setAiEstimate(null); toast.info('AI cap-rate estimate rejected; current value kept.'); };
 
+  const benchmarkStatus = fields.targetCap.source === 'AI Benchmark'
+    ? 'AI benchmark applied'
+    : fields.targetCap.source === 'Verified'
+      ? 'Market benchmark verified'
+      : hasTargetCap
+        ? fields.targetCap.source === 'Manual' || fields.targetCap.source === 'User Override'
+          ? 'Manual benchmark'
+          : 'Valuer confirmation required'
+        : 'Benchmark pending';
+  const sourceSummary = prefill ? `Linked property: ${prefill.address || prefill.propertyId || 'property record'}` : 'Manual entry / no property linked';
+  const syncStatus = prefill ? 'Global input sync on' : 'Manual entry only';
+  const assumptionStatus = readinessStatus;
+  const hasSensitivity = capAssessment.selectedNoi !== null && capAssessment.valueSensitivity.length > 0;
+
   return (
     <Card className="border-primary/10 bg-background/95 shadow-xl">
       <CardHeader className="space-y-4">
@@ -516,6 +530,44 @@ export function CapRateCalculatorCard() {
             {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)}><Badge variant="outline" className={`mr-2 text-[10px] ${w.severity === 'Critical' ? 'border-red-500/30 text-red-300' : 'border-amber-500/30 text-amber-200'}`}>{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
           </section>
         </div>
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-xl border border-primary/10 bg-muted/20 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Benchmark Status</h3>
+                <p className="text-xs text-muted-foreground">{benchmarkStatus}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-primary/30 text-primary">{benchmarkStatus}</Badge>
+                <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !canEstimateCapRate}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Assumptions & Warnings</h3>
+                <p className="text-xs text-muted-foreground">Showing top {priorityWarnings.length || 0} priority warnings.</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => setShowAssumptions(v => !v)}>Assumption Status</Button>
+            </div>
+            <div className="mt-3 space-y-1">
+              {priorityWarnings.length ? priorityWarnings.map(w => <p key={warningKey(w)} className="text-xs text-amber-200">• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority warnings.</p>}
+            </div>
+            {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)}><Badge variant="outline" className="mr-2 text-[10px]">{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
+          </div>
+        </section>
+
+        <Collapsible open={showSensitivity} onOpenChange={setShowSensitivity} className="rounded-xl border border-primary/10 bg-muted/20 p-4">
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="outline" className="w-full justify-between">View value sensitivity <span>{showSensitivity ? '−' : '+'}</span></Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            {hasSensitivity ? <div className="overflow-hidden rounded-lg border border-primary/10"><div className="grid grid-cols-2 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground"><span>Sensitivity Cap Rate</span><span className="text-right">Sensitivity Value</span></div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="grid grid-cols-2 px-3 py-2 text-sm odd:bg-background/30"><span>{pct(row.capRatePct)}</span><span className="text-right font-medium">{displayMoney(row.impliedValue, true)}</span></div>)}</div> : <p className="text-xs text-muted-foreground">Sensitivity analysis appears once selected NOI and cap-rate sensitivity values are available.</p>}
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent className="max-w-2xl">
