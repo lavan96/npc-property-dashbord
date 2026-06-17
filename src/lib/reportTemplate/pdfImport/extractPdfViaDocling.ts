@@ -31,14 +31,49 @@ import type {
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
-const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
+// `recoverable_failed` is terminal-for-this-attempt but should surface as a
+// retry-friendly error rather than a hard failure.
+const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled', 'recoverable_failed']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
-  if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
+  if (data?.error) {
+    const msg = String(data.error);
+    if (/^unknown operation/i.test(msg)) {
+      // Cryptic on its own — tell the caller which op the deployed function rejected.
+      throw new Error(`template-import-pdf rejected operation "${body?.operation}" (${msg}). Redeploy the edge function.`);
+    }
+    throw new Error(describeAuthError(msg) ?? msg);
+  }
   return data;
+}
+
+/**
+ * Normalize the dispatcher / sidecar `result_payload` into a single artifacts
+ * record. All paths are optional — pixel-perfect runs may carry only
+ * `rasters_path`, semantic runs may carry only `docling_path` + `markdown_path`.
+ * Falls back to `job.diagnostics_path` for backwards compatibility with the
+ * Wave G chunked pipeline (which writes there first and `result_payload` later).
+ */
+function normalizeArtifacts(job: JobRow) {
+  const payload = (job.result_payload ?? {}) as Record<string, unknown>;
+  const pickStr = (k: string): string | null => {
+    const v = payload[k];
+    return typeof v === 'string' && v.length > 0 ? v : null;
+  };
+  return {
+    doclingPath: pickStr('docling_path') ?? job.diagnostics_path ?? null,
+    rastersPath: pickStr('rasters_path'),
+    markdownPath: pickStr('markdown_path'),
+    outlinePath: pickStr('outline_path'),
+    doctagsPath: pickStr('doctags_path'),
+    pageCount: typeof payload.page_count === 'number' ? payload.page_count : null,
+    requestedMode: pickStr('requested_mode') ?? pickStr('mode'),
+    summary: payload.summary,
+    autoModeSelected: payload.auto_mode_selected === true,
+  };
 }
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
@@ -305,30 +340,54 @@ export async function extractPdfViaDocling(
 
     onProgress({ phase: 'extracting', message: 'Docling parsing…' });
     const job = await pollJob(jobId, onProgress);
+    if (job.status === 'recoverable_failed') {
+      // Distinct retry-able failure — the dispatcher's stuck-job recovery may
+      // re-dispatch the same job_id; surface a message the dialog can offer
+      // a retry against rather than burying it as a hard error.
+      throw new Error(
+        `Docling job is recoverable (will be retried by the dispatcher). last_stage=${job.stage ?? 'unknown'}; ${job.error_code ?? ''} ${job.error_text ?? ''}`.trim(),
+      );
+    }
     if (job.status !== 'succeeded') {
       throw new Error(
-        `Docling job ${job.status}: ${job.error_code ?? 'unknown'} — ${job.error_text ?? ''}`.trim(),
+        `Docling job ${job.status} (stage=${job.stage ?? 'unknown'}): ${job.error_code ?? 'unknown'} — ${job.error_text ?? ''}`.trim(),
       );
     }
 
-    const doclingPath = job.result_payload?.docling_path ?? job.diagnostics_path;
-    if (!doclingPath) throw new Error('Docling job did not produce a diagnostics path');
+    // Per the spec — status=succeeded + stage=parsed is the success contract.
+    // result_payload may carry any subset of artifact paths; do not require
+    // docling.json for pixel-perfect when rasters are present.
+    const artifacts = normalizeArtifacts(job);
+    const effectiveMode = wireModeToDocling(artifacts.requestedMode, mode);
 
-    const doclingDoc = await downloadJson<DoclingDocument>(doclingPath);
-    if (!doclingDoc) throw new Error('Failed to download docling.json');
-    if (job.result_payload?.summary && !doclingDoc.summary) {
-      doclingDoc.summary = job.result_payload.summary as DoclingDocument['summary'];
-    }
-
-    const rasterPayload = job.result_payload?.rasters_path
-      ? await downloadJson<unknown>(job.result_payload.rasters_path)
-      : null;
+    const rasterPayload = artifacts.rastersPath ? await downloadJson<unknown>(artifacts.rastersPath) : null;
     const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
 
-    const effectiveMode = wireModeToDocling(job.result_payload?.mode, mode);
+    let doclingDoc = artifacts.doclingPath ? await downloadJson<DoclingDocument>(artifacts.doclingPath) : null;
+    if (!doclingDoc) {
+      if (effectiveMode === 'pixel-perfect' && rasters && Object.keys(rasters).length > 0) {
+        // Pixel-perfect only needs raster backgrounds. Synthesize a minimal
+        // DoclingDocument so the page-plan mapper still emits one page per
+        // raster (with no editable overlays — exactly what pixel-perfect wants).
+        const pages: Record<string, { page_no: number; size: { width: number; height: number } }> = {};
+        for (const [pageNoStr, r] of Object.entries(rasters)) {
+          const pageNo = Number(pageNoStr);
+          pages[String(pageNo)] = { page_no: pageNo, size: { width: r.width, height: r.height } };
+        }
+        doclingDoc = { pages, texts: [], tables: [], pictures: [] } as DoclingDocument;
+      } else {
+        throw new Error(
+          `Failed to download docling.json (artifact=${artifacts.doclingPath ?? 'none'}). result_payload had keys: ${Object.keys(job.result_payload ?? {}).join(', ') || 'none'}`,
+        );
+      }
+    }
+    if (artifacts.summary && !doclingDoc.summary) {
+      doclingDoc.summary = artifacts.summary as DoclingDocument['summary'];
+    }
+
     onProgress({
       phase: 'finalizing',
-      message: job.result_payload?.auto_mode_selected
+      message: artifacts.autoModeSelected
         ? 'Mapping Docling → template (Pixel-Perfect selected for OCR-heavy PDF)…'
         : 'Mapping Docling → template…',
     });
@@ -339,6 +398,7 @@ export async function extractPdfViaDocling(
       engineVersion: job.engine_version ?? 'docling',
     });
 
+
     const template = applyTemplateImportPlan(plan, {
       templateName: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
     });
@@ -348,7 +408,7 @@ export async function extractPdfViaDocling(
         engine: 'docling',
         engineVersion: job.engine_version ?? 'docling',
         mode: effectiveMode,
-        diagnosticsPath: doclingPath,
+        diagnosticsPath: artifacts.doclingPath ?? artifacts.rastersPath ?? null,
         jobId,
         importedAt: new Date().toISOString(),
       },

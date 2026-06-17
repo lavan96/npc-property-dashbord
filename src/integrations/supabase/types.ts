@@ -13121,6 +13121,7 @@ export type Database = {
           chunks_completed: number
           chunks_failed: number
           chunks_total: number | null
+          cloud_run_ms: number | null
           created_at: string
           diagnostics_path: string | null
           duration_ms: number | null
@@ -13162,6 +13163,7 @@ export type Database = {
           chunks_completed?: number
           chunks_failed?: number
           chunks_total?: number | null
+          cloud_run_ms?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
@@ -13203,6 +13205,7 @@ export type Database = {
           chunks_completed?: number
           chunks_failed?: number
           chunks_total?: number | null
+          cloud_run_ms?: number | null
           created_at?: string
           diagnostics_path?: string | null
           duration_ms?: number | null
