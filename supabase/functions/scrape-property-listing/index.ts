@@ -472,6 +472,57 @@ async function scrapeWithReaderMode(url: string): Promise<{ markdown: string; ti
   }
 }
 
+async function searchExactListing(url: string, apiKey: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
+  const hints = deriveListingHints(url);
+  if (!hints.propertyId && !hints.addressHint) return null;
+  const query = [
+    hints.propertyId ? `"${hints.propertyId}"` : '',
+    hints.addressHint ? `"${hints.addressHint}"` : '',
+    hints.hostname ? `site:${hints.hostname}` : '',
+  ].filter(Boolean).join(' ');
+
+  try {
+    const resp = await fetch('https://api.perplexity.ai/search', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, max_results: 10 }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const raw = await resp.text();
+    const parsed = safeJsonParse<any>(raw) ?? {};
+    if (!resp.ok) {
+      console.warn('[scrape-property-listing] exact search fallback failed', resp.status, raw.slice(0, 300));
+      return null;
+    }
+    const results: any[] = Array.isArray(parsed?.results)
+      ? parsed.results
+      : Array.isArray(parsed?.data)
+        ? parsed.data
+        : Array.isArray(parsed?.web)
+          ? parsed.web
+          : [];
+    const exact = results.filter((r) => {
+      const hay = `${r.title ?? ''} ${r.url ?? ''} ${r.snippet ?? ''} ${r.description ?? ''}`.toLowerCase();
+      const hasId = hints.propertyId ? hay.includes(hints.propertyId) : true;
+      const hasAddress = hints.addressHint ? hints.addressHint.toLowerCase().split(' ').filter((p) => p.length > 2).slice(0, 5).every((p) => hay.includes(p)) : true;
+      return hasId || hasAddress;
+    });
+    if (!exact.length) return null;
+    const markdown = [
+      `# Search fallback for exact listing`,
+      `URL: ${url}`,
+      `Property ID hint: ${hints.propertyId ?? 'unknown'}`,
+      `Address hint: ${hints.addressHint ?? 'unknown'}`,
+      '',
+      ...exact.slice(0, 8).map((r, i) => [`## Result ${i + 1}: ${r.title ?? 'Untitled'}`, `Source: ${r.url ?? ''}`, r.snippet ?? r.description ?? r.text ?? ''].join('\n')),
+    ].join('\n\n');
+    return { markdown, title: exact[0]?.title, description: exact[0]?.snippet ?? exact[0]?.description };
+  } catch (e) {
+    console.error('[scrape-property-listing] exact search fallback exception', e);
+    return null;
+  }
+}
+
 async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
   const apiKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (!apiKey) {
@@ -484,7 +535,7 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
 
   // Step 1: scrape the actual page so the model extracts from real content
   // instead of hallucinating from a URL slug.
-  const scraped = await scrapeWithFirecrawl(url) ?? await scrapeWithReaderMode(url);
+  const scraped = await scrapeWithFirecrawl(url) ?? await scrapeWithReaderMode(url) ?? await searchExactListing(url, apiKey);
   const pageContent = scraped?.markdown ?? null;
   if (pageContent) {
     console.log(`[scrape-property-listing] Firecrawl markdown length: ${pageContent.length}`);
