@@ -84,6 +84,21 @@ const safePct = (n: number | undefined, ready: boolean) => ready && Number.isFin
 const safeRatio = (n: number | undefined, ready: boolean) => ready && Number.isFinite(Number(n)) ? `${Number(n).toFixed(2)}x` : 'Pending';
 const severityVariant = (severity: string) => severity === 'Critical' ? 'destructive' : severity === 'Required' ? 'secondary' : 'outline';
 
+const exportBlockedReason = 'Complete purchase price, NOI, interest rate, loan term and lender policy assumptions before exporting this scenario.';
+const warningLogLabels: Record<string, string> = { financial: 'Financial', data: 'Data', asset: 'Asset', structure: 'Documents', lender: 'Lender', gstDuty: 'GST', specialistReview: 'System' };
+const documentCategories: Record<string, string[]> = {
+  'Contract and title': ['Contract of sale', 'Title search'],
+  'Lease and tenant': ['Lease agreement', 'Rent ledger', 'Tenant incentive deed or side agreement'],
+  'Outgoings and statutory charges': ['Outgoings statement', 'Council rates notice', 'Water rates notice', 'Land tax estimate'],
+  'Valuation and inspections': ['Insurance certificate', 'Building inspection', 'Fire compliance / essential safety measures report', 'Zoning confirmation', 'Strata / owners corporation records, if applicable', 'Valuation'],
+  'GST and tax': ['GST treatment confirmation'],
+  'Purchaser entity': ['Purchaser entity documents'],
+  'Business financials': ['Company financials'],
+  'Lender documents': ['Loan statements / debt schedule', 'Bank statements', 'Director guarantees'],
+};
+const statusTone = (status: 'verified' | 'assumed' | 'missing' | 'na') => ({ verified: 'bg-emerald-500/15 text-emerald-100 border-emerald-500/30', assumed: 'bg-amber-500/15 text-amber-100 border-amber-500/30', missing: 'bg-red-500/15 text-red-100 border-red-500/30', na: 'bg-muted text-muted-foreground border-border' }[status]);
+const statusLabel = (status: 'verified' | 'assumed' | 'missing' | 'na') => ({ verified: 'Green: verified', assumed: 'Amber: assumed', missing: 'Red: missing / unreliable', na: 'Grey: not applicable' }[status]);
+
 function StatusIcon({ status = 'Manual Estimate' }: { status?: AssumptionStatus | string }) {
   if (status === 'Verified') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-label="Verified" />;
   if (status === 'Client Profile Source') return <Link2 className="h-3.5 w-3.5 text-primary" aria-label="Client Profile Source" />;
@@ -370,6 +385,43 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Assessment Ready' : 'Preliminary Estimate';
   const purchaseAbilityStatus = !assessmentReady ? 'Awaiting Inputs' : result.fundsToComplete.requiredEquity == null ? 'Funds to Complete Pending' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Funds to Complete Supported' : result.creditAssessmentStatus === 'red' ? 'Not Supportable' : 'Equity Shortfall';
   const validCalculatedResult = assessmentReady && Number.isFinite(result.finalRiskAdjustedLoan) && result.finalRiskAdjustedLoan > 0;
+  const criticalExportFields = useMemo(() => [
+    { label: 'Purchase price', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
+    { label: 'NOI', complete: hasValue(passingRent) || hasValue(marketRent) || hasValue(nonRecoverable) },
+    { label: 'Interest rate', complete: hasValue(rate) },
+    { label: 'Loan term', complete: hasValue(term) },
+    { label: 'Lender policy assumptions', complete: hasValue(maxLvr) && (hasValue(minIcr) || hasValue(minDscr)) && hasValue(profile) },
+  ], [purchasePrice, estimatedValue, passingRent, marketRent, nonRecoverable, rate, term, maxLvr, minIcr, minDscr, profile]);
+  const missingCriticalExportFields = criticalExportFields.filter(item => !item.complete).map(item => item.label);
+  const exportBlocked = missingCriticalExportFields.length > 0 || !validCalculatedResult;
+  const hasAssumptionsPresent = [gstTreatment === 'unknown', gstCashflow === 'unknown', leaseDocs !== 'yes', environmentalRisk === 'unknown', asbestosRisk === 'unknown', valuationConfidence !== 'high'].some(Boolean);
+  const criticalDocumentNames = ['Contract of sale', 'Title search', 'Lease agreement', 'Rent ledger', 'Outgoings statement', 'Valuation', 'GST treatment confirmation', 'Purchaser entity documents', 'Company financials'];
+  const missingCriticalDocuments = criticalDocumentNames.filter(name => {
+    if (name === 'Contract of sale') return !hasValue(purchasePrice);
+    if (name === 'Title search') return !(hasValue(estimatedValue) || hasValue(bankValue));
+    if (name === 'Lease agreement' || name === 'Rent ledger') return leaseDocs !== 'yes';
+    if (name === 'Outgoings statement') return !(hasValue(recoveries) || hasValue(rates) || hasValue(water) || hasValue(landTax) || hasValue(insurance));
+    if (name === 'GST treatment confirmation') return gstTreatment === 'unknown';
+    if (name === 'Valuation') return valuationConfidence !== 'high';
+    if (name === 'Purchaser entity documents') return !hasValue(entityName) && purchaserType === 'company';
+    if (name === 'Company financials') return showBusinessFields && !num(businessEbitda);
+    return false;
+  });
+  const allRequiredDocumentsVerified = missingCriticalDocuments.length === 0;
+  const exportReadinessStatus = exportBlocked ? 'Export blocked' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Ready to export' : 'Export allowed with assumptions';
+  const exportButtonDisabled = exportBlocked;
+  const exportButtonLabel = exportBlocked ? 'Export Scenario Report' : hasAssumptionsPresent || !allRequiredDocumentsVerified ? 'Export Scenario Report (with assumptions)' : 'Export Scenario Report';
+  const documentChecklistGroups = Object.entries(documentCategories).map(([category, configuredItems]) => ({
+    category,
+    items: configuredItems.filter(item => result.documentChecklist.includes(item) || criticalDocumentNames.includes(item)),
+  })).filter(group => group.items.length > 0);
+  const assumptionStatusRows = [
+    { label: 'Purchase price / valuation', status: (hasValue(purchasePrice) || hasValue(estimatedValue)) ? (valuationConfidence === 'high' ? 'verified' : 'assumed') : 'missing', detail: valuationConfidence === 'high' ? 'Valuation confidence high' : 'Needs contract or valuation confirmation' },
+    { label: 'NOI and lease income', status: (hasValue(passingRent) || hasValue(marketRent) || hasValue(nonRecoverable)) ? (leaseDocs === 'yes' ? 'verified' : 'assumed') : 'missing', detail: leaseDocs === 'yes' ? 'Lease documents verified' : 'Lease / rent ledger not verified' },
+    { label: 'GST treatment', status: gstTreatment === 'unknown' ? 'missing' : gstCashflow === 'unknown' ? 'assumed' : 'verified', detail: title(gstTreatment) },
+    { label: 'Lender policy', status: hasValue(rate) && hasValue(term) && hasValue(maxLvr) ? 'verified' : 'missing', detail: `${title(profile)} policy profile` },
+    { label: 'Industrial environmental / asbestos', status: assetCategory === 'industrial' ? (environmentalRisk === 'unknown' || asbestosRisk === 'unknown' ? 'assumed' : 'verified') : 'na', detail: assetCategory === 'industrial' ? 'Industrial due diligence status' : 'Not applicable to commercial asset' },
+  ] as Array<{ label: string; status: 'verified' | 'assumed' | 'missing' | 'na'; detail: string }>;
   const missingInformationGroups = useMemo(() => ({
     Financial: [!hasValue(availableEquity) && 'Available cash / equity', showBusinessFields && !hasValue(businessEbitda) && 'Business EBITDA / NPBT'].filter(Boolean) as string[],
     Property: [!(hasValue(purchasePrice) || hasValue(estimatedValue)) && 'Purchase price or estimated market value', !hasValue(assetSubtype) && 'Asset subtype'].filter(Boolean) as string[],
@@ -463,6 +515,15 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     borrowingResult: result,
   }), [scenarioName, scenarioType, scenarioStatus, purchasePrice, result, assetSubtype]);
   const activeScenario = useMemo(() => buildClientScenario(scenarioClient, scenarioInputs), [scenarioClient, scenarioInputs]);
+  const auditTrailRows = [
+    { label: 'Created date', value: savedScenario?.createdAt ? new Date(savedScenario.createdAt).toLocaleString() : 'Current session draft' },
+    { label: 'Last updated date', value: savedScenario?.auditLog.length ? new Date(savedScenario.auditLog[savedScenario.auditLog.length - 1].timestamp).toLocaleString() : new Date().toLocaleString() },
+    { label: 'User who changed assumptions', value: activeScenario.auditLog[activeScenario.auditLog.length - 1]?.user || 'Calculator user' },
+    { label: 'Scenario save history', value: savedScenario ? `${savedScenario.status} saved${lastPersistedScenarioId ? ` (${lastPersistedScenarioId})` : ''}` : 'Not saved yet' },
+    { label: 'Import history', value: profileImported ? `${selectedClient.clientName} portfolio imported` : 'No client profile import' },
+    { label: 'Export history', value: syncMessage.toLowerCase().includes('downloaded') ? syncMessage : 'No export in this session' },
+    { label: 'Calculation version', value: 'Commercial / Industrial Borrowing Capacity Unified v1' },
+  ];
   const scenarioComparison = useMemo(() => comparePortfolioScenario(activeScenario.currentPositionSnapshot, activeScenario.resultingPosition), [activeScenario]);
 
   const conflictCount = countProfileImportConflicts({
@@ -526,17 +587,22 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   };
 
   const exportScenarioReport = () => {
+    if (exportBlocked) {
+      setSyncMessage(exportBlockedReason);
+      toast.error(exportBlockedReason);
+      return;
+    }
     try {
       const payload = buildScenarioReportPayload(activeScenario);
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ ...payload, exportReadiness: { status: exportReadinessStatus, missingCriticalDocuments, missingCriticalExportFields, assumptionsPresent: hasAssumptionsPresent } }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const safe = (scenarioName || 'commercial-bc-scenario').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
       a.href = url; a.download = `${safe}-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      if (propertyInfoIncomplete) setSyncMessage(`${missingPropertyMessage} Export flags missing fields: ${missingPropertyFields.join(', ')}.`);
-      toast.success(propertyInfoIncomplete ? 'Scenario report downloaded with missing-data warning.' : 'Scenario report downloaded.');
+      setSyncMessage(hasAssumptionsPresent ? 'Scenario report downloaded with assumption warnings recorded in export history.' : 'Scenario report downloaded and export history updated.');
+      toast.success(hasAssumptionsPresent ? 'Scenario report downloaded with assumption warning.' : 'Scenario report downloaded.');
     } catch (err: any) {
       toast.error(`Export failed: ${err?.message || 'Unknown error'}`);
     }
@@ -643,7 +709,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
             <div className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] gap-6">
               <div className="space-y-4">
                 <Card className="border-primary/20 bg-background/60"><CardContent className="pt-4 space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Data completeness</p><p className="text-xl font-semibold">{completenessStatus}</p></div><Badge variant={assessmentReady ? 'default' : completedReadinessItems ? 'secondary' : 'outline'}>{completenessPct}% complete</Badge></div><Progress value={completenessPct} />{!assessmentReady && <p className="text-xs text-muted-foreground">Missing: {missingRequiredInputs.join(', ')}.</p>}</CardContent></Card><Card className="border-amber-500/30 bg-amber-500/5"><CardHeader className="pb-2"><CardTitle className="text-base">Missing Information</CardTitle><CardDescription>Critical items needed before a final borrowing estimate can be relied on.</CardDescription></CardHeader><CardContent className="space-y-2 text-xs">{criticalMissingItems.length ? criticalMissingItems.map(({ group, item }) => <div key={`${group}-${item}`} className="flex items-center justify-between gap-2 rounded border bg-background/50 px-2 py-1"><span>{item}</span><Badge variant="outline">{group}</Badge></div>) : <p className="text-muted-foreground">No critical missing items identified.</p>}<button type="button" className="text-primary underline-offset-4 hover:underline" onClick={() => setSyncMessage('Open Documents & Audit to view all missing items grouped by Financial, Property, Lease, Lending, GST and Documents.')}>View all missing items</button></CardContent></Card><Card className="border-primary/20 bg-background/60"><CardContent className="pt-4 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Need deeper underwriting controls?</p><p className="text-xs text-muted-foreground">For lender policy, GST, detailed NOI, business servicing and full underwriting assumptions.</p></div><Button variant="outline" onClick={() => setActiveTab('advanced')}>Open Advanced Analysis</Button></CardContent></Card>
-          <Card className="border-primary/20 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-base flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /> Client Profile Integration</CardTitle><CardDescription>Import a verified client portfolio, run property-only or client-profile scenario assessment, and save scenario outcomes without overwriting verified client data.</CardDescription></div><Badge variant={assessmentMode === 'clientScenario' ? 'default' : 'outline'}>{assessmentMode === 'clientScenario' ? 'Client-profile scenario assessment' : 'Property-only assessment'}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-3 gap-3"><div><Label className="flex items-center gap-1.5">Select client profile<StatusIcon status="Client Profile Source" /></Label><ClientProfileCombobox value={selectedClientId} options={clientOptions} loading={clientLoading} onChange={setSelectedClientId} /></div><SelectField label="Scenario type" value={scenarioType} onChange={setScenarioType} status="Overridden" options={['Acquire Commercial Asset','Acquire Industrial Asset','Owner-Occupied Business Premises','Related-Party Lease Structure','Sell Existing Asset','Refinance Existing Debt','Equity Release','Debt Restructure','Cash Injection','Interest Rate Stress','Vacancy / Rent Stress','Capex Shock','Multi-Asset Strategy'].map(v => ({ value: v, label: v }))} /><div><Label>Scenario name</Label><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} /></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={importClientProfile} disabled={clientLoading}>{clientLoading ? 'Loading profile...' : 'Import current portfolio'}</Button><Button size="sm" variant="outline" onClick={importLatestBorrowingCapacity} disabled={!includeLatestBorrowingCapacity}>Import latest borrowing capacity assessment</Button><Button size="sm" variant="outline" onClick={runPropertyOnly}>Run property-only</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Recommended')}>Mark Recommended</Button><Button size="sm" variant="outline" onClick={() => setCommitConfirmOpen(true)}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={exportScenarioReport} disabled={!validCalculatedResult || hasRequiredWarnings}>Export Scenario Report</Button></div><div className="rounded-md border border-primary/20 bg-background/40 p-2 text-xs text-muted-foreground">{syncMessage}{lastPersistedScenarioId ? ` Persisted scenario ID: ${lastPersistedScenarioId}.` : ''}</div>{savedScenario && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100">Scenario saved as {savedScenario.status}. Current profile data is not overwritten unless committed.</div>}<Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead className="text-right">Current Position</TableHead><TableHead className="text-right">Proposed Scenario</TableHead><TableHead className="text-right">Difference</TableHead><TableHead className="text-right">Movement</TableHead></TableRow></TableHeader><TableBody>{scenarioRows.map(row => <TableRow key={row.key}><TableCell>{row.label}</TableCell><TableCell className="text-right">{formatScenarioValue(row.current, row.kind)}</TableCell><TableCell className="text-right">{formatScenarioValue(row.proposed, row.kind)}</TableCell><TableCell className="text-right">{formatScenarioValue(row.difference, row.kind)}</TableCell><TableCell className="text-right"><Badge variant={row.indicator === 'improves' ? 'default' : row.indicator === 'weakens' ? 'destructive' : 'outline'}>{row.indicator}</Badge></TableCell></TableRow>)}</TableBody></Table><div className="grid md:grid-cols-4 gap-2 text-xs"><div className="rounded border bg-muted/20 p-2">Borrowing capacity movement: <span className="font-medium text-primary">{fmt(scenarioComparison.difference.borrowingCapacity)}</span></div><div className="rounded border bg-muted/20 p-2">New limiting factor: <span className="font-medium">{scenarioComparison.proposed.keyConstraint}</span></div><div className="rounded border bg-muted/20 p-2">Portfolio risk: <Badge variant={badgeVariant(scenarioComparison.proposed.riskRating) as any}>{title(scenarioComparison.proposed.riskRating)}</Badge></div><div className="rounded border bg-muted/20 p-2">Asset-level risk: <span className="font-medium">{title(result.riskRating)}</span></div><div className="rounded border bg-muted/20 p-2">Liquidity impact: <span className="font-medium">{scenarioComparison.proposed.postSettlementLiquidity < 0 ? 'N/A' : fmt(scenarioComparison.proposed.postSettlementLiquidity)}</span></div><div className="rounded border bg-muted/20 p-2">Debt-service impact: <span className="font-medium">{fmt(scenarioComparison.difference.annualDebtService)}</span></div><div className="rounded border bg-muted/20 p-2">Reliability: <span className="font-medium">{activeScenario.proposedChanges.reliability as string}</span></div><div className="rounded border bg-muted/20 p-2">Audit trail: <span className="font-medium">{activeScenario.auditLog.length} event(s)</span></div></div></CardContent></Card>
+          <Card className="border-primary/20 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-base flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /> Client Profile Integration</CardTitle><CardDescription>Import a verified client portfolio, run property-only or client-profile scenario assessment, and save scenario outcomes without overwriting verified client data.</CardDescription></div><Badge variant={assessmentMode === 'clientScenario' ? 'default' : 'outline'}>{assessmentMode === 'clientScenario' ? 'Client-profile scenario assessment' : 'Property-only assessment'}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-3 gap-3"><div><Label className="flex items-center gap-1.5">Select client profile<StatusIcon status="Client Profile Source" /></Label><ClientProfileCombobox value={selectedClientId} options={clientOptions} loading={clientLoading} onChange={setSelectedClientId} /></div><SelectField label="Scenario type" value={scenarioType} onChange={setScenarioType} status="Overridden" options={['Acquire Commercial Asset','Acquire Industrial Asset','Owner-Occupied Business Premises','Related-Party Lease Structure','Sell Existing Asset','Refinance Existing Debt','Equity Release','Debt Restructure','Cash Injection','Interest Rate Stress','Vacancy / Rent Stress','Capex Shock','Multi-Asset Strategy'].map(v => ({ value: v, label: v }))} /><div><Label>Scenario name</Label><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} /></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={importClientProfile} disabled={clientLoading}>{clientLoading ? 'Loading profile...' : 'Import current portfolio'}</Button><Button size="sm" variant="outline" onClick={importLatestBorrowingCapacity} disabled={!includeLatestBorrowingCapacity}>Import latest borrowing capacity assessment</Button><Button size="sm" variant="outline" onClick={runPropertyOnly}>Run property-only</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => saveScenario('Recommended')}>Mark Recommended</Button><Button size="sm" variant="outline" onClick={() => setCommitConfirmOpen(true)}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={exportScenarioReport} disabled={exportButtonDisabled}>{exportButtonLabel}</Button></div><div className="rounded-md border border-primary/20 bg-background/40 p-2 text-xs text-muted-foreground">{syncMessage}{lastPersistedScenarioId ? ` Persisted scenario ID: ${lastPersistedScenarioId}.` : ''}</div>{savedScenario && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100">Scenario saved as {savedScenario.status}. Current profile data is not overwritten unless committed.</div>}<Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead className="text-right">Current Position</TableHead><TableHead className="text-right">Proposed Scenario</TableHead><TableHead className="text-right">Difference</TableHead><TableHead className="text-right">Movement</TableHead></TableRow></TableHeader><TableBody>{scenarioRows.map(row => <TableRow key={row.key}><TableCell>{row.label}</TableCell><TableCell className="text-right">{formatScenarioValue(row.current, row.kind)}</TableCell><TableCell className="text-right">{formatScenarioValue(row.proposed, row.kind)}</TableCell><TableCell className="text-right">{formatScenarioValue(row.difference, row.kind)}</TableCell><TableCell className="text-right"><Badge variant={row.indicator === 'improves' ? 'default' : row.indicator === 'weakens' ? 'destructive' : 'outline'}>{row.indicator}</Badge></TableCell></TableRow>)}</TableBody></Table><div className="grid md:grid-cols-4 gap-2 text-xs"><div className="rounded border bg-muted/20 p-2">Borrowing capacity movement: <span className="font-medium text-primary">{fmt(scenarioComparison.difference.borrowingCapacity)}</span></div><div className="rounded border bg-muted/20 p-2">New limiting factor: <span className="font-medium">{scenarioComparison.proposed.keyConstraint}</span></div><div className="rounded border bg-muted/20 p-2">Portfolio risk: <Badge variant={badgeVariant(scenarioComparison.proposed.riskRating) as any}>{title(scenarioComparison.proposed.riskRating)}</Badge></div><div className="rounded border bg-muted/20 p-2">Asset-level risk: <span className="font-medium">{title(result.riskRating)}</span></div><div className="rounded border bg-muted/20 p-2">Liquidity impact: <span className="font-medium">{scenarioComparison.proposed.postSettlementLiquidity < 0 ? 'N/A' : fmt(scenarioComparison.proposed.postSettlementLiquidity)}</span></div><div className="rounded border bg-muted/20 p-2">Debt-service impact: <span className="font-medium">{fmt(scenarioComparison.difference.annualDebtService)}</span></div><div className="rounded border bg-muted/20 p-2">Reliability: <span className="font-medium">{activeScenario.proposedChanges.reliability as string}</span></div><div className="rounded border bg-muted/20 p-2">Audit trail: <span className="font-medium">{activeScenario.auditLog.length} event(s)</span></div></div></CardContent></Card>
 
           <CommercialBCScenarioAgent
             clientId={selectedClientId}
@@ -813,7 +879,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
           <Card><CardHeader><CardTitle className="text-base">Risk Summary & Commentary</CardTitle><CardDescription>{assessmentReady ? result.primaryReason : readinessHelper}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="space-y-2 text-sm leading-relaxed text-muted-foreground">{Object.entries(result.commentarySections).map(([heading, text]) => text && assessmentReady ? <p key={heading}><span className="font-semibold text-foreground">{title(heading)}:</span> {text}</p> : null)}</div>{warningSummary.length > 0 && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3"><div className="flex items-center gap-2 text-sm font-medium text-amber-200"><AlertTriangle className="h-4 w-4" /> Warning summary</div><div className="mt-2 space-y-1 text-xs text-muted-foreground">{warningSummary.map((w, i) => <div key={`${w.severity}-${i}`} className="flex items-start gap-2"><Badge variant={severityVariant(w.severity) as any}>{w.severity}</Badge><span>{w.text}</span></div>)}</div></div>}<p className="text-sm font-medium">Next action: {assessmentReady ? result.requiredNextAction : 'Complete required inputs'}</p></CardContent></Card>
 
-          <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Required Documents / Next Steps</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">{result.documentChecklist.slice(0, 18).map(item => <div key={item} className="rounded border bg-muted/20 px-2 py-1">{item}</div>)}</div></CardContent></Card>
+          <Card className="border-primary/20 bg-background/60"><CardContent className="pt-4 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Documents and audit controls</p><p className="text-xs text-muted-foreground">Required documents, full warning log, assumption status, audit trail and export readiness are available in the dedicated tab.</p></div><Button variant="outline" onClick={() => setActiveTab('audit')}>Open Documents & Audit</Button></CardContent></Card>
 
           <Card>
             <CardHeader>
@@ -960,7 +1026,64 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="audit" className="mt-0 space-y-4"><Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Required Documents / Next Steps</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">{result.documentChecklist.slice(0, 18).map(item => <div key={item} className="rounded border bg-muted/20 px-2 py-1">{item}</div>)}</div><div className="rounded-md border bg-muted/10 p-3"><p className="text-sm font-medium">All Missing Items</p><div className="mt-2 grid md:grid-cols-2 gap-3 text-xs text-muted-foreground">{Object.entries(missingInformationGroups).map(([group, items]) => <div key={group}><p className="font-medium text-foreground">{group}</p>{items.length ? <ul className="mt-1 space-y-1">{items.map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-1">None pending</p>}</div>)}</div></div><div className="rounded-md border bg-muted/10 p-3"><p className="text-sm font-medium">Full Warning Log</p><div className="mt-2 space-y-2 text-xs text-muted-foreground">{Object.entries(result.warningGroups).map(([group, items]) => items.length ? <div key={group}><span className="font-medium text-foreground">{title(group)}</span><ul className="mt-1 space-y-1">{items.map((w, i) => <li key={i}>• {w}</li>)}</ul></div> : null)}</div></div><p className="mt-3 text-xs text-muted-foreground">Audit trail: {activeScenario.auditLog.length} event(s).</p></CardContent></Card></TabsContent>
+          <TabsContent value="audit" className="mt-0 space-y-4">
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Export Readiness</CardTitle>
+                <CardDescription>Report controls are kept here so the default calculator stays focused on inputs and borrowing results.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={exportBlocked ? 'destructive' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'default' : 'secondary'}>{exportReadinessStatus}</Badge>
+                  {exportBlocked && <Badge variant="destructive">Missing required fields</Badge>}
+                  {missingCriticalDocuments.length > 0 && <Badge variant="secondary">Missing critical documents</Badge>}
+                  {hasAssumptionsPresent && !exportBlocked && <Badge variant="outline">Export allowed with assumptions</Badge>}
+                </div>
+                {exportBlocked ? <p className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-100">{exportBlockedReason}</p> : <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">{allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Ready to export. Calculation is complete and required documents are verified.' : 'Export is allowed because the calculation is complete, but assumptions and document gaps will be disclosed in the report.'}</p>}
+                <div className="grid md:grid-cols-3 gap-2 text-xs">
+                  <MoneyRow label="Last calculated result" value={validCalculatedResult ? result.finalRiskAdjustedLoan : 'Pending'} />
+                  <MoneyRow label="Missing required fields" value={missingCriticalExportFields.length ? missingCriticalExportFields.join(', ') : 'None'} />
+                  <MoneyRow label="Missing critical documents" value={missingCriticalDocuments.length ? String(missingCriticalDocuments.length) : 'None'} />
+                </div>
+                <Button size="sm" onClick={exportScenarioReport} disabled={exportButtonDisabled}>{exportButtonLabel}</Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Required Documents</CardTitle><CardDescription>Checklist grouped by category. Unverified items remain visible here instead of crowding the calculator view.</CardDescription></CardHeader>
+              <CardContent className="grid md:grid-cols-2 gap-3">
+                {documentChecklistGroups.map(group => <div key={group.category} className="rounded-md border bg-muted/10 p-3"><p className="text-sm font-medium">{group.category}</p><div className="mt-2 space-y-1.5 text-xs text-muted-foreground">{group.items.map(item => {
+                  const verified = item === 'Contract of sale' ? hasValue(purchasePrice) : item === 'Title search' ? hasValue(estimatedValue) || hasValue(bankValue) : item === 'Lease agreement' || item === 'Rent ledger' ? leaseDocs === 'yes' : item === 'Outgoings statement' ? hasValue(recoveries) || hasValue(rates) || hasValue(water) || hasValue(landTax) || hasValue(insurance) : item === 'GST treatment confirmation' ? gstTreatment !== 'unknown' : item === 'Valuation' ? valuationConfidence === 'high' : item === 'Purchaser entity documents' ? hasValue(entityName) || purchaserType !== 'company' : item === 'Company financials' ? !showBusinessFields || Boolean(num(businessEbitda)) : false;
+                  return <label key={item} className="flex items-start gap-2"><input type="checkbox" checked={verified} readOnly className="mt-0.5" /><span>{item}</span></label>;
+                })}</div></div>)}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Warning Log</CardTitle><CardDescription>Full grouped warnings for underwriting review.</CardDescription></CardHeader>
+              <CardContent className="grid md:grid-cols-2 gap-3 text-xs text-muted-foreground">
+                {Object.entries(warningLogLabels).map(([key, label]) => {
+                  const items = (result.warningGroups as any)[key] || [];
+                  return <div key={key} className="rounded-md border bg-muted/10 p-3"><p className="font-medium text-foreground">{label}</p>{items.length ? <ul className="mt-2 space-y-1">{items.map((w: string, i: number) => <li key={i}>• {w}</li>)}</ul> : <p className="mt-2">No warnings.</p>}</div>;
+                })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Assumption Status</CardTitle><CardDescription>Green verified, amber assumed, red missing / unreliable, grey not applicable.</CardDescription></CardHeader>
+              <CardContent className="grid md:grid-cols-2 gap-3 text-xs">
+                {assumptionStatusRows.map(row => <div key={row.label} className={cn('rounded-md border p-3', statusTone(row.status))}><div className="flex items-center justify-between gap-2"><span className="font-medium">{row.label}</span><span>{statusLabel(row.status)}</span></div><p className="mt-1 opacity-90">{row.detail}</p></div>)}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Audit Trail</CardTitle><CardDescription>Scenario events and calculation metadata for report governance.</CardDescription></CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                <div className="grid md:grid-cols-2 gap-2">{auditTrailRows.map(row => <div key={row.label} className="rounded border bg-muted/10 p-2"><span className="text-muted-foreground">{row.label}: </span><span className="font-medium">{row.value}</span></div>)}</div>
+                <div className="rounded-md border bg-muted/10 p-3"><p className="font-medium text-sm">Scenario event history</p>{activeScenario.auditLog.length ? <ul className="mt-2 space-y-1 text-muted-foreground">{activeScenario.auditLog.map((event, index) => <li key={`${event.timestamp}-${index}`}>• {new Date(event.timestamp).toLocaleString()} — {event.user}: {event.action} ({event.source})</li>)}</ul> : <p className="mt-2 text-muted-foreground">No scenario events recorded.</p>}</div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
