@@ -263,7 +263,7 @@ function enrichExtractionFromSource(extracted: PerplexityListingExtraction, sour
   fill(enriched, 'agent_name', firstMatch(compact, [/\n\[([^\]\n]+?)\]\([^\)]*agent-profile/i, /###\s*Co-Agents[\s\S]{0,300}?\n\[?([A-Z][a-z]+\s+[A-Z][a-z]+)/]) as any);
   fill(enriched, 'property_name', firstMatch(compact, [/##\s+([^\n]+)\n\n-\s+/i, /##\s+([^\n]*(?:Investment|Office|Warehouse|Retail|Showroom|Medical)[^\n]*)/i]) as any);
   fill(enriched, 'listing_text', firstMatch(compact, [/##\s+[^\n]+\n\n(?:-\s*[^\n]+\n){1,5}\n([^\n]{80,500})/i]) as any);
-  fill(enriched, 'confidence', Math.max(Number(enriched.confidence || 0), 0.82) as any);
+  if (!enriched.confidence || enriched.confidence < 0.82) enriched.confidence = 0.82;
 
   if (hints.propertyId && !enriched.key_features?.some((f) => f.includes(hints.propertyId!))) {
     const existing = Array.isArray(enriched.key_features) ? enriched.key_features : [];
