@@ -360,7 +360,15 @@ export async function extractPdfViaDocling(
     const artifacts = normalizeArtifacts(job);
     const effectiveMode = wireModeToDocling(artifacts.requestedMode, mode);
 
-    const rasterPayload = artifacts.rastersPath ? await downloadJson<unknown>(artifacts.rastersPath) : null;
+    // TEMP: Do not embed raster base64/data URLs into the template schema —
+    // they blow up the resync payload and cause `template-import-pdf` upstream
+    // timeouts. Raster references are still persisted in `template.meta.pdfImport`
+    // (rastersPath) so pixel-perfect rendering can rehydrate them lazily.
+    const shouldEmbedRasters = false;
+    const rasterPayload =
+      shouldEmbedRasters && artifacts.rastersPath
+        ? await downloadJson<unknown>(artifacts.rastersPath)
+        : null;
     const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
 
     let doclingDoc = artifacts.doclingPath ? await downloadJson<DoclingDocument>(artifacts.doclingPath) : null;
