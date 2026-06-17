@@ -18,7 +18,7 @@ import {
   doclingProvider,
   pixelFallbackProvider,
 } from './index';
-import { renderSourceProvider, weasyprintReverseProvider } from './services';
+import { renderSourceProvider } from './services';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface DispatchResult {
@@ -31,7 +31,7 @@ export interface DispatchOptions extends ImportOptions {
   /** Skip the provider-attempts persistence step (useful in tests). */
   skipAuditPersist?: boolean;
   /** Force a specific primary provider id — bypasses auto-detection. */
-  forcePrimary?: 'docling' | 'render-source' | 'weasyprint-reverse';
+  forcePrimary?: 'docling' | 'render-source';
   onAttempt?: (attempt: ProviderAttempt) => void;
 }
 
@@ -40,17 +40,16 @@ function pickPrimary(file: File, opts: DispatchOptions): { primary: ImportProvid
   if (opts.forcePrimary === 'render-source') {
     return { primary: renderSourceProvider, fallbacks: [doclingProvider, pixelFallbackProvider] };
   }
-  if (opts.forcePrimary === 'weasyprint-reverse') {
-    return { primary: weasyprintReverseProvider, fallbacks: [doclingProvider, pixelFallbackProvider] };
-  }
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name ?? '');
   if (!isPdf) {
     return { primary: renderSourceProvider, fallbacks: [] };
   }
-  // PDFs → Docling primary, pixel + WeasyPrint reverse as escalating fallbacks.
+  // PDFs → Docling primary, pixel as fallback.
+  // WeasyPrint reverse-render is disabled until the backend supports
+  // `reverse_render_then_import` in `template-import-pdf`.
   return {
     primary: doclingProvider,
-    fallbacks: [pixelFallbackProvider, weasyprintReverseProvider],
+    fallbacks: [pixelFallbackProvider],
   };
 }
 
