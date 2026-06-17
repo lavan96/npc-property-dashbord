@@ -551,10 +551,83 @@ Return null for any field not present in the source.`;
   };
 }
 
+async function runScrapeJob(
+  supabase: any,
+  jobId: string,
+  formattedUrl: string,
+  propertyCategory: string,
+  userId: string | null,
+) {
+  try {
+    await supabase.from('property_scrape_jobs').update({
+      status: 'processing',
+      started_at: new Date().toISOString(),
+    }).eq('id', jobId);
+
+    const result = await extractWithPerplexity(formattedUrl, propertyCategory);
+
+    if (!result.ok) {
+      const status = result.status;
+      const friendly =
+        status === 429
+          ? "Perplexity rate limit exceeded (429). Please wait and try again."
+          : status === 402
+            ? "Perplexity credits exhausted (402). Please top up or change plan."
+            : result.error;
+      await supabase.from('property_scrape_jobs').update({
+        status: 'failed',
+        error: friendly,
+        completed_at: new Date().toISOString(),
+      }).eq('id', jobId);
+      return;
+    }
+
+    const extractedDetails = toExtractedDetails(result.extracted, result.extracted.title);
+    const markdown = buildListingMarkdown(formattedUrl, result.extracted, result.citations);
+    const metadata = {
+      title: result.extracted.title,
+      description: result.extracted.listing_text,
+      provider: result.scrapedFromPage ? "firecrawl+perplexity" : "perplexity",
+      scrapedFromPage: result.scrapedFromPage,
+      citations: result.citations,
+      confidence: result.extracted.confidence,
+    };
+
+    const rawUsage = result.raw?.usage;
+    try {
+      await logApiUsage(supabase, {
+        service_name: 'perplexity',
+        endpoint: '/chat/completions',
+        model_used: 'sonar-pro',
+        prompt_tokens: rawUsage?.prompt_tokens || 0,
+        completion_tokens: rawUsage?.completion_tokens || 0,
+        tokens_used: rawUsage?.total_tokens || 0,
+        status: 'success',
+        user_id: userId || undefined,
+        metadata: { function: 'scrape-property-listing', url: formattedUrl, jobId },
+      });
+    } catch (_) { /* non-fatal */ }
+
+    await supabase.from('property_scrape_jobs').update({
+      status: 'succeeded',
+      result: { markdown, metadata, extractedDetails, sourceUrl: formattedUrl },
+      completed_at: new Date().toISOString(),
+    }).eq('id', jobId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Scrape job failed unexpectedly';
+    console.error('[scrape-property-listing] background job error:', message);
+    await supabase.from('property_scrape_jobs').update({
+      status: 'failed',
+      error: message,
+      completed_at: new Date().toISOString(),
+    }).eq('id', jobId);
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
-  
+
   console.log("scrape-property-listing invoked", { method: req.method });
 
   if (req.method === "OPTIONS") {
@@ -562,21 +635,56 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
+
     const body = await req.json();
-    const { url, propertyCategory = 'auto' } = body;
-    
+    const { url, propertyCategory = 'auto', jobId } = body ?? {};
+
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[scrape-property-listing] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
-    console.log(`[scrape-property-listing] Authenticated user: ${userId}`);
 
+    // ── STATUS POLL ──────────────────────────────────────────────
+    if (jobId && typeof jobId === 'string') {
+      const { data: job, error: jobErr } = await supabase
+        .from('property_scrape_jobs')
+        .select('id, status, error, result, url, property_category, created_at, started_at, completed_at, user_id')
+        .eq('id', jobId)
+        .maybeSingle();
+
+      if (jobErr || !job) {
+        return new Response(JSON.stringify({ success: false, error: 'Job not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (job.user_id && userId && job.user_id !== userId) {
+        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const payload: any = {
+        success: true,
+        jobId: job.id,
+        status: job.status,
+        createdAt: job.created_at,
+        startedAt: job.started_at,
+        completedAt: job.completed_at,
+      };
+      if (job.status === 'succeeded') payload.data = job.result;
+      if (job.status === 'failed') payload.error = job.error || 'Scrape failed';
+      return new Response(JSON.stringify(payload), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── START NEW JOB ───────────────────────────────────────────
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
         status: 400,
@@ -594,74 +702,44 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("Using Perplexity macro extraction for URL:", formattedUrl);
+    const { data: job, error: insertErr } = await supabase
+      .from('property_scrape_jobs')
+      .insert({
+        user_id: userId,
+        url: formattedUrl,
+        property_category: propertyCategory,
+        status: 'queued',
+      })
+      .select('id')
+      .single();
 
-    const result = await extractWithPerplexity(formattedUrl, propertyCategory);
-
-    if (!result.ok) {
-      console.error("Perplexity extraction error:", result.status, result.error);
-
-      // Surface rate-limit/credits cleanly
-      const status = result.status;
-      const friendly =
-        status === 429
-          ? "Perplexity rate limit exceeded (429). Please wait and try again."
-          : status === 402
-            ? "Perplexity credits exhausted (402). Please top up or change plan."
-            : result.error;
-
-      return new Response(JSON.stringify({ success: false, error: friendly }), {
-        status,
+    if (insertErr || !job) {
+      console.error('[scrape-property-listing] failed to enqueue job:', insertErr);
+      return new Response(JSON.stringify({ success: false, error: insertErr?.message || 'Failed to enqueue scrape job' }), {
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const extractedDetails = toExtractedDetails(result.extracted, result.extracted.title);
+    // Fire-and-forget background processing — survives past the HTTP response.
+    const bg = runScrapeJob(supabase, job.id, formattedUrl, propertyCategory, userId ?? null);
+    // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+      // @ts-ignore
+      (EdgeRuntime as any).waitUntil(bg);
+    } else {
+      bg.catch((e) => console.error('[scrape-property-listing] detached bg error:', e));
+    }
 
-    const markdown = buildListingMarkdown(formattedUrl, result.extracted, result.citations);
-
-    const metadata = {
-      title: result.extracted.title,
-      description: result.extracted.listing_text,
-      provider: result.scrapedFromPage ? "firecrawl+perplexity" : "perplexity",
-      scrapedFromPage: result.scrapedFromPage,
-      citations: result.citations,
-      confidence: result.extracted.confidence,
-    };
-
-    console.log("Perplexity extraction success", {
-      hasAddress: !!extractedDetails.extractedAddress,
-      hasPrice: typeof extractedDetails.extractedPrice === "number",
-      markdownLength: markdown.length,
-      citations: result.citations.length,
+    return new Response(JSON.stringify({
+      success: true,
+      jobId: job.id,
+      status: 'queued',
+      message: 'Scrape job accepted. Poll with { jobId } for status.',
+    }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-    // Log Perplexity API usage
-    const rawUsage = result.raw?.usage;
-    await logApiUsage(supabase, {
-      service_name: 'perplexity',
-      endpoint: '/chat/completions',
-      model_used: 'sonar-pro',
-      prompt_tokens: rawUsage?.prompt_tokens || 0,
-      completion_tokens: rawUsage?.completion_tokens || 0,
-      tokens_used: rawUsage?.total_tokens || 0,
-      status: 'success',
-      user_id: userId || undefined,
-      metadata: { function: 'scrape-property-listing', url: formattedUrl },
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          markdown,
-          metadata,
-          extractedDetails,
-          sourceUrl: formattedUrl,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
   } catch (error) {
     console.error("Error in scrape-property-listing:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to scrape property listing";
