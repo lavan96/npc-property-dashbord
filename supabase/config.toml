@@ -809,7 +809,7 @@ request_timeout = 1500
 # Custom session tokens validated via verifyAuthOrNativeUser; fire-and-forget
 # dispatcher returns within seconds and runs the heavy parse in EdgeRuntime.waitUntil.
 verify_jwt = false
-request_timeout = 120
+request_timeout = 1500
 
 
 
