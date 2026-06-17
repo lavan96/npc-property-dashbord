@@ -67,7 +67,7 @@ function derivePurchaseAbility(credit: CreditAssessmentStatus, equityShortfall: 
   return 'supportable';
 }
 
-const creditLabel = (s: CreditAssessmentStatus) => s === 'green' ? 'Credit supportable' : s === 'amber' ? 'Credit supportable subject to verification' : s === 'red' ? 'Credit not supportable under current assumptions' : 'Specialist review required before relying on result';
+const creditLabel = (s: CreditAssessmentStatus) => s === 'green' ? 'Credit supportable' : s === 'amber' ? 'Credit supportable subject to verification' : s === 'red' ? 'Not Supportable' : 'Specialist review required before relying on result';
 const purchaseLabel = (s: PurchaseAbilityStatus) => s === 'supportable' ? 'Sufficient equity to complete' : s === 'supportableSubjectToVerification' ? 'Sufficient equity but limited post-settlement buffer' : s === 'equityShortfall' ? 'Equity shortfall' : s === 'specialistReviewRequired' ? 'GST, duty, structure, SMSF, valuation or legal review required' : 'Not supportable under current assumptions';
 
 export function calculateCommercialIndustrialBorrowing(inputs: BorrowingInputs, includeScenarios = true): BorrowingResult {
