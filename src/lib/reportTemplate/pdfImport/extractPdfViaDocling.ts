@@ -430,30 +430,57 @@ export async function extractPdfViaDocling(
     const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
     const totalPages = job.page_count ?? template.pages.length;
 
-    const finRes = options.targetTemplateId
-      ? await invokeImport({
-          operation: 'resync',
-          import_id: importId,
-          template_id: options.targetTemplateId,
-          schema: template,
-          page_count: totalPages,
-          source_filename: file.name,
-          source_checksum: sourceChecksum,
-          cdir,
-          cdir_fidelity: cdirFidelity,
-          note: `Re-synced from ${file.name} (docling)`,
-        })
-      : await invokeImport({
-          operation: 'finalize',
-          import_id: importId,
-          name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-          schema: template,
-          page_count: totalPages,
-          source_filename: file.name,
-          source_checksum: sourceChecksum,
-          cdir,
-          cdir_fidelity: cdirFidelity,
-        });
+    // Per spec: when the underlying pdf_import_jobs row is already
+    // `succeeded/parsed` and we have artifacts in hand, a downstream
+    // template-import-pdf persistence failure (e.g. an older deployment
+    // missing `resync`) must NOT mask the successful import. We attempt
+    // persistence, but on `unknown operation`-style failures we fall back to
+    // returning the loaded template + artifacts so the UI can render the job.
+    let finRes: any;
+    try {
+      finRes = options.targetTemplateId
+        ? await invokeImport({
+            operation: 'resync',
+            import_id: importId,
+            template_id: options.targetTemplateId,
+            schema: template,
+            page_count: totalPages,
+            source_filename: file.name,
+            source_checksum: sourceChecksum,
+            cdir,
+            cdir_fidelity: cdirFidelity,
+            note: `Re-synced from ${file.name} (docling)`,
+          })
+        : await invokeImport({
+            operation: 'finalize',
+            import_id: importId,
+            name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+            schema: template,
+            page_count: totalPages,
+            source_filename: file.name,
+            source_checksum: sourceChecksum,
+            cdir,
+            cdir_fidelity: cdirFidelity,
+          });
+    } catch (persistErr) {
+      const msg = String((persistErr as Error)?.message ?? persistErr);
+      const isUnknownOp = /unknown operation/i.test(msg);
+      // Only swallow when we have a real target template to fall back onto.
+      if (isUnknownOp && options.targetTemplateId) {
+        console.warn(
+          `[docling] persistence step rejected (${msg}). Job ${jobId} succeeded; ` +
+          `returning loaded artifacts so the UI can render. Redeploy template-import-pdf to restore resync.`,
+        );
+        finRes = {
+          template: {
+            id: options.targetTemplateId,
+            name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+          },
+        };
+      } else {
+        throw persistErr;
+      }
+    }
 
     onProgress({ phase: 'done', totalPages });
     const textBlocks = plan.pages.reduce(
