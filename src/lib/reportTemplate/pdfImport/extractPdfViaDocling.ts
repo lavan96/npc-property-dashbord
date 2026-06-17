@@ -134,7 +134,7 @@ interface JobRow {
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
-  result_payload: { docling_path?: string; rasters_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
+  result_payload: { docling_path?: string; rasters_path?: string; markdown_path?: string; outline_path?: string; doctags_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
   attempts?: Array<{ endpoint?: string; ok?: boolean; status?: number; attempt?: number; error_code?: string; retryable?: boolean; message?: string } | unknown> | null;
 }
 
