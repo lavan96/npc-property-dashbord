@@ -90,14 +90,35 @@ describe('Commercial / Industrial Assessment Engine', () => {
     expect(simple.actualNoi).toBe(itemised.actualNoi);
   });
 
-  it('Cap rate calculates passing, reversionary, blended, implied value and sensitivity', () => {
+  it('Cap rate calculates passing, reversionary, blended, implied value, valuation gap percentage and sensitivity', () => {
     const r = calculateCapRateEngine({ passingNoi: 70_000, marketNoi: 80_000, selectedNoi: 75_000, price: 1_000_000, targetCapRatePct: 7.5, sensitivityCapRatesPct: [7, 8] });
     expect(r.passingYield).toBe(7);
     expect(r.reversionaryYield).toBe(8);
     expect(r.blendedYield).toBe(7.5);
     expect(r.impliedValue).toBeCloseTo(1_000_000, 0);
     expect(r.valuationGap).toBeCloseTo(0, 0);
+    expect(r.valuationGapPct).toBeCloseTo(0, 0);
     expect(r.valueSensitivity).toHaveLength(2);
+  });
+
+  it('Cap rate parses display-formatted inputs, treats cap rates as percentages and honours NOI valuation basis', () => {
+    const r = calculateCapRateEngine({ passingNoi: '$70,000', marketNoi: '$80,000', lenderAdjustedNoi: '$60,000', price: '$1,000,000', targetCapRatePct: '6.5%', valuationBasis: 'lenderAdjusted', sensitivityCapRatesPct: ['6%', 'invalid'] });
+    expect(r.passingYield).toBe(7);
+    expect(r.reversionaryYield).toBe(8);
+    expect(r.selectedNoi).toBe(60_000);
+    expect(r.impliedValue).toBeCloseTo(923_077, 0);
+    expect(r.valueSensitivity).toHaveLength(1);
+  });
+
+  it('Cap rate returns pending-safe nulls instead of zero, NaN or Infinity when required inputs are missing', () => {
+    const r = calculateCapRateEngine({ passingNoi: '', marketNoi: 'not a number', selectedNoi: '', price: '0', targetCapRatePct: '0', sensitivityCapRatesPct: [0, ''] });
+    expect(r.passingYield).toBeNull();
+    expect(r.reversionaryYield).toBeNull();
+    expect(r.blendedYield).toBeNull();
+    expect(r.impliedValue).toBeNull();
+    expect(r.valuationGap).toBeNull();
+    expect(r.valuationGapPct).toBeNull();
+    expect(r.valueSensitivity).toHaveLength(0);
   });
 
   it('ICR/DSCR calculates interest, P&I service, debt yield and max loans', () => {
