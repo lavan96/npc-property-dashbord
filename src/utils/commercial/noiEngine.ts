@@ -6,30 +6,32 @@ export type LeaseType = 'gross' | 'net' | 'semiGross' | 'tripleNet' | 'unknown';
 export type IncomeType = 'passingRent' | 'marketRent' | 'stabilisedRent' | 'relatedPartyRent' | 'vacantEstimatedMarketRent';
 export type NoiBasis = 'actual' | 'stabilised' | 'lenderAdjusted';
 
-export interface OutgoingsRecoverabilityItem { name: string; amount: number; recoverablePct: number; verified?: boolean; }
+export type NumericInput = number | string | null | undefined;
+export interface OutgoingsRecoverabilityItem { name: string; amount: NumericInput; recoverablePct: NumericInput; verified?: boolean; }
 
 export interface NoiEngineInputs {
   dataSourceMode?: DataSourceMode;
   leaseType: LeaseType;
   incomeType?: IncomeType;
-  grossPassingRent: number;
-  otherIncome?: number;
-  marketRent?: number;
-  vacancyAllowancePct?: number;
-  recoveredOutgoings?: number;
+  grossPassingRent: NumericInput;
+  otherIncome?: NumericInput;
+  marketRent?: NumericInput;
+  vacancyAllowancePct?: NumericInput;
+  recoveredOutgoings?: NumericInput;
+  simpleTotalOperatingExpenses?: NumericInput;
   outgoings?: OutgoingsRecoverabilityItem[];
-  normalisedRecoveredOutgoings?: number;
-  normalisedVacancyPct?: number;
-  normalisedExpenses?: number;
-  incentiveAdjustment?: number;
-  rentFreeAdjustment?: number;
-  arrearsAdjustment?: number;
-  overRentAdjustment?: number;
-  waleAdjustment?: number;
-  leaseRiskHaircut?: number;
-  tenantRiskHaircut?: number;
-  documentationRiskHaircut?: number;
-  lenderAdjustedNoiHaircut?: number;
+  normalisedRecoveredOutgoings?: NumericInput;
+  normalisedVacancyPct?: NumericInput;
+  normalisedExpenses?: NumericInput;
+  incentiveAdjustment?: NumericInput;
+  rentFreeAdjustment?: NumericInput;
+  arrearsAdjustment?: NumericInput;
+  overRentAdjustment?: NumericInput;
+  waleAdjustment?: NumericInput;
+  leaseRiskHaircut?: NumericInput;
+  tenantRiskHaircut?: NumericInput;
+  documentationRiskHaircut?: NumericInput;
+  lenderAdjustedNoiHaircut?: NumericInput;
   fullyLeased?: boolean;
   leaseDocsVerified?: boolean;
   confidenceTags?: AssumptionConfidenceTag[];
@@ -55,35 +57,50 @@ export interface NoiEngineResult {
 
 const pct = (n = 0) => Math.max(0, n) / 100;
 const sum = (arr: number[]) => arr.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+const parseNumeric = (value: NumericInput, { allowNegative = false }: { allowNegative?: boolean } = {}): number | null => {
+  if (value === '' || value == null) return null;
+  const parsed = typeof value === 'number' ? value : Number(String(value).replace(/[$,\s%]/g, ''));
+  if (!Number.isFinite(parsed)) return null;
+  return !allowNegative && parsed < 0 ? null : parsed;
+};
+const optional = (value: NumericInput, calculationReady: boolean, opts?: { allowNegative?: boolean }) => parseNumeric(value, opts) ?? (calculationReady ? 0 : null);
+const required = (value: NumericInput, opts?: { allowNegative?: boolean }) => parseNumeric(value, opts);
 
 export function calculateNoiEngine(inputs: NoiEngineInputs, selectedBasis: NoiBasis = 'lenderAdjusted'): NoiEngineResult {
   const warnings: string[] = [];
-  const otherIncome = inputs.otherIncome ?? 0;
-  const potentialGrossIncome = Math.max(0, inputs.grossPassingRent + otherIncome);
-  const vacancyLoss = potentialGrossIncome * pct(inputs.vacancyAllowancePct ?? 0);
+  const grossPassingRent = required(inputs.grossPassingRent);
+  const vacancyAllowancePct = required(inputs.vacancyAllowancePct);
+  const calculationReady = grossPassingRent !== null && vacancyAllowancePct !== null;
+  const otherIncome = optional(inputs.otherIncome, calculationReady) ?? 0;
+  const potentialGrossIncome = calculationReady ? grossPassingRent + otherIncome : 0;
+  const vacancyLoss = potentialGrossIncome * pct(vacancyAllowancePct ?? 0);
   const outgoings = inputs.outgoings ?? [];
-  const totalOperatingExpenses = sum(outgoings.map(o => o.amount));
-  const matrixRecovered = sum(outgoings.map(o => o.amount * Math.min(1, Math.max(0, o.recoverablePct / 100))));
-  const recoveredOutgoings = inputs.recoveredOutgoings ?? matrixRecovered;
-  const ownerBorneExpenses = Math.max(0, totalOperatingExpenses - recoveredOutgoings);
+  const simpleTotalOperatingExpenses = optional(inputs.simpleTotalOperatingExpenses, calculationReady);
+  const itemisedOperatingExpenses = calculationReady ? sum(outgoings.map(o => optional(o.amount, true) ?? 0)) : 0;
+  const totalOperatingExpenses = simpleTotalOperatingExpenses ?? itemisedOperatingExpenses;
+  const matrixRecovered = calculationReady ? sum(outgoings.map(o => (optional(o.amount, true) ?? 0) * Math.min(1, Math.max(0, (optional(o.recoverablePct, true) ?? 0) / 100)))) : 0;
+  const recoveredOutgoings = optional(inputs.recoveredOutgoings, calculationReady) ?? matrixRecovered;
+  const ownerBorneExpenses = totalOperatingExpenses - recoveredOutgoings;
   const effectiveGrossIncome = potentialGrossIncome - vacancyLoss + recoveredOutgoings;
   const actualNoi = effectiveGrossIncome - totalOperatingExpenses;
-  const marketRent = inputs.marketRent ?? inputs.grossPassingRent;
-  const normalisedVacancy = (marketRent + otherIncome) * pct(inputs.normalisedVacancyPct ?? inputs.vacancyAllowancePct ?? 0);
-  const stabilisedNoi = marketRent + otherIncome + (inputs.normalisedRecoveredOutgoings ?? recoveredOutgoings) - normalisedVacancy - (inputs.normalisedExpenses ?? totalOperatingExpenses);
+  const marketRent = optional(inputs.marketRent, calculationReady) ?? grossPassingRent ?? 0;
+  const normalisedVacancyPct = optional(inputs.normalisedVacancyPct, calculationReady) ?? vacancyAllowancePct ?? 0;
+  const normalisedVacancy = (marketRent + otherIncome) * pct(normalisedVacancyPct);
+  const stabilisedNoi = ((marketRent + otherIncome) * (1 - pct(normalisedVacancyPct))) + (optional(inputs.normalisedRecoveredOutgoings, calculationReady) ?? recoveredOutgoings) - (optional(inputs.normalisedExpenses, calculationReady) ?? totalOperatingExpenses);
   const lenderAdjustments = sum([
-    inputs.incentiveAdjustment ?? 0,
-    inputs.rentFreeAdjustment ?? 0,
-    inputs.arrearsAdjustment ?? 0,
-    inputs.overRentAdjustment ?? 0,
-    inputs.waleAdjustment ?? 0,
-    inputs.leaseRiskHaircut ?? 0,
-    inputs.tenantRiskHaircut ?? 0,
-    inputs.documentationRiskHaircut ?? 0,
-    inputs.lenderAdjustedNoiHaircut ?? 0,
-  ].map(n => Math.max(0, n)));
+    inputs.incentiveAdjustment,
+    inputs.rentFreeAdjustment,
+    inputs.arrearsAdjustment,
+    inputs.overRentAdjustment,
+    inputs.waleAdjustment,
+    inputs.leaseRiskHaircut,
+    inputs.tenantRiskHaircut,
+    inputs.documentationRiskHaircut,
+    inputs.lenderAdjustedNoiHaircut,
+  ].map(n => Math.max(0, optional(n, calculationReady, { allowNegative: true }) ?? 0)));
   const lenderAdjustedNoi = actualNoi - lenderAdjustments;
-  if (inputs.fullyLeased && inputs.grossPassingRent <= 0) warnings.push('Fully leased assets require rent greater than zero.');
+  if (!calculationReady) warnings.push('NOI calculation pending required gross rent and vacancy allowance inputs.');
+  if (inputs.fullyLeased && (grossPassingRent ?? 0) <= 0) warnings.push('Fully leased assets require rent greater than zero.');
   if (inputs.leaseType === 'unknown') warnings.push('Lease type is unknown; NOI cannot be treated as verified.');
   if (recoveredOutgoings > totalOperatingExpenses && totalOperatingExpenses > 0) warnings.push('Recovered outgoings exceed total outgoings; verify recoverability matrix.');
   if (lenderAdjustedNoi > actualNoi) warnings.push('Lender-adjusted NOI exceeds actual NOI; explanation required.');

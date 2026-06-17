@@ -24,6 +24,72 @@ describe('Commercial / Industrial Assessment Engine', () => {
     expect(r.confidenceTag).toBe('Specialist Review Required');
   });
 
+  it('NOI parses currency strings, commas and percent inputs without display-formatted math', () => {
+    const r = calculateNoiEngine({
+      leaseType: 'net',
+      grossPassingRent: '$100,000',
+      otherIncome: '$5,000',
+      marketRent: '$110,000',
+      vacancyAllowancePct: '5%',
+      recoveredOutgoings: '$20,000',
+      outgoings: [{ name: 'Council Rates', amount: '$10,000', recoverablePct: '100%' }],
+      incentiveAdjustment: '$2,000',
+      tenantRiskHaircut: '$3,000',
+      leaseDocsVerified: true,
+    }, 'lenderAdjusted');
+
+    expect(r.potentialGrossIncome).toBe(105_000);
+    expect(r.vacancyLoss).toBe(5_250);
+    expect(r.effectiveGrossIncome).toBe(119_750);
+    expect(r.totalOperatingExpenses).toBe(10_000);
+    expect(r.actualNoi).toBe(109_750);
+    expect(r.stabilisedNoi).toBe(119_250);
+    expect(r.lenderAdjustedNoi).toBe(104_750);
+    expect(r.selectedNoi).toBe(104_750);
+  });
+
+  it('NOI remains pending-safe when required values are empty or invalid', () => {
+    const r = calculateNoiEngine({
+      leaseType: 'gross',
+      grossPassingRent: '',
+      vacancyAllowancePct: 'not a number',
+      otherIncome: '$1,000',
+      recoveredOutgoings: '$2,000',
+      outgoings: [{ name: 'Insurance', amount: '$3,000', recoverablePct: '100%' }],
+    }, 'actual');
+
+    expect(r.selectedNoi).toBe(0);
+    expect(r.totalOperatingExpenses).toBe(0);
+    expect(r.warnings.join(' ')).toContain('pending required gross rent and vacancy allowance');
+  });
+
+  it('NOI supports either simple total operating expenses or itemised expenses', () => {
+    const simple = calculateNoiEngine({
+      leaseType: 'gross',
+      grossPassingRent: 100_000,
+      otherIncome: 5_000,
+      vacancyAllowancePct: 5,
+      recoveredOutgoings: 10_000,
+      simpleTotalOperatingExpenses: 20_000,
+    }, 'actual');
+    const itemised = calculateNoiEngine({
+      leaseType: 'gross',
+      grossPassingRent: 100_000,
+      otherIncome: 5_000,
+      vacancyAllowancePct: 5,
+      recoveredOutgoings: 10_000,
+      outgoings: [
+        { name: 'Council Rates', amount: 8_000, recoverablePct: 0 },
+        { name: 'Water', amount: 2_000, recoverablePct: 0 },
+        { name: 'Insurance', amount: 10_000, recoverablePct: 0 },
+      ],
+    }, 'actual');
+
+    expect(simple.totalOperatingExpenses).toBe(20_000);
+    expect(itemised.totalOperatingExpenses).toBe(20_000);
+    expect(simple.actualNoi).toBe(itemised.actualNoi);
+  });
+
   it('Cap rate calculates passing, reversionary, blended, implied value and sensitivity', () => {
     const r = calculateCapRateEngine({ passingNoi: 70_000, marketNoi: 80_000, selectedNoi: 75_000, price: 1_000_000, targetCapRatePct: 7.5, sensitivityCapRatesPct: [7, 8] });
     expect(r.passingYield).toBe(7);
