@@ -176,7 +176,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       const { data: startData, error: startError } = await invokeSecureFunction('scrape-property-listing', {
         url: propertyUrl,
         propertyCategory: category,
-      }, { timeoutMs: 30000 });
+      }, { timeoutMs: 60000 });
 
       if (startError) throw new Error(startError.message || 'Failed to start scraping job');
       if (!startData?.success || !startData?.jobId) {
@@ -186,9 +186,12 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       const jobId: string = startData.jobId;
 
       // 2) Poll for status — backend does the long work via EdgeRuntime.waitUntil.
-      const POLL_INTERVAL_MS = 3000;
+      const POLL_INTERVAL_MS = 5000;
       const MAX_WAIT_MS = 1500 * 1000; // 1500 seconds
+      const MAX_CONSECUTIVE_POLL_ERRORS = 5;
       const startedAt = Date.now();
+      let consecutivePollErrors = 0;
+      let lastPollErrorMsg = '';
       let finalData: any = null;
 
       while (true) {
@@ -199,10 +202,18 @@ export function PropertyImportPanel({ category, onImported }: Props) {
 
         const { data: pollData, error: pollError } = await invokeSecureFunction('scrape-property-listing', {
           jobId,
-        }, { timeoutMs: 20000 });
+        }, { timeoutMs: 60000 });
 
-        if (pollError) throw new Error(pollError.message || 'Failed to check scrape status');
-        if (!pollData?.success) throw new Error(pollData?.error || 'Failed to check scrape status');
+        // Tolerate transient poll failures — only abort after several consecutive errors.
+        if (pollError || !pollData?.success) {
+          consecutivePollErrors += 1;
+          lastPollErrorMsg = pollError?.message || pollData?.error || 'Failed to check scrape status';
+          if (consecutivePollErrors >= MAX_CONSECUTIVE_POLL_ERRORS) {
+            throw new Error(`Scrape status check failed repeatedly: ${lastPollErrorMsg}`);
+          }
+          continue;
+        }
+        consecutivePollErrors = 0;
 
         if (pollData.status === 'succeeded') {
           finalData = pollData.data;
@@ -213,6 +224,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
         }
         // queued | processing → keep polling
       }
+
 
       if (!finalData) throw new Error('No data returned from scrape');
 
