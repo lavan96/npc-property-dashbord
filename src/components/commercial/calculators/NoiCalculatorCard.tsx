@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
 import { useApplyPrefill, useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -116,6 +117,8 @@ export function NoiCalculatorCard() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [expensesOpen, setExpensesOpen] = useState(false);
+  const [bridgeOpen, setBridgeOpen] = useState(false);
   const { prefill, property, pushBack } = useCalculatorPrefill();
   const audit = (action: string, field: string, previousValue: unknown, newValue: unknown, source = 'NOI Calculator') => console.info('NOI audit', { action, field, previousValue, newValue, source, originalScrapedValue: originalScrapedValues[field], timestamp: new Date().toISOString(), user: (property as any)?.user_id ?? 'current-user', propertyId: prefill?.propertyId ?? '', dealId: prefill?.propertyId ?? '', scenarioId: undefined });
 
@@ -287,7 +290,11 @@ export function NoiCalculatorCard() {
     } finally { setSaving(false); }
   };
 
-  const SourceBadge = ({ field }: { field: NoiFieldKey }) => <Badge variant="outline" className="mt-1 w-fit text-[10px] border-primary/30 text-primary">{badgeLabel[sources[field] ?? 'Blank']}</Badge>;
+  const SourceBadge = ({ field }: { field: NoiFieldKey }) => {
+    const source = sources[field] ?? 'Blank';
+    if (source === 'Blank') return null;
+    return <Badge variant="outline" className="mt-1 w-fit text-[10px] border-primary/30 text-primary">Source: {badgeLabel[source]}</Badge>;
+  };
   const FieldShell = ({ field, children }: { field: NoiFieldKey; children: React.ReactNode }) => <div><Label>{fieldLabels[field]}</Label>{children}<SourceBadge field={field} />{scrapeConflicts[field] && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New scraped value available. Current field uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={() => keepOverride(field)}>Keep override</Button><Button size="sm" variant="outline" onClick={() => useScrapedValue(field)}>Use scraped value</Button></div></div>}</div>;
   const MoneyField = ({ field, value }: { field: NoiFieldKey; value: string }) => <FieldShell field={field}><Input type="number" value={value} placeholder={placeholderMap[field]} onChange={e => setField(field, e.target.value)} /></FieldShell>;
   const statusTone = readiness.status === 'Verified NOI' ? 'border-emerald-500/40 text-emerald-400' : readiness.status === 'Specialist Review Recommended' ? 'border-amber-500/40 text-amber-300' : readiness.status === 'NOI Assessment Ready' ? 'border-primary/40 text-primary' : 'border-muted-foreground/30 text-muted-foreground';
@@ -374,42 +381,85 @@ export function NoiCalculatorCard() {
           </AlertDialogContent>
         </AlertDialog>
       </CardHeader>
-      <CardContent className="grid lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <MoneyField field="grossRent" value={grossRent} />
-            <MoneyField field="recovered" value={recovered} />
-            <MoneyField field="other" value={other} />
-            <MoneyField field="vacancy" value={vacancy} />
-            <FieldShell field="leaseType"><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setField('leaseType', e.target.value)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></FieldShell>
-            <FieldShell field="noiBasis"><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setField('noiBasis', e.target.value)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></FieldShell>
-            <MoneyField field="marketRent" value={marketRent} />
-            <MoneyField field="incentiveAdjustment" value={incentiveAdjustment} />
-            <MoneyField field="tenantRiskHaircut" value={tenantRiskHaircut} />
-          </div>
-          <Separator />
-          <div><Label className="mb-2 block">Operating Expenses (PA)</Label><div className="mb-2"><MoneyField field="totalOperatingExpenses" value={totalOperatingExpenses} /></div><div className="grid grid-cols-2 gap-2">{OUTGOING_KEYS.map(k => <div key={k}><Label className="text-xs text-muted-foreground">{labelMap[k]}</Label><Input type="number" value={outgoings[k] ?? ''} placeholder={placeholderMap[k]} onChange={e => setField(k, e.target.value)} /><SourceBadge field={k} />{scrapeConflicts[k] && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New scraped value available. Current field uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={() => keepOverride(k)}>Keep override</Button><Button size="sm" variant="outline" onClick={() => useScrapedValue(k)}>Use scraped value</Button></div></div>}</div>)}</div></div>
+      <CardContent className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="order-2 lg:order-1 space-y-5">
+          <Section title="Data Source & Sync" helper="Control linked-property sync, AI suggestions and save-back status.">
+            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+              <span>Global Input Sync: <span className="text-foreground">{syncOn ? 'On' : 'Off'}</span></span>
+              <span>·</span>
+              <span>{prefill ? `Linked property: ${prefill.address}` : 'No linked property selected'}</span>
+              <span>·</span>
+              <span>Readiness: <span className="text-foreground">{readiness.status}</span></span>
+            </div>
+          </Section>
+
+          <Section title="Core Income" helper="Enter passing rent, other income, recoveries and market rent assumptions.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MoneyField field="grossRent" value={grossRent} />
+              <MoneyField field="marketRent" value={marketRent} />
+              <MoneyField field="other" value={other} />
+              <MoneyField field="recovered" value={recovered} />
+              <MoneyField field="vacancy" value={vacancy} />
+            </div>
+          </Section>
+
+          <Section title="Lease & Lender Adjustment" helper="Confirm lease treatment and lender adjustments used for borrowing assessment.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FieldShell field="leaseType"><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setField('leaseType', e.target.value)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></FieldShell>
+              <FieldShell field="noiBasis"><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setField('noiBasis', e.target.value)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></FieldShell>
+              <MoneyField field="incentiveAdjustment" value={incentiveAdjustment} />
+              <MoneyField field="tenantRiskHaircut" value={tenantRiskHaircut} />
+            </div>
+          </Section>
+
+          <Section title="Operating Expenses" helper="Enter total or itemised owner-borne operating expenses.">
+            <div className="space-y-3">
+              <MoneyField field="totalOperatingExpenses" value={totalOperatingExpenses} />
+              <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
+                <CollapsibleTrigger asChild><Button type="button" variant="outline" size="sm" className="border-primary/30 text-primary">{expensesOpen ? 'Hide' : 'Show'} itemised expenses</Button></CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {OUTGOING_KEYS.map(k => <div key={k} className="rounded-md border border-border/50 p-2"><Label className="text-xs text-muted-foreground">{labelMap[k]}</Label><Input type="number" value={outgoings[k] ?? ''} placeholder={placeholderMap[k]} onChange={e => setField(k, e.target.value)} /><SourceBadge field={k} />{scrapeConflicts[k] && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New scraped value available. Current field uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={() => keepOverride(k)}>Keep override</Button><Button size="sm" variant="outline" onClick={() => useScrapedValue(k)}>Use scraped value</Button></div></div>}</div>)}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </Section>
+
+          <Section title="Assumptions / Warnings" helper="Review missing assumptions, source quality and verification requirements.">
+            {readiness.compactWarnings.length ? <div className="space-y-2">{readiness.compactWarnings.map(w => <div key={`${w.category}-${w.message}`} className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><div className="font-medium">{w.category} · {w.severity}</div><div>{w.message}</div></div>)}</div> : <div className="text-sm text-muted-foreground">No warnings to show yet. Start with core income and expense assumptions.</div>}
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setReviewOpen(true)}>Open Assumption Status</Button>
+          </Section>
         </div>
-        <div className="space-y-3 bg-muted/40 rounded-lg p-4">
-          {!readiness.preliminaryReady && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-200">{readiness.status}</div>}
-          <Row label="Potential Gross Income" value={displayValue(result.potentialGrossIncome)} />
-          <Row label="Vacancy Loss" value={displayValue(result.vacancyLoss, '- ')} />
-          <Row label="Recovered Outgoings" value={displayValue(result.recoveredOutgoings, '+ ')} />
-          <Row label="Effective Gross Income" value={displayValue(result.effectiveGrossIncome)} bold />
-          <Separator />
-          <Row label="Total Outgoings" value={displayValue(result.totalOutgoings, '- ')} />
-          <Row label="Owner-Borne Outgoings" value={displayValue(result.netOutgoings)} muted />
-          <Separator />
-          <Row label="Legacy NOI" value={displayValue(result.noi)} />
-          <Row label="Actual NOI" value={readiness.preliminaryReady ? fmt(assessment.actualNoi) : pending} highlight />
-          <Row label="Stabilised NOI" value={readiness.preliminaryReady ? fmt(assessment.stabilisedNoi) : pending} highlight />
-          <Row label="Lender-Adjusted NOI" value={readiness.preliminaryReady ? fmt(assessment.lenderAdjustedNoi) : pending} highlight />
-          <Separator />
-          <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">NOI Bridge</div>{readiness.preliminaryReady ? assessment.bridge.map(item => <div key={item.label} className="flex justify-between"><span>{item.label}</span><span>{fmt(item.amount)}</span></div>) : <div>Pending</div>}</div>
+
+        <div className="order-1 lg:order-2">
+          <Section title="NOI Output Summary" helper="Review the NOI figures that flow into borrowing capacity and investment reporting." prominent>
+            <div className="grid gap-3">
+              <MetricCard label="Selected NOI used for borrowing" value={readiness.preliminaryReady ? fmt(assessment.selectedNoi) : pending} accent />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <MetricCard label="Actual NOI" value={readiness.preliminaryReady ? fmt(assessment.actualNoi) : pending} />
+                <MetricCard label="Stabilised NOI" value={readiness.preliminaryReady ? fmt(assessment.stabilisedNoi) : pending} />
+                <MetricCard label="Lender-Adjusted NOI" value={readiness.preliminaryReady ? fmt(assessment.lenderAdjustedNoi) : pending} />
+              </div>
+              <div className="rounded-lg border border-border/60 bg-background/40 p-3 space-y-2 text-sm">
+                <Row label="Potential Gross Income" value={readiness.preliminaryReady ? fmt(assessment.potentialGrossIncome) : pending} />
+                <Row label="Vacancy Loss" value={readiness.preliminaryReady ? `- ${fmt(assessment.vacancyLoss)}` : pending} />
+                <Row label="Recovered Outgoings" value={readiness.preliminaryReady ? `+ ${fmt(assessment.recoveredOutgoings)}` : pending} />
+                <Row label="Effective Gross Income" value={readiness.preliminaryReady ? fmt(assessment.effectiveGrossIncome) : pending} />
+                <Row label="Total Operating Expenses" value={readiness.preliminaryReady ? `- ${fmt(assessment.totalOperatingExpenses)}` : pending} />
+              </div>
+              <Collapsible open={bridgeOpen} onOpenChange={setBridgeOpen}>
+                <CollapsibleTrigger asChild><Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">{bridgeOpen ? 'Hide' : 'Show'} NOI Bridge</Button></CollapsibleTrigger>
+                <CollapsibleContent className="rounded-lg border border-border/60 bg-background/40 p-3 text-xs text-muted-foreground space-y-1">
+                  {readiness.preliminaryReady ? assessment.bridge.map(item => <div key={item.label} className="flex justify-between gap-3"><span>{item.label}</span><span>{fmt(item.amount)}</span></div>) : <div>Pending</div>}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </Section>
         </div>
       </CardContent>
     </Card>
   );
 }
 
+function Section({ title, helper, children, prominent }: { title: string; helper: string; children: React.ReactNode; prominent?: boolean }) { return <section className={`rounded-xl border ${prominent ? 'border-primary/30 bg-primary/5' : 'border-border/70 bg-card/60'} p-4 shadow-sm`}><div className="mb-3 border-l-2 border-primary pl-3"><h3 className="text-sm font-semibold text-foreground">{title}</h3><p className="text-xs text-muted-foreground">{helper}</p></div>{children}</section>; }
+function MetricCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) { return <div className={`rounded-xl border ${accent ? 'border-primary/40 bg-primary/10' : 'border-border/60 bg-background/50'} p-4`}><div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div><div className={`${accent ? 'text-2xl' : 'text-xl'} font-semibold text-foreground mt-1`}>{value}</div></div>; }
 function Row({ label, value, bold, muted, highlight }: { label: string; value: string; bold?: boolean; muted?: boolean; highlight?: boolean }) { return <div className={`flex justify-between items-center ${highlight ? 'text-lg font-bold text-primary' : bold ? 'font-semibold' : ''} ${muted ? 'text-muted-foreground text-sm' : ''}`}><span>{label}</span><span>{value}</span></div>; }
