@@ -187,7 +187,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
 
       // 2) Poll for status — backend does the long work via EdgeRuntime.waitUntil.
       const POLL_INTERVAL_MS = 3000;
-      const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes
+      const MAX_WAIT_MS = 1500 * 1000; // 1500 seconds
       const startedAt = Date.now();
       let finalData: any = null;
 
