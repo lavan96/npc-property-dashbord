@@ -476,18 +476,41 @@ export async function extractPdfViaDocling(
     // timeouts. Raster references are still persisted in `template.meta.pdfImport`
     // (rastersPath) so pixel-perfect rendering can rehydrate them lazily.
     const shouldEmbedRasters = false;
-    const rasterPayload =
-      shouldEmbedRasters && artifacts.rastersPath
-        ? await downloadJson<unknown>(artifacts.rastersPath)
-        : null;
+    let rasterPayload: unknown | null = null;
+    if (shouldEmbedRasters && artifacts.rastersPath) {
+      try {
+        rasterPayload = await downloadJson<unknown>(artifacts.rastersPath);
+      } catch (e) {
+        console.warn('[PDF_IMPORT_DEBUG] optional raster download skipped', {
+          path: artifacts.rastersPath,
+          error: (e as Error).message,
+        });
+      }
+    }
     const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
 
-    let doclingDoc = artifacts.doclingPath ? await downloadJson<DoclingDocument>(artifacts.doclingPath) : null;
+    console.info('[PDF_IMPORT_DEBUG] downloading docling artifact', {
+      jobId: job.id,
+      doclingPath: artifacts.doclingPath,
+      resultPayloadKeys: Object.keys(job.result_payload ?? {}),
+    });
+
+    let doclingDoc: DoclingDocument | null = null;
+    if (artifacts.doclingPath) {
+      try {
+        doclingDoc = await downloadJson<DoclingDocument>(artifacts.doclingPath);
+      } catch (e) {
+        if (effectiveMode === 'pixel-perfect' && rasters && Object.keys(rasters).length > 0) {
+          console.warn('[PDF_IMPORT_DEBUG] docling download failed, falling back to raster-only pixel-perfect', {
+            error: (e as Error).message,
+          });
+        } else {
+          throw e;
+        }
+      }
+    }
     if (!doclingDoc) {
       if (effectiveMode === 'pixel-perfect' && rasters && Object.keys(rasters).length > 0) {
-        // Pixel-perfect only needs raster backgrounds. Synthesize a minimal
-        // DoclingDocument so the page-plan mapper still emits one page per
-        // raster (with no editable overlays — exactly what pixel-perfect wants).
         const pages: Record<string, { page_no: number; size: { width: number; height: number } }> = {};
         for (const [pageNoStr, r] of Object.entries(rasters)) {
           const pageNo = Number(pageNoStr);
