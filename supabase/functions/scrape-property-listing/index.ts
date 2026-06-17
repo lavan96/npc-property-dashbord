@@ -790,7 +790,7 @@ Return JSON only.`;
   if (finishReason && finishReason !== "stop") {
     console.warn(`[scrape-property-listing] LLM finish_reason=${finishReason} (possible truncation)`);
   }
-  const extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
+  let extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
 
   if (!extracted) {
     return {
@@ -800,6 +800,8 @@ Return JSON only.`;
       raw: rawText,
     };
   }
+
+  extracted = enrichExtractionFromSource(extracted, pageContent, url, propertyCategory);
 
   const citations = (parsed?.citations as string[] | undefined) ?? [];
 
