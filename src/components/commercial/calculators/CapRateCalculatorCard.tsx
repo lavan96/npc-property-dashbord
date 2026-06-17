@@ -8,10 +8,10 @@ import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateYields, calculateCapRateEngine, parseCapRateNumber } from '@/utils/commercial';
 import { useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -106,7 +106,7 @@ function normaliseEstimate(raw: any, snapshot: any, sourceBefore: string): CapRa
 }
 
 export function CapRateCalculatorCard() {
-  const { prefill, property } = useCalculatorPrefill();
+  const { prefill, property, pushBack } = useCalculatorPrefill();
   const { profile, updateGlobal, setSourceMode, appendAiAudit } = useCommercialDealState();
   const [fields, setFields] = useState<Record<CapField, FieldState>>({ passingNoi: field(''), marketNoi: field(''), price: field(''), targetCap: field('') });
   const [estimating, setEstimating] = useState(false);
@@ -114,6 +114,8 @@ export function CapRateCalculatorCard() {
   const [proposedCap, setProposedCap] = useState('');
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showSensitivity, setShowSensitivity] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savingBack, setSavingBack] = useState(false);
 
   const audit = (action: string, fieldName: string, previousValue: unknown, newValue: unknown, source: string) => appendAiAudit({ action, fieldKey: fieldName, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId, dealId: prefill?.propertyId } as any);
 
@@ -283,6 +285,92 @@ export function CapRateCalculatorCard() {
 
   const priorityWarnings = capWarnings.slice(0, 3);
 
+  const benchmarkStatus = fields.targetCap.source === 'AI Benchmark'
+    ? 'AI benchmark applied'
+    : fields.targetCap.source === 'Verified'
+      ? 'Market benchmark verified'
+      : hasTargetCap
+        ? fields.targetCap.source === 'Manual' || fields.targetCap.source === 'User Override'
+          ? 'Manual benchmark'
+          : 'Valuer confirmation required'
+        : 'Benchmark pending';
+  const sourceSummary = prefill ? `Linked property: ${prefill.address || prefill.propertyId || 'property record'}` : 'Manual entry / no property linked';
+  const syncStatus = prefill ? 'Global input sync on' : 'Manual entry only';
+  const assumptionStatus = readinessStatus;
+  const hasSensitivity = capAssessment.selectedNoi !== null && capAssessment.valueSensitivity.length > 0;
+
+  const hasSaveableCapRateValue = hasPassingNoi || hasMarketNoi || hasPrice || hasTargetCap;
+  const sourceCounts = useMemo(() => ({
+    userOverrides: Object.values(fields).filter(f => f.source === 'User Override').length,
+    aiBenchmarks: Object.values(fields).filter(f => f.source === 'AI Benchmark').length,
+    propertyProfileValues: Object.values(fields).filter(f => f.source === 'Property Profile').length,
+  }), [fields]);
+  const assumptionStatuses = useMemo(() => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.source])), [fields]);
+  const originalSourceValues = useMemo(() => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { value: v.originalValue ?? v.value, source: v.originalSource ?? v.source, sourceDetail: v.sourceDetail }])), [fields]);
+  const userOverrideValues = useMemo(() => Object.fromEntries(Object.entries(fields).filter(([, v]) => v.source === 'User Override').map(([k, v]) => [k, v.value])), [fields]);
+  const finalInputValues = useMemo(() => ({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap) }), [marketNoi, passingNoi, price, targetCap]);
+  const capRateOutputPayload = useMemo(() => ({
+    ...capAssessment,
+    passingYield: yields.passingYield,
+    reversionaryYield: yields.reversionaryYield,
+    blendedYield: yields.blendedYield,
+    simpleAverageYield: yields.simpleAverageYield,
+    reversionSpread: reversionarySpread,
+    targetCapRatePct: num(targetCap),
+    benchmarkStatus,
+    readinessStatus,
+    assumptionStatuses,
+    finalInputValues,
+    sourceCounts,
+    downstreamSync: {
+      borrowingCapacity: 'valuationSensitivityOnly',
+      noi: 'readOnlySourceToCapRate',
+      dcf: 'terminalCapOptInOnly',
+      reportOverview: 'yieldImpliedValueValuationGapBenchmarkStatus',
+      scenarioComparison: 'savedCapRateAssumptions',
+    },
+  }), [assumptionStatuses, benchmarkStatus, capAssessment, finalInputValues, readinessStatus, reversionarySpread, sourceCounts, targetCap, yields]);
+  const saveBackRecord = useMemo(() => ({
+    finalInputValues,
+    sourceState: assumptionStatuses,
+    originalSourceValues,
+    userOverrideValues,
+    aiBenchmarkRange: aiEstimate?.capRateRange ?? (fields.targetCap.source === 'AI Benchmark' ? (profile.capRateOutputs as any)?.benchmarkRange : undefined),
+    acceptedBenchmarkValue: fields.targetCap.source === 'AI Benchmark' ? num(targetCap) : undefined,
+    timestamp: new Date().toISOString(),
+    userId: (property as any)?.user_id ?? 'current-user',
+    calculationVersion: 'cap-rate-v2-readiness-sync',
+    propertyId: prefill?.propertyId ?? null,
+    scenarioId: (profile as any)?.scenarioId ?? (property as any)?.scenario_id ?? undefined,
+    outputs: capRateOutputPayload,
+  }), [aiEstimate, assumptionStatuses, capRateOutputPayload, fields.targetCap.source, finalInputValues, originalSourceValues, prefill?.propertyId, profile, property, targetCap, userOverrideValues]);
+
+  const requestSaveBack = () => {
+    if (!prefill || !hasSaveableCapRateValue) return;
+    setSaveDialogOpen(true);
+  };
+
+  const confirmSaveBack = async () => {
+    if (!prefill) return;
+    setSavingBack(true);
+    try {
+      updateGlobal('capRateOutputs', capRateOutputPayload as any);
+      audit('cap rate assumptions saved back to property', 'capRate', null, saveBackRecord, 'Save back to property');
+      const existingNotes = typeof (property as any)?.notes === 'string' ? (property as any).notes : '';
+      const capRateNote = `Cap rate assumptions saved ${saveBackRecord.timestamp}: ${JSON.stringify(saveBackRecord)}`;
+      const patch = prefill.domain === 'industrial'
+        ? { purchase_price: hasPrice ? num(price) : undefined, current_valuation: capAssessment.impliedValue || undefined, notes: [existingNotes, capRateNote].filter(Boolean).join('\n') }
+        : { purchase_price: hasPrice ? num(price) : undefined, valuation: capAssessment.impliedValue || undefined, notes: [existingNotes, capRateNote].filter(Boolean).join('\n') };
+      const result = await pushBack(patch);
+      if (result.ok) {
+        setSaveDialogOpen(false);
+        toast.success('Cap rate assumptions saved to property profile.');
+      }
+    } finally {
+      setSavingBack(false);
+    }
+  };
+
 
   const buildSnapshot = () => {
     const missingInputs = ['address', 'assetSubtype', 'state', 'glaSqm', 'siteAreaSqm', 'walesYears', 'passingNoi', 'marketNoi', 'price'].filter(k => !({ ...prefill, price: num(price), passingNoi: num(passingNoi), marketNoi: num(marketNoi) } as any)?.[k]);
@@ -345,8 +433,7 @@ export function CapRateCalculatorCard() {
             <StatusPill label="Global input sync status" value={syncStatus} />
             <StatusPill label="Assumption status" value={assumptionStatus} />
             <div className="flex items-end md:justify-end">
-              <SaveBackButton build={() => { audit('cap rate outputs saved back to property', 'capRate', null, capAssessment, 'Save back to property'); updateGlobal('capRateOutputs', { ...capAssessment, reversionSpread: reversionarySpread, targetCapRatePct: num(targetCap), assumptionStatuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.source])) } as any); const capRateNote = `Cap rate outputs saved ${new Date().toISOString()}: ${JSON.stringify({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap), passingYield: yields.passingYield, reversionaryYield: yields.reversionaryYield, blendedYield: yields.blendedYield, reversionSpread: reversionarySpread, impliedValue: capAssessment.impliedValue, valuationGap: capAssessment.valuationGap, valuationGapPct: capAssessment.valuationGapPct, valueSensitivity: capAssessment.valueSensitivity, assumptionStatuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.source])) })}`;
-                return prefill?.domain === 'industrial' ? { purchase_price: hasPrice ? num(price) : undefined, current_valuation: capAssessment.impliedValue || undefined, notes: capRateNote } : { purchase_price: hasPrice ? num(price) : undefined, valuation: capAssessment.impliedValue || undefined, notes: capRateNote }; }} />
+              <Button size="sm" variant="outline" title={!prefill ? 'Select or link a property before saving cap rate assumptions.' : undefined} disabled={!prefill || !hasSaveableCapRateValue || savingBack} onClick={requestSaveBack}>{savingBack ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}Save back to property</Button>
             </div>
           </div>
         </div>
@@ -430,6 +517,34 @@ export function CapRateCalculatorCard() {
           </CollapsibleContent>
         </Collapsible>
       </CardContent>
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Save these cap rate assumptions back to the property profile?</DialogTitle>
+            <DialogDescription>Review the assumptions and outputs that will be saved for downstream reporting and scenario comparison.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <SaveSummaryRow label="Passing NOI" value={displayMoney(finalInputValues.passingNoi, finalInputValues.passingNoi !== null)} />
+            <SaveSummaryRow label="Market NOI" value={displayMoney(finalInputValues.marketNoi, finalInputValues.marketNoi !== null)} />
+            <SaveSummaryRow label="Price / Value" value={displayMoney(finalInputValues.price, finalInputValues.price !== null)} />
+            <SaveSummaryRow label="Target Cap Rate %" value={pct(finalInputValues.targetCapRatePct)} />
+            <SaveSummaryRow label="Passing Yield" value={displayPct(yields.passingYield, hasPassingNoi && hasPrice)} />
+            <SaveSummaryRow label="Reversionary Yield" value={displayPct(yields.reversionaryYield, hasMarketNoi && hasPrice)} />
+            <SaveSummaryRow label="Blended Yield" value={displayPct(yields.blendedYield, hasPassingNoi && hasMarketNoi && hasPrice)} />
+            <SaveSummaryRow label="Implied Value" value={displayMoney(capAssessment.impliedValue, hasImpliedValueInputs)} />
+            <SaveSummaryRow label="Valuation Gap" value={displayMoney(capAssessment.valuationGap, hasValuationGapInputs)} />
+            <SaveSummaryRow label="Benchmark source" value={fields.targetCap.source} />
+            <SaveSummaryRow label="User overrides" value={String(sourceCounts.userOverrides)} />
+            <SaveSummaryRow label="AI benchmark values" value={String(sourceCounts.aiBenchmarks)} />
+            <SaveSummaryRow label="Property profile values" value={String(sourceCounts.propertyProfileValues)} />
+          </div>
+          <p className="rounded-md border border-primary/10 bg-muted/30 p-2 text-xs text-muted-foreground">Downstream sync updates Cap Rate outputs for Borrowing Capacity sensitivity, Report Overview and Scenario Comparison. DCF terminal cap rate and lender valuation are not overwritten without separate confirmation.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)} disabled={savingBack}>Cancel</Button>
+            <Button onClick={confirmSaveBack} disabled={savingBack}>{savingBack ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}Confirm save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 
@@ -437,6 +552,10 @@ export function CapRateCalculatorCard() {
 
 function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, step, placeholder }: { label: string; state: FieldState; onChange: (v: string) => void; onKeepOverride: () => void; onUseSource: () => void; step?: string; placeholder?: string }) {
   return <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]" title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input type="text" inputMode="decimal" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{state.pendingSource && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}</div>;
+}
+
+function SaveSummaryRow({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between gap-3 rounded-md border border-primary/10 bg-background/40 px-3 py-2"><span className="text-muted-foreground">{label}</span><span className="font-medium text-foreground">{value}</span></div>;
 }
 
 function PreviewItem({ label, value }: { label: string; value: string }) {
