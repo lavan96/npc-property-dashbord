@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
-import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
+import { calculateCommercialIndustrialBorrowing, lenderPolicyProfiles, type AcquisitionPurpose, type AssetCategory, type BorrowingInputs, type BorrowingResult, type LenderPolicyProfileKey, type LeaseStatus, type PurchaserStructure } from '@/utils/commercial';
 import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { applyPortfolioImportToggles, sampleClientProfiles, summarizeClientPortfolio } from '@/utils/commercial/clientPortfolioEngine';
@@ -46,6 +46,11 @@ const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.t
 
 const commercialSubtypes = ['Office', 'Retail', 'Medical', 'Childcare', 'Showroom', 'Hospitality', 'Mixed-use commercial', 'Other commercial'];
 const industrialSubtypes = ['Warehouse', 'Factory', 'Logistics facility', 'Cold storage', 'Workshop', 'Storage yard', 'Manufacturing facility', 'Last-mile facility', 'Other industrial'];
+
+type ScenarioCardModel = BorrowingResult['scenarios'][number] & {
+  missingFields: string[];
+  ready: boolean;
+};
 
 const blankClientProfile: ClientProfile = {
   clientId: '', clientName: 'No client selected', lastUpdated: '', personalIncome: 0, businessIncome: 0, ownershipStructures: [],
@@ -388,6 +393,19 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     { label: 'Loan term years', complete: hasValue(term) },
     { label: 'Max LVR', complete: hasValue(maxLvr) },
   ].filter(item => !item.complete).map(item => item.label), [purchasePrice, estimatedValue, passingRent, marketRent, nonRecoverable, rate, term, maxLvr]);
+  const scenarioMissingFields = (scenarioName: string) => {
+    const missing = new Set(scenarioMinimumMissing);
+    if (scenarioName === 'Conservative Valuation Case' && !(hasValue(bankValue) || hasValue(estimatedValue) || hasValue(purchasePrice))) {
+      missing.add('Bank valuation, estimated market value or purchase price');
+    }
+    if (scenarioName === 'Higher Vacancy Case' && !(hasValue(vacancy) || hasValue(passingRent) || hasValue(marketRent) || hasValue(nonRecoverable))) {
+      missing.add('Vacancy allowance or income / NOI input');
+    }
+    if (['Interest-Only Case', 'Principal-and-Interest Case'].includes(scenarioName) && !hasValue(amortisation) && !hasValue(term)) {
+      missing.add('Loan term or amortisation years');
+    }
+    return Array.from(missing);
+  };
   const scenarioInputsReady = scenarioMinimumMissing.length === 0;
   const scenarioExplanation = (constraint: string) => {
     if (constraint === 'lvr' || constraint === 'valuation') return 'Loan is capped by security value / LVR before income tests.';
@@ -397,8 +415,36 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     if (constraint === 'fundsToComplete' || constraint === 'liquidity') return 'Purchase is limited by available funds to complete.';
     return 'Scenario result reflects the current lender policy and risk-adjusted borrowing settings.';
   };
-  const scenarioCards = result.scenarios;
+  const scenarioCards: ScenarioCardModel[] = result.scenarios.map(s => {
+    const missingFields = scenarioMissingFields(s.name);
+    return { ...s, missingFields, ready: missingFields.length === 0 };
+  });
   const recommendedScenario = scenarioCards.find(s => s.name === recommendedScenarioName) ?? scenarioCards[0];
+  const renderScenarioMetrics = (scenario: ScenarioCardModel) => (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+      <MoneyRow label="Max loan" value={scenario.maxLoan} />
+      <MoneyRow label="LVR" value={pct(scenario.impliedLvr)} />
+      <MoneyRow label="ICR" value={`${scenario.icr.toFixed(2)}x`} />
+      <MoneyRow label="DSCR" value={`${scenario.dscr.toFixed(2)}x`} />
+      <MoneyRow label="Debt yield" value={pct(scenario.debtYield)} />
+      <MoneyRow label="Required equity" value={scenario.requiredEquity} />
+      <MoneyRow label="Equity surplus / shortfall" value={scenario.equitySurplusShortfall} />
+      <MoneyRow label="Binding constraint" value={title(scenario.bindingConstraint)} />
+      <MoneyRow label="Supportability status" value={scenario.proposedLoanSupportability} />
+    </div>
+  );
+  const renderPendingScenario = (scenario: ScenarioCardModel) => (
+    <>
+      <div className="rounded border bg-muted/20 p-2 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">Pending inputs</p>
+        <p className="mt-1 font-medium text-foreground">Missing fields required for this scenario</p>
+        <ul className="mt-1 space-y-1">
+          {scenario.missingFields.map(item => <li key={item}>• {item}</li>)}
+        </ul>
+      </div>
+      <Button size="sm" variant="outline" disabled>Run scenario</Button>
+    </>
+  );
   const missingPropertyMessage = 'Property-level information is incomplete. Add or import property details before relying on this calculation.';
   const portfolioImportToggles = useMemo(() => ({ residential: includeResidential, commercial: includeCommercial, industrial: includeIndustrial, shares: includeShares, cash: includeCash, businessFinancials: includeBusinessFinancials, liabilities: includeLiabilities, income: includeIncome, existingLoans: includeExistingLoans }), [includeResidential, includeCommercial, includeIndustrial, includeShares, includeCash, includeBusinessFinancials, includeLiabilities, includeIncome, includeExistingLoans]);
   const scenarioClient = useMemo(() => applyPortfolioImportToggles(selectedClient, portfolioImportToggles), [selectedClient, portfolioImportToggles]);
@@ -769,7 +815,35 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
           <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Required Documents / Next Steps</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">{result.documentChecklist.slice(0, 18).map(item => <div key={item} className="rounded border bg-muted/20 px-2 py-1">{item}</div>)}</div></CardContent></Card>
 
-          <Card><CardHeader><CardTitle className="text-base">Recommended Scenario Summary</CardTitle><CardDescription>{scenarioInputsReady ? `Preferred case: ${recommendedScenario?.name ?? 'Base Case'}` : 'Scenario comparison is pending required inputs.'}</CardDescription></CardHeader><CardContent className="space-y-3 text-sm">{scenarioInputsReady && recommendedScenario ? <><div className="grid grid-cols-2 gap-x-4 gap-y-1"><MoneyRow label="Max loan" value={recommendedScenario.maxLoan} /><MoneyRow label="LVR" value={pct(recommendedScenario.impliedLvr)} /><MoneyRow label="ICR" value={`${recommendedScenario.icr.toFixed(2)}x`} /><MoneyRow label="DSCR" value={`${recommendedScenario.dscr.toFixed(2)}x`} /><MoneyRow label="Debt yield" value={pct(recommendedScenario.debtYield)} /><MoneyRow label="Binding constraint" value={title(recommendedScenario.bindingConstraint)} /></div><p className="text-xs text-muted-foreground">{scenarioExplanation(recommendedScenario.bindingConstraint)}</p></> : <div className="rounded border bg-muted/20 p-2 text-xs text-muted-foreground">Pending inputs: {scenarioMinimumMissing.join(', ')}.</div>}<Button size="sm" variant="outline" onClick={() => setActiveTab('scenarios')}>Compare scenarios</Button></CardContent></Card>
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Recommended Scenario Summary</CardTitle>
+                  <CardDescription>
+                    {recommendedScenario?.ready ? `Preferred case: ${recommendedScenario.name}` : 'Scenario comparison is pending required inputs.'}
+                  </CardDescription>
+                </div>
+                {recommendedScenario?.ready && <Badge>Recommended</Badge>}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {recommendedScenario?.ready ? (
+                <>
+                  {renderScenarioMetrics(recommendedScenario)}
+                  <p className="text-xs text-muted-foreground">
+                    {scenarioExplanation(recommendedScenario.bindingConstraint)}
+                  </p>
+                </>
+              ) : (
+                <div className="rounded border bg-muted/20 p-2 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">Pending inputs</p>
+                  <p>Missing: {(recommendedScenario?.missingFields.length ? recommendedScenario.missingFields : scenarioMinimumMissing).join(', ')}.</p>
+                </div>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setActiveTab('scenarios')}>Compare scenarios</Button>
+            </CardContent>
+          </Card>
               </div>
             </div>
           </TabsContent>
@@ -797,13 +871,94 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
             </Accordion>
           </TabsContent>
           <TabsContent value="scenarios" className="mt-0 space-y-4">
-            <Card><CardHeader><CardTitle>Scenario Comparison Workspace</CardTitle><CardDescription>Compare lender, valuation, vacancy and rate cases without treating missing inputs as failed results.</CardDescription></CardHeader><CardContent className="space-y-4">
-              {!scenarioInputsReady && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><p className="font-medium">Pending inputs</p><p className="text-xs">Complete these fields before scenario results are run: {scenarioMinimumMissing.join(', ')}.</p></div>}
-              <div className="grid lg:grid-cols-2 gap-3">
-                {scenarioCards.map(s => <Card key={s.name} className={recommendedScenarioName === s.name ? 'border-primary/60 bg-primary/5' : 'bg-background/60'}><CardHeader className="pb-2"><div className="flex items-start justify-between gap-2"><div><CardTitle className="text-base">{s.name}</CardTitle><CardDescription>{scenarioInputsReady ? scenarioExplanation(s.bindingConstraint) : 'Pending inputs'}</CardDescription></div>{recommendedScenarioName === s.name && <Badge>Recommended</Badge>}</div></CardHeader><CardContent className="space-y-3 text-sm">{scenarioInputsReady ? <><div className="grid grid-cols-2 gap-x-4 gap-y-1"><MoneyRow label="Max loan" value={s.maxLoan} /><MoneyRow label="LVR" value={pct(s.impliedLvr)} /><MoneyRow label="ICR" value={`${s.icr.toFixed(2)}x`} /><MoneyRow label="DSCR" value={`${s.dscr.toFixed(2)}x`} /><MoneyRow label="Debt yield" value={pct(s.debtYield)} /><MoneyRow label="Required equity" value={s.requiredEquity} /><MoneyRow label="Equity surplus / shortfall" value={s.equitySurplusShortfall} /><MoneyRow label="Binding constraint" value={title(s.bindingConstraint)} /><MoneyRow label="Supportability status" value={s.proposedLoanSupportability} /></div><Button size="sm" variant={recommendedScenarioName === s.name ? 'default' : 'outline'} onClick={() => setRecommendedScenarioName(s.name)}>{recommendedScenarioName === s.name ? 'Recommended' : 'Mark as recommended'}</Button></> : <><div className="rounded border bg-muted/20 p-2 text-xs text-muted-foreground"><p className="font-medium text-foreground">Missing fields required for this scenario</p><ul className="mt-1 space-y-1">{scenarioMinimumMissing.map(item => <li key={item}>• {item}</li>)}</ul></div><Button size="sm" variant="outline" disabled>Run scenario</Button></>}</CardContent></Card>)}
-              </div>
-              <Table><TableHeader><TableRow><TableHead>Scenario</TableHead><TableHead className="text-right">Max Loan</TableHead><TableHead className="text-right">Required Equity</TableHead><TableHead className="text-right">LVR</TableHead><TableHead className="text-right">ICR</TableHead><TableHead className="text-right">DSCR</TableHead><TableHead className="text-right">Debt Yield</TableHead><TableHead>Binding Constraint</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{scenarioCards.map(s => <TableRow key={s.name}><TableCell className="font-medium">{s.name}{recommendedScenarioName === s.name && <Badge className="ml-2">Recommended</Badge>}</TableCell><TableCell className="text-right">{scenarioInputsReady ? fmt(s.maxLoan) : 'Pending inputs'}</TableCell><TableCell className="text-right">{scenarioInputsReady ? fmt(s.requiredEquity) : 'Pending inputs'}</TableCell><TableCell className="text-right">{scenarioInputsReady ? pct(s.impliedLvr) : 'Pending inputs'}</TableCell><TableCell className="text-right">{scenarioInputsReady ? `${s.icr.toFixed(2)}x` : 'Pending inputs'}</TableCell><TableCell className="text-right">{scenarioInputsReady ? `${s.dscr.toFixed(2)}x` : 'Pending inputs'}</TableCell><TableCell className="text-right">{scenarioInputsReady ? pct(s.debtYield) : 'Pending inputs'}</TableCell><TableCell>{scenarioInputsReady ? title(s.bindingConstraint) : 'Pending inputs'}</TableCell><TableCell>{scenarioInputsReady ? s.proposedLoanSupportability : `Missing: ${scenarioMinimumMissing.slice(0, 3).join(', ')}`}</TableCell></TableRow>)}</TableBody></Table>
-            </CardContent></Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Scenario Comparison Workspace</CardTitle>
+                <CardDescription>
+                  Compare lender, valuation, vacancy and rate cases without treating missing inputs as failed results.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!scenarioInputsReady && (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+                    <p className="font-medium">Pending inputs</p>
+                    <p className="text-xs">Complete these fields before scenario results are run: {scenarioMinimumMissing.join(', ')}.</p>
+                  </div>
+                )}
+
+                <div className="grid lg:grid-cols-2 gap-3">
+                  {scenarioCards.map(scenario => (
+                    <Card
+                      key={scenario.name}
+                      className={recommendedScenarioName === scenario.name ? 'border-primary/60 bg-primary/5' : 'bg-background/60'}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <CardTitle className="text-base">{scenario.name}</CardTitle>
+                            <CardDescription>
+                              {scenario.ready ? scenarioExplanation(scenario.bindingConstraint) : 'Pending inputs'}
+                            </CardDescription>
+                          </div>
+                          {recommendedScenarioName === scenario.name && <Badge>Recommended</Badge>}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-sm">
+                        {scenario.ready ? (
+                          <>
+                            {renderScenarioMetrics(scenario)}
+                            <p className="text-xs text-muted-foreground">
+                              {scenarioExplanation(scenario.bindingConstraint)}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant={recommendedScenarioName === scenario.name ? 'default' : 'outline'}
+                              onClick={() => setRecommendedScenarioName(scenario.name)}
+                            >
+                              {recommendedScenarioName === scenario.name ? 'Recommended' : 'Mark as recommended'}
+                            </Button>
+                          </>
+                        ) : renderPendingScenario(scenario)}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Scenario</TableHead>
+                      <TableHead className="text-right">Max Loan</TableHead>
+                      <TableHead className="text-right">Required Equity</TableHead>
+                      <TableHead className="text-right">LVR</TableHead>
+                      <TableHead className="text-right">ICR</TableHead>
+                      <TableHead className="text-right">DSCR</TableHead>
+                      <TableHead className="text-right">Debt Yield</TableHead>
+                      <TableHead>Binding Constraint</TableHead>
+                      <TableHead>Result</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scenarioCards.map(scenario => (
+                      <TableRow key={scenario.name}>
+                        <TableCell className="font-medium">
+                          {scenario.name}
+                          {recommendedScenarioName === scenario.name && <Badge className="ml-2">Recommended</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right">{scenario.ready ? fmt(scenario.maxLoan) : 'Pending inputs'}</TableCell>
+                        <TableCell className="text-right">{scenario.ready ? fmt(scenario.requiredEquity) : 'Pending inputs'}</TableCell>
+                        <TableCell className="text-right">{scenario.ready ? pct(scenario.impliedLvr) : 'Pending inputs'}</TableCell>
+                        <TableCell className="text-right">{scenario.ready ? `${scenario.icr.toFixed(2)}x` : 'Pending inputs'}</TableCell>
+                        <TableCell className="text-right">{scenario.ready ? `${scenario.dscr.toFixed(2)}x` : 'Pending inputs'}</TableCell>
+                        <TableCell className="text-right">{scenario.ready ? pct(scenario.debtYield) : 'Pending inputs'}</TableCell>
+                        <TableCell>{scenario.ready ? title(scenario.bindingConstraint) : 'Pending inputs'}</TableCell>
+                        <TableCell>{scenario.ready ? scenario.proposedLoanSupportability : `Missing: ${scenario.missingFields.slice(0, 3).join(', ')}`}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
           <TabsContent value="audit" className="mt-0 space-y-4"><Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Required Documents / Next Steps</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">{result.documentChecklist.slice(0, 18).map(item => <div key={item} className="rounded border bg-muted/20 px-2 py-1">{item}</div>)}</div><div className="rounded-md border bg-muted/10 p-3"><p className="text-sm font-medium">All Missing Items</p><div className="mt-2 grid md:grid-cols-2 gap-3 text-xs text-muted-foreground">{Object.entries(missingInformationGroups).map(([group, items]) => <div key={group}><p className="font-medium text-foreground">{group}</p>{items.length ? <ul className="mt-1 space-y-1">{items.map(item => <li key={item}>• {item}</li>)}</ul> : <p className="mt-1">None pending</p>}</div>)}</div></div><div className="rounded-md border bg-muted/10 p-3"><p className="text-sm font-medium">Full Warning Log</p><div className="mt-2 space-y-2 text-xs text-muted-foreground">{Object.entries(result.warningGroups).map(([group, items]) => items.length ? <div key={group}><span className="font-medium text-foreground">{title(group)}</span><ul className="mt-1 space-y-1">{items.map((w, i) => <li key={i}>• {w}</li>)}</ul></div> : null)}</div></div><p className="mt-3 text-xs text-muted-foreground">Audit trail: {activeScenario.auditLog.length} event(s).</p></CardContent></Card></TabsContent>
         </Tabs>
