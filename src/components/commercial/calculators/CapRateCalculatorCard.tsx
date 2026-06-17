@@ -210,7 +210,7 @@ export function CapRateCalculatorCard() {
       assetSubtype: prefill?.assetSubtype,
       state: prefill?.state,
       location,
-      leaseStatus: rawProperty.lease_status || rawProperty.leaseStatus || profile.leaseIncome?.leaseStatus,
+      leaseStatus: rawProperty.lease_status || rawProperty.leaseStatus || (profile.leaseIncome as any)?.leaseStatus,
       leaseType: profile.leaseIncome?.leaseType || rawProperty.lease_type || rawProperty.leaseType,
       income: hasSelectedNoi ? 'NOI supplied' : undefined,
       priceValue: hasPrice ? 'Value supplied' : undefined,
