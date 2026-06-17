@@ -6,13 +6,24 @@
  */
 
 export interface CapRateInputs {
-  noi: number;
-  price: number;
+  noi: number | string | null | undefined;
+  price: number | string | null | undefined;
 }
 
-export function capRate({ noi, price }: CapRateInputs): number {
-  if (!price || price <= 0) return 0;
-  return Number(((noi / price) * 100).toFixed(2));
+const parseNumeric = (value: number | string | null | undefined): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed.replace(/[$,£€¥₹\s]/g, '').replace(/%$/, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+export function capRate({ noi, price }: CapRateInputs): number | null {
+  const parsedNoi = parseNumeric(noi);
+  const parsedPrice = parseNumeric(price);
+  if (parsedNoi === null || parsedPrice === null || parsedPrice <= 0) return null;
+  return Number(((parsedNoi / parsedPrice) * 100).toFixed(2));
 }
 
 export interface YieldSetInputs {
@@ -22,11 +33,11 @@ export interface YieldSetInputs {
 }
 
 export interface YieldSetResult {
-  passingYield: number;
-  reversionaryYield: number;
-  equivalentYield: number;
-  blendedYield: number;
-  simpleAverageYield: number;
+  passingYield: number | null;
+  reversionaryYield: number | null;
+  equivalentYield: number | null;
+  blendedYield: number | null;
+  simpleAverageYield: number | null;
 }
 
 export function calculateYields({ passingNoi, marketNoi, price }: YieldSetInputs): YieldSetResult {
@@ -34,12 +45,14 @@ export function calculateYields({ passingNoi, marketNoi, price }: YieldSetInputs
   const reversionary = capRate({ noi: marketNoi, price });
   // Simple equivalent yield: arithmetic mean of passing & reversionary
   // (Full equivalent yield is IRR of rent reversions — done in DCF engine)
-  const equivalent = Number(((passing + reversionary) / 2).toFixed(2));
+  const equivalent = passing !== null && reversionary !== null ? Number(((passing + reversionary) / 2).toFixed(2)) : null;
   return { passingYield: passing, reversionaryYield: reversionary, equivalentYield: equivalent, blendedYield: equivalent, simpleAverageYield: equivalent };
 }
 
 /** Value derived from a NOI and target cap rate (cap rate as %) */
-export function valueFromCap(noi: number, capPct: number): number {
-  if (!capPct || capPct <= 0) return 0;
-  return noi / (capPct / 100);
+export function valueFromCap(noi: number | string | null | undefined, capPct: number | string | null | undefined): number | null {
+  const parsedNoi = parseNumeric(noi);
+  const parsedCapPct = parseNumeric(capPct);
+  if (parsedNoi === null || parsedCapPct === null || parsedCapPct <= 0) return null;
+  return parsedNoi / (parsedCapPct / 100);
 }
