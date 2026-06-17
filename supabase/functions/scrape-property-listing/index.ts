@@ -416,8 +416,8 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
         url,
         formats: ["markdown", "html", "links"],
         onlyMainContent: false,
-        waitFor: 5000,
-        timeout: 45000,
+        waitFor: 2500,
+        timeout: 30000,
         mobile: false,
         location: { country: "AU", languages: ["en-AU", "en"] },
       }),
@@ -433,13 +433,38 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     const markdown: string = markdownParts.join('\n\n');
     const title: string | undefined = root?.metadata?.title;
     const description: string | undefined = root?.metadata?.description;
-    if (!markdown || markdown.length < 80) {
+    if (!markdown || markdown.length < 80 || isBadScrapeContent(markdown)) {
       console.warn("[scrape-property-listing] Firecrawl returned empty/short markdown:", markdown.length);
       return null;
     }
     return { markdown, title, description };
   } catch (e) {
     console.error("[scrape-property-listing] Firecrawl exception", e);
+    return null;
+  }
+}
+
+async function scrapeWithReaderMode(url: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
+  try {
+    const target = `https://r.jina.ai/http://${url}`;
+    const resp = await fetch(target, {
+      method: 'GET',
+      headers: { Accept: 'text/markdown,text/plain,*/*' },
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!resp.ok) {
+      console.warn('[scrape-property-listing] reader fallback failed', resp.status);
+      return null;
+    }
+    const markdown = await resp.text();
+    if (!markdown || markdown.length < 120 || isBadScrapeContent(markdown)) {
+      console.warn('[scrape-property-listing] reader fallback returned unusable markdown:', markdown?.length ?? 0);
+      return null;
+    }
+    const title = markdown.match(/^Title:\s*(.+)$/im)?.[1]?.trim();
+    return { markdown, title };
+  } catch (e) {
+    console.error('[scrape-property-listing] reader fallback exception', e);
     return null;
   }
 }
@@ -456,7 +481,7 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
 
   // Step 1: scrape the actual page so the model extracts from real content
   // instead of hallucinating from a URL slug.
-  const scraped = await scrapeWithFirecrawl(url);
+  const scraped = await scrapeWithFirecrawl(url) ?? await scrapeWithReaderMode(url);
   const pageContent = scraped?.markdown ?? null;
   if (pageContent) {
     console.log(`[scrape-property-listing] Firecrawl markdown length: ${pageContent.length}`);
