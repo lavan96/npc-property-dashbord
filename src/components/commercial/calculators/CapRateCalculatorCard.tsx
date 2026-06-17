@@ -204,7 +204,7 @@ export function CapRateCalculatorCard() {
   const hasValuationGapInputs = hasImpliedValueInputs && hasPrice;
   const benchmarkContext = useMemo(() => {
     const rawProperty = (property ?? {}) as Record<string, any>;
-    const location = prefill?.suburb || prefill?.address || rawProperty.suburb || rawProperty.location || rawProperty.address;
+    const location = (prefill as any)?.suburb || prefill?.address || rawProperty.suburb || rawProperty.location || rawProperty.address;
     const items = {
       assetCategory: prefill?.assetCategory,
       assetSubtype: prefill?.assetSubtype,
