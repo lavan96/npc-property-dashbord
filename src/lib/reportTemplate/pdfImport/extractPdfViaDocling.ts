@@ -31,14 +31,49 @@ import type {
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
-const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
+// `recoverable_failed` is terminal-for-this-attempt but should surface as a
+// retry-friendly error rather than a hard failure.
+const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled', 'recoverable_failed']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
-  if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
+  if (data?.error) {
+    const msg = String(data.error);
+    if (/^unknown operation/i.test(msg)) {
+      // Cryptic on its own — tell the caller which op the deployed function rejected.
+      throw new Error(`template-import-pdf rejected operation "${body?.operation}" (${msg}). Redeploy the edge function.`);
+    }
+    throw new Error(describeAuthError(msg) ?? msg);
+  }
   return data;
+}
+
+/**
+ * Normalize the dispatcher / sidecar `result_payload` into a single artifacts
+ * record. All paths are optional — pixel-perfect runs may carry only
+ * `rasters_path`, semantic runs may carry only `docling_path` + `markdown_path`.
+ * Falls back to `job.diagnostics_path` for backwards compatibility with the
+ * Wave G chunked pipeline (which writes there first and `result_payload` later).
+ */
+function normalizeArtifacts(job: JobRow) {
+  const payload = (job.result_payload ?? {}) as Record<string, unknown>;
+  const pickStr = (k: string): string | null => {
+    const v = payload[k];
+    return typeof v === 'string' && v.length > 0 ? v : null;
+  };
+  return {
+    doclingPath: pickStr('docling_path') ?? job.diagnostics_path ?? null,
+    rastersPath: pickStr('rasters_path'),
+    markdownPath: pickStr('markdown_path'),
+    outlinePath: pickStr('outline_path'),
+    doctagsPath: pickStr('doctags_path'),
+    pageCount: typeof payload.page_count === 'number' ? payload.page_count : null,
+    requestedMode: pickStr('requested_mode') ?? pickStr('mode'),
+    summary: payload.summary,
+    autoModeSelected: payload.auto_mode_selected === true,
+  };
 }
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
