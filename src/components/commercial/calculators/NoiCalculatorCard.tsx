@@ -18,10 +18,16 @@ interface NoiAiEstimateField { field: NoiFieldKey; currentValue: number | string
 interface StructuredNoiAiEstimate { propertyId: string; dealId: string; estimateType: 'NOI'; summary: string; estimatedFields: NoiAiEstimateField[]; calculatedOutputs: { potentialGrossIncome: number | null; vacancyLoss: number | null; recoveredOutgoings: number | null; effectiveGrossIncome: number | null; totalOutgoings: number | null; ownerBorneOutgoings: number | null; actualNOI: number | null; stabilisedNOI: number | null; lenderAdjustedNOI: number | null; }; warnings: string[]; requiredDocuments: string[]; recommendedNextAction: string; }
 interface LegacyNoiAiEstimate { marketRentPa?: number; grossPassingRentPa?: number; otherIncomePa?: number; recoveredOutgoingsPa?: number; vacancyAllowancePct?: number; incentiveAdjustment?: number; tenantRiskHaircut?: number; leaseTypeAssumed?: LeaseType | 'unknown'; outgoings?: Partial<Record<keyof OutgoingsBreakdown, number>>; ratePerSqm?: number; confidence?: 'high' | 'medium' | 'low'; reasoning?: string; }
 
-const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
+const fmt = (n: number) => Number.isFinite(n) ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n) : pending;
 const pending = 'Pending';
-const num = (v: string) => (v === '' ? 0 : Number(v));
-const valueOrNull = (v: string) => (v === '' ? null : Number(v));
+const parseNumericInput = (v: string, { allowNegative = false }: { allowNegative?: boolean } = {}) => {
+  if (v === '' || v == null) return null;
+  const parsed = Number(String(v).replace(/[$,\s%]/g, ''));
+  if (!Number.isFinite(parsed)) return null;
+  return !allowNegative && parsed < 0 ? null : parsed;
+};
+const num = (v: string, opts?: { allowNegative?: boolean }) => parseNumericInput(v, opts) ?? 0;
+const valueOrNull = (v: string, opts?: { allowNegative?: boolean }) => parseNumericInput(v, opts);
 const hasValue = (v: unknown) => v !== undefined && v !== null && v !== '' && (typeof v !== 'number' || Number.isFinite(v));
 const isMissing = (v: string) => v === '' || v == null;
 const isBlank = (v: string) => v === '' || Number(v) === 0 || v === 'unknown';
@@ -139,11 +145,11 @@ export function NoiCalculatorCard() {
     });
   });
 
-  const minimumNoiInputsReady = !isMissing(grossRent) && !isMissing(vacancy);
+  const minimumNoiInputsReady = parseNumericInput(grossRent) !== null && parseNumericInput(vacancy) !== null;
   const displayValue = (value: number, prefix = '') => minimumNoiInputsReady ? `${prefix}${fmt(value)}` : pending;
-  const result = useMemo(() => { const o: OutgoingsBreakdown = {}; OUTGOING_KEYS.forEach(k => { (o as any)[k] = num(outgoings[k] ?? ''); }); return calculateNoi({ grossRentalIncome: num(grossRent), recoveredOutgoings: num(recovered), otherIncome: num(other), vacancyAllowancePct: num(vacancy), outgoings: o }); }, [grossRent, recovered, other, vacancy, outgoings]);
+  const result = useMemo(() => { const o: OutgoingsBreakdown = {}; OUTGOING_KEYS.forEach(k => { (o as any)[k] = minimumNoiInputsReady ? num(outgoings[k] ?? '') : 0; }); return calculateNoi({ grossRentalIncome: num(grossRent), recoveredOutgoings: minimumNoiInputsReady ? num(recovered) : 0, otherIncome: minimumNoiInputsReady ? num(other) : 0, vacancyAllowancePct: num(vacancy), outgoings: o }); }, [grossRent, recovered, other, vacancy, outgoings, minimumNoiInputsReady]);
   const statusTags = useMemo(() => Object.values(sources).filter((v, i, a) => a.indexOf(v) === i) as any, [sources]);
-  const assessment = useMemo(() => calculateNoiEngine({ dataSourceMode: aiEstimate ? 'aiEstimate' : prefill ? 'global' : 'manualOverride', leaseType, grossPassingRent: num(grossRent), otherIncome: num(other), marketRent: num(marketRent), vacancyAllowancePct: num(vacancy), recoveredOutgoings: num(recovered), outgoings: OUTGOING_KEYS.map(k => ({ name: labelMap[k], amount: num(outgoings[k] ?? '0'), recoverablePct: num(recovered) > 0 ? 100 : 0 })), incentiveAdjustment: num(incentiveAdjustment), tenantRiskHaircut: num(tenantRiskHaircut), leaseDocsVerified: leaseType !== 'unknown', confidenceTags: statusTags.filter(t => t !== 'Scraped') }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut, statusTags, aiEstimate, prefill]);
+  const assessment = useMemo(() => calculateNoiEngine({ dataSourceMode: aiEstimate ? 'aiEstimate' : prefill ? 'global' : 'manualOverride', leaseType, grossPassingRent: grossRent, otherIncome: other, marketRent: marketRent, vacancyAllowancePct: vacancy, recoveredOutgoings: recovered, outgoings: OUTGOING_KEYS.map(k => ({ name: labelMap[k], amount: outgoings[k] ?? '', recoverablePct: num(recovered) > 0 ? 100 : 0 })), incentiveAdjustment: incentiveAdjustment, tenantRiskHaircut: tenantRiskHaircut, leaseDocsVerified: leaseType !== 'unknown', confidenceTags: statusTags.filter(t => t !== 'Scraped') }, noiBasis), [grossRent, recovered, other, vacancy, outgoings, leaseType, noiBasis, marketRent, incentiveAdjustment, tenantRiskHaircut, statusTags, aiEstimate, prefill]);
 
   const currentValue = (f: NoiFieldKey) => { const raw = currentRawValue(f); return f === 'leaseType' || f === 'noiBasis' ? raw : raw === '' ? null : num(raw); };
   const normaliseEstimate = (estimate: LegacyNoiAiEstimate | StructuredNoiAiEstimate, snapshot: any): StructuredNoiAiEstimate => {
