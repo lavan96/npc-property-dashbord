@@ -172,15 +172,54 @@ export function PropertyImportPanel({ category, onImported }: Props) {
     setScrapeError(null);
 
     try {
-      const { data, error } = await invokeSecureFunction('scrape-property-listing', {
+      // 1) Enqueue the scrape job (returns immediately with a jobId).
+      const { data: startData, error: startError } = await invokeSecureFunction('scrape-property-listing', {
         url: propertyUrl,
         propertyCategory: category,
-      }, { timeoutMs: 180000 });
+      }, { timeoutMs: 30000 });
 
-      if (error) throw new Error(error.message || 'Failed to scrape property listing');
-      if (!data?.success) throw new Error(data?.error || 'Scraping failed');
+      if (startError) throw new Error(startError.message || 'Failed to start scraping job');
+      if (!startData?.success || !startData?.jobId) {
+        throw new Error(startData?.error || 'Failed to start scraping job');
+      }
 
-      applyImportedData(normalizeDetails(data.data, category, data.data?.sourceUrl || propertyUrl), 'URL listing');
+      const jobId: string = startData.jobId;
+
+      // 2) Poll for status — backend does the long work via EdgeRuntime.waitUntil.
+      const POLL_INTERVAL_MS = 3000;
+      const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes
+      const startedAt = Date.now();
+      let finalData: any = null;
+
+      while (true) {
+        if (Date.now() - startedAt > MAX_WAIT_MS) {
+          throw new Error('Scrape is taking longer than expected. Please try again or use the PDF/Image tab.');
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+        const { data: pollData, error: pollError } = await invokeSecureFunction('scrape-property-listing', {
+          jobId,
+        }, { timeoutMs: 20000 });
+
+        if (pollError) throw new Error(pollError.message || 'Failed to check scrape status');
+        if (!pollData?.success) throw new Error(pollData?.error || 'Failed to check scrape status');
+
+        if (pollData.status === 'succeeded') {
+          finalData = pollData.data;
+          break;
+        }
+        if (pollData.status === 'failed') {
+          throw new Error(pollData.error || 'Scraping failed');
+        }
+        // queued | processing → keep polling
+      }
+
+      if (!finalData) throw new Error('No data returned from scrape');
+
+      applyImportedData(
+        normalizeDetails(finalData, category, finalData?.sourceUrl || propertyUrl),
+        'URL listing',
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to scrape property listing';
       setScrapeError(message);
@@ -189,6 +228,7 @@ export function PropertyImportPanel({ category, onImported }: Props) {
       setIsScraping(false);
     }
   };
+
 
   const handleDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();

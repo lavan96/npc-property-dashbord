@@ -13751,6 +13751,48 @@ export type Database = {
         }
         Relationships: []
       }
+      property_scrape_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          property_category: string
+          result: Json | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          url: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          property_category?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          url: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          property_category?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          url?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       purchase_file_applicants: {
         Row: {
           created_at: string
