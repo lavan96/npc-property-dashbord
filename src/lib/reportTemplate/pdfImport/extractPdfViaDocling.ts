@@ -442,6 +442,33 @@ export async function extractPdfViaDocling(
     const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
     const totalPages = job.page_count ?? template.pages.length;
 
+    // Payload diagnostics — guard against the resync timeout we hit when
+    // raster data leaked into the schema. If something starts re-embedding
+    // base64/data URLs, fail fast with a clear message instead of waiting
+    // for an upstream timeout.
+    const schemaJson = JSON.stringify(template);
+    const cdirJson = JSON.stringify(cdir);
+    const fidelityJson = JSON.stringify(cdirFidelity);
+    const schemaBytes = new TextEncoder().encode(schemaJson).length;
+    const cdirBytes = new TextEncoder().encode(cdirJson).length;
+    const fidelityBytes = new TextEncoder().encode(fidelityJson).length;
+    const schemaHasDataImage = schemaJson.includes('data:image');
+    const schemaHasBase64 = /;base64,/.test(schemaJson);
+    console.log('[docling] resync payload sizes', {
+      schemaBytes,
+      cdirBytes,
+      fidelityBytes,
+      schemaHasDataImage,
+      schemaHasBase64,
+    });
+    const MAX_PAYLOAD_BYTES = 50 * 1024 * 1024;
+    if (schemaBytes > MAX_PAYLOAD_BYTES || schemaHasDataImage || schemaHasBase64) {
+      throw new Error(
+        `Refusing to resync: schema payload too heavy (schemaBytes=${schemaBytes}, dataImage=${schemaHasDataImage}, base64=${schemaHasBase64}). Raster data must stay in storage references, not embedded in the schema.`,
+      );
+    }
+
+
     // Per spec: when the underlying pdf_import_jobs row is already
     // `succeeded/parsed` and we have artifacts in hand, a downstream
     // template-import-pdf persistence failure (e.g. an older deployment
