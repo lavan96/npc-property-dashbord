@@ -162,20 +162,75 @@ function modeToWire(mode: DoclingPlanMode): string {
   return mode === 'pixel-perfect' ? 'pixel_perfect' : mode;
 }
 
-async function downloadJson<T>(path: string): Promise<T | null> {
-  // Sign via the dispatcher — the anon client can't sign URLs on the private
-  // diagnostics bucket under our custom-auth model.
+async function downloadJson<T>(path: string): Promise<T> {
+  console.info('[PDF_IMPORT_DEBUG] requesting signed artifact URL', { path });
+
   const { data, error } = await invokeSecureFunction(
     'pdf-parse-dispatch',
     { operation: 'download', path },
     { timeoutMs: 30_000 },
   );
-  if (error) return null;
-  const signed = (data as { signed_url?: string } | null)?.signed_url;
-  if (!signed) return null;
-  const res = await fetch(signed);
-  if (!res.ok) return null;
-  return (await res.json()) as T;
+
+  if (error) {
+    throw new Error(
+      `pdf-parse-dispatch download invoke failed for ${path}: ${
+        describeAuthError(error.message) ?? error.message ?? 'unknown invoke error'
+      }`,
+    );
+  }
+
+  const payload = data as {
+    signed_url?: string;
+    signedUrl?: string;
+    error?: string;
+    details?: unknown;
+    function?: string;
+    received_operation?: string;
+    received_keys?: string[];
+  } | null;
+
+  if (payload?.error) {
+    throw new Error(
+      `pdf-parse-dispatch download failed for ${path}: ${payload.error}${
+        payload.details ? ` details=${JSON.stringify(payload.details)}` : ''
+      }${payload.function ? ` function=${payload.function}` : ''}${
+        payload.received_operation ? ` received_operation=${payload.received_operation}` : ''
+      }${payload.received_keys ? ` received_keys=${payload.received_keys.join(',')}` : ''}`,
+    );
+  }
+
+  const signedUrl = payload?.signed_url ?? payload?.signedUrl;
+
+  if (!signedUrl) {
+    throw new Error(
+      `pdf-parse-dispatch download returned no signed_url for ${path}. Response keys: ${
+        payload ? Object.keys(payload).join(', ') : 'null'
+      }`,
+    );
+  }
+
+  console.info('[PDF_IMPORT_DEBUG] fetching signed artifact URL', {
+    path,
+    signedUrlPrefix: signedUrl.slice(0, 80),
+  });
+
+  const res = await fetch(signedUrl);
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(
+      `Signed artifact fetch failed for ${path}: HTTP ${res.status} ${res.statusText}. ${text.slice(0, 500)}`,
+    );
+  }
+
+  try {
+    return (await res.json()) as T;
+  } catch (e) {
+    const text = await res.text().catch(() => '');
+    throw new Error(
+      `Signed artifact JSON parse failed for ${path}: ${(e as Error).message}. Body preview: ${text.slice(0, 300)}`,
+    );
+  }
 }
 
 interface JobRow {
