@@ -648,7 +648,9 @@ Deno.serve(async (req) => {
       return json({ rows: filtered, stats });
     }
 
-    return json({ error: 'unknown operation' }, 400);
+    // Include the rejected operation name so the frontend can stage a clearer
+    // toast than just "unknown operation" (which previously surfaced raw).
+    return json({ error: `unknown operation: ${operation}`, operation }, 400);
   } catch (e) {
     return json({ error: String((e as Error).message ?? e) }, 500);
   }
