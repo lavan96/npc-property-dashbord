@@ -36,6 +36,8 @@ interface CapRateAiEstimate {
   capRateRange: { low: number | null; mid: number | null; high: number | null };
   recommendedTargetCapRate: number | null;
   confidence: 'High' | 'Medium' | 'Low';
+  benchmarkBasis: string;
+  suggestedValuationRange: { low: number | null; midpoint: number | null; high: number | null };
   supportingInputsUsed: string[];
   missingInputs: string[];
   reasoningSummary: string;
@@ -60,6 +62,9 @@ function firstNumber(...values: unknown[]) {
   return undefined;
 }
 
+const valueAtCap = (noi: number | null | undefined, capRatePct: number | null | undefined) =>
+  noi && capRatePct && capRatePct > 0 ? noi / (capRatePct / 100) : null;
+
 function normaliseEstimate(raw: any, snapshot: any, sourceBefore: string): CapRateAiEstimate {
   const low = firstNumber(raw?.capRateRange?.low, raw?.capRateLowPct) ?? null;
   const mid = firstNumber(raw?.capRateRange?.mid, raw?.capRateMidPct) ?? null;
@@ -68,6 +73,10 @@ function normaliseEstimate(raw: any, snapshot: any, sourceBefore: string): CapRa
   const confidence = String(raw?.confidence ?? 'Low').toLowerCase();
   const confidenceTitle = confidence === 'high' ? 'High' : confidence === 'medium' ? 'Medium' : 'Low';
   const missingInputs = raw?.missingInputs ?? snapshot.missingInputs ?? [];
+  const selectedNoi = firstNumber(snapshot.marketNoi, snapshot.passingNoi, snapshot.actualNoi, snapshot.stabilisedNoi, snapshot.lenderAdjustedNoi);
+  const valuationLow = firstNumber(raw?.suggestedValuationRange?.low, raw?.valuationRange?.low) ?? valueAtCap(selectedNoi, high);
+  const valuationMidpoint = firstNumber(raw?.suggestedValuationRange?.midpoint, raw?.suggestedValuationRange?.mid, raw?.valuationRange?.midpoint, raw?.valuationRange?.mid) ?? valueAtCap(selectedNoi, rec);
+  const valuationHigh = firstNumber(raw?.suggestedValuationRange?.high, raw?.valuationRange?.high) ?? valueAtCap(selectedNoi, low);
   const warnings = [...(raw?.warnings ?? []), ...(missingInputs.length ? ['AI cap rate estimate accuracy is limited because key property details are missing.'] : [])];
   return {
     propertyId: snapshot.propertyId ?? '',
@@ -77,6 +86,8 @@ function normaliseEstimate(raw: any, snapshot: any, sourceBefore: string): CapRa
     capRateRange: { low, mid, high },
     recommendedTargetCapRate: rec,
     confidence: confidenceTitle,
+    benchmarkBasis: raw?.benchmarkBasis ?? raw?.basis ?? 'Indicative market benchmark based on property type, location, income, lease profile and supplied value context.',
+    suggestedValuationRange: { low: valuationLow, midpoint: valuationMidpoint, high: valuationHigh },
     supportingInputsUsed: raw?.supportingInputsUsed ?? snapshot.supportingInputsUsed ?? [],
     missingInputs,
     reasoningSummary: raw?.reasoningSummary ?? raw?.reasoning ?? 'Estimate generated from supplied property, NOI, value, lease and asset-quality context.',
@@ -114,6 +125,7 @@ export function CapRateCalculatorCard() {
     const bankValue = firstNumber(profile.propertyValuation.bankValuation, rawProperty.bank_valuation, rawProperty.bankValuation);
     const scrapedPrice = firstNumber(rawProperty.scraped_asking_price, rawProperty.asking_price, rawProperty.guide_price, rawProperty.price_guide, rawProperty.extracted_price, rawProperty.extractedAskingPrice);
     const acceptedAiCap = fields.targetCap.source === 'AI Benchmark' ? firstNumber(fields.targetCap.value) : undefined;
+    const verifiedValuerCap = firstNumber(rawProperty.verified_cap_rate, rawProperty.verifiedCapRate, rawProperty.valuer_cap_rate, rawProperty.valuerCapRate, rawProperty.valuation_cap_rate, rawProperty.valuationCapRate);
     const savedBenchmark = firstNumber((profile.capRateOutputs as any)?.targetCapRatePct, (profile.capRateOutputs as any)?.capitalisationRate, profile.propertyValuation.estimatedCapRate, rawProperty.benchmark_cap_rate, rawProperty.cap_rate);
 
     const pick = (...items: Array<SourceCandidate | undefined>) => items.find(item => item && item.value > 0);
@@ -121,7 +133,7 @@ export function CapRateCalculatorCard() {
       passingNoi: pick(actualNoi ? { value: actualNoi, source: 'NOI Tab', sourceDetail: 'NOI tab Actual NOI' } : undefined, profilePassingNoi ? { value: profilePassingNoi, source: 'Property Profile', sourceDetail: 'Property profile Passing NOI' } : undefined, scrapedPassingNoi ? { value: scrapedPassingNoi, source: 'Scraped', sourceDetail: 'Scraped rental / income data' } : undefined),
       marketNoi: pick(stabilisedNoi ? { value: stabilisedNoi, source: 'NOI Tab', sourceDetail: 'NOI tab Stabilised NOI' } : undefined, lenderAdjustedNoi ? { value: lenderAdjustedNoi, source: 'NOI Tab', sourceDetail: 'NOI tab Lender-Adjusted NOI' } : undefined, profileMarketNoi ? { value: profileMarketNoi, source: 'Property Profile', sourceDetail: 'Property profile market rent / stabilised NOI' } : undefined, scrapedMarketNoi ? { value: scrapedMarketNoi, source: 'Scraped', sourceDetail: 'Scraped market rental / income data' } : undefined),
       price: pick(purchasePrice ? { value: purchasePrice, source: 'Property Profile', sourceDetail: 'Property profile purchase price' } : undefined, estimatedValue ? { value: estimatedValue, source: 'Property Profile', sourceDetail: 'Estimated market value' } : undefined, bankValue ? { value: bankValue, source: 'Property Profile', sourceDetail: 'Bank valuation' } : undefined, scrapedPrice ? { value: scrapedPrice, source: 'Scraped', sourceDetail: 'Scraped asking price / guide price' } : undefined),
-      targetCap: pick(acceptedAiCap ? { value: acceptedAiCap, source: 'AI Benchmark', sourceDetail: 'Accepted AI benchmark cap rate' } : undefined, savedBenchmark ? { value: savedBenchmark, source: savedBenchmark === (profile.capRateOutputs as any)?.targetCapRatePct ? 'AI Benchmark' : 'Property Profile', sourceDetail: 'Saved property benchmark cap rate' } : undefined),
+      targetCap: pick(verifiedValuerCap ? { value: verifiedValuerCap, source: 'Verified', sourceDetail: 'Verified valuer cap rate' } : undefined, acceptedAiCap ? { value: acceptedAiCap, source: 'AI Benchmark', sourceDetail: 'Accepted AI benchmark cap rate' } : undefined, savedBenchmark ? { value: savedBenchmark, source: savedBenchmark === (profile.capRateOutputs as any)?.targetCapRatePct ? 'AI Benchmark' : 'Property Profile', sourceDetail: 'Saved property benchmark cap rate' } : undefined),
     };
   };
 
@@ -182,7 +194,27 @@ export function CapRateCalculatorCard() {
   const hasYieldInputs = hasPrice && hasSelectedNoi;
   const hasImpliedValueInputs = hasSelectedNoi && hasTargetCap;
   const hasValuationGapInputs = hasImpliedValueInputs && hasPrice;
-  const canEstimateCapRate = Boolean(prefill && prefill.address && prefill.state && prefill.assetSubtype && hasPrice && hasSelectedNoi);
+  const benchmarkContext = useMemo(() => {
+    const rawProperty = (property ?? {}) as Record<string, any>;
+    const location = prefill?.suburb || prefill?.address || rawProperty.suburb || rawProperty.location || rawProperty.address;
+    const items = {
+      assetCategory: prefill?.assetCategory,
+      assetSubtype: prefill?.assetSubtype,
+      state: prefill?.state,
+      location,
+      leaseStatus: rawProperty.lease_status || rawProperty.leaseStatus || profile.leaseIncome?.leaseStatus,
+      leaseType: profile.leaseIncome?.leaseType || rawProperty.lease_type || rawProperty.leaseType,
+      income: hasSelectedNoi ? 'NOI supplied' : undefined,
+      priceValue: hasPrice ? 'Value supplied' : undefined,
+    };
+    const missing = Object.entries(items).filter(([, value]) => !value || value === 'unknown').map(([key]) => key);
+    const optionalMissing = [
+      !firstNumber(rawProperty.tenant_strength, rawProperty.tenantStrength, rawProperty.tenant_quality, rawProperty.tenantQuality) && !(rawProperty.tenant_covenant || rawProperty.tenantCovenant) ? 'Tenant covenant / strength' : undefined,
+      !firstNumber(prefill?.walesYears, rawProperty.wale, rawProperty.waleYears) ? 'WALE' : undefined,
+    ].filter(Boolean) as string[];
+    return { ready: missing.length === 0, missing, optionalMissing, location };
+  }, [hasPrice, hasSelectedNoi, prefill, profile.leaseIncome, property]);
+  const canEstimateCapRate = Boolean(prefill && benchmarkContext.ready);
   const sensitivityRates = useMemo(() => {
     const target = positiveNum(targetCap);
     return target > 0 ? [target - 1, target - 0.5, target, target + 0.5, target + 1].filter(r => r > 0).map(r => Number(r.toFixed(2))) : [5.5, 6, 6.5, 7, 7.5];
@@ -209,12 +241,12 @@ export function CapRateCalculatorCard() {
   const buildSnapshot = () => {
     const missingInputs = ['address', 'assetSubtype', 'state', 'glaSqm', 'siteAreaSqm', 'walesYears', 'passingNoi', 'marketNoi', 'price'].filter(k => !({ ...prefill, price: num(price), passingNoi: num(passingNoi), marketNoi: num(marketNoi) } as any)?.[k]);
     const supportingInputsUsed = Object.entries({ address: prefill?.address, state: prefill?.state, assetSubtype: prefill?.assetSubtype, glaSqm: prefill?.glaSqm, siteAreaSqm: prefill?.siteAreaSqm, hardstandSqm: prefill?.hardstandSqm, walesYears: prefill?.walesYears, passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price) }).filter(([, v]) => v != null && v !== '' && v !== 0).map(([k]) => k);
-    return { propertyId: prefill?.propertyId, dealId: prefill?.propertyId, address: prefill?.address, state: prefill?.state, propertyType: prefill?.assetCategory, assetSubtype: prefill?.assetSubtype, glaSqm: prefill?.glaSqm, siteAreaSqm: prefill?.siteAreaSqm, siteCoverPct: prefill?.siteCoverPct, hardstandSqm: prefill?.hardstandSqm, tenant: (property as any)?.tenant, tenantQuality: (property as any)?.tenant_quality, leaseStatus: (property as any)?.lease_status, leaseType: profile.leaseIncome.leaseType, wale: prefill?.walesYears ?? (property as any)?.wale, leaseExpiry: (property as any)?.lease_expiry, currentRent: prefill?.grossPassingRentPa, marketRent: prefill?.marketRentPa, passingNoi: num(passingNoi), marketNoi: num(marketNoi), actualNoi: (profile.noiOutputs as any)?.actualNoi, stabilisedNoi: (profile.noiOutputs as any)?.stabilisedNoi, lenderAdjustedNoi: (profile.noiOutputs as any)?.lenderAdjustedNoi, vacancyAllowance: profile.leaseIncome.vacancyAllowancePct, outgoingsRecovery: prefill?.recoveredOutgoingsPa, currentPriceValue: num(price), purchasePrice: prefill?.purchasePrice, ownershipEntity: (property as any)?.ownership_entity, current: { passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap), statuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.source])) }, riskWarnings: warnings, supportingInputsUsed, missingInputs };
+    return { propertyId: prefill?.propertyId, dealId: prefill?.propertyId, address: prefill?.address, state: prefill?.state, location: benchmarkContext.location, propertyType: prefill?.assetCategory, assetSubtype: prefill?.assetSubtype, glaSqm: prefill?.glaSqm, siteAreaSqm: prefill?.siteAreaSqm, siteCoverPct: prefill?.siteCoverPct, hardstandSqm: prefill?.hardstandSqm, tenant: (property as any)?.tenant, tenantQuality: (property as any)?.tenant_quality, leaseStatus: (property as any)?.lease_status, leaseType: profile.leaseIncome.leaseType, wale: prefill?.walesYears ?? (property as any)?.wale, leaseExpiry: (property as any)?.lease_expiry, currentRent: prefill?.grossPassingRentPa, marketRent: prefill?.marketRentPa, passingNoi: num(passingNoi), marketNoi: num(marketNoi), actualNoi: (profile.noiOutputs as any)?.actualNoi, stabilisedNoi: (profile.noiOutputs as any)?.stabilisedNoi, lenderAdjustedNoi: (profile.noiOutputs as any)?.lenderAdjustedNoi, vacancyAllowance: profile.leaseIncome.vacancyAllowancePct, outgoingsRecovery: prefill?.recoveredOutgoingsPa, currentPriceValue: num(price), purchasePrice: prefill?.purchasePrice, ownershipEntity: (property as any)?.ownership_entity, current: { passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price), targetCapRatePct: num(targetCap), statuses: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.source])) }, riskWarnings: warnings, supportingInputsUsed, missingInputs: [...missingInputs, ...benchmarkContext.optionalMissing] };
   };
 
   const requestEstimate = async () => {
-    if (!prefill) { toast.error('Select a property in the Overview tab to anchor the AI cap-rate estimate.'); return; }
-    if (!canEstimateCapRate) { toast.error('Add property details, NOI and price/value before estimating a cap-rate range.'); return; }
+    if (!prefill) { toast.error('More property information is required before a cap rate benchmark can be estimated.'); return; }
+    if (!canEstimateCapRate) { toast.error('More property information is required before a cap rate benchmark can be estimated.'); return; }
     setEstimating(true); audit('AI cap rate estimate requested', 'targetCapRatePct', num(targetCap), null, 'AI Estimate');
     try {
       const snapshot = buildSnapshot();
@@ -233,8 +265,8 @@ export function CapRateCalculatorCard() {
     if (!accepted) { toast.error('Enter a cap rate to apply.'); return; }
     setFields(prev => ({ ...prev, targetCap: { value: String(accepted), source: 'AI Benchmark', sourceDetail: 'Accepted AI benchmark cap rate', dirty: true, originalValue: prev.targetCap.originalValue ?? prev.targetCap.value, originalSource: prev.targetCap.originalSource ?? prev.targetCap.source } }));
     updateGlobal('capRateOutputs', { ...capAssessment, impliedValue: ((positiveNum(marketNoi) ?? positiveNum(passingNoi)) ?? 0) / (accepted / 100), benchmarkLabel: 'Benchmark only — valuer confirmation required.' } as any);
-    updateGlobal('assumptions', { 'capRate.targetCapRatePct': { fieldKey: 'capRate.targetCapRatePct', label: 'Target Cap Rate %', confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: aiEstimate?.reasoningSummary, verificationRequired: true, requiredDocuments: aiEstimate?.requiredDocuments, updatedAt: new Date().toISOString() } } as any);
-    audit('AI cap rate estimate accepted', 'targetCapRatePct', targetCap, accepted, 'AI Estimate');
+    updateGlobal('assumptions', { 'capRate.targetCapRatePct': { fieldKey: 'capRate.targetCapRatePct', label: 'Target Cap Rate %', confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: aiEstimate?.reasoningSummary, verificationRequired: true, requiredDocuments: aiEstimate?.requiredDocuments, benchmarkRange: aiEstimate?.capRateRange, selectedRate: accepted, suggestedValuationRange: aiEstimate?.suggestedValuationRange, benchmarkBasis: aiEstimate?.benchmarkBasis, updatedAt: new Date().toISOString() } } as any);
+    audit('AI cap rate estimate accepted', 'targetCapRatePct', { previousValue: targetCap, benchmarkRange: aiEstimate?.capRateRange, suggestedValuationRange: aiEstimate?.suggestedValuationRange }, { selectedRate: accepted, source: 'AI Benchmark' }, 'AI Estimate');
     toast.success('AI benchmark cap rate applied. Valuer confirmation still required.');
   };
   const rejectEstimate = () => { audit('AI cap rate estimate rejected', 'targetCapRatePct', aiEstimate?.recommendedTargetCapRate, targetCap, 'AI Estimate'); setAiEstimate(null); toast.info('AI cap-rate estimate rejected; current value kept.'); };
@@ -274,7 +306,7 @@ export function CapRateCalculatorCard() {
           </div>
         </div>
 
-        {aiEstimate && <div className="rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-2"><div><span className="font-medium text-primary">AI cap-rate range ({aiEstimate.confidence}):</span> {pct(aiEstimate.capRateRange.low ?? 0)} – {pct(aiEstimate.capRateRange.high ?? 0)} · recommended <span className="font-semibold text-primary">{pct(aiEstimate.recommendedTargetCapRate ?? 0)}</span></div><div>{aiEstimate.reasoningSummary}</div><div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end"><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.mid)}>Accept mid</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high</Button><div><Label>Edit proposed %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" disabled={!canEstimateCapRate} onClick={() => acceptEstimate()}>Apply</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject / keep current</Button></div></div>}
+        {aiEstimate && <div className="rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><span className="font-medium text-primary">AI benchmark preview:</span> {pct(aiEstimate.capRateRange.low)} – {pct(aiEstimate.capRateRange.high)} · midpoint <span className="font-semibold text-primary">{pct(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}</span></div><Badge variant="outline">{aiEstimate.confidence} confidence</Badge></div><div className="grid gap-2 md:grid-cols-2"><PreviewItem label="Benchmark basis" value={aiEstimate.benchmarkBasis} /><PreviewItem label="Valuer confirmation" value={aiEstimate.requiresValuerConfirmation ? 'Benchmark only — valuer confirmation required.' : 'Not flagged by benchmark response'} /><PreviewItem label="Suggested valuation range" value={`${displayMoney(aiEstimate.suggestedValuationRange.low, aiEstimate.suggestedValuationRange.low !== null)} – ${displayMoney(aiEstimate.suggestedValuationRange.high, aiEstimate.suggestedValuationRange.high !== null)}`} /><PreviewItem label="Suggested valuation midpoint" value={displayMoney(aiEstimate.suggestedValuationRange.midpoint, aiEstimate.suggestedValuationRange.midpoint !== null)} /></div><div><div className="font-medium text-foreground">Key assumptions used</div><div>{aiEstimate.supportingInputsUsed.join(', ') || 'No supporting inputs returned.'}</div></div><div><div className="font-medium text-foreground">Missing information affecting reliability</div><div>{aiEstimate.missingInputs.join(', ') || 'None flagged.'}</div></div><p className="text-amber-200">Benchmark only — valuer confirmation required.</p><div className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end"><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}>Accept midpoint</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low end</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high end</Button><div><Label>Custom rate %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" disabled={!canEstimateCapRate} onClick={() => acceptEstimate()}>Apply custom</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject estimate</Button></div></div>}
       </CardHeader>
 
       <CardContent className="space-y-5">
@@ -360,6 +392,10 @@ export function CapRateCalculatorCard() {
 
 function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, step, placeholder }: { label: string; state: FieldState; onChange: (v: string) => void; onKeepOverride: () => void; onUseSource: () => void; step?: string; placeholder?: string }) {
   return <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]" title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input type="text" inputMode="decimal" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{state.pendingSource && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}</div>;
+}
+
+function PreviewItem({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-md border border-primary/10 bg-background/40 px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-foreground">{value}</div></div>;
 }
 
 function StatusPill({ label, value }: { label: string; value: string }) {
