@@ -284,65 +284,109 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
   }
 
   const system = [
-    "You extract structured property listing details for Australian real estate listings across RESIDENTIAL, COMMERCIAL and INDUSTRIAL asset classes.",
-    "STEP 1 — DETECT ASSET CLASS: First determine detected_asset_class ∈ {residential | commercial | industrial} from explicit signals in the source (zoning code like B6/IN1/IN2, terms like 'NLA', 'GFA', 'cap rate', 'WALE', 'outgoings', 'going concern', 'tenant', 'lease', 'warehouse', 'office', 'retail', 'industrial estate', dock doors, clearance, kVA). Set detected_asset_confidence 0–1. If the user-provided hint says 'auto' (default), trust your detection. If the hint is a specific class, you may still override when evidence clearly contradicts it.",
-    "STEP 2 — STRICT EXTRACTION: Only extract values explicitly stated in the source. NEVER guess, NEVER infer from URL slugs, NEVER carry over examples.",
-    "STEP 3 — NUMBER FORMATTING: Raw integers/decimals only (no $, commas, % signs). Convert sqft→sqm (×0.0929), ha→sqm (×10000), psm/pa rent to total pa when GLA/NLA given.",
-    "STEP 4 — DO NOT FABRICATE agents, prices, sizes, features, tenants, cap rates, NOI, WALE, or yields. Return null when uncertain.",
+    "You are a senior Australian real estate data analyst. Your job is to EXTRACT every available structured field from a property listing (residential, commercial OR industrial) and return it as JSON matching the provided schema exactly.",
+    "",
+    "PRIME DIRECTIVES:",
+    "1. EXTRACT MAXIMALLY — examine the ENTIRE source (title, meta, hero, headlines, body copy, bullet lists, captions, tables, agent block, schema.org JSON-LD, alt text, footer). Many listings bury key data (rates, strata, rent, NLA, cap rate, outgoings) inside feature lists, captions, image overlays, fine print, or the agent contact card. Read every line before deciding a field is null.",
+    "2. NEVER FABRICATE — if a value is not explicitly present, return null. Do NOT infer from URL slugs, suburb medians, or 'typical' values. No guesses.",
+    "3. NEVER CARRY-OVER EXAMPLES — sample values in this prompt are illustrative only.",
+    "4. ASSET-CLASS DETECTION (run first):",
+    "   - residential: house, apartment, townhouse, villa, unit, duplex, granny flat, land lot, H&L package, off-the-plan.",
+    "   - commercial: office, retail, shop, showroom, medical, childcare, hospitality, mixed-use, NLA, WALE, outgoings, cap rate, going concern.",
+    "   - industrial: warehouse, factory, manufacturing, logistics, distribution, IN1/IN2/IN3 zoning, GLA, clearance, dock doors, kVA, hardstand, truck access.",
+    "   Set detected_asset_class + detected_asset_confidence (0–1). If hint != 'auto' AND evidence agrees, use the hint; if evidence clearly contradicts, override.",
+    "5. NUMBER NORMALISATION (strict):",
+    "   - Strip $, commas, %, 'AUD', 'per', 'pa', 'p.a.', 'p/w', '+GST', 'approx', '~'. Return raw numerics only.",
+    "   - Areas: sqft→sqm (×0.0929), ha→sqm (×10000), acres→sqm (×4046.86). Always sqm.",
+    "   - Residential rent (weekly_rent): weekly stays weekly; monthly→weekly (×12/52); annual→weekly (÷52).",
+    "   - Commercial rent (vendor_advised_rent_pa): weekly→pa (×52), monthly→pa (×12); if quoted as $/sqm pa multiply by NLA/GLA when both are given.",
+    "   - Power: amps×voltage÷1000 = kVA (assume 415V 3-phase if unspecified).",
+    "   - Cap rate / yield: percent number (return 6.25 not 0.0625).",
+    "   - Price ranges → midpoint. 'Offers over $X'/'Buyers above $X' → X. 'Contact agent'/'POA'/'Auction' with no figure → null.",
+    "   - Strata quarterly → annual (×4). Council rates quarterly → annual (×4).",
+    "6. ADDRESS RULES: Use the EXACT street address as written. Split into address (street line), suburb, state (NSW/VIC/QLD/SA/WA/TAS/NT/ACT — always uppercase), postcode (4-digit). For suburb-only/portfolio/landing pages set address=null but still fill suburb/state/postcode if known.",
+    "7. CROSS-CHECK PASS: Before returning, re-scan the source for every field you set to null — if a synonym or alternative phrasing exists (see SYNONYM HINTS below), fill it. Listings frequently use synonyms.",
+    "8. OUTPUT: Return JSON only. Match the schema exactly. Every required key must appear (use null when absent).",
   ].join('\n');
 
   const sourceBlock = pageContent
-    ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 32000)}\n---\n\n`
+    ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 60000)}\n---\n\n`
     : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
 
   const user = `${sourceBlock}URL: ${url}
 Property category hint: ${propertyCategory} ${propertyCategory === 'auto' ? '(auto-detect from content)' : ''}
 
+============= SYNONYM HINTS (look for ANY of these labels) =============
+- price_aud: "Price", "Asking", "Guide", "Offers Above/Over", "For Sale $", "Buyers Guide", "Expressions of Interest closing $".
+- weekly_rent: "$X p/w", "Rent", "Rental", "Currently leased at", "Rental return", "Estimated rent", "Rental appraisal".
+- council_rates: "Council rates", "Rates pa", "Rates: $".
+- water_rates: "Water", "Water rates", "Sydney Water", "Water service".
+- strata_fees: "Strata", "Body Corp", "Owners Corporation", "Quarterly levies" (convert quarterly → annual ×4).
+- land_size_sqm: "Land", "Land area", "Block size", "Allotment", "Lot size".
+- build_size_sqm: "Building", "House size", "Internal", "Floor area", "Living".
+- year_built: "Built", "Year built", "Constructed", "Circa".
+- bedrooms/bathrooms/car_spaces: bed/bath/car icons, "4 Beds 2 Baths 2 Cars", schema.org BedroomCount/BathroomCount.
+- nla_sqm / gla_sqm / gfa_sqm: "NLA", "Net Lettable Area", "GLA", "Gross Lettable Area", "GFA", "Building Area", "Total area".
+- site_area_sqm: "Site area", "Land area" (commercial/industrial).
+- hardstand_sqm: "Hardstand", "Concrete hardstand", "Sealed yard".
+- clearance_metres: "Eaves", "Clearance", "Internal height", "Ridge height", "Min/Max clearance".
+- power_kva: "kVA", "amps", "3-phase power", "Heavy power".
+- dock_doors: "Recessed docks", "Loading docks", "Roller doors", "On-grade doors".
+- ground_floor_load_kpa: "Floor load", "Slab loading", "kPa".
+- passing_noi_pa / market_noi_pa: "Net Income", "NOI", "Net rental", "Net Operating Income".
+- passing_cap_rate_pct / market_cap_rate_pct: "Cap rate", "Yield (net)", "Initial yield", "Capitalisation rate".
+- vendor_advised_rent_pa: "Gross income", "Total rent pa", "Rental income".
+- outgoings_total_pa: "Outgoings", "Operating costs", "Recoverable outgoings".
+- lease_type: "Net Lease", "Gross Lease", "Triple Net", "NNN", "Semi-gross".
+- lease_expiry_date / lease_options: "Expires", "Term remaining", "Options 5+5".
+- wale_years: "WALE", "Weighted Average Lease Expiry".
+- tenant_names: tenant logos, "Leased to", "Occupied by", anchor tenant.
+- gst_treatment: "Going concern", "Plus GST", "GST inclusive", "Margin scheme".
+- zoning: "Zoning", "Zone", LEP codes (R1/R2/R3/R4, B1-B7, IN1/IN2/IN3, E1-E4, MU1, SP1/SP2).
+- tenure: "Freehold", "Strata title", "Leasehold", "Crown lease".
+
 ============= UNIVERSAL FIELDS =============
-- address: exact street address as written on the listing. For suburb-only/area pages, set null and only fill suburb/state/postcode.
-- price_aud: raw integer in AUD. Skip "Contact Agent"/"Offers over"/"Auction" unless an explicit number is shown. If a range is given, use the midpoint.
-- Sizes (land_size_sqm, build_size_sqm, gfa_sqm, nla_sqm, gla_sqm, site_area_sqm, hardstand_sqm): convert to sqm. Only if explicitly stated.
-- property_type: residential => house/apartment/townhouse/villa/unit/land/duplex; commercial/industrial => office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other.
-- detected_asset_class & detected_asset_confidence: per STEP 1.
-- agent_name, agency, key_features (max 10), listing_text (2–4 sentence neutral summary), confidence (0–1).
+- title, address, suburb, state, postcode.
+- price_aud (integer AUD; midpoint for ranges).
+- property_type — residential: house/apartment/townhouse/villa/unit/land/duplex; commercial/industrial: office/retail/warehouse/logistics/manufacturing/mixed_use/medical/childcare/hospitality/other.
+- detected_asset_class & detected_asset_confidence.
+- agent_name (single primary agent), agency, key_features (max 10 short bullets), listing_text (2–4 sentence neutral summary), confidence (0–1 overall).
 
 ============= RESIDENTIAL ONLY =============
-- bedrooms / bathrooms / car_spaces: integers shown on the listing.
-- weekly_rent: only if listing states rental return / current lease / rental estimate. Convert monthly (×12/52) or annual (÷52).
+- bedrooms / bathrooms / car_spaces (integers).
+- weekly_rent (AUD/week).
 - is_new_build: true ONLY if "brand new", "new build", "house & land", "off the plan", or a builder is explicitly named.
 - land_price / build_price: only for explicit H&L packages with split pricing.
-- council_rates / water_rates / strata_fees / insurance_estimate (annual AUD); property_management_percent; year_built. Only if explicit.
+- council_rates / water_rates / strata_fees / insurance_estimate (annual AUD).
+- property_management_percent (typically 5–12).
+- year_built (4-digit year).
 
 ============= COMMERCIAL & INDUSTRIAL =============
-Structure:
-- asset_class: office | retail | industrial | mixed_use | medical | childcare | hospitality | other.
-- asset_sub_type: free-text (e.g. "Distribution Warehouse", "A-Grade Office", "Childcare").
-- tenure: freehold | leasehold | strata. zoning: planning code as printed.
-- property_name (estate/building name), parking_bays, current_valuation (only if explicit).
+- asset_class (office|retail|industrial|mixed_use|medical|childcare|hospitality|other), asset_sub_type (free text e.g. "Distribution Warehouse", "A-Grade Office").
+- tenure (freehold|leasehold|strata), zoning, property_name, parking_bays, current_valuation.
+- Areas: gfa_sqm, nla_sqm (office/retail), gla_sqm (industrial), site_area_sqm, hardstand_sqm.
+- site_cover_pct, office_pct (0–100).
+- Industrial specs: clearance_metres, power_kva, dock_doors, ground_floor_load_kpa, truck_access (poor|average|good|excellent), condition_rating (A|B|C|D).
+- Lease & income (ONLY when explicitly stated):
+  * passing_noi_pa, market_noi_pa.
+  * passing_cap_rate_pct, market_cap_rate_pct (percent numbers).
+  * vendor_advised_rent_pa, vendor_advised_outgoings_pa.
+  * outgoings_total_pa, outgoings_recoverable_pa.
+  * lease_type (gross|net|semi_gross|triple_net|NNN as printed).
+  * lease_expiry_date (yyyy-mm-dd), lease_options (e.g. "3+3+3").
+  * wale_years (numeric).
+  * tenant_names (array, max 5).
+  * vendor_advised_yield_pct (percent number).
+  * gst_treatment (going_concern|margin_scheme|standard|input_taxed).
 
-Areas:
-- gfa_sqm (Gross Floor Area), nla_sqm (Net Lettable Area — offices/retail), gla_sqm (Gross Lettable Area — industrial), site_area_sqm, hardstand_sqm.
-- site_cover_pct, office_pct.
+FINAL SELF-CHECK BEFORE RESPONDING:
+- Did you scan every section of the source for each field?
+- Did you normalise units (sqm, AUD, percent numbers, ISO dates)?
+- Are you returning null (not 0, not "") for any value not explicitly in the source?
+- Does detected_asset_class match the dominant evidence?
+- Does every required key appear in the output?
 
-Industrial specs:
-- clearance_metres (eaves height / internal clearance), power_kva (or convert amps×0.69 if voltage given), dock_doors (recessed loading docks + roller doors), ground_floor_load_kpa, truck_access (poor/average/good/excellent if stated), condition_rating (A/B/C/D if explicitly graded).
-
-Lease & income (CRITICAL — only when explicitly stated in source):
-- passing_noi_pa: net operating income p.a. as stated.
-- market_noi_pa: vendor-quoted "market" or "estimated" NOI.
-- passing_cap_rate_pct & market_cap_rate_pct: as a percent number (e.g. 6.25).
-- vendor_advised_rent_pa: vendor-quoted gross or net rent p.a.
-- vendor_advised_outgoings_pa: total outgoings stated.
-- outgoings_total_pa & outgoings_recoverable_pa: separate if both shown.
-- lease_type: gross | net | semi_gross | triple_net | NNN | as printed.
-- lease_expiry_date: ISO format yyyy-mm-dd if stated.
-- lease_options: e.g. "3 + 3 + 3 years" or "two 5-year options".
-- wale_years: weighted average lease expiry in years (numeric).
-- tenant_names: array of named tenants (max 5).
-- vendor_advised_yield_pct: vendor-quoted yield as percent.
-- gst_treatment: going_concern | margin_scheme | standard | input_taxed (lowercase snake_case).
-
-Return null for any field not present in the source.`;
+Return JSON only.`;
 
   const body = {
     model: "sonar-pro",
@@ -350,8 +394,9 @@ Return null for any field not present in the source.`;
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    temperature: 0.05,
-    max_tokens: 4000,
+    temperature: 0,
+    top_p: 0.9,
+    max_tokens: 6000,
     response_format: {
       type: "json_schema",
       json_schema: {
