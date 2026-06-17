@@ -408,7 +408,7 @@ export async function extractPdfViaDocling(
         engine: 'docling',
         engineVersion: job.engine_version ?? 'docling',
         mode: effectiveMode,
-        diagnosticsPath: doclingPath,
+        diagnosticsPath: artifacts.doclingPath ?? artifacts.rastersPath ?? null,
         jobId,
         importedAt: new Date().toISOString(),
       },
