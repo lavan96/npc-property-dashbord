@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { calculateNoi, calculateNoiEngine, type LeaseType, type NoiBasis, type OutgoingsBreakdown } from '@/utils/commercial';
 import { useApplyPrefill, useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -113,6 +115,7 @@ export function NoiCalculatorCard() {
   const [syncOn, setSyncOn] = useState(true);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const { prefill, property, pushBack } = useCalculatorPrefill();
   const audit = (action: string, field: string, previousValue: unknown, newValue: unknown, source = 'NOI Calculator') => console.info('NOI audit', { action, field, previousValue, newValue, source, originalScrapedValue: originalScrapedValues[field], timestamp: new Date().toISOString(), user: (property as any)?.user_id ?? 'current-user', propertyId: prefill?.propertyId ?? '', dealId: prefill?.propertyId ?? '', scenarioId: undefined });
 
@@ -215,12 +218,21 @@ export function NoiCalculatorCard() {
     if ((estimate as StructuredNoiAiEstimate).estimatedFields) { const structured = estimate as StructuredNoiAiEstimate; return { ...structured, estimatedFields: structured.estimatedFields.map(f => ({ ...f, accepted: f.accepted ?? (!protectedSources.includes(f.sourceStatusBefore) && isBlank(String(f.currentValue ?? ''))) })) }; }
     const e = estimate as LegacyNoiAiEstimate; const conf: Confidence = e.confidence === 'high' ? 'High' : e.confidence === 'low' ? 'Low' : 'Medium';
     const pairs: Array<[NoiFieldKey, any, string]> = [['marketRent', e.marketRentPa, 'AUD pa'], ['grossRent', e.grossPassingRentPa, 'AUD pa'], ['other', e.otherIncomePa, 'AUD pa'], ['recovered', e.recoveredOutgoingsPa, 'AUD pa'], ['vacancy', e.vacancyAllowancePct, '%'], ['incentiveAdjustment', e.incentiveAdjustment, 'AUD pa'], ['tenantRiskHaircut', e.tenantRiskHaircut, 'AUD pa'], ['leaseType', e.leaseTypeAssumed, '']];
+    const totalEstimatedExpenses = e.outgoings ? Object.values(e.outgoings).reduce((total, value) => total + (Number.isFinite(Number(value)) ? Number(value) : 0), 0) : undefined;
+    if (totalEstimatedExpenses) pairs.push(['totalOperatingExpenses', totalEstimatedExpenses, 'AUD pa']);
     OUTGOING_KEYS.forEach(k => pairs.push([k, e.outgoings?.[k], 'AUD pa']));
     const fields = pairs.filter(([, v]) => v != null && v !== 'unknown').map(([field, v, unit]) => ({ field, currentValue: currentValue(field), estimatedValue: typeof v === 'number' ? Math.round(v) : v, unit, confidence: conf, sourceStatusBefore: sources[field] ?? 'Blank', sourceStatusAfter: 'AI Estimate' as const, reasoningSummary: e.reasoning || `Estimated from selected property context (${snapshot.address || snapshot.propertyId || 'manual entry'}).`, requiresSpecialistReview: conf === 'Low', requiredDocument: conf === 'Low' ? 'Current lease, rent roll and outgoings statement' : '', shouldOverwrite: !protectedSources.includes(sources[field]) && isBlank(String(currentValue(field))), accepted: !protectedSources.includes(sources[field]) && isBlank(String(currentValue(field))) }));
     return { propertyId: snapshot.propertyId || '', dealId: snapshot.dealId || snapshot.propertyId || '', estimateType: 'NOI', summary: e.reasoning || 'Property-aware NOI estimate generated for review.', estimatedFields: fields, calculatedOutputs: { potentialGrossIncome: assessment.potentialGrossIncome, vacancyLoss: assessment.vacancyLoss, recoveredOutgoings: assessment.recoveredOutgoings, effectiveGrossIncome: assessment.effectiveGrossIncome, totalOutgoings: assessment.totalOperatingExpenses, ownerBorneOutgoings: assessment.ownerBorneExpenses, actualNOI: assessment.actualNoi, stabilisedNOI: assessment.stabilisedNoi, lenderAdjustedNOI: assessment.lenderAdjustedNoi }, warnings: [], requiredDocuments: conf === 'Low' ? ['Current lease', 'Rent roll', 'Outgoings statement'] : [], recommendedNextAction: 'Review proposed fields, accept selected estimates, then verify against source documents.' };
   };
 
+  const hasEnoughAiContext = Boolean(prefill?.assetCategory && prefill?.assetSubtype && ((property as any)?.suburb || (prefill as any)?.suburb) && (prefill?.nlaSqm || prefill?.glaSqm));
+
   const requestEstimate = async () => {
+    if (!hasEnoughAiContext) {
+      toast.error('More property information is required before AI can estimate NOI assumptions.');
+      setReviewOpen(true);
+      return;
+    }
     setEstimating(true); audit('AI estimate requested', 'NOI', null, null, prefill ? 'Selected property' : 'Manual entry / no property linked');
     try {
       const missing = prefill ? ['address', 'assetSubtype', 'glaSqm', 'siteAreaSqm'].filter(k => !(prefill as any)[k]) : ['property link'];
@@ -245,20 +257,33 @@ export function NoiCalculatorCard() {
   const openSpecialistReview = () => { setReviewOpen(true); toast.info('Specialist review details opened.'); audit('specialist review required flag added/removed', 'NOI', null, assessment.warnings, 'NOI Calculator'); };
   const useScrapedValue = (field: NoiFieldKey) => { const v = scrapeConflicts[field]; if (!hasValue(v)) return; setRawValue(field, v); setSource(field, 'Scraped'); setOriginalScrapedValues(prev => ({ ...prev, [field]: v })); setScrapeConflicts(prev => { const next = { ...prev }; delete next[field]; return next; }); audit('user selected new scraped NOI value', field, currentValue(field), v, 'Scraped'); };
   const keepOverride = (field: NoiFieldKey) => { setScrapeConflicts(prev => { const next = { ...prev }; delete next[field]; return next; }); audit('user kept saved NOI override', field, currentValue(field), scrapeConflicts[field], 'User Override'); };
+  const allFields = Object.keys(fieldLabels) as NoiFieldKey[];
+  const sourceCounts = allFields.reduce((acc, field) => {
+    const source = sources[field] ?? 'Blank';
+    if (source === 'User Override') acc.manualOverrides += 1;
+    if (source === 'AI Estimate') acc.aiEstimates += 1;
+    if (source === 'Scraped') acc.scrapedValues += 1;
+    return acc;
+  }, { manualOverrides: 0, aiEstimates: 0, scrapedValues: 0 });
+  const hasSavableValue = allFields.some(field => {
+    const raw = currentRawValue(field);
+    return field === 'leaseType' || field === 'noiBasis' ? !isBlank(String(raw)) : parseNumericInput(String(raw)) !== null;
+  });
+  const userOverrideValues = Object.fromEntries(allFields.filter(field => sources[field] === 'User Override').map(field => [field, currentRawValue(field)]));
   const saveBack = async () => {
     if (!prefill) return;
     setSaving(true);
     try {
-      const values = Object.fromEntries((Object.keys(fieldLabels) as NoiFieldKey[]).map(field => [field, currentRawValue(field)]));
+      const values = Object.fromEntries(allFields.map(field => [field, currentRawValue(field)]));
       const now = new Date().toISOString();
       const existingSpecs = ((property as any)?.industrial_specs ?? {}) as Record<string, unknown>;
       const patch = {
         outgoings_recoverable: Object.fromEntries(OUTGOING_KEYS.filter(k => hasValue(outgoings[k])).map(k => [k, num(outgoings[k])])),
-        noi_outputs: { actualNOI: assessment.actualNoi, stabilisedNOI: assessment.stabilisedNoi, lenderAdjustedNOI: assessment.lenderAdjustedNoi, potentialGrossIncome: assessment.potentialGrossIncome, vacancyLoss: assessment.vacancyLoss, recoveredOutgoings: assessment.recoveredOutgoings, effectiveGrossIncome: assessment.effectiveGrossIncome, totalOutgoings: assessment.totalOperatingExpenses, ownerBorneOutgoings: assessment.ownerBorneExpenses, assumptionStatuses: sources, originalScrapedValues, savedAt: now, savedBy: (property as any)?.user_id ?? null },
+        noi_outputs: { actualNOI: assessment.actualNoi, stabilisedNOI: assessment.stabilisedNoi, lenderAdjustedNOI: assessment.lenderAdjustedNoi, selectedNoi: assessment.selectedNoi, selectedBasis: assessment.selectedBasis, potentialGrossIncome: assessment.potentialGrossIncome, vacancyLoss: assessment.vacancyLoss, recoveredOutgoings: assessment.recoveredOutgoings, effectiveGrossIncome: assessment.effectiveGrossIncome, totalOutgoings: assessment.totalOperatingExpenses, ownerBorneOutgoings: assessment.ownerBorneExpenses, assumptionStatuses: sources, originalScrapedValues, userOverrideValues, savedAt: now, calculationVersion: 'noi-v2-readiness', savedBy: (property as any)?.user_id ?? null },
         gross_passing_rent_pa: valueOrNull(grossRent), market_rent_pa: valueOrNull(marketRent), recovered_outgoings_pa: valueOrNull(recovered), vacancy_allowance_pct: valueOrNull(vacancy),
-        industrial_specs: { ...existingSpecs, noi_input_cascade: { values, sources, originalScrapedValues, savedAt: now, savedBy: (property as any)?.user_id ?? null } },
+        industrial_specs: { ...existingSpecs, noi_input_cascade: { values, sources, originalScrapedValues, userOverrideValues, savedAt: now, calculationVersion: 'noi-v2-readiness', savedBy: (property as any)?.user_id ?? null } },
       };
-      const res = await pushBack(patch); if (res.ok) audit('NOI values saved back to property', 'NOI', null, patch, 'Property Record Source');
+      const res = await pushBack(patch); if (res.ok) { audit('NOI values saved back to property', 'NOI', null, patch, 'Property Record Source'); toast.success('NOI assumptions saved to property profile.'); }
     } finally { setSaving(false); }
   };
 
@@ -281,7 +306,16 @@ export function NoiCalculatorCard() {
           {prefill ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 max-w-[260px] truncate" title={prefill.address}>Anchored: {prefill.address}</Badge> : <Badge variant="outline" className="border-amber-500/40 text-amber-400">No property selected</Badge>}
           <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate for me</Button>
           <Button size="sm" variant="outline" onClick={applyAccepted} disabled={!aiEstimate}>Accept AI estimate</Button>
-          <Button size="sm" variant="outline" onClick={saveBack} disabled={!prefill || saving}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save back to property</Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button size="sm" variant="outline" onClick={() => setSaveConfirmOpen(true)} disabled={!prefill || !hasSavableValue || saving}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save back to property</Button>
+                </span>
+              </TooltipTrigger>
+              {!prefill && <TooltipContent>Select or link a property before saving assumptions.</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
         </div>
         {readiness.compactWarnings.length > 0 && (
           <div className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-1">
@@ -293,7 +327,10 @@ export function NoiCalculatorCard() {
           <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-3">
             <div className="flex justify-between gap-2">
               <span className="font-medium text-primary">Assumption Status</span>
-              {aiEstimate && <Button size="sm" variant="outline" onClick={() => setAiEstimate(e => e ? { ...e, estimatedFields: e.estimatedFields.map(f => ({ ...f, accepted: true, shouldOverwrite: !protectedSources.includes(f.sourceStatusBefore) || f.shouldOverwrite })) } : e)}>Accept all proposed</Button>}
+              <div className="flex gap-2">
+                {aiEstimate && <Button size="sm" variant="outline" onClick={() => setAiEstimate(e => e ? { ...e, estimatedFields: e.estimatedFields.map(f => ({ ...f, accepted: true, shouldOverwrite: !protectedSources.includes(f.sourceStatusBefore) || f.shouldOverwrite })) } : e)}>Accept all proposed</Button>}
+                {aiEstimate && <Button size="sm" variant="outline" onClick={() => { setAiEstimate(null); toast.info('AI NOI estimate rejected.'); }}>Reject estimate</Button>}
+              </div>
             </div>
             <div className="grid md:grid-cols-3 gap-2">
               <div><span className="font-medium text-foreground">Readiness:</span> {readiness.status}</div>
@@ -310,9 +347,32 @@ export function NoiCalculatorCard() {
                 {assumptionRows.map(row => <div key={row.field} className="flex justify-between gap-2 rounded border border-border/50 px-2 py-1"><span>{row.label}</span><span className="text-right"><span className="text-foreground">{String(row.value)}</span> · {badgeLabel[row.source]}</span></div>)}
               </div>
             </div>
-            {aiEstimate ? <div className="space-y-2"><div className="font-medium text-foreground">AI estimate review</div><p>{aiEstimate.summary}</p>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-300">• {w}</div>)}{aiEstimate.estimatedFields.map((f, idx) => <div key={`${f.field}-${idx}`} className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded border border-border/60 p-2"><div><b>{fieldLabels[f.field]}</b><div>{badgeLabel[f.sourceStatusBefore]} → AI Estimate</div></div><div>Current: {String(f.currentValue ?? '—')}</div><div><Input className="h-8" value={String(f.estimatedValue ?? '')} onChange={e => updateProposal(idx, { estimatedValue: e.target.value })} /></div><div>Confidence: {f.confidence}</div><div>{f.reasoningSummary}{f.requiredDocument ? <div>Required: {f.requiredDocument}</div> : null}{protectedSources.includes(f.sourceStatusBefore) ? <div className="text-amber-300">Protected source — tick overwrite to apply.</div> : null}</div><div className="flex gap-2"><label className="flex items-center gap-1"><input type="checkbox" checked={!!f.accepted} onChange={e => updateProposal(idx, { accepted: e.target.checked })} />Accept</label>{protectedSources.includes(f.sourceStatusBefore) && <label className="flex items-center gap-1"><input type="checkbox" checked={!!f.shouldOverwrite} onChange={e => updateProposal(idx, { shouldOverwrite: e.target.checked })} />Overwrite</label>}</div></div>)}</div> : null}
+            {aiEstimate ? <div className="space-y-2"><div className="font-medium text-foreground">AI estimate preview</div><p>{aiEstimate.summary}</p>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-300">• {w}</div>)}{aiEstimate.estimatedFields.map((f, idx) => <div key={`${f.field}-${idx}`} className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded border border-border/60 p-2"><div><b>Suggested {fieldLabels[f.field]}</b><div>{badgeLabel[f.sourceStatusBefore]} → AI Estimate</div></div><div>Current: {String(f.currentValue ?? '—')}</div><div><Input className="h-8" value={String(f.estimatedValue ?? '')} onChange={e => updateProposal(idx, { estimatedValue: e.target.value })} /></div><div>Confidence: {f.confidence}</div><div>{f.reasoningSummary}{f.requiredDocument ? <div>Required: {f.requiredDocument}</div> : null}{protectedSources.includes(f.sourceStatusBefore) ? <div className="text-amber-300">Protected source — tick overwrite to apply.</div> : null}</div><div className="flex gap-2"><label className="flex items-center gap-1"><input type="checkbox" checked={!!f.accepted} onChange={e => updateProposal(idx, { accepted: e.target.checked })} />Accept</label>{protectedSources.includes(f.sourceStatusBefore) && <label className="flex items-center gap-1"><input type="checkbox" checked={!!f.shouldOverwrite} onChange={e => updateProposal(idx, { shouldOverwrite: e.target.checked })} />Overwrite</label>}</div></div>)}</div> : null}
           </div>
         )}
+        <AlertDialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Save these NOI assumptions back to the property profile?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will save final field values, source states, original scraped values, user overrides, timestamp and calculation version, then refresh connected NOI-dependent modules.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 text-sm">
+              <Row label="Actual NOI" value={fmt(assessment.actualNoi)} />
+              <Row label="Stabilised NOI" value={fmt(assessment.stabilisedNoi)} />
+              <Row label="Lender-Adjusted NOI" value={fmt(assessment.lenderAdjustedNoi)} />
+              <Row label="Selected NOI Basis" value={assessment.selectedBasis === 'actual' ? 'Actual NOI' : assessment.selectedBasis === 'stabilised' ? 'Stabilised NOI' : 'Lender-Adjusted NOI'} />
+              <Row label="Manual overrides" value={String(sourceCounts.manualOverrides)} />
+              <Row label="AI estimates" value={String(sourceCounts.aiEstimates)} />
+              <Row label="Scraped values" value={String(sourceCounts.scrapedValues)} />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setSaveConfirmOpen(false); void saveBack(); }}>Save assumptions</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
