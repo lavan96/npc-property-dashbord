@@ -204,13 +204,13 @@ export function CapRateCalculatorCard() {
   const hasValuationGapInputs = hasImpliedValueInputs && hasPrice;
   const benchmarkContext = useMemo(() => {
     const rawProperty = (property ?? {}) as Record<string, any>;
-    const location = prefill?.suburb || prefill?.address || rawProperty.suburb || rawProperty.location || rawProperty.address;
+    const location = (prefill as any)?.suburb || prefill?.address || rawProperty.suburb || rawProperty.location || rawProperty.address;
     const items = {
       assetCategory: prefill?.assetCategory,
       assetSubtype: prefill?.assetSubtype,
       state: prefill?.state,
       location,
-      leaseStatus: rawProperty.lease_status || rawProperty.leaseStatus || profile.leaseIncome?.leaseStatus,
+      leaseStatus: rawProperty.lease_status || rawProperty.leaseStatus || (profile.leaseIncome as any)?.leaseStatus,
       leaseType: profile.leaseIncome?.leaseType || rawProperty.lease_type || rawProperty.leaseType,
       income: hasSelectedNoi ? 'NOI supplied' : undefined,
       priceValue: hasPrice ? 'Value supplied' : undefined,
@@ -248,7 +248,7 @@ export function CapRateCalculatorCard() {
     const expectedLow = firstNumber(aiEstimate?.capRateRange.low, (profile.capRateOutputs as any)?.benchmarkLowPct, rawProperty.benchmark_cap_rate_low, rawProperty.cap_rate_low);
     const expectedHigh = firstNumber(aiEstimate?.capRateRange.high, (profile.capRateOutputs as any)?.benchmarkHighPct, rawProperty.benchmark_cap_rate_high, rawProperty.cap_rate_high);
     const targetOutsideBenchmark = parsedTargetCap !== null && expectedLow && expectedHigh && (parsedTargetCap < expectedLow || parsedTargetCap > expectedHigh);
-    const leaseStatus = rawProperty.lease_status || rawProperty.leaseStatus || profile.leaseIncome?.leaseStatus;
+    const leaseStatus = rawProperty.lease_status || rawProperty.leaseStatus || (profile.leaseIncome as any)?.leaseStatus;
     const propertyRisk = String(rawProperty.risk_rating || rawProperty.riskRating || rawProperty.property_risk || rawProperty.propertyRisk || '').toLowerCase();
 
     if (!prefill && parsedPrice !== null && fields.price.source === 'Manual') add({ category: 'Data Source', severity: 'Required', message: 'Price / value is manually entered and not linked to property profile.' });

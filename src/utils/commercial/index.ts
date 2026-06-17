@@ -50,7 +50,17 @@ export * from './aiEstimateConfidence';
 export * from './assumptionProvenance';
 export * from './aiEstimatePromptTemplates';
 export * from './aiEstimateAuditLog';
-export * from './noiEngine';
+export {
+  calculateNoiEngine,
+  type DataSourceMode,
+  type LeaseType,
+  type IncomeType,
+  type NoiBasis,
+  type NoiBridgeItem,
+  type NoiEngineInputs,
+  type NoiEngineResult,
+  type OutgoingsRecoverabilityItem,
+} from './noiEngine';
 export * from './capRateEngine';
 export * from './icrDscrEngine';
 export * from './gstEngine';

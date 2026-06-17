@@ -27,9 +27,9 @@ export function capRate({ noi, price }: CapRateInputs): number | null {
 }
 
 export interface YieldSetInputs {
-  passingNoi: number;
-  marketNoi: number;
-  price: number;
+  passingNoi: number | string | null | undefined;
+  marketNoi: number | string | null | undefined;
+  price: number | string | null | undefined;
 }
 
 export interface YieldSetResult {
