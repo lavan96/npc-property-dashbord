@@ -30,6 +30,18 @@ import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commer
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+const calculatorTabs = [
+  { value: 'overview', label: 'Overview', subLabel: '(Report)' },
+  { value: 'borrowing', label: 'Borrowing Capacity', subLabel: '(Unified)' },
+  { value: 'noi', label: 'Net Operating Income', subLabel: '(NOI)' },
+  { value: 'cap', label: 'Capitalisation Rate', subLabel: '(Cap Rate)' },
+  { value: 'icr', label: 'Interest / Debt Service Coverage', subLabel: '(ICR / DSCR)' },
+  { value: 'gst', label: 'Goods & Services Tax', subLabel: '(GST)' },
+  { value: 'dcf', label: 'Discounted Cash Flow', subLabel: '(DCF)' },
+  { value: 'ten-year', label: '10-Year Cash Flow', subLabel: '(Report)' },
+  { value: 'rent', label: 'Industrial Metrics', subLabel: '($/m² + Site Cover)' },
+] as const;
+
 export default function PropertyCalculators() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -55,8 +67,10 @@ export default function PropertyCalculators() {
     // Re-mount the provider when domain changes so prefill/property reload cleanly.
     <CalculatorPrefillProvider key={domain} domain={domain}>
       <div className="container mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
+        <div className="mx-auto w-full max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-primary/15 bg-card/60 p-5 md:p-6 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Calculator className="h-7 w-7 text-primary" />
               Commercial &amp; Industrial Calculators
@@ -68,7 +82,7 @@ export default function PropertyCalculators() {
               back when you&apos;re happy.
             </p>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 rounded-xl border border-border/70 bg-background/35 p-3">
             <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">
               Property domain
             </div>
@@ -86,17 +100,24 @@ export default function PropertyCalculators() {
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <CalculatorPropertyBar />
-          <div className="rounded-lg border border-primary/20 bg-card/70 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="outline" className="border-primary/30 text-primary">Global Input Sync available in calculators</Badge>
-                <Badge variant="secondary">Assumptions, warnings and save-back actions stay tab-specific</Badge>
+          <div className="rounded-xl border border-primary/20 bg-card/75 p-4 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-foreground">Global calculator status</div>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Global Input Sync available in calculators</Badge>
+                  <Badge variant="secondary">Assumptions, warnings and save-back stay tab-specific</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Open a calculator tab to review its assumptions, missing data, AI estimates and property save-back controls.
+                </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 <Button size="sm" variant="outline" disabled title="Open a calculator tab to review that tab's assumption status.">Assumption Status</Button>
                 <Button size="sm" variant="outline" disabled title="Save-back is available inside tabs once a property is linked.">Save Back to Property</Button>
               </div>
@@ -105,33 +126,22 @@ export default function PropertyCalculators() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/70 p-1">
-          <TabsList className="h-auto min-w-max w-full justify-start gap-1 bg-transparent p-0">
-            <TabsTrigger value="overview" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Overview</TabsTrigger>
-            <TabsTrigger value="borrowing" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">Borrowing Capacity</span>
-            </TabsTrigger>
-            <TabsTrigger value="noi" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">NOI</span>
-            </TabsTrigger>
-            <TabsTrigger value="cap" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">Cap Rate</span>
-            </TabsTrigger>
-            <TabsTrigger value="icr" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">ICR / DSCR</span>
-            </TabsTrigger>
-            <TabsTrigger value="gst" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">GST</span>
-            </TabsTrigger>
-            <TabsTrigger value="dcf" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">DCF</span>
-            </TabsTrigger>
-            <TabsTrigger value="ten-year" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">10-Year Cash Flow</span>
-            </TabsTrigger>
-            {domain === 'industrial' && <TabsTrigger value="rent" className="h-10 shrink-0 whitespace-nowrap rounded-lg px-4 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <span className="whitespace-nowrap">Industrial Metrics</span>
-            </TabsTrigger>}
+          <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/75 p-2 shadow-sm">
+          <TabsList className="h-auto min-w-max w-full justify-start gap-2 bg-transparent p-0">
+            {calculatorTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="group/tab h-16 min-w-[150px] shrink-0 rounded-lg px-4 py-2 text-center data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+              >
+                <span className="flex w-full flex-col items-center justify-center gap-0.5 leading-tight">
+                  <span className="whitespace-nowrap text-sm font-semibold">{tab.label}</span>
+                  <span className="whitespace-nowrap text-[11px] font-medium text-muted-foreground group-data-[state=active]/tab:text-primary-foreground/80">
+                    {tab.subLabel}
+                  </span>
+                </span>
+              </TabsTrigger>
+            ))}
           </TabsList>
           </div>
 
@@ -143,8 +153,9 @@ export default function PropertyCalculators() {
           <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
-          {domain === 'industrial' && <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together for industrial assets only." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Blank GLA, site area or hardstand fields remain empty until imported or entered; placeholder text is not used in calculations.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid xl:grid-cols-2 gap-4"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>}
+          <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together. Blank or unlinked industrial fields remain empty until imported or entered." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Property-level information is incomplete. Add or import property details before relying on this calculation.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>
         </Tabs>
+        </div>
       </div>
     </CalculatorPrefillProvider>
   );
