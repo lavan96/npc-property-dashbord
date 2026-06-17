@@ -52,7 +52,11 @@ export * from './aiEstimatePromptTemplates';
 export * from './aiEstimateAuditLog';
 export {
   calculateNoiEngine,
-  parseNoiNumber,
+  type DataSourceMode,
+  type LeaseType,
+  type IncomeType,
+  type NoiBasis,
+  type NoiBridgeItem,
   type NoiEngineInputs,
   type NoiEngineResult,
   type OutgoingsRecoverabilityItem,
