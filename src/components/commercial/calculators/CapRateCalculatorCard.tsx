@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateYields, calculateCapRateEngine } from '@/utils/commercial';
+import { calculateYields, calculateCapRateEngine, parseCapRateNumber, type CapRateNoiBasis } from '@/utils/commercial';
 import { useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -17,11 +17,13 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 
 const PENDING = 'Pending';
-const num = (v: string) => (v === '' ? 0 : Number(v));
-const hasPositiveNumber = (v: string) => Number.isFinite(Number(v)) && Number(v) > 0;
-const pct = (n: number) => `${Number.isFinite(n) ? n.toFixed(2).replace(/\.00$/, '') : '0'}%`;
-const displayPct = (n: number, ready: boolean) => ready && Number.isFinite(n) ? pct(n) : PENDING;
-const displayMoney = (n: number, ready: boolean) => ready && Number.isFinite(n) && n !== 0 ? fmt(n) : PENDING;
+const num = (v: string) => parseCapRateNumber(v);
+const positiveNum = (v: string) => { const n = parseCapRateNumber(v); return n !== null && n > 0 ? n : null; };
+const hasPositiveNumber = (v: string) => positiveNum(v) !== null;
+const pct = (n: number | null) => n !== null && Number.isFinite(n) ? `${n.toFixed(2).replace(/\.00$/, '')}%` : PENDING;
+const pctRatio = (n: number | null) => n !== null && Number.isFinite(n) ? `${(n * 100).toFixed(2).replace(/\.00$/, '')}%` : PENDING;
+const displayPct = (n: number | null, ready: boolean) => ready && n !== null && Number.isFinite(n) ? pct(n) : PENDING;
+const displayMoney = (n: number | null, ready: boolean) => ready && n !== null && Number.isFinite(n) ? fmt(n) : PENDING;
 
 type FieldSource = 'Blank' | 'Scraped' | 'NOI Tab' | 'Property Profile' | 'AI Benchmark' | 'Manual' | 'User Override' | 'Verified';
 type CapField = 'passingNoi' | 'marketNoi' | 'price' | 'targetCap';
@@ -94,14 +96,15 @@ export function CapRateCalculatorCard() {
   const [aiEstimate, setAiEstimate] = useState<CapRateAiEstimate | null>(null);
   const [proposedCap, setProposedCap] = useState('');
   const [showBenchmark, setShowBenchmark] = useState(false);
+  const [valuationBasis, setValuationBasis] = useState<CapRateNoiBasis>('market');
 
   const audit = (action: string, fieldName: string, previousValue: unknown, newValue: unknown, source: string) => appendAiAudit({ action, fieldKey: fieldName, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId, dealId: prefill?.propertyId } as any);
 
   const resolveCascade = (p: CalculatorPrefill): Record<CapField, SourceCandidate | undefined> => {
     const rawProperty = (property ?? {}) as Record<string, any>;
-    const actualNoi = firstNumber((profile.noiOutputs as any)?.actualNoi, (profile.noiOutputs as any)?.noi);
-    const stabilisedNoi = firstNumber((profile.noiOutputs as any)?.stabilisedNoi);
-    const lenderAdjustedNoi = profile.leaseIncome?.noiBasis === 'lenderAdjusted' ? firstNumber((profile.noiOutputs as any)?.lenderAdjustedNoi) : undefined;
+    const actualNoi = firstNumber((profile.noiOutputs as any)?.actualNoi, (profile.noiOutputs as any)?.actualNOI, (profile.noiOutputs as any)?.noi);
+    const stabilisedNoi = firstNumber((profile.noiOutputs as any)?.stabilisedNoi, (profile.noiOutputs as any)?.stabilisedNOI);
+    const lenderAdjustedNoi = firstNumber((profile.noiOutputs as any)?.lenderAdjustedNoi, (profile.noiOutputs as any)?.lenderAdjustedNOI);
     const profilePassingNoi = firstNumber(p.passingNoi);
     const scrapedPassingNoi = firstNumber(rawProperty.scraped_passing_noi, rawProperty.extracted_passing_noi_pa, rawProperty.extractedPassingNoiPa, rawProperty.passing_noi_pa, rawProperty.noi, p.grossPassingRentPa);
     const profileMarketNoi = firstNumber(p.marketNoi, (profile.leaseIncome as any)?.marketRent);
@@ -181,24 +184,24 @@ export function CapRateCalculatorCard() {
   const hasValuationGapInputs = hasImpliedValueInputs && hasPrice;
   const canEstimateCapRate = Boolean(prefill && prefill.address && prefill.state && prefill.assetSubtype && hasPrice && hasSelectedNoi);
   const sensitivityRates = useMemo(() => {
-    const target = num(targetCap);
+    const target = positiveNum(targetCap);
     return target > 0 ? [target - 1, target - 0.5, target, target + 0.5, target + 1].filter(r => r > 0).map(r => Number(r.toFixed(2))) : [5.5, 6, 6.5, 7, 7.5];
   }, [targetCap]);
-  const yields = useMemo(() => calculateYields({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), price: num(price) }), [passingNoi, marketNoi, price]);
-  const capAssessment = useMemo(() => calculateCapRateEngine({ passingNoi: num(passingNoi), marketNoi: num(marketNoi), selectedNoi: num(marketNoi) || num(passingNoi), price: num(price), targetCapRatePct: num(targetCap), sensitivityCapRatesPct: sensitivityRates, aiBenchmark: fields.targetCap.source === 'AI Benchmark' }), [passingNoi, marketNoi, price, targetCap, sensitivityRates, fields.targetCap.source]);
-  const reversionarySpread = Number((yields.reversionaryYield - yields.passingYield).toFixed(2));
+  const yields = useMemo(() => calculateYields({ passingNoi, marketNoi, price }), [passingNoi, marketNoi, price]);
+  const capAssessment = useMemo(() => calculateCapRateEngine({ passingNoi, marketNoi, selectedNoi: marketNoi || passingNoi, stabilisedNoi: (profile.noiOutputs as any)?.stabilisedNoi ?? (profile.noiOutputs as any)?.stabilisedNOI, lenderAdjustedNoi: (profile.noiOutputs as any)?.lenderAdjustedNoi ?? (profile.noiOutputs as any)?.lenderAdjustedNOI, price, targetCapRatePct: targetCap, valuationBasis, sensitivityCapRatesPct: sensitivityRates, aiBenchmark: fields.targetCap.source === 'AI Benchmark' }), [passingNoi, marketNoi, profile.noiOutputs, price, targetCap, valuationBasis, sensitivityRates, fields.targetCap.source]);
+  const reversionarySpread = yields.reversionaryYield !== null && yields.passingYield !== null ? Number((yields.reversionaryYield - yields.passingYield).toFixed(2)) : null;
 
   const warnings = useMemo(() => {
     const list = [...capAssessment.warnings];
     if (!prefill) list.push('Property record not linked.');
     if (prefill && (!prefill.address || !prefill.assetSubtype || !prefill.state)) list.push('Selected property missing key details.');
-    if (!num(passingNoi)) list.push('Passing NOI is missing.');
-    if (!num(marketNoi)) list.push('Market NOI is missing.');
-    if (!num(price)) list.push('Price/value is missing.');
-    if (!num(targetCap)) list.push('Target cap rate is missing.');
-    if (num(marketNoi) && num(passingNoi) && num(marketNoi) < num(passingNoi)) list.push('Market NOI is lower than passing NOI.');
-    if (Math.abs(reversionarySpread) > 2) list.push('Reversion spread is unusually high.');
-    if (num(price) && capAssessment.impliedValue > num(price) * 1.15) list.push('Implied value materially exceeds purchase price/value.');
+    if (num(passingNoi) === null) list.push('Passing NOI is missing.');
+    if (num(marketNoi) === null) list.push('Market NOI is missing.');
+    if (num(price) === null) list.push('Price/value is missing.');
+    if (num(targetCap) === null) list.push('Target cap rate is missing.');
+    if (num(marketNoi) !== null && num(passingNoi) !== null && num(marketNoi)! < num(passingNoi)!) list.push('Market NOI is lower than passing NOI.');
+    if (reversionarySpread !== null && Math.abs(reversionarySpread) > 2) list.push('Reversion spread is unusually high.');
+    if (num(price) !== null && capAssessment.impliedValue !== null && capAssessment.impliedValue > num(price)! * 1.15) list.push('Implied value materially exceeds purchase price/value.');
     if (fields.targetCap.source === 'AI Benchmark') list.push('AI benchmark requires valuer confirmation.');
     return Array.from(new Set(list));
   }, [capAssessment, fields.targetCap.source, marketNoi, passingNoi, prefill, price, reversionarySpread, targetCap]);
@@ -226,10 +229,10 @@ export function CapRateCalculatorCard() {
 
   const acceptEstimate = (value?: number | null) => {
     if (!canEstimateCapRate) { toast.error('Add property details, NOI and price/value before accepting an AI benchmark.'); return; }
-    const accepted = value ?? num(proposedCap);
+    const accepted = value ?? positiveNum(proposedCap);
     if (!accepted) { toast.error('Enter a cap rate to apply.'); return; }
     setFields(prev => ({ ...prev, targetCap: { value: String(accepted), source: 'AI Benchmark', sourceDetail: 'Accepted AI benchmark cap rate', dirty: true, originalValue: prev.targetCap.originalValue ?? prev.targetCap.value, originalSource: prev.targetCap.originalSource ?? prev.targetCap.source } }));
-    updateGlobal('capRateOutputs', { ...capAssessment, impliedValue: (num(marketNoi) || num(passingNoi)) / (accepted / 100), benchmarkLabel: 'Benchmark only — valuer confirmation required.' } as any);
+    updateGlobal('capRateOutputs', { ...capAssessment, impliedValue: ((positiveNum(marketNoi) ?? positiveNum(passingNoi)) ?? 0) / (accepted / 100), benchmarkLabel: 'Benchmark only — valuer confirmation required.' } as any);
     updateGlobal('assumptions', { 'capRate.targetCapRatePct': { fieldKey: 'capRate.targetCapRatePct', label: 'Target Cap Rate %', confidenceTag: 'AI Estimate', source: 'ai', sourceDetail: aiEstimate?.reasoningSummary, verificationRequired: true, requiredDocuments: aiEstimate?.requiredDocuments, updatedAt: new Date().toISOString() } } as any);
     audit('AI cap rate estimate accepted', 'targetCapRatePct', targetCap, accepted, 'AI Estimate');
     toast.success('AI benchmark cap rate applied. Valuer confirmation still required.');
@@ -258,6 +261,7 @@ export function CapRateCalculatorCard() {
           <InputBlock label="Market NOI (PA)" state={fields.marketNoi} onChange={v => setManual('marketNoi', v)} onKeepOverride={() => keepOverride('marketNoi')} onUseSource={() => useSourceValue('marketNoi')} placeholder="Pulled from stabilised NOI or enter manually" />
           <InputBlock label="Price / Value" state={fields.price} onChange={v => setManual('price', v)} onKeepOverride={() => keepOverride('price')} onUseSource={() => useSourceValue('price')} placeholder="Pulled from property profile or enter manually" />
           <Separator />
+          <div className="space-y-1"><Label>Valuation basis</Label><select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={valuationBasis} onChange={e => setValuationBasis(e.target.value as CapRateNoiBasis)}><option value="passing">Passing NOI</option><option value="market">Market NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-Adjusted NOI</option></select></div>
           <InputBlock label="Target Cap Rate %" state={fields.targetCap} onChange={v => setManual('targetCap', v)} onKeepOverride={() => keepOverride('targetCap')} onUseSource={() => useSourceValue('targetCap')} step="0.1" placeholder="Enter target cap rate or estimate benchmark" />
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
@@ -269,6 +273,7 @@ export function CapRateCalculatorCard() {
           <Separator />
           <Row label={hasTargetCap ? `Implied Value @ ${targetCap}%` : 'Implied Value'} value={displayMoney(capAssessment.impliedValue, hasImpliedValueInputs)} highlight />
           <Row label="Valuation Gap" value={displayMoney(capAssessment.valuationGap, hasValuationGapInputs)} />
+          <Row label="Valuation Gap %" value={hasValuationGapInputs ? pctRatio(capAssessment.valuationGapPct) : PENDING} />
           <Separator />
           <div className="text-xs text-muted-foreground space-y-1"><div className="font-medium text-foreground">Value Sensitivity</div>{hasImpliedValueInputs ? capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="flex justify-between"><span>{pct(row.capRatePct)}</span><span>{displayMoney(row.impliedValue, true)}</span></div>) : <div className="flex justify-between"><span>Cap-rate sensitivity</span><span>{PENDING}</span></div>}</div>
           {warnings.map(w => <p key={w} className="text-xs text-amber-200">{w}</p>)}
@@ -280,7 +285,7 @@ export function CapRateCalculatorCard() {
 }
 
 function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, step, placeholder }: { label: string; state: FieldState; onChange: (v: string) => void; onKeepOverride: () => void; onUseSource: () => void; step?: string; placeholder?: string }) {
-  return <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]" title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input type="number" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{state.pendingSource && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}</div>;
+  return <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]" title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input type="text" inputMode="decimal" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{state.pendingSource && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}</div>;
 }
 
 function Row({ label, value, bold, muted, highlight }: { label: string; value: string; bold?: boolean; muted?: boolean; highlight?: boolean }) {
