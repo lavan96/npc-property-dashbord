@@ -36,6 +36,62 @@ const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb 
 const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled', 'recoverable_failed']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
+/**
+ * Recursively strip embedded raster/image bytes from any value. Removes
+ * dataUrl / image_base64 / imageBase64 / base64 keys, strings starting with
+ * `data:image`, and src/url strings starting with `data:`. Used before
+ * resync/finalize to keep the template-import-pdf payload lightweight.
+ */
+function stripEmbeddedImageData<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripEmbeddedImageData(item))
+      .filter((item) => item !== null && item !== undefined) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey === 'dataurl' ||
+        lowerKey === 'image_base64' ||
+        lowerKey === 'imagebase64' ||
+        lowerKey === 'base64'
+      ) {
+        continue;
+      }
+      if (typeof raw === 'string') {
+        const lowerValue = raw.slice(0, 256).toLowerCase();
+        if (
+          lowerValue.startsWith('data:image') ||
+          raw.includes('data:image') ||
+          ((lowerKey === 'src' || lowerKey === 'url') && lowerValue.startsWith('data:'))
+        ) {
+          continue;
+        }
+      }
+      out[key] = stripEmbeddedImageData(raw);
+    }
+    return out as T;
+  }
+
+  if (typeof value === 'string' && value.includes('data:image')) {
+    return null as unknown as T;
+  }
+
+  return value;
+}
+
+function inspectEmbeddedImageData(value: unknown) {
+  const json = JSON.stringify(value);
+  return {
+    bytes: new Blob([json]).size,
+    dataImage: json.includes('data:image'),
+    base64: /base64[,":]/i.test(json) || json.includes('image_base64'),
+  };
+}
+
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
