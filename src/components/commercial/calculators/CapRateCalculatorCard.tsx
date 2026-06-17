@@ -408,18 +408,7 @@ export function CapRateCalculatorCard() {
   };
   const rejectEstimate = () => { audit('AI cap rate estimate rejected', 'targetCapRatePct', aiEstimate?.recommendedTargetCapRate, targetCap, 'AI Estimate'); setAiEstimate(null); toast.info('AI cap-rate estimate rejected; current value kept.'); };
 
-  const benchmarkStatus = fields.targetCap.source === 'AI Benchmark'
-    ? 'AI benchmark applied'
-    : fields.targetCap.source === 'Verified'
-      ? 'Market benchmark verified'
-      : hasTargetCap
-        ? fields.targetCap.source === 'Manual' || fields.targetCap.source === 'User Override'
-          ? 'Manual benchmark'
-          : 'Valuer confirmation required'
-        : 'Benchmark pending';
-  const sourceSummary = prefill ? `Linked property: ${prefill.address || prefill.propertyId || 'property record'}` : 'Manual entry / no property linked';
-  const syncStatus = prefill ? 'Global input sync on' : 'Manual entry only';
-  const assumptionStatus = readinessStatus;
+
 
   return (
     <Card className="border-primary/10 bg-background/95 shadow-xl">
