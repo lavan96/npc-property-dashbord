@@ -88,10 +88,189 @@ function normalizeUrl(input: string): string {
 
 function safeJsonParse<T>(s: string): T | null {
   try {
-    return JSON.parse(s) as T;
+    let cleaned = s
+      .replace(/^```json\s*/im, "")
+      .replace(/^```\s*/im, "")
+      .replace(/```\s*$/im, "")
+      .trim();
+
+    if (!cleaned.startsWith("{") && !cleaned.startsWith("[")) {
+      const objStart = cleaned.indexOf("{");
+      const arrStart = cleaned.indexOf("[");
+      const isArray = arrStart !== -1 && (objStart === -1 || arrStart < objStart);
+      const start = isArray ? arrStart : objStart;
+      const end = isArray ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
+      if (start !== -1 && end > start) cleaned = cleaned.slice(start, end + 1);
+    }
+
+    return JSON.parse(cleaned) as T;
   } catch {
     return null;
   }
+}
+
+function numberFromText(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const cleaned = value.replace(/\$|AUD|approx\.?|about|,/gi, '').trim();
+  const match = cleaned.match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function areaToSqm(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const n = numberFromText(value);
+  if (n === null || !Number.isFinite(n)) return null;
+  const lower = value.toLowerCase();
+  if (/ha|hectare/.test(lower)) return Math.round(n * 10000);
+  if (/acre/.test(lower)) return Math.round(n * 4046.86);
+  if (/sq\s*ft|sqft|ft²|ft2/.test(lower)) return Math.round(n * 0.092903);
+  return n;
+}
+
+function auDateToIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const m = value.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+  if (!m) return null;
+  const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+  return `${year}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+}
+
+function firstMatch(text: string, patterns: RegExp[]): string | null {
+  for (const pattern of patterns) {
+    const m = text.match(pattern);
+    if (m?.[1]) return m[1].trim();
+  }
+  return null;
+}
+
+function isBadScrapeContent(markdown: string): boolean {
+  const sample = markdown.slice(0, 1200).toLowerCase();
+  return /access denied|akamai|powered and protected by|captcha|forbidden|scrape_timeout/.test(sample);
+}
+
+function deriveListingHints(url: string): { propertyId?: string; addressHint?: string; hostname?: string } {
+  try {
+    const u = new URL(url);
+    const slug = u.pathname.split('/').filter(Boolean).pop() || '';
+    const propertyId = slug.match(/(\d{7,})$/)?.[1];
+    const withoutId = slug.replace(/-\d{7,}$/, '');
+    const addressHint = withoutId
+      .split('-')
+      .filter(Boolean)
+      .map((part) => part.toUpperCase() === part ? part : part.replace(/\b\w/g, (c) => c.toUpperCase()))
+      .join(' ');
+    return { propertyId, addressHint, hostname: u.hostname.replace(/^www\./, '') };
+  } catch {
+    return {};
+  }
+}
+
+function fill<T extends keyof PerplexityListingExtraction>(target: PerplexityListingExtraction, key: T, value: PerplexityListingExtraction[T] | null | undefined) {
+  const current = target[key];
+  if ((current === null || current === undefined || current === '' || (Array.isArray(current) && current.length === 0)) && value !== null && value !== undefined && value !== '') {
+    (target as any)[key] = value;
+  }
+}
+
+function enrichExtractionFromSource(extracted: PerplexityListingExtraction, sourceText: string | null, url: string, propertyCategory: string): PerplexityListingExtraction {
+  const enriched = { ...extracted };
+  const hints = deriveListingHints(url);
+  const text = sourceText || '';
+  const compact = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+
+  if (!sourceText || isBadScrapeContent(sourceText)) return enriched;
+
+  const addressLine = firstMatch(compact, [
+    /^#\s+([^\n]+?\b(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+\d{4})/im,
+    /›\s*([^\n]+?\b(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+\d{4})/im,
+    /Map for\s+([^\n]+?\b(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+\d{4})/im,
+  ]);
+  if (addressLine) {
+    const m = addressLine.match(/^(.*?)\s+([^,\n]+?)\s+(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+(\d{4})$/i);
+    if (m) {
+      fill(enriched, 'address', m[1].trim());
+      fill(enriched, 'suburb', m[2].trim());
+      fill(enriched, 'state', m[3].toUpperCase());
+      fill(enriched, 'postcode', m[4]);
+      fill(enriched, 'title', addressLine.trim());
+    }
+  }
+
+  fill(enriched, 'price_aud', numberFromText(firstMatch(compact, [
+    /Price\s*For Sale,?\s*\$?([\d,]+(?:\.\d+)?)/i,
+    /For Sale,?\s*\$?([\d,]+(?:\.\d+)?)/i,
+    /Price\s*\$?([\d,]+(?:\.\d+)?)/i,
+  ])) as any);
+
+  const floorArea = areaToSqm(firstMatch(compact, [
+    /Floor Size\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|sqft|sq\s*ft))/i,
+    /\|\s*Floor Area\s*\|\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|sqft|sq\s*ft))/i,
+    /floor area of\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|sqft|sq\s*ft))/i,
+    /Building Area\s*\|\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|sqft|sq\s*ft))/i,
+  ]));
+  if (floorArea !== null) {
+    fill(enriched, propertyCategory === 'industrial' ? 'gla_sqm' : 'nla_sqm', floorArea as any);
+    fill(enriched, 'gfa_sqm', floorArea as any);
+    fill(enriched, 'build_size_sqm', floorArea as any);
+  }
+
+  fill(enriched, 'site_area_sqm', areaToSqm(firstMatch(compact, [
+    /\|\s*Land Area\s*\|\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|ha|acres?))/i,
+    /Site Area\s*\|\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|ha|acres?))/i,
+    /Land(?: Size| Area)?\s*([\d,.]+\s*(?:m²|sqm|sq\s*m|ha|acres?))/i,
+  ])) as any);
+
+  fill(enriched, 'parking_bays', numberFromText(firstMatch(compact, [
+    /\|\s*Parking\s*\|\s*(\d+)\s*x?/i,
+    /Parking\s*(\d+)\s*x?/i,
+    /(\d+)\s*x\s*Onsite parkings?/i,
+  ])) as any);
+
+  const category = firstMatch(compact, [/\|\s*Category\s*\|\s*\[?([^\]|\n]+)/i, /^-\s*(Offices|Retail|Industrial|Medical|Childcare|Hospitality|Showrooms?|Warehouses?)/im]);
+  if (category) {
+    const lower = category.toLowerCase();
+    const cls = lower.includes('office') ? 'office' : lower.includes('retail') ? 'retail' : lower.includes('warehouse') || lower.includes('industrial') ? 'industrial' : lower.includes('medical') ? 'medical' : lower.includes('child') ? 'childcare' : lower.includes('hospital') ? 'hospitality' : null;
+    if (cls) {
+      fill(enriched, 'asset_class', cls as any);
+      fill(enriched, 'property_type', cls as any);
+      fill(enriched, 'detected_asset_class', cls === 'industrial' ? 'industrial' as any : 'commercial' as any);
+      fill(enriched, 'detected_asset_confidence', 0.9 as any);
+    }
+  }
+
+  const rentLine = firstMatch(compact, [/(\$[\d,]+(?:\.\d+)?\s*(?:pa|p\.a\.|per annum)[^\n]*)/i, /(\$[\d,]+(?:\.\d+)?\s*pw[^\n]*)/i]);
+  if (rentLine) {
+    const rent = numberFromText(rentLine);
+    if (rent !== null) fill(enriched, 'vendor_advised_rent_pa', /pw|per week/i.test(rentLine) ? rent * 52 as any : rent as any);
+    if (/\bnet\b/i.test(rentLine)) fill(enriched, 'lease_type', 'net' as any);
+    if (/gross/i.test(rentLine)) fill(enriched, 'lease_type', 'gross' as any);
+  }
+
+  const leaseLine = firstMatch(compact, [/(Lease ends?\s+\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}[^\n]*)/i, /(Lease expir(?:y|es)\s+\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}[^\n]*)/i]);
+  if (leaseLine) {
+    fill(enriched, 'lease_expiry_date', auDateToIso(leaseLine) as any);
+    const option = leaseLine.match(/\+\s*([^\n]+option[^\n]*)/i)?.[1]?.trim();
+    if (option) fill(enriched, 'lease_options', option as any);
+  }
+
+  const gstText = compact.slice(0, 20000);
+  if (/no\s*gst/i.test(gstText)) fill(enriched, 'gst_treatment', 'input_taxed' as any);
+  else if (/going concern/i.test(gstText)) fill(enriched, 'gst_treatment', 'going_concern' as any);
+  else if (/margin scheme/i.test(gstText)) fill(enriched, 'gst_treatment', 'margin_scheme' as any);
+  else if (/\+\s*gst|gst\s*inclusive|inc\.?\s*gst/i.test(gstText)) fill(enriched, 'gst_treatment', 'standard' as any);
+
+  fill(enriched, 'agency', firstMatch(compact, [/\[([^\]]+?)\]\([^\)]*real-estate-agents/i, /!\[([^\]]+?)\]\([^\)]*Agencys/i]) as any);
+  fill(enriched, 'agent_name', firstMatch(compact, [/\n\[([^\]\n]+?)\]\([^\)]*agent-profile/i, /###\s*Co-Agents[\s\S]{0,300}?\n\[?([A-Z][a-z]+\s+[A-Z][a-z]+)/]) as any);
+  fill(enriched, 'property_name', firstMatch(compact, [/##\s+([^\n]+)\n\n-\s+/i, /##\s+([^\n]*(?:Investment|Office|Warehouse|Retail|Showroom|Medical)[^\n]*)/i]) as any);
+  fill(enriched, 'listing_text', firstMatch(compact, [/##\s+[^\n]+\n\n(?:-\s*[^\n]+\n){1,5}\n([^\n]{80,500})/i]) as any);
+  if (!enriched.confidence || enriched.confidence < 0.82) enriched.confidence = 0.82;
+
+  if (hints.propertyId && !enriched.key_features?.some((f) => f.includes(hints.propertyId!))) {
+    const existing = Array.isArray(enriched.key_features) ? enriched.key_features : [];
+    enriched.key_features = [...existing, `Property ID ${hints.propertyId}`].slice(0, 10);
+  }
+
+  return enriched;
 }
 
 function toExtractedDetails(extracted: PerplexityListingExtraction, fallbackTitle?: string | null) {
@@ -226,7 +405,12 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     console.warn("[scrape-property-listing] FIRECRAWL_API_KEY not set — skipping page scrape, falling back to URL-only extraction.");
     return null;
   }
-  try {
+  const attempts = [
+    { formats: ["markdown"], onlyMainContent: false, waitFor: 1000, timeout: 25000 },
+    { formats: ["markdown"], onlyMainContent: true, waitFor: 0, timeout: 25000 },
+    { formats: ["markdown", "html"], onlyMainContent: false, waitFor: 2500, timeout: 35000 },
+  ];
+  for (const attempt of attempts) try {
     const resp = await fetch("https://api.firecrawl.dev/v2/scrape", {
       method: "POST",
       headers: {
@@ -235,10 +419,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
       },
       body: JSON.stringify({
         url,
-        formats: ["markdown", "html", "links"],
-        onlyMainContent: false,
-        waitFor: 5000,
-        timeout: 45000,
+        ...attempt,
         mobile: false,
         location: { country: "AU", languages: ["en-AU", "en"] },
       }),
@@ -246,7 +427,7 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     if (!resp.ok) {
       const t = await resp.text();
       console.error("[scrape-property-listing] Firecrawl failed", resp.status, t.slice(0, 300));
-      return null;
+      continue;
     }
     const j = await resp.json();
     const root = j?.data ?? j;
@@ -254,13 +435,90 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; tit
     const markdown: string = markdownParts.join('\n\n');
     const title: string | undefined = root?.metadata?.title;
     const description: string | undefined = root?.metadata?.description;
-    if (!markdown || markdown.length < 80) {
+    if (!markdown || markdown.length < 80 || isBadScrapeContent(markdown)) {
       console.warn("[scrape-property-listing] Firecrawl returned empty/short markdown:", markdown.length);
-      return null;
+      continue;
     }
     return { markdown, title, description };
   } catch (e) {
     console.error("[scrape-property-listing] Firecrawl exception", e);
+    continue;
+  }
+  return null;
+}
+
+async function scrapeWithReaderMode(url: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
+  try {
+    const target = `https://r.jina.ai/http://${url.replace(/^https?:\/\//i, '')}`;
+    const resp = await fetch(target, {
+      method: 'GET',
+      headers: { Accept: 'text/markdown,text/plain,*/*' },
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!resp.ok) {
+      console.warn('[scrape-property-listing] reader fallback failed', resp.status);
+      return null;
+    }
+    const markdown = await resp.text();
+    if (!markdown || markdown.length < 120 || isBadScrapeContent(markdown)) {
+      console.warn('[scrape-property-listing] reader fallback returned unusable markdown:', markdown?.length ?? 0);
+      return null;
+    }
+    const title = markdown.match(/^Title:\s*(.+)$/im)?.[1]?.trim();
+    return { markdown, title };
+  } catch (e) {
+    console.error('[scrape-property-listing] reader fallback exception', e);
+    return null;
+  }
+}
+
+async function searchExactListing(url: string, apiKey: string): Promise<{ markdown: string; title?: string; description?: string } | null> {
+  const hints = deriveListingHints(url);
+  if (!hints.propertyId && !hints.addressHint) return null;
+  const query = [
+    hints.propertyId ? `"${hints.propertyId}"` : '',
+    hints.addressHint ? `"${hints.addressHint}"` : '',
+    hints.hostname ? `site:${hints.hostname}` : '',
+  ].filter(Boolean).join(' ');
+
+  try {
+    const resp = await fetch('https://api.perplexity.ai/search', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, max_results: 10 }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const raw = await resp.text();
+    const parsed = safeJsonParse<any>(raw) ?? {};
+    if (!resp.ok) {
+      console.warn('[scrape-property-listing] exact search fallback failed', resp.status, raw.slice(0, 300));
+      return null;
+    }
+    const results: any[] = Array.isArray(parsed?.results)
+      ? parsed.results
+      : Array.isArray(parsed?.data)
+        ? parsed.data
+        : Array.isArray(parsed?.web)
+          ? parsed.web
+          : [];
+    const exact = results.filter((r) => {
+      const hay = `${r.title ?? ''} ${r.url ?? ''} ${r.snippet ?? ''} ${r.description ?? ''}`.toLowerCase();
+      const hasId = hints.propertyId ? hay.includes(hints.propertyId) : true;
+      const hasAddress = hints.addressHint ? hints.addressHint.toLowerCase().split(' ').filter((p) => p.length > 2).slice(0, 5).every((p) => hay.includes(p)) : true;
+      return hasId || hasAddress;
+    });
+    if (!exact.length) return null;
+    const markdown = [
+      `# Search fallback for exact listing`,
+      `URL: ${url}`,
+      `Property ID hint: ${hints.propertyId ?? 'unknown'}`,
+      `Address hint: ${hints.addressHint ?? 'unknown'}`,
+      '',
+      ...exact.slice(0, 8).map((r, i) => [`## Result ${i + 1}: ${r.title ?? 'Untitled'}`, `Source: ${r.url ?? ''}`, r.snippet ?? r.description ?? r.text ?? ''].join('\n')),
+    ].join('\n\n');
+    return { markdown, title: exact[0]?.title, description: exact[0]?.snippet ?? exact[0]?.description };
+  } catch (e) {
+    console.error('[scrape-property-listing] exact search fallback exception', e);
     return null;
   }
 }
@@ -277,7 +535,7 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
 
   // Step 1: scrape the actual page so the model extracts from real content
   // instead of hallucinating from a URL slug.
-  const scraped = await scrapeWithFirecrawl(url);
+  const scraped = await scrapeWithFirecrawl(url) ?? await scrapeWithReaderMode(url) ?? await searchExactListing(url, apiKey);
   const pageContent = scraped?.markdown ?? null;
   if (pageContent) {
     console.log(`[scrape-property-listing] Firecrawl markdown length: ${pageContent.length}`);
@@ -309,9 +567,10 @@ async function extractWithPerplexity(url: string, propertyCategory = 'auto') {
     "8. OUTPUT: Return JSON only. Match the schema exactly. Every required key must appear (use null when absent).",
   ].join('\n');
 
+  const listingHints = deriveListingHints(url);
   const sourceBlock = pageContent
     ? `SOURCE CONTENT (scraped from the listing page — extract ONLY from this text):\n\n---\n${pageContent.slice(0, 60000)}\n---\n\n`
-    : `NOTE: The listing page could not be scraped directly. Use web search to locate the listing at the exact URL below. If you cannot confirm a value from the actual listing, return null for that field — do not guess.\n\n`;
+    : `NOTE: The listing page could not be scraped directly. Use web search restricted to the listing domain. Locate the exact property listing by URL, property ID, and address hint. If the exact listing is not found, return nulls rather than using generic commercial real estate pages.\nProperty ID hint: ${listingHints.propertyId ?? 'unknown'}\nAddress hint: ${listingHints.addressHint ?? 'unknown'}\n\n`;
 
   const user = `${sourceBlock}URL: ${url}
 Property category hint: ${propertyCategory} ${propertyCategory === 'auto' ? '(auto-detect from content)' : ''}
@@ -397,6 +656,7 @@ Return JSON only.`;
     temperature: 0,
     top_p: 0.9,
     max_tokens: 6000,
+    ...(pageContent || !listingHints.hostname ? {} : { search_domain_filter: [listingHints.hostname] }),
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -581,7 +841,7 @@ Return JSON only.`;
   if (finishReason && finishReason !== "stop") {
     console.warn(`[scrape-property-listing] LLM finish_reason=${finishReason} (possible truncation)`);
   }
-  const extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
+  let extracted = content ? safeJsonParse<PerplexityListingExtraction>(content) : null;
 
   if (!extracted) {
     return {
@@ -591,6 +851,8 @@ Return JSON only.`;
       raw: rawText,
     };
   }
+
+  extracted = enrichExtractionFromSource(extracted, pageContent, url, propertyCategory);
 
   const citations = (parsed?.citations as string[] | undefined) ?? [];
 
