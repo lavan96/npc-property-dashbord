@@ -21,6 +21,7 @@ export interface CommercialIndustrialDealProfile {
   operatingExpenses: Record<string, number>;
   noiOutputs?: Partial<NoiEngineResult>;
   capRateOutputs?: Partial<CapRateEngineResult>;
+  icrDscrOutputs?: Partial<IcrDscrEngineResult> & Record<string, unknown>;
   debtInputs: Record<string, number | string | boolean | undefined>;
   lendingAssumptions: Partial<BorrowingInputs['lendingAssumptions']>;
   gstInputs: Partial<CommercialGstEngineInputs>;
