@@ -688,7 +688,8 @@ async def _upload_raster_manifest_artifacts(
     for page in raster_result.get("pages") or []:
         page_no = int(page.get("page_no") or (len(page_raster_paths) + 1))
         data, mime = _decode_raster_page_bytes(page)
-        path = f"{prefix}/pages/page-{page_no:03d}.{fmt}"
+        ext = "jpg" if fmt == "jpeg" else "png"
+        path = f"{prefix}/pages/page-{page_no:03d}.{ext}"
         uploaded_path = await _storage_upload(client, path, data, mime or "image/png")
         page_path = uploaded_path or path
         page_raster_paths.append(page_path)
@@ -888,11 +889,13 @@ async def _run_async_job(req: ParseRequest) -> None:
                         bytes_out += len(body)
                     else:
                         LOG.info("Legacy rasters.json skipped")
-                else:
+                elif RASTER_ARTIFACT_MODE == "legacy":
                     body = _legacy_raster_body(raster_result)
                     rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
                     legacy_rasters_path = rasters_path
                     bytes_out += len(body)
+                else:
+                    LOG.info("Legacy rasters.json skipped")
 
             duration_ms = int((time.monotonic() - started) * 1000)
             result_payload = {
@@ -1204,10 +1207,12 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                             bytes_out += len(raster_body)
                         else:
                             LOG.info("Legacy rasters.json skipped")
-                    else:
+                    elif RASTER_ARTIFACT_MODE == "legacy":
                         raster_body = _legacy_raster_body(raster_result, global_page_offset=req.page_start - 1)
                         artifacts["rasters_path"] = await _storage_upload(client, f"{prefix}/rasters.json", raster_body, "application/json")
                         bytes_out += len(raster_body)
+                    else:
+                        LOG.info("Legacy rasters.json skipped")
                 except SidecarError as exc:
                     LOG.warning("chunk raster failed (continuing): %s", exc.message)
 
