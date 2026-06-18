@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Calculator, ChevronDown } from 'lucide-react';
+import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
@@ -25,6 +25,7 @@ import { IndustrialMetricsReadinessProvider } from '@/components/industrial/calc
 import {
   CalculatorPrefillProvider,
   type CalculatorDomain,
+  useCalculatorPrefill,
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
@@ -231,6 +232,21 @@ export default function PropertyCalculators() {
   return (
     // Re-mount the provider when domain changes so prefill/property reload cleanly.
     <CalculatorPrefillProvider key={domain} domain={domain}>
+      <CalculatorSuiteContent domain={domain} setDomain={setDomain} />
+    </CalculatorPrefillProvider>
+  );
+}
+
+function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomain; setDomain: (domain: CalculatorDomain) => void }) {
+  const { prefill } = useCalculatorPrefill();
+
+  const blockedTab = (title: string) => (
+    <CalculatorTabShell title={title} subtitle="Link a saved commercial or industrial property before reviewing calculated tab outputs." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Property required']}>
+      <NoLinkedPropertyPanel domain={domain} />
+    </CalculatorTabShell>
+  );
+
+  return (
       <div className="container mx-auto p-4 md:p-6 space-y-6">
         <div className="mx-auto w-full max-w-7xl space-y-6">
         <div className="rounded-2xl border border-primary/15 bg-card/60 p-5 md:p-6 shadow-sm">
@@ -268,26 +284,9 @@ export default function PropertyCalculators() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
+          <ActivePropertyHeader />
           <CalculatorPropertyBar />
-          <div className="rounded-xl border border-primary/20 bg-card/75 p-4 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-foreground">Global calculator status</div>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Global Input Sync available in calculators</Badge>
-                  <Badge variant="secondary">Assumptions, warnings and save-back stay tab-specific</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Open a calculator tab to review its assumptions, missing data, AI estimates and property save-back controls.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <Button size="sm" variant="outline" disabled title="Open a calculator tab to review that tab's assumption status.">Assumption Status</Button>
-                <Button size="sm" variant="outline" disabled title="Save-back is available inside tabs once a property is linked.">Save Back to Property</Button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
@@ -310,18 +309,129 @@ export default function PropertyCalculators() {
           </TabsList>
           </div>
 
-          <TabsContent value="overview" className="mt-4"><CalculatorTabShell title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="borrowing" className="mt-4"><CalculatorTabShell title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell></TabsContent>
-          <TabsContent value="noi" className="mt-4"><CalculatorTabShell title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="cap" className="mt-4"><CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="icr" className="mt-4"><CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell></TabsContent>
+          <TabsContent value="overview" className="mt-4">{prefill ? <CalculatorTabShell title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell> : blockedTab('Overview Report')}</TabsContent>
+          <TabsContent value="borrowing" className="mt-4">{prefill ? <CalculatorTabShell title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell> : blockedTab('Borrowing Capacity Unified')}</TabsContent>
+          <TabsContent value="noi" className="mt-4">{prefill ? <CalculatorTabShell title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell> : blockedTab('Net Operating Income (NOI)')}</TabsContent>
+          <TabsContent value="cap" className="mt-4">{prefill ? <CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell> : blockedTab('Capitalisation Rate')}</TabsContent>
+          <TabsContent value="icr" className="mt-4">{prefill ? <CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell> : blockedTab('ICR / DSCR')}</TabsContent>
+          <TabsContent value="gst" className="mt-4">{prefill ? <CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell> : blockedTab('Goods & Services Tax')}</TabsContent>
+          <TabsContent value="dcf" className="mt-4">{prefill ? <CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell> : blockedTab('Discounted Cash Flow')}</TabsContent>
+          <TabsContent value="ten-year" className="mt-4">{prefill ? <CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell> : blockedTab('10-Year Cash Flow Report')}</TabsContent>
+          <TabsContent value="rent" className="mt-4">{prefill ? <CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell> : blockedTab('Industrial Metrics $/m² + Site Cover')}</TabsContent>
         </Tabs>
         </div>
       </div>
-    </CalculatorPrefillProvider>
   );
+}
+
+function ActivePropertyHeader() {
+  const { domain, prefill, property, loading } = useCalculatorPrefill();
+  const metrics = buildActivePropertyMetrics(domain, prefill, property);
+  const noPropertyMessage = 'No property linked. Add or select a commercial / industrial property to prefill the calculator suite.';
+
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-sm md:p-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">Active Property Header</Badge>
+            <Badge variant="outline" className="bg-background/60">Domain: {domain === 'industrial' ? 'Industrial' : 'Commercial'}</Badge>
+            <Badge variant="outline" className="bg-background/60">Data source: {metrics.dataSource}</Badge>
+          </div>
+          <div>
+            <h2 className="truncate text-xl font-semibold text-foreground md:text-2xl">{prefill?.address || noPropertyMessage}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {prefill ? 'Linked property context controls calculator prefill, accepted assumptions, save-back and report generation.' : noPropertyMessage}
+            </p>
+          </div>
+          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <HeaderMetric label="Asset type" value={metrics.assetType} />
+            <HeaderMetric label="Completeness" value={`${metrics.completeness}%`} accent={metrics.completeness >= 80 ? 'good' : metrics.completeness >= 50 ? 'warn' : 'pending'} />
+            <HeaderMetric label="Assumption status" value={metrics.assumptionStatus} accent={metrics.assumptionStatus === 'Report ready' ? 'good' : 'warn'} />
+            <HeaderMetric label="Last updated" value={metrics.lastUpdated} />
+            <HeaderMetric label="Profile status" value={prefill ? 'Linked' : 'Not linked'} accent={prefill ? 'good' : 'pending'} />
+            <HeaderMetric label="Source mix" value={metrics.dataSource} />
+          </div>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:max-w-md">
+          <Button size="sm" variant="default" title="Use the selector below to add or link an active property." onClick={() => document.getElementById('calculator-property-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}><Link2 className="mr-1 h-4 w-4" />Add / link property</Button>
+          <span title={!prefill ? 'Link a property before re-running extraction.' : 'Re-run extraction for the linked property.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="w-full disabled:pointer-events-none"><RefreshCw className="mr-1 h-4 w-4" />Re-run extraction</Button></span>
+          <span title={!prefill ? 'Link a property before running AI estimates.' : 'Run AI estimates using the linked property context.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="w-full disabled:pointer-events-none"><Sparkles className="mr-1 h-4 w-4" />Run AI estimates</Button></span>
+          <span title={!prefill ? 'Link a property before reviewing assumption status.' : metrics.assumptionStatus}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><AlertCircle className="mr-1 h-4 w-4" />Assumption status</Button></span>
+          <span title={!prefill ? 'Link a property before saving accepted assumptions.' : 'Save all accepted assumptions to the linked property profile.'}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><Save className="mr-1 h-4 w-4" />Save all accepted</Button></span>
+          <span title={!prefill ? 'Link a property before generating a report.' : 'Generate the report from linked property assumptions.'}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><FileText className="mr-1 h-4 w-4" />Generate report</Button></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeaderMetric({ label, value, accent = 'neutral' }: { label: string; value: string; accent?: 'neutral' | 'good' | 'warn' | 'pending' }) {
+  const accentClass = accent === 'good' ? 'text-green-200' : accent === 'warn' ? 'text-amber-200' : accent === 'pending' ? 'text-muted-foreground' : 'text-foreground';
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/35 p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-1 truncate text-sm font-semibold ${accentClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function NoLinkedPropertyPanel({ domain }: { domain: CalculatorDomain }) {
+  return (
+    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-5 text-sm text-muted-foreground shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-amber-100">No property linked</h3>
+          <p className="mt-1 max-w-3xl">No property linked. Add or select a commercial / industrial property to prefill the calculator suite.</p>
+          <p className="mt-2 text-xs">Calculated outputs are hidden until a {domain} property profile is linked, preventing hardcoded or demo values from appearing in calculator tabs.</p>
+        </div>
+        <Badge variant="outline" className="border-amber-500/30 bg-background/50 text-amber-100">Property required</Badge>
+      </div>
+    </div>
+  );
+}
+
+function buildActivePropertyMetrics(domain: CalculatorDomain, prefill: ReturnType<typeof useCalculatorPrefill>['prefill'], property: ReturnType<typeof useCalculatorPrefill>['property']) {
+  if (!prefill) {
+    return {
+      assetType: domain === 'industrial' ? 'Industrial property' : 'Commercial property',
+      dataSource: 'Manual',
+      completeness: 0,
+      assumptionStatus: 'Property required',
+      lastUpdated: 'Pending',
+    };
+  }
+
+  const dataPoints = [
+    prefill.address,
+    prefill.assetSubtype,
+    prefill.purchasePrice ?? prefill.valuation,
+    prefill.glaSqm ?? prefill.nlaSqm ?? prefill.gfaSqm,
+    prefill.siteAreaSqm,
+    prefill.grossPassingRentPa ?? prefill.marketRentPa ?? prefill.passingNoi ?? prefill.marketNoi,
+    prefill.gstTreatment,
+    prefill.zoning,
+    prefill.yearBuilt,
+    prefill.conditionRating,
+  ];
+  const completeness = Math.round((dataPoints.filter((value) => value !== null && value !== undefined && value !== '').length / dataPoints.length) * 100);
+  const notes = String((property as any)?.notes ?? '').toLowerCase();
+  const specs = JSON.stringify((property as any)?.industrial_specs ?? {}).toLowerCase();
+  const sourceHints = [
+    'Property Profile',
+    notes.includes('scrape') || specs.includes('scrape') ? 'Scrape' : '',
+    notes.includes('contract') || specs.includes('contract') ? 'Contract' : '',
+    notes.includes('ai') || specs.includes('ai') ? 'AI' : '',
+  ].filter(Boolean);
+  const dataSource = sourceHints.length > 1 ? 'Mixed' : sourceHints[0] || 'Property Profile';
+  const assumptionStatus = completeness >= 85 ? 'Report ready' : completeness >= 55 ? 'Review gaps' : 'Incomplete';
+  const lastUpdatedRaw = (property as any)?.updated_at || (property as any)?.created_at;
+
+  return {
+    assetType: String(prefill.assetSubtype || prefill.assetCategory || domain).replace(/_/g, ' '),
+    dataSource,
+    completeness,
+    assumptionStatus,
+    lastUpdated: lastUpdatedRaw ? new Date(lastUpdatedRaw).toLocaleDateString('en-AU') : 'Pending',
+  };
 }
