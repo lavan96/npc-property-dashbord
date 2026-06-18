@@ -15,6 +15,7 @@ import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
@@ -73,6 +74,7 @@ export function IcrDscrCalculatorCard() {
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [stressOpen, setStressOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [rateShockPct, setRateShockPct] = useState('1.00');
   const [noiReductionPct, setNoiReductionPct] = useState('10');
   const [debtIncreasePct, setDebtIncreasePct] = useState('10');
@@ -169,28 +171,6 @@ export function IcrDscrCalculatorCard() {
   });
 
   const { noi, loan, proposedLoan, rate, term, buffer, floorRate, targetIcr, targetDscr, minDebtYield } = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.value])) as Record<IcrField, string>;
-
-  const saveBackToProperty = async () => {
-    if (!prefill) return;
-    setSaving(true);
-    try {
-      const parsedLoan = parseNumeric(loan);
-      const parsedRate = parseNumeric(rate);
-      const parsedTerm = parseNumeric(term);
-      const data = { property_id: prefill.propertyId, loan_amount: parsedLoan, loan_balance: parsedLoan, interest_rate: parsedRate, loan_term_years: parsedTerm, repayment_type: 'pi' as const };
-      const api = prefill.domain === 'industrial' ? industrialApi : commercialApi;
-      const existing = await api.listFinancing(prefill.propertyId);
-      if (existing.error) throw new Error(existing.error.message);
-      const current = existing.data?.[0];
-      const saved = current ? await api.updateFinancing(current.id, data as any) : await api.createFinancing(data as any);
-      if (saved.error) throw new Error(saved.error.message);
-      toast.success('ICR / DSCR loan assumptions saved back to property financing.');
-    } catch (error) {
-      toast.error(`Save back failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const parsedInputs = useMemo(() => ({
     noi: parseNumeric(noi),
@@ -463,6 +443,79 @@ export function IcrDscrCalculatorCard() {
     toast.success('Coverage stress scenarios saved for comparison and reporting.');
   };
 
+  const linkedSourceCount = Object.values(fields).filter(value => !['Blank', 'Manual', 'User Override'].includes(value.source)).length;
+  const manualValueCount = Object.values(fields).filter(value => value.source === 'Manual').length;
+  const userOverrideCount = Object.values(fields).filter(value => value.source === 'User Override').length;
+  const hasSaveableValue = [parsedInputs.noi, preliminaryLoanAmount, parsedInputs.rate, parsedInputs.term, parsedInputs.targetIcr, parsedInputs.targetDscr, parsedInputs.minDebtYieldPct].some(value => value != null && value > 0);
+  const saveBackDisabled = !prefill || !hasSaveableValue || saving;
+  const saveBackTooltip = !prefill
+    ? 'Select or link a property before saving coverage assumptions.'
+    : !hasSaveableValue
+      ? 'Enter at least one valid coverage assumption before saving.'
+      : undefined;
+  const calculationVersion = 'icr-dscr-coverage-v1';
+  const scenarioId = (profile as any).scenarioId ?? (profile as any).activeScenarioId ?? (profile as any).clientScenario?.scenarioId;
+  const userId = (property as any)?.user_id ?? (profile as any).userId ?? undefined;
+
+  const buildSavePayload = () => ({
+    finalInputValues: parsedInputs,
+    sourceStates: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.source])),
+    originalSourceValues: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value: value.originalValue, source: value.originalSource, sourceDetail: value.sourceDetail }]).filter(([, value]) => value.value != null || value.source != null)),
+    userOverrideValues: Object.fromEntries(Object.entries(fields).filter(([, value]) => value.source === 'User Override').map(([key, value]) => [key, value.value])),
+    calculatedOutputs: coverage ? { ...coverage, lowestSupportableLoan, bindingConstraint } : activeCoverage,
+    bindingConstraint,
+    readinessStatus,
+    timestamp: new Date().toISOString(),
+    userId,
+    calculationVersion,
+    propertyId: prefill?.propertyId,
+    scenarioId,
+    overrideCount: userOverrideCount,
+    linkedSourceCount,
+    manualValueCount,
+    downstreamRecalculation: {
+      borrowingCapacityUnified: true,
+      reportOverview: true,
+      scenarioComparison: true,
+      clientReport: true,
+      syncReason: 'icrDscrCoverageAssumptionsSaved',
+    },
+  });
+
+  const saveBackToProperty = async () => {
+    if (!prefill || !hasSaveableValue) return;
+    setSaving(true);
+    try {
+      const payload = buildSavePayload();
+      const parsedLoan = parseNumeric(loan);
+      const parsedRate = parseNumeric(rate);
+      const parsedTerm = parseNumeric(term);
+      const financingPatch: Record<string, unknown> = { property_id: prefill.propertyId, repayment_type: 'pi' };
+      if (parsedLoan != null) {
+        financingPatch.loan_amount = parsedLoan;
+        financingPatch.loan_balance = parsedLoan;
+      }
+      if (parsedRate != null) financingPatch.interest_rate = parsedRate;
+      if (parsedTerm != null) financingPatch.loan_term_years = parsedTerm;
+      if (Object.keys(financingPatch).length > 2) {
+        const api = prefill.domain === 'industrial' ? industrialApi : commercialApi;
+        const existing = await api.listFinancing(prefill.propertyId);
+        if (existing.error) throw new Error(existing.error.message);
+        const current = existing.data?.[0];
+        const saved = current ? await api.updateFinancing(current.id, financingPatch as any) : await api.createFinancing(financingPatch as any);
+        if (saved.error) throw new Error(saved.error.message);
+      }
+      updateGlobal('icrDscrOutputs', { ...payload, savedAt: payload.timestamp, saveBackStatus: 'saved' });
+      appendAiAudit({ action: 'ICR / DSCR assumptions saved to property profile', fieldKey: 'icrDscr.saveBack', previousValue: undefined, newValue: payload, source: 'ICR / DSCR', timestamp: payload.timestamp, user: userId ?? 'current-user', propertyId: prefill.propertyId, dealId: prefill.propertyId, scenarioId } as any);
+      setSaveDialogOpen(false);
+      toast.success('Coverage assumptions saved to property profile.');
+    } catch (error) {
+      toast.error(`Save back failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!coverage || lowestSupportableLoan == null) return;
     updateGlobal('icrDscrOutputs', {
@@ -487,7 +540,14 @@ export function IcrDscrCalculatorCard() {
             <Badge variant="outline" className="border-primary/40 text-primary">{dataSourceLabel}</Badge>
             <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
             <Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{assumptionStatus}</Badge>
-            <Button size="sm" variant="outline" onClick={saveBackToProperty} disabled={!prefill || saving} title={!prefill ? 'Select a property to save calculator values back.' : undefined}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save Back to Property</Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button size="sm" variant="outline" onClick={() => setSaveDialogOpen(true)} disabled={saveBackDisabled}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save Back to Property</Button>
+                </span>
+              </TooltipTrigger>
+              {saveBackTooltip && <TooltipContent><p>{saveBackTooltip}</p></TooltipContent>}
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -620,6 +680,44 @@ export function IcrDscrCalculatorCard() {
           </Collapsible>
         </CardContent>
       </Card>
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Save these ICR / DSCR assumptions back to the property profile?</DialogTitle>
+            <DialogDescription>
+              This saves coverage assumptions and outputs to the linked property profile and scenario sync state without overwriting unrelated calculator data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[60vh] gap-x-6 gap-y-2 overflow-y-auto text-sm sm:grid-cols-2">
+            <Row label="NOI" value={parsedInputs.noi != null ? fmt(parsedInputs.noi) : PENDING} />
+            <Row label="NOI source" value={sourceBadge(fields.noi.source)} />
+            <Row label="Loan amount" value={preliminaryLoanAmount != null ? fmt(preliminaryLoanAmount) : PENDING} />
+            <Row label="Assessment rate used" value={activeCoverage && finiteValue(activeCoverage.assessmentRateUsedPct) != null ? `${activeCoverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} />
+            <Row label="Contract rate" value={parsedInputs.rate != null ? `${parsedInputs.rate.toFixed(2)}%` : PENDING} />
+            <Row label="Assessment buffer" value={parsedInputs.buffer != null ? `${parsedInputs.buffer.toFixed(2)}%` : PENDING} />
+            <Row label="Floor rate" value={parsedInputs.floorRate != null ? `${parsedInputs.floorRate.toFixed(2)}%` : PENDING} />
+            <Row label="Term" value={parsedInputs.term != null ? `${parsedInputs.term} years` : PENDING} />
+            <Row label="Minimum ICR" value={parsedInputs.targetIcr != null ? `${parsedInputs.targetIcr.toFixed(2)}x` : PENDING} />
+            <Row label="Minimum DSCR" value={parsedInputs.targetDscr != null ? `${parsedInputs.targetDscr.toFixed(2)}x` : PENDING} />
+            <Row label="Minimum debt yield" value={parsedInputs.minDebtYieldPct != null ? `${parsedInputs.minDebtYieldPct.toFixed(2)}%` : PENDING} />
+            <Row label="ICR" value={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} />
+            <Row label="DSCR" value={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} />
+            <Row label="Debt yield" value={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} />
+            <Row label="Max Loan @ ICR" value={coverage && finiteValue(coverage.maxLoanByIcr) != null ? fmt(coverage.maxLoanByIcr) : PENDING} />
+            <Row label="Max Loan @ DSCR" value={coverage && finiteValue(coverage.maxLoanByDscr) != null ? fmt(coverage.maxLoanByDscr) : PENDING} />
+            <Row label="Max Loan @ Debt Yield" value={coverage && finiteValue(coverage.maxLoanByDebtYield) != null ? fmt(coverage.maxLoanByDebtYield) : PENDING} />
+            <Row label="Lowest Supportable Loan" value={lowestSupportableLoan != null ? fmt(lowestSupportableLoan) : PENDING} />
+            <Row label="Binding Constraint" value={bindingConstraint} />
+            <Row label="User overrides" value={String(userOverrideCount)} />
+            <Row label="Linked source values" value={String(linkedSourceCount)} />
+            <Row label="Manual values" value={String(manualValueCount)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={saveBackToProperty} disabled={saving || !prefill || !hasSaveableValue}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Confirm Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
