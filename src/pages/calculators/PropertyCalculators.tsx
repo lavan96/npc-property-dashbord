@@ -28,6 +28,9 @@ import {
   useCalculatorPrefill,
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
+import { MasterActivePropertyHeader } from '@/components/commercial/MasterActivePropertyHeader';
+import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
+import { Plus } from 'lucide-react';
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
