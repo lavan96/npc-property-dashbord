@@ -159,21 +159,137 @@ function estimateTargetSection(fieldKey: string): any {
   return 'riskInputs';
 }
 
+
+type ReportReadinessStatus =
+  | 'Awaiting Property'
+  | 'Missing Critical Inputs'
+  | 'AI Estimates Pending Review'
+  | 'Calculations Ready'
+  | 'Calculations Out of Date'
+  | 'Report Review Required'
+  | 'PDF Ready'
+  | 'Report Generated'
+  | 'Verified';
+interface ReportReadiness {
+  status: ReportReadinessStatus;
+  pdfDisabled: boolean;
+  allowWithWarning: boolean;
+  blockingReasons: string[];
+  warningReasons: string[];
+  requiredSections: string[];
+}
+const reportSectionsRequired = [
+  'Property summary',
+  'Assumption summary',
+  'Source and confidence summary',
+  'Key warnings',
+  'Calculator outputs',
+  '10-year cashflow table',
+  'Commentary',
+  'Scenario notes',
+  'Disclaimer / review note',
+];
+
+function hasMeaningfulValue(value: unknown) {
+  return (
+    value !== undefined
+    && value !== null
+    && value !== ''
+    && !(typeof value === 'number' && !Number.isFinite(value))
+  );
+}
+
+function calculateReportReadiness(
+  profile: any,
+  propertyLinked: boolean,
+  calculationsGenerated: boolean,
+  calculationsOutOfDate: boolean,
+  reportGenerated: boolean,
+  verified: boolean
+): ReportReadiness {
+  const pendingAi = Object.values(profile.aiEstimateMetadata ?? {}).some((estimate: any) => !estimate?.accepted);
+  const aiIncluded = Object.values(profile.aiEstimateMetadata ?? {}).some((estimate: any) => estimate?.accepted);
+  const manualOverrides = Object.values(profile.scenarioOverrides ?? {}).some(
+    (override: any) => override && Object.keys(override).length > 0
+  );
+  const specialistGstReview = ['unknown', undefined, null, ''].includes((profile.gstInputs as any)?.treatment)
+    || ['unknown', undefined, null, ''].includes((profile.acquisitionCosts as any)?.gstTreatment);
+  const externalVerificationIncomplete = Object.values(profile.documentVerificationStatus ?? {}).some(
+    status => !['verified', 'reviewed', 'not applicable'].includes(String(status))
+  );
+  const criticalMissing = [
+    ['Property value / purchase price', (profile.propertyValuation as any)?.purchasePrice ?? (profile.propertyValuation as any)?.estimatedMarketValue],
+    ['NOI', (profile.noiOutputs as any)?.actualNoi ?? (profile.noiOutputs as any)?.lenderAdjustedNoi ?? (profile.leaseIncome as any)?.grossPassingRent],
+    ['Lending assumptions', (profile.lendingAssumptions as any)?.contractInterestRatePct ?? (profile.lendingAssumptions as any)?.maxLvr],
+  ].filter(([, value]) => !hasMeaningfulValue(value)).map(([label]) => String(label));
+  const tenYearGenerated = Boolean(profile.tenYearCashFlowOutputs?.years?.length || profile.tenYearCashFlowOutputs?.summary);
+  const criticalWarnings = [
+    ...((profile.borrowingOutputs as any)?.warnings ?? []),
+    ...((profile.dcfOutputs as any)?.warnings ?? []),
+    ...((profile.gstOutputs as any)?.warnings ?? []),
+  ].filter((warning: unknown) => /critical|required|specialist|missing|unresolved/i.test(String(warning)));
+  const blockingReasons = [
+    !propertyLinked && 'No property is linked',
+    ...criticalMissing.map(item => `Missing critical input: ${item}`),
+    !calculationsGenerated && 'Calculated outputs have not been generated',
+    calculationsOutOfDate && 'Calculations are out of date',
+    !tenYearGenerated && '10-Year Cash Flow has not been generated',
+    criticalWarnings.length > 0 && 'Critical warnings are unresolved',
+  ].filter(Boolean) as string[];
+  const warningReasons = [
+    aiIncluded && 'AI estimates are included',
+    manualOverrides && 'Manual overrides are active',
+    specialistGstReview && 'Tax/GST assumptions require specialist review',
+    externalVerificationIncomplete && 'External verification has not been completed',
+  ].filter(Boolean) as string[];
+  const pdfDisabled = blockingReasons.length > 0;
+  const allowWithWarning = !pdfDisabled && warningReasons.length > 0;
+  const status: ReportReadinessStatus = !propertyLinked
+    ? 'Awaiting Property'
+    : criticalMissing.length > 0
+      ? 'Missing Critical Inputs'
+      : pendingAi
+        ? 'AI Estimates Pending Review'
+        : calculationsOutOfDate
+          ? 'Calculations Out of Date'
+          : !calculationsGenerated
+            ? 'Calculations Ready'
+            : pdfDisabled
+              ? 'Report Review Required'
+              : verified
+                ? 'Verified'
+                : reportGenerated
+                  ? 'Report Generated'
+                  : 'PDF Ready';
+  return { status, pdfDisabled, allowWithWarning, blockingReasons, warningReasons, requiredSections: reportSectionsRequired };
+}
+
 function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean }) {
   const profile = useCommercialDealState(s => s.profile);
   const acceptAiEstimateIntoGlobal = useCommercialDealState(s => s.acceptAiEstimateIntoGlobal);
   const [status, setStatus] = useState('Awaiting Inputs');
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [outOfDate, setOutOfDate] = useState(false);
+  const [reportGeneratedAt, setReportGeneratedAt] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
   const [signature, setSignature] = useState('');
   const acceptedEstimates = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => estimate?.accepted);
   const pendingEstimateCount = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => !estimate?.accepted).length;
-  const currentSignature = useMemo(() => JSON.stringify({ assumptions: profile.assumptions, overrides: profile.scenarioOverrides, ai: profile.aiEstimateMetadata }), [profile.assumptions, profile.scenarioOverrides, profile.aiEstimateMetadata]);
+  const currentSignature = useMemo(
+    () => JSON.stringify({ assumptions: profile.assumptions, overrides: profile.scenarioOverrides, ai: profile.aiEstimateMetadata }),
+    [profile.assumptions, profile.scenarioOverrides, profile.aiEstimateMetadata]
+  );
+  const reportReadiness = useMemo(
+    () => calculateReportReadiness(profile, propertyLinked, Boolean(lastRunAt), outOfDate, Boolean(reportGeneratedAt), verified),
+    [profile, propertyLinked, lastRunAt, outOfDate, reportGeneratedAt, verified]
+  );
 
   useEffect(() => {
     if (!lastRunAt) { setSignature(currentSignature); return; }
     if (signature && signature !== currentSignature) {
       setOutOfDate(true);
+      setReportGeneratedAt(null);
+      setVerified(false);
       setStatus('Out of Date');
     }
   }, [currentSignature, lastRunAt, signature]);
@@ -211,19 +327,43 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
   };
 
   const generateReport = () => {
-    if (outOfDate) { setStatus('Review Required'); return; }
-    if (typeof window !== 'undefined' && !window.confirm('Generate report using the current calculated outputs?')) return;
-    setStatus('Report Generation Requested');
-    dispatchCalculatorSuiteEvent('commercial-calculators-generate-report');
+    if (reportReadiness.pdfDisabled) { setStatus('Report Review Required'); return; }
+    const warningText = reportReadiness.allowWithWarning ? `\n\nWarnings:\n- ${reportReadiness.warningReasons.join('\n- ')}` : '';
+    if (typeof window !== 'undefined' && !window.confirm(`Generate report using the current calculated outputs?${warningText}`)) return;
+    const timestamp = new Date().toISOString();
+    setReportGeneratedAt(timestamp);
+    setVerified(false);
+    setStatus('Report Generated');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-report', { sections: reportReadiness.requiredSections });
+  };
+
+  const markVerified = () => {
+    if (!reportGeneratedAt) { setStatus('Report Review Required'); return; }
+    setVerified(true);
+    setStatus('Verified');
   };
 
   return (
     <div className={`rounded-2xl border p-4 shadow-sm ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/80'}`}>
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold text-foreground">Global Generation Controls</h2><Badge variant={outOfDate ? 'secondary' : 'outline'}>{status}</Badge>{lastRunAt && <Badge variant="outline">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-semibold text-foreground">Global Generation Controls</h2>
+            <Badge variant={reportReadiness.pdfDisabled ? 'secondary' : 'default'}>{reportReadiness.status}</Badge>
+            <Badge variant={outOfDate ? 'secondary' : 'outline'}>{status}</Badge>
+            {lastRunAt && <Badge variant="outline">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}
+            {reportGeneratedAt && <Badge variant="outline">Report generated {new Date(reportGeneratedAt).toLocaleString()}</Badge>}
+          </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Run AI estimates as previews, apply accepted assumptions into the Master Property Context, refresh linked tabs, regenerate calculations, then explicitly generate cash flow and report outputs.</p>
           <p className="mt-1 text-xs text-muted-foreground">Accepted AI estimates: {acceptedEstimates.length} · Pending estimate previews: {pendingEstimateCount} · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {reportReadiness.pdfDisabled
+              ? `PDF disabled: ${reportReadiness.blockingReasons.join('; ')}`
+              : reportReadiness.allowWithWarning
+                ? `PDF allowed with warning: ${reportReadiness.warningReasons.join('; ')}`
+                : 'PDF ready when report content is confirmed.'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
         </div>
         <div className="flex flex-wrap gap-2 xl:justify-end">
           <Button type="button" size="sm" variant="outline" onClick={runAiEstimates}>Run AI Estimates</Button>
@@ -231,7 +371,8 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
           <Button type="button" size="sm" variant="outline" onClick={refreshLinkedTabs}>Refresh All Linked Tabs</Button>
           <Button type="button" size="sm" onClick={generateCalculations}>Generate Calculations</Button>
           <Button type="button" size="sm" variant="outline" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
-          <Button type="button" size="sm" variant={outOfDate ? 'secondary' : 'default'} disabled={outOfDate} onClick={generateReport}>Generate Report</Button>
+          <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
+          <Button type="button" size="sm" variant="outline" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
         </div>
       </div>
     </div>
