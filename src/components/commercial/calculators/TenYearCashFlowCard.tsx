@@ -15,7 +15,7 @@ import { useCommercialDealState, type CalculatorSourceMode } from '@/utils/comme
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
 import { INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE, cashFlowAiEstimateActions, createCashFlowAiEstimatePreview, type CashFlowAiEstimateAction, type CashFlowAiEstimatePreview } from '@/utils/commercial/cashFlowAiEstimateEngine';
 import { buildTenYearInputsFromGlobal, calculateTenYearCashFlow } from '@/utils/commercial/tenYearCashFlowEngine';
-import type { TenYearAnnualOverrideCell, TenYearAnnualOverrideField, TenYearAnnualOverrides, TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
+import type { TenYearAnnualOverrideCell, TenYearAnnualOverrideField, TenYearAnnualOverrides, TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowResult, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
 
 const PENDING = 'Pending';
 const fmt = (n?: number | null) => n == null || !Number.isFinite(n) ? PENDING : new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
@@ -24,6 +24,18 @@ const numPct = (n?: number | null) => n == null || !Number.isFinite(n) ? PENDING
 const hasPositive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
+const TEN_YEAR_CALCULATION_VERSION = '10-Year Cash Flow v1.0';
+
+const summaryFormulaTooltip = (label: string) => {
+  if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
+  if (label === 'Equity multiple') return 'Total equity returned ÷ initial equity invested.';
+  if (label === 'Risk status') return 'Calculated from grouped validation warnings and specialist-review flags.';
+  if (label.includes('after-tax cashflow')) return 'Pre-tax cashflow − tax payable + allowed tax benefit.';
+  if (label.includes('property value')) return 'Prior year property value × (1 + capital growth rate).';
+  if (label.includes('equity')) return 'Property value − closing loan balance.';
+  if (label === 'Terminal value') return 'Forward NOI ÷ terminal cap rate.';
+  return 'Protected calculated report output.';
+};
 
 const summaryFormulaTooltip = (label: string) => {
   if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
@@ -201,6 +213,8 @@ export function TenYearCashFlowCard() {
   const [assumptionHistory, setAssumptionHistory] = useState<Array<{ field: keyof TenYearCashFlowInputs | TenYearAnnualOverrideField; value: number; source: SourceState | 'Annual Override'; timestamp: string; year?: number }>>([]);
   const [annualOverridesEnabled, setAnnualOverridesEnabled] = useState(false);
   const [annualOverrides, setAnnualOverrides] = useState<TenYearAnnualOverrides>({});
+  const [capexNoneConfirmed, setCapexNoneConfirmed] = useState(false);
+  const [generatedCashFlow, setGeneratedCashFlow] = useState<{ result: TenYearCashFlowResult; generatedAt: string; signature: string; calculationVersion: string } | null>(null);
   const cascade = useMemo<CascadeMap>(() => {
     const pick = (...candidates: Array<{ value: unknown; source: SourceState }>): CascadeValue | undefined => {
       for (const c of candidates) if (typeof c.value === 'number' && Number.isFinite(c.value)) return { value: c.value, source: c.source };
@@ -295,15 +309,33 @@ export function TenYearCashFlowCard() {
   const hasImportedInputs = Boolean(prefill) || Boolean(borrowingOutputs) || Boolean(noiOutputs) || Boolean(capRateOutputs) || Boolean(icrDscrOutputs) || Boolean(gstOutputs) || Boolean(dcfOutputs);
   const manualRequiredFields: Array<keyof TenYearCashFlowInputs> = ['purchasePrice', 'totalCostBase', 'passingRent', 'rentGrowthPct', 'vacancyAllowancePct', 'outgoingsGrowthPct', 'annualCapexReserve', 'terminalCapRatePct', 'taxRatePct', 'gstEconomicCost'];
   const manualInputsComplete = manualRequiredFields.every(field => overriddenFields.includes(String(field)));
-  const hasMinimumInputs = hasPositive(inputs.purchasePrice) && hasPositive(inputs.terminalCapRatePct) && (hasPositive(inputs.passingRent) || hasPositive(inputs.marketRent));
+  const yearOneNoiReady = hasPositive(result.years[0]?.actualNoi) || hasPositive(inputs.passingRent) || hasPositive(inputs.recoveredOutgoings) || hasPositive(inputs.otherOwnerExpenses);
+  const debtEnabled = hasPositive(inputs.loanAmount);
+  const debtInputsReady = !debtEnabled || (hasPositive(inputs.loanAmount) && hasPositive(inputs.interestRatePct) && (hasPositive(inputs.amortisationYears) || hasPositive(inputs.annualDebtService)) && Boolean(inputs.repaymentType));
+  const requiredAssumptionsReady = hasPositive(inputs.purchasePrice)
+    && (hasPositive(inputs.totalCostBase) || hasPositive(inputs.totalAcquisitionCosts))
+    && yearOneNoiReady
+    && Number.isFinite(inputs.rentGrowthPct)
+    && Number.isFinite(inputs.vacancyAllowancePct)
+    && hasPositive(inputs.terminalCapRatePct)
+    && Number.isFinite(inputs.capitalGrowthPct)
+    && (hasPositive(inputs.annualCapexReserve) || capexNoneConfirmed)
+    && (hasPositive(inputs.taxRatePct) || inputs.accountantReviewRequired)
+    && projectionPeriod === '10'
+    && Boolean(exitValueMethod)
+    && debtInputsReady;
   const sourceComplete = hasImportedInputs || (hasManualInputs && manualInputsComplete);
-  const modelReady = sourceComplete && hasMinimumInputs && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
+  const modelReady = sourceComplete && requiredAssumptionsReady && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
+  const generationSignature = JSON.stringify({ inputs, mode, projectionPeriod, exitValueMethod, annualOverridesEnabled, annualOverrides, capexNoneConfirmed });
+  const generatedCurrent = Boolean(generatedCashFlow && generatedCashFlow.signature === generationSignature);
+  const generatedOutOfDate = Boolean(generatedCashFlow && !generatedCurrent);
+  const reportResult = generatedCashFlow?.result ?? result;
 
   useEffect(() => {
     if (typeof window !== 'undefined') window.localStorage.setItem('ten-year-cash-flow-overview-viewed', 'true');
   }, []);
 
-  useEffect(() => { if (modelReady) updateGlobal('tenYearCashFlowOutputs', result); }, [modelReady, result, updateGlobal]);
+  useEffect(() => { if (generatedCashFlow && generatedCurrent) updateGlobal('tenYearCashFlowOutputs', generatedCashFlow.result); }, [generatedCashFlow, generatedCurrent, updateGlobal]);
   const markOverridden = (field: keyof TenYearCashFlowInputs) => {
     const currentSource = cascade[field];
     if (currentSource && !overrideHistory[field]) setOverrideHistory(h => ({ ...h, [field]: { originalValue: currentSource.value, originalSource: currentSource.source } }));
@@ -375,15 +407,19 @@ export function TenYearCashFlowCard() {
   });
   const resetAnnualOverrideRow = (field: TenYearAnnualOverrideField) => setAnnualOverrides(current => { const next = { ...current }; delete next[field]; return next; });
   const resetAllAnnualOverrides = () => setAnnualOverrides({});
-  const s = result.summary;
+  const generateCashFlow = () => {
+    if (!modelReady) return;
+    setGeneratedCashFlow({ result, generatedAt: new Date().toISOString(), signature: generationSignature, calculationVersion: TEN_YEAR_CALCULATION_VERSION });
+  };
+  const s = reportResult.summary;
   const pending = !modelReady;
   const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
   const assumptionPlaceholders: Partial<Record<keyof TenYearCashFlowInputs, string>> = { purchasePrice: 'Pulled from property profile or enter manually', totalCostBase: 'Calculated from purchase price, costs and GST', passingRent: 'Pulled from NOI or enter manually', rentGrowthPct: 'Pulled from research engine or enter manually', vacancyAllowancePct: 'Pulled from NOI / research or enter manually', outgoingsGrowthPct: 'Enter outgoings growth', annualCapexReserve: 'Enter capex reserve', terminalCapRatePct: 'Pulled from Cap Rate / DCF or enter manually', taxRatePct: 'Enter tax rate or confirm accountant review', gstEconomicCost: 'Pulled from GST tab or enter manually' };
   const summaryCards = mode === 'investor'
     ? [['Purchase price', s.purchasePrice], ['Total cost base', s.totalCostBase], ['Required equity', s.requiredEquity], ['Year 1 NOI', s.year1Noi], ['Year 1 after-tax cashflow', s.year1AfterTaxCashflow], ['Year 10 property value', s.year10PropertyValue], ['Year 10 equity', s.year10Equity], ['Cumulative after-tax cashflow', s.cumulativeAfterTaxCashflow], ['Levered IRR', s.leveredIrr == null ? 'N/A' : `${(s.leveredIrr * 100).toFixed(1)}%`], ['Equity multiple', s.equityMultiple == null ? 'N/A' : `${s.equityMultiple.toFixed(2)}x`], ['Terminal value', s.terminalValue]]
     : mode === 'ownerOccupier'
-      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', result.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', result.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', result.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'N/A — EBITDA not provided.' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'N/A' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
-      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', result.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', result.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
+      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', reportResult.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', reportResult.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', reportResult.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'N/A — EBITDA not provided.' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'N/A' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
+      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', reportResult.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', reportResult.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
 
   return <Card className="bg-card/95"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> 10-Year Cash Flow</CardTitle><CardDescription>Commercial / industrial projection for investor, owner-occupier and related-party lease scenarios. AI supports assumptions; deterministic formulas produce the table.</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</Badge><Badge variant={(pending ? 'outline' : badgeVariant(s.riskStatus)) as any}>{statusLabel}</Badge></div></div></CardHeader><CardContent className="space-y-5">
     <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
@@ -499,6 +535,7 @@ export function TenYearCashFlowCard() {
               <OverrideNumber label="Major Capex Allowance" field="majorCapexAmount" value={inputs.majorCapexAmount} update={updateOverride} pending={pending && !overrides.majorCapexAmount} source={sourceFor('majorCapexAmount', 'Manual')} tooltip="Major one-off capex allowance included in the capex schedule." overridden={isOverridden('majorCapexAmount')} sourceConflict={hasSourceConflict('majorCapexAmount' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('majorCapexAmount' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('majorCapexAmount' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Major Capex Timing" field="majorCapexYear" value={inputs.majorCapexYear} update={updateOverride} pending={pending && !overrides.majorCapexYear} source={sourceFor('majorCapexYear', 'Manual')} tooltip="Projection year for major capex allowance." overridden={isOverridden('majorCapexYear')} sourceConflict={hasSourceConflict('majorCapexYear' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('majorCapexYear' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('majorCapexYear' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Specialist Reserves" field="specialistReserve" value={inputs.specialistReserve} update={updateOverride} pending={pending && !overrides.specialistReserve} source={sourceFor('specialistReserve', inputs.assetDomain === 'industrial' ? 'Research Engine' : 'Manual')} tooltip="Specialist reserve for commercial/industrial risk items." overridden={isOverridden('specialistReserve')} sourceConflict={hasSourceConflict('specialistReserve' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('specialistReserve' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('specialistReserve' as keyof TenYearCashFlowInputs)} />
+              <AssumptionField label="No Capex Reserve" source={capexNoneConfirmed ? 'Manual' : 'Blank'} tooltip="Use only when annual capex reserve is confirmed as nil for this scenario."><Button type="button" variant={capexNoneConfirmed ? 'default' : 'outline'} onClick={() => setCapexNoneConfirmed(v => !v)}>{capexNoneConfirmed ? 'None confirmed' : 'Confirm none'}</Button></AssumptionField>
             </div>
           </div>
 
@@ -532,18 +569,19 @@ export function TenYearCashFlowCard() {
               <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
               {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
             </div>
-            <Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
+            <Button disabled={!generatedCurrent} variant="outline" title={!generatedCurrent ? 'Generate or regenerate the current 10-year cash flow before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
       </Card>
     </TooltipProvider>
-    {pending && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
-    <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={pending} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={pending} /></div>
-    {result.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
+    <Card className={generatedOutOfDate ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardContent className="space-y-3 pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-primary">{generatedCurrent ? '10-year cashflow generated' : generatedOutOfDate ? 'Cashflow out of date' : 'Generate 10-Year Cash Flow'}</p>{generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">Generated {new Date(generatedCashFlow.generatedAt).toLocaleString()} · {generatedCashFlow.calculationVersion}</p>} {!generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">The cashflow table and report outputs will appear after generation.</p>}</div><Button type="button" disabled={!modelReady} onClick={generateCashFlow} title={!modelReady ? 'Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.' : generatedOutOfDate ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}>{generatedOutOfDate ? 'Regenerate Cash Flow' : generatedCurrent ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}</Button></div>{!modelReady && <p className="text-xs text-muted-foreground">Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.</p>}{generatedOutOfDate && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-100">Cashflow out of date. Regenerate before PDF export.</div>}</CardContent></Card>
+    {!generatedCashFlow && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
+    {generatedCashFlow && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={false} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={false} /></div>}
+    {reportResult.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{reportResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
     <Card className="border-primary/20 bg-primary/5"><CardContent className="space-y-3 pt-4 text-sm text-muted-foreground"><div className="flex flex-wrap items-center gap-2"><Button type="button" variant={annualOverridesEnabled ? 'default' : 'outline'} onClick={() => setAnnualOverridesEnabled(v => !v)}><Pencil className="mr-1 h-3.5 w-3.5" />{annualOverridesEnabled ? 'Annual overrides enabled' : 'Enable annual overrides'}</Button><Badge variant="outline" className="gap-1"><Lock className="h-3 w-3" />Calculated outputs locked</Badge><Badge variant="secondary" className="gap-1"><Pencil className="h-3 w-3" />{annualOverrideCount} active override{annualOverrideCount === 1 ? '' : 's'}</Badge>{annualOverrideCount > 0 && <Button type="button" size="sm" variant="outline" onClick={resetAllAnnualOverrides}>Reset all overrides</Button>}</div><p>Annual overrides are off by default. When enabled, they are limited to assumption rows such as passing rent, rent growth, vacancy allowance, recovered outgoings, outgoings growth, owner-borne expenses, capex reserve, major capex, lease downtime, tenant incentives, interest rate, tax rate, capital growth and final-year terminal cap rate. Protected calculated rows cannot be directly edited.</p>{annualOverrideCount > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Annual overrides are active. Review assumption history before generating report.</div>}</CardContent></Card>
-    <MetricRows years={result.years} mode={mode} inputs={inputs} pending={pending} annualOverridesEnabled={annualOverridesEnabled} annualOverrides={annualOverrides} onSetAnnualOverride={setAnnualOverrideCell} onResetAnnualOverride={resetAnnualOverrideCell} onResetAnnualOverrideRow={resetAnnualOverrideRow} />
+    {generatedCashFlow && <MetricRows years={reportResult.years} mode={mode} inputs={inputs} pending={pending} annualOverridesEnabled={annualOverridesEnabled} annualOverrides={annualOverrides} onSetAnnualOverride={setAnnualOverrideCell} onResetAnnualOverride={resetAnnualOverrideCell} onResetAnnualOverrideRow={resetAnnualOverrideRow} />}
     {annualOverrideCount > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardHeader><CardTitle className="text-base">Annual Override Assumption Status</CardTitle><CardDescription>Overrides are included in assumption status, audit trail, PDF assumption notes and scenario save data through the 10-year cashflow inputs payload.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div><h4 className="font-medium">Audit Trail</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{assumptionHistory.filter(item => item.source === 'Annual Override').slice(-8).map((item, index) => <li key={`${item.field}-${item.year}-${item.timestamp}-${index}`}>Year {item.year}: {title(String(item.field))} overridden to {item.value} by Current user at {new Date(item.timestamp).toLocaleString()}</li>)}</ul></div><div><h4 className="font-medium">PDF report assumption notes</h4><p className="text-muted-foreground">Annual overrides are active. Review assumption history before generating report.</p></div><div><h4 className="font-medium">Scenario save data</h4><p className="text-muted-foreground">The active annual override map is stored on the generated cashflow inputs for scenario persistence.</p></div></CardContent></Card>}
-    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{pending ? PENDING : result.commentary}</p></CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{!generatedCashFlow ? PENDING : reportResult.commentary}</p></CardContent></Card>
     <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
