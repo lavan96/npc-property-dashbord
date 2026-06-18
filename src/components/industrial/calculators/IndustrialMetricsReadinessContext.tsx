@@ -1,9 +1,13 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { industrialBenchmarkConfig } from './industrialMetricBenchmarks';
-import { parseMetricNumber, type IndustrialMetricSource } from './industrialMetricCascade';
+import { assessIndustrialBenchmark, industrialBenchmarkConfig } from './industrialMetricBenchmarks';
+import { formatCurrency, formatPercent, parseMetricNumber, type IndustrialMetricSource } from './industrialMetricCascade';
 
 export type IndustrialMetricsReadinessStatus =
   | 'Awaiting Industrial Inputs'
@@ -17,22 +21,23 @@ type WarningCategory = 'Property Area' | 'Rent' | 'Outgoings' | 'Price' | 'Site 
 type WarningSeverity = 'Critical' | 'Required' | 'Recommended';
 
 interface WarningItem { category: WarningCategory; severity: WarningSeverity; message: string; nextAction: string }
-interface FieldState { value: string; source: IndustrialMetricSource }
+interface FieldState { value: string; source: IndustrialMetricSource; originalValue?: string; originalSource?: IndustrialMetricSource; history?: unknown[] }
 type FieldKey = 'baseRent' | 'outgoings' | 'gla' | 'siteArea' | 'hardstand' | 'officePct' | 'price';
 
 interface ContextValue {
-  updateField: (key: FieldKey, value: string, source: IndustrialMetricSource) => void;
+  updateField: (key: FieldKey, value: string, source: IndustrialMetricSource, meta?: Partial<FieldState>) => void;
 }
 
 const Ctx = createContext<ContextValue | undefined>(undefined);
 
 export function IndustrialMetricsReadinessProvider({ children }: { children: ReactNode }) {
   const [fields, setFields] = useState<Partial<Record<FieldKey, FieldState>>>({});
-  const updateField = useCallback((key: FieldKey, value: string, source: IndustrialMetricSource) => {
+  const updateField = useCallback((key: FieldKey, value: string, source: IndustrialMetricSource, meta: Partial<FieldState> = {}) => {
     setFields((current) => {
       const previous = current[key];
-      if (previous?.value === value && previous.source === source) return current;
-      return { ...current, [key]: { value, source } };
+      const next = { value, source, ...meta };
+      if (previous?.value === next.value && previous.source === next.source && previous.originalValue === next.originalValue && previous.originalSource === next.originalSource && previous.history === next.history) return current;
+      return { ...current, [key]: next };
     });
   }, []);
 
@@ -46,8 +51,52 @@ export function useIndustrialMetricsReadiness() {
 }
 
 function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<FieldKey, FieldState>> }) {
-  const { prefill } = useCalculatorPrefill();
+  const { domain, prefill, property, pushBack } = useCalculatorPrefill();
+  const [searchParams] = useSearchParams();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const assessment = useMemo(() => assessReadiness(fields, Boolean(prefill)), [fields, prefill]);
+  const saveSnapshot = useMemo(() => buildSaveSnapshot(fields, assessment.status, prefill?.propertyId ?? null, property?.user_id ?? null, searchParams.get('scenarioId')), [assessment.status, fields, prefill?.propertyId, property, searchParams]);
+  const canSaveBack = Boolean(prefill) && saveSnapshot.linkedValues > 0;
+
+  const handleSave = async () => {
+    if (!prefill) return;
+    setSaving(true);
+    try {
+      const auditPayload = {
+        industrialMetrics: saveSnapshot,
+        savedAt: saveSnapshot.timestamp,
+        calculationVersion: saveSnapshot.calculationVersion,
+        reportSync: {
+          overview: saveSnapshot.reportMetrics,
+          tenYearCashFlowCommentary: saveSnapshot.reportMetrics,
+          clientPdf: saveSnapshot.reportMetrics,
+        },
+      };
+      const patch = domain === 'industrial'
+        ? {
+          gla_sqm: saveSnapshot.values.gla ?? undefined,
+          site_area_sqm: saveSnapshot.values.siteArea ?? undefined,
+          hardstand_sqm: saveSnapshot.values.hardstand ?? undefined,
+          office_pct: saveSnapshot.values.officePct ?? undefined,
+          purchase_price: saveSnapshot.values.price ?? undefined,
+          notes: [String((property as any)?.notes ?? '').trim(), `Industrial metrics audit: ${JSON.stringify(auditPayload)}`].filter(Boolean).join('\n\n'),
+        }
+        : {
+          nla_sqm: saveSnapshot.values.gla ?? undefined,
+          site_area_sqm: saveSnapshot.values.siteArea ?? undefined,
+          purchase_price: saveSnapshot.values.price ?? undefined,
+          industrial_specs: { ...(((property as any)?.industrial_specs ?? {}) as Record<string, unknown>), industrial_metrics_audit: auditPayload, hardstand_sqm: saveSnapshot.values.hardstand ?? undefined, office_pct: saveSnapshot.values.officePct ?? undefined, site_cover_pct: saveSnapshot.calculated.siteCover ?? undefined },
+        };
+      const res = await pushBack(patch);
+      if (res.ok) {
+        toast.success('Industrial metrics saved to property profile.');
+        setDialogOpen(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
   const visibleWarnings = assessment.warnings.slice(0, 3);
 
   return (
@@ -60,9 +109,10 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{assessment.nextAction}</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="outline">{assessment.requiredComplete ? 'Required complete' : 'Required incomplete'}</Badge>
           <Badge variant="outline">{assessment.recommendedMissing} recommended missing</Badge>
+          <Button size="sm" variant="outline" disabled={!canSaveBack || saving} title={!prefill ? 'Select or link a property before saving industrial metrics.' : 'Save verified industrial metrics and audit trail to the linked property profile.'} onClick={() => setDialogOpen(true)}>Save Back to Property</Button>
         </div>
       </div>
 
@@ -79,7 +129,82 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
           </div>
         </details>
       )}
+      <SaveBackDialog open={dialogOpen} onOpenChange={setDialogOpen} snapshot={saveSnapshot} saving={saving} onConfirm={handleSave} />
     </div>
+  );
+}
+
+
+function buildSaveSnapshot(fields: Partial<Record<FieldKey, FieldState>>, readinessStatus: IndustrialMetricsReadinessStatus, propertyId: string | null, userId: string | null | undefined, scenarioId: string | null) {
+  const values = {
+    baseRent: parseMetricNumber(fields.baseRent?.value ?? ''),
+    outgoings: parseMetricNumber(fields.outgoings?.value ?? ''),
+    gla: parseMetricNumber(fields.gla?.value ?? ''),
+    siteArea: parseMetricNumber(fields.siteArea?.value ?? ''),
+    hardstand: parseMetricNumber(fields.hardstand?.value ?? ''),
+    officePct: parseMetricNumber(fields.officePct?.value ?? ''),
+    price: parseMetricNumber(fields.price?.value ?? ''),
+  };
+  const calculated = {
+    netRentPerSqm: values.baseRent !== null && values.gla !== null && values.gla > 0 ? values.baseRent / values.gla : null,
+    grossRentPerSqm: values.baseRent !== null && values.outgoings !== null && values.gla !== null && values.gla > 0 ? (values.baseRent + values.outgoings) / values.gla : null,
+    siteCover: values.gla !== null && values.siteArea !== null && values.siteArea > 0 ? (values.gla / values.siteArea) * 100 : null,
+    hardstandRatio: values.hardstand !== null && values.siteArea !== null && values.siteArea > 0 ? (values.hardstand / values.siteArea) * 100 : null,
+    officeRatio: values.officePct,
+    pricePerSqmGla: values.price !== null && values.gla !== null && values.gla > 0 ? values.price / values.gla : null,
+    pricePerSqmSite: values.price !== null && values.siteArea !== null && values.siteArea > 0 ? values.price / values.siteArea : null,
+  };
+  const benchmark = assessIndustrialBenchmark({ siteCoverPct: calculated.siteCover, hardstandRatioPct: calculated.hardstandRatio, officeRatioPct: calculated.officeRatio, pricePerSqmGla: calculated.pricePerSqmGla, pricePerSqmSite: calculated.pricePerSqmSite, verified: Object.values(fields).some((field) => field?.source === 'Verified') });
+  const fieldEntries = Object.entries(fields).filter(([, field]) => parseMetricNumber(field?.value ?? '') !== null);
+  const linkedValues = fieldEntries.length;
+  const aiEstimates = fieldEntries.filter(([, field]) => field?.source === 'AI Estimate').length;
+  const manualOverrides = fieldEntries.filter(([, field]) => field?.source === 'User Override' || field?.source === 'Manual').length;
+  const verifiedValues = fieldEntries.filter(([, field]) => field?.source === 'Verified').length;
+  const sources = Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, { source: field?.source ?? 'Blank', currentValue: field?.value ?? '', originalSource: field?.originalSource, originalValue: field?.originalValue, userOverrideValue: field?.source === 'User Override' ? field.value : null, aiOrResearchEstimateValue: field?.source === 'AI Estimate' || field?.source === 'Research Engine' ? field.value : null, assumptionHistory: field?.history ?? [] }]));
+  const reportMetrics = { rentPerSqm: calculated.netRentPerSqm, grossRentPerSqm: calculated.grossRentPerSqm, siteCover: calculated.siteCover, hardstandRatio: calculated.hardstandRatio, officeRatio: calculated.officeRatio, pricePerSqmGla: calculated.pricePerSqmGla, pricePerSqmSite: calculated.pricePerSqmSite, benchmarkStatus: benchmark.status };
+  return { values, sources, calculated, benchmarkStatus: benchmark.status, readinessStatus, timestamp: new Date().toISOString(), userId: userId ?? null, calculationVersion: 'industrial-metrics-v1', propertyId, scenarioId, linkedValues, aiEstimates, manualOverrides, verifiedValues, reportMetrics };
+}
+
+function SaveBackDialog({ open, onOpenChange, snapshot, saving, onConfirm }: { open: boolean; onOpenChange: (open: boolean) => void; snapshot: ReturnType<typeof buildSaveSnapshot>; saving: boolean; onConfirm: () => void }) {
+  const rows = [
+    ['Base Rent p.a.', formatCurrency(snapshot.values.baseRent, 0)],
+    ['Outgoings p.a.', formatCurrency(snapshot.values.outgoings, 0)],
+    ['GLA m²', snapshot.values.gla?.toLocaleString() ?? 'Pending'],
+    ['Site Area m²', snapshot.values.siteArea?.toLocaleString() ?? 'Pending'],
+    ['Hardstand m²', snapshot.values.hardstand?.toLocaleString() ?? 'Pending'],
+    ['Office %', formatPercent(snapshot.values.officePct)],
+    ['Price', formatCurrency(snapshot.values.price, 0)],
+    ['Net rent / m²', formatCurrency(snapshot.calculated.netRentPerSqm)],
+    ['Gross rent / m²', formatCurrency(snapshot.calculated.grossRentPerSqm)],
+    ['Site cover', formatPercent(snapshot.calculated.siteCover)],
+    ['Hardstand ratio', formatPercent(snapshot.calculated.hardstandRatio)],
+    ['Office ratio', formatPercent(snapshot.calculated.officeRatio)],
+    ['$ / m² GLA', formatCurrency(snapshot.calculated.pricePerSqmGla, 0)],
+    ['$ / m² site', formatCurrency(snapshot.calculated.pricePerSqmSite, 0)],
+    ['Coverage band', snapshot.benchmarkStatus],
+  ];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Save these industrial metrics back to the property profile?</DialogTitle>
+          <DialogDescription>This saves Industrial Metrics only and does not overwrite NOI, Cap Rate, GST, Borrowing Capacity or DCF assumptions.</DialogDescription>
+        </DialogHeader>
+        <div className="grid max-h-[60vh] gap-2 overflow-y-auto text-sm md:grid-cols-2">
+          {rows.map(([label, value]) => <div key={label} className="flex justify-between gap-3 rounded-md border border-border/60 p-2"><span className="text-muted-foreground">{label}</span><span className="font-medium text-foreground">{value}</span></div>)}
+        </div>
+        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+          <Badge variant="outline">{snapshot.linkedValues} linked values</Badge>
+          <Badge variant="outline">{snapshot.aiEstimates} AI estimates</Badge>
+          <Badge variant="outline">{snapshot.manualOverrides} manual overrides</Badge>
+          <Badge variant="outline">{snapshot.verifiedValues} verified values</Badge>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={onConfirm} disabled={saving}>{saving ? 'Saving...' : 'Confirm save'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

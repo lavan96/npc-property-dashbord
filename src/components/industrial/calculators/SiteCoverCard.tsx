@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
 import { useIndustrialMetricsReadiness } from './IndustrialMetricsReadinessContext';
 import { assessIndustrialBenchmark } from './industrialMetricBenchmarks';
@@ -51,12 +50,12 @@ export function SiteCoverCard() {
 
 
   useEffect(() => {
-    updateField('gla', gla.value, gla.source);
-    updateField('siteArea', site.value, site.source);
-    updateField('hardstand', hardstand.value, hardstand.source);
-    updateField('officePct', office.value, office.source);
-    updateField('price', price.value, price.source);
-  }, [gla.value, gla.source, site.value, site.source, hardstand.value, hardstand.source, office.value, office.source, price.value, price.source, updateField]);
+    updateField('gla', gla.value, gla.source, { originalValue: gla.originalValue, originalSource: gla.originalSource, history: gla.history });
+    updateField('siteArea', site.value, site.source, { originalValue: site.originalValue, originalSource: site.originalSource, history: site.history });
+    updateField('hardstand', hardstand.value, hardstand.source, { originalValue: hardstand.originalValue, originalSource: hardstand.originalSource, history: hardstand.history });
+    updateField('officePct', office.value, office.source, { originalValue: office.originalValue, originalSource: office.originalSource, history: office.history });
+    updateField('price', price.value, price.source, { originalValue: price.originalValue, originalSource: price.originalSource, history: price.history });
+  }, [gla.value, gla.source, gla.originalValue, gla.originalSource, gla.history, site.value, site.source, site.originalValue, site.originalSource, site.history, hardstand.value, hardstand.source, hardstand.originalValue, hardstand.originalSource, hardstand.history, office.value, office.source, office.originalValue, office.originalSource, office.history, price.value, price.source, price.originalValue, price.originalSource, price.history, updateField]);
 
   const parsed = useMemo(() => ({
     gla: parseMetricNumber(gla.value),
@@ -144,7 +143,6 @@ export function SiteCoverCard() {
       <CardHeader>
         <CardTitle>Site Cover & $/m²</CardTitle>
         <CardDescription>Industrial site density, hardstand ratio and price-per-area benchmarks.</CardDescription>
-        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: parsed.gla && parsed.gla > 0 ? parsed.gla : undefined, site_area_sqm: parsed.site && parsed.site > 0 ? parsed.site : undefined, hardstand_sqm: parsed.hardstand ?? undefined, office_pct: parsed.officePct ?? undefined, site_cover_pct: siteCover !== null ? Number(siteCover.toFixed(2)) : undefined, purchase_price: parsed.price ?? undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">

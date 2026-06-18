@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { calcRentPerSqm } from '@/utils/industrial';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
 import { useIndustrialMetricsReadiness } from './IndustrialMetricsReadinessContext';
 import { formatCurrency, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
@@ -39,10 +38,10 @@ export function RentPerSqmCard() {
 
 
   useEffect(() => {
-    updateField('baseRent', baseRent.value, baseRent.source);
-    updateField('gla', gla.value, gla.source);
-    updateField('outgoings', outgoings.value, outgoings.source);
-  }, [baseRent.value, baseRent.source, gla.value, gla.source, outgoings.value, outgoings.source, updateField]);
+    updateField('baseRent', baseRent.value, baseRent.source, { originalValue: baseRent.originalValue, originalSource: baseRent.originalSource, history: baseRent.history });
+    updateField('gla', gla.value, gla.source, { originalValue: gla.originalValue, originalSource: gla.originalSource, history: gla.history });
+    updateField('outgoings', outgoings.value, outgoings.source, { originalValue: outgoings.originalValue, originalSource: outgoings.originalSource, history: outgoings.history });
+  }, [baseRent.value, baseRent.source, baseRent.originalValue, baseRent.originalSource, baseRent.history, gla.value, gla.source, gla.originalValue, gla.originalSource, gla.history, outgoings.value, outgoings.source, outgoings.originalValue, outgoings.originalSource, outgoings.history, updateField]);
 
   const parsed = useMemo(() => ({
     baseRent: parseMetricNumber(baseRent.value),
@@ -113,7 +112,6 @@ export function RentPerSqmCard() {
       <CardHeader>
         <CardTitle>Rent per m² (GLA)</CardTitle>
         <CardDescription>Convert annual rent and outgoings into industrial $/m² benchmarks.</CardDescription>
-        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: parsed.gla && parsed.gla > 0 ? parsed.gla : undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
