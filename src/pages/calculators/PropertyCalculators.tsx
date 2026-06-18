@@ -21,6 +21,7 @@ import { CommercialBorrowingCapacityCard } from '@/components/commercial/calcula
 import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
 import { SiteCoverCard } from '@/components/industrial/calculators/SiteCoverCard';
+import { IndustrialMetricsReadinessProvider } from '@/components/industrial/calculators/IndustrialMetricsReadinessContext';
 import {
   CalculatorPrefillProvider,
   type CalculatorDomain,
@@ -131,6 +132,63 @@ function DcfOverviewPanel() {
         </CollapsibleTrigger>
         <CollapsibleContent className="pb-1 text-xs leading-5 text-muted-foreground">
           DCF is important because a commercial or industrial asset may appear attractive on yield alone, but returns can change materially once downtime, capex, debt service, exit cap rate and sale costs are included. This model helps compare base, conservative and upside scenarios before presenting the asset to a client.
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+function IndustrialMetricsOverviewPanel() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-5xl space-y-2">
+          <h2 className="text-lg font-semibold text-foreground">Industrial Metrics Overview</h2>
+          <div className="space-y-2 text-sm leading-6 text-muted-foreground">
+            <p>
+              This section reviews the physical efficiency and industrial usability of the asset. It converts rent, building area, site area, hardstand, office component and purchase price into practical industrial benchmarks.
+            </p>
+            <p>
+              These metrics help assess whether the asset is appropriately priced, efficiently improved, suitable for the intended industrial use and comparable against market evidence.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs lg:justify-end">
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Physical efficiency</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Market benchmarks</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Industrial usability</Badge>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 lg:grid-cols-[1fr_1.1fr]">
+        <div className="text-sm leading-6 text-muted-foreground">
+          <p className="font-medium text-foreground">This tab separates:</p>
+          <ol className="mt-1 grid list-decimal gap-1 pl-5 text-xs leading-5 sm:grid-cols-2">
+            <li>Rent per m² of lettable industrial area</li>
+            <li>Gross rent per m² including outgoings</li>
+            <li>Site cover and hardstand ratio</li>
+            <li>Office component ratio</li>
+            <li>Price per m² of building area</li>
+            <li>Price per m² of land / site</li>
+            <li>Benchmark status and report-ready commentary</li>
+          </ol>
+        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          These outputs are physical and market benchmarks only. They should be reviewed against zoning, access, loading, clearance height, power, hardstand quality, lease structure and comparable industrial evidence before being relied upon.
+        </p>
+      </div>
+
+      <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 px-0 text-primary hover:bg-transparent hover:text-primary/80">
+            Why this matters
+            <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pb-1 text-xs leading-5 text-muted-foreground">
+          Industrial assets can look attractive on income alone but may be inefficient if the site cover, hardstand, office ratio or price per m² is outside normal market expectations. These metrics help users quickly understand whether the asset is physically and commercially practical.
         </CollapsibleContent>
       </Collapsible>
     </div>
@@ -260,7 +318,7 @@ export default function PropertyCalculators() {
           <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together. Blank or unlinked industrial fields remain empty until imported or entered." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Property-level information is incomplete. Add or import property details before relying on this calculation.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>
+          <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together. Blank or unlinked industrial fields remain empty until imported or entered." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Property-level information is incomplete. Add or import property details before relying on this calculation.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><IndustrialMetricsReadinessProvider><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell></TabsContent>
         </Tabs>
         </div>
       </div>
