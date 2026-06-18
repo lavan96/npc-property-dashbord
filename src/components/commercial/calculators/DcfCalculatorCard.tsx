@@ -25,6 +25,8 @@ type NoiTreatmentMode = 'adjusted' | 'apply' | 'requires_confirmation';
 type GeneratedCashflowRow = { year: number; openingNoi: number; vacancyAdjustment: number; effectiveNoi: number; rentalGrowthApplied: number; capex: number; downtimeAdjustment: number; unleveredCashFlow: number; debtService: number; interestComponent: number; principalComponent: number; leveredCashFlow: number; loanBalance: number; terminalValue?: number; sellingCosts?: number; netSaleProceedsToEquity?: number; finalYearTotalCashFlow?: number };
 type EstimateOrigin = 'Research Engine' | 'Previous Tab' | 'AI Estimate';
 type EstimateItem = { id: string; field?: DcfFieldKey; noiMode?: NoiTreatmentMode; label: string; value: string; sourceBasis: string; confidence: 'High' | 'Medium' | 'Low'; origin: EstimateOrigin; missingInfo: string; riskNotes: string; recommendedVerification: string; selected: boolean };
+type DcfReadinessStatus = 'Awaiting DCF Inputs' | 'Preliminary DCF Estimate' | 'DCF Ready to Generate' | 'Cashflow Generated' | 'Cashflow Out of Date' | 'Specialist Review Recommended' | 'DCF Verified';
+type DcfWarning = { message: string; priority: number; group: string; exportBlock?: boolean };
 
 type FieldState = Record<DcfFieldKey, string>;
 type MetaState = Record<DcfFieldKey, FieldMeta>;
@@ -126,6 +128,7 @@ export function DcfCalculatorCard() {
   const [estimatePanelOpen, setEstimatePanelOpen] = useState(false);
   const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
   const [estimates, setEstimates] = useState<EstimateItem[]>([]);
+  const [showWarningLog, setShowWarningLog] = useState(false);
 
   const linkedLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
 
@@ -389,6 +392,51 @@ export function DcfCalculatorCard() {
     setEstimateMessage(`${selected.length} estimate${selected.length === 1 ? '' : 's'} accepted. Accepted AI estimates remain unverified until supporting evidence is reviewed.`);
   };
 
+  const dcfWarnings = useMemo<DcfWarning[]>(() => {
+    const warnings: DcfWarning[] = [];
+    const add = (message: string, priority: number, group: string, exportBlock = false) => warnings.push({ message, priority, group, exportBlock });
+    if (!parsed.requiredReady) add('Core DCF inputs are missing or invalid.', 100, 'Readiness', true);
+    if (meta.initialNoi.source !== 'NOI Tab') add('Base NOI is not linked to the NOI tab.', 85, 'NOI');
+    if (noiTreatmentMode === 'requires_confirmation') add('NOI Treatment Mode is missing or requires confirmation.', 95, 'NOI', true);
+    if (vacancyMayBeDoubleCounted) add('Vacancy may be double-counted.', 90, 'NOI');
+    if (meta.termCap.source === 'AI Estimate') add('Terminal cap is AI-estimated and not verified.', 80, 'Exit');
+    if (meta.growth.source === 'AI Estimate') add('Rental growth is AI-estimated and not verified.', 75, 'Growth');
+    if (meta.discount.source === 'Manual') add('Discount rate is manually entered and not verified.', 70, 'Discount rate');
+    if (!fields.hold) add('Hold period is missing.', 88, 'Hold period', true);
+    const entryCap = parsed.values.price && parsed.values.initialNoi ? (parsed.values.initialNoi / parsed.values.price) * 100 : undefined;
+    if (entryCap && parsed.values.termCap && parsed.values.termCap < entryCap - 0.75) add('Terminal cap is materially lower than entry cap.', 78, 'Exit');
+    const sensitivityValues = result?.sensitivityTable.map((r) => r.netSaleProceeds) ?? [];
+    if (sensitivityValues.length >= 2) {
+      const max = Math.max(...sensitivityValues);
+      const min = Math.min(...sensitivityValues);
+      if (max > 0 && (max - min) / max > 0.15) add('Exit cap sensitivity shows material valuation risk.', 68, 'Sensitivity');
+    }
+    if (result && result.totalEquityReturned > 0 && Math.abs(result.netSaleProceeds / result.totalEquityReturned) > 0.7) add('Levered return is materially dependent on terminal value.', 65, 'Returns');
+    if (meta.acqCosts.source !== 'GST Tab' && meta.acqCosts.source !== 'Borrowing Capacity' && !noneConfirmed.acqCosts) add('Acquisition costs are missing or not linked to GST / purchase costs.', 82, 'Acquisition costs');
+    if (parsed.leverageEnabled && meta.loan.source !== 'Borrowing Capacity') add('Loan amount is manually entered or not linked to Borrowing Capacity.', 72, 'Debt');
+    if (cashflowOutOfDate) add('Cashflow table is out of date.', 100, 'Generation', true);
+    if (!generatedResult) add('Full hold period schedule has not been generated.', 92, 'Generation', true);
+    return warnings.sort((a, b) => b.priority - a.priority);
+  }, [parsed, meta, noiTreatmentMode, vacancyMayBeDoubleCounted, fields.hold, result, noneConfirmed.acqCosts, cashflowOutOfDate, generatedResult]);
+
+  const hasUnverifiedSources = fieldKeys.some((key) => ['AI Estimate', 'Manual', 'User Override'].includes(meta[key].source));
+  const specialistReviewRecommended = dcfWarnings.some((w) => w.priority >= 80 && !w.exportBlock) || hasUnverifiedSources;
+  const dcfVerified = Boolean(cashflowCurrent && !dcfWarnings.length && fieldKeys.every((key) => ['Verified', 'Property Profile', 'NOI Tab', 'Cap Rate Tab', 'GST Tab', 'ICR / DSCR Tab', 'Borrowing Capacity', 'Research Engine', 'Blank'].includes(meta[key].source)));
+  const readinessStatus: DcfReadinessStatus = cashflowOutOfDate
+    ? 'Cashflow Out of Date'
+    : dcfVerified
+      ? 'DCF Verified'
+      : cashflowCurrent
+        ? (specialistReviewRecommended ? 'Specialist Review Recommended' : 'Cashflow Generated')
+        : !parsed.requiredReady || !noiTreatmentConfirmed
+          ? 'Awaiting DCF Inputs'
+          : specialistReviewRecommended
+            ? 'Preliminary DCF Estimate'
+            : 'DCF Ready to Generate';
+  const priorityWarnings = dcfWarnings.slice(0, 3);
+  const exportBlocked = !generatedResult || cashflowOutOfDate;
+  const exportWarning = !exportBlocked && (readinessStatus === 'Preliminary DCF Estimate' || readinessStatus === 'Specialist Review Recommended') ? 'DCF includes unverified assumptions.' : null;
+
   const handleGenerateCashflow = () => {
     if (!canGenerate) return;
     const inputs = buildDcfInputs();
@@ -423,11 +471,23 @@ export function DcfCalculatorCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-          <div className="text-sm font-semibold text-primary">{cashflowCurrent ? 'Cashflow generated' : cashflowOutOfDate ? 'Cashflow out of date' : EMPTY_STATUS}</div>
-          {!cashflowCurrent && !cashflowOutOfDate && <p className="mt-1 text-xs text-muted-foreground">{EMPTY_HELPER}</p>}
+          <div className="text-sm font-semibold text-primary">{readinessStatus}</div>
+          {readinessStatus === 'Awaiting DCF Inputs' && <p className="mt-1 text-xs text-muted-foreground">{EMPTY_HELPER}</p>}
           {cashflowCurrent && <p className="mt-1 text-xs text-emerald-200">Cashflow generated · {generatedAt ? new Date(generatedAt).toLocaleString() : 'Generated'} · {DCF_CALCULATION_VERSION}</p>}
           {cashflowOutOfDate && <p className="mt-1 text-xs text-amber-200">Cashflow out of date · Last generated {generatedAt ? new Date(generatedAt).toLocaleString() : 'previously'} · {DCF_CALCULATION_VERSION}</p>}
+          {!!priorityWarnings.length && <div className="mt-3 space-y-1">{priorityWarnings.map((w) => <p key={w.message} className="text-xs text-amber-200">• {w.message}</p>)}</div>}
+          {!!dcfWarnings.length && <Button size="sm" variant="link" className="mt-1 h-auto p-0 text-xs text-primary" onClick={() => setShowWarningLog((v) => !v)}>View all assumptions and warnings</Button>}
         </div>
+
+        {showWarningLog && (
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <Label>Assumption Status &gt; DCF Warning Log</Label>
+            <div className="mt-2 space-y-2 text-xs">
+              {dcfWarnings.length ? dcfWarnings.map((w) => <div key={w.message} className="rounded border bg-background/40 p-2"><div className="font-medium text-foreground">{w.message}</div><div className="text-muted-foreground">Group: {w.group} · Priority: {w.priority}{w.exportBlock ? ' · Blocks export' : ''}</div></div>) : <div className="text-muted-foreground">No DCF warnings currently detected.</div>}
+            </div>
+          </div>
+        )}
+
 
         {estimatePanelOpen && (
           <div className="rounded-lg border border-primary/20 bg-muted/20 p-3">
@@ -517,7 +577,7 @@ export function DcfCalculatorCard() {
           {!result ? <PendingPanel /> : (
             <ScrollArea className="h-[360px] rounded border"><Table><TableHeader className="sticky top-0 bg-background"><TableRow><TableHead>Year</TableHead><TableHead className="text-right">Opening NOI</TableHead><TableHead className="text-right">Vacancy / NOI Adjustment</TableHead><TableHead className="text-right">Effective NOI</TableHead><TableHead className="text-right">Rental Growth Applied</TableHead><TableHead className="text-right">Capex</TableHead><TableHead className="text-right">Downtime Adjustment</TableHead><TableHead className="text-right">Unlevered Cash Flow</TableHead><TableHead className="text-right">Debt Service</TableHead><TableHead className="text-right">Interest Component</TableHead><TableHead className="text-right">Principal Component</TableHead><TableHead className="text-right">Levered Cash Flow</TableHead><TableHead className="text-right">Loan Balance</TableHead><TableHead className="text-right">Terminal Value</TableHead><TableHead className="text-right">Selling Costs</TableHead><TableHead className="text-right">Net Sale Proceeds to Equity</TableHead><TableHead className="text-right">Final Year Total Cash Flow</TableHead></TableRow></TableHeader><TableBody>{(showFullSchedule ? generatedRows : generatedRows.slice(0, 5)).map(r => <TableRow key={r.year}><TableCell>{r.year}</TableCell><TableCell className="text-right">{fmt0(r.openingNoi)}</TableCell><TableCell className="text-right">{fmt0(r.vacancyAdjustment)}</TableCell><TableCell className="text-right">{fmt0(r.effectiveNoi)}</TableCell><TableCell className="text-right">{r.rentalGrowthApplied}%</TableCell><TableCell className="text-right">{fmt0(r.capex)}</TableCell><TableCell className="text-right">{fmt0(r.downtimeAdjustment)}</TableCell><TableCell className="text-right">{fmt0(r.unleveredCashFlow)}</TableCell><TableCell className="text-right">{fmt0(r.debtService)}</TableCell><TableCell className="text-right">{fmt0(r.interestComponent)}</TableCell><TableCell className="text-right">{fmt0(r.principalComponent)}</TableCell><TableCell className="text-right font-medium">{fmt0(r.leveredCashFlow)}</TableCell><TableCell className="text-right text-muted-foreground">{fmt0(r.loanBalance)}</TableCell><TableCell className="text-right">{r.terminalValue == null ? PENDING : fmt0(r.terminalValue)}</TableCell><TableCell className="text-right">{r.sellingCosts == null ? PENDING : fmt0(r.sellingCosts)}</TableCell><TableCell className="text-right">{r.netSaleProceedsToEquity == null ? PENDING : fmt0(r.netSaleProceedsToEquity)}</TableCell><TableCell className="text-right">{r.finalYearTotalCashFlow == null ? PENDING : fmt0(r.finalYearTotalCashFlow)}</TableCell></TableRow>)}</TableBody></Table></ScrollArea>
           )}
-          <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!result}>Include in client report</Button><Button size="sm" variant="outline" disabled={!result}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result}>Save as scenario</Button></div>
+          <div className="mt-3 space-y-2"><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={exportBlocked}>Include in client report</Button><Button size="sm" variant="outline" disabled={exportBlocked}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result || cashflowOutOfDate}>Save as scenario</Button></div>{exportBlocked && <p className="text-xs text-amber-200">Generate current cashflow before exporting DCF outputs.</p>}{exportWarning && <p className="text-xs text-amber-200">{exportWarning}</p>}</div>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div className="rounded border p-3"><Label>Exit Cap Sensitivity</Label>{result ? result.sensitivityTable.map(r => <div key={r.exitCapRatePct} className="flex justify-between text-sm"><span>{r.exitCapRatePct}%</span><span>{fmt0(r.netSaleProceeds)}</span></div>) : <PendingPanel compact />}</div>
