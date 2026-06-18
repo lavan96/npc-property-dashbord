@@ -49,11 +49,11 @@ export function CalculatorPropertyBar() {
   const Icon = domain === 'industrial' ? Factory : Building2;
 
   return (
-    <Card className="border-primary/30 bg-card/60">
-      <CardContent className="p-4 flex flex-wrap items-center gap-3">
+    <Card id="calculator-property-selector" className="border-border/60 bg-card/35 shadow-none">
+      <CardContent className="flex flex-wrap items-center gap-3 p-3">
         <div className="flex items-center gap-2 mr-2">
-          <Icon className="h-5 w-5 text-primary" />
-          <div className="text-sm font-medium">Calculator data source</div>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <div><div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary selector</div><div className="text-sm font-medium">Calculator data source</div></div>
         </div>
         <div className="flex-1 min-w-[260px]">
           <Select
@@ -61,7 +61,7 @@ export function CalculatorPropertyBar() {
             onValueChange={(v) => selectProperty(v === UNASSIGNED ? null : v)}
             disabled={listLoading || loading}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-9 bg-background/60">
               <SelectValue placeholder={listLoading ? 'Loading properties…' : 'Manual entry (no property linked)'} />
             </SelectTrigger>
             <SelectContent>
@@ -84,11 +84,11 @@ export function CalculatorPropertyBar() {
             </Button>
           </>
         ) : (
-          <Badge variant="outline">Manual</Badge>
+          <Badge variant="outline" className="bg-background/60">Manual</Badge>
         )}
         {property && (
           <div className="w-full text-xs text-muted-foreground pt-1">
-            Prefill applied to all calculators. Edits stay local unless you click "Save back to property".
+            Prefill applied from the Active Property Header context. Edits stay local unless you save back to the property.
           </div>
         )}
       </CardContent>

@@ -113,9 +113,9 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
             <p className="mt-1 text-sm text-muted-foreground">{assessment.nextAction}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="outline">{prefill ? 'Property linked' : 'Manual / no property linked'}</Badge>
-            <Badge variant="outline">{assessment.requiredComplete ? 'Required complete' : 'Required incomplete'}</Badge>
-            <Badge variant="outline">{assessment.recommendedMissing} recommended missing</Badge>
+            <Badge variant="outline" className="bg-background/60">Data: {prefill ? 'Property linked' : 'Manual entry'}</Badge>
+            <Badge variant="outline" className="bg-background/60">Physical data: {assessment.requiredComplete ? 'Complete' : 'Pending'}</Badge>
+            <Badge variant="outline" className="bg-background/60">Optional gaps: {assessment.recommendedMissing}</Badge>
           </div>
         </div>
       </div>
@@ -125,20 +125,22 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
       <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-foreground">Benchmark Notes &amp; Report Readiness</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Review assumptions, warnings and report inclusion before saving metrics.</p>
+            <h3 className="text-base font-semibold text-foreground">Validate Warnings &amp; Save Metrics</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Benchmark notes stay collapsed by default. Check compact warnings, choose report inclusion, then save the linked-property metrics.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <label className="flex items-center gap-2 text-muted-foreground">
               <Switch checked={includeInReport} onCheckedChange={setIncludeInReport} aria-label="Include industrial metrics in report" />
               Include in report
             </label>
-            <Button size="sm" variant="outline" disabled={!canSaveBack || saving} title={!prefill ? 'Select or link a property before saving industrial metrics.' : 'Save verified industrial metrics and audit trail to the linked property profile.'} onClick={() => setDialogOpen(true)}>Save Back to Property</Button>
+            <span title={!canSaveBack ? (!prefill ? 'Select or link a property before saving industrial metrics.' : 'Import or enter at least one metric before saving back.') : 'Save industrial metrics and audit trail to the linked property profile.'}>
+              <Button size="sm" variant="outline" disabled={!canSaveBack || saving} onClick={() => setDialogOpen(true)} className="disabled:pointer-events-none">Save Metrics</Button>
+            </span>
           </div>
         </div>
 
         <details className="mt-3 rounded-md border border-border/60 bg-background/30 p-2 text-xs text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">View benchmark notes</summary>
+          <summary className="cursor-pointer font-medium text-foreground">Benchmark Notes (collapsed)</summary>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             {saveSnapshot.benchmarkNotes.map((note) => <li key={note}>{note}</li>)}
           </ul>
@@ -151,7 +153,7 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
 
         {assessment.warnings.length > 3 && (
           <details className="mt-3 rounded-md border border-border/60 bg-background/30 p-2 text-xs text-muted-foreground">
-            <summary className="cursor-pointer font-medium text-foreground">View all assumptions and warnings</summary>
+            <summary className="cursor-pointer font-medium text-foreground">Warnings ({assessment.warnings.length})</summary>
             <div className="mt-2 space-y-2">
               {assessment.warnings.map((warning) => <WarningCard key={`${warning.category}-${warning.severity}-${warning.message}`} warning={warning} />)}
             </div>
