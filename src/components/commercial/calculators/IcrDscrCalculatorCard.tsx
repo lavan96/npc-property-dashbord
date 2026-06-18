@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Info, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateIcrDscrEngine } from '@/utils/commercial';
+import { annualPI, calculateIcrDscrEngine } from '@/utils/commercial';
 import { useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { commercialApi } from '@/hooks/useCommercialProperties';
 import { industrialApi } from '@/hooks/useIndustrialProperties';
@@ -208,9 +208,29 @@ export function IcrDscrCalculatorCard() {
     && parsedInputs.minDebtYieldPct != null && parsedInputs.minDebtYieldPct > 0
     && assessmentRateInput != null && assessmentRateInput > 0;
 
+  const preliminaryLoanAmount = parsedInputs.loan ?? parsedInputs.proposedLoan;
+  const hasPreliminaryInputs = parsedInputs.noi != null && parsedInputs.noi > 0
+    && preliminaryLoanAmount != null && preliminaryLoanAmount > 0
+    && parsedInputs.rate != null && parsedInputs.rate > 0
+    && parsedInputs.term != null && parsedInputs.term >= 0;
+
+  const preliminaryCoverage = useMemo(() => {
+    if (!hasPreliminaryInputs) return null;
+    const annualInterest = preliminaryLoanAmount! * (parsedInputs.rate! / 100);
+    const annualDebtService = annualPI(preliminaryLoanAmount!, parsedInputs.rate!, parsedInputs.term!);
+    return {
+      assessmentRateUsedPct: parsedInputs.rate!,
+      annualInterest,
+      annualDebtService,
+      icr: annualInterest > 0 ? Number((parsedInputs.noi! / annualInterest).toFixed(2)) : null,
+      dscr: annualDebtService > 0 ? Number((parsedInputs.noi! / annualDebtService).toFixed(2)) : null,
+      debtYield: preliminaryLoanAmount! > 0 ? parsedInputs.noi! / preliminaryLoanAmount! : null,
+    };
+  }, [hasPreliminaryInputs, preliminaryLoanAmount, parsedInputs]);
+
   const coverage = useMemo(() => hasRequiredInputs ? calculateIcrDscrEngine({
     noi: parsedInputs.noi!,
-    loanAmount: parsedInputs.loan!,
+    loanAmount: preliminaryLoanAmount!,
     proposedLoanAmount: parsedInputs.proposedLoan == null ? undefined : parsedInputs.proposedLoan,
     contractInterestRatePct: parsedInputs.rate!,
     assessmentBufferPct: parsedInputs.buffer!,
@@ -220,26 +240,54 @@ export function IcrDscrCalculatorCard() {
     minimumIcr: parsedInputs.targetIcr!,
     minimumDscr: parsedInputs.targetDscr!,
     minimumDebtYield: parsedInputs.minDebtYieldPct! / 100,
-  }) : null, [hasRequiredInputs, parsedInputs]);
+  }) : null, [hasRequiredInputs, preliminaryLoanAmount, parsedInputs]);
 
+  const activeCoverage = coverage ?? preliminaryCoverage;
   const icrStatus = coverage && parsedInputs.targetIcr != null ? coverage.icr >= parsedInputs.targetIcr ? 'pass' : 'fail' : 'pending';
   const dscrStatus = coverage && parsedInputs.targetDscr != null ? coverage.dscr >= parsedInputs.targetDscr ? 'pass' : 'fail' : 'pending';
   const supportableCaps = coverage ? [coverage.maxLoanByIcr, coverage.maxLoanByDscr, coverage.maxLoanByDebtYield].filter(value => Number.isFinite(value)) : [];
   const lowestSupportableLoan = supportableCaps.length ? Math.min(...supportableCaps) : null;
   const bindingConstraint = coverage ? [{ label: 'ICR', value: coverage.maxLoanByIcr }, { label: 'DSCR', value: coverage.maxLoanByDscr }, { label: 'Debt Yield', value: coverage.maxLoanByDebtYield }].filter(candidate => Number.isFinite(candidate.value)).reduce((lowest, candidate) => candidate.value < lowest.value ? candidate : lowest).label : PENDING;
   const debtYieldPass = coverage && parsedInputs.minDebtYieldPct != null ? coverage.debtYield >= parsedInputs.minDebtYieldPct / 100 : false;
-  const coverageStatus = !coverage ? 'Awaiting Coverage Inputs' : icrStatus === 'pass' && dscrStatus === 'pass' && debtYieldPass ? 'Supportable' : 'Coverage Pressure';
-  const recommendedAction = !coverage
+  const lowHeadroom = Boolean(coverage && coverage.icrHeadroom >= 0 && coverage.dscrHeadroom >= 0 && (coverage.icrHeadroom < 0.15 || coverage.dscrHeadroom < 0.1 || coverage.debtYieldHeadroom < 0.005));
+  const hasUserOverrides = Object.values(fields).some(field => field.source === 'User Override');
+  const outsideNormalLenderRange = Boolean(parsedInputs.rate != null && parsedInputs.rate > 15) || Boolean(parsedInputs.term != null && parsedInputs.term > 30);
+  const linkedOrVerified = (source: FieldSource, allowed: FieldSource[]) => allowed.includes(source) || source === 'Verified';
+  const verifiedSources = Boolean(prefill && coverage && (profile.icrDscrOutputs as any)?.savedAt
+    && linkedOrVerified(fields.noi.source, ['NOI Tab'])
+    && linkedOrVerified(fields.loan.source, ['Borrowing Capacity', 'Property Profile'])
+    && linkedOrVerified(fields.rate.source, ['Borrowing Capacity', 'Lender Policy', 'Property Profile'])
+    && ['targetIcr', 'targetDscr', 'minDebtYield'].every(key => linkedOrVerified(fields[key as IcrField].source, ['Borrowing Capacity', 'Lender Policy'])));
+  const anyFailed = Boolean(coverage && (icrStatus === 'fail' || dscrStatus === 'fail' || !debtYieldPass));
+  const readinessStatus = !hasPreliminaryInputs
+    ? 'Awaiting Coverage Inputs'
+    : !hasRequiredInputs
+      ? 'Preliminary Coverage Estimate'
+      : anyFailed
+        ? 'Not Supportable'
+        : hasUserOverrides || outsideNormalLenderRange
+          ? 'Specialist Review Recommended'
+          : verifiedSources
+            ? 'Coverage Verified'
+            : lowHeadroom
+              ? 'Marginal / Tight Coverage'
+              : 'Coverage Supportable';
+  const coverageStatus = readinessStatus;
+  const recommendedAction = readinessStatus === 'Awaiting Coverage Inputs'
     ? 'Inputs are incomplete. Import NOI and confirm lender policy assumptions.'
-    : bindingConstraint === 'ICR'
-      ? 'ICR is the binding constraint. Increase NOI, reduce loan amount or review interest rate assumptions.'
-      : bindingConstraint === 'DSCR'
-        ? 'DSCR is the binding constraint. Review amortisation term, rate assumptions or proposed loan amount.'
-        : bindingConstraint === 'Debt Yield'
-          ? 'Debt yield is the binding constraint. Reduce debt or increase verified NOI.'
-          : 'Coverage is supportable under current assumptions.';
+    : readinessStatus === 'Preliminary Coverage Estimate'
+      ? 'Preliminary estimate only. Add lender thresholds, assessment buffer and floor rate to complete coverage testing.'
+      : readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified'
+        ? 'Coverage is supportable under current assumptions.'
+        : bindingConstraint === 'ICR'
+          ? 'ICR is the binding constraint. Increase NOI, reduce loan amount or review interest rate assumptions.'
+          : bindingConstraint === 'DSCR'
+            ? 'DSCR is the binding constraint. Review amortisation term, rate assumptions or proposed loan amount.'
+            : bindingConstraint === 'Debt Yield'
+              ? 'Debt yield is the binding constraint. Reduce debt or increase verified NOI.'
+              : 'Review overridden, unverified or out-of-policy assumptions before relying on this coverage result.';
   const dataSourceLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
-  const assumptionStatus = coverage ? coverageStatus : 'Awaiting Coverage Inputs';
+  const assumptionStatus = readinessStatus;
   const auditHistory = profile.aiEstimateAuditLog.filter(event => event.fieldKey?.startsWith('icrDscr.')).slice(-8);
   const stressRows = coverage ? [0.5, 1].map(rateShock => {
     const shocked = calculateIcrDscrEngine({
@@ -295,7 +343,7 @@ export function IcrDscrCalculatorCard() {
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-muted/30 p-3 text-xs">
             <Badge variant="outline" className="border-primary/40 text-primary">{dataSourceLabel}</Badge>
             <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
-            <Badge variant={coverage ? coverageStatus === 'Supportable' ? 'default' : 'destructive' : 'outline'}>{assumptionStatus}</Badge>
+            <Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{assumptionStatus}</Badge>
             <Button size="sm" variant="outline" onClick={saveBackToProperty} disabled={!prefill || saving} title={!prefill ? 'Select a property to save calculator values back.' : undefined}>{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Save Back to Property</Button>
           </div>
         </CardHeader>
@@ -338,16 +386,16 @@ export function IcrDscrCalculatorCard() {
 
           <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-              <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-base font-semibold">Coverage Output Summary</h3><Badge variant={coverage ? coverageStatus === 'Supportable' ? 'default' : 'destructive' : 'outline'}>{coverageStatus}</Badge></div>
+              <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-base font-semibold">Coverage Output Summary</h3><Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{coverageStatus}</Badge></div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <MetricCard label="ICR" value={coverage && finiteValue(coverage.icr) != null ? `${coverage.icr}x` : PENDING} prominent />
-                <MetricCard label="DSCR" value={coverage && finiteValue(coverage.dscr) != null ? `${coverage.dscr}x` : PENDING} prominent />
-                <MetricCard label="Debt Yield" value={coverage && finiteValue(coverage.debtYield) != null ? `${(coverage.debtYield * 100).toFixed(2)}%` : PENDING} prominent />
+                <MetricCard label="ICR" value={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} prominent />
+                <MetricCard label="DSCR" value={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} prominent />
+                <MetricCard label="Debt Yield" value={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} prominent />
               </div>
               <div className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                <Row label="Assessment Rate Used" value={coverage && finiteValue(coverage.assessmentRateUsedPct) != null ? `${coverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} />
-                <Row label="Annual Interest" value={coverage && finiteValue(coverage.annualInterest) != null ? fmt(coverage.annualInterest) : PENDING} />
-                <Row label="Annual Debt Service" value={coverage && finiteValue(coverage.annualDebtService) != null ? fmt(coverage.annualDebtService) : PENDING} />
+                <Row label="Assessment Rate Used" value={activeCoverage && finiteValue(activeCoverage.assessmentRateUsedPct) != null ? `${activeCoverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} />
+                <Row label="Annual Interest" value={activeCoverage && finiteValue(activeCoverage.annualInterest) != null ? fmt(activeCoverage.annualInterest) : PENDING} />
+                <Row label="Annual Debt Service" value={activeCoverage && finiteValue(activeCoverage.annualDebtService) != null ? fmt(activeCoverage.annualDebtService) : PENDING} />
                 <Row label="ICR Headroom" value={coverage && finiteValue(coverage.icrHeadroom) != null ? `${coverage.icrHeadroom.toFixed(2)}x` : PENDING} />
                 <Row label="DSCR Headroom" value={coverage && finiteValue(coverage.dscrHeadroom) != null ? `${coverage.dscrHeadroom.toFixed(2)}x` : PENDING} />
                 <Row label="Coverage Status" value={coverageStatus} />
