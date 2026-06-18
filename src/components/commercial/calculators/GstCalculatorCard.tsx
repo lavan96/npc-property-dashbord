@@ -26,6 +26,9 @@ type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'Contract Extracte
 interface SourceCandidate<T> { value: T; source: SourceState; detail: string }
 interface AssumptionHistoryEntry { field: GstFieldKey; previousValue: string; nextValue: string; previousSource: SourceState; nextSource: SourceState; note: string }
 interface GstExtractionPreview { suggestedTreatment: GstTreatmentInput; purchaserRegistrationRequirement: ConfirmationState; goingConcernPresent: boolean; marginSchemePresent: boolean; taxableSupplyPresent: boolean; confidence: 'Low' | 'Medium' | 'High'; clauseSummary: string; missingInformation: string[]; requiredConfirmations: string[]; specialistReviewRequired: boolean; source: SourceState }
+type GstWarningCategory = 'Purchase Price' | 'GST Treatment' | 'Purchaser Registration' | 'Going Concern' | 'ITC Claimability' | 'Settlement Cashflow' | 'Contract Review' | 'Verification';
+type GstWarningSeverity = 'Critical' | 'Required' | 'Recommended';
+interface GstWarning { category: GstWarningCategory; severity: GstWarningSeverity; message: string; detail: string; priority: number }
 
 const parseNumeric = (v: unknown): number | null => {
   if (v === undefined || v === null) return null;
@@ -280,10 +283,11 @@ export function GstCalculatorCard() {
   const isSpecialistTreatment = treatment === 'unknown' || treatment === 'custom_review';
   const dataEntryStarted = hasPurchasePrice || hasTreatment || registered !== 'unknown' || goingConcernConfirmed !== 'unknown' || itcClaimability !== 'unknown' || settlementTiming !== 'unknown';
   const hasRequiredInputs = hasPurchasePrice && treatment !== 'unknown' && treatment !== 'custom_review' && (treatment !== 'standard' || (registered !== 'unknown' && itcClaimability !== 'unknown' && settlementTiming !== 'unknown')) && (treatment !== 'going_concern' || goingConcernConfirmed === 'yes') && (treatment !== 'margin_scheme' || priorCostValue !== null);
-  const contractReviewed = sources.treatment === 'Contract Extracted';
+  const contractReviewed = sources.treatment === 'Contract Extracted' || sources.treatment === 'Solicitor Confirmed' || sources.treatment === 'Accountant Confirmed' || sources.treatment === 'Verified';
   const treatmentConfirmed = ['Contract Extracted', 'Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.treatment);
   const professionalConfirmed = ['Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.treatment) || ['Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.goingConcernConfirmed);
-  const internallyInconsistent = (treatment === 'going_concern' && goingConcernConfirmed === 'no') || (treatment === 'standard' && registered === 'no' && itcClaimability === 'yes') || (treatment === 'margin_scheme' && priorCostValue === null);
+  const internallyInconsistent = (treatment === 'going_concern' && goingConcernConfirmed === 'no') || (treatment === 'standard' && registered === 'no' && itcClaimability === 'yes') || (treatment === 'margin_scheme' && priorCostValue === null) || sourceConflicts.treatment?.source === 'Contract Extracted';
+  const reviewTriggered = (dataEntryStarted && treatment === 'unknown') || sources.treatment === 'AI Estimate' || sources.treatment === 'User Override' || sources.price === 'Manual' || sources.price === 'User Override' || registered === 'unknown' || itcClaimability === 'unknown' || (treatment === 'going_concern' && goingConcernConfirmed !== 'yes') || (treatment === 'going_concern' && registered !== 'yes') || (treatment === 'standard' && settlementTiming === 'unknown') || (treatment === 'margin_scheme' && priorCostValue === null) || !contractReviewed || !professionalConfirmed || internallyInconsistent;
   const formulaTreatment: GstTreatment = isZeroGstTreatment ? 'input_taxed' : treatment as GstTreatment;
   const purchaserCanClaimItc = registered === 'yes' && itcClaimability === 'yes';
   const result = useMemo(() => hasRequiredInputs ? calculateCommercialGst({
@@ -293,7 +297,7 @@ export function GstCalculatorCard() {
   const confirmationItemsComplete = Boolean(prefill) && contractReviewed && registered !== 'unknown' && treatmentConfirmed && professionalConfirmed;
   const readinessStatus = !hasPurchasePrice || !hasTreatment
     ? (dataEntryStarted && treatment === 'unknown' && hasPurchasePrice ? 'GST Treatment Review Required' : 'Awaiting GST Inputs')
-    : sources.treatment === 'AI Estimate' || sources.treatment === 'User Override' || isSpecialistTreatment || internallyInconsistent
+    : reviewTriggered || isSpecialistTreatment
       ? 'GST Treatment Review Required'
       : confirmationItemsComplete
         ? 'GST Treatment Verified'
@@ -307,12 +311,37 @@ export function GstCalculatorCard() {
   const economicCostValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 0 : assessment.gstEconomicCost) : null;
   const netAcquisitionCostValue = hasRequiredInputs && result && purchasePriceValue !== null ? (isZeroGstTreatment ? result.netAcquisitionCost : (assessment?.netAcquisitionCost || result.netAcquisitionCost)) : null;
   const timingRiskValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 'low' : assessment.gstTimingRisk) : null;
+  const gstWarnings = useMemo<GstWarning[]>(() => {
+    if (!dataEntryStarted) return [];
+    const warnings: GstWarning[] = [];
+    const add = (warning: GstWarning) => warnings.push(warning);
+    if (!hasPurchasePrice) add({ category: 'Purchase Price', severity: 'Required', priority: 10, message: 'Purchase price is missing.', detail: 'Confirm purchase price from the property profile, contract or scrape before relying on GST outputs.' });
+    if (treatment === 'unknown') add({ category: 'GST Treatment', severity: 'Critical', priority: 5, message: 'GST treatment is unknown. Confirm contract GST clause before relying on this result.', detail: 'Unknown GST treatment cannot be relied on until contract clauses and professional advice confirm the position.' });
+    if (sources.treatment === 'AI Estimate') add({ category: 'GST Treatment', severity: 'Required', priority: 15, message: 'AI estimate is not verified. Obtain solicitor/accountant confirmation.', detail: 'AI output is not verified advice and should remain preliminary until confirmed.' });
+    if (sources.price === 'Manual' || sources.price === 'User Override') add({ category: 'Purchase Price', severity: 'Required', priority: 20, message: 'Purchase price is manual and not linked to property or contract.', detail: 'Link property profile, contract extraction or scrape data to reduce reliance on a manual price.' });
+    if (registered === 'unknown') add({ category: 'Purchaser Registration', severity: 'Required', priority: 25, message: 'Purchaser GST registration is not confirmed.', detail: 'Confirm purchaser GST registration status before relying on ITC claimability.' });
+    if (itcClaimability === 'unknown') add({ category: 'ITC Claimability', severity: 'Required', priority: 30, message: 'GST claimability is not confirmed.', detail: 'Confirm whether the purchaser can claim GST as an input tax credit.' });
+    if (treatment === 'going_concern' && goingConcernConfirmed !== 'yes') add({ category: 'Going Concern', severity: 'Critical', priority: 12, message: 'Going concern selected but conditions are not verified.', detail: 'Confirm written agreement, enterprise continuity and all going-concern requirements.' });
+    if (treatment === 'going_concern' && registered !== 'yes') add({ category: 'Going Concern', severity: 'Critical', priority: 13, message: 'Going concern selected but purchaser GST registration is not confirmed.', detail: 'GST-free going concern treatment requires purchaser GST registration confirmation.' });
+    if (treatment === 'standard' && settlementTiming === 'unknown') add({ category: 'Settlement Cashflow', severity: 'Required', priority: 18, message: 'Taxable supply may create GST settlement cashflow. Confirm funding and ITC timing.', detail: 'Confirm whether GST is payable at settlement and when any ITC refund is expected.' });
+    if (treatment === 'margin_scheme' && priorCostValue === null) add({ category: 'GST Treatment', severity: 'Critical', priority: 14, message: 'Margin scheme selected but required margin inputs are missing.', detail: 'Provide prior acquisition cost or required margin inputs before relying on margin-scheme GST.' });
+    if (!contractReviewed) add({ category: 'Contract Review', severity: 'Required', priority: 35, message: 'Contract GST clause has not been reviewed.', detail: 'Review the contract GST clause or extract GST wording before relying on the result.' });
+    if (!professionalConfirmed) add({ category: 'Verification', severity: 'Required', priority: 40, message: 'Solicitor/accountant confirmation has not been received.', detail: 'Obtain professional confirmation before treating GST outputs as verified.' });
+    if ((settlementCashflowValue ?? 0) > 0 && settlementTiming !== 'atSettlement') add({ category: 'Settlement Cashflow', severity: 'Recommended', priority: 45, message: 'GST amount is material and settlement cashflow funding should be confirmed.', detail: 'Confirm available funds for GST payable at settlement and expected ITC refund timing.' });
+    if (sourceConflicts.treatment?.source === 'Contract Extracted') add({ category: 'GST Treatment', severity: 'Critical', priority: 8, message: 'Manual override differs from contract extracted treatment. Review assumption history.', detail: 'A user override conflicts with the contract-extracted GST treatment.' });
+    return warnings.sort((a, b) => a.priority - b.priority);
+  }, [dataEntryStarted, hasPurchasePrice, treatment, sources.treatment, sources.price, registered, itcClaimability, goingConcernConfirmed, settlementTiming, priorCostValue, contractReviewed, professionalConfirmed, settlementCashflowValue, sourceConflicts.treatment]);
+  const priorityWarnings = gstWarnings.slice(0, 3);
+
   const checklist = [
+    { label: 'Purchase price confirmed', complete: hasPurchasePrice },
     { label: 'Contract GST clause reviewed', complete: contractReviewed },
+    { label: 'GST treatment confirmed', complete: treatmentConfirmed },
     { label: 'Purchaser GST registration confirmed', complete: registered !== 'unknown' },
-    { label: 'Going concern conditions confirmed, if applicable', complete: treatment !== 'going_concern' || goingConcernConfirmed === 'yes' },
-    { label: 'Tax invoice / settlement statement reviewed', complete: settlementTiming !== 'unknown' || isZeroGstTreatment },
+    { label: 'ITC claimability confirmed', complete: itcClaimability !== 'unknown' },
+    { label: 'Settlement GST timing confirmed', complete: settlementTiming !== 'unknown' || isZeroGstTreatment },
     { label: 'Solicitor/accountant confirmation received', complete: professionalConfirmed },
+    { label: 'Save-back completed', complete: Boolean(prefill) && sources.treatment === 'Property Profile' },
   ];
   const nextAction = !purchasePriceValue || treatment === 'unknown'
     ? 'Inputs are incomplete. Confirm purchase price and GST treatment.'
@@ -341,7 +370,7 @@ export function GstCalculatorCard() {
               <Badge variant={readinessStatus === "GST Treatment Verified" ? "default" : readinessStatus === "GST Treatment Review Required" ? "destructive" : "outline"} className={readinessStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{readinessStatus}</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="outline" disabled title="Assumption status is shown in field badges and the advanced GST breakdown.">Assumption Status</Button>
+              <Button size="sm" variant="outline" onClick={() => setAdvancedOpen(true)} title="Open GST assumptions and warning log.">Assumption Status</Button>
               <Button size="sm" variant="outline" onClick={runExtractionWorkflow} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "More property or contract information may be required before GST treatment can be estimated."}>Estimate / extract from contract</Button>
               <SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: persistedTreatment(treatment) })} />
             </div>
@@ -442,7 +471,13 @@ export function GstCalculatorCard() {
               <Row label="Net Acquisition Cost" value={netAcquisitionCostValue === null ? PENDING : fmt(netAcquisitionCostValue)} highlight />
             </div>
             {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-3">{result.notes}</p>}
-            {hasRequiredInputs && !isZeroGstTreatment && assessment?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
+            {priorityWarnings.length > 0 && (
+              <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                <div className="font-medium">Priority GST warnings</div>
+                <div className="mt-2 space-y-1">{priorityWarnings.map(w => <p key={`${w.category}-${w.message}`}>• {w.message}</p>)}</div>
+                <button type="button" className="mt-2 text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</button>
+              </div>
+            )}
           </section>
         </div>
 
@@ -472,7 +507,7 @@ export function GstCalculatorCard() {
             <AdvancedBlock title="Contract extraction detail" lines={[sourceCandidates.treatment?.source === 'Contract Extracted' ? sourceCandidates.treatment.detail : 'No contract-extracted GST treatment currently applied.', sourceCandidates.price?.source === 'Contract Extracted' ? sourceCandidates.price.detail : 'No contract-extracted price currently applied.']} />
             <AdvancedBlock title="AI estimate reasoning" lines={[sourceCandidates.treatment?.source === 'AI Estimate' ? sourceCandidates.treatment.detail : 'No AI GST estimate currently applied.']} />
             <AdvancedBlock title="Full assumption list" lines={Object.entries(sources).map(([field, source]) => `${field}: ${sourceLabel(source)}`)} />
-            <AdvancedBlock title="Full warning log" lines={assessment?.warnings?.length ? assessment.warnings : ['No GST warning log available yet.']} />
+            <AdvancedBlock title="GST Warning Log" lines={gstWarnings.length ? gstWarnings.map(w => `${w.severity} · ${w.category}: ${w.message} ${w.detail}`) : ['No GST warning log available yet.']} />
             <AdvancedBlock title="Audit history" lines={history.length ? history.map(h => `${h.field}: ${h.previousValue} (${sourceLabel(h.previousSource)}) → ${h.nextValue} (${sourceLabel(h.nextSource)})`) : ['No GST assumption changes recorded yet.']} />
           </CollapsibleContent>
         </Collapsible>
