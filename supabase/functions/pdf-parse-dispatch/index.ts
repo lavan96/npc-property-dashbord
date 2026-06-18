@@ -27,7 +27,9 @@ const PARSE_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 const SOURCE_BUCKET = 'template-import-assets';
 const ENGINE = 'docling';
-const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+waveG';
+const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest';
+const ARTIFACT_CONTRACT_VERSION = 'raster-manifest-v1';
+const PHASE3_ENGINE_MARKER = 'phase3-raster-manifest';
 const MAX_SIDECAR_ATTEMPTS = 3;
 
 // Wave G chunked thresholds. <=20 pages → monolithic /parse callback.
@@ -36,6 +38,28 @@ const CHUNK_MONOLITHIC_MAX = 20;
 const CHUNK_SIZE_MEDIUM = 10;
 const CHUNK_SIZE_LARGE = 5;
 const STUCK_PARSING_MINUTES = 15;
+
+function modeRequiresRaster(mode: string | null | undefined): boolean {
+  return mode === 'hybrid' || mode === 'pixel_perfect' || mode === 'pixel-perfect';
+}
+
+function isCurrentArtifactContract(row: any, mode: string): boolean {
+  const engineVersion = String(row?.engine_version ?? '');
+  if (!engineVersion.includes(PHASE3_ENGINE_MARKER)) return false;
+
+  if (!modeRequiresRaster(mode)) return true;
+
+  const result = row?.result_payload ?? {};
+  const manifestPath = result.rasters_manifest_path;
+  const pageRasterPaths = result.page_raster_paths;
+  const pageCount = Number(row?.page_count ?? result.page_count ?? 0);
+
+  if (typeof manifestPath !== 'string' || !manifestPath) return false;
+  if (!Array.isArray(pageRasterPaths) || pageRasterPaths.length === 0) return false;
+  if (pageCount > 0 && pageRasterPaths.length < pageCount) return false;
+
+  return true;
+}
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
@@ -271,9 +295,19 @@ async function findCachedJob(
     .limit(1);
   if (!data || !data.length) return null;
   const row = data[0] as any;
-  // Verify diagnostics still exist.
+  // Verify diagnostics still exist and cached artifacts satisfy the current contract.
   const doclingPath = row?.result_payload?.docling_path ?? row?.diagnostics_path;
   if (!doclingPath) return null;
+
+  if (!isCurrentArtifactContract(row, mode)) {
+    console.info('[pdf-parse-dispatch] cache rejected: incompatible artifact contract', {
+      cached_job_id: row?.id,
+      mode,
+      engine_version: row?.engine_version,
+    });
+    return null;
+  }
+
   return row;
 }
 
@@ -293,15 +327,40 @@ async function findIdempotentJob(
   admin: Admin,
   userId: string | null,
   idempotencyKey: string,
+  mode: string,
 ): Promise<{ id: string; status: string; stage: string | null } | null> {
   let q = admin
     .from('pdf_import_jobs')
-    .select('id,status,stage')
+    .select('id,status,stage,engine_version,result_payload,page_count')
     .eq('idempotency_key', idempotencyKey)
     .in('status', ['queued', 'uploading', 'parsing', 'mapping', 'finalizing', 'succeeded']);
+
   if (userId) q = q.eq('user_id', userId);
+
   const { data } = await q.order('created_at', { ascending: false }).limit(1);
-  return data?.[0] as any ?? null;
+  const row = data?.[0] as any ?? null;
+  if (!row) return null;
+
+  const engineVersion = String(row?.engine_version ?? '');
+
+  if (engineVersion && !engineVersion.includes(PHASE3_ENGINE_MARKER)) {
+    console.info('[pdf-parse-dispatch] idempotent replay rejected: old engine family', {
+      job_id: row.id,
+      engine_version: row.engine_version,
+    });
+    return null;
+  }
+
+  if (row.status === 'succeeded' && !isCurrentArtifactContract(row, mode)) {
+    console.info('[pdf-parse-dispatch] idempotent replay rejected: incompatible artifact contract', {
+      job_id: row.id,
+      mode,
+      engine_version: row.engine_version,
+    });
+    return null;
+  }
+
+  return row;
 }
 
 
@@ -327,10 +386,11 @@ async function copyDiagnostic(
   srcPath: string,
   destJobId: string,
   destName: string,
+  contentType = 'application/json',
 ): Promise<string | null> {
   const bytes = await downloadDiagnostic(admin, srcPath);
   if (!bytes) return null;
-  return uploadDiagnostic(admin, destJobId, destName, bytes, 'application/json');
+  return uploadDiagnostic(admin, destJobId, destName, bytes, contentType);
 }
 
 async function serveFromCache(
@@ -344,8 +404,25 @@ async function serveFromCache(
   const result = (cached.result_payload ?? {}) as Record<string, unknown>;
   const doclingSrc = (result.docling_path as string) ?? '';
   const rasterSrc = (result.rasters_path as string) ?? '';
+  const manifestSrc = (result.rasters_manifest_path as string) ?? '';
+  const pageRasterSrcs = Array.isArray(result.page_raster_paths)
+    ? (result.page_raster_paths as unknown[]).filter((v): v is string => typeof v === 'string')
+    : [];
+
   const doclingPath = doclingSrc ? await copyDiagnostic(admin, doclingSrc, jobId, 'docling.json') : null;
   const rasterPath = rasterSrc ? await copyDiagnostic(admin, rasterSrc, jobId, 'rasters.json') : null;
+  const manifestPath = manifestSrc ? await copyDiagnostic(admin, manifestSrc, jobId, 'rasters-manifest.json') : null;
+
+  const pageRasterPaths: string[] = [];
+  for (const src of pageRasterSrcs) {
+    const filename = src.split('/').pop() || `page-${pageRasterPaths.length + 1}.png`;
+    const contentType = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
+      ? 'image/jpeg'
+      : 'image/png';
+    const copied = await copyDiagnostic(admin, src, jobId, `pages/${filename}`, contentType);
+    if (copied) pageRasterPaths.push(copied);
+  }
+
   const finishedAt = Date.now();
   const pageCount = cached.page_count ?? null;
   await updateJob(admin, jobId, {
@@ -363,6 +440,10 @@ async function serveFromCache(
     result_payload: {
       docling_path: doclingPath,
       rasters_path: rasterPath,
+      legacy_rasters_path: rasterPath,
+      rasters_manifest_path: manifestPath,
+      page_raster_paths: pageRasterPaths,
+      artifact_contract_version: ARTIFACT_CONTRACT_VERSION,
       page_count: pageCount,
       mode,
       cache_hit: true,
@@ -853,8 +934,8 @@ Deno.serve(async (req) => {
       const sourceFilePath = await sourceFingerprint(body);
       const idempotencyKey = typeof body.idempotency_key === 'string' && body.idempotency_key
         ? body.idempotency_key
-        : await sha256Text(`${sourceFilePath}:${mode}:${ENGINE_VERSION_FAMILY}`);
-      const existing = await findIdempotentJob(admin, userId as string | null, idempotencyKey);
+        : await sha256Text(`${sourceFilePath}:${mode}:${ENGINE_VERSION_FAMILY}:${ARTIFACT_CONTRACT_VERSION}`);
+      const existing = await findIdempotentJob(admin, userId as string | null, idempotencyKey, mode);
       if (existing) {
         return json({
           job_id: existing.id,
@@ -902,7 +983,7 @@ Deno.serve(async (req) => {
         .select('id')
         .single();
       if (insertErr || !jobRow) {
-        const replay = await findIdempotentJob(admin, userId as string | null, idempotencyKey);
+        const replay = await findIdempotentJob(admin, userId as string | null, idempotencyKey, mode);
         if (replay) {
           return json({
             job_id: replay.id,
