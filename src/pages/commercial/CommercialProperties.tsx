@@ -10,6 +10,7 @@ import { useCommercialProperties, commercialApi, type CommercialProperty } from 
 import { useIndustrialProperties, industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { IndustrialPropertyFormModal } from '@/components/industrial/IndustrialPropertyFormModal';
+import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
 import { toast } from '@/hooks/use-toast';
 
 type AssetKind = 'commercial' | 'industrial';
@@ -47,6 +48,7 @@ export default function CommercialProperties() {
   const [activeKind, setActiveKind] = useState<'all' | AssetKind>('all');
   const [commercialOpen, setCommercialOpen] = useState(false);
   const [industrialOpen, setIndustrialOpen] = useState(false);
+  const [addToCalcOpen, setAddToCalcOpen] = useState(false);
   const [editingCommercial, setEditingCommercial] = useState<CommercialProperty | null>(null);
   const [editingIndustrial, setEditingIndustrial] = useState<IndustrialProperty | null>(null);
   const navigate = useNavigate();
@@ -118,10 +120,13 @@ export default function CommercialProperties() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => navigate('/calculators?domain=commercial')}>Calculators</Button>
+          <Button variant="default" onClick={() => setAddToCalcOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Add property to Calculators
+          </Button>
           <Button variant="outline" onClick={() => openNew('industrial')}>
             <Factory className="h-4 w-4 mr-2" /> New Industrial
           </Button>
-          <Button onClick={() => openNew('commercial')}>
+          <Button variant="outline" onClick={() => openNew('commercial')}>
             <Plus className="h-4 w-4 mr-2" /> New Commercial
           </Button>
         </div>
@@ -184,6 +189,7 @@ export default function CommercialProperties() {
                       <TableCell className="capitalize text-xs text-muted-foreground">{isIndustrial ? p.status?.replace('_', ' ') : p.gst_treatment?.replace('_', ' ')}</TableCell>
                       <TableCell onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/calculators?domain=${row.kind}&propertyId=${row.property.id}`)}>Open in Calculators</Button>
                           <Button size="icon" variant="ghost" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
@@ -203,6 +209,14 @@ export default function CommercialProperties() {
       {industrialOpen && (
         <IndustrialPropertyFormModal open={industrialOpen} onClose={() => setIndustrialOpen(false)} property={editingIndustrial} onSaved={refreshAll} />
       )}
+      <AddPropertyToCalculatorsDialog
+        open={addToCalcOpen}
+        onOpenChange={setAddToCalcOpen}
+        onPropertyReady={({ id, domain }) => {
+          refreshAll();
+          navigate(`/calculators?domain=${domain}&propertyId=${id}`);
+        }}
+      />
     </div>
   );
 }

@@ -28,6 +28,9 @@ import {
   useCalculatorPrefill,
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
+import { MasterActivePropertyHeader } from '@/components/commercial/MasterActivePropertyHeader';
+import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
+import { Plus } from 'lucide-react';
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -597,6 +600,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
   const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
   const assumptionStatusAction = <Button type="button" variant="outline" size="sm" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
+  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -656,8 +660,28 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
 
         <div className="space-y-3">
           <ActivePropertyHeader />
+          <MasterActivePropertyHeader />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAddPropertyOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add property to calculators
+            </Button>
+          </div>
           <CalculatorPropertyBar />
         </div>
+        <AddPropertyToCalculatorsDialog
+          open={addPropertyOpen}
+          onOpenChange={setAddPropertyOpen}
+          defaultDomain={domain}
+          onPropertyReady={({ id, domain: dom }) => {
+            if (dom !== domain) setDomain(dom);
+            const next = new URLSearchParams(window.location.search);
+            next.set('domain', dom);
+            next.set('propertyId', id);
+            window.history.replaceState(null, '', `?${next.toString()}`);
+            // CalculatorPrefillProvider auto-loads from ?propertyId on mount; force re-mount via domain change above when dom differs.
+            window.dispatchEvent(new Event('popstate'));
+          }}
+        />
 
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
