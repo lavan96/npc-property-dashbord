@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Calculator, ChevronDown, FileText, GitBranch, Sparkles, TrendingUp } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Calculator, ChevronDown, FileText, Info, Sparkles, TrendingUp } from 'lucide-react';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCommercialDealState, type CalculatorSourceMode } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
 import { cashFlowAiEstimateButtons } from '@/utils/commercial/cashFlowAiEstimateEngine';
@@ -28,8 +29,14 @@ function SummaryCard({ label, value, pending }: { label: string; value: string |
   return <Card className="bg-card/95"><CardContent className="pt-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold text-primary">{display}</p></CardContent></Card>;
 }
 
-function OverrideNumber({ label, field, value, update, suffix, placeholder, pending }: { label: string; field: keyof TenYearCashFlowInputs; value?: number; update: (field: keyof TenYearCashFlowInputs, value: number) => void; suffix?: string; placeholder?: string; pending?: boolean }) {
-  return <div><Label className="flex items-center gap-1.5">{label}<GitBranch className="h-3.5 w-3.5 text-sky-300" aria-label="Overridden" /></Label><div className="flex items-center gap-2"><Input type="number" value={pending ? '' : value ?? ''} placeholder={placeholder} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div></div>;
+type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'NOI Tab' | 'Cap Rate Tab' | 'GST Tab' | 'ICR / DSCR Tab' | 'Borrowing Capacity' | 'DCF Tab' | 'Research Engine' | 'AI Estimate' | 'Manual' | 'User Override' | 'Verified';
+
+function AssumptionField({ label, source, tooltip, overridden, children }: { label: string; source: SourceState; tooltip: string; overridden?: boolean; children: ReactNode }) {
+  return <div className="rounded-lg border border-border/60 bg-card/70 p-3 space-y-2"><div className="flex items-start justify-between gap-2"><Label className="flex items-center gap-1.5 text-xs font-medium">{label}<Tooltip><TooltipTrigger asChild><Info className="h-3.5 w-3.5 cursor-help text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs">{tooltip}</TooltipContent></Tooltip></Label><div className="flex flex-wrap justify-end gap-1"><Badge variant="outline" className="text-[10px]">{source}</Badge>{overridden && <Badge variant="secondary" className="text-[10px]">Manual override</Badge>}</div></div>{children}</div>;
+}
+
+function OverrideNumber({ label, field, value, update, suffix, placeholder, pending, source, tooltip, overridden }: { label: string; field: keyof TenYearCashFlowInputs; value?: number; update: (field: keyof TenYearCashFlowInputs, value: number) => void; suffix?: string; placeholder?: string; pending?: boolean; source: SourceState; tooltip: string; overridden?: boolean }) {
+  return <AssumptionField label={label} source={source} tooltip={tooltip} overridden={overridden}><div className="flex items-center gap-2"><Input type="number" value={pending ? '' : value ?? ''} placeholder={placeholder} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div></AssumptionField>;
 }
 
 function MetricRows({ years, mode, pending }: { years: TenYearCashFlowYear[]; mode: TenYearCashFlowMode; pending?: boolean }) {
@@ -113,6 +120,13 @@ export function TenYearCashFlowCard() {
     if (typeof window === 'undefined') return true;
     return window.localStorage.getItem('ten-year-cash-flow-overview-viewed') !== 'true';
   });
+  const [scenarioName, setScenarioName] = useState('');
+  const [projectionPeriod, setProjectionPeriod] = useState('10');
+  const [includeInReport, setIncludeInReport] = useState(true);
+  const [leaseExpiryYear, setLeaseExpiryYear] = useState('');
+  const [waleYears, setWaleYears] = useState('');
+  const [interestDeductible, setInterestDeductible] = useState(true);
+  const [exitValueMethod, setExitValueMethod] = useState('Terminal cap rate');
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
   const inputs = useMemo(() => buildTenYearInputsFromGlobal(profile, mode, overrides), [profile, mode, overrides]);
@@ -130,7 +144,11 @@ export function TenYearCashFlowCard() {
   }, []);
 
   useEffect(() => { if (modelReady) updateGlobal('tenYearCashFlowOutputs', result); }, [modelReady, result, updateGlobal]);
-  const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); setOverriddenFields(f => Array.from(new Set([...f, String(field)]))); if (sourceMode === 'global') setSourceMode('tenYearCashFlow', 'manualOverride'); };
+  const markOverridden = (field: keyof TenYearCashFlowInputs) => { setOverriddenFields(f => Array.from(new Set([...f, String(field)]))); if (sourceMode === 'global') setSourceMode('tenYearCashFlow', 'manualOverride'); };
+  const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); markOverridden(field); };
+  const updateTextOverride = <K extends keyof TenYearCashFlowInputs>(field: K, value: TenYearCashFlowInputs[K]) => { setOverrides(o => ({ ...o, [field]: value })); markOverridden(field); };
+  const isOverridden = (field: keyof TenYearCashFlowInputs) => overriddenFields.includes(String(field));
+  const sourceFor = (field: keyof TenYearCashFlowInputs, cascaded: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => isOverridden(field) ? 'User Override' : cascaded;
   const s = result.summary;
   const pending = !modelReady;
   const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
@@ -180,10 +198,113 @@ export function TenYearCashFlowCard() {
         </CollapsibleContent>
       </Card>
     </Collapsible>
-    <div className="grid md:grid-cols-4 gap-3"><div><Label>Cash Flow Mode</Label><Select value={mode} onValueChange={v => setMode(v as TenYearCashFlowMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="investor">Investor</SelectItem><SelectItem value="ownerOccupier">Business Owner-Occupier</SelectItem><SelectItem value="relatedPartyLease">Related-Party Lease</SelectItem></SelectContent></Select></div><div><Label>Data source</Label><Select value={sourceMode} onValueChange={v => setSourceMode('tenYearCashFlow', v as CalculatorSourceMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="global">Use Global Deal Inputs</SelectItem><SelectItem value="manualOverride">Manual entry / no property linked</SelectItem><SelectItem value="aiPending">AI Estimate Pending</SelectItem><SelectItem value="savedPropertyLinked">Saved Property Linked</SelectItem></SelectContent></Select></div><OverrideNumber label="Purchase price" field="purchasePrice" value={inputs.purchasePrice} update={updateOverride} placeholder={assumptionPlaceholders.purchasePrice} pending={pending && !overrides.purchasePrice} /><OverrideNumber label="Total cost base" field="totalCostBase" value={inputs.totalCostBase} update={updateOverride} placeholder={assumptionPlaceholders.totalCostBase} pending={pending && !overrides.totalCostBase} /><OverrideNumber label="Passing rent / Year 1 rent" field="passingRent" value={inputs.passingRent} update={updateOverride} placeholder={assumptionPlaceholders.passingRent} pending={pending && !overrides.passingRent} /><OverrideNumber label="Rent growth" field="rentGrowthPct" value={inputs.rentGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.rentGrowthPct} pending={pending && !overrides.rentGrowthPct} /><OverrideNumber label="Vacancy allowance" field="vacancyAllowancePct" value={inputs.vacancyAllowancePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.vacancyAllowancePct} pending={pending && !overrides.vacancyAllowancePct} /><OverrideNumber label="Outgoings growth" field="outgoingsGrowthPct" value={inputs.outgoingsGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.outgoingsGrowthPct} pending={pending && !overrides.outgoingsGrowthPct} /><OverrideNumber label="Capex reserve" field="annualCapexReserve" value={inputs.annualCapexReserve} update={updateOverride} placeholder={assumptionPlaceholders.annualCapexReserve} pending={pending && !overrides.annualCapexReserve} /><OverrideNumber label="Terminal cap rate" field="terminalCapRatePct" value={inputs.terminalCapRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.terminalCapRatePct} pending={pending && !overrides.terminalCapRatePct} /><OverrideNumber label="Tax rate" field="taxRatePct" value={inputs.taxRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.taxRatePct} pending={pending && !overrides.taxRatePct} /><OverrideNumber label="GST economic cost" field="gstEconomicCost" value={inputs.gstEconomicCost} update={updateOverride} placeholder={assumptionPlaceholders.gstEconomicCost} pending={pending && !overrides.gstEconomicCost} /></div>
+    <TooltipProvider delayDuration={200}>
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Calculator className="h-4 w-4 text-primary" /> Assumption Workspace</CardTitle>
+          <CardDescription>Editable and cascaded assumptions are grouped separately from protected calculated outputs. Source badges show where each value came from and manual overrides are flagged.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">1. Model Setup</h3>
+            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <AssumptionField label="Cash Flow Mode" source="Manual" tooltip="Selects the investor, owner-occupier or related-party lease model view. Formula logic is unchanged."><Select value={mode} onValueChange={v => setMode(v as TenYearCashFlowMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="investor">Investor</SelectItem><SelectItem value="ownerOccupier">Business Owner-Occupier</SelectItem><SelectItem value="relatedPartyLease">Related-Party Lease</SelectItem></SelectContent></Select></AssumptionField>
+              <AssumptionField label="Data Source" source={sourceMode === 'savedPropertyLinked' ? 'Property Profile' : sourceMode === 'manualOverride' ? 'Manual' : sourceMode === 'aiPending' ? 'AI Estimate' : 'Blank'} tooltip="Controls whether values are treated as global synced inputs, manual/no property linked, AI pending or saved property linked."><Select value={sourceMode} onValueChange={v => setSourceMode('tenYearCashFlow', v as CalculatorSourceMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="global">Use Global Deal Inputs</SelectItem><SelectItem value="manualOverride">Manual entry / no property linked</SelectItem><SelectItem value="aiPending">AI Estimate Pending</SelectItem><SelectItem value="savedPropertyLinked">Saved Property Linked</SelectItem></SelectContent></Select></AssumptionField>
+              <AssumptionField label="Projection Period" source="Verified" tooltip="This report is currently a protected 10-year output; changing this label does not alter formulas in this phase."><Input type="number" value={projectionPeriod} onChange={e => setProjectionPeriod(e.target.value)} /></AssumptionField>
+              <AssumptionField label="Property Domain" source={prefill ? 'Property Profile' : 'Manual'} tooltip="Commercial or industrial domain used to label the scenario; calculation formulas are preserved."><Select value={inputs.assetDomain} onValueChange={v => updateTextOverride('assetDomain', v as TenYearCashFlowInputs['assetDomain'])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="commercial">Commercial</SelectItem><SelectItem value="industrial">Industrial</SelectItem></SelectContent></Select></AssumptionField>
+              <AssumptionField label="Scenario Name" source={scenarioName ? 'Manual' : 'Blank'} tooltip="Optional report scenario label for internal review and client-ready reporting."><Input value={scenarioName} onChange={e => setScenarioName(e.target.value)} placeholder="Enter scenario name" /></AssumptionField>
+              <AssumptionField label="Include in Report" source="Manual" tooltip="Controls whether this scenario is intended for report inclusion; it does not change formulas."><Button type="button" variant={includeInReport ? 'default' : 'outline'} onClick={() => setIncludeInReport(v => !v)}>{includeInReport ? 'Included' : 'Excluded'}</Button></AssumptionField>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">2. Property & Cost Inputs</h3>
+            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <OverrideNumber label="Purchase Price" field="purchasePrice" value={inputs.purchasePrice} update={updateOverride} placeholder={assumptionPlaceholders.purchasePrice} pending={pending && !overrides.purchasePrice} source={sourceFor('purchasePrice', prefill ? 'Property Profile' : 'Blank')} tooltip="Pulled from the linked property profile or entered manually." overridden={isOverridden('purchasePrice')} />
+              <OverrideNumber label="Acquisition Costs" field="totalAcquisitionCosts" value={inputs.totalAcquisitionCosts} update={updateOverride} pending={pending && !overrides.totalAcquisitionCosts} source={sourceFor('totalAcquisitionCosts', fundsToComplete ? 'Borrowing Capacity' : 'Blank')} tooltip="Acquisition cost input cascaded from borrowing/funds-to-complete where available." overridden={isOverridden('totalAcquisitionCosts')} />
+              <OverrideNumber label="GST Economic Cost" field="gstEconomicCost" value={inputs.gstEconomicCost} update={updateOverride} placeholder={assumptionPlaceholders.gstEconomicCost} pending={pending && !overrides.gstEconomicCost} source={sourceFor('gstEconomicCost', gstOutputs ? 'GST Tab' : 'Blank')} tooltip="Pulled from GST tab or entered manually." overridden={isOverridden('gstEconomicCost')} />
+              <OverrideNumber label="Total Cost Base" field="totalCostBase" value={inputs.totalCostBase} update={updateOverride} placeholder={assumptionPlaceholders.totalCostBase} pending={pending && !overrides.totalCostBase} source={sourceFor('totalCostBase', fundsToComplete ? 'Borrowing Capacity' : 'Blank')} tooltip="Calculated from purchase price, costs and GST in upstream modules or entered manually." overridden={isOverridden('totalCostBase')} />
+              <OverrideNumber label="Required Equity" field="requiredEquity" value={inputs.requiredEquity} update={updateOverride} pending={pending && !overrides.requiredEquity} source={sourceFor('requiredEquity', borrowingOutputs ? 'Borrowing Capacity' : 'Blank')} tooltip="Required equity cascaded from borrowing capacity/funds-to-complete or manually overridden." overridden={isOverridden('requiredEquity')} />
+              <OverrideNumber label="Available Equity" field="availableEquity" value={inputs.availableEquity} update={updateOverride} pending={pending && !overrides.availableEquity} source={sourceFor('availableEquity', prefill ? 'Property Profile' : 'Blank')} tooltip="Available equity from the purchaser profile or manual scenario input." overridden={isOverridden('availableEquity')} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">3. Income Assumptions</h3>
+            <div className="grid md:grid-cols-3 xl:grid-cols-7 gap-3">
+              <OverrideNumber label="Passing Rent" field="passingRent" value={inputs.passingRent} update={updateOverride} placeholder={assumptionPlaceholders.passingRent} pending={pending && !overrides.passingRent} source={sourceFor('passingRent', noiOutputs ? 'NOI Tab' : prefill ? 'Property Profile' : 'Blank')} tooltip="Passing rent pulled from NOI/property data or entered manually." overridden={isOverridden('passingRent')} />
+              <OverrideNumber label="Rent Growth %" field="rentGrowthPct" value={inputs.rentGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.rentGrowthPct} pending={pending && !overrides.rentGrowthPct} source={sourceFor('rentGrowthPct', 'Research Engine')} tooltip="Rent growth assumption from research engine or manual override." overridden={isOverridden('rentGrowthPct')} />
+              <OverrideNumber label="Vacancy Allowance %" field="vacancyAllowancePct" value={inputs.vacancyAllowancePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.vacancyAllowancePct} pending={pending && !overrides.vacancyAllowancePct} source={sourceFor('vacancyAllowancePct', noiOutputs ? 'NOI Tab' : 'Research Engine')} tooltip="Vacancy allowance from NOI/research or manual override." overridden={isOverridden('vacancyAllowancePct')} />
+              <OverrideNumber label="Recovered Outgoings" field="recoveredOutgoings" value={inputs.recoveredOutgoings} update={updateOverride} pending={pending && !overrides.recoveredOutgoings} source={sourceFor('recoveredOutgoings', noiOutputs ? 'NOI Tab' : 'Blank')} tooltip="Recovered outgoings from NOI tab or manually entered." overridden={isOverridden('recoveredOutgoings')} />
+              <OverrideNumber label="Outgoings Growth %" field="outgoingsGrowthPct" value={inputs.outgoingsGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.outgoingsGrowthPct} pending={pending && !overrides.outgoingsGrowthPct} source={sourceFor('outgoingsGrowthPct', 'Research Engine')} tooltip="Outgoings growth assumption used by the year-by-year projection." overridden={isOverridden('outgoingsGrowthPct')} />
+              <OverrideNumber label="Owner-Borne Expenses" field="otherOwnerExpenses" value={inputs.otherOwnerExpenses} update={updateOverride} pending={pending && !overrides.otherOwnerExpenses} source={sourceFor('otherOwnerExpenses', noiOutputs ? 'NOI Tab' : 'Blank')} tooltip="Owner-borne expenses from NOI tab or manual entry." overridden={isOverridden('otherOwnerExpenses')} />
+              <OverrideNumber label="Expense Growth %" field="expenseGrowthPct" value={inputs.expenseGrowthPct} update={updateOverride} suffix="%" pending={pending && !overrides.expenseGrowthPct} source={sourceFor('expenseGrowthPct', 'Research Engine')} tooltip="Expense growth assumption for owner-borne expense escalation." overridden={isOverridden('expenseGrowthPct')} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">4. Debt Assumptions</h3>
+            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <OverrideNumber label="Loan Amount" field="loanAmount" value={inputs.loanAmount} update={updateOverride} pending={pending && !overrides.loanAmount} source={sourceFor('loanAmount', borrowingOutputs ? 'Borrowing Capacity' : 'Blank')} tooltip="Loan amount from borrowing capacity or manual override." overridden={isOverridden('loanAmount')} />
+              <OverrideNumber label="Interest Rate" field="interestRatePct" value={inputs.interestRatePct} update={updateOverride} suffix="%" pending={pending && !overrides.interestRatePct} source={sourceFor('interestRatePct', borrowingOutputs ? 'Borrowing Capacity' : 'ICR / DSCR Tab')} tooltip="Interest rate used for debt service and cashflow calculations." overridden={isOverridden('interestRatePct')} />
+              <OverrideNumber label="Loan Term" field="amortisationYears" value={inputs.amortisationYears} update={updateOverride} pending={pending && !overrides.amortisationYears} source={sourceFor('amortisationYears', borrowingOutputs ? 'Borrowing Capacity' : 'Blank')} tooltip="Loan amortisation term used by existing debt formulas." overridden={isOverridden('amortisationYears')} />
+              <AssumptionField label="Repayment Type" source={sourceFor('repaymentType', borrowingOutputs ? 'Borrowing Capacity' : 'Blank')} tooltip="Repayment type applied to existing debt-service formulas." overridden={isOverridden('repaymentType')}><Select value={inputs.repaymentType} onValueChange={v => updateTextOverride('repaymentType', v as TenYearCashFlowInputs['repaymentType'])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="principalAndInterest">Principal & Interest</SelectItem><SelectItem value="interestOnly">Interest Only</SelectItem></SelectContent></Select></AssumptionField>
+              <OverrideNumber label="Annual Debt Service" field="annualDebtService" value={inputs.annualDebtService} update={updateOverride} pending={pending && !overrides.annualDebtService} source={sourceFor('annualDebtService', borrowingOutputs ? 'Borrowing Capacity' : 'ICR / DSCR Tab')} tooltip="Annual debt service from borrowing or ICR/DSCR workflows." overridden={isOverridden('annualDebtService')} />
+              <OverrideNumber label="Opening Loan Balance" field="loanAmount" value={inputs.loanAmount} update={updateOverride} pending={pending && !overrides.loanAmount} source={sourceFor('loanAmount', borrowingOutputs ? 'Borrowing Capacity' : 'Blank')} tooltip="Opening balance is the same protected loan amount input used by the projection." overridden={isOverridden('loanAmount')} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">5. Leasing / Vacancy Assumptions</h3>
+            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <OverrideNumber label="Lease Downtime Months" field="downtimeMonths" value={inputs.downtimeMonths} update={updateOverride} pending={pending && !overrides.downtimeMonths} source={sourceFor('downtimeMonths', 'Manual')} tooltip="Assumed vacancy downtime at lease event or rollover." overridden={isOverridden('downtimeMonths')} />
+              <OverrideNumber label="Tenant Incentives" field="incentiveMonths" value={inputs.incentiveMonths} update={updateOverride} pending={pending && !overrides.incentiveMonths} source={sourceFor('incentiveMonths', 'Manual')} tooltip="Incentive months used in leasing cost calculations." overridden={isOverridden('incentiveMonths')} />
+              <OverrideNumber label="Leasing Fees" field="leasingFeePct" value={inputs.leasingFeePct} update={updateOverride} suffix="%" pending={pending && !overrides.leasingFeePct} source={sourceFor('leasingFeePct', 'Manual')} tooltip="Leasing fee percentage for reletting costs." overridden={isOverridden('leasingFeePct')} />
+              <OverrideNumber label="Reletting Costs" field="relettingCostAllowance" value={inputs.relettingCostAllowance} update={updateOverride} pending={pending && !overrides.relettingCostAllowance} source={sourceFor('relettingCostAllowance', 'Manual')} tooltip="Additional reletting allowance included in leasing/vacancy costs." overridden={isOverridden('relettingCostAllowance')} />
+              <AssumptionField label="Lease Expiry Year" source={leaseExpiryYear ? 'Manual' : 'Blank'} tooltip="Optional lease-expiry reference for workspace review; formulas are unchanged in this phase."><Input type="number" value={leaseExpiryYear} onChange={e => setLeaseExpiryYear(e.target.value)} placeholder="Enter year" /></AssumptionField>
+              <AssumptionField label="WALE if Available" source={waleYears ? 'Manual' : prefill ? 'Property Profile' : 'Blank'} tooltip="Optional WALE reference for review and report context; formulas are unchanged in this phase."><Input type="number" value={waleYears} onChange={e => setWaleYears(e.target.value)} placeholder="Years" /></AssumptionField>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">6. Capex Assumptions</h3>
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+              <OverrideNumber label="Annual Capex Reserve" field="annualCapexReserve" value={inputs.annualCapexReserve} update={updateOverride} placeholder={assumptionPlaceholders.annualCapexReserve} pending={pending && !overrides.annualCapexReserve} source={sourceFor('annualCapexReserve', dcfOutputs ? 'DCF Tab' : 'Manual')} tooltip="Annual capex reserve used by the protected projection formulas." overridden={isOverridden('annualCapexReserve')} />
+              <OverrideNumber label="Major Capex Allowance" field="majorCapexAmount" value={inputs.majorCapexAmount} update={updateOverride} pending={pending && !overrides.majorCapexAmount} source={sourceFor('majorCapexAmount', 'Manual')} tooltip="Major one-off capex allowance included in the capex schedule." overridden={isOverridden('majorCapexAmount')} />
+              <OverrideNumber label="Major Capex Timing" field="majorCapexYear" value={inputs.majorCapexYear} update={updateOverride} pending={pending && !overrides.majorCapexYear} source={sourceFor('majorCapexYear', 'Manual')} tooltip="Projection year for major capex allowance." overridden={isOverridden('majorCapexYear')} />
+              <OverrideNumber label="Specialist Reserves" field="specialistReserve" value={inputs.specialistReserve} update={updateOverride} pending={pending && !overrides.specialistReserve} source={sourceFor('specialistReserve', inputs.assetDomain === 'industrial' ? 'Research Engine' : 'Manual')} tooltip="Specialist reserve for commercial/industrial risk items." overridden={isOverridden('specialistReserve')} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">7. Tax / After-Tax Assumptions</h3>
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+              <OverrideNumber label="Tax Rate" field="taxRatePct" value={inputs.taxRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.taxRatePct} pending={pending && !overrides.taxRatePct} source={sourceFor('taxRatePct', 'Manual')} tooltip="Tax rate used by existing after-tax cashflow formulas; confirm with accountant review." overridden={isOverridden('taxRatePct')} />
+              <OverrideNumber label="Depreciation Allowance" field="depreciationPa" value={inputs.depreciationPa} update={updateOverride} pending={pending && !overrides.depreciationPa} source={sourceFor('depreciationPa', 'Blank')} tooltip="Depreciation allowance if supported by a depreciation schedule." overridden={isOverridden('depreciationPa')} />
+              <AssumptionField label="Interest Deductibility" source={interestDeductible ? 'Manual' : 'Blank'} tooltip="Workspace toggle for tax review status; formulas are unchanged in this phase."><Button type="button" variant={interestDeductible ? 'default' : 'outline'} onClick={() => setInterestDeductible(v => !v)}>{interestDeductible ? 'Supported' : 'Review required'}</Button></AssumptionField>
+              <AssumptionField label="GST Economic Cost Source" source={sourceFor('gstEconomicCost', gstOutputs ? 'GST Tab' : 'Blank')} tooltip="Shows whether GST economic cost is linked from GST tab or manually overridden." overridden={isOverridden('gstEconomicCost')}><div className="text-sm text-muted-foreground">{sourceFor('gstEconomicCost', gstOutputs ? 'GST Tab' : 'Blank')}</div></AssumptionField>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+            <h3 className="mb-3 text-sm font-semibold text-primary">8. Exit Assumptions</h3>
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+              <OverrideNumber label="Capital Growth %" field="capitalGrowthPct" value={inputs.capitalGrowthPct} update={updateOverride} suffix="%" pending={pending && !overrides.capitalGrowthPct} source={sourceFor('capitalGrowthPct', 'Research Engine')} tooltip="Capital growth assumption used by the protected property value projection." overridden={isOverridden('capitalGrowthPct')} />
+              <OverrideNumber label="Terminal Cap Rate %" field="terminalCapRatePct" value={inputs.terminalCapRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.terminalCapRatePct} pending={pending && !overrides.terminalCapRatePct} source={sourceFor('terminalCapRatePct', dcfOutputs ? 'DCF Tab' : 'Cap Rate Tab')} tooltip="Terminal cap rate from Cap Rate/DCF or manual override." overridden={isOverridden('terminalCapRatePct')} />
+              <OverrideNumber label="Selling Costs %" field="sellingCostPct" value={inputs.sellingCostPct} update={updateOverride} suffix="%" pending={pending && !overrides.sellingCostPct} source={sourceFor('sellingCostPct', 'Manual')} tooltip="Selling cost percentage deducted from exit proceeds." overridden={isOverridden('sellingCostPct')} />
+              <AssumptionField label="Exit Value Method" source="Manual" tooltip="Workspace method label for exit value review; formulas are unchanged in this phase."><Select value={exitValueMethod} onValueChange={setExitValueMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Terminal cap rate">Terminal cap rate</SelectItem><SelectItem value="Capital growth">Capital growth</SelectItem><SelectItem value="Manual valuation review">Manual valuation review</SelectItem></SelectContent></Select></AssumptionField>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">{cashFlowAiEstimateButtons.slice(0, 8).map(b => <Button key={b} size="sm" variant="outline"><Sparkles className="h-3.5 w-3.5 mr-1" />{b}</Button>)}</div>
+            <Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
     {pending && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
     <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={pending} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={pending} /></div>
-    <Card className="border-primary/20 bg-primary/5"><CardHeader><CardTitle className="text-base flex items-center gap-2"><Calculator className="h-4 w-4 text-primary" /> Assumptions / AI estimate actions</CardTitle></CardHeader><CardContent className="space-y-3"><div className="flex flex-wrap gap-2">{cashFlowAiEstimateButtons.slice(0, 8).map(b => <Button key={b} size="sm" variant="outline"><Sparkles className="h-3.5 w-3.5 mr-1" />{b}</Button>)}</div><div className="grid md:grid-cols-4 gap-2 text-xs">{Object.values(result.assumptions).map(a => <div key={a.key} className="rounded border bg-muted/20 p-2"><div className="font-medium">{a.label}</div><div className="mt-1 text-muted-foreground">{pending ? assumptionPlaceholders[a.key as keyof TenYearCashFlowInputs] ?? 'Enter manually or import from linked modules' : typeof a.value === 'number' ? String(a.value) : String(a.value ?? PENDING)}</div><Badge variant="outline" className="mt-1 text-[10px]">{pending ? PENDING : a.status}</Badge></div>)}</div><Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button></CardContent></Card>
     {result.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
     <MetricRows years={result.years} mode={mode} pending={pending} />
     <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{pending ? PENDING : result.commentary}</p></CardContent></Card>
