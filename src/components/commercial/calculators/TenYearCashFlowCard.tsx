@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, FileText, GitBranch, Sparkles, TrendingUp } from 'lucide-react';
+import { Calculator, ChevronDown, FileText, GitBranch, Sparkles, TrendingUp } from 'lucide-react';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -108,6 +109,10 @@ export function TenYearCashFlowCard() {
   const sourceMode = useCommercialDealState(s => s.sourceModes.tenYearCashFlow);
   const setSourceMode = useCommercialDealState(s => s.setSourceMode);
   const [mode, setMode] = useState<TenYearCashFlowMode>('investor');
+  const [overviewOpen, setOverviewOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('ten-year-cash-flow-overview-viewed') !== 'true';
+  });
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
   const inputs = useMemo(() => buildTenYearInputsFromGlobal(profile, mode, overrides), [profile, mode, overrides]);
@@ -119,6 +124,10 @@ export function TenYearCashFlowCard() {
   const hasMinimumInputs = hasPositive(overrides.purchasePrice ?? (prefill ? inputs.purchasePrice : undefined)) && hasPositive(overrides.terminalCapRatePct ?? (prefill ? inputs.terminalCapRatePct : undefined)) && (hasPositive(overrides.passingRent ?? (prefill ? inputs.passingRent : undefined)) || hasPositive(overrides.marketRent ?? (prefill ? inputs.marketRent : undefined)));
   const sourceComplete = hasImportedInputs || (hasManualInputs && manualInputsComplete);
   const modelReady = sourceComplete && hasMinimumInputs && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.localStorage.setItem('ten-year-cash-flow-overview-viewed', 'true');
+  }, []);
 
   useEffect(() => { if (modelReady) updateGlobal('tenYearCashFlowOutputs', result); }, [modelReady, result, updateGlobal]);
   const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); setOverriddenFields(f => Array.from(new Set([...f, String(field)]))); if (sourceMode === 'global') setSourceMode('tenYearCashFlow', 'manualOverride'); };
@@ -133,6 +142,44 @@ export function TenYearCashFlowCard() {
       : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', result.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', result.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
 
   return <Card className="bg-card/95"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> 10-Year Cash Flow</CardTitle><CardDescription>Commercial / industrial projection for investor, owner-occupier and related-party lease scenarios. AI supports assumptions; deterministic formulas produce the table.</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</Badge><Badge variant={(pending ? 'outline' : badgeVariant(s.riskStatus)) as any}>{statusLabel}</Badge></div></div></CardHeader><CardContent className="space-y-5">
+    <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
+      <Card className="border-primary/30 bg-primary/5">
+        <CollapsibleTrigger asChild>
+          <button type="button" className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-primary/10 transition-colors">
+            <div>
+              <h3 className="font-semibold text-primary">10-Year Cash Flow Report Overview</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Purpose, DCF differences, assumptions, validation and PDF-ready report outputs.</p>
+            </div>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-primary transition-transform ${overviewOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-3 pt-0 text-sm text-muted-foreground leading-relaxed">
+            <p>This section converts the property, income, debt, GST, capex and exit assumptions into a 10-year projection that can be reviewed internally and included in a client-ready report.</p>
+            <p>The 10-year cash flow report is designed to show how the asset may perform over time, including rental growth, vacancy, recovered outgoings, owner-borne expenses, debt position, ICR, DSCR, debt yield, capex, leasing costs, after-tax cashflow, equity position and exit value.</p>
+            <p>Unlike the DCF tab, which focuses on IRR, NPV and terminal value analysis, this report focuses on a readable year-by-year client projection and PDF-ready output.</p>
+            <div>
+              <p className="font-medium text-foreground">This report separates:</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <li>Editable assumptions</li>
+                <li>AI / research-supported estimates</li>
+                <li>Global property-linked inputs</li>
+                <li>Manual overrides</li>
+                <li>Protected calculated outputs</li>
+                <li>Warnings and validation checks</li>
+                <li>Final report commentary</li>
+                <li>PDF-ready cashflow tables</li>
+              </ol>
+            </div>
+            <p>All outputs are estimates and should be reviewed against property data, lease assumptions, lender terms, tax advice and market evidence before being issued to clients.</p>
+            <details className="rounded border border-primary/20 bg-card/70 p-3">
+              <summary className="cursor-pointer font-medium text-primary">Why this matters</summary>
+              <p className="mt-2">This report helps explain the projected investment journey over 10 years. It allows clients to see income growth, vacancy impact, capex, debt reduction, equity growth, cashflow and exit value in a single readable format.</p>
+            </details>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
     <div className="grid md:grid-cols-4 gap-3"><div><Label>Cash Flow Mode</Label><Select value={mode} onValueChange={v => setMode(v as TenYearCashFlowMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="investor">Investor</SelectItem><SelectItem value="ownerOccupier">Business Owner-Occupier</SelectItem><SelectItem value="relatedPartyLease">Related-Party Lease</SelectItem></SelectContent></Select></div><div><Label>Data source</Label><Select value={sourceMode} onValueChange={v => setSourceMode('tenYearCashFlow', v as CalculatorSourceMode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="global">Use Global Deal Inputs</SelectItem><SelectItem value="manualOverride">Manual entry / no property linked</SelectItem><SelectItem value="aiPending">AI Estimate Pending</SelectItem><SelectItem value="savedPropertyLinked">Saved Property Linked</SelectItem></SelectContent></Select></div><OverrideNumber label="Purchase price" field="purchasePrice" value={inputs.purchasePrice} update={updateOverride} placeholder={assumptionPlaceholders.purchasePrice} pending={pending && !overrides.purchasePrice} /><OverrideNumber label="Total cost base" field="totalCostBase" value={inputs.totalCostBase} update={updateOverride} placeholder={assumptionPlaceholders.totalCostBase} pending={pending && !overrides.totalCostBase} /><OverrideNumber label="Passing rent / Year 1 rent" field="passingRent" value={inputs.passingRent} update={updateOverride} placeholder={assumptionPlaceholders.passingRent} pending={pending && !overrides.passingRent} /><OverrideNumber label="Rent growth" field="rentGrowthPct" value={inputs.rentGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.rentGrowthPct} pending={pending && !overrides.rentGrowthPct} /><OverrideNumber label="Vacancy allowance" field="vacancyAllowancePct" value={inputs.vacancyAllowancePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.vacancyAllowancePct} pending={pending && !overrides.vacancyAllowancePct} /><OverrideNumber label="Outgoings growth" field="outgoingsGrowthPct" value={inputs.outgoingsGrowthPct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.outgoingsGrowthPct} pending={pending && !overrides.outgoingsGrowthPct} /><OverrideNumber label="Capex reserve" field="annualCapexReserve" value={inputs.annualCapexReserve} update={updateOverride} placeholder={assumptionPlaceholders.annualCapexReserve} pending={pending && !overrides.annualCapexReserve} /><OverrideNumber label="Terminal cap rate" field="terminalCapRatePct" value={inputs.terminalCapRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.terminalCapRatePct} pending={pending && !overrides.terminalCapRatePct} /><OverrideNumber label="Tax rate" field="taxRatePct" value={inputs.taxRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.taxRatePct} pending={pending && !overrides.taxRatePct} /><OverrideNumber label="GST economic cost" field="gstEconomicCost" value={inputs.gstEconomicCost} update={updateOverride} placeholder={assumptionPlaceholders.gstEconomicCost} pending={pending && !overrides.gstEconomicCost} /></div>
     {pending && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
     <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={pending} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={pending} /></div>
