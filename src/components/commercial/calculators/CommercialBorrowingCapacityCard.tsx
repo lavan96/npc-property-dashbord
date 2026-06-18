@@ -148,39 +148,6 @@ function SourceTabNotice({ title, description, tab, metrics }: { title: string; 
   );
 }
 
-function Field({ label, value, onChange, step = '1', status }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
-  const source = status ?? (value ? 'Manual' : 'Blank');
-  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Input className="bg-background" type="number" step={step} value={value} onChange={set(onChange)} /></div>;
-}
-
-function SelectField({ label, value, onChange, options, status }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
-  const source = status ?? (value ? 'Manual' : 'Blank');
-  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
-}
-
-
-function openSourceTab(tab: string) {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('calculator-tab-open', { detail: { tab } }));
-}
-
-function SourceTabNotice({ title, description, tab, metrics }: { title: string; description: string; tab: string; metrics?: Array<{ label: string; value: number | string | null | undefined }> }) {
-  return (
-    <div className="md:col-span-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="font-semibold text-foreground">{title}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => openSourceTab(tab)}>Open source tab</Button>
-      </div>
-      {metrics?.length ? <div className="mt-3 grid gap-2 md:grid-cols-3">{metrics.map((metric) => <MoneyRow key={metric.label} label={metric.label} value={metric.value} />)}</div> : null}
-    </div>
-  );
-}
-
-
-
 function ClientProfileCombobox({ value, options, loading, onChange }: { value: string; options: ClientProfileOption[]; loading?: boolean; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -452,6 +419,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     : assessmentReady
       ? result.proposedLoanSupportabilityMessage
       : 'This result is indicative and may change once valuation, lease, GST and borrower documents are confirmed.';
+  const formatAdvancedMoney = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Ready to Calculate' : 'Preliminary Estimate';
   const purchaseAbilityStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : !assessmentReady ? 'Preliminary Estimate' : result.fundsToComplete.requiredEquity == null ? 'Review Required' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Calculated' : 'Review Required';
   const validCalculatedResult = assessmentReady && Number.isFinite(result.finalRiskAdjustedLoan) && result.finalRiskAdjustedLoan > 0;
@@ -718,7 +686,6 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const scenarioRows = useMemo(() => buildScenarioComparisonRows(currentPortfolio, scenarioComparison.proposed), [currentPortfolio, scenarioComparison.proposed]);
   const visibleScenarioRows = useMemo(() => scenarioRows.filter(row => showUnchangedMetrics || row.indicator !== 'neutral'), [scenarioRows, showUnchangedMetrics]);
   const formatScenarioValue = (value: any, kind?: string) => value == null || value === 'N/A' || value === 'NaN' || (typeof value === 'number' && !Number.isFinite(value)) ? 'Pending' : kind === 'pct' ? pct(value) : kind === 'ratio' ? `${Number(value).toFixed(2)}x` : kind === 'text' || kind === 'risk' ? title(String(value)) : fmt(Number(value));
-  const formatAdvancedMoney = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const formatAdvancedPct = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? pct(Number(value)) : 'Pending';
   const formatAdvancedRatio = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? `${Number(value).toFixed(2)}x` : 'Pending';
   const advancedMetricRows = [
