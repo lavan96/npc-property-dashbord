@@ -239,6 +239,16 @@ export default function PropertyCalculators() {
 
 function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomain; setDomain: (domain: CalculatorDomain) => void }) {
   const { prefill } = useCalculatorPrefill();
+  const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      if (calculatorTabs.some((item) => item.value === tab)) setActiveTab(tab as (typeof calculatorTabs)[number]['value']);
+    };
+    window.addEventListener('calculator-tab-open', handler);
+    return () => window.removeEventListener('calculator-tab-open', handler);
+  }, []);
 
   const blockedTab = (title: string) => (
     <CalculatorTabShell title={title} subtitle="Link a saved commercial or industrial property before reviewing calculated tab outputs." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Property required']}>
@@ -289,7 +299,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
           <CalculatorPropertyBar />
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
           <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/75 p-2 shadow-sm">
           <TabsList className="h-auto min-w-max w-full justify-start gap-2 bg-transparent p-0">
             {calculatorTabs.map((tab) => (
