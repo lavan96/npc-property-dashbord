@@ -37,6 +37,17 @@ const summaryFormulaTooltip = (label: string) => {
   return 'Protected calculated report output.';
 };
 
+const summaryFormulaTooltip = (label: string) => {
+  if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
+  if (label === 'Equity multiple') return 'Total equity returned ÷ initial equity invested.';
+  if (label === 'Risk status') return 'Calculated from grouped validation warnings and specialist-review flags.';
+  if (label.includes('after-tax cashflow')) return 'Pre-tax cashflow − tax payable + allowed tax benefit.';
+  if (label.includes('property value')) return 'Prior year property value × (1 + capital growth rate).';
+  if (label.includes('equity')) return 'Property value − closing loan balance.';
+  if (label === 'Terminal value') return 'Forward NOI ÷ terminal cap rate.';
+  return 'Protected calculated report output.';
+};
+
 function SummaryCard({ label, value, pending }: { label: string; value: string | number | null | undefined; pending?: boolean }) {
   const display = pending ? PENDING : typeof value === 'number' ? fmt(value) : value ?? PENDING;
   const formula = summaryFormulaTooltip(label);
