@@ -87,13 +87,17 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 
 # Wave F-Option-3 storage upload config.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 DIAGNOSTICS_BUCKET = os.environ.get("PDF_DIAGNOSTICS_BUCKET", "pdf-import-diagnostics").strip()
+RASTER_ARTIFACT_MODE = os.getenv("DOCLING_RASTER_ARTIFACT_MODE", "manifest").lower()
+WRITE_LEGACY_RASTERS_JSON = os.getenv("DOCLING_WRITE_LEGACY_RASTERS_JSON", "false").lower() == "true"
+RASTER_FORMAT = os.getenv("DOCLING_RASTER_FORMAT", "png").lower()
+RASTER_DPI = int(os.getenv("DOCLING_RASTER_DPI", "200"))
 
 
 class SidecarError(Exception):
@@ -343,7 +347,7 @@ class ParseRequest(BaseModel):
     # Hybrid / pixel-perfect → also rasterise in the same background task.
     mode: Optional[str] = Field(default=None)
     raster_dpi: Optional[int] = Field(default=None, ge=72, le=300)
-    raster_format: str = Field(default="png", pattern="^(png|jpeg)$")
+    raster_format: str = Field(default=RASTER_FORMAT, pattern="^(png|jpeg)$")
     allow_mode_override: bool = Field(default=True)
 
 
@@ -661,6 +665,85 @@ async def _storage_upload(client: httpx.AsyncClient, object_path: str, body: byt
         return None
 
 
+def _decode_raster_page_bytes(page: dict) -> tuple[bytes, str]:
+    raw_b64 = page.get("base64") or page.get("image_base64")
+    if not raw_b64:
+        raise ValueError("raster page missing base64")
+    return base64.b64decode(raw_b64), page.get("mime") or "image/png"
+
+
+async def _upload_raster_manifest_artifacts(
+    client: httpx.AsyncClient,
+    prefix: str,
+    raster_result: dict,
+    *,
+    global_page_offset: int = 0,
+) -> dict:
+    page_raster_paths: list[str] = []
+    manifest_pages: list[dict] = []
+    total_bytes = 0
+    fmt = (raster_result.get("format") or RASTER_FORMAT or "png").lower()
+    dpi = int(raster_result.get("dpi") or RASTER_DPI)
+
+    for page in raster_result.get("pages") or []:
+        page_no = int(page.get("page_no") or (len(page_raster_paths) + 1))
+        data, mime = _decode_raster_page_bytes(page)
+        path = f"{prefix}/pages/page-{page_no:03d}.png"
+        uploaded_path = await _storage_upload(client, path, data, mime or "image/png")
+        page_path = uploaded_path or path
+        page_raster_paths.append(page_path)
+        total_bytes += len(data)
+        LOG.info("Uploaded page raster page=%s path=%s bytes=%s", page_no, page_path, len(data))
+        manifest_pages.append({
+            "page_no": page_no,
+            "global_page_no": global_page_offset + page_no,
+            "width": page.get("width") or page.get("width_px"),
+            "height": page.get("height") or page.get("height_px"),
+            "path": page_path,
+            "mime": mime or "image/png",
+            "bytes": len(data),
+        })
+
+    manifest = {
+        "version": "phase3-raster-manifest-v1",
+        "format": fmt,
+        "dpi": dpi,
+        "page_count": len(manifest_pages),
+        "pages": manifest_pages,
+    }
+    manifest_body = json.dumps(manifest).encode("utf-8")
+    manifest_path = f"{prefix}/rasters-manifest.json"
+    uploaded_manifest_path = await _storage_upload(client, manifest_path, manifest_body, "application/json")
+    manifest_path = uploaded_manifest_path or manifest_path
+    total_bytes += len(manifest_body)
+    LOG.info("Uploaded raster manifest path=%s pages=%s", manifest_path, len(page_raster_paths))
+    return {
+        "rasters_manifest_path": manifest_path,
+        "page_raster_paths": page_raster_paths,
+        "manifest": manifest,
+        "bytes_out": total_bytes,
+    }
+
+
+def _legacy_raster_body(raster_result: dict, *, global_page_offset: int = 0) -> bytes:
+    normalized = {
+        "format": raster_result.get("format"),
+        "dpi": raster_result.get("dpi"),
+        "engine_version": raster_result.get("engine_version"),
+        "pages": [
+            {
+                "page_no": p.get("page_no"),
+                **({"global_page_no": global_page_offset + int(p.get("page_no", 1))} if global_page_offset else {}),
+                "width": p.get("width") or p.get("width_px"),
+                "height": p.get("height") or p.get("height_px"),
+                "image_base64": p.get("base64") or p.get("image_base64"),
+            }
+            for p in raster_result.get("pages") or []
+        ],
+    }
+    return json.dumps(normalized).encode("utf-8")
+
+
 def _parse_data_uri(uri: str) -> Optional[tuple[str, bytes, str]]:
     m = re.match(r"^data:([^;,]+);base64,(.+)$", uri or "")
     if not m:
@@ -780,29 +863,60 @@ async def _run_async_job(req: ParseRequest) -> None:
 
             # Raster pass (hybrid / pixel_perfect)
             rasters_path = None
+            rasters_manifest_path = None
+            page_raster_paths: list[str] = []
+            legacy_rasters_path = None
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
-                dpi = req.raster_dpi or (200 if "pixel" in effective_mode else 144)
-                raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=req.raster_format)
+                dpi = req.raster_dpi or RASTER_DPI
+                raster_format = "png" if RASTER_ARTIFACT_MODE == "manifest" else (req.raster_format or RASTER_FORMAT or "png").lower()
+                raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=raster_format)
                 cloud_run_ms += int(raster_result.get("raster_ms") or 0)
-                normalized = {
-                    "format": raster_result.get("format"),
-                    "dpi": raster_result.get("dpi"),
-                    "engine_version": raster_result.get("engine_version"),
-                    "pages": [
-                        {
-                            "page_no": p.get("page_no"),
-                            "width": p.get("width_px"),
-                            "height": p.get("height_px"),
-                            "image_base64": p.get("base64"),
-                        }
-                        for p in raster_result.get("pages") or []
-                    ],
-                }
-                body = json.dumps(normalized).encode("utf-8")
-                rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
-                bytes_out += len(body)
+                if RASTER_ARTIFACT_MODE == "manifest":
+                    manifest_upload = await _upload_raster_manifest_artifacts(
+                        client,
+                        job_id,
+                        raster_result,
+                        global_page_offset=0,
+                    )
+                    rasters_manifest_path = manifest_upload.get("rasters_manifest_path")
+                    page_raster_paths = manifest_upload.get("page_raster_paths") or []
+                    bytes_out += int(manifest_upload.get("bytes_out") or 0)
+                    if WRITE_LEGACY_RASTERS_JSON:
+                        body = _legacy_raster_body(raster_result)
+                        legacy_rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
+                        rasters_path = legacy_rasters_path
+                        bytes_out += len(body)
+                    else:
+                        LOG.info("Legacy rasters.json skipped")
+                elif RASTER_ARTIFACT_MODE == "legacy":
+                    body = _legacy_raster_body(raster_result)
+                    rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
+                    legacy_rasters_path = rasters_path
+                    bytes_out += len(body)
+                else:
+                    LOG.info("Legacy rasters.json skipped")
 
             duration_ms = int((time.monotonic() - started) * 1000)
+            result_payload = {
+                "docling_path": docling_path,
+                "rasters_manifest_path": rasters_manifest_path,
+                "page_raster_paths": page_raster_paths,
+                "doctags_path": doctags_path,
+                "markdown_path": markdown_path,
+                "outline_path": outline_path,
+                "page_count": page_count,
+                "page_languages": parse_result.get("page_languages") or {},
+                "outline_node_count": len(outline),
+                "summary": summary,
+                "mode": effective_mode,
+                "requested_mode": requested_mode,
+                "auto_mode_selected": effective_mode != requested_mode,
+                "cache_hit": False,
+            }
+            if legacy_rasters_path:
+                result_payload["legacy_rasters_path"] = legacy_rasters_path
+            if rasters_path:
+                result_payload["rasters_path"] = rasters_path
             await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "succeeded",
@@ -816,21 +930,7 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "effective_mode": effective_mode,
                 "auto_mode_selected": effective_mode != requested_mode,
                 "ocr_page_ratio": _ocr_ratio(summary, page_count),
-                "result_payload": {
-                    "docling_path": docling_path,
-                    "rasters_path": rasters_path,
-                    "doctags_path": doctags_path,
-                    "markdown_path": markdown_path,
-                    "outline_path": outline_path,
-                    "page_count": page_count,
-                    "page_languages": parse_result.get("page_languages") or {},
-                    "outline_node_count": len(outline),
-                    "summary": summary,
-                    "mode": effective_mode,
-                    "requested_mode": requested_mode,
-                    "auto_mode_selected": effective_mode != requested_mode,
-                    "cache_hit": False,
-                },
+                "result_payload": result_payload,
             })
     except SidecarError as exc:
         LOG.warning("async job failed (sidecar error): %s", exc.message)
@@ -943,7 +1043,7 @@ class ChunkRequest(BaseModel):
     include_markdown: bool = True
     redact_pii: bool = False
     raster_dpi: Optional[int] = Field(default=None, ge=72, le=300)
-    raster_format: str = Field(default="png", pattern="^(png|jpeg)$")
+    raster_format: str = Field(default=RASTER_FORMAT, pattern="^(png|jpeg)$")
 
 
 def _extract_page_range(pdf_bytes: bytes, page_start: int, page_end: int) -> tuple[bytes, int]:
@@ -1033,7 +1133,7 @@ async def _post_chunk_callback(
 
 async def _run_chunk_job(req: ChunkRequest) -> None:
     started = time.monotonic()
-    artifacts: dict[str, Optional[str]] = {}
+    artifacts: dict[str, Any] = {}
     bytes_in = 0
     bytes_out = 0
     try:
@@ -1082,28 +1182,37 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             # Raster the chunk only when the mode demands page images.
             mode = (req.mode or "semantic").lower()
             if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
-                dpi = req.raster_dpi or (200 if "pixel" in mode else 144)
+                dpi = req.raster_dpi or RASTER_DPI
+                raster_format = "png" if RASTER_ARTIFACT_MODE == "manifest" else (req.raster_format or RASTER_FORMAT or "png").lower()
                 try:
-                    raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=req.raster_format)
-                    normalized = {
-                        "format": raster_result.get("format"),
-                        "dpi": raster_result.get("dpi"),
-                        "engine_version": raster_result.get("engine_version"),
-                        # NOTE: chunk-local page_no — finalizer rebases to global page numbers.
-                        "pages": [
-                            {
-                                "page_no": p.get("page_no"),
-                                "global_page_no": req.page_start + int(p.get("page_no", 1)) - 1,
-                                "width": p.get("width_px"),
-                                "height": p.get("height_px"),
-                                "image_base64": p.get("base64"),
-                            }
-                            for p in raster_result.get("pages") or []
-                        ],
-                    }
-                    raster_body = json.dumps(normalized).encode("utf-8")
-                    artifacts["rasters_path"] = await _storage_upload(client, f"{prefix}/rasters.json", raster_body, "application/json")
-                    bytes_out += len(raster_body)
+                    raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_format)
+                    if RASTER_ARTIFACT_MODE == "manifest":
+                        manifest_upload = await _upload_raster_manifest_artifacts(
+                            client,
+                            prefix,
+                            raster_result,
+                            global_page_offset=req.page_start - 1,
+                        )
+                        artifacts["rasters_manifest_path"] = manifest_upload.get("rasters_manifest_path")
+                        artifacts["page_raster_paths"] = manifest_upload.get("page_raster_paths") or []
+                        bytes_out += int(manifest_upload.get("bytes_out") or 0)
+                        if WRITE_LEGACY_RASTERS_JSON:
+                            raster_body = _legacy_raster_body(raster_result, global_page_offset=req.page_start - 1)
+                            artifacts["legacy_rasters_path"] = await _storage_upload(
+                                client,
+                                f"{prefix}/rasters.json",
+                                raster_body,
+                                "application/json",
+                            )
+                            bytes_out += len(raster_body)
+                        else:
+                            LOG.info("Legacy rasters.json skipped")
+                    elif RASTER_ARTIFACT_MODE == "legacy":
+                        raster_body = _legacy_raster_body(raster_result, global_page_offset=req.page_start - 1)
+                        artifacts["rasters_path"] = await _storage_upload(client, f"{prefix}/rasters.json", raster_body, "application/json")
+                        bytes_out += len(raster_body)
+                    else:
+                        LOG.info("Legacy rasters.json skipped")
                 except SidecarError as exc:
                     LOG.warning("chunk raster failed (continuing): %s", exc.message)
 
