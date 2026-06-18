@@ -86,7 +86,12 @@ interface JobRow {
       avg_text_confidence?: number | null;
     } | null;
     ssim_path?: string | null;
+    rasters_manifest_path?: string | null;
+    page_raster_paths?: string[] | null;
+    rasters_path?: string | null;
+    legacy_rasters_path?: string | null;
   } | null;
+
   created_at: string;
   updated_at: string;
 }
