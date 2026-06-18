@@ -25,6 +25,7 @@ type GstFieldKey = 'price' | 'treatment' | 'registered' | 'goingConcernConfirmed
 type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'Contract Extracted' | 'AI Estimate' | 'Manual' | 'User Override' | 'Solicitor Confirmed' | 'Accountant Confirmed' | 'Verified';
 interface SourceCandidate<T> { value: T; source: SourceState; detail: string }
 interface AssumptionHistoryEntry { field: GstFieldKey; previousValue: string; nextValue: string; previousSource: SourceState; nextSource: SourceState; note: string }
+interface GstExtractionPreview { suggestedTreatment: GstTreatmentInput; purchaserRegistrationRequirement: ConfirmationState; goingConcernPresent: boolean; marginSchemePresent: boolean; taxableSupplyPresent: boolean; confidence: 'Low' | 'Medium' | 'High'; clauseSummary: string; missingInformation: string[]; requiredConfirmations: string[]; specialistReviewRequired: boolean; source: SourceState }
 
 const parseNumeric = (v: unknown): number | null => {
   if (v === undefined || v === null) return null;
@@ -63,6 +64,15 @@ const normalizeConfirmation = (v: unknown): ConfirmationState | undefined => {
   if (['no', 'false', 'not_registered', 'unconfirmed'].includes(s)) return 'no';
   return undefined;
 };
+const detectText = (...xs: unknown[]) => xs.filter(x => typeof x === 'string').join(' ').toLowerCase();
+const inferTreatmentFromText = (text: string): GstTreatmentInput | undefined => {
+  if (/going concern/.test(text)) return 'going_concern';
+  if (/margin scheme/.test(text)) return 'margin_scheme';
+  if (/taxable supply|plus gst|\+\s*gst|gst inclusive/.test(text)) return 'standard';
+  if (/out of scope/.test(text)) return 'out_of_scope';
+  if (/no gst|input taxed/.test(text)) return 'no_gst';
+  return undefined;
+};
 const persistedTreatment = (v: GstTreatmentInput): GstTreatment | undefined => {
   if (v === 'unknown' || v === 'custom_review') return undefined;
   if (v === 'out_of_scope' || v === 'no_gst') return 'input_taxed';
@@ -92,6 +102,9 @@ export function GstCalculatorCard() {
   const [itcClaimability, setItcClaimability] = useState<ConfirmationState>('unknown');
   const [settlementTiming, setSettlementTiming] = useState<RefundTiming>('unknown');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [extractionNotice, setExtractionNotice] = useState('');
+  const [extractionPreview, setExtractionPreview] = useState<GstExtractionPreview | null>(null);
+  const [previewSelections, setPreviewSelections] = useState<Record<GstFieldKey, boolean>>({ price: false, treatment: true, registered: true, goingConcernConfirmed: true, itcClaimability: false, settlementTiming: false });
   const [sources, setSources] = useState<Record<GstFieldKey, SourceState>>({ price: 'Blank', treatment: 'Blank', registered: 'Blank', goingConcernConfirmed: 'Blank', itcClaimability: 'Blank', settlementTiming: 'Blank' });
   const [history, setHistory] = useState<AssumptionHistoryEntry[]>([]);
   const [sourceConflicts, setSourceConflicts] = useState<Partial<Record<GstFieldKey, SourceCandidate<string>>>>({});
@@ -116,7 +129,6 @@ export function GstCalculatorCard() {
       if (field === 'registered') setRegistered(candidate.value as ConfirmationState);
       if (field === 'goingConcernConfirmed') setGoingConcernConfirmed(candidate.value as ConfirmationState);
       if (field === 'itcClaimability') setItcClaimability(candidate.value as ConfirmationState);
-    if (field === 'settlementTiming') setSettlementTiming(candidate.value as RefundTiming);
       if (field === 'settlementTiming') setSettlementTiming(candidate.value as RefundTiming);
       setSources(prev => ({ ...prev, [field]: candidate.source }));
       setSourceConflicts(prev => { const next = { ...prev }; delete next[field]; return next; });
@@ -132,8 +144,21 @@ export function GstCalculatorCard() {
     if (field === 'registered') setRegistered(candidate.value as ConfirmationState);
     if (field === 'goingConcernConfirmed') setGoingConcernConfirmed(candidate.value as ConfirmationState);
     if (field === 'itcClaimability') setItcClaimability(candidate.value as ConfirmationState);
+    if (field === 'settlementTiming') setSettlementTiming(candidate.value as RefundTiming);
     setSources(prev => ({ ...prev, [field]: candidate.source }));
     setSourceConflicts(prev => { const next = { ...prev }; delete next[field]; return next; });
+  };
+
+
+  const applyPreviewField = (field: GstFieldKey, value: string, source: SourceState) => {
+    pushHistory(field, currentValues[field] || 'Blank', value || 'Blank', sources[field], source, 'User accepted GST AI / extraction preview value.');
+    if (field === 'price') setPrice(value);
+    if (field === 'treatment') setTreatment(value as GstTreatmentInput);
+    if (field === 'registered') setRegistered(value as ConfirmationState);
+    if (field === 'goingConcernConfirmed') setGoingConcernConfirmed(value as ConfirmationState);
+    if (field === 'itcClaimability') setItcClaimability(value as ConfirmationState);
+    if (field === 'settlementTiming') setSettlementTiming(value as RefundTiming);
+    setSources(prev => ({ ...prev, [field]: source }));
   };
 
   const markOverride = (field: GstFieldKey, nextValue: string, setter: (v: any) => void) => {
@@ -194,6 +219,59 @@ export function GstCalculatorCard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceCandidates]);
 
+
+  const buildExtractionPreview = (): GstExtractionPreview | null => {
+    const contractText = detectText(rawProperty.contract_text, rawProperty.contractText, rawProperty.extracted_contract_text, rawProperty.gst_clause, rawProperty.saved_gst_clause, rawProperty.contract_gst_clause);
+    const scrapeText = detectText(rawProperty.scraped_description, rawProperty.scrape_text, rawProperty.property_description, rawProperty.notes, rawProperty.gst_treatment);
+    const combinedText = `${contractText} ${scrapeText}`.trim();
+    const hasContract = contractText.length > 0 || Boolean(rawProperty.uploaded_contract || rawProperty.contract_file || rawProperty.contract_url);
+    const hasScrape = scrapeText.length > 0 || sourceCandidates.treatment?.source === 'Scraped';
+    const hasProfileContext = Boolean(prefill?.purchasePrice || prefill?.gstTreatment || prefill?.address);
+    if (!hasContract && !hasScrape && !hasProfileContext) return null;
+    const inferred = inferTreatmentFromText(combinedText) ?? sourceCandidates.treatment?.value as GstTreatmentInput | undefined ?? 'unknown';
+    const goingConcernPresent = /going concern/.test(combinedText) || inferred === 'going_concern';
+    const marginSchemePresent = /margin scheme/.test(combinedText) || inferred === 'margin_scheme';
+    const taxableSupplyPresent = /taxable supply|plus gst|\+\s*gst|gst inclusive/.test(combinedText) || inferred === 'standard';
+    const confidence: GstExtractionPreview['confidence'] = hasContract && inferred !== 'unknown' ? 'High' : (hasScrape || sourceCandidates.treatment) && inferred !== 'unknown' ? 'Medium' : 'Low';
+    const missingInformation = [!hasContract && 'Contract of sale or extracted GST clauses', registered === 'unknown' && 'Purchaser GST registration status', inferred === 'going_concern' && !goingConcernPresent && 'Going concern condition wording'].filter(Boolean) as string[];
+    return {
+      suggestedTreatment: inferred,
+      purchaserRegistrationRequirement: registered === 'unknown' ? 'yes' : registered,
+      goingConcernPresent,
+      marginSchemePresent,
+      taxableSupplyPresent,
+      confidence,
+      clauseSummary: combinedText ? combinedText.slice(0, 260) : 'No contract clause text available; suggestion uses property profile context only.',
+      missingInformation,
+      requiredConfirmations: ['Contract GST clause reviewed', 'Purchaser GST registration confirmed', 'Solicitor/accountant confirmation before reliance'],
+      specialistReviewRequired: inferred === 'unknown' || inferred === 'custom_review' || marginSchemePresent,
+      source: hasContract ? 'Contract Extracted' : 'AI Estimate',
+    };
+  };
+  const runExtractionWorkflow = () => {
+    const preview = buildExtractionPreview();
+    if (!preview) {
+      setExtractionPreview(null);
+      setExtractionNotice('More property or contract information is required before GST treatment can be estimated.');
+      return;
+    }
+    setExtractionNotice('GST treatment must be confirmed by the contract, solicitor/accountant advice and purchaser GST registration status before being relied upon.');
+    setExtractionPreview(preview);
+  };
+  const applySelectedPreviewFields = () => {
+    if (!extractionPreview) return;
+    if (previewSelections.treatment) applyPreviewField('treatment', extractionPreview.suggestedTreatment, extractionPreview.source);
+    if (previewSelections.registered) applyPreviewField('registered', extractionPreview.purchaserRegistrationRequirement, extractionPreview.source);
+    if (previewSelections.goingConcernConfirmed) applyPreviewField('goingConcernConfirmed', extractionPreview.goingConcernPresent ? 'yes' : 'unknown', extractionPreview.source);
+    setExtractionNotice('GST treatment must be confirmed by the contract, solicitor/accountant advice and purchaser GST registration status before being relied upon.');
+  };
+  const markPreviewConfirmed = (source: Extract<SourceState, 'Solicitor Confirmed' | 'Accountant Confirmed'>) => {
+    if (!extractionPreview) return;
+    applyPreviewField('treatment', extractionPreview.suggestedTreatment, source);
+    if (extractionPreview.goingConcernPresent) applyPreviewField('goingConcernConfirmed', 'yes', source);
+    setExtractionNotice('GST treatment must be confirmed by the contract, solicitor/accountant advice and purchaser GST registration status before being relied upon.');
+  };
+
   const purchasePriceValue = parseNumeric(price);
   const priorCostValue = parseNumeric(priorCost);
   const isZeroGstTreatment = treatment === 'input_taxed' || treatment === 'out_of_scope' || treatment === 'no_gst';
@@ -249,13 +327,52 @@ export function GstCalculatorCard() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" disabled title="Assumption status is shown in field badges and the advanced GST breakdown.">Assumption Status</Button>
-              <Button size="sm" variant="outline" disabled={!canExtractFromContract} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "Link a property, paste contract text or upload contract data before estimating GST treatment."}>Estimate / extract from contract</Button>
+              <Button size="sm" variant="outline" onClick={runExtractionWorkflow} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "More property or contract information may be required before GST treatment can be estimated."}>Estimate / extract from contract</Button>
               <SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: persistedTreatment(treatment) })} />
             </div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {extractionNotice && <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{extractionNotice}</div>}
+        {extractionPreview && (
+          <section className="rounded-xl border border-primary/20 bg-background/35 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">AI / Contract Extraction Preview</h3>
+                <p className="mt-1 text-xs text-muted-foreground">AI output is an estimate only and is not verified advice.</p>
+              </div>
+              <Badge variant={extractionPreview.specialistReviewRequired ? 'destructive' : 'outline'}>{extractionPreview.specialistReviewRequired ? 'Specialist review flag' : `${extractionPreview.confidence} confidence`}</Badge>
+            </div>
+            <div className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+              <PreviewItem label="Suggested GST treatment" value={extractionPreview.suggestedTreatment} />
+              <PreviewItem label="Purchaser registration requirement" value={extractionPreview.purchaserRegistrationRequirement} />
+              <PreviewItem label="Going concern wording" value={extractionPreview.goingConcernPresent ? 'Appears present' : 'Not identified'} />
+              <PreviewItem label="Margin scheme wording" value={extractionPreview.marginSchemePresent ? 'Appears present' : 'Not identified'} />
+              <PreviewItem label="Taxable supply wording" value={extractionPreview.taxableSupplyPresent ? 'Appears present' : 'Not identified'} />
+              <PreviewItem label="Confidence level" value={extractionPreview.confidence} />
+              <PreviewItem label="Missing information" value={extractionPreview.missingInformation.join(', ') || 'None identified'} />
+              <PreviewItem label="Required confirmations" value={extractionPreview.requiredConfirmations.join(', ')} />
+            </div>
+            <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+              <div className="font-medium text-foreground">Extracted clause text summary</div>
+              <p className="mt-1">{extractionPreview.clauseSummary}</p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => applyPreviewField('treatment', extractionPreview.suggestedTreatment, extractionPreview.source)}>Accept suggested treatment</Button>
+              <Button size="sm" variant="outline" onClick={applySelectedPreviewFields}>Accept selected fields only</Button>
+              <Button size="sm" variant="outline" onClick={() => setExtractionNotice('Edit the previewed selections in the GST Inputs section before applying.')}>Edit before applying</Button>
+              <Button size="sm" variant="secondary" onClick={() => { setExtractionPreview(null); setExtractionNotice('GST extraction suggestion rejected; current assumptions were kept.'); }}>Reject suggestion</Button>
+              <Button size="sm" variant="outline" onClick={() => markPreviewConfirmed('Solicitor Confirmed')}>Mark as solicitor confirmed</Button>
+              <Button size="sm" variant="outline" onClick={() => markPreviewConfirmed('Accountant Confirmed')}>Mark as accountant confirmed</Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+              {(['treatment', 'registered', 'goingConcernConfirmed'] as GstFieldKey[]).map(field => (
+                <label key={field} className="flex items-center gap-1"><input type="checkbox" checked={previewSelections[field]} onChange={e => setPreviewSelections(prev => ({ ...prev, [field]: e.target.checked }))} /> Apply {field}</label>
+              ))}
+            </div>
+          </section>
+        )}
         <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="rounded-xl border border-border/70 bg-muted/20 p-4">
             <div className="mb-3">
@@ -381,6 +498,10 @@ function TimingField({ value, source, onChange }: { value: RefundTiming; source:
       </Select>
     </div>
   );
+}
+
+function PreviewItem({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border border-border/70 bg-muted/20 p-2"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-foreground">{value}</div></div>;
 }
 
 function AdvancedBlock({ title, lines }: { title: string; lines: string[] }) {
