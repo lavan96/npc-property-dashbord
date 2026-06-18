@@ -468,6 +468,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     Documents: [...result.documentChecklist.slice(0, 3)],
   }), [availableEquity, businessEbitda, showBusinessFields, purchasePrice, estimatedValue, assetSubtype, passingRent, marketRent, nonRecoverable, leaseDocs, rate, term, maxLvr, gstTreatment, gstCashflow, result.documentChecklist]);
   const criticalMissingItems = Object.entries(missingInformationGroups).flatMap(([group, items]) => items.map(item => ({ group, item }))).slice(0, 5);
+  const formatAdvancedMoney = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const noiSourceMetrics = [
     { label: 'Actual NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.actualNoi) : 'Pending' },
     { label: 'Stabilised NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.stabilisedNoi) : 'Pending' },
