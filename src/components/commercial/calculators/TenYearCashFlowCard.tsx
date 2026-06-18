@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Calculator, ChevronDown, FileText, Info, Sparkles, TrendingUp } from 'lucide-react';
+import { Calculator, ChevronDown, FileText, Info, Lock, Pencil, Sparkles, TrendingUp } from 'lucide-react';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCommercialDealState, type CalculatorSourceMode } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
-import { cashFlowAiEstimateButtons } from '@/utils/commercial/cashFlowAiEstimateEngine';
+import { INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE, cashFlowAiEstimateActions, createCashFlowAiEstimatePreview, type CashFlowAiEstimateAction, type CashFlowAiEstimatePreview } from '@/utils/commercial/cashFlowAiEstimateEngine';
 import { buildTenYearInputsFromGlobal, calculateTenYearCashFlow } from '@/utils/commercial/tenYearCashFlowEngine';
 import type { TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
 
@@ -24,9 +25,21 @@ const hasPositive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) 
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
 
+const summaryFormulaTooltip = (label: string) => {
+  if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
+  if (label === 'Equity multiple') return 'Total equity returned ÷ initial equity invested.';
+  if (label === 'Risk status') return 'Calculated from grouped validation warnings and specialist-review flags.';
+  if (label.includes('after-tax cashflow')) return 'Pre-tax cashflow − tax payable + allowed tax benefit.';
+  if (label.includes('property value')) return 'Prior year property value × (1 + capital growth rate).';
+  if (label.includes('equity')) return 'Property value − closing loan balance.';
+  if (label === 'Terminal value') return 'Forward NOI ÷ terminal cap rate.';
+  return 'Protected calculated report output.';
+};
+
 function SummaryCard({ label, value, pending }: { label: string; value: string | number | null | undefined; pending?: boolean }) {
   const display = pending ? PENDING : typeof value === 'number' ? fmt(value) : value ?? PENDING;
-  return <Card className="bg-card/95"><CardContent className="pt-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold text-primary">{display}</p></CardContent></Card>;
+  const formula = summaryFormulaTooltip(label);
+  return <Card className="bg-card/95"><CardContent className="pt-4"><div className="flex items-start justify-between gap-2"><p className="text-xs text-muted-foreground">{label}</p><Tooltip><TooltipTrigger asChild><Lock className="h-3.5 w-3.5 cursor-help text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs">{formula}</TooltipContent></Tooltip></div><p className="mt-1 text-lg font-semibold text-primary">{display}</p><Badge variant="outline" className="mt-2 gap-1 text-[10px]"><Lock className="h-3 w-3" />Protected calculated output</Badge></CardContent></Card>;
 }
 
 type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'NOI Tab' | 'Cap Rate Tab' | 'GST Tab' | 'ICR / DSCR Tab' | 'Borrowing Capacity' | 'DCF Tab' | 'Research Engine' | 'AI Estimate' | 'Manual' | 'User Override' | 'Verified';
@@ -42,36 +55,55 @@ function OverrideNumber({ label, field, value, update, suffix, placeholder, pend
   return <AssumptionField label={label} source={source} tooltip={tooltip} overridden={overridden}><div className="flex items-center gap-2"><Input type="number" value={pending ? '' : value ?? ''} placeholder={placeholder} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div>{sourceConflict && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100"><p>New source value available. This field currently uses a saved override.</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" onClick={onUseSource}>Use source value</Button></div></div>}</AssumptionField>;
 }
 
+type MetricRowConfig = {
+  group: string;
+  label: string;
+  formula: string;
+  values: (y: TenYearCashFlowYear) => string;
+  rowType: 'calculated' | 'assumption';
+  annualOverride?: boolean;
+};
+
+function RowEditabilityBadge({ row }: { row: MetricRowConfig }) {
+  if (row.rowType === 'calculated') {
+    return <Badge variant="outline" className="mt-1 gap-1 text-[10px]"><Lock className="h-3 w-3" />Protected calculated output</Badge>;
+  }
+  return <Badge variant="secondary" className="mt-1 gap-1 text-[10px]"><Pencil className="h-3 w-3" />{row.annualOverride ? 'Annual override allowed' : 'Editable assumption'}</Badge>;
+}
+
 function MetricRows({ years, mode, pending }: { years: TenYearCashFlowYear[]; mode: TenYearCashFlowMode; pending?: boolean }) {
-  const rows: Array<{ group: string; label: string; formula: string; values: (y: TenYearCashFlowYear) => string }> = [
-    { group: 'Valuation', label: 'Property value', formula: 'Prior year value × (1 + capital growth)', values: y => fmt(y.propertyValue) },
-    { group: 'Valuation', label: 'Terminal value', formula: 'Forward NOI / terminal cap rate', values: y => y.terminalValue == null ? PENDING : fmt(y.terminalValue) },
-    { group: 'Debt', label: 'Opening loan balance', formula: 'Prior year closing loan balance', values: y => fmt(y.openingLoanBalance) },
-    { group: 'Debt', label: 'Interest payment', formula: 'Opening loan × interest rate', values: y => fmt(y.interestPayment) },
-    { group: 'Debt', label: 'Principal payment', formula: 'Debt service - interest', values: y => fmt(y.principalPayment) },
-    { group: 'Debt', label: 'Closing loan balance', formula: 'Opening loan - principal', values: y => fmt(y.closingLoanBalance) },
-    { group: 'Debt', label: 'LVR', formula: 'Closing loan / property value', values: y => pct(y.lvr) },
-    { group: 'Debt', label: 'ICR', formula: 'NOI / interest', values: y => numPct(y.icr) },
-    { group: 'Debt', label: 'DSCR', formula: 'NOI / annual debt service', values: y => numPct(y.dscr) },
-    { group: 'Debt', label: 'Debt yield', formula: 'NOI / opening loan', values: y => pct(y.debtYield) },
-    { group: 'Income', label: 'Passing rent', formula: 'Prior year rent × rent growth', values: y => fmt(y.passingRent) },
-    { group: 'Income', label: 'Vacancy loss', formula: 'Potential gross income × vacancy %', values: y => fmt(y.vacancyLoss) },
-    { group: 'Income', label: 'Recovered outgoings', formula: 'Recovered outgoings × outgoings growth', values: y => fmt(y.recoveredOutgoings) },
-    { group: 'Expenses', label: 'Owner-borne expenses', formula: 'Sum of non-recoverable expenses', values: y => fmt(y.totalOwnerBorneExpenses) },
-    { group: 'NOI', label: 'Actual NOI', formula: 'Effective gross income - owner-borne expenses', values: y => fmt(y.actualNoi) },
-    { group: 'NOI', label: 'Lender-adjusted NOI', formula: 'Actual NOI - risk haircuts', values: y => fmt(y.lenderAdjustedNoi) },
-    { group: 'Leasing / Vacancy', label: 'Total leasing / vacancy cost', formula: 'Downtime + incentives + leasing fee + reletting', values: y => fmt(y.totalLeasingVacancyCost) },
-    { group: 'Capex', label: 'Total capex', formula: 'Annual reserve + major capex + specialist reserves', values: y => fmt(y.totalCapex) },
-    { group: 'Cash Flow', label: 'Pre-tax cashflow', formula: 'NOI - leasing costs - capex - debt service', values: y => fmt(y.preTaxCashflow) },
-    { group: 'Tax', label: 'Tax payable / benefit', formula: 'Taxable income × tax rate; loss benefit only if allowed', values: y => fmt(y.taxPayableBenefit) },
-    { group: 'Cash Flow', label: 'After-tax cashflow', formula: 'Pre-tax cashflow - tax payable / + allowed tax benefit', values: y => fmt(y.afterTaxCashflow) },
-    { group: 'Equity', label: 'Equity position', formula: 'Property value - loan balance', values: y => fmt(y.equityPosition) },
+  const rows: MetricRowConfig[] = [
+    { group: 'Valuation', label: 'Property value', formula: 'Prior year property value × (1 + capital growth rate).', values: y => fmt(y.propertyValue), rowType: 'calculated' },
+    { group: 'Valuation', label: 'Terminal value', formula: 'Forward NOI ÷ terminal cap rate.', values: y => y.terminalValue == null ? PENDING : fmt(y.terminalValue), rowType: 'calculated' },
+    { group: 'Debt', label: 'Opening loan balance', formula: 'Prior year closing loan balance.', values: y => fmt(y.openingLoanBalance), rowType: 'calculated' },
+    { group: 'Debt', label: 'Interest payment', formula: 'Opening loan balance × interest rate.', values: y => fmt(y.interestPayment), rowType: 'calculated' },
+    { group: 'Debt', label: 'Principal payment', formula: 'Annual debt service − interest payment.', values: y => fmt(y.principalPayment), rowType: 'calculated' },
+    { group: 'Debt', label: 'Closing loan balance', formula: 'Opening loan balance − principal payment.', values: y => fmt(y.closingLoanBalance), rowType: 'calculated' },
+    { group: 'Debt', label: 'LVR', formula: 'Closing loan balance ÷ property value.', values: y => pct(y.lvr), rowType: 'calculated' },
+    { group: 'Debt', label: 'ICR', formula: 'NOI ÷ interest payment.', values: y => numPct(y.icr), rowType: 'calculated' },
+    { group: 'Debt', label: 'DSCR', formula: 'NOI ÷ annual debt service.', values: y => numPct(y.dscr), rowType: 'calculated' },
+    { group: 'Debt', label: 'Debt yield', formula: 'NOI ÷ opening loan balance.', values: y => pct(y.debtYield), rowType: 'calculated' },
+    { group: 'Income', label: 'Passing rent', formula: 'Assumption row: prior year rent × accepted rent growth; annual override may be enabled.', values: y => fmt(y.passingRent), rowType: 'assumption', annualOverride: true },
+    { group: 'Income', label: 'Vacancy loss', formula: 'Potential gross income × vacancy allowance.', values: y => fmt(y.vacancyLoss), rowType: 'calculated' },
+    { group: 'Income', label: 'Recovered outgoings', formula: 'Assumption row: recovered outgoings escalated by outgoings growth; annual override may be enabled.', values: y => fmt(y.recoveredOutgoings), rowType: 'assumption', annualOverride: true },
+    { group: 'Expenses', label: 'Owner-borne expenses', formula: 'Assumption row: owner-borne expenses escalated by expense/outgoings growth; annual override may be enabled.', values: y => fmt(y.totalOwnerBorneExpenses), rowType: 'assumption', annualOverride: true },
+    { group: 'NOI', label: 'Actual NOI', formula: 'Effective gross income − owner-borne expenses.', values: y => fmt(y.actualNoi), rowType: 'calculated' },
+    { group: 'NOI', label: 'Lender-adjusted NOI', formula: 'Actual NOI − risk haircuts.', values: y => fmt(y.lenderAdjustedNoi), rowType: 'calculated' },
+    { group: 'Leasing / Vacancy', label: 'Total leasing / vacancy cost', formula: 'Downtime + tenant incentives + leasing fee + reletting cost.', values: y => fmt(y.totalLeasingVacancyCost), rowType: 'calculated' },
+    { group: 'Capex', label: 'Annual capex reserve', formula: 'Assumption row: annual reserve amount; annual override may be enabled.', values: y => fmt(y.annualCapexReserve), rowType: 'assumption', annualOverride: true },
+    { group: 'Capex', label: 'Major capex', formula: 'Assumption row: major capex amount in the selected timing year; annual override may be enabled.', values: y => fmt(y.majorCapex), rowType: 'assumption', annualOverride: true },
+    { group: 'Capex', label: 'Total capex', formula: 'Annual reserve + major capex + specialist reserves.', values: y => fmt(y.totalCapex), rowType: 'calculated' },
+    { group: 'Cash Flow', label: 'Pre-tax cashflow', formula: 'NOI − leasing/vacancy costs − capex − debt service.', values: y => fmt(y.preTaxCashflow), rowType: 'calculated' },
+    { group: 'Tax', label: 'Tax payable / benefit', formula: 'Assumption-sensitive row: taxable income × tax rate; loss benefit only if allowed.', values: y => fmt(y.taxPayableBenefit), rowType: 'assumption', annualOverride: true },
+    { group: 'Cash Flow', label: 'After-tax cashflow', formula: 'Pre-tax cashflow − tax payable + allowed tax benefit.', values: y => fmt(y.afterTaxCashflow), rowType: 'calculated' },
+    { group: 'Cash Flow', label: 'Cumulative after-tax cashflow', formula: 'Prior year cumulative after-tax cashflow + current year after-tax cashflow.', values: y => fmt(y.cumulativeAfterTaxCashflow), rowType: 'calculated' },
+    { group: 'Equity', label: 'Equity position', formula: 'Property value − closing loan balance.', values: y => fmt(y.equityPosition), rowType: 'calculated' },
   ];
-  if (mode === 'ownerOccupier') rows.push({ group: 'Business Impact', label: 'Net saving / cost vs leasing', formula: 'Leasing cost avoided - ownership cash cost', values: y => fmt(y.netSavingCostVsLeasing) }, { group: 'Business Impact', label: 'Business DSCR', formula: 'Available business cashflow / total debt service', values: y => numPct(y.businessDscr) }, { group: 'Business Impact', label: 'Occupancy cost ratio', formula: 'Ownership cash cost / business revenue', values: y => pct(y.occupancyCostRatio) });
-  if (mode === 'relatedPartyLease') rows.push({ group: 'Group View', label: 'Property entity cashflow', formula: 'Rent received + recoveries - expenses - debt - capex', values: y => fmt(y.propertyEntityCashflow) }, { group: 'Group View', label: 'Operating occupancy cost', formula: 'Related-party rent paid + outgoings paid', values: y => fmt(y.operatingBusinessOccupancyCost) }, { group: 'Group View', label: 'Group cashflow', formula: 'Internal rent neutralised before tax/entity effects', values: y => fmt(y.groupCashflow) });
+  if (mode === 'ownerOccupier') rows.push({ group: 'Business Impact', label: 'Net saving / cost vs leasing', formula: 'Leasing cost avoided − ownership cash cost.', values: y => fmt(y.netSavingCostVsLeasing), rowType: 'calculated' }, { group: 'Business Impact', label: 'Business DSCR', formula: 'Available business cashflow ÷ total debt service.', values: y => numPct(y.businessDscr), rowType: 'calculated' }, { group: 'Business Impact', label: 'Occupancy cost ratio', formula: 'Ownership cash cost ÷ business revenue.', values: y => pct(y.occupancyCostRatio), rowType: 'calculated' });
+  if (mode === 'relatedPartyLease') rows.push({ group: 'Group View', label: 'Property entity cashflow', formula: 'Rent received + recoveries − expenses − debt − capex.', values: y => fmt(y.propertyEntityCashflow), rowType: 'calculated' }, { group: 'Group View', label: 'Operating occupancy cost', formula: 'Related-party rent paid + outgoings paid.', values: y => fmt(y.operatingBusinessOccupancyCost), rowType: 'calculated' }, { group: 'Group View', label: 'Group cashflow', formula: 'Internal rent neutralised before tax/entity effects.', values: y => fmt(y.groupCashflow), rowType: 'calculated' });
   let current = '';
   const tableYears = pending ? Array.from({ length: 10 }, (_, i) => ({ year: i + 1 }) as TenYearCashFlowYear) : years;
-  return <Table><TableHeader><TableRow><TableHead className="sticky left-0 bg-card min-w-[220px]">Row / formula</TableHead>{tableYears.map(y => <TableHead key={y.year} className="text-right">Year {y.year}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map((r, i) => { const showGroup = current !== r.group; current = r.group; return [showGroup ? <TableRow key={`${r.group}-g`} className="bg-primary/10"><TableCell colSpan={11} className="font-semibold text-primary">{r.group}</TableCell></TableRow> : null, <TableRow key={`${r.group}-${r.label}-${i}`}><TableCell className="sticky left-0 bg-card"><div className="font-medium">{r.label}</div><div className="text-[11px] text-muted-foreground">{r.formula}</div></TableCell>{tableYears.map(y => <TableCell key={y.year} className="text-right tabular-nums">{pending ? PENDING : r.values(y)}</TableCell>)}</TableRow>]; })}</TableBody></Table>;
+  return <Table><TableHeader><TableRow><TableHead className="sticky left-0 bg-card min-w-[260px]">Row / formula</TableHead>{tableYears.map(y => <TableHead key={y.year} className="text-right">Year {y.year}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map((r, i) => { const showGroup = current !== r.group; current = r.group; return [showGroup ? <TableRow key={`${r.group}-g`} className="bg-primary/10"><TableCell colSpan={11} className="font-semibold text-primary">{r.group}</TableCell></TableRow> : null, <TableRow key={`${r.group}-${r.label}-${i}`} className={r.rowType === 'calculated' ? 'bg-muted/20' : undefined}><TableCell className="sticky left-0 bg-card"><div className="flex items-start justify-between gap-2"><div><div className="font-medium">{r.label}</div><div className="flex items-center gap-1 text-[11px] text-muted-foreground">{r.formula}<Tooltip><TooltipTrigger asChild><Info className="h-3.5 w-3.5 shrink-0 cursor-help" /></TooltipTrigger><TooltipContent className="max-w-xs">{r.formula}</TooltipContent></Tooltip></div><RowEditabilityBadge row={r} /></div></div></TableCell>{tableYears.map(y => <TableCell key={y.year} className="text-right tabular-nums">{pending ? PENDING : r.values(y)}</TableCell>)}</TableRow>]; })}</TableBody></Table>;
 }
 
 export function TenYearCashFlowCard() {
@@ -138,6 +170,12 @@ export function TenYearCashFlowCard() {
   const [overrideHistory, setOverrideHistory] = useState<AssumptionHistory>({});
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
+  const [aiAcceptedSources, setAiAcceptedSources] = useState<Partial<Record<keyof TenYearCashFlowInputs, SourceState>>>({});
+  const [verifiedFields, setVerifiedFields] = useState<Array<keyof TenYearCashFlowInputs>>([]);
+  const [estimatePreview, setEstimatePreview] = useState<CashFlowAiEstimatePreview | null>(null);
+  const [estimateEditValue, setEstimateEditValue] = useState('');
+  const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
+  const [assumptionHistory, setAssumptionHistory] = useState<Array<{ field: keyof TenYearCashFlowInputs; value: number; source: SourceState; timestamp: string }>>([]);
   const cascade = useMemo<CascadeMap>(() => {
     const pick = (...candidates: Array<{ value: unknown; source: SourceState }>): CascadeValue | undefined => {
       for (const c of candidates) if (typeof c.value === 'number' && Number.isFinite(c.value)) return { value: c.value, source: c.source };
@@ -250,13 +288,53 @@ export function TenYearCashFlowCard() {
   const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); markOverridden(field); };
   const updateTextOverride = <K extends keyof TenYearCashFlowInputs>(field: K, value: TenYearCashFlowInputs[K]) => { setOverrides(o => ({ ...o, [field]: value })); markOverridden(field); };
   const isOverridden = (field: keyof TenYearCashFlowInputs) => overriddenFields.includes(String(field));
-  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => isOverridden(field) ? 'User Override' : cascade[field]?.source ?? fallback;
+  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => {
+    if (isOverridden(field)) return 'User Override';
+    if (verifiedFields.includes(field)) return 'Verified';
+    return aiAcceptedSources[field] ?? cascade[field]?.source ?? fallback;
+  };
   const hasSourceConflict = (field: keyof TenYearCashFlowInputs) => {
     const history = overrideHistory[field]; const latest = cascade[field];
     return Boolean(isOverridden(field) && history && latest && (history.originalSource !== latest.source || Math.abs(history.originalValue - latest.value) > 0.0001));
   };
   const clearSourceConflict = (field: keyof TenYearCashFlowInputs) => setOverrideHistory(h => ({ ...h, [field]: cascade[field] ? { originalValue: cascade[field]!.value, originalSource: cascade[field]!.source } : h[field] }));
   const useSourceValue = (field: keyof TenYearCashFlowInputs) => { setOverrides(o => { const next = { ...o }; delete next[field]; return next; }); setOverriddenFields(f => f.filter(k => k !== String(field))); setOverrideHistory(h => { const next = { ...h }; delete next[field]; return next; }); };
+  const contextAvailability = useMemo(() => ({
+    propertyProfile: Boolean(prefill || propertyValuation || dealProfile),
+    propertyScrape: Boolean(prefill),
+    noiTab: Boolean(noiOutputs || leaseIncome),
+    capRateTab: Boolean(capRateOutputs),
+    gstTab: Boolean(gstOutputs || gstInputs),
+    icrDscrTab: Boolean(icrDscrOutputs),
+    borrowingCapacity: Boolean(borrowingOutputs),
+    dcfTab: Boolean(dcfInputs || dcfOutputs),
+    researchEngine: Boolean(aiEstimateMetadata),
+    savedScenarios: Boolean(scenarioName || Object.keys(overrides).length),
+  }), [prefill, propertyValuation, dealProfile, noiOutputs, leaseIncome, capRateOutputs, gstOutputs, gstInputs, icrDscrOutputs, borrowingOutputs, dcfInputs, dcfOutputs, aiEstimateMetadata, scenarioName, overrides]);
+  const openEstimatePreview = (action: CashFlowAiEstimateAction) => {
+    const preview = createCashFlowAiEstimatePreview(action, inputs, contextAvailability);
+    if (!preview) { setEstimateMessage(INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE); setEstimatePreview(null); return; }
+    setEstimateMessage(null); setEstimatePreview(preview); setEstimateEditValue(String(preview.suggestedValue));
+  };
+  const acceptEstimate = (edited = false) => {
+    if (!estimatePreview) return;
+    const value = Number(edited ? estimateEditValue : estimatePreview.suggestedValue);
+    if (!Number.isFinite(value)) return;
+    const field = estimatePreview.field;
+    setAssumptionHistory(h => [...h, { field, value: estimatePreview.suggestedValue, source: estimatePreview.source, timestamp: new Date().toISOString() }]);
+    setOverrides(o => ({ ...o, [field]: value }));
+    setOverriddenFields(f => f.filter(k => k !== String(field)));
+    setAiAcceptedSources(sources => ({ ...sources, [field]: edited ? 'User Override' : estimatePreview.source }));
+    setVerifiedFields(fields => fields.filter(item => item !== field));
+    if (edited) setOverriddenFields(f => Array.from(new Set([...f, String(field)])));
+    setSourceMode('tenYearCashFlow', edited ? 'manualOverride' : 'aiPending');
+    setEstimatePreview(null);
+  };
+  const markEstimateVerified = () => {
+    if (!estimatePreview) return;
+    setVerifiedFields(fields => Array.from(new Set([...fields, estimatePreview.field])));
+    setEstimatePreview(null);
+  };
   const s = result.summary;
   const pending = !modelReady;
   const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
@@ -405,7 +483,15 @@ export function TenYearCashFlowCard() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">{cashFlowAiEstimateButtons.slice(0, 8).map(b => <Button key={b} size="sm" variant="outline"><Sparkles className="h-3.5 w-3.5 mr-1" />{b}</Button>)}</div>
+            <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-primary">AI Estimate Workflow</h3>
+                <p className="text-xs text-muted-foreground">Estimate buttons now open a preview first. Values are not applied, verified or used as formula inputs until you accept them.</p>
+              </div>
+              {estimateMessage && <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</div>}
+              <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
+              {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
+            </div>
             <Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
@@ -414,7 +500,38 @@ export function TenYearCashFlowCard() {
     {pending && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
     <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={pending} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={pending} /></div>
     {result.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
+    <Card className="border-primary/20 bg-primary/5"><CardContent className="pt-4 text-sm text-muted-foreground"><div className="flex flex-wrap gap-2"><Badge variant="outline" className="gap-1"><Lock className="h-3 w-3" />Calculated outputs locked</Badge><Badge variant="secondary" className="gap-1"><Pencil className="h-3 w-3" />Assumption annual overrides only</Badge></div><p className="mt-2">Annual overrides are limited to assumption rows such as passing rent, rent growth, vacancy allowance, recovered outgoings, outgoings growth, owner-borne expenses, capex, major capex, lease downtime, tenant incentives and tax rate. Interest-rate annual overrides require annual debt override to be enabled; protected calculated rows cannot be directly edited.</p></CardContent></Card>
     <MetricRows years={result.years} mode={mode} pending={pending} />
     <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{pending ? PENDING : result.commentary}</p></CardContent></Card>
+    <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>AI Estimate Preview</DialogTitle>
+          <DialogDescription>Review the estimate, evidence basis and risks before applying it. AI estimates are never marked verified automatically.</DialogDescription>
+        </DialogHeader>
+        {estimatePreview && <div className="space-y-4 text-sm">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested value</div><div className="text-lg font-semibold text-primary">{estimatePreview.suggestedValue}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested range</div><div className="font-semibold">{estimatePreview.suggestedRange[0]} – {estimatePreview.suggestedRange[1]}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Confidence level</div><Badge variant={estimatePreview.confidenceLevel === 'High' ? 'default' : estimatePreview.confidenceLevel === 'Medium' ? 'secondary' : 'outline'}>{estimatePreview.confidenceLevel}</Badge></div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div><h4 className="font-medium">Source basis</h4><p className="text-muted-foreground">{estimatePreview.sourceBasis}</p></div>
+            <div><h4 className="font-medium">Tabs / data points used</h4><p className="text-muted-foreground">{estimatePreview.tabsDataPointsUsed.join(', ')}</p></div>
+            <div><h4 className="font-medium">Missing data</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.missingData.map(item => <li key={item}>{item}</li>)}</ul></div>
+            <div><h4 className="font-medium">Risk notes</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.riskNotes.map(item => <li key={item}>{item}</li>)}</ul></div>
+          </div>
+          <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">Specialist review recommended: {estimatePreview.specialistReviewRecommended ? 'Yes' : 'No'}.</div>
+          <div className="space-y-2"><Label>Edit before applying</Label><Input type="number" value={estimateEditValue} onChange={e => setEstimateEditValue(e.target.value)} /></div>
+        </div>}
+        <DialogFooter className="flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => setEstimatePreview(null)}>Reject estimate</Button>
+          <Button type="button" variant="outline" onClick={() => markEstimateVerified()}>Mark as verified</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(true)}>Edit before applying</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(false)}>Accept selected estimate</Button>
+          <Button type="button" onClick={() => acceptEstimate(false)}>Accept estimate</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </CardContent></Card>;
 }
