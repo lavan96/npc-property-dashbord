@@ -600,6 +600,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
   const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
   const assumptionStatusAction = <Button type="button" variant="outline" size="sm" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
+  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
 
   useEffect(() => {
     const handler = (event: Event) => {
