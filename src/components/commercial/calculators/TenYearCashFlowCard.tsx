@@ -25,6 +25,7 @@ const hasPositive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) 
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
 const TEN_YEAR_CALCULATION_VERSION = '10-Year Cash Flow v1.0';
+const EXIT_VALUE_DIFFERENCE_THRESHOLD = 0.1;
 
 const summaryFormulaTooltip = (label: string) => {
   if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
@@ -36,7 +37,6 @@ const summaryFormulaTooltip = (label: string) => {
   if (label === 'Terminal value') return 'Forward NOI ÷ terminal cap rate.';
   return 'Protected calculated report output.';
 };
-
 
 function SummaryCard({ label, value, pending }: { label: string; value: string | number | null | undefined; pending?: boolean }) {
   const display = pending ? PENDING : typeof value === 'number' ? fmt(value) : value ?? PENDING;
@@ -191,7 +191,9 @@ export function TenYearCashFlowCard() {
   const [leaseExpiryYear, setLeaseExpiryYear] = useState('');
   const [waleYears, setWaleYears] = useState('');
   const [interestDeductible, setInterestDeductible] = useState(true);
-  const [exitValueMethod, setExitValueMethod] = useState('Terminal cap rate');
+  const [exitValueMethod, setExitValueMethod] = useState('Terminal Cap Value');
+  const [manualVerifiedExitValue, setManualVerifiedExitValue] = useState('');
+  const [exitReconciliationConfirmed, setExitReconciliationConfirmed] = useState(false);
   const [overrideHistory, setOverrideHistory] = useState<AssumptionHistory>({});
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
@@ -316,7 +318,7 @@ export function TenYearCashFlowCard() {
     && debtInputsReady;
   const sourceComplete = hasImportedInputs || (hasManualInputs && manualInputsComplete);
   const modelReady = sourceComplete && requiredAssumptionsReady && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
-  const generationSignature = JSON.stringify({ inputs, mode, projectionPeriod, exitValueMethod, annualOverridesEnabled, annualOverrides, capexNoneConfirmed });
+  const generationSignature = JSON.stringify({ inputs, mode, projectionPeriod, exitValueMethod, manualVerifiedExitValue, annualOverridesEnabled, annualOverrides, capexNoneConfirmed });
   const generatedCurrent = Boolean(generatedCashFlow && generatedCashFlow.signature === generationSignature);
   const generatedOutOfDate = Boolean(generatedCashFlow && !generatedCurrent);
   const reportResult = generatedCashFlow?.result ?? result;
@@ -326,6 +328,7 @@ export function TenYearCashFlowCard() {
   }, []);
 
   useEffect(() => { if (generatedCashFlow && generatedCurrent) updateGlobal('tenYearCashFlowOutputs', generatedCashFlow.result); }, [generatedCashFlow, generatedCurrent, updateGlobal]);
+  useEffect(() => { setExitReconciliationConfirmed(false); }, [exitValueMethod, manualVerifiedExitValue]);
   const markOverridden = (field: keyof TenYearCashFlowInputs) => {
     const currentSource = cascade[field];
     if (currentSource && !overrideHistory[field]) setOverrideHistory(h => ({ ...h, [field]: { originalValue: currentSource.value, originalSource: currentSource.source } }));
@@ -404,6 +407,21 @@ export function TenYearCashFlowCard() {
   const s = reportResult.summary;
   const pending = !modelReady;
   const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
+  const year10 = reportResult.years[9];
+  const year10CapitalGrowthValue = year10?.propertyValue ?? null;
+  const terminalCapValue = year10?.terminalValue ?? null;
+  const exitValueDifference = year10CapitalGrowthValue != null && terminalCapValue != null ? year10CapitalGrowthValue - terminalCapValue : null;
+  const exitValueDifferencePct = exitValueDifference != null && year10CapitalGrowthValue && year10CapitalGrowthValue > 0 ? exitValueDifference / year10CapitalGrowthValue : null;
+  const exitValueMaterialDifference = exitValueDifferencePct != null && Math.abs(exitValueDifferencePct) > EXIT_VALUE_DIFFERENCE_THRESHOLD;
+  const selectedExitValueUsed = exitValueMethod === 'Capital Growth Value'
+    ? year10CapitalGrowthValue
+    : exitValueMethod === 'Terminal Cap Value'
+      ? terminalCapValue
+      : exitValueMethod === 'Lower of Capital Growth / Terminal Cap'
+        ? Math.min(year10CapitalGrowthValue ?? 0, terminalCapValue ?? 0)
+        : Number(manualVerifiedExitValue) || null;
+  const exitValuePdfBlocked = Boolean(generatedCashFlow && generatedCurrent && (exitValueMaterialDifference || exitValueMethod === 'Manual Verified Exit Value') && !exitReconciliationConfirmed);
+
   const assumptionPlaceholders: Partial<Record<keyof TenYearCashFlowInputs, string>> = { purchasePrice: 'Pulled from property profile or enter manually', totalCostBase: 'Calculated from purchase price, costs and GST', passingRent: 'Pulled from NOI or enter manually', rentGrowthPct: 'Pulled from research engine or enter manually', vacancyAllowancePct: 'Pulled from NOI / research or enter manually', outgoingsGrowthPct: 'Enter outgoings growth', annualCapexReserve: 'Enter capex reserve', terminalCapRatePct: 'Pulled from Cap Rate / DCF or enter manually', taxRatePct: 'Enter tax rate or confirm accountant review', gstEconomicCost: 'Pulled from GST tab or enter manually' };
   const summaryCards = mode === 'investor'
     ? [['Purchase price', s.purchasePrice], ['Total cost base', s.totalCostBase], ['Required equity', s.requiredEquity], ['Year 1 NOI', s.year1Noi], ['Year 1 after-tax cashflow', s.year1AfterTaxCashflow], ['Year 10 property value', s.year10PropertyValue], ['Year 10 equity', s.year10Equity], ['Cumulative after-tax cashflow', s.cumulativeAfterTaxCashflow], ['Levered IRR', s.leveredIrr == null ? 'N/A' : `${(s.leveredIrr * 100).toFixed(1)}%`], ['Equity multiple', s.equityMultiple == null ? 'N/A' : `${s.equityMultiple.toFixed(2)}x`], ['Terminal value', s.terminalValue]]
@@ -545,7 +563,7 @@ export function TenYearCashFlowCard() {
               <OverrideNumber label="Capital Growth %" field="capitalGrowthPct" value={inputs.capitalGrowthPct} update={updateOverride} suffix="%" pending={pending && !overrides.capitalGrowthPct} source={sourceFor('capitalGrowthPct', 'Research Engine')} tooltip="Capital growth assumption used by the protected property value projection." overridden={isOverridden('capitalGrowthPct')} sourceConflict={hasSourceConflict('capitalGrowthPct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('capitalGrowthPct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('capitalGrowthPct' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Terminal Cap Rate %" field="terminalCapRatePct" value={inputs.terminalCapRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.terminalCapRatePct} pending={pending && !overrides.terminalCapRatePct} source={sourceFor('terminalCapRatePct', dcfOutputs ? 'DCF Tab' : 'Cap Rate Tab')} tooltip="Terminal cap rate from Cap Rate/DCF or manual override." overridden={isOverridden('terminalCapRatePct')} sourceConflict={hasSourceConflict('terminalCapRatePct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('terminalCapRatePct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('terminalCapRatePct' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Selling Costs %" field="sellingCostPct" value={inputs.sellingCostPct} update={updateOverride} suffix="%" pending={pending && !overrides.sellingCostPct} source={sourceFor('sellingCostPct', 'Manual')} tooltip="Selling cost percentage deducted from exit proceeds." overridden={isOverridden('sellingCostPct')} sourceConflict={hasSourceConflict('sellingCostPct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('sellingCostPct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('sellingCostPct' as keyof TenYearCashFlowInputs)} />
-              <AssumptionField label="Exit Value Method" source="Manual" tooltip="Workspace method label for exit value review; formulas are unchanged in this phase."><Select value={exitValueMethod} onValueChange={setExitValueMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Terminal cap rate">Terminal cap rate</SelectItem><SelectItem value="Capital growth">Capital growth</SelectItem><SelectItem value="Manual valuation review">Manual valuation review</SelectItem></SelectContent></Select></AssumptionField>
+              <AssumptionField label="Exit Value Method" source="Manual" tooltip="Selects the exit value method for report reconciliation. Existing capital-growth and terminal-cap formulas are preserved."><Select value={exitValueMethod} onValueChange={setExitValueMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Capital Growth Value">Capital Growth Value</SelectItem><SelectItem value="Terminal Cap Value">Terminal Cap Value</SelectItem><SelectItem value="Lower of Capital Growth / Terminal Cap">Lower of Capital Growth / Terminal Cap</SelectItem><SelectItem value="Manual Verified Exit Value">Manual Verified Exit Value</SelectItem></SelectContent></Select>{exitValueMethod === 'Manual Verified Exit Value' && <Input type="number" className="mt-2" value={manualVerifiedExitValue} onChange={e => setManualVerifiedExitValue(e.target.value)} placeholder="Enter verified exit value" />}</AssumptionField>
             </div>
           </div>
 
@@ -559,7 +577,7 @@ export function TenYearCashFlowCard() {
               <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
               {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
             </div>
-            <Button disabled={!generatedCurrent} variant="outline" title={!generatedCurrent ? 'Generate or regenerate the current 10-year cash flow before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
+            <Button disabled={!generatedCurrent || exitValuePdfBlocked} variant="outline" title={!generatedCurrent ? 'Generate or regenerate the current 10-year cash flow before exporting a PDF report.' : exitValuePdfBlocked ? 'Confirm exit value reconciliation before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
       </Card>
@@ -567,11 +585,12 @@ export function TenYearCashFlowCard() {
     <Card className={generatedOutOfDate ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardContent className="space-y-3 pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-primary">{generatedCurrent ? '10-year cashflow generated' : generatedOutOfDate ? 'Cashflow out of date' : 'Generate 10-Year Cash Flow'}</p>{generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">Generated {new Date(generatedCashFlow.generatedAt).toLocaleString()} · {generatedCashFlow.calculationVersion}</p>} {!generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">The cashflow table and report outputs will appear after generation.</p>}</div><Button type="button" disabled={!modelReady} onClick={generateCashFlow} title={!modelReady ? 'Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.' : generatedOutOfDate ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}>{generatedOutOfDate ? 'Regenerate Cash Flow' : generatedCurrent ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}</Button></div>{!modelReady && <p className="text-xs text-muted-foreground">Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.</p>}{generatedOutOfDate && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-100">Cashflow out of date. Regenerate before PDF export.</div>}</CardContent></Card>
     {!generatedCashFlow && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
     {generatedCashFlow && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={false} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={false} /></div>}
+    {generatedCashFlow && <Card className={exitValueMaterialDifference ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardHeader><CardTitle className="text-base">Exit Value Reconciliation</CardTitle><CardDescription>Capital-growth value and income-capitalised terminal value are both preserved and compared before client reporting.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div className="grid gap-3 md:grid-cols-5"><SummaryCard label="Year 10 Capital Growth Value" value={year10CapitalGrowthValue} pending={false} /><SummaryCard label="Terminal Cap Value" value={terminalCapValue} pending={false} /><SummaryCard label="Difference" value={exitValueDifference} pending={false} /><SummaryCard label="Difference %" value={exitValueDifferencePct == null ? PENDING : `${(exitValueDifferencePct * 100).toFixed(1)}%`} pending={false} /><SummaryCard label="Selected Exit Value Used in Report" value={selectedExitValueUsed} pending={false} /></div>{exitValueMaterialDifference && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Exit value methods materially differ. Confirm which value should be used for client reporting.</div>}<p className="text-muted-foreground">Exit value has been modelled using {exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.</p>{(exitValueMaterialDifference || exitValueMethod === 'Manual Verified Exit Value') && <Button type="button" variant={exitReconciliationConfirmed ? 'default' : 'outline'} onClick={() => setExitReconciliationConfirmed(v => !v)}>{exitReconciliationConfirmed ? 'Exit reconciliation confirmed' : 'Confirm exit value for client reporting'}</Button>}</CardContent></Card>}
     {reportResult.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{reportResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
     <Card className="border-primary/20 bg-primary/5"><CardContent className="space-y-3 pt-4 text-sm text-muted-foreground"><div className="flex flex-wrap items-center gap-2"><Button type="button" variant={annualOverridesEnabled ? 'default' : 'outline'} onClick={() => setAnnualOverridesEnabled(v => !v)}><Pencil className="mr-1 h-3.5 w-3.5" />{annualOverridesEnabled ? 'Annual overrides enabled' : 'Enable annual overrides'}</Button><Badge variant="outline" className="gap-1"><Lock className="h-3 w-3" />Calculated outputs locked</Badge><Badge variant="secondary" className="gap-1"><Pencil className="h-3 w-3" />{annualOverrideCount} active override{annualOverrideCount === 1 ? '' : 's'}</Badge>{annualOverrideCount > 0 && <Button type="button" size="sm" variant="outline" onClick={resetAllAnnualOverrides}>Reset all overrides</Button>}</div><p>Annual overrides are off by default. When enabled, they are limited to assumption rows such as passing rent, rent growth, vacancy allowance, recovered outgoings, outgoings growth, owner-borne expenses, capex reserve, major capex, lease downtime, tenant incentives, interest rate, tax rate, capital growth and final-year terminal cap rate. Protected calculated rows cannot be directly edited.</p>{annualOverrideCount > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Annual overrides are active. Review assumption history before generating report.</div>}</CardContent></Card>
     {generatedCashFlow && <MetricRows years={reportResult.years} mode={mode} inputs={inputs} pending={pending} annualOverridesEnabled={annualOverridesEnabled} annualOverrides={annualOverrides} onSetAnnualOverride={setAnnualOverrideCell} onResetAnnualOverride={resetAnnualOverrideCell} onResetAnnualOverrideRow={resetAnnualOverrideRow} />}
     {annualOverrideCount > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardHeader><CardTitle className="text-base">Annual Override Assumption Status</CardTitle><CardDescription>Overrides are included in assumption status, audit trail, PDF assumption notes and scenario save data through the 10-year cashflow inputs payload.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div><h4 className="font-medium">Audit Trail</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{assumptionHistory.filter(item => item.source === 'Annual Override').slice(-8).map((item, index) => <li key={`${item.field}-${item.year}-${item.timestamp}-${index}`}>Year {item.year}: {title(String(item.field))} overridden to {item.value} by Current user at {new Date(item.timestamp).toLocaleString()}</li>)}</ul></div><div><h4 className="font-medium">PDF report assumption notes</h4><p className="text-muted-foreground">Annual overrides are active. Review assumption history before generating report.</p></div><div><h4 className="font-medium">Scenario save data</h4><p className="text-muted-foreground">The active annual override map is stored on the generated cashflow inputs for scenario persistence.</p></div></CardContent></Card>}
-    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{!generatedCashFlow ? PENDING : reportResult.commentary}</p></CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{!generatedCashFlow ? PENDING : `${reportResult.commentary} Exit value has been modelled using ${exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.`}</p></CardContent></Card>
     <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
