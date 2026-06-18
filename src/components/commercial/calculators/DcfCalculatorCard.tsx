@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { getDefaultCommercialIndustrialDealProfile, useCommercialDealState } from '@/utils/commercial/commercialDealState';
 
 const PENDING = 'Pending';
@@ -125,6 +126,11 @@ export function DcfCalculatorCard() {
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [showSensitivity, setShowSensitivity] = useState(false);
+  const [showScenarios, setShowScenarios] = useState(false);
+  const [includeCommentary, setIncludeCommentary] = useState(false);
+  const [dcfCommentary, setDcfCommentary] = useState('');
+  const [generatedInputs, setGeneratedInputs] = useState<DcfAssessmentInputs | null>(null);
   const [estimatePanelOpen, setEstimatePanelOpen] = useState(false);
   const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
   const [estimates, setEstimates] = useState<EstimateItem[]>([]);
@@ -443,6 +449,7 @@ export function DcfCalculatorCard() {
     const nextResult = runDcfAssessment(inputs);
     setGeneratedResult(nextResult);
     setGeneratedRows(buildGeneratedRows(nextResult, inputs));
+    setGeneratedInputs(inputs);
     setGeneratedAt(new Date().toISOString());
     setGeneratedKey(coreKey);
     setShowFullSchedule(false);
@@ -454,6 +461,57 @@ export function DcfCalculatorCard() {
     updateGlobal('dcfInputs', { purchasePrice: v.price ?? undefined, acquisitionCosts: v.acqCosts ?? undefined, initialNoi: v.initialNoi ?? undefined, holdPeriodYears: v.hold ?? undefined, rentalGrowthPct: v.growth ?? undefined, vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy ?? undefined, terminalCapRatePct: v.termCap ?? undefined, sellingCostsPct: v.sellingCosts ?? undefined, discountRatePct: v.discount ?? undefined, loanAmount: v.loan ?? undefined, interestRatePct: v.interest ?? undefined, loanTermYears: v.term ?? undefined, annualCapex: v.annualCapex ?? undefined, downtimeMonths: v.downtimeMonths ?? undefined, initialNoiBasis: noiTreatmentMode === 'adjusted' ? 'actual' : undefined });
     updateGlobal('dcfOutputs', generatedResult);
   }, [generatedResult, cashflowCurrent, parsed, noiTreatmentMode, updateGlobal]);
+
+  const sensitivityRows = useMemo(() => {
+    if (!generatedResult || !generatedInputs) return [];
+    const midpoint = generatedInputs.terminalCapRatePct;
+    return [midpoint - 1, midpoint - 0.5, midpoint, midpoint + 0.5, midpoint + 1]
+      .filter((cap) => cap > 0)
+      .map((cap) => {
+        const sensitivity = runDcfAssessment({ ...generatedInputs, terminalCapRatePct: cap, exitCapSensitivityPct: [cap] });
+        return {
+          exitCapRatePct: cap,
+          terminalValue: sensitivity.terminalValue,
+          netSaleProceedsToEquity: sensitivity.netSaleProceeds,
+          leveredIrrImpact: sensitivity.leveredIrr == null || generatedResult.leveredIrr == null ? null : sensitivity.leveredIrr - generatedResult.leveredIrr,
+          leveredNpvImpact: sensitivity.leveredNpv - generatedResult.leveredNpv,
+        };
+      });
+  }, [generatedResult, generatedInputs]);
+
+  const scenarioCards = useMemo(() => {
+    if (!generatedResult) return [];
+    const copy: Record<string, { driver: string; explanation: string }> = {
+      Base: { driver: 'Base assumptions', explanation: 'Reflects the generated DCF inputs without additional stress or upside adjustments.' },
+      Conservative: { driver: 'Lower growth, higher vacancy and softer exit', explanation: 'Tests whether the asset remains supportable under weaker leasing and exit conditions.' },
+      Optimistic: { driver: 'Stronger growth and firmer exit', explanation: 'Shows upside if rent growth and exit yield evidence support a stronger case.' },
+      'Higher vacancy': { driver: 'Vacancy allowance', explanation: 'Isolates the impact of additional vacancy loss on operating cashflow and returns.' },
+      'Higher capex': { driver: 'Capital expenditure', explanation: 'Tests higher capital works or make-good requirements during the hold period.' },
+      'Softer exit cap': { driver: 'Exit cap rate', explanation: 'Shows return exposure to a softer exit yield at sale.' },
+      'Higher interest rate': { driver: 'Debt cost', explanation: 'Tests the impact of a higher interest rate on levered cashflow and equity returns.' },
+    };
+    return generatedResult.scenarios.map((scenario) => ({ ...scenario, ...(copy[scenario.name] ?? { driver: 'Assumption sensitivity', explanation: 'Alternative DCF case for review.' }) }));
+  }, [generatedResult]);
+
+  const generatedCommentary = useMemo(() => {
+    if (!generatedResult) return '';
+    const exitRisk = sensitivityRows.length ? `Exit cap sensitivity ranges from ${fmt0(Math.min(...sensitivityRows.map((r) => r.netSaleProceedsToEquity)))} to ${fmt0(Math.max(...sensitivityRows.map((r) => r.netSaleProceedsToEquity)))} in net sale proceeds to equity.` : 'Exit cap sensitivity should be reviewed once generated.';
+    return [
+      `Return summary: The generated DCF indicates a levered IRR of ${safePct(generatedResult.leveredIrr)} and unlevered IRR of ${safePct(generatedResult.unleveredIrr)}, with an equity multiple of ${generatedResult.equityMultiple}x.`,
+      `Key assumptions: Purchase price ${fmt0(generatedInputs?.purchasePrice ?? 0)}, Base NOI ${fmt0(generatedInputs?.initialNoi ?? 0)}, rental growth ${generatedInputs?.rentalGrowthPct ?? PENDING}%, terminal cap ${generatedInputs?.terminalCapRatePct ?? PENDING}% and discount rate ${generatedInputs?.discountRatePct ?? PENDING}%.`,
+      `Main return driver: Terminal value of ${fmt0(generatedResult.terminalValue)} and net sale proceeds to equity of ${fmt0(generatedResult.netSaleProceeds)} are key drivers of total return.`,
+      `Sensitivity to exit cap: ${exitRisk}`,
+      `Debt impact: Levered NPV is ${fmt0(generatedResult.leveredNpv)} compared with unlevered NPV of ${fmt0(generatedResult.unleveredNpv)}.`,
+      `Cashflow strength: Review annual NOI, capex, downtime and debt service in the generated schedule before relying on client-facing outputs.`,
+      `Key risks: Vacancy, capex, exit cap, discount rate and interest rate assumptions should be supported by current evidence.`,
+      `Recommended review items: Confirm leases, market rent growth, vacancy expectations, capex allowances, funding costs and exit yield evidence before export.`,
+    ].join('\n\n');
+  }, [generatedResult, generatedInputs, sensitivityRows]);
+
+  useEffect(() => {
+    if (includeCommentary && !dcfCommentary && generatedCommentary) setDcfCommentary(generatedCommentary);
+  }, [includeCommentary, dcfCommentary, generatedCommentary]);
+
 
   return (
     <Card>
@@ -579,10 +637,11 @@ export function DcfCalculatorCard() {
           )}
           <div className="mt-3 space-y-2"><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={exportBlocked}>Include in client report</Button><Button size="sm" variant="outline" disabled={exportBlocked}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result || cashflowOutOfDate}>Save as scenario</Button></div>{exportBlocked && <p className="text-xs text-amber-200">Generate current cashflow before exporting DCF outputs.</p>}{exportWarning && <p className="text-xs text-amber-200">{exportWarning}</p>}</div>
         </div>
-        <div className="grid md:grid-cols-2 gap-3">
-          <div className="rounded border p-3"><Label>Exit Cap Sensitivity</Label>{result ? result.sensitivityTable.map(r => <div key={r.exitCapRatePct} className="flex justify-between text-sm"><span>{r.exitCapRatePct}%</span><span>{fmt0(r.netSaleProceeds)}</span></div>) : <PendingPanel compact />}</div>
-          <div className="rounded border p-3"><Label>DCF Scenarios</Label>{result ? result.scenarios.map(s => <div key={s.name} className="flex justify-between text-sm"><span>{s.name}</span><span>{s.result.unleveredIrr != null ? `${s.result.unleveredIrr}%` : PENDING}</span></div>) : <PendingPanel compact />}</div>
+        <div className="space-y-3">
+          <div className="rounded border p-3"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setShowSensitivity((v) => !v)}><Label>Exit Cap Sensitivity</Label><span className="text-xs text-primary">{showSensitivity ? 'Hide' : 'Show'}</span></button>{!result ? <PendingPanel compact /> : showSensitivity && <div className="mt-3 overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Exit cap rate</TableHead><TableHead className="text-right">Terminal value</TableHead><TableHead className="text-right">Net sale proceeds to equity</TableHead><TableHead className="text-right">Levered IRR impact</TableHead><TableHead className="text-right">Levered NPV impact</TableHead></TableRow></TableHeader><TableBody>{sensitivityRows.map((r) => <TableRow key={r.exitCapRatePct}><TableCell>{r.exitCapRatePct}%</TableCell><TableCell className="text-right">{fmt0(r.terminalValue)}</TableCell><TableCell className="text-right">{fmt0(r.netSaleProceedsToEquity)}</TableCell><TableCell className="text-right">{r.leveredIrrImpact == null ? PENDING : `${r.leveredIrrImpact.toFixed(2)}%`}</TableCell><TableCell className="text-right">{fmt0(r.leveredNpvImpact)}</TableCell></TableRow>)}</TableBody></Table></div>}</div>
+          <div className="rounded border p-3"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setShowScenarios((v) => !v)}><Label>DCF Scenarios</Label><span className="text-xs text-primary">{showScenarios ? 'Hide' : 'Show'}</span></button>{!result ? <PendingPanel compact /> : showScenarios && <div className="mt-3 grid gap-3 lg:grid-cols-2">{scenarioCards.map((s) => <div key={s.name} className="rounded-lg border bg-muted/20 p-3 text-sm"><div className="font-semibold text-foreground">{s.name} Case</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><div>Levered IRR: <span className="text-foreground">{safePct(s.result.leveredIrr)}</span></div><div>Unlevered IRR: <span className="text-foreground">{safePct(s.result.unleveredIrr)}</span></div><div>Levered NPV: <span className="text-foreground">{fmt0(s.result.leveredNpv)}</span></div><div>Terminal Value: <span className="text-foreground">{fmt0(s.result.terminalValue)}</span></div><div>Equity Multiple: <span className="text-foreground">{s.result.equityMultiple}x</span></div><div>Binding risk driver: <span className="text-foreground">{s.driver}</span></div></div><p className="mt-2 text-xs text-muted-foreground">{s.explanation}</p></div>)}</div>}</div>
         </div>
+        <div className="rounded border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><Label>Client commentary</Label><Button size="sm" variant={includeCommentary ? 'secondary' : 'outline'} onClick={() => setIncludeCommentary((v) => !v)}>Include DCF commentary in report</Button></div>{includeCommentary && <Textarea className="mt-3 min-h-[220px]" value={dcfCommentary} onChange={(e) => setDcfCommentary(e.target.value)} placeholder="Generate the base DCF first, then edit commentary before export." />}</div>
         {result?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
       </CardContent>
     </Card>
