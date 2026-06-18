@@ -33,6 +33,9 @@ const finiteValue = (value: number | null | undefined) => typeof value === 'numb
 
 type FieldSource = 'Blank' | 'NOI Tab' | 'Borrowing Capacity' | 'Property Profile' | 'Lender Policy' | 'Scraped' | 'Manual' | 'User Override' | 'Verified';
 type IcrField = 'noi' | 'loan' | 'proposedLoan' | 'rate' | 'term' | 'buffer' | 'floorRate' | 'targetIcr' | 'targetDscr' | 'minDebtYield';
+type WarningCategory = 'NOI' | 'Loan Amount' | 'Interest Rate' | 'Lender Policy' | 'ICR' | 'DSCR' | 'Debt Yield' | 'Data Source' | 'Verification';
+type WarningSeverity = 'Critical' | 'Required' | 'Recommended';
+interface CoverageWarning { category: WarningCategory; severity: WarningSeverity; message: string }
 interface SourceCandidate { value: number; source: FieldSource; sourceDetail: string }
 interface PendingSource extends SourceCandidate { noticedAt: string }
 interface FieldState { value: string; source: FieldSource; dirty: boolean; originalValue?: string; originalSource?: FieldSource; sourceDetail?: string; pendingSource?: PendingSource }
@@ -68,6 +71,7 @@ export function IcrDscrCalculatorCard() {
   const { profile, updateGlobal, appendAiAudit } = useCommercialDealState();
   const [fields, setFields] = useState<Record<IcrField, FieldState>>({ noi: field(), loan: field(), proposedLoan: field(), rate: field(), term: field(), buffer: field(), floorRate: field(), targetIcr: field(), targetDscr: field(), minDebtYield: field() });
   const [saving, setSaving] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const audit = (action: string, fieldName: string, previousValue: unknown, newValue: unknown, source: string) => appendAiAudit({ action, fieldKey: `icrDscr.${fieldName}`, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId, dealId: prefill?.propertyId } as any);
 
@@ -259,13 +263,47 @@ export function IcrDscrCalculatorCard() {
     && linkedOrVerified(fields.rate.source, ['Borrowing Capacity', 'Lender Policy', 'Property Profile'])
     && ['targetIcr', 'targetDscr', 'minDebtYield'].every(key => linkedOrVerified(fields[key as IcrField].source, ['Borrowing Capacity', 'Lender Policy'])));
   const anyFailed = Boolean(coverage && (icrStatus === 'fail' || dscrStatus === 'fail' || !debtYieldPass));
+  const hasStarted = Boolean(prefill || Object.values(fields).some(field => field.value.trim() !== '' || field.source !== 'Blank'));
+  const coverageWarnings = useMemo<CoverageWarning[]>(() => {
+    if (!hasStarted) return [];
+    const warnings: CoverageWarning[] = [];
+    const add = (category: WarningCategory, severity: WarningSeverity, message: string) => {
+      if (!warnings.some(warning => warning.category === category && warning.message === message)) warnings.push({ category, severity, message });
+    };
+    if (fields.noi.source === 'Manual' || fields.noi.source === 'User Override') add('NOI', 'Required', 'NOI is not linked to the NOI tab. Confirm income source before relying on coverage.');
+    if (fields.loan.source === 'Manual' || fields.loan.source === 'User Override') add('Loan Amount', 'Required', 'Loan amount is not linked to Borrowing Capacity or the property profile.');
+    if (fields.rate.source === 'User Override') add('Interest Rate', 'Required', 'Contract rate has been manually overridden. Confirm lender rate assumptions.');
+    if (fields.rate.source === 'Manual' || fields.buffer.source === 'Manual' || fields.floorRate.source === 'Manual') add('Lender Policy', 'Recommended', 'Assessment rate uses manual assumptions. Confirm lender policy.');
+    if (parsedInputs.buffer == null) add('Lender Policy', 'Required', 'Assessment buffer is missing. Coverage result is preliminary only.');
+    if (parsedInputs.floorRate == null) add('Lender Policy', 'Required', 'Floor rate is missing. Confirm whether lender policy requires a floor rate.');
+    if (parsedInputs.term == null) add('Lender Policy', 'Required', 'Loan term is missing. Debt service cannot be fully assessed.');
+    if (parsedInputs.targetIcr == null) add('ICR', 'Required', 'Minimum ICR is missing. Coverage result is preliminary only.');
+    if (parsedInputs.targetDscr == null) add('DSCR', 'Required', 'Minimum DSCR is missing. Coverage result is preliminary only.');
+    if (parsedInputs.minDebtYieldPct == null) add('Debt Yield', 'Required', 'Minimum debt yield is missing. Coverage result is preliminary only.');
+    if (!(profile.lendingAssumptions as any)?.profile) add('Lender Policy', 'Required', 'Lender policy profile is not selected.');
+    if (coverage) {
+      if (parsedInputs.targetIcr != null && coverage.icr < parsedInputs.targetIcr) add('ICR', 'Critical', 'ICR is below lender threshold under current assumptions.');
+      if (parsedInputs.targetDscr != null && coverage.dscr < parsedInputs.targetDscr) add('DSCR', 'Critical', 'DSCR is below lender threshold under current assumptions.');
+      if (parsedInputs.minDebtYieldPct != null && coverage.debtYield < parsedInputs.minDebtYieldPct / 100) add('Debt Yield', 'Critical', 'Debt yield is below lender threshold under current assumptions.');
+      if (coverage.icrHeadroom < 0) add('ICR', 'Critical', 'ICR headroom is negative.');
+      if (coverage.dscrHeadroom < 0) add('DSCR', 'Critical', 'DSCR headroom is negative.');
+      if (coverage.icrHeadroom >= 0 && coverage.dscrHeadroom >= 0 && (coverage.icrHeadroom < 0.15 || coverage.dscrHeadroom < 0.1)) add('Verification', 'Recommended', 'Coverage is tight. Review NOI, loan amount or amortisation assumptions.');
+      if (parsedInputs.proposedLoan != null && lowestSupportableLoan != null && parsedInputs.proposedLoan > lowestSupportableLoan) add('Loan Amount', 'Critical', 'Proposed loan exceeds the lowest supportable coverage amount.');
+    } else if (hasPreliminaryInputs) {
+      add('Data Source', 'Required', 'Preliminary output only. Complete lender policy thresholds to run full coverage testing.');
+    }
+    const severityRank: Record<WarningSeverity, number> = { Critical: 0, Required: 1, Recommended: 2 };
+    return warnings.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+  }, [coverage, fields, hasPreliminaryInputs, hasStarted, lowestSupportableLoan, parsedInputs, profile.lendingAssumptions]);
+  const priorityWarnings = coverageWarnings.slice(0, 3);
+  const hasSpecialistWarnings = coverageWarnings.some(warning => warning.severity === 'Critical' || warning.severity === 'Required');
   const readinessStatus = !hasPreliminaryInputs
     ? 'Awaiting Coverage Inputs'
     : !hasRequiredInputs
       ? 'Preliminary Coverage Estimate'
       : anyFailed
         ? 'Not Supportable'
-        : hasUserOverrides || outsideNormalLenderRange
+        : hasSpecialistWarnings || hasUserOverrides || outsideNormalLenderRange
           ? 'Specialist Review Recommended'
           : verifiedSources
             ? 'Coverage Verified'
@@ -348,6 +386,8 @@ export function IcrDscrCalculatorCard() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {priorityWarnings.length > 0 && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><div className="font-medium">Coverage warnings</div><ul className="mt-2 list-disc space-y-1 pl-5">{priorityWarnings.map(warning => <li key={`${warning.category}-${warning.message}`}>{warning.message}</li>)}</ul><Button variant="link" className="mt-1 h-auto p-0 text-amber-100 underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</Button></div>}
+
           <section className="rounded-lg border border-border/60 bg-background/40 p-4">
             <div className="mb-4">
               <h3 className="text-base font-semibold">Coverage Test Inputs</h3>
@@ -420,14 +460,14 @@ export function IcrDscrCalculatorCard() {
             <p className="mt-1 text-sm text-muted-foreground">{recommendedAction}</p>
           </section>
 
-          <Collapsible>
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <div className="rounded-lg border border-border/60 bg-muted/20">
               <CollapsibleTrigger asChild><Button variant="ghost" className="flex w-full justify-between p-4 text-left"><span>View formula and policy breakdown</span><ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 border-t border-border/60 p-4 text-sm">
                 <div><h4 className="font-semibold">Formula breakdown</h4><p className="text-muted-foreground">Assessment Rate = max(Contract Rate + Buffer, Floor Rate). Annual Interest = Loan Amount × Assessment Rate. ICR = NOI / Annual Interest. DSCR = NOI / Annual Debt Service. Debt Yield = NOI / Loan Amount.</p></div>
                 <div><h4 className="font-semibold">Lender benchmark notes</h4><p className="text-muted-foreground">Typical commercial lender guideposts are ICR ≥ 1.50x, DSCR ≥ 1.25x–1.35x and debt yield per lender policy.</p></div>
                 <div><h4 className="font-semibold">Full assumption list</h4><div className="mt-2 grid gap-2 sm:grid-cols-2">{Object.entries(fields).map(([key, state]) => <Row key={key} label={key} value={`${state.value || PENDING} · ${sourceBadge(state.source)}`} />)}</div></div>
-                <div><h4 className="font-semibold">Full warning log</h4>{coverage?.warnings?.length ? <ul className="list-disc pl-5 text-muted-foreground">{coverage.warnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}</ul> : <p className="text-muted-foreground">No formula warnings while inputs are valid.</p>}</div>
+                <div><h4 className="font-semibold">Assumption Status &gt; Coverage Warning Log</h4>{coverageWarnings.length ? <ul className="list-disc pl-5 text-muted-foreground">{coverageWarnings.map((warning, index) => <li key={`${warning.category}-${index}`}><span className="font-medium text-foreground">{warning.severity} · {warning.category}:</span> {warning.message}</li>)}</ul> : <p className="text-muted-foreground">No coverage warnings for the current input state.</p>}</div>
                 <div><h4 className="font-semibold">Audit history</h4>{auditHistory.length ? <ul className="space-y-1 text-muted-foreground">{auditHistory.map((event, index) => <li key={`${event.timestamp}-${index}`}>{event.timestamp}: {event.action} ({event.fieldKey})</li>)}</ul> : <p className="text-muted-foreground">No ICR / DSCR audit entries this session.</p>}</div>
                 <div><h4 className="font-semibold">Coverage stress tests</h4>{stressRows.length ? <div className="mt-2 space-y-2">{stressRows.map(row => <Row key={row.label} label={row.label} value={`ICR ${row.icr}x · DSCR ${row.dscr}x · ADS ${fmt(row.annualDebtService)}`} />)}</div> : <p className="text-muted-foreground">Stress tests appear once coverage inputs are complete.</p>}</div>
               </CollapsibleContent>
