@@ -592,13 +592,13 @@ export function DcfCalculatorCard() {
       updateGlobal('dcfInputs', payload.finalInputs);
       updateGlobal('dcfOutputs', {
         result: generatedResult,
-        rows: generatedRows,
+        rows: generatedRows as any,
         scenarios: scenarioCards,
         sensitivity: sensitivityRows,
         readinessStatus,
         generatedAt,
         calculationVersion: DCF_CALCULATION_VERSION,
-      });
+      } as any);
       if (prefill.domain === 'commercial') {
         const res = await commercialApi.createDcfRun({
           property_id: prefill.propertyId,
