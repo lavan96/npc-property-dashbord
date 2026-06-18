@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { Loader2, MapPin, Building2, Factory, Link2, FileText, FileSignature, FileCheck2, FolderOpen } from 'lucide-react';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
-import { invokeSecureFunction } from '@/integrations/supabase/secureInvoke';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import {
   persistDraftAsProperty,
   normaliseExtractedToPrefill,

@@ -25,7 +25,7 @@ import {
   type CompletenessReport,
 } from '@/utils/commercial/propertyInjectionPipeline';
 import { useMasterAssumptionStore } from '@/utils/commercial/masterPropertyAssumptionStore';
-import { invokeSecureFunction } from '@/integrations/supabase/secureInvoke';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export function ActivePropertyHeader() {
   const { domain, prefill, property } = useCalculatorPrefill();
