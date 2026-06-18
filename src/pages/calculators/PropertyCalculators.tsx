@@ -143,6 +143,101 @@ function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; o
   );
 }
 
+
+function dispatchCalculatorSuiteEvent(name: string, detail: Record<string, unknown> = {}) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(name, { detail: { timestamp: new Date().toISOString(), ...detail } }));
+}
+
+function estimateTargetSection(fieldKey: string): any {
+  if (fieldKey.includes('noi') || fieldKey.includes('lease') || fieldKey.includes('rent')) return 'leaseIncome';
+  if (fieldKey.includes('capRate') || fieldKey.includes('valuation')) return 'propertyValuation';
+  if (fieldKey.includes('gst')) return 'gstInputs';
+  if (fieldKey.includes('dcf')) return 'dcfInputs';
+  if (fieldKey.includes('industrial')) return 'industrialMetrics';
+  if (fieldKey.includes('lending') || fieldKey.includes('debt')) return 'lendingAssumptions';
+  return 'riskInputs';
+}
+
+function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean }) {
+  const profile = useCommercialDealState(s => s.profile);
+  const acceptAiEstimateIntoGlobal = useCommercialDealState(s => s.acceptAiEstimateIntoGlobal);
+  const [status, setStatus] = useState('Awaiting Inputs');
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
+  const [outOfDate, setOutOfDate] = useState(false);
+  const [signature, setSignature] = useState('');
+  const acceptedEstimates = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => estimate?.accepted);
+  const pendingEstimateCount = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => !estimate?.accepted).length;
+  const currentSignature = useMemo(() => JSON.stringify({ assumptions: profile.assumptions, overrides: profile.scenarioOverrides, ai: profile.aiEstimateMetadata }), [profile.assumptions, profile.scenarioOverrides, profile.aiEstimateMetadata]);
+
+  useEffect(() => {
+    if (!lastRunAt) { setSignature(currentSignature); return; }
+    if (signature && signature !== currentSignature) {
+      setOutOfDate(true);
+      setStatus('Out of Date');
+    }
+  }, [currentSignature, lastRunAt, signature]);
+
+  const runAiEstimates = () => {
+    setStatus('AI Estimate Preview Pending');
+    dispatchCalculatorSuiteEvent('commercial-calculators-run-ai-estimates', { propertyLinked });
+  };
+
+  const applyAccepted = () => {
+    acceptedEstimates.forEach((estimate: any) => acceptAiEstimateIntoGlobal(estimate, estimateTargetSection(estimate.fieldKey), estimate.fieldKey.split('.').pop()));
+    setStatus(acceptedEstimates.length ? 'Accepted Assumptions Applied' : 'No Accepted Assumptions');
+    setOutOfDate(true);
+    dispatchCalculatorSuiteEvent('commercial-calculators-assumptions-applied', { count: acceptedEstimates.length });
+  };
+
+  const refreshLinkedTabs = () => {
+    setStatus('Linked Tabs Refreshed');
+    dispatchCalculatorSuiteEvent('commercial-calculators-refresh-linked-tabs');
+  };
+
+  const generateCalculations = () => {
+    const timestamp = new Date().toISOString();
+    setLastRunAt(timestamp);
+    setSignature(currentSignature);
+    setOutOfDate(false);
+    setStatus('Calculated');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-calculations');
+  };
+
+  const generateTenYear = () => {
+    if (outOfDate) { setStatus('Review Required'); return; }
+    setStatus('10-Year Cash Flow Requested');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-ten-year-cash-flow');
+  };
+
+  const generateReport = () => {
+    if (outOfDate) { setStatus('Review Required'); return; }
+    if (typeof window !== 'undefined' && !window.confirm('Generate report using the current calculated outputs?')) return;
+    setStatus('Report Generation Requested');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-report');
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/80'}`}>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold text-foreground">Global Generation Controls</h2><Badge variant={outOfDate ? 'secondary' : 'outline'}>{status}</Badge>{lastRunAt && <Badge variant="outline">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}</div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Run AI estimates as previews, apply accepted assumptions into the Master Property Context, refresh linked tabs, regenerate calculations, then explicitly generate cash flow and report outputs.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Accepted AI estimates: {acceptedEstimates.length} · Pending estimate previews: {pendingEstimateCount} · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <Button type="button" size="sm" variant="outline" onClick={runAiEstimates}>Run AI Estimates</Button>
+          <Button type="button" size="sm" variant="outline" onClick={applyAccepted}>Apply Accepted Assumptions</Button>
+          <Button type="button" size="sm" variant="outline" onClick={refreshLinkedTabs}>Refresh All Linked Tabs</Button>
+          <Button type="button" size="sm" onClick={generateCalculations}>Generate Calculations</Button>
+          <Button type="button" size="sm" variant="outline" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
+          <Button type="button" size="sm" variant={outOfDate ? 'secondary' : 'default'} disabled={outOfDate} onClick={generateReport}>Generate Report</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GstTreatmentOverviewPanel() {
   const [open, setOpen] = useState(false);
 
@@ -422,6 +517,8 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
           <ActivePropertyHeader />
           <CalculatorPropertyBar />
         </div>
+
+        <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
           <div className="rounded-xl border border-border/70 bg-card/75 p-3 shadow-sm">
