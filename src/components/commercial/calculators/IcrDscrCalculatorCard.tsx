@@ -459,7 +459,7 @@ export function IcrDscrCalculatorCard() {
   const buildSavePayload = () => ({
     finalInputValues: parsedInputs,
     sourceStates: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.source])),
-    originalSourceValues: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value: value.originalValue, source: value.originalSource, sourceDetail: value.sourceDetail }]).filter(([, value]) => value.value != null || value.source != null)),
+    originalSourceValues: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value: value.originalValue, source: value.originalSource, sourceDetail: value.sourceDetail }] as const).filter(([, value]) => value.value != null || value.source != null)),
     userOverrideValues: Object.fromEntries(Object.entries(fields).filter(([, value]) => value.source === 'User Override').map(([key, value]) => [key, value.value])),
     calculatedOutputs: coverage ? { ...coverage, lowestSupportableLoan, bindingConstraint } : activeCoverage,
     bindingConstraint,
