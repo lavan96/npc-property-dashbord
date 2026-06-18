@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Info, Loader2, Save } from 'lucide-react';
@@ -550,16 +549,14 @@ export function IcrDscrCalculatorCard() {
             </Tooltip>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {priorityWarnings.length > 0 && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><div className="font-medium">Coverage warnings</div><ul className="mt-2 list-disc space-y-1 pl-5">{priorityWarnings.map(warning => <li key={`${warning.category}-${warning.message}`}>{warning.message}</li>)}</ul><Button variant="link" className="mt-1 h-auto p-0 text-amber-100 underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</Button></div>}
-
-          <section className="rounded-lg border border-border/60 bg-background/40 p-4">
+        <CardContent className="flex flex-col gap-6">
+          <section className="order-2 rounded-xl border border-border/60 bg-background/40 p-4 shadow-sm lg:order-1">
             <div className="mb-4">
               <h3 className="text-base font-semibold">Coverage Test Inputs</h3>
-              <p className="text-sm text-muted-foreground">Review NOI, debt amount and lender policy assumptions used to test ICR, DSCR and debt yield.</p>
+              <p className="text-sm text-muted-foreground">Review NOI, debt amount and lender assumptions used to test commercial serviceability.</p>
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-3">
                 <InputBlock label="NOI p.a." state={fields.noi} onChange={v => setManual('noi', v)} onKeepOverride={() => keepOverride('noi')} onUseSource={() => useSourceValue('noi')} placeholder="Pulled from NOI tab or enter manually" />
                 <div>
                   <Label>NOI source selector</Label>
@@ -589,9 +586,15 @@ export function IcrDscrCalculatorCard() {
             </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-              <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-base font-semibold">Coverage Output Summary</h3><Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{coverageStatus}</Badge></div>
+          <section className="order-1 grid gap-4 xl:grid-cols-[1.2fr_0.8fr] lg:order-2">
+            <div className="rounded-xl border border-primary/20 bg-muted/25 p-4 shadow-sm">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold">Coverage Output Summary</h3>
+                  <p className="text-sm text-muted-foreground">Assess whether property income covers interest, debt service and lender debt-yield requirements.</p>
+                </div>
+                <Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{coverageStatus}</Badge>
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <MetricCard label="ICR" value={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} prominent />
                 <MetricCard label="DSCR" value={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} prominent />
@@ -607,24 +610,32 @@ export function IcrDscrCalculatorCard() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-sm">
               <h3 className="text-base font-semibold">Maximum Loan Summary</h3>
-              <div className="mt-3 space-y-2 text-sm">
-                <Row label="Max Loan @ ICR" value={coverage && finiteValue(coverage.maxLoanByIcr) != null ? fmt(coverage.maxLoanByIcr) : PENDING} />
-                <Row label="Max Loan @ DSCR" value={coverage && finiteValue(coverage.maxLoanByDscr) != null ? fmt(coverage.maxLoanByDscr) : PENDING} />
-                <Row label="Max Loan @ Debt Yield" value={coverage && finiteValue(coverage.maxLoanByDebtYield) != null ? fmt(coverage.maxLoanByDebtYield) : PENDING} />
-                <Separator />
-                <Row label="Lowest Supportable Loan" value={lowestSupportableLoan != null ? fmt(lowestSupportableLoan) : PENDING} highlight />
-                <div className="rounded-md border border-primary/30 bg-background/60 p-3"><div className="text-xs text-muted-foreground">Binding Constraint</div><div className="text-xl font-bold text-primary">{bindingConstraint}</div></div>
+              <p className="text-sm text-muted-foreground">Compare the maximum supportable loan under ICR, DSCR and debt-yield constraints.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <MetricCard label="Max Loan @ ICR" value={coverage && finiteValue(coverage.maxLoanByIcr) != null ? fmt(coverage.maxLoanByIcr) : PENDING} />
+                <MetricCard label="Max Loan @ DSCR" value={coverage && finiteValue(coverage.maxLoanByDscr) != null ? fmt(coverage.maxLoanByDscr) : PENDING} />
+                <MetricCard label="Max Loan @ Debt Yield" value={coverage && finiteValue(coverage.maxLoanByDebtYield) != null ? fmt(coverage.maxLoanByDebtYield) : PENDING} />
+                <div className="rounded-lg border border-primary/30 bg-background/70 p-3 sm:col-span-2 xl:col-span-1">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Lowest Supportable Loan</div>
+                  <div className="mt-1 text-2xl font-bold text-primary">{lowestSupportableLoan != null ? fmt(lowestSupportableLoan) : PENDING}</div>
+                </div>
+                <div className="rounded-lg border border-primary/30 bg-background/70 p-3 sm:col-span-2 xl:col-span-1">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Binding Constraint</div>
+                  <div className="mt-1 text-2xl font-bold text-primary">{bindingConstraint}</div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="rounded-lg border border-primary/25 bg-background/60 p-4">
+          <section className="order-3 rounded-xl border border-primary/25 bg-background/60 p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-base font-semibold">Result Explanation</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{resultSummary}</p>
+                <h3 className="text-base font-semibold">Recommended Next Action</h3>
+                <p className="text-sm text-muted-foreground">Review the binding constraint and suggested next steps to improve supportability.</p>
+                <p className="mt-3 text-sm text-foreground">{recommendedAction}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{resultSummary}</p>
                 <p className="mt-2 text-sm text-foreground">{bindingExplanation}</p>
                 {resultIssueNotes.length > 0 && <div className="mt-3 space-y-1 text-sm text-muted-foreground">{resultIssueNotes.map(note => <p key={note}>{note}</p>)}</div>}
               </div>
@@ -641,8 +652,22 @@ export function IcrDscrCalculatorCard() {
             </div>
           </section>
 
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <div className="order-4 rounded-xl border border-border/60 bg-muted/20 shadow-sm">
+              <CollapsibleTrigger asChild><Button variant="ghost" className="flex w-full justify-between p-4 text-left"><span>View formula and policy breakdown</span><ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 border-t border-border/60 p-4 text-sm">
+                <div><h4 className="font-semibold">Formula breakdown</h4><p className="text-muted-foreground">Assessment Rate = max(Contract Rate + Buffer, Floor Rate). Annual Interest = Loan Amount × Assessment Rate. ICR = NOI / Annual Interest. DSCR = NOI / Annual Debt Service. Debt Yield = NOI / Loan Amount.</p></div>
+                <div><h4 className="font-semibold">Lender benchmark notes</h4><p className="text-muted-foreground">Typical commercial lender guideposts are ICR ≥ 1.50x, DSCR ≥ 1.25x–1.35x and debt yield per lender policy.</p></div>
+                <div><h4 className="font-semibold">Full assumption list</h4><div className="mt-2 grid gap-2 sm:grid-cols-2">{Object.entries(fields).map(([key, state]) => <Row key={key} label={key} value={`${state.value || PENDING} · ${sourceBadge(state.source)}`} />)}</div></div>
+                <div><h4 className="font-semibold">Assumption Status &gt; Coverage Warning Log</h4>{coverageWarnings.length ? <ul className="list-disc pl-5 text-muted-foreground">{coverageWarnings.map((warning, index) => <li key={`${warning.category}-${index}`}><span className="font-medium text-foreground">{warning.severity} · {warning.category}:</span> {warning.message}</li>)}</ul> : <p className="text-muted-foreground">No coverage warnings for the current input state.</p>}</div>
+                <div><h4 className="font-semibold">Audit history</h4>{auditHistory.length ? <ul className="space-y-1 text-muted-foreground">{auditHistory.map((event, index) => <li key={`${event.timestamp}-${index}`}>{event.timestamp}: {event.action} ({event.fieldKey})</li>)}</ul> : <p className="text-muted-foreground">No ICR / DSCR audit entries this session.</p>}</div>
+                <div><h4 className="font-semibold">Coverage stress tests</h4>{stressRows.length ? <div className="mt-2 space-y-2">{stressRows.map(row => <Row key={row.label} label={row.label} value={`ICR ${row.icr}x · DSCR ${row.dscr}x · ADS ${fmt(row.annualDebtService)}`} />)}</div> : <p className="text-muted-foreground">Stress tests appear once coverage inputs are complete.</p>}</div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           <Collapsible open={stressOpen} onOpenChange={setStressOpen}>
-            <div className="rounded-lg border border-border/60 bg-muted/20">
+            <div className="order-5 rounded-xl border border-border/60 bg-muted/20 shadow-sm">
               <CollapsibleTrigger asChild><Button variant="ghost" className="flex w-full justify-between p-4 text-left"><span>Coverage Stress Tests</span><ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 border-t border-border/60 p-4">
                 <p className="text-sm text-muted-foreground">Coverage-only stress tests. These do not overwrite base assumptions and are not saved unless you use Save as Coverage Scenario.</p>
@@ -660,24 +685,16 @@ export function IcrDscrCalculatorCard() {
             </div>
           </Collapsible>
 
-          <section className="rounded-lg border border-border/60 bg-background/50 p-4">
-            <h3 className="text-base font-semibold">Recommended Next Action</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{recommendedAction}</p>
-          </section>
-
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <div className="rounded-lg border border-border/60 bg-muted/20">
-              <CollapsibleTrigger asChild><Button variant="ghost" className="flex w-full justify-between p-4 text-left"><span>View formula and policy breakdown</span><ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 border-t border-border/60 p-4 text-sm">
-                <div><h4 className="font-semibold">Formula breakdown</h4><p className="text-muted-foreground">Assessment Rate = max(Contract Rate + Buffer, Floor Rate). Annual Interest = Loan Amount × Assessment Rate. ICR = NOI / Annual Interest. DSCR = NOI / Annual Debt Service. Debt Yield = NOI / Loan Amount.</p></div>
-                <div><h4 className="font-semibold">Lender benchmark notes</h4><p className="text-muted-foreground">Typical commercial lender guideposts are ICR ≥ 1.50x, DSCR ≥ 1.25x–1.35x and debt yield per lender policy.</p></div>
-                <div><h4 className="font-semibold">Full assumption list</h4><div className="mt-2 grid gap-2 sm:grid-cols-2">{Object.entries(fields).map(([key, state]) => <Row key={key} label={key} value={`${state.value || PENDING} · ${sourceBadge(state.source)}`} />)}</div></div>
-                <div><h4 className="font-semibold">Assumption Status &gt; Coverage Warning Log</h4>{coverageWarnings.length ? <ul className="list-disc pl-5 text-muted-foreground">{coverageWarnings.map((warning, index) => <li key={`${warning.category}-${index}`}><span className="font-medium text-foreground">{warning.severity} · {warning.category}:</span> {warning.message}</li>)}</ul> : <p className="text-muted-foreground">No coverage warnings for the current input state.</p>}</div>
-                <div><h4 className="font-semibold">Audit history</h4>{auditHistory.length ? <ul className="space-y-1 text-muted-foreground">{auditHistory.map((event, index) => <li key={`${event.timestamp}-${index}`}>{event.timestamp}: {event.action} ({event.fieldKey})</li>)}</ul> : <p className="text-muted-foreground">No ICR / DSCR audit entries this session.</p>}</div>
-                <div><h4 className="font-semibold">Coverage stress tests</h4>{stressRows.length ? <div className="mt-2 space-y-2">{stressRows.map(row => <Row key={row.label} label={row.label} value={`ICR ${row.icr}x · DSCR ${row.dscr}x · ADS ${fmt(row.annualDebtService)}`} />)}</div> : <p className="text-muted-foreground">Stress tests appear once coverage inputs are complete.</p>}</div>
-              </CollapsibleContent>
+          <section className="order-6 rounded-xl border border-border/60 bg-background/40 p-4 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Compact Warnings</h3>
+                <p className="text-sm text-muted-foreground">Plain-English warnings appear here once coverage data has been entered or imported.</p>
+              </div>
+              {coverageWarnings.length > 3 && <Button variant="link" className="h-auto p-0 text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</Button>}
             </div>
-          </Collapsible>
+            {priorityWarnings.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-amber-100">{priorityWarnings.map(warning => <li key={`${warning.category}-${warning.message}`} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2"><span className="font-medium">{warning.category}:</span> {warning.message}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">No warnings to show for the current input state.</p>}
+          </section>
         </CardContent>
       </Card>
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
