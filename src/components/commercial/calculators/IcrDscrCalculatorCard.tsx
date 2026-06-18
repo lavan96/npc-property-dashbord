@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { calculateCoverage, maxLoanByIcr, calculateIcrDscrEngine } from '@/utils/commercial';
+import { calculateIcrDscrEngine } from '@/utils/commercial';
 import { useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { commercialApi } from '@/hooks/useCommercialProperties';
 import { industrialApi } from '@/hooks/useIndustrialProperties';
@@ -16,8 +16,17 @@ import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
 
-const num = (v: string) => (v === '' ? 0 : Number(v));
 const PENDING = 'Pending';
+
+const parseNumeric = (value: string): number | null => {
+  if (value.trim() === '') return null;
+  const normalised = value.replace(/[$,%\s]/g, '').replace(/,/g, '');
+  if (normalised === '' || normalised === '-' || normalised === '.') return null;
+  const parsed = Number(normalised);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const finiteValue = (value: number | null | undefined) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 type FieldSource = 'Blank' | 'NOI Tab' | 'Borrowing Capacity' | 'Property Profile' | 'Lender Policy' | 'Scraped' | 'Manual' | 'User Override' | 'Verified';
 type IcrField = 'noi' | 'loan' | 'proposedLoan' | 'rate' | 'term' | 'buffer' | 'floorRate' | 'targetIcr' | 'targetDscr' | 'minDebtYield';
@@ -26,7 +35,6 @@ interface PendingSource extends SourceCandidate { noticedAt: string }
 interface FieldState { value: string; source: FieldSource; dirty: boolean; originalValue?: string; originalSource?: FieldSource; sourceDetail?: string; pendingSource?: PendingSource }
 
 const field = (value = '', source: FieldSource = value ? 'Manual' : 'Blank', sourceDetail?: string): FieldState => ({ value, source, sourceDetail, dirty: false });
-const isPresentNumber = (v: string) => v.trim() !== '' && Number.isFinite(Number(v));
 const sourceBadge = (source: FieldSource) => ({ Blank: 'Blank', 'NOI Tab': 'From NOI', 'Borrowing Capacity': 'From Borrowing', 'Property Profile': 'From Property', 'Lender Policy': 'Lender Policy', Scraped: 'Scraped', Manual: 'Manual', 'User Override': 'Override', Verified: 'Verified' }[source]);
 
 function firstNumber(...values: unknown[]) {
@@ -54,7 +62,7 @@ const debtYieldPct = (value: unknown) => {
 
 export function IcrDscrCalculatorCard() {
   const { prefill, property } = useCalculatorPrefill();
-  const { profile, appendAiAudit } = useCommercialDealState();
+  const { profile, updateGlobal, appendAiAudit } = useCommercialDealState();
   const [fields, setFields] = useState<Record<IcrField, FieldState>>({ noi: field(), loan: field(), proposedLoan: field(), rate: field(), term: field(), buffer: field(), floorRate: field(), targetIcr: field(), targetDscr: field(), minDebtYield: field() });
   const [saving, setSaving] = useState(false);
 
@@ -147,13 +155,15 @@ export function IcrDscrCalculatorCard() {
   });
 
   const { noi, loan, proposedLoan, rate, term, buffer, floorRate, targetIcr, targetDscr, minDebtYield } = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.value])) as Record<IcrField, string>;
-  const hasRequiredInputs = [noi, loan, rate, term, buffer, floorRate, targetIcr, targetDscr, minDebtYield].every(isPresentNumber);
 
   const saveBackToProperty = async () => {
     if (!prefill) return;
     setSaving(true);
     try {
-      const data = { property_id: prefill.propertyId, loan_amount: num(loan) || null, loan_balance: num(loan) || null, interest_rate: num(rate) || null, loan_term_years: num(term) || null, repayment_type: 'pi' as const };
+      const parsedLoan = parseNumeric(loan);
+      const parsedRate = parseNumeric(rate);
+      const parsedTerm = parseNumeric(term);
+      const data = { property_id: prefill.propertyId, loan_amount: parsedLoan, loan_balance: parsedLoan, interest_rate: parsedRate, loan_term_years: parsedTerm, repayment_type: 'pi' as const };
       const api = prefill.domain === 'industrial' ? industrialApi : commercialApi;
       const existing = await api.listFinancing(prefill.propertyId);
       if (existing.error) throw new Error(existing.error.message);
@@ -168,15 +178,65 @@ export function IcrDscrCalculatorCard() {
     }
   };
 
-  const result = useMemo(() => calculateCoverage({ noi: num(noi), loanAmount: num(loan), interestRatePct: num(rate), loanTermYears: num(term) }), [noi, loan, rate, term]);
-  const maxLoan = useMemo(() => maxLoanByIcr(num(noi), num(rate), num(targetIcr)), [noi, rate, targetIcr]);
-  const coverage = useMemo(() => hasRequiredInputs ? calculateIcrDscrEngine({ noi: num(noi), loanAmount: num(loan), proposedLoanAmount: proposedLoan === '' ? undefined : num(proposedLoan), contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), assessmentFloorRatePct: num(floorRate), repaymentType: 'principalAndInterest', amortisationYears: num(term), minimumIcr: num(targetIcr), minimumDscr: num(targetDscr), minimumDebtYield: num(minDebtYield) / 100 }) : null, [hasRequiredInputs, noi, loan, proposedLoan, rate, buffer, floorRate, term, targetIcr, targetDscr, minDebtYield]);
+  const parsedInputs = useMemo(() => ({
+    noi: parseNumeric(noi),
+    loan: parseNumeric(loan),
+    proposedLoan: parseNumeric(proposedLoan),
+    rate: parseNumeric(rate),
+    term: parseNumeric(term),
+    buffer: parseNumeric(buffer),
+    floorRate: parseNumeric(floorRate),
+    targetIcr: parseNumeric(targetIcr),
+    targetDscr: parseNumeric(targetDscr),
+    minDebtYieldPct: parseNumeric(minDebtYield),
+  }), [noi, loan, proposedLoan, rate, term, buffer, floorRate, targetIcr, targetDscr, minDebtYield]);
 
-  const icrStatus = result.icr >= 1.5 ? 'pass' : result.icr >= 1.25 ? 'warn' : 'fail';
-  const dscrStatus = result.dscr >= 1.35 ? 'pass' : result.dscr >= 1.2 ? 'warn' : 'fail';
+  const assessmentRateInput = parsedInputs.rate != null && parsedInputs.buffer != null && parsedInputs.floorRate != null
+    ? Math.max(parsedInputs.rate + parsedInputs.buffer, parsedInputs.floorRate)
+    : null;
+  const hasRequiredInputs = parsedInputs.noi != null && parsedInputs.noi > 0
+    && parsedInputs.loan != null && parsedInputs.loan > 0
+    && parsedInputs.rate != null
+    && parsedInputs.term != null && parsedInputs.term >= 0
+    && parsedInputs.buffer != null
+    && parsedInputs.floorRate != null
+    && parsedInputs.targetIcr != null && parsedInputs.targetIcr > 0
+    && parsedInputs.targetDscr != null && parsedInputs.targetDscr > 0
+    && parsedInputs.minDebtYieldPct != null && parsedInputs.minDebtYieldPct > 0
+    && assessmentRateInput != null && assessmentRateInput > 0;
+
+  const coverage = useMemo(() => hasRequiredInputs ? calculateIcrDscrEngine({
+    noi: parsedInputs.noi!,
+    loanAmount: parsedInputs.loan!,
+    proposedLoanAmount: parsedInputs.proposedLoan == null ? undefined : parsedInputs.proposedLoan,
+    contractInterestRatePct: parsedInputs.rate!,
+    assessmentBufferPct: parsedInputs.buffer!,
+    assessmentFloorRatePct: parsedInputs.floorRate!,
+    repaymentType: 'principalAndInterest',
+    amortisationYears: parsedInputs.term!,
+    minimumIcr: parsedInputs.targetIcr!,
+    minimumDscr: parsedInputs.targetDscr!,
+    minimumDebtYield: parsedInputs.minDebtYieldPct! / 100,
+  }) : null, [hasRequiredInputs, parsedInputs]);
+
   const badgeVariant = (s: string) => s === 'pass' ? 'default' : s === 'warn' ? 'secondary' : 'destructive';
-  const lowestSupportableLoan = coverage ? Math.min(coverage.maxLoanByIcr, coverage.maxLoanByDscr, coverage.maxLoanByDebtYield) : 0;
-  const bindingConstraint = coverage ? [{ label: 'ICR', value: coverage.maxLoanByIcr }, { label: 'DSCR', value: coverage.maxLoanByDscr }, { label: 'Debt Yield', value: coverage.maxLoanByDebtYield }].reduce((lowest, candidate) => candidate.value < lowest.value ? candidate : lowest).label : PENDING;
+  const icrStatus = coverage && parsedInputs.targetIcr != null ? coverage.icr >= parsedInputs.targetIcr ? 'pass' : 'fail' : 'pending';
+  const dscrStatus = coverage && parsedInputs.targetDscr != null ? coverage.dscr >= parsedInputs.targetDscr ? 'pass' : 'fail' : 'pending';
+  const supportableCaps = coverage ? [coverage.maxLoanByIcr, coverage.maxLoanByDscr, coverage.maxLoanByDebtYield].filter(value => Number.isFinite(value)) : [];
+  const lowestSupportableLoan = supportableCaps.length ? Math.min(...supportableCaps) : null;
+  const bindingConstraint = coverage ? [{ label: 'ICR', value: coverage.maxLoanByIcr }, { label: 'DSCR', value: coverage.maxLoanByDscr }, { label: 'Debt Yield', value: coverage.maxLoanByDebtYield }].filter(candidate => Number.isFinite(candidate.value)).reduce((lowest, candidate) => candidate.value < lowest.value ? candidate : lowest).label : PENDING;
+
+  useEffect(() => {
+    if (!coverage || lowestSupportableLoan == null) return;
+    updateGlobal('icrDscrOutputs', {
+      ...coverage,
+      lowestSupportableLoan,
+      bindingConstraint,
+      sourceStates: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.source])),
+      inputValues: parsedInputs,
+      savedAt: new Date().toISOString(),
+    });
+  }, [coverage, lowestSupportableLoan, bindingConstraint, fields, parsedInputs, updateGlobal]);
 
   return (
     <Card>
@@ -199,13 +259,13 @@ export function IcrDscrCalculatorCard() {
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
           <Row label="Status" value={hasRequiredInputs ? 'Coverage Inputs Ready' : 'Awaiting Coverage Inputs'} />
-          <Row label="Assessment Rate Used" value={coverage ? `${coverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} /><Row label="Annual Interest" value={coverage ? fmt(coverage.annualInterest) : PENDING} />
-          <Row label="Annual Debt Service" value={coverage ? fmt(coverage.annualDebtService) : PENDING} />
+          <Row label="Assessment Rate Used" value={coverage && finiteValue(coverage.assessmentRateUsedPct) != null ? `${coverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} /><Row label="Annual Interest" value={coverage && finiteValue(coverage.annualInterest) != null ? fmt(coverage.annualInterest) : PENDING} />
+          <Row label="Annual Debt Service" value={coverage && finiteValue(coverage.annualDebtService) != null ? fmt(coverage.annualDebtService) : PENDING} />
           <Separator />
-          <div className="flex justify-between items-center"><span>ICR</span>{coverage ? <Badge variant={badgeVariant(icrStatus) as any}>{coverage.icr}x</Badge> : <span>{PENDING}</span>}</div>
-          <div className="flex justify-between items-center"><span>DSCR</span>{coverage ? <Badge variant={badgeVariant(dscrStatus) as any}>{coverage.dscr}x</Badge> : <span>{PENDING}</span>}</div>
+          <div className="flex justify-between items-center"><span>ICR</span>{coverage && icrStatus !== 'pending' ? <Badge variant={badgeVariant(icrStatus) as any}>{coverage.icr}x</Badge> : <span>{PENDING}</span>}</div>
+          <div className="flex justify-between items-center"><span>DSCR</span>{coverage && dscrStatus !== 'pending' ? <Badge variant={badgeVariant(dscrStatus) as any}>{coverage.dscr}x</Badge> : <span>{PENDING}</span>}</div>
           <Separator />
-          <Row label={`Max Loan @ ICR ${targetIcr || ''}x`.trim()} value={coverage ? fmt(coverage.maxLoanByIcr || maxLoan) : PENDING} highlight /><Row label="Max Loan @ DSCR" value={coverage ? fmt(coverage.maxLoanByDscr) : PENDING} /><Row label="Max Loan @ Debt Yield" value={coverage ? fmt(coverage.maxLoanByDebtYield) : PENDING} /><Row label="Debt Yield" value={coverage ? `${(coverage.debtYield * 100).toFixed(2)}%` : PENDING} /><Row label="ICR Headroom" value={coverage ? `${coverage.icrHeadroom.toFixed(2)}x` : PENDING} /><Row label="DSCR Headroom" value={coverage ? `${coverage.dscrHeadroom.toFixed(2)}x` : PENDING} /><Row label="Lowest Supportable Loan" value={coverage ? fmt(lowestSupportableLoan) : PENDING} /><Row label="Binding Constraint" value={bindingConstraint} />{coverage?.proposedLoanSupportability && <Row label="Proposed loan test" value={coverage.proposedLoanSupportability} />}
+          <Row label={`Max Loan @ ICR ${targetIcr || ''}x`.trim()} value={coverage && finiteValue(coverage.maxLoanByIcr) != null ? fmt(coverage.maxLoanByIcr) : PENDING} highlight /><Row label="Max Loan @ DSCR" value={coverage && finiteValue(coverage.maxLoanByDscr) != null ? fmt(coverage.maxLoanByDscr) : PENDING} /><Row label="Max Loan @ Debt Yield" value={coverage && finiteValue(coverage.maxLoanByDebtYield) != null ? fmt(coverage.maxLoanByDebtYield) : PENDING} /><Row label="Debt Yield" value={coverage && finiteValue(coverage.debtYield) != null ? `${(coverage.debtYield * 100).toFixed(2)}%` : PENDING} /><Row label="ICR Headroom" value={coverage && finiteValue(coverage.icrHeadroom) != null ? `${coverage.icrHeadroom.toFixed(2)}x` : PENDING} /><Row label="DSCR Headroom" value={coverage && finiteValue(coverage.dscrHeadroom) != null ? `${coverage.dscrHeadroom.toFixed(2)}x` : PENDING} /><Row label="Lowest Supportable Loan" value={lowestSupportableLoan != null ? fmt(lowestSupportableLoan) : PENDING} /><Row label="Binding Constraint" value={bindingConstraint} />{coverage?.proposedLoanSupportability && <Row label="Proposed loan test" value={coverage.proposedLoanSupportability} />}
           <p className="text-xs text-muted-foreground pt-2">{hasRequiredInputs ? 'Lender benchmarks: ICR ≥ 1.50x typical. DSCR ≥ 1.25-1.35x for P&I.' : 'Import NOI, confirm loan amount and apply lender assumptions to test ICR, DSCR and debt yield.'}</p>
         </div>
       </CardContent>
@@ -217,7 +277,7 @@ function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, place
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]">{sourceBadge(state.source)}</Badge></div>
-      <Input type="number" step={step} value={state.value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      <Input type="text" inputMode="decimal" step={step} value={state.value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
       {state.sourceDetail && <p className="mt-1 text-[11px] text-muted-foreground">{state.sourceDetail}</p>}
       {state.pendingSource && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New source value available. This field currently uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}
     </div>
