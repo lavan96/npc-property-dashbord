@@ -358,6 +358,50 @@ export function IcrDscrCalculatorCard() {
     setFields(prev => ({ ...prev, noi: { ...prev.noi, value: String(nextNoi), source: basis === 'manual' ? 'Manual' : 'NOI Tab', sourceDetail: basis === 'manual' ? 'Manual NOI selected' : `NOI tab ${basis} NOI selected`, dirty: false } }));
   };
 
+  const navigateToCalculatorTab = (tabValue: 'noi' | 'borrowing') => {
+    const tab = document.querySelector<HTMLButtonElement>(`[role="tab"][value="${tabValue}"]`)
+      ?? Array.from(document.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.toLowerCase().includes(tabValue === 'noi' ? 'operating income' : 'borrowing capacity'));
+    tab?.click();
+  };
+
+  const bindingExplanation = !coverage
+    ? 'Complete the required inputs to identify the binding constraint.'
+    : bindingConstraint === 'ICR'
+      ? 'ICR is the binding constraint. This means the property income is not providing enough interest coverage under the current assessment rate.'
+      : bindingConstraint === 'DSCR'
+        ? 'DSCR is the binding constraint. This means the property income is not providing enough coverage for total debt service.'
+        : bindingConstraint === 'Debt Yield'
+          ? 'Debt yield is the binding constraint. This means the lender requires more income relative to the proposed loan size.'
+          : 'No single binding constraint is available until full coverage inputs are complete.';
+  const resultSummary = readinessStatus === 'Not Supportable'
+    ? 'The deal is not supportable under the current lender coverage assumptions.'
+    : readinessStatus === 'Marginal / Tight Coverage' || readinessStatus === 'Specialist Review Recommended'
+      ? 'The deal is marginal and should be reviewed before it is relied on.'
+      : readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified'
+        ? 'The deal is supportable under the current coverage assumptions.'
+        : readinessStatus === 'Preliminary Coverage Estimate'
+          ? 'This is a preliminary coverage estimate because lender policy thresholds are incomplete.'
+          : 'The calculator is waiting for coverage inputs.';
+  const assessmentRateIssue = coverage && (coverage.assessmentRateUsedPct > (parsedInputs.rate ?? 0) || ['Manual', 'User Override'].includes(fields.rate.source) || ['Manual', 'User Override'].includes(fields.buffer.source) || ['Manual', 'User Override'].includes(fields.floorRate.source));
+  const noiIssue = fields.noi.source === 'Manual' || fields.noi.source === 'User Override' || bindingConstraint === 'ICR' || bindingConstraint === 'Debt Yield';
+  const loanIssue = parsedInputs.proposedLoan != null && lowestSupportableLoan != null && parsedInputs.proposedLoan > lowestSupportableLoan;
+  const resultIssueNotes = [
+    assessmentRateIssue ? 'The assessment rate is increasing the tested debt cost. Review the contract rate, buffer and floor rate assumptions.' : undefined,
+    noiIssue ? 'NOI is the main constraint. Review rent, vacancy, recoveries and lender adjustments in the NOI tab.' : undefined,
+    loanIssue ? 'The proposed loan amount is above the supportable level under current coverage assumptions.' : undefined,
+  ].filter(Boolean) as string[];
+  const fixSuggestions = [
+    'Increase verified NOI',
+    'Reduce proposed loan amount',
+    'Review lender policy profile',
+    'Review contract rate and assessment buffer',
+    'Extend amortisation term where lender policy allows',
+    'Compare interest-only servicing if lender policy allows',
+    'Confirm lease documents and recoverable outgoings',
+    'Review tenant risk haircut in the NOI tab',
+    'Consider alternate lender thresholds',
+  ];
+
   useEffect(() => {
     if (!coverage || lowestSupportableLoan == null) return;
     updateGlobal('icrDscrOutputs', {
@@ -452,6 +496,27 @@ export function IcrDscrCalculatorCard() {
                 <Row label="Lowest Supportable Loan" value={lowestSupportableLoan != null ? fmt(lowestSupportableLoan) : PENDING} highlight />
                 <div className="rounded-md border border-primary/30 bg-background/60 p-3"><div className="text-xs text-muted-foreground">Binding Constraint</div><div className="text-xl font-bold text-primary">{bindingConstraint}</div></div>
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-primary/25 bg-background/60 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Result Explanation</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{resultSummary}</p>
+                <p className="mt-2 text-sm text-foreground">{bindingExplanation}</p>
+                {resultIssueNotes.length > 0 && <div className="mt-3 space-y-1 text-sm text-muted-foreground">{resultIssueNotes.map(note => <p key={note}>{note}</p>)}</div>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigateToCalculatorTab('noi')}>Open NOI tab</Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToCalculatorTab('borrowing')}>Open Borrowing Capacity</Button>
+                <Button size="sm" variant="outline" onClick={() => navigateToCalculatorTab('borrowing')}>Compare lender scenario</Button>
+                <Button size="sm" variant="outline" onClick={() => setAdvancedOpen(true)}>View formula breakdown</Button>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="text-sm font-medium">Fix-the-deal guidance</div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{fixSuggestions.map(suggestion => <div key={suggestion} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">{suggestion}</div>)}</div>
             </div>
           </section>
 
