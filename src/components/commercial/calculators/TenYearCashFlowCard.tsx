@@ -191,7 +191,7 @@ export function TenYearCashFlowCard() {
     return window.localStorage.getItem('ten-year-cash-flow-overview-viewed') !== 'true';
   });
   const [scenarioName, setScenarioName] = useState('');
-  const [projectionPeriod, setProjectionPeriod] = useState('10');
+  const [projectionPeriod, setProjectionPeriod] = useState('');
   const [includeInReport, setIncludeInReport] = useState(true);
   const [leaseExpiryYear, setLeaseExpiryYear] = useState('');
   const [waleYears, setWaleYears] = useState('');
@@ -316,7 +316,8 @@ export function TenYearCashFlowCard() {
   const inputs = useMemo(() => buildTenYearInputsFromGlobal(profile, mode, { ...cascadeOverrides, ...overrides, annualOverrides: annualOverridesEnabled ? annualOverrides : undefined }), [profile, mode, cascadeOverrides, overrides, annualOverridesEnabled, annualOverrides]);
   const result = useMemo(() => calculateTenYearCashFlow(inputs, overriddenFields), [inputs, overriddenFields]);
   const hasManualInputs = overriddenFields.length > 0;
-  const hasImportedInputs = Boolean(prefill) || Boolean(borrowingOutputs) || Boolean(noiOutputs) || Boolean(capRateOutputs) || Boolean(icrDscrOutputs) || Boolean(gstOutputs) || Boolean(dcfOutputs);
+  const hasObjectValues = (value: unknown) => Boolean(value && typeof value === 'object' && Object.keys(value as Record<string, unknown>).length);
+  const hasImportedInputs = Boolean(prefill) || Boolean(borrowingOutputs) || hasObjectValues(noiOutputs) || hasObjectValues(capRateOutputs) || hasObjectValues(icrDscrOutputs) || hasObjectValues(gstOutputs) || hasObjectValues(dcfOutputs);
   const manualRequiredFields: Array<keyof TenYearCashFlowInputs> = ['purchasePrice', 'totalCostBase', 'passingRent', 'rentGrowthPct', 'vacancyAllowancePct', 'outgoingsGrowthPct', 'annualCapexReserve', 'terminalCapRatePct', 'taxRatePct', 'gstEconomicCost'];
   const manualInputsComplete = manualRequiredFields.every(field => overriddenFields.includes(String(field)));
   const yearOneNoiReady = hasPositive(result.years[0]?.actualNoi) || hasPositive(inputs.passingRent) || hasPositive(inputs.recoveredOutgoings) || hasPositive(inputs.otherOwnerExpenses);
@@ -368,15 +369,15 @@ export function TenYearCashFlowCard() {
   const clearSourceConflict = (field: keyof TenYearCashFlowInputs) => setOverrideHistory(h => ({ ...h, [field]: cascade[field] ? { originalValue: cascade[field]!.value, originalSource: cascade[field]!.source } : h[field] }));
   const useSourceValue = (field: keyof TenYearCashFlowInputs) => { setOverrides(o => { const next = { ...o }; delete next[field]; return next; }); setOverriddenFields(f => f.filter(k => k !== String(field))); setOverrideHistory(h => { const next = { ...h }; delete next[field]; return next; }); };
   const contextAvailability = useMemo(() => ({
-    propertyProfile: Boolean(prefill || propertyValuation || dealProfile),
+    propertyProfile: Boolean(prefill || hasObjectValues(propertyValuation) || hasObjectValues(dealProfile)),
     propertyScrape: Boolean(prefill),
-    noiTab: Boolean(noiOutputs || leaseIncome),
-    capRateTab: Boolean(capRateOutputs),
-    gstTab: Boolean(gstOutputs || gstInputs),
-    icrDscrTab: Boolean(icrDscrOutputs),
+    noiTab: Boolean(hasObjectValues(noiOutputs) || hasObjectValues(leaseIncome)),
+    capRateTab: Boolean(hasObjectValues(capRateOutputs)),
+    gstTab: Boolean(hasObjectValues(gstOutputs) || hasObjectValues(gstInputs)),
+    icrDscrTab: Boolean(hasObjectValues(icrDscrOutputs)),
     borrowingCapacity: Boolean(borrowingOutputs),
-    dcfTab: Boolean(dcfInputs || dcfOutputs),
-    researchEngine: Boolean(aiEstimateMetadata),
+    dcfTab: Boolean(hasObjectValues(dcfInputs) || hasObjectValues(dcfOutputs)),
+    researchEngine: Boolean(hasObjectValues(aiEstimateMetadata)),
     savedScenarios: Boolean(scenarioName || Object.keys(overrides).length),
   }), [prefill, propertyValuation, dealProfile, noiOutputs, leaseIncome, capRateOutputs, gstOutputs, gstInputs, icrDscrOutputs, borrowingOutputs, dcfInputs, dcfOutputs, aiEstimateMetadata, scenarioName, overrides]);
   const openEstimatePreview = (action: CashFlowAiEstimateAction) => {
@@ -424,8 +425,8 @@ export function TenYearCashFlowCard() {
   };
   const togglePdfOption = (key: keyof typeof pdfOptions) => setPdfOptions(options => ({ ...options, [key]: !options[key] }));
   const buildGeneratedCommentary = () => {
-    const leveredIrr = reportResult.summary.leveredIrr == null ? 'N/A' : `${(reportResult.summary.leveredIrr * 100).toFixed(1)}%`;
-    const equityMultiple = reportResult.summary.equityMultiple == null ? 'N/A' : `${reportResult.summary.equityMultiple.toFixed(2)}x`;
+    const leveredIrr = reportResult.summary.leveredIrr == null ? 'Pending' : `${(reportResult.summary.leveredIrr * 100).toFixed(1)}%`;
+    const equityMultiple = reportResult.summary.equityMultiple == null ? 'Pending' : `${reportResult.summary.equityMultiple.toFixed(2)}x`;
     const riskList = priorityWarnings.length ? priorityWarnings.map(w => `${w.category}: ${w.message}`).join(' ') : 'No priority warnings are currently shown.';
     return `Investment summary: The generated 10-year cashflow has been prepared for ${scenarioName || 'the selected scenario'} using the current validated assumptions. Year 1 cashflow: Year 1 after-tax cashflow is ${fmt(reportResult.summary.year1AfterTaxCashflow)} and Year 1 NOI is ${fmt(reportResult.summary.year1Noi)}. Year 10 equity position: projected Year 10 equity is ${fmt(reportResult.summary.year10Equity)}. Cumulative after-tax cashflow: ${fmt(reportResult.summary.cumulativeAfterTaxCashflow)}. Levered IRR: ${leveredIrr}. Equity multiple: ${equityMultiple}. Key income assumptions: passing rent ${fmt(inputs.passingRent)}, rent growth ${inputs.rentGrowthPct}%, vacancy allowance ${inputs.vacancyAllowancePct}% and recovered outgoings ${fmt(inputs.recoveredOutgoings)}. Key debt assumptions: loan amount ${fmt(inputs.loanAmount)}, interest rate ${inputs.interestRatePct}%, repayment type ${title(inputs.repaymentType)} and amortisation ${inputs.amortisationYears} years. Key capex / leasing assumptions: annual capex reserve ${fmt(inputs.annualCapexReserve)}, major capex ${fmt(inputs.majorCapexAmount ?? 0)}, downtime ${inputs.downtimeMonths} months and tenant incentives ${inputs.incentiveMonths} months. Exit value method: exit value has been modelled using ${exitValueMethod}. Main risks: ${riskList} Recommended review items: confirm source documents, tax/GST treatment, lease assumptions, capex allowances, debt terms and exit-value reconciliation before client reliance. Internal assumption references: passingRent, rentGrowthPct, vacancyAllowancePct, recoveredOutgoings, loanAmount, interestRatePct, annualCapexReserve, downtimeMonths, incentiveMonths and terminalCapRatePct.`;
   };
@@ -544,10 +545,10 @@ export function TenYearCashFlowCard() {
 
   const assumptionPlaceholders: Partial<Record<keyof TenYearCashFlowInputs, string>> = { purchasePrice: 'Pulled from property profile or enter manually', totalCostBase: 'Calculated from purchase price, costs and GST', passingRent: 'Pulled from NOI or enter manually', rentGrowthPct: 'Pulled from research engine or enter manually', vacancyAllowancePct: 'Pulled from NOI / research or enter manually', outgoingsGrowthPct: 'Enter outgoings growth', annualCapexReserve: 'Enter capex reserve', terminalCapRatePct: 'Pulled from Cap Rate / DCF or enter manually', taxRatePct: 'Enter tax rate or confirm accountant review', gstEconomicCost: 'Pulled from GST tab or enter manually' };
   const summaryCards = mode === 'investor'
-    ? [['Purchase price', s.purchasePrice], ['Total cost base', s.totalCostBase], ['Required equity', s.requiredEquity], ['Year 1 NOI', s.year1Noi], ['Year 1 after-tax cashflow', s.year1AfterTaxCashflow], ['Year 10 property value', s.year10PropertyValue], ['Year 10 equity', s.year10Equity], ['Cumulative after-tax cashflow', s.cumulativeAfterTaxCashflow], ['Levered IRR', s.leveredIrr == null ? 'N/A' : `${(s.leveredIrr * 100).toFixed(1)}%`], ['Equity multiple', s.equityMultiple == null ? 'N/A' : `${s.equityMultiple.toFixed(2)}x`], ['Terminal value', s.terminalValue]]
+    ? [['Purchase price', s.purchasePrice], ['Total cost base', s.totalCostBase], ['Required equity', s.requiredEquity], ['Year 1 NOI', s.year1Noi], ['Year 1 after-tax cashflow', s.year1AfterTaxCashflow], ['Year 10 property value', s.year10PropertyValue], ['Year 10 equity', s.year10Equity], ['Cumulative after-tax cashflow', s.cumulativeAfterTaxCashflow], ['Levered IRR', s.leveredIrr == null ? 'Pending' : `${(s.leveredIrr * 100).toFixed(1)}%`], ['Equity multiple', s.equityMultiple == null ? 'Pending' : `${s.equityMultiple.toFixed(2)}x`], ['Terminal value', s.terminalValue]]
     : mode === 'ownerOccupier'
-      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', reportResult.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', reportResult.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', reportResult.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'N/A — EBITDA not provided.' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'N/A' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
-      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', reportResult.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', reportResult.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
+      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', reportResult.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', reportResult.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', reportResult.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'Pending' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'Pending' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
+      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', reportResult.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'Pending' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', reportResult.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
 
   return <Card className="bg-card/95"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> 10-Year Cash Flow</CardTitle><CardDescription>Commercial / industrial projection for investor, owner-occupier and related-party lease scenarios. AI supports assumptions; deterministic formulas produce the table.</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</Badge><Badge variant={(pending ? 'outline' : badgeVariant(s.riskStatus)) as any}>{reportStatus}</Badge></div></div></CardHeader><CardContent className="space-y-5">
     <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>

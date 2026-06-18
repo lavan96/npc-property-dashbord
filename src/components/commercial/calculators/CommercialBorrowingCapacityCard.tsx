@@ -37,7 +37,7 @@ const isUsableNumber = (v: unknown) => v !== '' && v != null && Number.isFinite(
 const fmt = (n: number) => Number.isFinite(n) ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n) : 'Pending';
 const fmtMaybe = (v: string | number | null | undefined) => (!isUsableNumber(v) ? 'Pending' : fmt(Number(v)));
 const pct = (n: number) => Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : 'Pending';
-const num = (v: string) => (v === '' ? 0 : Number(v));
+const num = (v: string) => (v === '' ? Number.NaN : Number(v));
 const set = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => setter(e.target.value);
 const hasValue = (v: string) => v.trim() !== '';
 const valueOrUndefined = (v: string) => hasValue(v) ? num(v) : undefined;
@@ -174,12 +174,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [relatedPartyTenant, setRelatedPartyTenant] = useState<'yes' | 'no'>('no');
   const [availableEquity, setAvailableEquity] = useState('');
   const [sponsorLiquidity, setSponsorLiquidity] = useState('');
-  const [liquidityMult, setLiquidityMult] = useState('0');
-  const [businessDebt, setBusinessDebt] = useState('0');
-  const [businessEbitda, setBusinessEbitda] = useState('0');
-  const [currentRent, setCurrentRent] = useState('0');
-  const [proposedRent, setProposedRent] = useState('0');
-  const [smsfBalance, setSmsfBalance] = useState('0');
+  const [liquidityMult, setLiquidityMult] = useState('');
+  const [businessDebt, setBusinessDebt] = useState('');
+  const [businessEbitda, setBusinessEbitda] = useState('');
+  const [currentRent, setCurrentRent] = useState('');
+  const [proposedRent, setProposedRent] = useState('');
+  const [smsfBalance, setSmsfBalance] = useState('');
 
   const [purchasePrice, setPurchasePrice] = useState('');
   const [estimatedValue, setEstimatedValue] = useState('');
@@ -197,12 +197,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [roofCondition, setRoofCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
 
   const [passingRent, setPassingRent] = useState('');
-  const [otherIncome, setOtherIncome] = useState('0');
+  const [otherIncome, setOtherIncome] = useState('');
   const [recoveries, setRecoveries] = useState('');
   const [marketRent, setMarketRent] = useState('');
   const [vacancy, setVacancy] = useState('');
-  const [incentives, setIncentives] = useState('0');
-  const [arrearsAdj, setArrearsAdj] = useState('0');
+  const [incentives, setIncentives] = useState('');
+  const [arrearsAdj, setArrearsAdj] = useState('');
   const [nonRecoverable, setNonRecoverable] = useState('');
   const [rates, setRates] = useState('');
   const [water, setWater] = useState('');
@@ -213,23 +213,23 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [wale, setWale] = useState('');
   const [tenantCovenant, setTenantCovenant] = useState<'government' | 'nationalTenant' | 'listedCompany' | 'establishedSme' | 'newBusiness' | 'relatedParty' | 'weakUnknown'>('establishedSme');
   const [rentOverMarket, setRentOverMarket] = useState<'yes' | 'no' | 'unknown'>('no');
-  const [aboveMarketPct, setAboveMarketPct] = useState('0');
+  const [aboveMarketPct, setAboveMarketPct] = useState('');
   const [noiBasis, setNoiBasis] = useState<'actual' | 'stabilised' | 'lenderAdjusted'>('lenderAdjusted');
 
   const [stampDuty, setStampDuty] = useState('');
   const [transferRegistrationFee, setTransferRegistrationFee] = useState('');
   const [mortgageRegistrationFee, setMortgageRegistrationFee] = useState('');
   const [pexaSettlementFee, setPexaSettlementFee] = useState('');
-  const [autoEstimatedAcquisitionCosts, setAutoEstimatedAcquisitionCosts] = useState('0');
+  const [autoEstimatedAcquisitionCosts, setAutoEstimatedAcquisitionCosts] = useState('');
   const [legal, setLegal] = useState('');
   const [bankLegal, setBankLegal] = useState('');
   const [valuationFee, setValuationFee] = useState('');
   const [dueDiligence, setDueDiligence] = useState('');
-  const [environmentalCost, setEnvironmentalCost] = useState('0');
-  const [asbestosCost, setAsbestosCost] = useState('0');
+  const [environmentalCost, setEnvironmentalCost] = useState('');
+  const [asbestosCost, setAsbestosCost] = useState('');
   const [capexReserve, setCapexReserve] = useState('');
   const [workingCapital, setWorkingCapital] = useState('');
-  const [otherCosts, setOtherCosts] = useState('0');
+  const [otherCosts, setOtherCosts] = useState('');
   const [gstTreatment, setGstTreatment] = useState<'gstInclusive' | 'plusGst' | 'gstFreeGoingConcern' | 'marginScheme' | 'unknown'>('unknown');
   const [gstCashflow, setGstCashflow] = useState<'yes' | 'no' | 'unknown'>('unknown');
   const [gstClaimable, setGstClaimable] = useState<'yes' | 'no' | 'unknown'>('unknown');
@@ -239,15 +239,15 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [profile, setProfile] = useState<LenderPolicyProfileKey>('mainstreamCommercialBank');
   const [rate, setRate] = useState('');
   const [buffer, setBuffer] = useState('');
-  const [floorRate, setFloorRate] = useState('0');
+  const [floorRate, setFloorRate] = useState('');
   const [assessmentBasis, setAssessmentBasis] = useState<'contractPlusBuffer' | 'higherOfBufferAndFloor' | 'interestOnlyAssessment' | 'principalAndInterestAssessment' | 'custom'>('contractPlusBuffer');
   const [term, setTerm] = useState('');
-  const [ioPeriod, setIoPeriod] = useState('0');
+  const [ioPeriod, setIoPeriod] = useState('');
   const [amortisation, setAmortisation] = useState('');
-  const [maxLvr, setMaxLvr] = useState('0.65');
-  const [minIcr, setMinIcr] = useState('1.50');
-  const [minDscr, setMinDscr] = useState('1.25');
-  const [minDebtYield, setMinDebtYield] = useState('0.09');
+  const [maxLvr, setMaxLvr] = useState('');
+  const [minIcr, setMinIcr] = useState('');
+  const [minDscr, setMinDscr] = useState('');
+  const [minDebtYield, setMinDebtYield] = useState('');
 
   const [tenantStrength, setTenantStrength] = useState<'strong' | 'established' | 'weak' | 'unknown'>('established');
   const [vacancyLevel, setVacancyLevel] = useState<'none' | 'minor' | 'major'>('minor');
@@ -258,7 +258,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
   const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [scenarioName, setScenarioName] = useState('Proposed commercial / industrial acquisition');
+  const [scenarioName, setScenarioName] = useState('');
   const [scenarioType, setScenarioType] = useState<ScenarioType>('Acquire Commercial Asset');
   const [scenarioStatus, setScenarioStatus] = useState<ScenarioStatus>('Draft');
   const [savedScenario, setSavedScenario] = useState<ClientScenario | null>(null);
@@ -286,7 +286,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [globalInputSync, setGlobalInputSync] = useState(true);
   const [activeTab, setActiveTab] = useState('quick');
   const [showUnchangedMetrics, setShowUnchangedMetrics] = useState(false);
-  const [recommendedScenarioName, setRecommendedScenarioName] = useState('Base Case');
+  const [recommendedScenarioName, setRecommendedScenarioName] = useState('');
 
   useEffect(() => { setAssetCategory(initialAssetCategory); }, [initialAssetCategory]);
 
@@ -376,14 +376,14 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const assessmentReady = completedReadinessItems === readinessItems.length;
   const noRequiredInputsStarted = [purchasePrice || estimatedValue, passingRent || marketRent || nonRecoverable, rate, term].every(value => !hasValue(String(value)));
   const missingRequiredInputs = readinessItems.filter(item => !item.complete).map(item => item.label);
-  const readinessStatus = noRequiredInputsStarted ? 'Awaiting required inputs' : assessmentReady ? result.creditAssessmentStatusLabel : 'Preliminary estimate';
+  const readinessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Calculated' : 'Preliminary Estimate';
   const readinessHelper = noRequiredInputsStarted
     ? 'Complete the required deal, income and lending fields to generate a borrowing estimate.'
     : assessmentReady
       ? result.proposedLoanSupportabilityMessage
       : 'This result is indicative and may change once valuation, lease, GST and borrower documents are confirmed.';
-  const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Assessment Ready' : 'Preliminary Estimate';
-  const purchaseAbilityStatus = !assessmentReady ? 'Awaiting Inputs' : result.fundsToComplete.requiredEquity == null ? 'Funds to Complete Pending' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Funds to Complete Supported' : result.creditAssessmentStatus === 'red' ? 'Not Supportable' : 'Equity Shortfall';
+  const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Ready to Calculate' : 'Preliminary Estimate';
+  const purchaseAbilityStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : !assessmentReady ? 'Preliminary Estimate' : result.fundsToComplete.requiredEquity == null ? 'Review Required' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Calculated' : 'Review Required';
   const validCalculatedResult = assessmentReady && Number.isFinite(result.finalRiskAdjustedLoan) && result.finalRiskAdjustedLoan > 0;
   const criticalExportFields = useMemo(() => [
     { label: 'Purchase price', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
@@ -408,7 +408,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     return false;
   });
   const allRequiredDocumentsVerified = missingCriticalDocuments.length === 0;
-  const exportReadinessStatus = exportBlocked ? 'Export blocked' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Ready to export' : 'Export allowed with assumptions';
+  const exportReadinessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : exportBlocked ? 'Review Required' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Verified' : 'Ready to Calculate';
   const exportButtonDisabled = exportBlocked;
   const exportButtonLabel = exportBlocked ? 'Export Scenario Report' : hasAssumptionsPresent || !allRequiredDocumentsVerified ? 'Export Scenario Report (with assumptions)' : 'Export Scenario Report';
   const documentChecklistGroups = Object.entries(documentCategories).map(([category, configuredItems]) => ({
@@ -432,11 +432,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   }), [availableEquity, businessEbitda, showBusinessFields, purchasePrice, estimatedValue, assetSubtype, passingRent, marketRent, nonRecoverable, leaseDocs, rate, term, maxLvr, gstTreatment, gstCashflow, result.documentChecklist]);
   const criticalMissingItems = Object.entries(missingInformationGroups).flatMap(([group, items]) => items.map(item => ({ group, item }))).slice(0, 5);
   const warningSummary = useMemo(() => {
-    const critical = missingRequiredInputs.map(w => ({ severity: 'Critical', text: w }));
+    if (noRequiredInputsStarted) return [];
+    const critical = missingRequiredInputs.map(w => ({ severity: 'Required', text: w }));
     const required = result.warnings.slice(0, 4).map(w => ({ severity: 'Required', text: w }));
     const recommended = result.documentChecklist.slice(0, 3).map(w => ({ severity: 'Recommended', text: w }));
     return [...critical, ...required, ...recommended].slice(0, 8);
-  }, [missingRequiredInputs, result.warnings, result.documentChecklist]);
+  }, [noRequiredInputsStarted, missingRequiredInputs, result.warnings, result.documentChecklist]);
   const hasRequiredWarnings = warningSummary.some(w => w.severity === 'Required');
   const scenarioMinimumMissing = useMemo(() => [
     { label: 'Purchase price or estimated market value', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
