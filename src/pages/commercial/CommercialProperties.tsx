@@ -10,6 +10,7 @@ import { useCommercialProperties, commercialApi, type CommercialProperty } from 
 import { useIndustrialProperties, industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
 import { IndustrialPropertyFormModal } from '@/components/industrial/IndustrialPropertyFormModal';
+import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
 import { toast } from '@/hooks/use-toast';
 
 type AssetKind = 'commercial' | 'industrial';
