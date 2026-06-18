@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { calcSiteMetrics } from '@/utils/industrial';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
+import { assessIndustrialBenchmark } from './industrialMetricBenchmarks';
 import { formatCurrency, formatPercent, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
 type Tone = 'preliminary' | 'verified' | 'critical';
@@ -71,16 +71,16 @@ export function SiteCoverCard() {
   const pricePerSite = parsed.price !== null && parsed.site !== null && parsed.site > 0 ? parsed.price / parsed.site : null;
   const canCalculateAll = siteCover !== null && hardstandRatio !== null && officeRatio !== null && pricePerGla !== null && pricePerSite !== null;
 
-  const result = useMemo(() => canCalculateAll ? calcSiteMetrics({
-    glaSqm: parsed.gla ?? 0,
-    siteAreaSqm: parsed.site ?? 0,
-    hardstandSqm: parsed.hardstand ?? 0,
-    officePct: officeRatio ?? 0,
-    price: parsed.price ?? 0,
-  }) : null, [canCalculateAll, officeRatio, parsed.gla, parsed.hardstand, parsed.price, parsed.site]);
-
-  const coverageBand = siteCover === null ? 'Pending' : result?.coverageBand ?? 'Pending';
-  const benchmarkStatus = hasCriticalIssue ? 'Critical physical-data issue' : canCalculateAll ? (allVerified ? 'Verified benchmark' : 'Preliminary benchmark') : 'Pending';
+  const assessment = assessIndustrialBenchmark({
+    siteCoverPct: siteCover,
+    hardstandRatioPct: hardstandRatio,
+    officeRatioPct: officeRatio,
+    pricePerSqmGla: pricePerGla,
+    pricePerSqmSite: pricePerSite,
+    verified: allVerified,
+  });
+  const coverageBand = canCalculateAll ? assessment.coverageBand : 'Pending';
+  const benchmarkStatus = hasCriticalIssue ? 'Critical physical-data issue' : assessment.status;
 
   const aiActions: IndustrialMetricAiAction[] = [
     {
@@ -151,7 +151,7 @@ export function SiteCoverCard() {
           <OutputRow label="Site Cover" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
           <div className="flex justify-between items-center gap-4">
             <span className="flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Coverage Band<Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge></span>
-            {coverageBand === 'Pending' ? <span className="text-muted-foreground text-sm">Pending</span> : <Badge variant={result?.coverageBand === 'over-developed' ? 'destructive' : 'secondary'} className="capitalize">{coverageBand}</Badge>}
+            {coverageBand === 'Pending' ? <span className="text-muted-foreground text-sm">Pending</span> : <Badge variant="secondary" className="capitalize">{coverageBand}</Badge>}
           </div>
           <OutputRow label="Hardstand Ratio" tooltip="Hardstand m² ÷ site area m²." value={formatPercent(hardstandRatio)} tone={benchmarkTone} muted />
           <OutputRow label="Office Ratio" tooltip="Office area m² ÷ GLA m², or office % where office area is unavailable." value={formatPercent(officeRatio)} tone={benchmarkTone} muted />
@@ -159,7 +159,11 @@ export function SiteCoverCard() {
           <OutputRow label="$/m² GLA" tooltip="Purchase price ÷ GLA m²." value={formatCurrency(pricePerGla, 0)} tone={benchmarkTone} />
           <OutputRow label="$/m² Site" tooltip="Purchase price ÷ site area m²." value={formatCurrency(pricePerSite, 0)} tone={benchmarkTone} />
           <OutputRow label="Benchmark status" value={benchmarkStatus} tone={benchmarkTone} muted />
-          <OutputRow label="Report summary" value={canCalculateAll ? (allVerified ? 'Verified for report output.' : 'Preliminary — verify inputs before relying on report output.') : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Short explanation" value={canCalculateAll ? assessment.explanation : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Benchmark confidence" value={canCalculateAll ? assessment.confidence : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Verification status" value={canCalculateAll ? assessment.verificationStatus : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Report summary" value={canCalculateAll ? (allVerified ? 'Verified for report output.' : `${assessment.status} — verify inputs before relying on report output.`) : 'Pending'} tone={benchmarkTone} muted />
+          {canCalculateAll && <BenchmarkNotes notes={assessment.notes} />}
         </div>
       </CardContent>
     </Card>
@@ -182,6 +186,17 @@ function buildPreview(actionId: string, label: string, suggestedValue: string, s
     verificationRequirements: ['Verify against property profile, scrape, title/floor plan and relevant industrial comparable evidence before marking as verified.'],
     targetField,
   };
+}
+
+function BenchmarkNotes({ notes }: { notes: string[] }) {
+  return (
+    <details className="rounded-md border border-border/60 bg-background/30 p-2 text-xs text-muted-foreground">
+      <summary className="cursor-pointer font-medium text-foreground">View benchmark notes</summary>
+      <ul className="mt-2 list-disc space-y-1 pl-4">
+        {notes.map((note) => <li key={note}>{note}</li>)}
+      </ul>
+    </details>
+  );
 }
 
 function CascadedInput({ label, value, placeholder, source, onChange, onVerify, step }: { label: string; value: string; placeholder: string; source: IndustrialMetricSource; onChange: (value: string) => void; onVerify: () => void; step?: string }) {

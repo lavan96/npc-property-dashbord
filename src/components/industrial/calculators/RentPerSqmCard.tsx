@@ -51,7 +51,7 @@ export function RentPerSqmCard() {
 
   const allVerified = [baseRent.source, gla.source, outgoings.source].every((source) => source === 'Verified');
   const benchmarkTone = hasZeroDenominator ? 'critical' : allVerified ? 'verified' : 'preliminary';
-  const benchmarkStatus = hasZeroDenominator ? 'Critical physical-data issue' : canCalculateRent ? (allVerified ? 'Verified benchmark' : 'Preliminary benchmark') : 'Pending';
+  const benchmarkStatus = canCalculateRent ? (allVerified ? 'Verified' : 'Preliminary Benchmark') : 'Awaiting Inputs';
 
   const aiActions: IndustrialMetricAiAction[] = [
     {
@@ -123,7 +123,7 @@ export function RentPerSqmCard() {
           <Separator />
           <OutputRow label="Gross rent / m² / PA" tooltip="Base rent p.a. plus outgoings p.a. ÷ GLA m²." value={result ? formatCurrency(result.grossRentPerSqmPa) : 'Pending'} tone={benchmarkTone} highlight />
           <OutputRow label="Benchmark status" value={benchmarkStatus} tone={benchmarkTone} muted />
-          <OutputRow label="Report summary" value={canCalculateRent ? (allVerified ? 'Verified for report output.' : 'Preliminary — verify inputs before relying on report output.') : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Report summary" value={canCalculateRent ? (allVerified ? 'Verified for report output.' : 'Preliminary Benchmark — verify inputs before relying on report output.') : 'Pending'} tone={benchmarkTone} muted />
         </div>
       </CardContent>
     </Card>
