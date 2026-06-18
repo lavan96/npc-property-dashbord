@@ -139,23 +139,32 @@ export function SiteCoverCard() {
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Site Cover & $/m²</CardTitle>
-        <CardDescription>Industrial site density, hardstand ratio and price-per-area benchmarks.</CardDescription>
+    <Card className="overflow-hidden border-primary/20 bg-card/90 shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>Site Cover &amp; $/m²</CardTitle>
+            <CardDescription>Enter physical site details and price, then review the locked density and pricing outputs.</CardDescription>
+          </div>
+          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">Site metrics</Badge>
+        </div>
       </CardHeader>
-      <CardContent className="grid lg:grid-cols-2 gap-6">
+      <CardContent className="grid gap-4 p-4 lg:grid-cols-2 lg:gap-6">
         <div className="space-y-3">
           <IndustrialMetricAiWorkflow actions={aiActions} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-200">Editable inputs</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} /><SourceActions field={gla} /></div>
             <div><CascadedInput label="Site Area (m²)" value={site.value} placeholder="Pulled from property profile or enter manually" source={site.source} onChange={site.setValue} onVerify={site.markVerified} /><SourceActions field={site} /></div>
             <div><CascadedInput label="Hardstand (m²)" value={hardstand.value} placeholder="Pulled from property profile or enter manually" source={hardstand.source} onChange={hardstand.setValue} onVerify={hardstand.markVerified} /><SourceActions field={hardstand} /></div>
             <div><CascadedInput label="Office (%)" value={office.value} placeholder="Enter office component percentage" source={office.source} onChange={office.setValue} onVerify={office.markVerified} step="0.1" /><SourceActions field={office} /></div>
-            <div className="col-span-2"><CascadedInput label="Price ($)" value={price.value} placeholder="Pulled from property profile or enter manually" source={price.source} onChange={price.setValue} onVerify={price.markVerified} /><SourceActions field={price} /></div>
+            <div className="sm:col-span-2"><CascadedInput label="Price ($)" value={price.value} placeholder="Pulled from property profile or enter manually" source={price.source} onChange={price.setValue} onVerify={price.markVerified} /><SourceActions field={price} /></div>
+          </div>
           </div>
         </div>
-        <div className="space-y-3 bg-muted/40 rounded-lg p-4">
+        <div className="space-y-3 rounded-lg border border-border/70 bg-background/35 p-4 shadow-inner">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Locked calculated outputs</p>
           {!canCalculateAll && <EmptyState critical={hasCriticalIssue} />}
           <OutputRow label="Site Cover %" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
           <div className="flex justify-between items-center gap-4">
@@ -215,7 +224,7 @@ function CascadedInput({ label, value, placeholder, source, onChange, onVerify, 
         <Label>{label}</Label>
         <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="text-[10px] text-primary hover:underline" onClick={onVerify}>Verify</button></div>
       </div>
-      <Input type="text" inputMode="decimal" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      <Input type="text" inputMode="decimal" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="border-amber-500/30 bg-background/80 shadow-inner focus-visible:ring-amber-400" />
     </div>
   );
 }
