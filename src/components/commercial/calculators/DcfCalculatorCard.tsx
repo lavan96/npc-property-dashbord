@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { runDcfAssessment } from '@/utils/commercial';
+import { runDcfAssessment, type DcfAssessmentInputs, type DcfAssessmentResult } from '@/utils/commercial';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
@@ -22,6 +22,7 @@ type DcfSourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'NOI Tab' | 'Ca
 type Candidate = { value: number; source: DcfSourceState; detail?: string };
 type FieldMeta = { source: DcfSourceState; original?: Candidate; pending?: Candidate; history: string[] };
 type NoiTreatmentMode = 'adjusted' | 'apply' | 'requires_confirmation';
+type GeneratedCashflowRow = { year: number; openingNoi: number; vacancyAdjustment: number; effectiveNoi: number; rentalGrowthApplied: number; capex: number; downtimeAdjustment: number; unleveredCashFlow: number; debtService: number; interestComponent: number; principalComponent: number; leveredCashFlow: number; loanBalance: number; terminalValue?: number; sellingCosts?: number; netSaleProceedsToEquity?: number; finalYearTotalCashFlow?: number };
 
 type FieldState = Record<DcfFieldKey, string>;
 type MetaState = Record<DcfFieldKey, FieldMeta>;
@@ -92,6 +93,8 @@ const candidate = (value: unknown, source: DcfSourceState, detail?: string): Can
   return Number.isFinite(n) && n !== 0 ? { value: n, source, detail } : undefined;
 };
 const changedFromDefault = (value: unknown, defaultValue: unknown) => Number.isFinite(Number(value)) && Number(value) !== 0 && Number(value) !== Number(defaultValue ?? 0);
+const DCF_CALCULATION_VERSION = 'DCF v1.1';
+
 const aiIncludesVacancy = (metadata: unknown): boolean | undefined => {
   if (!metadata || typeof metadata !== 'object') return undefined;
   const m = metadata as Record<string, any>;
@@ -110,9 +113,14 @@ export function DcfCalculatorCard() {
   const updateGlobal = useCommercialDealState((s) => s.updateGlobal);
   const [fields, setFields] = useState<FieldState>(blankFields);
   const [meta, setMeta] = useState<MetaState>(blankMeta);
-  const [generated, setGenerated] = useState(false);
   const [noiTreatmentMode, setNoiTreatmentMode] = useState<NoiTreatmentMode>('apply');
   const [noiTreatmentTouched, setNoiTreatmentTouched] = useState(false);
+  const [noneConfirmed, setNoneConfirmed] = useState({ acqCosts: false, annualCapex: false, downtimeMonths: false });
+  const [generatedResult, setGeneratedResult] = useState<DcfAssessmentResult | null>(null);
+  const [generatedRows, setGeneratedRows] = useState<GeneratedCashflowRow[]>([]);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
 
   const linkedLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
 
@@ -204,7 +212,6 @@ export function DcfCalculatorCard() {
         : [...m.history, `${new Date().toISOString()}: User override preserved original ${m.original?.source ?? m.source} value ${m.original?.value ?? 'blank'}.`];
       return { ...current, [key]: { ...m, source: nextSource, history } };
     });
-    setGenerated(false);
   };
 
   const usePendingSource = (key: DcfFieldKey) => {
@@ -212,7 +219,6 @@ export function DcfCalculatorCard() {
     if (!pending) return;
     setFields((current) => ({ ...current, [key]: String(pending.value) }));
     setMeta((current) => ({ ...current, [key]: { source: pending.source, original: pending, pending: undefined, history: [...current[key].history, `${new Date().toISOString()}: Override replaced with new ${pending.source} value ${pending.value}.`] } }));
-    setGenerated(false);
   };
 
   const keepOverride = (key: DcfFieldKey) => setMeta((current) => ({ ...current, [key]: { ...current[key], pending: undefined, history: [...current[key].history, `${new Date().toISOString()}: Kept saved override instead of new source value.`] } }));
@@ -223,8 +229,11 @@ export function DcfCalculatorCard() {
     const leverageEnabled = values.loan != null && values.loan > 0;
     const debtInputsValid = !leverageEnabled || ((values.interest ?? 0) > 0 && (values.term ?? 0) > 0);
     const vacancyReady = noiTreatmentMode === 'adjusted' || values.vacancy != null;
+    const acquisitionReady = values.acqCosts != null || noneConfirmed.acqCosts;
+    const annualCapexReady = values.annualCapex != null || noneConfirmed.annualCapex;
+    const downtimeReady = values.downtimeMonths != null || noneConfirmed.downtimeMonths;
     const requiredReady = values.price != null && values.price > 0
-      && values.acqCosts != null
+      && acquisitionReady
       && values.initialNoi != null && values.initialNoi > 0
       && holdInteger
       && values.growth != null
@@ -232,31 +241,92 @@ export function DcfCalculatorCard() {
       && values.termCap != null && values.termCap > 0
       && values.sellingCosts != null
       && values.discount != null && values.discount > 0
-      && values.annualCapex != null
-      && values.downtimeMonths != null
+      && annualCapexReady
+      && downtimeReady
       && debtInputsValid;
-    return { values, holdInteger, leverageEnabled, debtInputsValid, requiredReady };
-  }, [fields, noiTreatmentMode]);
+    return { values, holdInteger, leverageEnabled, debtInputsValid, acquisitionReady, annualCapexReady, downtimeReady, requiredReady };
+  }, [fields, noiTreatmentMode, noneConfirmed]);
 
   const noiTreatmentConfirmed = noiTreatmentMode !== 'requires_confirmation';
   const vacancyMayBeDoubleCounted = noiTreatmentMode === 'apply' && (meta.initialNoi.source === 'NOI Tab' || meta.initialNoi.original?.detail === 'Vacancy included');
   const canGenerate = noiTreatmentConfirmed && parsed.requiredReady;
-  const isComplete = generated && canGenerate;
+  const coreKey = useMemo(() => JSON.stringify({ values: parsed.values, noiTreatmentMode, noneConfirmed }), [parsed.values, noiTreatmentMode, noneConfirmed]);
+  const cashflowOutOfDate = Boolean(generatedResult && generatedKey !== coreKey);
+  const cashflowCurrent = Boolean(generatedResult && generatedKey === coreKey);
+  const result = generatedResult;
 
-  const result = useMemo(() => {
-    if (!isComplete) return null;
+  const buildDcfInputs = (): DcfAssessmentInputs => {
     const v = parsed.values;
-    return runDcfAssessment({
-      purchasePrice: v.price!, acquisitionCosts: v.acqCosts!, initialNoi: v.initialNoi!, holdPeriodYears: v.hold!, rentalGrowthPct: v.growth!, vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy!, terminalCapRatePct: v.termCap!, sellingCostsPct: v.sellingCosts!, discountRatePct: v.discount!, loanAmount: v.loan ?? 0, interestRatePct: v.interest ?? 0, loanTermYears: v.term ?? 0, annualCapex: v.annualCapex!, downtimeMonths: v.downtimeMonths!, exitCapSensitivityPct: [v.termCap! - 0.5, v.termCap!, v.termCap! + 0.5],
+    return {
+      purchasePrice: v.price!,
+      acquisitionCosts: v.acqCosts ?? 0,
+      initialNoi: v.initialNoi!,
+      holdPeriodYears: v.hold!,
+      rentalGrowthPct: v.growth!,
+      vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy!,
+      terminalCapRatePct: v.termCap!,
+      sellingCostsPct: v.sellingCosts!,
+      discountRatePct: v.discount!,
+      loanAmount: v.loan ?? 0,
+      interestRatePct: v.interest ?? 0,
+      loanTermYears: v.term ?? 0,
+      annualCapex: v.annualCapex ?? 0,
+      downtimeMonths: v.downtimeMonths ?? 0,
+      exitCapSensitivityPct: [v.termCap! - 0.5, v.termCap!, v.termCap! + 0.5],
+    };
+  };
+
+  const buildGeneratedRows = (dcfResult: DcfAssessmentResult, inputs: DcfAssessmentInputs): GeneratedCashflowRow[] => {
+    const downtimeAdjustment = inputs.initialNoi * ((inputs.downtimeMonths ?? 0) / 12);
+    return dcfResult.rows.map((row, index) => {
+      const previousRow = dcfResult.rows[index - 1];
+      const openingNoi = index === 0 ? inputs.initialNoi : previousRow.noi;
+      const vacancyAdjustment = index === 0 && noiTreatmentMode === 'apply' ? inputs.initialNoi * ((inputs.vacancyAllowancePct ?? 0) / 100) : 0;
+      const principalComponent = Math.max(0, (previousRow?.loanBalance ?? inputs.loanAmount ?? 0) - row.loanBalance);
+      const interestComponent = Math.max(0, row.debtService - principalComponent);
+      const finalYear = index === dcfResult.rows.length - 1;
+      const sellingCosts = finalYear ? dcfResult.terminalValue * ((inputs.sellingCostsPct ?? 0) / 100) : undefined;
+      const terminalValue = finalYear ? dcfResult.terminalValue : undefined;
+      const netSaleProceedsToEquity = finalYear ? dcfResult.netSaleProceeds : undefined;
+      return {
+        year: row.year,
+        openingNoi,
+        vacancyAdjustment,
+        effectiveNoi: row.noi,
+        rentalGrowthApplied: index === 0 ? 0 : Number(inputs.rentalGrowthPct),
+        capex: index === 0 ? Math.max(0, row.capex - downtimeAdjustment) : row.capex,
+        downtimeAdjustment: index === 0 ? downtimeAdjustment : 0,
+        unleveredCashFlow: row.unleveredCf,
+        debtService: row.debtService,
+        interestComponent,
+        principalComponent,
+        leveredCashFlow: row.leveredCf,
+        loanBalance: row.loanBalance,
+        terminalValue,
+        sellingCosts,
+        netSaleProceedsToEquity,
+        finalYearTotalCashFlow: finalYear ? row.leveredCf + dcfResult.netSaleProceeds : undefined,
+      };
     });
-  }, [isComplete, parsed, noiTreatmentMode]);
+  };
+
+  const handleGenerateCashflow = () => {
+    if (!canGenerate) return;
+    const inputs = buildDcfInputs();
+    const nextResult = runDcfAssessment(inputs);
+    setGeneratedResult(nextResult);
+    setGeneratedRows(buildGeneratedRows(nextResult, inputs));
+    setGeneratedAt(new Date().toISOString());
+    setGeneratedKey(coreKey);
+    setShowFullSchedule(false);
+  };
 
   useEffect(() => {
-    if (!result) return;
+    if (!generatedResult || !cashflowCurrent) return;
     const v = parsed.values;
     updateGlobal('dcfInputs', { purchasePrice: v.price ?? undefined, acquisitionCosts: v.acqCosts ?? undefined, initialNoi: v.initialNoi ?? undefined, holdPeriodYears: v.hold ?? undefined, rentalGrowthPct: v.growth ?? undefined, vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy ?? undefined, terminalCapRatePct: v.termCap ?? undefined, sellingCostsPct: v.sellingCosts ?? undefined, discountRatePct: v.discount ?? undefined, loanAmount: v.loan ?? undefined, interestRatePct: v.interest ?? undefined, loanTermYears: v.term ?? undefined, annualCapex: v.annualCapex ?? undefined, downtimeMonths: v.downtimeMonths ?? undefined, initialNoiBasis: noiTreatmentMode === 'adjusted' ? 'actual' : undefined });
-    updateGlobal('dcfOutputs', result);
-  }, [result, parsed, noiTreatmentMode, updateGlobal]);
+    updateGlobal('dcfOutputs', generatedResult);
+  }, [generatedResult, cashflowCurrent, parsed, noiTreatmentMode, updateGlobal]);
 
   return (
     <Card>
@@ -268,21 +338,23 @@ export function DcfCalculatorCard() {
           <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{linkedLabel}</Badge>
           <span className="text-xs text-muted-foreground">Assumptions tracked in status drawer</span>
           <Button size="sm" variant="outline">Estimate for me</Button>
-          <Button size="sm" onClick={() => setGenerated(true)} disabled={!canGenerate}>Generate Cashflow</Button>
+          <Button size="sm" onClick={handleGenerateCashflow} disabled={!canGenerate} title={!canGenerate ? 'Complete purchase price, Base NOI, hold period, growth, terminal cap and discount rate before generating cashflow.' : undefined}>{cashflowOutOfDate ? 'Regenerate Cashflow' : 'Generate Cashflow'}</Button>
           <SaveBackButton build={() => ({ purchase_price: valueOrUndefined(fields.price), valuation: valueOrUndefined(fields.price) })} />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-          <div className="text-sm font-semibold text-primary">{isComplete ? 'DCF Outputs Generated' : EMPTY_STATUS}</div>
-          {!isComplete && <p className="mt-1 text-xs text-muted-foreground">{EMPTY_HELPER}</p>}
+          <div className="text-sm font-semibold text-primary">{cashflowCurrent ? 'Cashflow generated' : cashflowOutOfDate ? 'Cashflow out of date' : EMPTY_STATUS}</div>
+          {!cashflowCurrent && !cashflowOutOfDate && <p className="mt-1 text-xs text-muted-foreground">{EMPTY_HELPER}</p>}
+          {cashflowCurrent && <p className="mt-1 text-xs text-emerald-200">Cashflow generated · {generatedAt ? new Date(generatedAt).toLocaleString() : 'Generated'} · {DCF_CALCULATION_VERSION}</p>}
+          {cashflowOutOfDate && <p className="mt-1 text-xs text-amber-200">Cashflow out of date · Last generated {generatedAt ? new Date(generatedAt).toLocaleString() : 'previously'} · {DCF_CALCULATION_VERSION}</p>}
         </div>
 
         <div className="rounded-lg border bg-muted/20 p-3">
           <div className="grid gap-3 md:grid-cols-[minmax(220px,320px)_1fr]">
             <div>
               <Label className="text-xs">NOI Treatment Mode</Label>
-              <Select value={noiTreatmentMode} onValueChange={(v) => { setNoiTreatmentMode(v as NoiTreatmentMode); setNoiTreatmentTouched(true); setGenerated(false); }}>
+              <Select value={noiTreatmentMode} onValueChange={(v) => { setNoiTreatmentMode(v as NoiTreatmentMode); setNoiTreatmentTouched(true); }}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="adjusted">NOI already vacancy-adjusted</SelectItem>
@@ -299,6 +371,11 @@ export function DcfCalculatorCard() {
               {parsed.leverageEnabled && !parsed.debtInputsValid && <p className="text-amber-200">Loan amount is populated, so interest rate and a positive loan term are required.</p>}
               {fields.hold && !parsed.holdInteger && <p className="text-amber-200">Hold period must be a positive whole number.</p>}
               {vacancyMayBeDoubleCounted && <p className="text-amber-200">Base NOI appears to already include vacancy. Applying vacancy again may double-count vacancy loss.</p>}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button type="button" size="sm" variant={noneConfirmed.acqCosts ? 'secondary' : 'outline'} className="h-7 text-xs" onClick={() => setNoneConfirmed((v) => ({ ...v, acqCosts: !v.acqCosts }))}>Acquisition costs none</Button>
+                <Button type="button" size="sm" variant={noneConfirmed.annualCapex ? 'secondary' : 'outline'} className="h-7 text-xs" onClick={() => setNoneConfirmed((v) => ({ ...v, annualCapex: !v.annualCapex }))}>Annual capex none</Button>
+                <Button type="button" size="sm" variant={noneConfirmed.downtimeMonths ? 'secondary' : 'outline'} className="h-7 text-xs" onClick={() => setNoneConfirmed((v) => ({ ...v, downtimeMonths: !v.downtimeMonths }))}>Downtime none</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -343,10 +420,14 @@ export function DcfCalculatorCard() {
         <Separator />
 
         <div>
-          <Label className="mb-2 block">Yearly Cash Flow</Label>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <Label>{showFullSchedule ? 'Full cashflow schedule' : 'Cashflow preview — first 5 years'}</Label>
+            {generatedRows.length > 5 && <Button size="sm" variant="outline" onClick={() => setShowFullSchedule((v) => !v)}>{showFullSchedule ? 'Show preview only' : 'View full cashflow schedule'}</Button>}
+          </div>
           {!result ? <PendingPanel /> : (
-            <ScrollArea className="h-[320px] rounded border"><Table><TableHeader className="sticky top-0 bg-background"><TableRow><TableHead>Yr</TableHead><TableHead className="text-right">NOI</TableHead><TableHead className="text-right">Capex</TableHead><TableHead className="text-right">Debt Service</TableHead><TableHead className="text-right">Unlevered CF</TableHead><TableHead className="text-right">Levered CF</TableHead><TableHead className="text-right">Loan Balance</TableHead></TableRow></TableHeader><TableBody>{result.rows.map(r => <TableRow key={r.year}><TableCell>{r.year}</TableCell><TableCell className="text-right">{fmt0(r.noi)}</TableCell><TableCell className="text-right">{fmt0(r.capex)}</TableCell><TableCell className="text-right">{fmt0(r.debtService)}</TableCell><TableCell className="text-right">{fmt0(r.unleveredCf)}</TableCell><TableCell className="text-right font-medium">{fmt0(r.leveredCf)}</TableCell><TableCell className="text-right text-muted-foreground">{fmt0(r.loanBalance)}</TableCell></TableRow>)}</TableBody></Table></ScrollArea>
+            <ScrollArea className="h-[360px] rounded border"><Table><TableHeader className="sticky top-0 bg-background"><TableRow><TableHead>Year</TableHead><TableHead className="text-right">Opening NOI</TableHead><TableHead className="text-right">Vacancy / NOI Adjustment</TableHead><TableHead className="text-right">Effective NOI</TableHead><TableHead className="text-right">Rental Growth Applied</TableHead><TableHead className="text-right">Capex</TableHead><TableHead className="text-right">Downtime Adjustment</TableHead><TableHead className="text-right">Unlevered Cash Flow</TableHead><TableHead className="text-right">Debt Service</TableHead><TableHead className="text-right">Interest Component</TableHead><TableHead className="text-right">Principal Component</TableHead><TableHead className="text-right">Levered Cash Flow</TableHead><TableHead className="text-right">Loan Balance</TableHead><TableHead className="text-right">Terminal Value</TableHead><TableHead className="text-right">Selling Costs</TableHead><TableHead className="text-right">Net Sale Proceeds to Equity</TableHead><TableHead className="text-right">Final Year Total Cash Flow</TableHead></TableRow></TableHeader><TableBody>{(showFullSchedule ? generatedRows : generatedRows.slice(0, 5)).map(r => <TableRow key={r.year}><TableCell>{r.year}</TableCell><TableCell className="text-right">{fmt0(r.openingNoi)}</TableCell><TableCell className="text-right">{fmt0(r.vacancyAdjustment)}</TableCell><TableCell className="text-right">{fmt0(r.effectiveNoi)}</TableCell><TableCell className="text-right">{r.rentalGrowthApplied}%</TableCell><TableCell className="text-right">{fmt0(r.capex)}</TableCell><TableCell className="text-right">{fmt0(r.downtimeAdjustment)}</TableCell><TableCell className="text-right">{fmt0(r.unleveredCashFlow)}</TableCell><TableCell className="text-right">{fmt0(r.debtService)}</TableCell><TableCell className="text-right">{fmt0(r.interestComponent)}</TableCell><TableCell className="text-right">{fmt0(r.principalComponent)}</TableCell><TableCell className="text-right font-medium">{fmt0(r.leveredCashFlow)}</TableCell><TableCell className="text-right text-muted-foreground">{fmt0(r.loanBalance)}</TableCell><TableCell className="text-right">{r.terminalValue == null ? PENDING : fmt0(r.terminalValue)}</TableCell><TableCell className="text-right">{r.sellingCosts == null ? PENDING : fmt0(r.sellingCosts)}</TableCell><TableCell className="text-right">{r.netSaleProceedsToEquity == null ? PENDING : fmt0(r.netSaleProceedsToEquity)}</TableCell><TableCell className="text-right">{r.finalYearTotalCashFlow == null ? PENDING : fmt0(r.finalYearTotalCashFlow)}</TableCell></TableRow>)}</TableBody></Table></ScrollArea>
           )}
+          <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!result}>Include in client report</Button><Button size="sm" variant="outline" disabled={!result}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result}>Save as scenario</Button></div>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div className="rounded border p-3"><Label>Exit Cap Sensitivity</Label>{result ? result.sensitivityTable.map(r => <div key={r.exitCapRatePct} className="flex justify-between text-sm"><span>{r.exitCapRatePct}%</span><span>{fmt0(r.netSaleProceeds)}</span></div>) : <PendingPanel compact />}</div>
