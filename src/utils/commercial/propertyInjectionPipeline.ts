@@ -216,7 +216,7 @@ export function cascadePrefillIntoMasterStore(
   const blank: string[] = [];
 
   for (const req of getRequiredAssumptionsFor(prefill.domain)) {
-    const raw = (prefill as Record<string, unknown>)[req.key];
+    const raw = (prefill as unknown as Record<string, unknown>)[req.key];
     const value = raw === undefined || raw === null || raw === '' ? null : (raw as AssumptionValue);
 
     if (value === null) {
