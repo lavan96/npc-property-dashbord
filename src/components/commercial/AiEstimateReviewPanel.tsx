@@ -308,12 +308,17 @@ export function AiEstimateReviewPanel({ open, onOpenChange, estimates, onApplied
               const row = rows[est.key];
               if (!row) return null;
               const isDone = row.status !== 'pending';
+              const insufficient =
+                est.suggestedValue === null ||
+                est.suggestedValue === undefined ||
+                est.suggestedValue === '';
               return (
                 <div
                   key={est.key}
                   className={`rounded-lg border p-3 ${
                     row.status === 'accepted' ? 'border-emerald-500/40 bg-emerald-500/5'
                     : row.status === 'rejected' ? 'border-destructive/40 bg-destructive/5 opacity-70'
+                    : insufficient ? 'border-destructive/30 bg-destructive/5'
                     : 'border-border/70 bg-card/60'
                   }`}
                 >
@@ -321,7 +326,7 @@ export function AiEstimateReviewPanel({ open, onOpenChange, estimates, onApplied
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={row.selected}
-                        disabled={isDone}
+                        disabled={isDone || insufficient}
                         onCheckedChange={(v) =>
                           setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], selected: Boolean(v) } }))
                         }
@@ -330,11 +335,18 @@ export function AiEstimateReviewPanel({ open, onOpenChange, estimates, onApplied
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-foreground">{est.label}</span>
-                          <Badge variant="outline" className={confidenceBadge[est.confidence]}>
-                            {est.confidence} confidence
-                          </Badge>
+                          {!insufficient && (
+                            <Badge variant="outline" className={confidenceBadge[est.confidence]}>
+                              {est.confidence} confidence
+                            </Badge>
+                          )}
                           <Badge variant="outline">{est.source ?? 'AI Estimate'}</Badge>
-                          {est.specialistReview && (
+                          {insufficient && (
+                            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">
+                              <AlertTriangle className="mr-1 h-3 w-3" /> Insufficient information
+                            </Badge>
+                          )}
+                          {est.specialistReview && !insufficient && (
                             <Badge variant="outline" className="border-red-500/40 bg-red-500/10 text-red-300">
                               <AlertTriangle className="mr-1 h-3 w-3" /> Specialist review
                             </Badge>
@@ -358,49 +370,66 @@ export function AiEstimateReviewPanel({ open, onOpenChange, estimates, onApplied
 
                     {!isDone && (
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], editing: !prev[est.key].editing } }))
-                          }
-                        >
-                          <Pencil className="mr-1 h-3 w-3" />
-                          {row.editing ? 'Cancel edit' : 'Edit'}
-                        </Button>
+                        {!insufficient && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], editing: !prev[est.key].editing } }))
+                            }
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            {row.editing ? 'Cancel edit' : 'Edit'}
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => {
                           setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], status: 'rejected' } }));
                         }}>
-                          <X className="mr-1 h-3 w-3" /> Reject
+                          <X className="mr-1 h-3 w-3" /> {insufficient ? 'Dismiss' : 'Reject'}
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => handleMarkVerified(est)}>
-                          <ShieldCheck className="mr-1 h-3 w-3" /> Mark Verified
-                        </Button>
-                        <Button size="sm" onClick={() => {
-                          const edited = row.editing && row.editValue !== String(est.suggestedValue);
-                          const value = edited ? parseEdited(row.editValue, est.suggestedValue) : est.suggestedValue;
-                          applyOne(est, value, edited);
-                          setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], status: 'accepted' } }));
-                          onApplied?.([est.key]);
-                          toast.success(`Applied "${est.label}".`);
-                        }}>
-                          Accept
-                        </Button>
+                        {!insufficient && (
+                          <Button size="sm" variant="secondary" onClick={() => handleMarkVerified(est)}>
+                            <ShieldCheck className="mr-1 h-3 w-3" /> Mark Verified
+                          </Button>
+                        )}
+                        {!insufficient && (
+                          <Button size="sm" onClick={() => {
+                            const edited = row.editing && row.editValue !== String(est.suggestedValue);
+                            const value = edited ? parseEdited(row.editValue, est.suggestedValue) : est.suggestedValue;
+                            applyOne(est, value, edited);
+                            setRows(prev => ({ ...prev, [est.key]: { ...prev[est.key], status: 'accepted' } }));
+                            onApplied?.([est.key]);
+                            toast.success(`Applied "${est.label}".`);
+                          }}>
+                            Accept
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    <Field label="Current value" value={fmt(est.currentValue, est.unit)} />
-                    <Field label="Suggested value" value={fmt(est.suggestedValue, est.unit)} />
-                    <Field label="Suggested range" value={fmtRange(est.suggestedRange, est.unit)} />
-                    <Field label="Confidence" value={est.confidence} />
-                    <List label="Source basis" values={est.sourceBasis} />
-                    <List label="Missing information" values={est.missingInformation} />
-                    <List label="Risk warning" values={est.riskNotes} />
-                  </div>
+                  {insufficient ? (
+                    <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                      Insufficient information to estimate this field. Please add property details, lease information, contract data or market evidence.
+                      {est.missingInformation && est.missingInformation.length > 0 && (
+                        <ul className="mt-1 list-disc pl-4 opacity-80">
+                          {est.missingInformation.map((m, i) => <li key={i}>{m}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <Field label="Current value" value={fmt(est.currentValue, est.unit)} />
+                      <Field label="Suggested value" value={fmt(est.suggestedValue, est.unit)} />
+                      <Field label="Suggested range" value={fmtRange(est.suggestedRange, est.unit)} />
+                      <Field label="Confidence" value={est.confidence} />
+                      <List label="Source basis" values={est.sourceBasis} />
+                      <List label="Missing information" values={est.missingInformation} />
+                      <List label="Risk warning" values={est.riskNotes} />
+                    </div>
+                  )}
 
-                  {row.editing && !isDone && (
+                  {row.editing && !isDone && !insufficient && (
                     <div className="mt-3 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Edit before applying:</span>
                       <Input
