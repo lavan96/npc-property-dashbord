@@ -470,16 +470,18 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     Documents: [...result.documentChecklist.slice(0, 3)],
   }), [availableEquity, businessEbitda, showBusinessFields, purchasePrice, estimatedValue, assetSubtype, passingRent, marketRent, nonRecoverable, leaseDocs, rate, term, maxLvr, gstTreatment, gstCashflow, result.documentChecklist]);
   const criticalMissingItems = Object.entries(missingInformationGroups).flatMap(([group, items]) => items.map(item => ({ group, item }))).slice(0, 5);
+  const fmtMoneyPending = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const noiSourceMetrics = [
-    { label: 'Actual NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.actualNoi) : 'Pending' },
-    { label: 'Stabilised NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.stabilisedNoi) : 'Pending' },
-    { label: 'Lender-adjusted NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.lenderAdjustedNoi) : 'Pending' },
+    { label: 'Actual NOI', value: assessmentReady ? fmtMoneyPending(result.noi.actualNoi) : 'Pending' },
+    { label: 'Stabilised NOI', value: assessmentReady ? fmtMoneyPending(result.noi.stabilisedNoi) : 'Pending' },
+    { label: 'Lender-adjusted NOI', value: assessmentReady ? fmtMoneyPending(result.noi.lenderAdjustedNoi) : 'Pending' },
   ];
   const gstSourceMetrics = [
-    { label: 'GST cashflow required', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.gstCashflowRequirement) : 'Pending' },
-    { label: 'GST economic cost', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.gst.economicCost) : 'Pending' },
-    { label: 'Net acquisition cost', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.totalCostBase) : 'Pending' },
+    { label: 'GST cashflow required', value: assessmentReady ? fmtMoneyPending(result.fundsToComplete.gstCashflowRequirement) : 'Pending' },
+    { label: 'GST economic cost', value: assessmentReady ? fmtMoneyPending(result.fundsToComplete.gst.economicCost) : 'Pending' },
+    { label: 'Net acquisition cost', value: assessmentReady ? fmtMoneyPending(result.fundsToComplete.totalCostBase) : 'Pending' },
   ];
+
   const warningSummary = useMemo(() => {
     if (noRequiredInputsStarted) return [];
     const critical = missingRequiredInputs.map(w => ({ severity: 'Required', text: w }));
