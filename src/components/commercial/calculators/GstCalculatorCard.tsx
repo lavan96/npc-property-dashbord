@@ -16,24 +16,40 @@ const fmt = (n: number) =>
     : 'Pending';
 
 const PENDING = 'Pending';
-type GstTreatmentInput = GstTreatment | 'unknown';
+type GstTreatmentInput = GstTreatment | 'unknown' | 'out_of_scope' | 'no_gst' | 'custom_review';
 type ConfirmationState = 'yes' | 'no' | 'unknown';
-type GstFieldKey = 'price' | 'treatment' | 'registered' | 'goingConcernConfirmed';
+type GstFieldKey = 'price' | 'treatment' | 'registered' | 'goingConcernConfirmed' | 'itcClaimability';
 type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'Contract Extracted' | 'AI Estimate' | 'Manual' | 'User Override' | 'Solicitor Confirmed' | 'Accountant Confirmed' | 'Verified';
 interface SourceCandidate<T> { value: T; source: SourceState; detail: string }
 interface AssumptionHistoryEntry { field: GstFieldKey; previousValue: string; nextValue: string; previousSource: SourceState; nextSource: SourceState; note: string }
 
-const num = (v: string) => (v === '' ? 0 : Number(v));
-const optionalNum = (v: string) => (v === '' ? undefined : Number(v));
+const parseNumeric = (v: unknown): number | null => {
+  if (v === undefined || v === null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const cleaned = String(v).replace(/[$,\s]/g, '');
+  if (cleaned === '') return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const optionalNum = (v: string) => parseNumeric(v) ?? undefined;
 const hasValue = (v: unknown) => v !== undefined && v !== null && v !== '';
-const firstNumber = (...xs: unknown[]) => xs.map(Number).find(Number.isFinite);
+const firstNumber = (...xs: unknown[]) => {
+  for (const x of xs) {
+    const parsed = parseNumeric(x);
+    if (parsed !== null) return parsed;
+  }
+  return undefined;
+};
 const firstString = (...xs: unknown[]) => xs.find(x => typeof x === 'string' && x.trim() !== '') as string | undefined;
 const normalizeTreatment = (v: unknown): GstTreatmentInput | undefined => {
   const s = String(v ?? '').toLowerCase().replace(/[\s-]+/g, '_');
   if (['going_concern', 'gst_free_going_concern'].includes(s)) return 'going_concern';
   if (['margin_scheme', 'margin'].includes(s)) return 'margin_scheme';
-  if (['standard', 'gst_inclusive', 'plus_gst', 'taxable_supply'].includes(s)) return 'standard';
-  if (['input_taxed', 'out_of_scope', 'no_gst'].includes(s)) return 'input_taxed';
+  if (['standard', 'gst_inclusive', 'plus_gst', 'taxable_supply', 'taxable'].includes(s)) return 'standard';
+  if (['input_taxed'].includes(s)) return 'no_gst';
+  if (['out_of_scope'].includes(s)) return 'out_of_scope';
+  if (['no_gst', 'no_gst_applicable'].includes(s)) return 'no_gst';
+  if (['custom', 'specialist_review', 'custom_specialist_review'].includes(s)) return 'custom_review';
   return undefined;
 };
 const normalizeConfirmation = (v: unknown): ConfirmationState | undefined => {
@@ -43,6 +59,11 @@ const normalizeConfirmation = (v: unknown): ConfirmationState | undefined => {
   if (['yes', 'true', 'confirmed', 'registered', 'verified'].includes(s)) return 'yes';
   if (['no', 'false', 'not_registered', 'unconfirmed'].includes(s)) return 'no';
   return undefined;
+};
+const persistedTreatment = (v: GstTreatmentInput): GstTreatment | undefined => {
+  if (v === 'unknown' || v === 'custom_review') return undefined;
+  if (v === 'out_of_scope' || v === 'no_gst') return 'input_taxed';
+  return v;
 };
 const sourceLabel = (source: SourceState) => ({
   Blank: 'Blank',
@@ -65,11 +86,12 @@ export function GstCalculatorCard() {
   const [priorCost, setPriorCost] = useState('');
   const [registered, setRegistered] = useState<ConfirmationState>('unknown');
   const [goingConcernConfirmed, setGoingConcernConfirmed] = useState<ConfirmationState>('unknown');
-  const [sources, setSources] = useState<Record<GstFieldKey, SourceState>>({ price: 'Blank', treatment: 'Blank', registered: 'Blank', goingConcernConfirmed: 'Blank' });
+  const [itcClaimability, setItcClaimability] = useState<ConfirmationState>('unknown');
+  const [sources, setSources] = useState<Record<GstFieldKey, SourceState>>({ price: 'Blank', treatment: 'Blank', registered: 'Blank', goingConcernConfirmed: 'Blank', itcClaimability: 'Blank' });
   const [history, setHistory] = useState<AssumptionHistoryEntry[]>([]);
   const [sourceConflicts, setSourceConflicts] = useState<Partial<Record<GstFieldKey, SourceCandidate<string>>>>({});
 
-  const currentValues: Record<GstFieldKey, string> = { price, treatment, registered, goingConcernConfirmed };
+  const currentValues: Record<GstFieldKey, string> = { price, treatment, registered, goingConcernConfirmed, itcClaimability };
   const pushHistory = (field: GstFieldKey, previousValue: string, nextValue: string, previousSource: SourceState, nextSource: SourceState, note: string) => {
     if (previousValue === nextValue && previousSource === nextSource) return;
     setHistory(prev => [{ field, previousValue, nextValue, previousSource, nextSource, note }, ...prev].slice(0, 8));
@@ -88,6 +110,7 @@ export function GstCalculatorCard() {
       if (field === 'treatment') setTreatment(candidate.value as GstTreatmentInput);
       if (field === 'registered') setRegistered(candidate.value as ConfirmationState);
       if (field === 'goingConcernConfirmed') setGoingConcernConfirmed(candidate.value as ConfirmationState);
+      if (field === 'itcClaimability') setItcClaimability(candidate.value as ConfirmationState);
       setSources(prev => ({ ...prev, [field]: candidate.source }));
       setSourceConflicts(prev => { const next = { ...prev }; delete next[field]; return next; });
     }
@@ -101,6 +124,7 @@ export function GstCalculatorCard() {
     if (field === 'treatment') setTreatment(candidate.value as GstTreatmentInput);
     if (field === 'registered') setRegistered(candidate.value as ConfirmationState);
     if (field === 'goingConcernConfirmed') setGoingConcernConfirmed(candidate.value as ConfirmationState);
+    if (field === 'itcClaimability') setItcClaimability(candidate.value as ConfirmationState);
     setSources(prev => ({ ...prev, [field]: candidate.source }));
     setSourceConflicts(prev => { const next = { ...prev }; delete next[field]; return next; });
   };
@@ -125,6 +149,7 @@ export function GstCalculatorCard() {
     const contractGoingConcern = normalizeConfirmation(rawProperty.contract_going_concern_confirmed ?? rawProperty.going_concern_conditions_confirmed ?? rawProperty.extracted_going_concern_confirmed);
     const solicitorGoingConcern = normalizeConfirmation(rawProperty.solicitor_going_concern_confirmed ?? rawProperty.solicitorConfirmedGoingConcern);
     const accountantGoingConcern = normalizeConfirmation(rawProperty.accountant_going_concern_confirmed ?? rawProperty.accountantConfirmedGoingConcern);
+    const savedItcClaimability = normalizeConfirmation(rawProperty.gst_claimable_as_itc ?? rawProperty.gstClaimableAsInputTaxCredit ?? rawProperty.itc_claimability_confirmed);
     return {
       price: [
         prefill?.purchasePrice != null ? { value: String(prefill.purchasePrice), source: 'Property Profile' as SourceState, detail: 'Commercial / Industrial property profile purchase price' } : undefined,
@@ -146,6 +171,7 @@ export function GstCalculatorCard() {
         solicitorGoingConcern ? { value: solicitorGoingConcern, source: 'Solicitor Confirmed' as SourceState, detail: 'Solicitor confirmation flag' } : undefined,
         accountantGoingConcern ? { value: accountantGoingConcern, source: 'Accountant Confirmed' as SourceState, detail: 'Accountant confirmation flag' } : undefined,
       ].find(Boolean) as SourceCandidate<string> | undefined,
+      itcClaimability: savedItcClaimability ? { value: savedItcClaimability, source: 'Verified' as SourceState, detail: 'Saved ITC claimability confirmation flag' } : undefined,
     };
   }, [prefill, property]);
 
@@ -154,22 +180,36 @@ export function GstCalculatorCard() {
     applyCascadedValue('treatment', sourceCandidates.treatment);
     applyCascadedValue('registered', sourceCandidates.registered);
     applyCascadedValue('goingConcernConfirmed', sourceCandidates.goingConcernConfirmed);
+    applyCascadedValue('itcClaimability', sourceCandidates.itcClaimability);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceCandidates]);
 
-  const hasRequiredInputs = num(price) > 0 && treatment !== 'unknown' && registered !== 'unknown' && (treatment !== 'going_concern' || goingConcernConfirmed !== 'unknown');
+  const purchasePriceValue = parseNumeric(price);
+  const priorCostValue = parseNumeric(priorCost);
+  const isZeroGstTreatment = treatment === 'input_taxed' || treatment === 'out_of_scope' || treatment === 'no_gst';
+  const isSpecialistTreatment = treatment === 'unknown' || treatment === 'custom_review';
+  const dataEntryStarted = purchasePriceValue !== null || treatment !== 'unknown' || registered !== 'unknown' || goingConcernConfirmed !== 'unknown' || itcClaimability !== 'unknown';
+  const hasRequiredInputs = purchasePriceValue !== null && purchasePriceValue > 0 && treatment !== 'unknown' && treatment !== 'custom_review' && (treatment !== 'standard' || (registered !== 'unknown' && itcClaimability !== 'unknown')) && (treatment !== 'going_concern' || goingConcernConfirmed === 'yes') && (treatment !== 'margin_scheme' || priorCostValue !== null);
+  const formulaTreatment: GstTreatment = isZeroGstTreatment ? 'input_taxed' : treatment as GstTreatment;
+  const purchaserCanClaimItc = registered === 'yes' && itcClaimability === 'yes';
   const result = useMemo(() => hasRequiredInputs ? calculateCommercialGst({
-    purchasePrice: num(price), treatment, priorCost: num(priorCost), purchaserRegistered: registered === 'yes',
-  }) : null, [hasRequiredInputs, price, treatment, priorCost, registered]);
-  const assessment = useMemo(() => hasRequiredInputs ? calculateCommercialGstEngine({ purchasePrice: num(price), treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : 'unknown', vendorGstRegistered: 'unknown', purchaserGstRegistered: registered, goingConcernAgreedInWriting: goingConcernConfirmed, enterpriseCarriedOnUntilSettlement: goingConcernConfirmed, supplierProvidesAllThingsNecessary: goingConcernConfirmed, propertyLeasedOrOperatingEnterprise: goingConcernConfirmed, gstClaimableAsInputTaxCredit: registered, estimatedRefundTiming: 'oneToThreeMonths' }) : null, [hasRequiredInputs, price, treatment, registered, goingConcernConfirmed]);
-  const verificationStatus = hasRequiredInputs ? assessment?.gstVerificationStatus ?? 'Unknown' : 'Awaiting GST Inputs';
+    purchasePrice: purchasePriceValue, treatment: formulaTreatment, priorCost: priorCostValue ?? 0, purchaserRegistered: purchaserCanClaimItc,
+  }) : null, [hasRequiredInputs, purchasePriceValue, formulaTreatment, priorCostValue, purchaserCanClaimItc]);
+  const assessment = useMemo(() => hasRequiredInputs ? calculateCommercialGstEngine({ purchasePrice: purchasePriceValue, treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : isZeroGstTreatment ? 'unknown' : 'unknown', vendorGstRegistered: 'unknown', purchaserGstRegistered: registered, goingConcernAgreedInWriting: goingConcernConfirmed, enterpriseCarriedOnUntilSettlement: goingConcernConfirmed, supplierProvidesAllThingsNecessary: goingConcernConfirmed, propertyLeasedOrOperatingEnterprise: goingConcernConfirmed, gstClaimableAsInputTaxCredit: purchaserCanClaimItc ? 'yes' : 'no', estimatedRefundTiming: 'oneToThreeMonths' }) : null, [hasRequiredInputs, purchasePriceValue, treatment, isZeroGstTreatment, registered, goingConcernConfirmed, purchaserCanClaimItc]);
+  const verificationStatus = isSpecialistTreatment && dataEntryStarted ? 'Specialist Review Required' : isZeroGstTreatment && hasRequiredInputs ? 'Verified' : hasRequiredInputs ? assessment?.gstVerificationStatus ?? 'Unknown' : 'Awaiting GST Inputs';
   const canExtractFromContract = Boolean(prefill);
+  const gstAmountValue = hasRequiredInputs && assessment && result ? (assessment.gstAmount || result.gstAmount) : null;
+  const gstClaimableValue = hasRequiredInputs && assessment && result ? (assessment.gstClaimableAmount || result.gstClaimable) : null;
+  const settlementCashflowValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 0 : assessment.gstSettlementCashflowRequirement) : null;
+  const economicCostValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 0 : assessment.gstEconomicCost) : null;
+  const netAcquisitionCostValue = hasRequiredInputs && result && purchasePriceValue !== null ? (isZeroGstTreatment ? result.netAcquisitionCost : (assessment?.netAcquisitionCost || result.netAcquisitionCost)) : null;
+  const timingRiskValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 'low' : assessment.gstTimingRisk) : null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>GST Treatment</CardTitle>
-        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Editable data cascade</Badge><Badge variant={verificationStatus === "Verified" ? "default" : "outline"} className={verificationStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{verificationStatus}</Badge><Button size="sm" variant="outline" disabled={!canExtractFromContract} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "Link a property, paste contract text or upload contract data before estimating GST treatment."}>Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: treatment === "unknown" ? undefined : treatment })} /></div>
+        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Editable data cascade</Badge><Badge variant={verificationStatus === "Verified" ? "default" : verificationStatus === "Specialist Review Required" ? "destructive" : "outline"} className={verificationStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{verificationStatus}</Badge><Button size="sm" variant="outline" disabled={!canExtractFromContract} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "Link a property, paste contract text or upload contract data before estimating GST treatment."}>Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: persistedTreatment(treatment) })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
@@ -182,10 +222,12 @@ export function GstCalculatorCard() {
               <SelectTrigger>{treatment === 'unknown' ? <span className="text-muted-foreground">Select GST treatment</span> : <SelectValue />}</SelectTrigger>
               <SelectContent>
                 <SelectItem value="unknown">Unknown</SelectItem>
-                <SelectItem value="going_concern">Going Concern</SelectItem>
+                <SelectItem value="standard">Taxable Supply</SelectItem>
+                <SelectItem value="going_concern">GST-Free Going Concern</SelectItem>
                 <SelectItem value="margin_scheme">Margin Scheme</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="input_taxed">Input Taxed</SelectItem>
+                <SelectItem value="out_of_scope">Out of Scope</SelectItem>
+                <SelectItem value="no_gst">No GST Applicable</SelectItem>
+                <SelectItem value="custom_review">Custom / Specialist Review</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -194,6 +236,7 @@ export function GstCalculatorCard() {
           )}
           <FieldConflict conflict={sourceConflicts.treatment} onKeep={() => setSourceConflicts(prev => { const next = { ...prev }; delete next.treatment; return next; })} onUse={() => useSourceValue('treatment', sourceConflicts.treatment)} />
           <SelectField label="Purchaser GST-Registered" value={registered} source={sources.registered} onChange={v => markOverride('registered', v, setRegistered)} placeholder="Confirm purchaser GST registration" conflict={sourceConflicts.registered} onKeep={() => setSourceConflicts(prev => { const next = { ...prev }; delete next.registered; return next; })} onUse={() => useSourceValue('registered', sourceConflicts.registered)} />
+          <SelectField label="GST Claimable as ITC" value={itcClaimability} source={sources.itcClaimability} onChange={v => markOverride('itcClaimability', v, setItcClaimability)} placeholder="Confirm ITC claimability" conflict={sourceConflicts.itcClaimability} onKeep={() => setSourceConflicts(prev => { const next = { ...prev }; delete next.itcClaimability; return next; })} onUse={() => useSourceValue('itcClaimability', sourceConflicts.itcClaimability)} />
           <SelectField label="Going concern conditions confirmed?" value={goingConcernConfirmed} source={sources.goingConcernConfirmed} onChange={v => markOverride('goingConcernConfirmed', v, setGoingConcernConfirmed)} placeholder="Confirm contract conditions" conflict={sourceConflicts.goingConcernConfirmed} onKeep={() => setSourceConflicts(prev => { const next = { ...prev }; delete next.goingConcernConfirmed; return next; })} onUse={() => useSourceValue('goingConcernConfirmed', sourceConflicts.goingConcernConfirmed)} />
           {history.length > 0 && (
             <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
@@ -209,11 +252,11 @@ export function GstCalculatorCard() {
               <p className="mt-1 text-xs text-muted-foreground">Link a property, extract contract terms or enter purchase price and GST treatment to estimate settlement cashflow and economic cost.</p>
             </div>
           )}
-          <Row label="GST Amount" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstAmount || result.gstAmount) : PENDING} />
-          <Row label="GST Claimable (ITC)" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstClaimableAmount || result.gstClaimable) : PENDING} /><Row label="GST Settlement Cashflow" value={hasRequiredInputs && assessment ? fmt(assessment.gstSettlementCashflowRequirement) : PENDING} /><Row label="GST Economic Cost" value={hasRequiredInputs && assessment ? fmt(assessment.gstEconomicCost) : PENDING} /><Row label="GST Timing Risk" value={hasRequiredInputs && assessment ? assessment.gstTimingRisk : PENDING} />
+          <Row label="GST Amount" value={gstAmountValue === null ? PENDING : fmt(gstAmountValue)} />
+          <Row label="GST Claimable (ITC)" value={gstClaimableValue === null ? PENDING : fmt(gstClaimableValue)} /><Row label="GST Settlement Cashflow" value={settlementCashflowValue === null ? PENDING : fmt(settlementCashflowValue)} /><Row label="GST Economic Cost" value={economicCostValue === null ? PENDING : fmt(economicCostValue)} /><Row label="GST Timing Risk" value={timingRiskValue ?? PENDING} />
           <Separator />
-          <Row label="Net Acquisition Cost" value={hasRequiredInputs && assessment && result ? fmt(assessment.netAcquisitionCost || result.netAcquisitionCost) : PENDING} highlight />
-          {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-2">{result.notes}</p>}{hasRequiredInputs && assessment?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
+          <Row label="Net Acquisition Cost" value={netAcquisitionCostValue === null ? PENDING : fmt(netAcquisitionCostValue)} highlight />
+          {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-2">{result.notes}</p>}{hasRequiredInputs && !isZeroGstTreatment && assessment?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
         </div>
       </CardContent>
     </Card>
