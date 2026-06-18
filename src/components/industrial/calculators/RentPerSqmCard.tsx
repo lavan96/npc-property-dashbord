@@ -37,6 +37,16 @@ export function RentPerSqmCard() {
 
   const hasRequiredInputs = hasValue(baseRent.value) && hasValue(gla.value) && hasValue(outgoings.value);
 
+  useEffect(() => {
+    if (!prefill) {
+      setBaseRent('');
+      setGla('');
+      setOutgoings('');
+    }
+  }, [prefill]);
+
+  const hasRequiredInputs = hasValue(baseRent) && hasValue(gla) && hasValue(outgoings);
+
   const result = useMemo(() => calcRentPerSqm({
     baseRentPa: num(baseRent.value),
     glaSqm: num(gla.value),

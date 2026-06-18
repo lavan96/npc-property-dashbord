@@ -49,6 +49,18 @@ export function SiteCoverCard() {
 
   const hasRequiredInputs = [gla.value, site.value, hardstand.value, office.value, price.value].every(hasValue);
 
+  useEffect(() => {
+    if (!prefill) {
+      setGla('');
+      setSite('');
+      setHardstand('');
+      setOffice('');
+      setPrice('');
+    }
+  }, [prefill]);
+
+  const hasRequiredInputs = [gla, site, hardstand, office, price].every(hasValue);
+
   const result = useMemo(() => calcSiteMetrics({
     glaSqm: num(gla.value),
     siteAreaSqm: num(site.value),
