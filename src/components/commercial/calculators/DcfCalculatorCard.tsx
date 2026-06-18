@@ -75,10 +75,16 @@ const fieldLabels: Record<DcfFieldKey, string> = {
 };
 
 const fmt0 = (n: number) => Number.isFinite(n) ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n) : PENDING;
-const num = (v: string) => (v === '' ? 0 : Number(v));
-const valueOrUndefined = (v: string) => (v === '' ? undefined : num(v));
-const isPositiveNumber = (v: string) => v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) > 0;
-const hasNumber = (v: string) => v.trim() !== '' && Number.isFinite(Number(v));
+const parseNumber = (value: string): number | null => {
+  const stripped = value.replace(/[$,%\s]/g, '').replace(/,/g, '');
+  if (stripped === '') return null;
+  const parsed = Number(stripped);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const num = (v: string) => parseNumber(v) ?? 0;
+const valueOrUndefined = (v: string) => parseNumber(v) ?? undefined;
+const isPositiveNumber = (v: string) => { const n = parseNumber(v); return n != null && n > 0; };
+const hasNumber = (v: string) => parseNumber(v) != null;
 const safePct = (n: number | null | undefined) => (n != null && Number.isFinite(n) ? `${n}%` : PENDING);
 const asNum = (...values: unknown[]) => values.map(Number).find((v) => Number.isFinite(v) && v !== 0);
 const candidate = (value: unknown, source: DcfSourceState, detail?: string): Candidate | undefined => {
@@ -101,6 +107,7 @@ const aiIncludesVacancy = (metadata: unknown): boolean | undefined => {
 export function DcfCalculatorCard() {
   const { prefill, property } = useCalculatorPrefill();
   const profile = useCommercialDealState((s) => s.profile);
+  const updateGlobal = useCommercialDealState((s) => s.updateGlobal);
   const [fields, setFields] = useState<FieldState>(blankFields);
   const [meta, setMeta] = useState<MetaState>(blankMeta);
   const [generated, setGenerated] = useState(false);
@@ -169,7 +176,6 @@ export function DcfCalculatorCard() {
       });
       return changed ? next : current;
     });
-    setGenerated(false);
   }, [cascade]);
 
   useEffect(() => {
@@ -211,17 +217,46 @@ export function DcfCalculatorCard() {
 
   const keepOverride = (key: DcfFieldKey) => setMeta((current) => ({ ...current, [key]: { ...current[key], pending: undefined, history: [...current[key].history, `${new Date().toISOString()}: Kept saved override instead of new source value.`] } }));
 
+  const parsed = useMemo(() => {
+    const values = Object.fromEntries(fieldKeys.map((key) => [key, parseNumber(fields[key])])) as Record<DcfFieldKey, number | null>;
+    const holdInteger = values.hold != null && Number.isInteger(values.hold) && values.hold > 0;
+    const leverageEnabled = values.loan != null && values.loan > 0;
+    const debtInputsValid = !leverageEnabled || ((values.interest ?? 0) > 0 && (values.term ?? 0) > 0);
+    const vacancyReady = noiTreatmentMode === 'adjusted' || values.vacancy != null;
+    const requiredReady = values.price != null && values.price > 0
+      && values.acqCosts != null
+      && values.initialNoi != null && values.initialNoi > 0
+      && holdInteger
+      && values.growth != null
+      && vacancyReady
+      && values.termCap != null && values.termCap > 0
+      && values.sellingCosts != null
+      && values.discount != null && values.discount > 0
+      && values.annualCapex != null
+      && values.downtimeMonths != null
+      && debtInputsValid;
+    return { values, holdInteger, leverageEnabled, debtInputsValid, requiredReady };
+  }, [fields, noiTreatmentMode]);
+
   const noiTreatmentConfirmed = noiTreatmentMode !== 'requires_confirmation';
   const vacancyMayBeDoubleCounted = noiTreatmentMode === 'apply' && (meta.initialNoi.source === 'NOI Tab' || meta.initialNoi.original?.detail === 'Vacancy included');
-  const canGenerate = noiTreatmentConfirmed && isPositiveNumber(fields.price) && isPositiveNumber(fields.initialNoi) && isPositiveNumber(fields.hold) && hasNumber(fields.growth) && isPositiveNumber(fields.termCap) && isPositiveNumber(fields.discount);
+  const canGenerate = noiTreatmentConfirmed && parsed.requiredReady;
   const isComplete = generated && canGenerate;
 
   const result = useMemo(() => {
     if (!isComplete) return null;
+    const v = parsed.values;
     return runDcfAssessment({
-      purchasePrice: num(fields.price), acquisitionCosts: num(fields.acqCosts), initialNoi: num(fields.initialNoi), holdPeriodYears: Math.max(1, num(fields.hold)), rentalGrowthPct: num(fields.growth), vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : num(fields.vacancy), terminalCapRatePct: num(fields.termCap), sellingCostsPct: num(fields.sellingCosts), discountRatePct: num(fields.discount), loanAmount: num(fields.loan), interestRatePct: num(fields.interest), loanTermYears: num(fields.term), annualCapex: num(fields.annualCapex), downtimeMonths: num(fields.downtimeMonths), exitCapSensitivityPct: [num(fields.termCap) - 0.5, num(fields.termCap), num(fields.termCap) + 0.5],
+      purchasePrice: v.price!, acquisitionCosts: v.acqCosts!, initialNoi: v.initialNoi!, holdPeriodYears: v.hold!, rentalGrowthPct: v.growth!, vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy!, terminalCapRatePct: v.termCap!, sellingCostsPct: v.sellingCosts!, discountRatePct: v.discount!, loanAmount: v.loan ?? 0, interestRatePct: v.interest ?? 0, loanTermYears: v.term ?? 0, annualCapex: v.annualCapex!, downtimeMonths: v.downtimeMonths!, exitCapSensitivityPct: [v.termCap! - 0.5, v.termCap!, v.termCap! + 0.5],
     });
-  }, [isComplete, fields, noiTreatmentMode]);
+  }, [isComplete, parsed, noiTreatmentMode]);
+
+  useEffect(() => {
+    if (!result) return;
+    const v = parsed.values;
+    updateGlobal('dcfInputs', { purchasePrice: v.price ?? undefined, acquisitionCosts: v.acqCosts ?? undefined, initialNoi: v.initialNoi ?? undefined, holdPeriodYears: v.hold ?? undefined, rentalGrowthPct: v.growth ?? undefined, vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy ?? undefined, terminalCapRatePct: v.termCap ?? undefined, sellingCostsPct: v.sellingCosts ?? undefined, discountRatePct: v.discount ?? undefined, loanAmount: v.loan ?? undefined, interestRatePct: v.interest ?? undefined, loanTermYears: v.term ?? undefined, annualCapex: v.annualCapex ?? undefined, downtimeMonths: v.downtimeMonths ?? undefined, initialNoiBasis: noiTreatmentMode === 'adjusted' ? 'actual' : undefined });
+    updateGlobal('dcfOutputs', result);
+  }, [result, parsed, noiTreatmentMode, updateGlobal]);
 
   return (
     <Card>
@@ -260,6 +295,9 @@ export function DcfCalculatorCard() {
               <p>Controls whether the DCF applies the vacancy allowance to Base NOI or treats Base NOI as already after vacancy.</p>
               <p>Current mode: <span className="font-medium text-foreground">{noiTreatmentLabels[noiTreatmentMode]}</span></p>
               {noiTreatmentMode === 'requires_confirmation' && <p className="text-amber-200">Requires confirmation before generating cashflow.</p>}
+              {!parsed.requiredReady && <p className="text-amber-200">Required numeric DCF inputs are missing or invalid. Outputs will stay Pending.</p>}
+              {parsed.leverageEnabled && !parsed.debtInputsValid && <p className="text-amber-200">Loan amount is populated, so interest rate and a positive loan term are required.</p>}
+              {fields.hold && !parsed.holdInteger && <p className="text-amber-200">Hold period must be a positive whole number.</p>}
               {vacancyMayBeDoubleCounted && <p className="text-amber-200">Base NOI appears to already include vacancy. Applying vacancy again may double-count vacancy loss.</p>}
             </div>
           </div>
@@ -324,7 +362,7 @@ function Field({ label, v, set, step, placeholder, source, pending, onKeep, onUs
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2"><Label className="text-xs">{label}</Label><Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/5 text-[10px] text-primary">{sourceLabels[source]}</Badge></div>
-      <Input type="number" step={step} value={v} placeholder={placeholder} onChange={e => set(e.target.value)} />
+      <Input type="text" inputMode="decimal" step={step} value={v} placeholder={placeholder} onChange={e => set(e.target.value)} />
       {pending && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-100"><p>New source value available. This field currently uses a saved override.</p><p className="text-muted-foreground">{sourceLabels[pending.source]}: {pending.value}</p><div className="mt-1 flex gap-1"><Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onKeep}>Keep override</Button><Button type="button" size="sm" className="h-6 px-2 text-[11px]" onClick={onUseSource}>Use source value</Button></div></div>}
     </div>
   );
