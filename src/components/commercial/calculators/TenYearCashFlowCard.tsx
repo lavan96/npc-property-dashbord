@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCommercialDealState, type CalculatorSourceMode } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
-import { cashFlowAiEstimateButtons } from '@/utils/commercial/cashFlowAiEstimateEngine';
+import { INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE, cashFlowAiEstimateActions, createCashFlowAiEstimatePreview, type CashFlowAiEstimateAction, type CashFlowAiEstimatePreview } from '@/utils/commercial/cashFlowAiEstimateEngine';
 import { buildTenYearInputsFromGlobal, calculateTenYearCashFlow } from '@/utils/commercial/tenYearCashFlowEngine';
 import type { TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
 
@@ -138,6 +139,12 @@ export function TenYearCashFlowCard() {
   const [overrideHistory, setOverrideHistory] = useState<AssumptionHistory>({});
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
+  const [aiAcceptedSources, setAiAcceptedSources] = useState<Partial<Record<keyof TenYearCashFlowInputs, SourceState>>>({});
+  const [verifiedFields, setVerifiedFields] = useState<Array<keyof TenYearCashFlowInputs>>([]);
+  const [estimatePreview, setEstimatePreview] = useState<CashFlowAiEstimatePreview | null>(null);
+  const [estimateEditValue, setEstimateEditValue] = useState('');
+  const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
+  const [assumptionHistory, setAssumptionHistory] = useState<Array<{ field: keyof TenYearCashFlowInputs; value: number; source: SourceState; timestamp: string }>>([]);
   const cascade = useMemo<CascadeMap>(() => {
     const pick = (...candidates: Array<{ value: unknown; source: SourceState }>): CascadeValue | undefined => {
       for (const c of candidates) if (typeof c.value === 'number' && Number.isFinite(c.value)) return { value: c.value, source: c.source };
@@ -250,13 +257,53 @@ export function TenYearCashFlowCard() {
   const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); markOverridden(field); };
   const updateTextOverride = <K extends keyof TenYearCashFlowInputs>(field: K, value: TenYearCashFlowInputs[K]) => { setOverrides(o => ({ ...o, [field]: value })); markOverridden(field); };
   const isOverridden = (field: keyof TenYearCashFlowInputs) => overriddenFields.includes(String(field));
-  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => isOverridden(field) ? 'User Override' : cascade[field]?.source ?? fallback;
+  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => {
+    if (isOverridden(field)) return 'User Override';
+    if (verifiedFields.includes(field)) return 'Verified';
+    return aiAcceptedSources[field] ?? cascade[field]?.source ?? fallback;
+  };
   const hasSourceConflict = (field: keyof TenYearCashFlowInputs) => {
     const history = overrideHistory[field]; const latest = cascade[field];
     return Boolean(isOverridden(field) && history && latest && (history.originalSource !== latest.source || Math.abs(history.originalValue - latest.value) > 0.0001));
   };
   const clearSourceConflict = (field: keyof TenYearCashFlowInputs) => setOverrideHistory(h => ({ ...h, [field]: cascade[field] ? { originalValue: cascade[field]!.value, originalSource: cascade[field]!.source } : h[field] }));
   const useSourceValue = (field: keyof TenYearCashFlowInputs) => { setOverrides(o => { const next = { ...o }; delete next[field]; return next; }); setOverriddenFields(f => f.filter(k => k !== String(field))); setOverrideHistory(h => { const next = { ...h }; delete next[field]; return next; }); };
+  const contextAvailability = useMemo(() => ({
+    propertyProfile: Boolean(prefill || propertyValuation || dealProfile),
+    propertyScrape: Boolean(prefill),
+    noiTab: Boolean(noiOutputs || leaseIncome),
+    capRateTab: Boolean(capRateOutputs),
+    gstTab: Boolean(gstOutputs || gstInputs),
+    icrDscrTab: Boolean(icrDscrOutputs),
+    borrowingCapacity: Boolean(borrowingOutputs),
+    dcfTab: Boolean(dcfInputs || dcfOutputs),
+    researchEngine: Boolean(aiEstimateMetadata),
+    savedScenarios: Boolean(scenarioName || Object.keys(overrides).length),
+  }), [prefill, propertyValuation, dealProfile, noiOutputs, leaseIncome, capRateOutputs, gstOutputs, gstInputs, icrDscrOutputs, borrowingOutputs, dcfInputs, dcfOutputs, aiEstimateMetadata, scenarioName, overrides]);
+  const openEstimatePreview = (action: CashFlowAiEstimateAction) => {
+    const preview = createCashFlowAiEstimatePreview(action, inputs, contextAvailability);
+    if (!preview) { setEstimateMessage(INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE); setEstimatePreview(null); return; }
+    setEstimateMessage(null); setEstimatePreview(preview); setEstimateEditValue(String(preview.suggestedValue));
+  };
+  const acceptEstimate = (edited = false) => {
+    if (!estimatePreview) return;
+    const value = Number(edited ? estimateEditValue : estimatePreview.suggestedValue);
+    if (!Number.isFinite(value)) return;
+    const field = estimatePreview.field;
+    setAssumptionHistory(h => [...h, { field, value: estimatePreview.suggestedValue, source: estimatePreview.source, timestamp: new Date().toISOString() }]);
+    setOverrides(o => ({ ...o, [field]: value }));
+    setOverriddenFields(f => f.filter(k => k !== String(field)));
+    setAiAcceptedSources(sources => ({ ...sources, [field]: edited ? 'User Override' : estimatePreview.source }));
+    setVerifiedFields(fields => fields.filter(item => item !== field));
+    if (edited) setOverriddenFields(f => Array.from(new Set([...f, String(field)])));
+    setSourceMode('tenYearCashFlow', edited ? 'manualOverride' : 'aiPending');
+    setEstimatePreview(null);
+  };
+  const markEstimateVerified = () => {
+    if (!estimatePreview) return;
+    setVerifiedFields(fields => Array.from(new Set([...fields, estimatePreview.field])));
+    setEstimatePreview(null);
+  };
   const s = result.summary;
   const pending = !modelReady;
   const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
@@ -405,7 +452,15 @@ export function TenYearCashFlowCard() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">{cashFlowAiEstimateButtons.slice(0, 8).map(b => <Button key={b} size="sm" variant="outline"><Sparkles className="h-3.5 w-3.5 mr-1" />{b}</Button>)}</div>
+            <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-primary">AI Estimate Workflow</h3>
+                <p className="text-xs text-muted-foreground">Estimate buttons now open a preview first. Values are not applied, verified or used as formula inputs until you accept them.</p>
+              </div>
+              {estimateMessage && <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</div>}
+              <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
+              {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
+            </div>
             <Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
@@ -416,5 +471,35 @@ export function TenYearCashFlowCard() {
     {result.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
     <MetricRows years={result.years} mode={mode} pending={pending} />
     <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{pending ? PENDING : result.commentary}</p></CardContent></Card>
+    <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>AI Estimate Preview</DialogTitle>
+          <DialogDescription>Review the estimate, evidence basis and risks before applying it. AI estimates are never marked verified automatically.</DialogDescription>
+        </DialogHeader>
+        {estimatePreview && <div className="space-y-4 text-sm">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested value</div><div className="text-lg font-semibold text-primary">{estimatePreview.suggestedValue}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested range</div><div className="font-semibold">{estimatePreview.suggestedRange[0]} – {estimatePreview.suggestedRange[1]}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Confidence level</div><Badge variant={estimatePreview.confidenceLevel === 'High' ? 'default' : estimatePreview.confidenceLevel === 'Medium' ? 'secondary' : 'outline'}>{estimatePreview.confidenceLevel}</Badge></div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div><h4 className="font-medium">Source basis</h4><p className="text-muted-foreground">{estimatePreview.sourceBasis}</p></div>
+            <div><h4 className="font-medium">Tabs / data points used</h4><p className="text-muted-foreground">{estimatePreview.tabsDataPointsUsed.join(', ')}</p></div>
+            <div><h4 className="font-medium">Missing data</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.missingData.map(item => <li key={item}>{item}</li>)}</ul></div>
+            <div><h4 className="font-medium">Risk notes</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.riskNotes.map(item => <li key={item}>{item}</li>)}</ul></div>
+          </div>
+          <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">Specialist review recommended: {estimatePreview.specialistReviewRecommended ? 'Yes' : 'No'}.</div>
+          <div className="space-y-2"><Label>Edit before applying</Label><Input type="number" value={estimateEditValue} onChange={e => setEstimateEditValue(e.target.value)} /></div>
+        </div>}
+        <DialogFooter className="flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => setEstimatePreview(null)}>Reject estimate</Button>
+          <Button type="button" variant="outline" onClick={() => markEstimateVerified()}>Mark as verified</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(true)}>Edit before applying</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(false)}>Accept selected estimate</Button>
+          <Button type="button" onClick={() => acceptEstimate(false)}>Accept estimate</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </CardContent></Card>;
 }
