@@ -13,6 +13,18 @@ export interface TaggedAssumption<T = number | string | boolean | null> {
   notes?: string;
 }
 
+
+export type TenYearAnnualOverrideField = 'passingRent' | 'rentGrowthPct' | 'vacancyAllowancePct' | 'recoveredOutgoings' | 'outgoingsGrowthPct' | 'otherOwnerExpenses' | 'annualCapexReserve' | 'majorCapexAmount' | 'downtimeMonths' | 'incentiveMonths' | 'interestRatePct' | 'taxRatePct' | 'capitalGrowthPct' | 'terminalCapRatePct';
+
+export interface TenYearAnnualOverrideCell {
+  value: number;
+  originalValue: number;
+  user?: string;
+  timestamp: string;
+}
+
+export type TenYearAnnualOverrides = Partial<Record<TenYearAnnualOverrideField, Partial<Record<number, TenYearAnnualOverrideCell>>>>;
+
 export interface TenYearCashFlowInputs {
   mode: TenYearCashFlowMode;
   assetDomain: 'commercial' | 'industrial';
@@ -95,6 +107,7 @@ export interface TenYearCashFlowInputs {
   relatedPartyLeaseVerified: boolean;
   marketRentSupportAvailable: boolean;
   stagedScheduleEnabled: boolean;
+  annualOverrides?: TenYearAnnualOverrides;
 }
 
 export interface TenYearCashFlowYear {

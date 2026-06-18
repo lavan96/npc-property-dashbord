@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Calculator, ChevronDown, FileText, Info, Sparkles, TrendingUp } from 'lucide-react';
+import { Calculator, ChevronDown, FileText, Info, Lock, Pencil, Sparkles, TrendingUp } from 'lucide-react';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCommercialDealState, type CalculatorSourceMode } from '@/utils/commercial/commercialDealState';
 import { buildGlobalSyncLabel } from '@/utils/commercial/calculatorDataSync';
-import { cashFlowAiEstimateButtons } from '@/utils/commercial/cashFlowAiEstimateEngine';
+import { INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE, cashFlowAiEstimateActions, createCashFlowAiEstimatePreview, type CashFlowAiEstimateAction, type CashFlowAiEstimatePreview } from '@/utils/commercial/cashFlowAiEstimateEngine';
 import { buildTenYearInputsFromGlobal, calculateTenYearCashFlow } from '@/utils/commercial/tenYearCashFlowEngine';
-import type { TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
+import type { TenYearAnnualOverrideCell, TenYearAnnualOverrideField, TenYearAnnualOverrides, TenYearCashFlowInputs, TenYearCashFlowMode, TenYearCashFlowResult, TenYearCashFlowYear } from '@/utils/commercial/tenYearCashFlowTypes';
 
 const PENDING = 'Pending';
 const fmt = (n?: number | null) => n == null || !Number.isFinite(n) ? PENDING : new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
@@ -23,16 +24,33 @@ const numPct = (n?: number | null) => n == null || !Number.isFinite(n) ? PENDING
 const hasPositive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
+const TEN_YEAR_CALCULATION_VERSION = '10-Year Cash Flow v1.0';
+const EXIT_VALUE_DIFFERENCE_THRESHOLD = 0.1;
+
+const summaryFormulaTooltip = (label: string) => {
+  if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
+  if (label === 'Equity multiple') return 'Total equity returned ÷ initial equity invested.';
+  if (label === 'Risk status') return 'Calculated from grouped validation warnings and specialist-review flags.';
+  if (label.includes('after-tax cashflow')) return 'Pre-tax cashflow − tax payable + allowed tax benefit.';
+  if (label.includes('property value')) return 'Prior year property value × (1 + capital growth rate).';
+  if (label.includes('equity')) return 'Property value − closing loan balance.';
+  if (label === 'Terminal value') return 'Forward NOI ÷ terminal cap rate.';
+  return 'Protected calculated report output.';
+};
 
 function SummaryCard({ label, value, pending }: { label: string; value: string | number | null | undefined; pending?: boolean }) {
   const display = pending ? PENDING : typeof value === 'number' ? fmt(value) : value ?? PENDING;
-  return <Card className="bg-card/95"><CardContent className="pt-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold text-primary">{display}</p></CardContent></Card>;
+  const formula = summaryFormulaTooltip(label);
+  return <Card className="bg-card/95"><CardContent className="pt-4"><div className="flex items-start justify-between gap-2"><p className="text-xs text-muted-foreground">{label}</p><Tooltip><TooltipTrigger asChild><Lock className="h-3.5 w-3.5 cursor-help text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs">{formula}</TooltipContent></Tooltip></div><p className="mt-1 text-lg font-semibold text-primary">{display}</p><Badge variant="outline" className="mt-2 gap-1 text-[10px]"><Lock className="h-3 w-3" />Protected calculated output</Badge></CardContent></Card>;
 }
 
 type SourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'NOI Tab' | 'Cap Rate Tab' | 'GST Tab' | 'ICR / DSCR Tab' | 'Borrowing Capacity' | 'DCF Tab' | 'Research Engine' | 'AI Estimate' | 'Manual' | 'User Override' | 'Verified';
 type CascadeValue = { value: number; source: SourceState };
 type CascadeMap = Partial<Record<keyof TenYearCashFlowInputs, CascadeValue>>;
 type AssumptionHistory = Partial<Record<keyof TenYearCashFlowInputs, { originalValue: number; originalSource: SourceState }>>;
+type CashFlowWarningCategory = 'Property' | 'Income' | 'Vacancy' | 'Outgoings' | 'Debt' | 'Tax' | 'GST' | 'Capex' | 'Leasing' | 'Exit Value' | 'AI / Research' | 'Manual Overrides' | 'Report Export';
+type CashFlowWarningSeverity = 'Critical' | 'Required' | 'Recommended';
+type CashFlowValidationWarning = { category: CashFlowWarningCategory; severity: CashFlowWarningSeverity; message: string };
 
 function AssumptionField({ label, source, tooltip, overridden, children }: { label: string; source: SourceState; tooltip: string; overridden?: boolean; children: ReactNode }) {
   return <div className="rounded-lg border border-border/60 bg-card/70 p-3 space-y-2"><div className="flex items-start justify-between gap-2"><Label className="flex items-center gap-1.5 text-xs font-medium">{label}<Tooltip><TooltipTrigger asChild><Info className="h-3.5 w-3.5 cursor-help text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs">{tooltip}</TooltipContent></Tooltip></Label><div className="flex flex-wrap justify-end gap-1"><Badge variant="outline" className="text-[10px]">{source}</Badge>{overridden && <Badge variant="secondary" className="text-[10px]">Manual override</Badge>}</div></div>{children}</div>;
@@ -42,36 +60,78 @@ function OverrideNumber({ label, field, value, update, suffix, placeholder, pend
   return <AssumptionField label={label} source={source} tooltip={tooltip} overridden={overridden}><div className="flex items-center gap-2"><Input type="number" value={pending ? '' : value ?? ''} placeholder={placeholder} onChange={e => update(field, Number(e.target.value))} />{suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}</div>{sourceConflict && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100"><p>New source value available. This field currently uses a saved override.</p><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" onClick={onUseSource}>Use source value</Button></div></div>}</AssumptionField>;
 }
 
-function MetricRows({ years, mode, pending }: { years: TenYearCashFlowYear[]; mode: TenYearCashFlowMode; pending?: boolean }) {
-  const rows: Array<{ group: string; label: string; formula: string; values: (y: TenYearCashFlowYear) => string }> = [
-    { group: 'Valuation', label: 'Property value', formula: 'Prior year value × (1 + capital growth)', values: y => fmt(y.propertyValue) },
-    { group: 'Valuation', label: 'Terminal value', formula: 'Forward NOI / terminal cap rate', values: y => y.terminalValue == null ? PENDING : fmt(y.terminalValue) },
-    { group: 'Debt', label: 'Opening loan balance', formula: 'Prior year closing loan balance', values: y => fmt(y.openingLoanBalance) },
-    { group: 'Debt', label: 'Interest payment', formula: 'Opening loan × interest rate', values: y => fmt(y.interestPayment) },
-    { group: 'Debt', label: 'Principal payment', formula: 'Debt service - interest', values: y => fmt(y.principalPayment) },
-    { group: 'Debt', label: 'Closing loan balance', formula: 'Opening loan - principal', values: y => fmt(y.closingLoanBalance) },
-    { group: 'Debt', label: 'LVR', formula: 'Closing loan / property value', values: y => pct(y.lvr) },
-    { group: 'Debt', label: 'ICR', formula: 'NOI / interest', values: y => numPct(y.icr) },
-    { group: 'Debt', label: 'DSCR', formula: 'NOI / annual debt service', values: y => numPct(y.dscr) },
-    { group: 'Debt', label: 'Debt yield', formula: 'NOI / opening loan', values: y => pct(y.debtYield) },
-    { group: 'Income', label: 'Passing rent', formula: 'Prior year rent × rent growth', values: y => fmt(y.passingRent) },
-    { group: 'Income', label: 'Vacancy loss', formula: 'Potential gross income × vacancy %', values: y => fmt(y.vacancyLoss) },
-    { group: 'Income', label: 'Recovered outgoings', formula: 'Recovered outgoings × outgoings growth', values: y => fmt(y.recoveredOutgoings) },
-    { group: 'Expenses', label: 'Owner-borne expenses', formula: 'Sum of non-recoverable expenses', values: y => fmt(y.totalOwnerBorneExpenses) },
-    { group: 'NOI', label: 'Actual NOI', formula: 'Effective gross income - owner-borne expenses', values: y => fmt(y.actualNoi) },
-    { group: 'NOI', label: 'Lender-adjusted NOI', formula: 'Actual NOI - risk haircuts', values: y => fmt(y.lenderAdjustedNoi) },
-    { group: 'Leasing / Vacancy', label: 'Total leasing / vacancy cost', formula: 'Downtime + incentives + leasing fee + reletting', values: y => fmt(y.totalLeasingVacancyCost) },
-    { group: 'Capex', label: 'Total capex', formula: 'Annual reserve + major capex + specialist reserves', values: y => fmt(y.totalCapex) },
-    { group: 'Cash Flow', label: 'Pre-tax cashflow', formula: 'NOI - leasing costs - capex - debt service', values: y => fmt(y.preTaxCashflow) },
-    { group: 'Tax', label: 'Tax payable / benefit', formula: 'Taxable income × tax rate; loss benefit only if allowed', values: y => fmt(y.taxPayableBenefit) },
-    { group: 'Cash Flow', label: 'After-tax cashflow', formula: 'Pre-tax cashflow - tax payable / + allowed tax benefit', values: y => fmt(y.afterTaxCashflow) },
-    { group: 'Equity', label: 'Equity position', formula: 'Property value - loan balance', values: y => fmt(y.equityPosition) },
+type MetricRowConfig = {
+  group: string;
+  label: string;
+  formula: string;
+  values: (y: TenYearCashFlowYear) => string;
+  rawValue?: (y: TenYearCashFlowYear, inputs: TenYearCashFlowInputs) => number;
+  rowType: 'calculated' | 'assumption';
+  annualOverride?: boolean;
+  overrideField?: TenYearAnnualOverrideField;
+  finalYearOnly?: boolean;
+};
+
+function RowEditabilityBadge({ row }: { row: MetricRowConfig }) {
+  if (row.rowType === 'calculated') {
+    return <Badge variant="outline" className="mt-1 gap-1 text-[10px]"><Lock className="h-3 w-3" />Protected calculated output</Badge>;
+  }
+  return <Badge variant="secondary" className="mt-1 gap-1 text-[10px]"><Pencil className="h-3 w-3" />{row.annualOverride ? 'Annual override allowed' : 'Editable assumption'}</Badge>;
+}
+
+function MetricRows({ years, mode, inputs, pending, annualOverridesEnabled, annualOverrides, onSetAnnualOverride, onResetAnnualOverride, onResetAnnualOverrideRow }: { years: TenYearCashFlowYear[]; mode: TenYearCashFlowMode; inputs: TenYearCashFlowInputs; pending?: boolean; annualOverridesEnabled: boolean; annualOverrides: TenYearAnnualOverrides; onSetAnnualOverride: (field: TenYearAnnualOverrideField, year: number, value: number, originalValue: number) => void; onResetAnnualOverride: (field: TenYearAnnualOverrideField, year: number) => void; onResetAnnualOverrideRow: (field: TenYearAnnualOverrideField) => void }) {
+  const rows: MetricRowConfig[] = [
+    { group: 'Valuation', label: 'Capital growth %', formula: 'Assumption row: capital growth rate for the projection year.', values: y => `${((annualOverrides.capitalGrowthPct?.[y.year]?.value ?? y.capitalGrowthPct)).toFixed(2)}%`, rawValue: y => annualOverrides.capitalGrowthPct?.[y.year]?.value ?? y.capitalGrowthPct, rowType: 'assumption', annualOverride: true, overrideField: 'capitalGrowthPct' },
+    { group: 'Valuation', label: 'Terminal cap rate %', formula: 'Assumption row: terminal cap rate override is only available in the final year.', values: y => y.year === 10 ? `${((annualOverrides.terminalCapRatePct?.[10]?.value ?? inputs.terminalCapRatePct)).toFixed(2)}%` : 'Final year only', rawValue: y => y.year === 10 ? (annualOverrides.terminalCapRatePct?.[10]?.value ?? inputs.terminalCapRatePct) : inputs.terminalCapRatePct, rowType: 'assumption', annualOverride: true, overrideField: 'terminalCapRatePct', finalYearOnly: true },
+    { group: 'Valuation', label: 'Property value', formula: 'Prior year property value × (1 + capital growth rate).', values: y => fmt(y.propertyValue), rowType: 'calculated' },
+    { group: 'Valuation', label: 'Terminal value', formula: 'Forward NOI ÷ terminal cap rate.', values: y => y.terminalValue == null ? PENDING : fmt(y.terminalValue), rowType: 'calculated' },
+    { group: 'Debt', label: 'Opening loan balance', formula: 'Prior year closing loan balance.', values: y => fmt(y.openingLoanBalance), rowType: 'calculated' },
+    { group: 'Debt', label: 'Interest payment', formula: 'Opening loan balance × interest rate.', values: y => fmt(y.interestPayment), rowType: 'calculated' },
+    { group: 'Debt', label: 'Principal payment', formula: 'Annual debt service − interest payment.', values: y => fmt(y.principalPayment), rowType: 'calculated' },
+    { group: 'Debt', label: 'Closing loan balance', formula: 'Opening loan balance − principal payment.', values: y => fmt(y.closingLoanBalance), rowType: 'calculated' },
+    { group: 'Debt', label: 'LVR', formula: 'Closing loan balance ÷ property value.', values: y => pct(y.lvr), rowType: 'calculated' },
+    { group: 'Debt', label: 'ICR', formula: 'NOI ÷ interest payment.', values: y => numPct(y.icr), rowType: 'calculated' },
+    { group: 'Debt', label: 'DSCR', formula: 'NOI ÷ annual debt service.', values: y => numPct(y.dscr), rowType: 'calculated' },
+    { group: 'Debt', label: 'Debt yield', formula: 'NOI ÷ opening loan balance.', values: y => pct(y.debtYield), rowType: 'calculated' },
+    { group: 'Debt', label: 'Interest rate %', formula: 'Assumption row: annual interest-rate override is available only when annual debt override is enabled.', values: y => `${y.interestRatePct.toFixed(2)}%`, rawValue: y => y.interestRatePct, rowType: 'assumption', annualOverride: true, overrideField: 'interestRatePct' },
+    { group: 'Income', label: 'Rent growth %', formula: 'Assumption row: rent growth rate applied to the relevant projection year.', values: y => `${((annualOverrides.rentGrowthPct?.[y.year]?.value ?? inputs.rentGrowthPct)).toFixed(2)}%`, rawValue: y => annualOverrides.rentGrowthPct?.[y.year]?.value ?? inputs.rentGrowthPct, rowType: 'assumption', annualOverride: true, overrideField: 'rentGrowthPct' },
+    { group: 'Income', label: 'Passing rent', formula: 'Assumption row: prior year rent × accepted rent growth; annual override may be enabled.', values: y => fmt(y.passingRent), rawValue: y => y.passingRent, rowType: 'assumption', annualOverride: true, overrideField: 'passingRent' },
+    { group: 'Income', label: 'Vacancy allowance %', formula: 'Assumption row: vacancy allowance applied to potential gross income.', values: y => `${((annualOverrides.vacancyAllowancePct?.[y.year]?.value ?? inputs.vacancyAllowancePct)).toFixed(2)}%`, rawValue: y => annualOverrides.vacancyAllowancePct?.[y.year]?.value ?? inputs.vacancyAllowancePct, rowType: 'assumption', annualOverride: true, overrideField: 'vacancyAllowancePct' },
+    { group: 'Income', label: 'Vacancy loss', formula: 'Potential gross income × vacancy allowance.', values: y => fmt(y.vacancyLoss), rowType: 'calculated' },
+    { group: 'Income', label: 'Recovered outgoings', formula: 'Assumption row: recovered outgoings escalated by outgoings growth; annual override may be enabled.', values: y => fmt(y.recoveredOutgoings), rawValue: y => y.recoveredOutgoings, rowType: 'assumption', annualOverride: true, overrideField: 'recoveredOutgoings' },
+    { group: 'Income', label: 'Outgoings growth %', formula: 'Assumption row: recovered-outgoings escalation rate for the relevant projection year.', values: y => `${((annualOverrides.outgoingsGrowthPct?.[y.year]?.value ?? inputs.outgoingsGrowthPct)).toFixed(2)}%`, rawValue: y => annualOverrides.outgoingsGrowthPct?.[y.year]?.value ?? inputs.outgoingsGrowthPct, rowType: 'assumption', annualOverride: true, overrideField: 'outgoingsGrowthPct' },
+    { group: 'Expenses', label: 'Owner-borne expenses', formula: 'Assumption row: owner-borne expenses escalated by expense/outgoings growth; annual override may be enabled.', values: y => fmt(y.totalOwnerBorneExpenses), rawValue: y => y.totalOwnerBorneExpenses, rowType: 'assumption', annualOverride: true, overrideField: 'otherOwnerExpenses' },
+    { group: 'NOI', label: 'Actual NOI', formula: 'Effective gross income − owner-borne expenses.', values: y => fmt(y.actualNoi), rowType: 'calculated' },
+    { group: 'NOI', label: 'Lender-adjusted NOI', formula: 'Actual NOI − risk haircuts.', values: y => fmt(y.lenderAdjustedNoi), rowType: 'calculated' },
+    { group: 'Leasing / Vacancy', label: 'Lease downtime', formula: 'Assumption row: downtime months used in leasing/vacancy cost.', values: y => `${((annualOverrides.downtimeMonths?.[y.year]?.value ?? inputs.downtimeMonths)).toFixed(1)} months`, rawValue: y => annualOverrides.downtimeMonths?.[y.year]?.value ?? inputs.downtimeMonths, rowType: 'assumption', annualOverride: true, overrideField: 'downtimeMonths' },
+    { group: 'Leasing / Vacancy', label: 'Tenant incentives', formula: 'Assumption row: incentive months used in leasing/vacancy cost.', values: y => `${((annualOverrides.incentiveMonths?.[y.year]?.value ?? inputs.incentiveMonths)).toFixed(1)} months`, rawValue: y => annualOverrides.incentiveMonths?.[y.year]?.value ?? inputs.incentiveMonths, rowType: 'assumption', annualOverride: true, overrideField: 'incentiveMonths' },
+    { group: 'Leasing / Vacancy', label: 'Total leasing / vacancy cost', formula: 'Downtime + tenant incentives + leasing fee + reletting cost.', values: y => fmt(y.totalLeasingVacancyCost), rowType: 'calculated' },
+    { group: 'Capex', label: 'Capex reserve', formula: 'Assumption row: annual reserve amount; annual override may be enabled.', values: y => fmt(y.annualCapexReserve), rawValue: y => y.annualCapexReserve, rowType: 'assumption', annualOverride: true, overrideField: 'annualCapexReserve' },
+    { group: 'Capex', label: 'Major capex', formula: 'Assumption row: major capex amount in the selected timing year; annual override may be enabled.', values: y => fmt(y.majorCapex), rawValue: y => y.majorCapex, rowType: 'assumption', annualOverride: true, overrideField: 'majorCapexAmount' },
+    { group: 'Capex', label: 'Total capex', formula: 'Annual reserve + major capex + specialist reserves.', values: y => fmt(y.totalCapex), rowType: 'calculated' },
+    { group: 'Cash Flow', label: 'Pre-tax cashflow', formula: 'NOI − leasing/vacancy costs − capex − debt service.', values: y => fmt(y.preTaxCashflow), rowType: 'calculated' },
+    { group: 'Tax', label: 'Tax rate %', formula: 'Assumption row: tax rate applied to taxable income.', values: y => `${((annualOverrides.taxRatePct?.[y.year]?.value ?? inputs.taxRatePct)).toFixed(2)}%`, rawValue: y => annualOverrides.taxRatePct?.[y.year]?.value ?? inputs.taxRatePct, rowType: 'assumption', annualOverride: true, overrideField: 'taxRatePct' },
+    { group: 'Tax', label: 'Tax payable / benefit', formula: 'Assumption-sensitive calculated from tax rate; tax rate annual override may be enabled.', values: y => fmt(y.taxPayableBenefit), rowType: 'calculated' },
+    { group: 'Cash Flow', label: 'After-tax cashflow', formula: 'Pre-tax cashflow − tax payable + allowed tax benefit.', values: y => fmt(y.afterTaxCashflow), rowType: 'calculated' },
+    { group: 'Cash Flow', label: 'Cumulative after-tax cashflow', formula: 'Prior year cumulative after-tax cashflow + current year after-tax cashflow.', values: y => fmt(y.cumulativeAfterTaxCashflow), rowType: 'calculated' },
+    { group: 'Equity', label: 'Equity position', formula: 'Property value − closing loan balance.', values: y => fmt(y.equityPosition), rowType: 'calculated' },
   ];
-  if (mode === 'ownerOccupier') rows.push({ group: 'Business Impact', label: 'Net saving / cost vs leasing', formula: 'Leasing cost avoided - ownership cash cost', values: y => fmt(y.netSavingCostVsLeasing) }, { group: 'Business Impact', label: 'Business DSCR', formula: 'Available business cashflow / total debt service', values: y => numPct(y.businessDscr) }, { group: 'Business Impact', label: 'Occupancy cost ratio', formula: 'Ownership cash cost / business revenue', values: y => pct(y.occupancyCostRatio) });
-  if (mode === 'relatedPartyLease') rows.push({ group: 'Group View', label: 'Property entity cashflow', formula: 'Rent received + recoveries - expenses - debt - capex', values: y => fmt(y.propertyEntityCashflow) }, { group: 'Group View', label: 'Operating occupancy cost', formula: 'Related-party rent paid + outgoings paid', values: y => fmt(y.operatingBusinessOccupancyCost) }, { group: 'Group View', label: 'Group cashflow', formula: 'Internal rent neutralised before tax/entity effects', values: y => fmt(y.groupCashflow) });
+  if (mode === 'ownerOccupier') rows.push({ group: 'Business Impact', label: 'Net saving / cost vs leasing', formula: 'Leasing cost avoided − ownership cash cost.', values: y => fmt(y.netSavingCostVsLeasing), rowType: 'calculated' }, { group: 'Business Impact', label: 'Business DSCR', formula: 'Available business cashflow ÷ total debt service.', values: y => numPct(y.businessDscr), rowType: 'calculated' }, { group: 'Business Impact', label: 'Occupancy cost ratio', formula: 'Ownership cash cost ÷ business revenue.', values: y => pct(y.occupancyCostRatio), rowType: 'calculated' });
+  if (mode === 'relatedPartyLease') rows.push({ group: 'Group View', label: 'Property entity cashflow', formula: 'Rent received + recoveries − expenses − debt − capex.', values: y => fmt(y.propertyEntityCashflow), rowType: 'calculated' }, { group: 'Group View', label: 'Operating occupancy cost', formula: 'Related-party rent paid + outgoings paid.', values: y => fmt(y.operatingBusinessOccupancyCost), rowType: 'calculated' }, { group: 'Group View', label: 'Group cashflow', formula: 'Internal rent neutralised before tax/entity effects.', values: y => fmt(y.groupCashflow), rowType: 'calculated' });
   let current = '';
   const tableYears = pending ? Array.from({ length: 10 }, (_, i) => ({ year: i + 1 }) as TenYearCashFlowYear) : years;
-  return <Table><TableHeader><TableRow><TableHead className="sticky left-0 bg-card min-w-[220px]">Row / formula</TableHead>{tableYears.map(y => <TableHead key={y.year} className="text-right">Year {y.year}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map((r, i) => { const showGroup = current !== r.group; current = r.group; return [showGroup ? <TableRow key={`${r.group}-g`} className="bg-primary/10"><TableCell colSpan={11} className="font-semibold text-primary">{r.group}</TableCell></TableRow> : null, <TableRow key={`${r.group}-${r.label}-${i}`}><TableCell className="sticky left-0 bg-card"><div className="font-medium">{r.label}</div><div className="text-[11px] text-muted-foreground">{r.formula}</div></TableCell>{tableYears.map(y => <TableCell key={y.year} className="text-right tabular-nums">{pending ? PENDING : r.values(y)}</TableCell>)}</TableRow>]; })}</TableBody></Table>;
+  const renderCell = (row: MetricRowConfig, year: TenYearCashFlowYear) => {
+    const disabledFinalYear = row.finalYearOnly && year.year !== 10;
+    if (!annualOverridesEnabled || row.rowType !== 'assumption' || !row.overrideField || disabledFinalYear) return pending ? PENDING : row.values(year);
+    const originalValue = row.rawValue?.(year, inputs) ?? 0;
+    const override = annualOverrides[row.overrideField]?.[year.year];
+    const displayValue = override?.value ?? originalValue;
+    return <div className="flex min-w-[150px] flex-col items-end gap-1">
+      <Input type="number" className="h-8 w-28 text-right" value={displayValue} onChange={event => onSetAnnualOverride(row.overrideField!, year.year, Number(event.target.value), originalValue)} />
+      {override && <div className="max-w-[180px] text-right text-[10px] text-muted-foreground"><Badge variant="secondary" className="mb-1 text-[10px]">Override</Badge><div>Original: {originalValue.toLocaleString()}</div><div>New: {override.value.toLocaleString()}</div><div>{override.user ?? 'Current user'} · {new Date(override.timestamp).toLocaleString()}</div><Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => onResetAnnualOverride(row.overrideField!, year.year)}>Reset this cell</Button></div>}
+    </div>;
+  };
+  return <Table><TableHeader><TableRow><TableHead className="sticky left-0 bg-card min-w-[260px]">Row / formula</TableHead>{tableYears.map(y => <TableHead key={y.year} className="text-right">Year {y.year}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map((r, i) => { const showGroup = current !== r.group; current = r.group; return [showGroup ? <TableRow key={`${r.group}-g`} className="bg-primary/10"><TableCell colSpan={11} className="font-semibold text-primary">{r.group}</TableCell></TableRow> : null, <TableRow key={`${r.group}-${r.label}-${i}`} className={r.rowType === 'calculated' ? 'bg-muted/20' : undefined}><TableCell className="sticky left-0 bg-card"><div className="flex items-start justify-between gap-2"><div><div className="font-medium">{r.label}</div><div className="flex items-center gap-1 text-[11px] text-muted-foreground">{r.formula}<Tooltip><TooltipTrigger asChild><Info className="h-3.5 w-3.5 shrink-0 cursor-help" /></TooltipTrigger><TooltipContent className="max-w-xs">{r.formula}</TooltipContent></Tooltip></div><RowEditabilityBadge row={r} />{annualOverridesEnabled && r.overrideField && <Button type="button" size="sm" variant="ghost" className="mt-1 h-6 px-2 text-[10px]" onClick={() => onResetAnnualOverrideRow(r.overrideField!)}>Reset this row</Button>}</div></div></TableCell>{tableYears.map(y => <TableCell key={y.year} className="text-right tabular-nums align-top">{renderCell(r, y)}</TableCell>)}</TableRow>]; })}</TableBody></Table>;
 }
 
 export function TenYearCashFlowCard() {
@@ -134,10 +194,23 @@ export function TenYearCashFlowCard() {
   const [leaseExpiryYear, setLeaseExpiryYear] = useState('');
   const [waleYears, setWaleYears] = useState('');
   const [interestDeductible, setInterestDeductible] = useState(true);
-  const [exitValueMethod, setExitValueMethod] = useState('Terminal cap rate');
+  const [exitValueMethod, setExitValueMethod] = useState('Terminal Cap Value');
+  const [manualVerifiedExitValue, setManualVerifiedExitValue] = useState('');
+  const [exitReconciliationConfirmed, setExitReconciliationConfirmed] = useState(false);
   const [overrideHistory, setOverrideHistory] = useState<AssumptionHistory>({});
   const [overrides, setOverrides] = useState<Partial<TenYearCashFlowInputs>>({});
   const [overriddenFields, setOverriddenFields] = useState<string[]>([]);
+  const [aiAcceptedSources, setAiAcceptedSources] = useState<Partial<Record<keyof TenYearCashFlowInputs, SourceState>>>({});
+  const [verifiedFields, setVerifiedFields] = useState<Array<keyof TenYearCashFlowInputs>>([]);
+  const [estimatePreview, setEstimatePreview] = useState<CashFlowAiEstimatePreview | null>(null);
+  const [estimateEditValue, setEstimateEditValue] = useState('');
+  const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
+  const [assumptionHistory, setAssumptionHistory] = useState<Array<{ field: keyof TenYearCashFlowInputs | TenYearAnnualOverrideField; value: number; source: SourceState | 'Annual Override'; timestamp: string; year?: number }>>([]);
+  const [annualOverridesEnabled, setAnnualOverridesEnabled] = useState(false);
+  const [annualOverrides, setAnnualOverrides] = useState<TenYearAnnualOverrides>({});
+  const [capexNoneConfirmed, setCapexNoneConfirmed] = useState(false);
+  const [generatedCashFlow, setGeneratedCashFlow] = useState<{ result: TenYearCashFlowResult; generatedAt: string; signature: string; calculationVersion: string } | null>(null);
+  const [reportVerified, setReportVerified] = useState(false);
   const cascade = useMemo<CascadeMap>(() => {
     const pick = (...candidates: Array<{ value: unknown; source: SourceState }>): CascadeValue | undefined => {
       for (const c of candidates) if (typeof c.value === 'number' && Number.isFinite(c.value)) return { value: c.value, source: c.source };
@@ -226,21 +299,40 @@ export function TenYearCashFlowCard() {
     };
   }, [propertyValuation, gstInputs, borrowingOutputs, fundsToComplete, dcfInputs, dcfOutputs, gstOutputs, purchaserStructure, noiOutputs, capRateOutputs, icrDscrOutputs, prefill, leaseIncome, lendingAssumptions, aiEstimateMetadata]);
   const cascadeOverrides = useMemo(() => Object.fromEntries(Object.entries(cascade).filter((entry): entry is [string, CascadeValue] => Boolean(entry[1])).map(([key, item]) => [key, item.value])) as Partial<TenYearCashFlowInputs>, [cascade]);
-  const inputs = useMemo(() => buildTenYearInputsFromGlobal(profile, mode, { ...cascadeOverrides, ...overrides }), [profile, mode, cascadeOverrides, overrides]);
+  const inputs = useMemo(() => buildTenYearInputsFromGlobal(profile, mode, { ...cascadeOverrides, ...overrides, annualOverrides: annualOverridesEnabled ? annualOverrides : undefined }), [profile, mode, cascadeOverrides, overrides, annualOverridesEnabled, annualOverrides]);
   const result = useMemo(() => calculateTenYearCashFlow(inputs, overriddenFields), [inputs, overriddenFields]);
   const hasManualInputs = overriddenFields.length > 0;
   const hasImportedInputs = Boolean(prefill) || Boolean(borrowingOutputs) || Boolean(noiOutputs) || Boolean(capRateOutputs) || Boolean(icrDscrOutputs) || Boolean(gstOutputs) || Boolean(dcfOutputs);
   const manualRequiredFields: Array<keyof TenYearCashFlowInputs> = ['purchasePrice', 'totalCostBase', 'passingRent', 'rentGrowthPct', 'vacancyAllowancePct', 'outgoingsGrowthPct', 'annualCapexReserve', 'terminalCapRatePct', 'taxRatePct', 'gstEconomicCost'];
   const manualInputsComplete = manualRequiredFields.every(field => overriddenFields.includes(String(field)));
-  const hasMinimumInputs = hasPositive(inputs.purchasePrice) && hasPositive(inputs.terminalCapRatePct) && (hasPositive(inputs.passingRent) || hasPositive(inputs.marketRent));
+  const yearOneNoiReady = hasPositive(result.years[0]?.actualNoi) || hasPositive(inputs.passingRent) || hasPositive(inputs.recoveredOutgoings) || hasPositive(inputs.otherOwnerExpenses);
+  const debtEnabled = hasPositive(inputs.loanAmount);
+  const debtInputsReady = !debtEnabled || (hasPositive(inputs.loanAmount) && hasPositive(inputs.interestRatePct) && (hasPositive(inputs.amortisationYears) || hasPositive(inputs.annualDebtService)) && Boolean(inputs.repaymentType));
+  const requiredAssumptionsReady = hasPositive(inputs.purchasePrice)
+    && (hasPositive(inputs.totalCostBase) || hasPositive(inputs.totalAcquisitionCosts))
+    && yearOneNoiReady
+    && Number.isFinite(inputs.rentGrowthPct)
+    && Number.isFinite(inputs.vacancyAllowancePct)
+    && hasPositive(inputs.terminalCapRatePct)
+    && Number.isFinite(inputs.capitalGrowthPct)
+    && (hasPositive(inputs.annualCapexReserve) || capexNoneConfirmed)
+    && (hasPositive(inputs.taxRatePct) || inputs.accountantReviewRequired)
+    && projectionPeriod === '10'
+    && Boolean(exitValueMethod)
+    && debtInputsReady;
   const sourceComplete = hasImportedInputs || (hasManualInputs && manualInputsComplete);
-  const modelReady = sourceComplete && hasMinimumInputs && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
+  const modelReady = sourceComplete && requiredAssumptionsReady && result.warnings.every(w => !/must be greater|must be provided|required to calculate/i.test(w));
+  const generationSignature = JSON.stringify({ inputs, mode, projectionPeriod, exitValueMethod, manualVerifiedExitValue, annualOverridesEnabled, annualOverrides, capexNoneConfirmed });
+  const generatedCurrent = Boolean(generatedCashFlow && generatedCashFlow.signature === generationSignature);
+  const generatedOutOfDate = Boolean(generatedCashFlow && !generatedCurrent);
+  const reportResult = generatedCashFlow?.result ?? result;
 
   useEffect(() => {
     if (typeof window !== 'undefined') window.localStorage.setItem('ten-year-cash-flow-overview-viewed', 'true');
   }, []);
 
-  useEffect(() => { if (modelReady) updateGlobal('tenYearCashFlowOutputs', result); }, [modelReady, result, updateGlobal]);
+  useEffect(() => { if (generatedCashFlow && generatedCurrent) updateGlobal('tenYearCashFlowOutputs', generatedCashFlow.result); }, [generatedCashFlow, generatedCurrent, updateGlobal]);
+  useEffect(() => { setExitReconciliationConfirmed(false); setReportVerified(false); }, [exitValueMethod, manualVerifiedExitValue]);
   const markOverridden = (field: keyof TenYearCashFlowInputs) => {
     const currentSource = cascade[field];
     if (currentSource && !overrideHistory[field]) setOverrideHistory(h => ({ ...h, [field]: { originalValue: currentSource.value, originalSource: currentSource.source } }));
@@ -250,24 +342,148 @@ export function TenYearCashFlowCard() {
   const updateOverride = (field: keyof TenYearCashFlowInputs, value: number) => { setOverrides(o => ({ ...o, [field]: Number.isFinite(value) ? value : 0 })); markOverridden(field); };
   const updateTextOverride = <K extends keyof TenYearCashFlowInputs>(field: K, value: TenYearCashFlowInputs[K]) => { setOverrides(o => ({ ...o, [field]: value })); markOverridden(field); };
   const isOverridden = (field: keyof TenYearCashFlowInputs) => overriddenFields.includes(String(field));
-  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => isOverridden(field) ? 'User Override' : cascade[field]?.source ?? fallback;
+  const sourceFor = (field: keyof TenYearCashFlowInputs, fallback: SourceState = prefill ? 'Property Profile' : 'Blank'): SourceState => {
+    if (isOverridden(field)) return 'User Override';
+    if (verifiedFields.includes(field)) return 'Verified';
+    return aiAcceptedSources[field] ?? cascade[field]?.source ?? fallback;
+  };
   const hasSourceConflict = (field: keyof TenYearCashFlowInputs) => {
     const history = overrideHistory[field]; const latest = cascade[field];
     return Boolean(isOverridden(field) && history && latest && (history.originalSource !== latest.source || Math.abs(history.originalValue - latest.value) > 0.0001));
   };
   const clearSourceConflict = (field: keyof TenYearCashFlowInputs) => setOverrideHistory(h => ({ ...h, [field]: cascade[field] ? { originalValue: cascade[field]!.value, originalSource: cascade[field]!.source } : h[field] }));
   const useSourceValue = (field: keyof TenYearCashFlowInputs) => { setOverrides(o => { const next = { ...o }; delete next[field]; return next; }); setOverriddenFields(f => f.filter(k => k !== String(field))); setOverrideHistory(h => { const next = { ...h }; delete next[field]; return next; }); };
-  const s = result.summary;
+  const contextAvailability = useMemo(() => ({
+    propertyProfile: Boolean(prefill || propertyValuation || dealProfile),
+    propertyScrape: Boolean(prefill),
+    noiTab: Boolean(noiOutputs || leaseIncome),
+    capRateTab: Boolean(capRateOutputs),
+    gstTab: Boolean(gstOutputs || gstInputs),
+    icrDscrTab: Boolean(icrDscrOutputs),
+    borrowingCapacity: Boolean(borrowingOutputs),
+    dcfTab: Boolean(dcfInputs || dcfOutputs),
+    researchEngine: Boolean(aiEstimateMetadata),
+    savedScenarios: Boolean(scenarioName || Object.keys(overrides).length),
+  }), [prefill, propertyValuation, dealProfile, noiOutputs, leaseIncome, capRateOutputs, gstOutputs, gstInputs, icrDscrOutputs, borrowingOutputs, dcfInputs, dcfOutputs, aiEstimateMetadata, scenarioName, overrides]);
+  const openEstimatePreview = (action: CashFlowAiEstimateAction) => {
+    const preview = createCashFlowAiEstimatePreview(action, inputs, contextAvailability);
+    if (!preview) { setEstimateMessage(INSUFFICIENT_CASH_FLOW_AI_CONTEXT_MESSAGE); setEstimatePreview(null); return; }
+    setEstimateMessage(null); setEstimatePreview(preview); setEstimateEditValue(String(preview.suggestedValue));
+  };
+  const acceptEstimate = (edited = false) => {
+    if (!estimatePreview) return;
+    const value = Number(edited ? estimateEditValue : estimatePreview.suggestedValue);
+    if (!Number.isFinite(value)) return;
+    const field = estimatePreview.field;
+    setAssumptionHistory(h => [...h, { field, value: estimatePreview.suggestedValue, source: estimatePreview.source, timestamp: new Date().toISOString() }]);
+    setOverrides(o => ({ ...o, [field]: value }));
+    setOverriddenFields(f => f.filter(k => k !== String(field)));
+    setAiAcceptedSources(sources => ({ ...sources, [field]: edited ? 'User Override' : estimatePreview.source }));
+    setVerifiedFields(fields => fields.filter(item => item !== field));
+    if (edited) setOverriddenFields(f => Array.from(new Set([...f, String(field)])));
+    setSourceMode('tenYearCashFlow', edited ? 'manualOverride' : 'aiPending');
+    setEstimatePreview(null);
+  };
+  const markEstimateVerified = () => {
+    if (!estimatePreview) return;
+    setVerifiedFields(fields => Array.from(new Set([...fields, estimatePreview.field])));
+    setEstimatePreview(null);
+  };
+  const annualOverrideCount = Object.values(annualOverrides).reduce((sum, row) => sum + Object.keys(row ?? {}).length, 0);
+  const setAnnualOverrideCell = (field: TenYearAnnualOverrideField, year: number, value: number, originalValue: number) => {
+    if (!Number.isFinite(value)) return;
+    const timestamp = new Date().toISOString();
+    const cell: TenYearAnnualOverrideCell = { value, originalValue, user: 'Current user', timestamp };
+    setAnnualOverrides(current => ({ ...current, [field]: { ...(current[field] ?? {}), [year]: cell } }));
+    setAssumptionHistory(history => [...history, { field, year, value, source: 'Annual Override', timestamp }]);
+  };
+  const resetAnnualOverrideCell = (field: TenYearAnnualOverrideField, year: number) => setAnnualOverrides(current => {
+    const row = { ...(current[field] ?? {}) };
+    delete row[year];
+    return { ...current, [field]: row };
+  });
+  const resetAnnualOverrideRow = (field: TenYearAnnualOverrideField) => setAnnualOverrides(current => { const next = { ...current }; delete next[field]; return next; });
+  const resetAllAnnualOverrides = () => setAnnualOverrides({});
+  const generateCashFlow = () => {
+    if (!modelReady) return;
+    setGeneratedCashFlow({ result, generatedAt: new Date().toISOString(), signature: generationSignature, calculationVersion: TEN_YEAR_CALCULATION_VERSION });
+  };
+  const s = reportResult.summary;
   const pending = !modelReady;
-  const statusLabel = pending ? 'Awaiting Cash Flow Inputs' : title(s.riskStatus);
+  const year10 = reportResult.years[9];
+  const year10CapitalGrowthValue = year10?.propertyValue ?? null;
+  const terminalCapValue = year10?.terminalValue ?? null;
+  const exitValueDifference = year10CapitalGrowthValue != null && terminalCapValue != null ? year10CapitalGrowthValue - terminalCapValue : null;
+  const exitValueDifferencePct = exitValueDifference != null && year10CapitalGrowthValue && year10CapitalGrowthValue > 0 ? exitValueDifference / year10CapitalGrowthValue : null;
+  const exitValueMaterialDifference = exitValueDifferencePct != null && Math.abs(exitValueDifferencePct) > EXIT_VALUE_DIFFERENCE_THRESHOLD;
+  const selectedExitValueUsed = exitValueMethod === 'Capital Growth Value'
+    ? year10CapitalGrowthValue
+    : exitValueMethod === 'Terminal Cap Value'
+      ? terminalCapValue
+      : exitValueMethod === 'Lower of Capital Growth / Terminal Cap'
+        ? Math.min(year10CapitalGrowthValue ?? 0, terminalCapValue ?? 0)
+        : Number(manualVerifiedExitValue) || null;
+  const exitValuePdfBlocked = Boolean(generatedCashFlow && generatedCurrent && (exitValueMaterialDifference || exitValueMethod === 'Manual Verified Exit Value') && !exitReconciliationConfirmed);
+  const validationWarnings: CashFlowValidationWarning[] = [];
+  const addWarning = (category: CashFlowWarningCategory, severity: CashFlowWarningSeverity, message: string) => validationWarnings.push({ category, severity, message });
+  if (!hasPositive(inputs.purchasePrice)) addWarning('Property', 'Required', 'Purchase price is required before the cashflow report can be generated.');
+  if (!hasPositive(inputs.totalCostBase) && !hasPositive(inputs.totalAcquisitionCosts)) addWarning('Property', 'Required', 'Total cost base or acquisition costs are required.');
+  if (!yearOneNoiReady) addWarning('Income', 'Required', 'Year 1 NOI, passing rent, recovered outgoings or expenses must be completed.');
+  if (sourceFor('passingRent') !== 'NOI Tab') addWarning('Income', 'Recommended', 'NOI is not linked to the NOI tab. Review source quality before reporting.');
+  if (!Number.isFinite(inputs.vacancyAllowancePct)) addWarning('Vacancy', 'Required', 'Vacancy allowance is required.');
+  if (!Number.isFinite(inputs.outgoingsGrowthPct)) addWarning('Outgoings', 'Required', 'Outgoings growth is required.');
+  if (debtEnabled && !debtInputsReady) addWarning('Debt', 'Required', 'Debt assumptions are incomplete. Confirm loan amount, rate and term.');
+  if (debtEnabled && !hasPositive(inputs.loanAmount)) addWarning('Debt', 'Critical', 'Debt is enabled but loan balance is zero.');
+  if (!debtEnabled && reportResult.summary.leveredIrr != null) addWarning('Debt', 'Recommended', 'Levered IRR is displayed while the debt section is zero.');
+  if (!hasPositive(inputs.taxRatePct) || inputs.accountantReviewRequired) addWarning('Tax', 'Recommended', 'Tax assumptions are unverified. Specialist review is recommended.');
+  if (!hasPositive(inputs.gstEconomicCost)) addWarning('GST', 'Recommended', 'GST economic cost is unknown or nil. Confirm GST treatment.');
+  if (!hasPositive(inputs.annualCapexReserve) && !capexNoneConfirmed) addWarning('Capex', 'Required', 'Capex estimates are zero or incomplete. Confirm capex reserve or confirm none.');
+  if (!Number.isFinite(inputs.downtimeMonths) || !Number.isFinite(inputs.incentiveMonths)) addWarning('Leasing', 'Recommended', 'Lease downtime and tenant incentive assumptions should be reviewed.');
+  if (sourceFor('rentGrowthPct') === 'AI Estimate' || sourceFor('rentGrowthPct') === 'Research Engine') addWarning('AI / Research', 'Recommended', 'Rent growth is AI/research-estimated and not verified.');
+  if (sourceFor('terminalCapRatePct') === 'AI Estimate' || sourceFor('terminalCapRatePct') === 'Research Engine') addWarning('AI / Research', 'Recommended', 'Terminal cap rate is AI/research-estimated and not verified.');
+  if (annualOverrideCount > 0) addWarning('Manual Overrides', 'Recommended', 'Annual overrides are active. Review assumption history before generating report.');
+  if (overriddenFields.length > 0) addWarning('Manual Overrides', 'Recommended', 'Manual source overrides are present and should be verified.');
+  if (exitValueMaterialDifference) addWarning('Exit Value', 'Required', 'Exit value methods materially differ. Confirm which value should be used for client reporting.');
+  if (!generatedCashFlow) addWarning('Report Export', 'Required', 'Cashflow has not been generated.');
+  if (generatedOutOfDate) addWarning('Report Export', 'Critical', 'Cashflow is out of date. Regenerate before exporting.');
+  if (exitValuePdfBlocked) addWarning('Report Export', 'Required', 'PDF report is blocked until exit value reconciliation is confirmed.');
+  result.warnings.forEach(message => addWarning('Report Export', /must|required/i.test(message) ? 'Required' : 'Recommended', message));
+  const severityRank: Record<CashFlowWarningSeverity, number> = { Critical: 0, Required: 1, Recommended: 2 };
+  const priorityWarnings = [...validationWarnings].sort((a, b) => severityRank[a.severity] - severityRank[b.severity]).slice(0, 5);
+  const groupedWarnings = validationWarnings.reduce<Record<string, CashFlowValidationWarning[]>>((groups, warning) => ({ ...groups, [warning.category]: [...(groups[warning.category] ?? []), warning] }), {});
+  const reportStatus = reportVerified && generatedCurrent && validationWarnings.every(w => w.severity === 'Recommended')
+    ? 'Report Verified'
+    : !generatedCashFlow
+      ? modelReady ? 'Ready to Generate' : validationWarnings.some(w => w.severity === 'Required' || w.severity === 'Critical') ? 'Awaiting Cash Flow Inputs' : 'Preliminary Cash Flow Estimate'
+      : generatedOutOfDate
+        ? 'Cash Flow Out of Date'
+      : validationWarnings.some(w => w.severity === 'Critical' || w.severity === 'Required')
+          ? 'Report Review Required'
+          : exitReconciliationConfirmed || !exitValueMaterialDifference
+          ? 'PDF Ready'
+          : 'Cash Flow Generated';
+  const nextAction = reportStatus === 'Ready to Generate'
+    ? 'Report is ready to generate.'
+    : generatedOutOfDate
+      ? 'Cashflow is out of date. Regenerate before exporting.'
+      : !modelReady
+        ? validationWarnings.some(w => w.category === 'Debt') ? 'Debt assumptions are incomplete. Confirm loan amount, rate and term.' : 'Complete missing assumptions before generating the report.'
+        : exitValuePdfBlocked
+          ? 'Exit value requires confirmation before PDF export.'
+          : validationWarnings.some(w => w.category === 'AI / Research')
+            ? 'Review AI estimates before applying them.'
+            : generatedCurrent
+              ? reportVerified ? 'Report is ready for PDF generation.' : 'Report is ready for PDF generation.'
+              : 'Complete missing assumptions before generating the report.';
+
   const assumptionPlaceholders: Partial<Record<keyof TenYearCashFlowInputs, string>> = { purchasePrice: 'Pulled from property profile or enter manually', totalCostBase: 'Calculated from purchase price, costs and GST', passingRent: 'Pulled from NOI or enter manually', rentGrowthPct: 'Pulled from research engine or enter manually', vacancyAllowancePct: 'Pulled from NOI / research or enter manually', outgoingsGrowthPct: 'Enter outgoings growth', annualCapexReserve: 'Enter capex reserve', terminalCapRatePct: 'Pulled from Cap Rate / DCF or enter manually', taxRatePct: 'Enter tax rate or confirm accountant review', gstEconomicCost: 'Pulled from GST tab or enter manually' };
   const summaryCards = mode === 'investor'
     ? [['Purchase price', s.purchasePrice], ['Total cost base', s.totalCostBase], ['Required equity', s.requiredEquity], ['Year 1 NOI', s.year1Noi], ['Year 1 after-tax cashflow', s.year1AfterTaxCashflow], ['Year 10 property value', s.year10PropertyValue], ['Year 10 equity', s.year10Equity], ['Cumulative after-tax cashflow', s.cumulativeAfterTaxCashflow], ['Levered IRR', s.leveredIrr == null ? 'N/A' : `${(s.leveredIrr * 100).toFixed(1)}%`], ['Equity multiple', s.equityMultiple == null ? 'N/A' : `${s.equityMultiple.toFixed(2)}x`], ['Terminal value', s.terminalValue]]
     : mode === 'ownerOccupier'
-      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', result.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', result.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', result.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'N/A — EBITDA not provided.' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'N/A' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
-      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', result.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', result.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
+      ? [['Purchase price', s.purchasePrice], ['Required equity', s.requiredEquity], ['Current rent avoided', inputs.currentRentPaid], ['Year 1 ownership cash cost', reportResult.years[0]?.ownershipCashCost], ['Year 1 net saving/cost vs leasing', s.ownerOccupierNetSavingCost], ['10-year cumulative rent avoided', reportResult.years[9]?.cumulativeLeasingCostAvoided], ['Year 10 equity created', reportResult.years[9]?.equityCreated], ['Business DSCR', s.businessDscr == null ? 'N/A — EBITDA not provided.' : `${s.businessDscr.toFixed(2)}x`], ['Occupancy cost ratio', s.occupancyCostRatio == null ? 'N/A' : `${(s.occupancyCostRatio * 100).toFixed(1)}%`], ['Cumulative ownership benefit', s.cumulativeOwnershipBenefit]]
+      : [['Property entity cashflow', s.propertyEntityCashflow], ['Operating business occupancy cost', reportResult.years[0]?.operatingBusinessOccupancyCost], ['Group cashflow', s.groupCashflow], ['Group DSCR', s.groupDscr == null ? 'N/A' : `${s.groupDscr.toFixed(2)}x`], ['Equity created', reportResult.years[9]?.equityCreated], ['Internal rent neutralisation', 'Shown in group view'], ['Required equity', s.requiredEquity], ['Year 10 property value', s.year10PropertyValue], ['Cumulative group benefit', s.cumulativeGroupBenefit]];
 
-  return <Card className="bg-card/95"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> 10-Year Cash Flow</CardTitle><CardDescription>Commercial / industrial projection for investor, owner-occupier and related-party lease scenarios. AI supports assumptions; deterministic formulas produce the table.</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</Badge><Badge variant={(pending ? 'outline' : badgeVariant(s.riskStatus)) as any}>{statusLabel}</Badge></div></div></CardHeader><CardContent className="space-y-5">
+  return <Card className="bg-card/95"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> 10-Year Cash Flow</CardTitle><CardDescription>Commercial / industrial projection for investor, owner-occupier and related-party lease scenarios. AI supports assumptions; deterministic formulas produce the table.</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</Badge><Badge variant={(pending ? 'outline' : badgeVariant(s.riskStatus)) as any}>{reportStatus}</Badge></div></div></CardHeader><CardContent className="space-y-5">
     <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
       <Card className="border-primary/30 bg-primary/5">
         <CollapsibleTrigger asChild>
@@ -381,6 +597,7 @@ export function TenYearCashFlowCard() {
               <OverrideNumber label="Major Capex Allowance" field="majorCapexAmount" value={inputs.majorCapexAmount} update={updateOverride} pending={pending && !overrides.majorCapexAmount} source={sourceFor('majorCapexAmount', 'Manual')} tooltip="Major one-off capex allowance included in the capex schedule." overridden={isOverridden('majorCapexAmount')} sourceConflict={hasSourceConflict('majorCapexAmount' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('majorCapexAmount' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('majorCapexAmount' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Major Capex Timing" field="majorCapexYear" value={inputs.majorCapexYear} update={updateOverride} pending={pending && !overrides.majorCapexYear} source={sourceFor('majorCapexYear', 'Manual')} tooltip="Projection year for major capex allowance." overridden={isOverridden('majorCapexYear')} sourceConflict={hasSourceConflict('majorCapexYear' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('majorCapexYear' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('majorCapexYear' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Specialist Reserves" field="specialistReserve" value={inputs.specialistReserve} update={updateOverride} pending={pending && !overrides.specialistReserve} source={sourceFor('specialistReserve', inputs.assetDomain === 'industrial' ? 'Research Engine' : 'Manual')} tooltip="Specialist reserve for commercial/industrial risk items." overridden={isOverridden('specialistReserve')} sourceConflict={hasSourceConflict('specialistReserve' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('specialistReserve' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('specialistReserve' as keyof TenYearCashFlowInputs)} />
+              <AssumptionField label="No Capex Reserve" source={capexNoneConfirmed ? 'Manual' : 'Blank'} tooltip="Use only when annual capex reserve is confirmed as nil for this scenario."><Button type="button" variant={capexNoneConfirmed ? 'default' : 'outline'} onClick={() => setCapexNoneConfirmed(v => !v)}>{capexNoneConfirmed ? 'None confirmed' : 'Confirm none'}</Button></AssumptionField>
             </div>
           </div>
 
@@ -400,21 +617,65 @@ export function TenYearCashFlowCard() {
               <OverrideNumber label="Capital Growth %" field="capitalGrowthPct" value={inputs.capitalGrowthPct} update={updateOverride} suffix="%" pending={pending && !overrides.capitalGrowthPct} source={sourceFor('capitalGrowthPct', 'Research Engine')} tooltip="Capital growth assumption used by the protected property value projection." overridden={isOverridden('capitalGrowthPct')} sourceConflict={hasSourceConflict('capitalGrowthPct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('capitalGrowthPct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('capitalGrowthPct' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Terminal Cap Rate %" field="terminalCapRatePct" value={inputs.terminalCapRatePct} update={updateOverride} suffix="%" placeholder={assumptionPlaceholders.terminalCapRatePct} pending={pending && !overrides.terminalCapRatePct} source={sourceFor('terminalCapRatePct', dcfOutputs ? 'DCF Tab' : 'Cap Rate Tab')} tooltip="Terminal cap rate from Cap Rate/DCF or manual override." overridden={isOverridden('terminalCapRatePct')} sourceConflict={hasSourceConflict('terminalCapRatePct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('terminalCapRatePct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('terminalCapRatePct' as keyof TenYearCashFlowInputs)} />
               <OverrideNumber label="Selling Costs %" field="sellingCostPct" value={inputs.sellingCostPct} update={updateOverride} suffix="%" pending={pending && !overrides.sellingCostPct} source={sourceFor('sellingCostPct', 'Manual')} tooltip="Selling cost percentage deducted from exit proceeds." overridden={isOverridden('sellingCostPct')} sourceConflict={hasSourceConflict('sellingCostPct' as keyof TenYearCashFlowInputs)} onKeepOverride={() => clearSourceConflict('sellingCostPct' as keyof TenYearCashFlowInputs)} onUseSource={() => useSourceValue('sellingCostPct' as keyof TenYearCashFlowInputs)} />
-              <AssumptionField label="Exit Value Method" source="Manual" tooltip="Workspace method label for exit value review; formulas are unchanged in this phase."><Select value={exitValueMethod} onValueChange={setExitValueMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Terminal cap rate">Terminal cap rate</SelectItem><SelectItem value="Capital growth">Capital growth</SelectItem><SelectItem value="Manual valuation review">Manual valuation review</SelectItem></SelectContent></Select></AssumptionField>
+              <AssumptionField label="Exit Value Method" source="Manual" tooltip="Selects the exit value method for report reconciliation. Existing capital-growth and terminal-cap formulas are preserved."><Select value={exitValueMethod} onValueChange={setExitValueMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Capital Growth Value">Capital Growth Value</SelectItem><SelectItem value="Terminal Cap Value">Terminal Cap Value</SelectItem><SelectItem value="Lower of Capital Growth / Terminal Cap">Lower of Capital Growth / Terminal Cap</SelectItem><SelectItem value="Manual Verified Exit Value">Manual Verified Exit Value</SelectItem></SelectContent></Select>{exitValueMethod === 'Manual Verified Exit Value' && <Input type="number" className="mt-2" value={manualVerifiedExitValue} onChange={e => setManualVerifiedExitValue(e.target.value)} placeholder="Enter verified exit value" />}</AssumptionField>
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">{cashFlowAiEstimateButtons.slice(0, 8).map(b => <Button key={b} size="sm" variant="outline"><Sparkles className="h-3.5 w-3.5 mr-1" />{b}</Button>)}</div>
-            <Button disabled={!modelReady} variant="outline" title={!modelReady ? 'Generate the validated 10-year cash flow model before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
+            <div className="rounded-lg border border-primary/20 bg-card/60 p-3">
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-primary">AI Estimate Workflow</h3>
+                <p className="text-xs text-muted-foreground">Estimate buttons now open a preview first. Values are not applied, verified or used as formula inputs until you accept them.</p>
+              </div>
+              {estimateMessage && <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</div>}
+              <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
+              {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
+            </div>
+            <Button disabled={!generatedCurrent || exitValuePdfBlocked} variant="outline" title={!generatedCurrent ? 'Generate or regenerate the current 10-year cash flow before exporting a PDF report.' : exitValuePdfBlocked ? 'Confirm exit value reconciliation before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
       </Card>
     </TooltipProvider>
-    {pending && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
-    <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={pending} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={pending} /></div>
-    {result.warnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="font-medium mb-2">Grouped warnings</div><ul className="list-disc pl-5 space-y-1">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></CardContent></Card>}
-    <MetricRows years={result.years} mode={mode} pending={pending} />
-    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{pending ? PENDING : result.commentary}</p></CardContent></Card>
+    <Card className={generatedOutOfDate ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardContent className="space-y-3 pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-primary">{generatedCurrent ? '10-year cashflow generated' : generatedOutOfDate ? 'Cashflow out of date' : 'Generate 10-Year Cash Flow'}</p>{generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">Generated {new Date(generatedCashFlow.generatedAt).toLocaleString()} · {generatedCashFlow.calculationVersion}</p>} {!generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">The cashflow table and report outputs will appear after generation.</p>}</div><Button type="button" disabled={!modelReady} onClick={generateCashFlow} title={!modelReady ? 'Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.' : generatedOutOfDate ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}>{generatedOutOfDate ? 'Regenerate Cash Flow' : generatedCurrent ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}</Button>{generatedCurrent && !exitValuePdfBlocked && <Button type="button" variant={reportVerified ? 'default' : 'outline'} onClick={() => setReportVerified(v => !v)}>{reportVerified ? 'Report Verified' : 'Mark Report Verified'}</Button>}</div>{!modelReady && <p className="text-xs text-muted-foreground">Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.</p>}{generatedOutOfDate && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-100">Cashflow out of date. Regenerate before PDF export.</div>}</CardContent></Card>
+    {!generatedCashFlow && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
+    {generatedCashFlow && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={false} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={false} /></div>}
+    {generatedCashFlow && <Card className={exitValueMaterialDifference ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardHeader><CardTitle className="text-base">Exit Value Reconciliation</CardTitle><CardDescription>Capital-growth value and income-capitalised terminal value are both preserved and compared before client reporting.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div className="grid gap-3 md:grid-cols-5"><SummaryCard label="Year 10 Capital Growth Value" value={year10CapitalGrowthValue} pending={false} /><SummaryCard label="Terminal Cap Value" value={terminalCapValue} pending={false} /><SummaryCard label="Difference" value={exitValueDifference} pending={false} /><SummaryCard label="Difference %" value={exitValueDifferencePct == null ? PENDING : `${(exitValueDifferencePct * 100).toFixed(1)}%`} pending={false} /><SummaryCard label="Selected Exit Value Used in Report" value={selectedExitValueUsed} pending={false} /></div>{exitValueMaterialDifference && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Exit value methods materially differ. Confirm which value should be used for client reporting.</div>}<p className="text-muted-foreground">Exit value has been modelled using {exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.</p>{(exitValueMaterialDifference || exitValueMethod === 'Manual Verified Exit Value') && <Button type="button" variant={exitReconciliationConfirmed ? 'default' : 'outline'} onClick={() => setExitReconciliationConfirmed(v => !v)}>{exitReconciliationConfirmed ? 'Exit reconciliation confirmed' : 'Confirm exit value for client reporting'}</Button>}</CardContent></Card>}
+    {validationWarnings.length > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="pt-4 text-sm text-amber-100"><div className="mb-2 flex items-center justify-between gap-2"><div className="font-medium">Priority warnings</div><Badge variant="outline">{validationWarnings.length} total</Badge></div><ul className="list-disc pl-5 space-y-1">{priorityWarnings.map((w, i) => <li key={`${w.category}-${i}`}><span className="font-medium">{w.category} · {w.severity}:</span> {w.message}</li>)}</ul><p className="mt-2 text-xs">Showing up to 5 priority warnings. Full warning log is available in Assumption Status.</p></CardContent></Card>}
+    <Card className="border-primary/20 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Recommended next action</p><p className="mt-1 text-sm text-muted-foreground">{nextAction}</p></CardContent></Card>
+    <Card className="border-primary/20 bg-primary/5"><CardContent className="space-y-3 pt-4 text-sm text-muted-foreground"><div className="flex flex-wrap items-center gap-2"><Button type="button" variant={annualOverridesEnabled ? 'default' : 'outline'} onClick={() => setAnnualOverridesEnabled(v => !v)}><Pencil className="mr-1 h-3.5 w-3.5" />{annualOverridesEnabled ? 'Annual overrides enabled' : 'Enable annual overrides'}</Button><Badge variant="outline" className="gap-1"><Lock className="h-3 w-3" />Calculated outputs locked</Badge><Badge variant="secondary" className="gap-1"><Pencil className="h-3 w-3" />{annualOverrideCount} active override{annualOverrideCount === 1 ? '' : 's'}</Badge>{annualOverrideCount > 0 && <Button type="button" size="sm" variant="outline" onClick={resetAllAnnualOverrides}>Reset all overrides</Button>}</div><p>Annual overrides are off by default. When enabled, they are limited to assumption rows such as passing rent, rent growth, vacancy allowance, recovered outgoings, outgoings growth, owner-borne expenses, capex reserve, major capex, lease downtime, tenant incentives, interest rate, tax rate, capital growth and final-year terminal cap rate. Protected calculated rows cannot be directly edited.</p>{annualOverrideCount > 0 && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Annual overrides are active. Review assumption history before generating report.</div>}</CardContent></Card>
+    {generatedCashFlow && <MetricRows years={reportResult.years} mode={mode} inputs={inputs} pending={pending} annualOverridesEnabled={annualOverridesEnabled} annualOverrides={annualOverrides} onSetAnnualOverride={setAnnualOverrideCell} onResetAnnualOverride={resetAnnualOverrideCell} onResetAnnualOverrideRow={resetAnnualOverrideRow} />}
+    {annualOverrideCount > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardHeader><CardTitle className="text-base">Annual Override Assumption Status</CardTitle><CardDescription>Overrides are included in assumption status, audit trail, PDF assumption notes and scenario save data through the 10-year cashflow inputs payload.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div><h4 className="font-medium">Audit Trail</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{assumptionHistory.filter(item => item.source === 'Annual Override').slice(-8).map((item, index) => <li key={`${item.field}-${item.year}-${item.timestamp}-${index}`}>Year {item.year}: {title(String(item.field))} overridden to {item.value} by Current user at {new Date(item.timestamp).toLocaleString()}</li>)}</ul></div><div><h4 className="font-medium">PDF report assumption notes</h4><p className="text-muted-foreground">Annual overrides are active. Review assumption history before generating report.</p></div><div><h4 className="font-medium">Scenario save data</h4><p className="text-muted-foreground">The active annual override map is stored on the generated cashflow inputs for scenario persistence.</p></div></CardContent></Card>}
+    <Card><CardHeader><CardTitle className="text-base">Assumption Status</CardTitle><CardDescription>Full validation warning log grouped by category and severity.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm">{Object.entries(groupedWarnings).map(([category, warnings]) => <div key={category}><h4 className="font-medium">{category}</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{warnings.map((warning, index) => <li key={`${category}-${index}`}><span className="font-medium">{warning.severity}:</span> {warning.message}</li>)}</ul></div>)}</CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{!generatedCashFlow ? PENDING : `${reportResult.commentary} Exit value has been modelled using ${exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.`}</p></CardContent></Card>
+    <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>AI Estimate Preview</DialogTitle>
+          <DialogDescription>Review the estimate, evidence basis and risks before applying it. AI estimates are never marked verified automatically.</DialogDescription>
+        </DialogHeader>
+        {estimatePreview && <div className="space-y-4 text-sm">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested value</div><div className="text-lg font-semibold text-primary">{estimatePreview.suggestedValue}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Suggested range</div><div className="font-semibold">{estimatePreview.suggestedRange[0]} – {estimatePreview.suggestedRange[1]}</div></div>
+            <div className="rounded border border-border/60 p-3"><div className="text-xs text-muted-foreground">Confidence level</div><Badge variant={estimatePreview.confidenceLevel === 'High' ? 'default' : estimatePreview.confidenceLevel === 'Medium' ? 'secondary' : 'outline'}>{estimatePreview.confidenceLevel}</Badge></div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div><h4 className="font-medium">Source basis</h4><p className="text-muted-foreground">{estimatePreview.sourceBasis}</p></div>
+            <div><h4 className="font-medium">Tabs / data points used</h4><p className="text-muted-foreground">{estimatePreview.tabsDataPointsUsed.join(', ')}</p></div>
+            <div><h4 className="font-medium">Missing data</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.missingData.map(item => <li key={item}>{item}</li>)}</ul></div>
+            <div><h4 className="font-medium">Risk notes</h4><ul className="list-disc pl-5 text-muted-foreground">{estimatePreview.riskNotes.map(item => <li key={item}>{item}</li>)}</ul></div>
+          </div>
+          <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">Specialist review recommended: {estimatePreview.specialistReviewRecommended ? 'Yes' : 'No'}.</div>
+          <div className="space-y-2"><Label>Edit before applying</Label><Input type="number" value={estimateEditValue} onChange={e => setEstimateEditValue(e.target.value)} /></div>
+        </div>}
+        <DialogFooter className="flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => setEstimatePreview(null)}>Reject estimate</Button>
+          <Button type="button" variant="outline" onClick={() => markEstimateVerified()}>Mark as verified</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(true)}>Edit before applying</Button>
+          <Button type="button" variant="secondary" onClick={() => acceptEstimate(false)}>Accept selected estimate</Button>
+          <Button type="button" onClick={() => acceptEstimate(false)}>Accept estimate</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </CardContent></Card>;
 }
