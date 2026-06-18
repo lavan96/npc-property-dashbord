@@ -672,6 +672,16 @@ def _decode_raster_page_bytes(page: dict) -> tuple[bytes, str]:
     return base64.b64decode(raw_b64), page.get("mime") or "image/png"
 
 
+def _normalize_raster_ext(mime: str) -> str:
+    """Map an image MIME type to the file extension used for raster artifacts."""
+    m = (mime or "").lower()
+    if "jpeg" in m or "jpg" in m:
+        return "jpg"
+    if "webp" in m:
+        return "webp"
+    return "png"
+
+
 async def _upload_raster_manifest_artifacts(
     client: httpx.AsyncClient,
     prefix: str,
