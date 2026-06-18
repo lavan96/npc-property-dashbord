@@ -128,9 +128,17 @@ function normalizeArtifacts(job: JobRow) {
     const v = payload[k];
     return typeof v === 'string' && v.length > 0 ? v : null;
   };
+  const payloadArr = (k: string): string[] => {
+    const v = payload[k];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  };
   return {
     doclingPath: pickStr('docling_path') ?? job.diagnostics_path ?? null,
-    rastersPath: pickStr('rasters_path'),
+    // Legacy `rasters.json` (may contain base64). Never embedded by default.
+    legacyRastersPath: pickStr('legacy_rasters_path') ?? pickStr('rasters_path'),
+    // Phase 3 — lightweight Storage-backed manifest.
+    rastersManifestPath: pickStr('rasters_manifest_path'),
+    pageRasterPaths: payloadArr('page_raster_paths'),
     markdownPath: pickStr('markdown_path'),
     outlinePath: pickStr('outline_path'),
     doctagsPath: pickStr('doctags_path'),
@@ -140,6 +148,7 @@ function normalizeArtifacts(job: JobRow) {
     autoModeSelected: payload.auto_mode_selected === true,
   };
 }
+
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   try {
