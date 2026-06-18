@@ -3,6 +3,8 @@
  * URLs so the synchronous jsPDF renderer can embed them.
  */
 import type { ReportTemplate } from './templateSchema';
+import { resolveRasterRefUrl } from './pdfImport/rasterArtifactRefs';
+import type { PdfImportRasterRef } from './pdfImport/docling/doclingTypes';
 
 const cache = new Map<string, string>();
 
@@ -26,6 +28,26 @@ async function fetchAsDataUrl(url: string): Promise<string | null> {
 }
 
 /**
+ * Phase 3 — resolve a `page.meta.sourceRasterRef` storage path to a signed URL
+ * then to a data URL for the synchronous renderer. The resolved data URL is
+ * applied ONLY to the in-memory clone returned from `preloadImages`; the
+ * persisted template schema continues to carry storage references only.
+ */
+async function resolveRasterRefDataUrl(ref: PdfImportRasterRef): Promise<string | null> {
+  try {
+    const signed = await resolveRasterRefUrl(ref);
+    return await fetchAsDataUrl(signed);
+  } catch (e) {
+    console.warn('[imagePreloader] sourceRasterRef resolution failed', {
+      path: ref?.path,
+      pageNo: ref?.pageNo,
+      error: (e as Error).message,
+    });
+    return null;
+  }
+}
+
+/**
  * Walks every image overlay in the template, fetches each remote `src`, and
  * returns a new template with the `src` replaced by a base64 data URL.
  * Bindings (`{{...}}`) are left untouched and resolved at render time.
@@ -37,6 +59,17 @@ export async function preloadImages(template: ReportTemplate): Promise<ReportTem
   const IMAGE_PROP_KEYS = ['imageUrl', 'src', 'chartUrl', 'backgroundUrl'];
 
   for (const page of next.pages) {
+    // Phase 3 — Storage-backed source raster reference (hybrid / pixel-perfect).
+    // Resolve to a signed URL → data URL only when no explicit bg image is set.
+    const rasterRef = (page as any).meta?.sourceRasterRef as PdfImportRasterRef | undefined;
+    if (rasterRef && rasterRef.path && !page.background?.imageUrl) {
+      tasks.push(
+        resolveRasterRefDataUrl(rasterRef).then((dataUrl) => {
+          if (!dataUrl) return;
+          (page as any).background = { ...((page as any).background ?? {}), imageUrl: dataUrl };
+        }),
+      );
+    }
     // Page background image
     const bgUrl = page.background?.imageUrl;
     if (typeof bgUrl === 'string' && /^https?:\/\//i.test(bgUrl)) {
