@@ -73,7 +73,7 @@ function displayValue(value: number | string | null | undefined) {
 }
 
 function MoneyRow({ label, value, emph }: { label: string; value: number | string | null | undefined; emph?: boolean }) {
-  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{displayValue(value)}</span></div>;
+  return <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-muted-foreground">{label}<LockedBadge /></span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{displayValue(value)}</span></div>;
 }
 
 function SafeMoneyRow({ label, value, ready, emph }: { label: string; value: number | string | null | undefined; ready: boolean; emph?: boolean }) {
@@ -109,12 +109,43 @@ function StatusIcon({ status = 'Manual Estimate' }: { status?: AssumptionStatus 
   if (status === 'Unknown') return <AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-label="Unknown" />;
   return <Circle className="h-2.5 w-2.5 text-muted-foreground" aria-label="Manual Estimate" />;
 }
-function Field({ label, value, onChange, step = '1', status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
-  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+function FieldSourceBadge({ source }: { source: string }) {
+  return <Badge variant={source === 'User Override' ? 'secondary' : source === 'Verified' ? 'default' : 'outline'} className="text-[10px]">{source}</Badge>;
 }
 
-function SelectField({ label, value, onChange, options, status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
-  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+function LockedBadge() {
+  return <Badge variant="outline" className="text-[10px]">Locked calculated output</Badge>;
+}
+
+function Field({ label, value, onChange, step = '1', status }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
+  const source = status ?? (value ? 'Manual' : 'Blank');
+  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Input className="bg-background" type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+}
+
+function SelectField({ label, value, onChange, options, status }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
+  const source = status ?? (value ? 'Manual' : 'Blank');
+  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+}
+
+
+function openSourceTab(tab: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('calculator-tab-open', { detail: { tab } }));
+}
+
+function SourceTabNotice({ title, description, tab, metrics }: { title: string; description: string; tab: string; metrics?: Array<{ label: string; value: number | string | null | undefined }> }) {
+  return (
+    <div className="md:col-span-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => openSourceTab(tab)}>Open source tab</Button>
+      </div>
+      {metrics?.length ? <div className="mt-3 grid gap-2 md:grid-cols-3">{metrics.map((metric) => <MoneyRow key={metric.label} label={metric.label} value={metric.value} />)}</div> : null}
+    </div>
+  );
 }
 
 
