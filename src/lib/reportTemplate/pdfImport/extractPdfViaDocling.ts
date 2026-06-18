@@ -251,6 +251,64 @@ async function downloadJson<T>(path: string): Promise<T> {
   }
 }
 
+/**
+ * Resolve a Storage object path to a short-lived signed URL via the
+ * `pdf-parse-dispatch { operation: 'download' }` edge function. Returns the
+ * `signed_url` (or `null` on failure) — unlike `downloadJson`, it does NOT
+ * fetch the body, so it's used to point a renderer at a page raster without
+ * pulling the bytes through the app.
+ */
+async function downloadUrl(path: string): Promise<string | null> {
+  const { data, error } = await invokeSecureFunction(
+    'pdf-parse-dispatch',
+    { operation: 'download', path },
+    { timeoutMs: 30_000 },
+  );
+
+  if (error) {
+    console.warn('[PDF_IMPORT_DEBUG] downloadUrl invoke failed', {
+      path,
+      error: describeAuthError(error.message) ?? error.message ?? 'unknown invoke error',
+    });
+    return null;
+  }
+
+  const payload = data as { signed_url?: string; signedUrl?: string; error?: string } | null;
+  if (payload?.error) {
+    console.warn('[PDF_IMPORT_DEBUG] downloadUrl returned error', { path, error: payload.error });
+    return null;
+  }
+
+  return payload?.signed_url ?? payload?.signedUrl ?? null;
+}
+
+/**
+ * Phase 3 — resolve a downloaded `rasters-manifest.json` into a page-keyed map
+ * whose `dataUrl` is a freshly signed Storage URL (NEVER base64). Each page's
+ * `path` is signed on demand via `downloadUrl`; pages that fail to sign are
+ * skipped so one bad page can't abort the whole import.
+ */
+async function manifestToRastersByPage(manifest: RasterManifest): Promise<DoclingRasterByPage> {
+  const out: DoclingRasterByPage = {};
+  for (const page of manifest.pages ?? []) {
+    if (page?.page_no == null) continue;
+    const signedUrl = await downloadUrl(page.path);
+    if (!signedUrl) {
+      console.warn('[PDF_IMPORT_DEBUG] manifest page sign skipped', {
+        pageNo: page.page_no,
+        path: page.path,
+      });
+      continue;
+    }
+    out[page.page_no] = {
+      width: page.width,
+      height: page.height,
+      dataUrl: signedUrl,
+    };
+  }
+  return out;
+}
+
 interface JobRow {
   id: string;
   status: string;
@@ -532,10 +590,23 @@ export async function extractPdfViaDocling(
         });
       }
     }
-    // Note: `rasters` here is in-memory only — used by the mapper for sizing
-    // hints. It is NEVER copied into the persisted schema (the sanitizer
-    // strips any data: URLs before resync/finalize as a belt-and-braces guard).
-    const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
+    // Build the page-keyed raster map the mapper uses for backgrounds + sizing.
+    // Prefer the Phase 3 manifest: each page resolves to a signed Storage URL
+    // (no base64) via `manifestToRastersByPage`. Only fall back to the legacy
+    // base64 `rasters.json` when the compatibility flag is on.
+    let rasters: DoclingRasterByPage | undefined;
+    if (rasterManifest) {
+      try {
+        rasters = await manifestToRastersByPage(rasterManifest);
+      } catch (e) {
+        console.warn('[PDF_IMPORT_DEBUG] manifest → rastersByPage failed', {
+          error: (e as Error).message,
+        });
+      }
+    }
+    if (!rasters && rasterPayload) {
+      rasters = rastersByPage(rasterPayload);
+    }
 
     console.info('[PDF_IMPORT_DEBUG] downloading docling artifact', {
       jobId: job.id,
