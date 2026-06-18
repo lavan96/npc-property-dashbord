@@ -37,10 +37,11 @@ const isUsableNumber = (v: unknown) => v !== '' && v != null && Number.isFinite(
 const fmt = (n: number) => Number.isFinite(n) ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n) : 'Pending';
 const fmtMaybe = (v: string | number | null | undefined) => (!isUsableNumber(v) ? 'Pending' : fmt(Number(v)));
 const pct = (n: number) => Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : 'Pending';
-const num = (v: string) => (v === '' ? 0 : Number(v));
+const num = (v: string) => (v === '' ? Number.NaN : Number(v));
 const set = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => setter(e.target.value);
 const hasValue = (v: string) => v.trim() !== '';
 const valueOrUndefined = (v: string) => hasValue(v) ? num(v) : undefined;
+const sourceNumber = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : Number.NaN;
 const badgeVariant = (r: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : r === 'red' ? 'destructive' : 'outline');
 const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
@@ -72,7 +73,7 @@ function displayValue(value: number | string | null | undefined) {
 }
 
 function MoneyRow({ label, value, emph }: { label: string; value: number | string | null | undefined; emph?: boolean }) {
-  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{displayValue(value)}</span></div>;
+  return <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-muted-foreground">{label}<LockedBadge /></span><span className={emph ? 'font-semibold text-primary' : 'font-medium'}>{displayValue(value)}</span></div>;
 }
 
 function SafeMoneyRow({ label, value, ready, emph }: { label: string; value: number | string | null | undefined; ready: boolean; emph?: boolean }) {
@@ -108,12 +109,43 @@ function StatusIcon({ status = 'Manual Estimate' }: { status?: AssumptionStatus 
   if (status === 'Unknown') return <AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-label="Unknown" />;
   return <Circle className="h-2.5 w-2.5 text-muted-foreground" aria-label="Manual Estimate" />;
 }
-function Field({ label, value, onChange, step = '1', status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
-  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Input type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+function FieldSourceBadge({ source }: { source: string }) {
+  return <Badge variant={source === 'User Override' ? 'secondary' : source === 'Verified' ? 'default' : 'outline'} className="text-[10px]">{source}</Badge>;
 }
 
-function SelectField({ label, value, onChange, options, status = 'Manual Estimate' }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
-  return <div><Label className="flex items-center gap-1.5">{label}<StatusIcon status={status} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+function LockedBadge() {
+  return <Badge variant="outline" className="text-[10px]">Locked calculated output</Badge>;
+}
+
+function Field({ label, value, onChange, step = '1', status }: { label: string; value: string; onChange: (v: string) => void; step?: string; status?: string }) {
+  const source = status ?? (value ? 'Manual' : 'Blank');
+  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Input className="bg-background" type="number" step={step} value={value} onChange={set(onChange)} /></div>;
+}
+
+function SelectField({ label, value, onChange, options, status }: { label: string; value: string; onChange: (v: any) => void; options: Array<{ value: string; label: string }>; status?: string }) {
+  const source = status ?? (value ? 'Manual' : 'Blank');
+  return <div className="space-y-1"><Label className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5">{label}<StatusIcon status={source} /></span><FieldSourceBadge source={source} /></Label><Select value={value} onValueChange={onChange}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>;
+}
+
+
+function openSourceTab(tab: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('calculator-tab-open', { detail: { tab } }));
+}
+
+function SourceTabNotice({ title, description, tab, metrics }: { title: string; description: string; tab: string; metrics?: Array<{ label: string; value: number | string | null | undefined }> }) {
+  return (
+    <div className="md:col-span-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => openSourceTab(tab)}>Open source tab</Button>
+      </div>
+      {metrics?.length ? <div className="mt-3 grid gap-2 md:grid-cols-3">{metrics.map((metric) => <MoneyRow key={metric.label} label={metric.label} value={metric.value} />)}</div> : null}
+    </div>
+  );
 }
 
 function ClientProfileCombobox({ value, options, loading, onChange }: { value: string; options: ClientProfileOption[]; loading?: boolean; onChange: (id: string) => void }) {
@@ -160,6 +192,7 @@ function ClientProfileCombobox({ value, options, loading, onChange }: { value: s
 
 export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commercial' }: { initialAssetCategory?: AssetCategory }) {
   const updateGlobal = useCommercialDealState(s => s.updateGlobal);
+  const linkedProfile = useCommercialDealState(s => s.profile);
   const sourceMode = useCommercialDealState(s => s.sourceModes.borrowing);
   const [assetCategory, setAssetCategory] = useState<AssetCategory>(initialAssetCategory);
   const [assetSubtype, setAssetSubtype] = useState('');
@@ -174,12 +207,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [relatedPartyTenant, setRelatedPartyTenant] = useState<'yes' | 'no'>('no');
   const [availableEquity, setAvailableEquity] = useState('');
   const [sponsorLiquidity, setSponsorLiquidity] = useState('');
-  const [liquidityMult, setLiquidityMult] = useState('0');
-  const [businessDebt, setBusinessDebt] = useState('0');
-  const [businessEbitda, setBusinessEbitda] = useState('0');
-  const [currentRent, setCurrentRent] = useState('0');
-  const [proposedRent, setProposedRent] = useState('0');
-  const [smsfBalance, setSmsfBalance] = useState('0');
+  const [liquidityMult, setLiquidityMult] = useState('');
+  const [businessDebt, setBusinessDebt] = useState('');
+  const [businessEbitda, setBusinessEbitda] = useState('');
+  const [currentRent, setCurrentRent] = useState('');
+  const [proposedRent, setProposedRent] = useState('');
+  const [smsfBalance, setSmsfBalance] = useState('');
 
   const [purchasePrice, setPurchasePrice] = useState('');
   const [estimatedValue, setEstimatedValue] = useState('');
@@ -197,12 +230,12 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [roofCondition, setRoofCondition] = useState<'unknown' | 'good' | 'average' | 'poor'>('good');
 
   const [passingRent, setPassingRent] = useState('');
-  const [otherIncome, setOtherIncome] = useState('0');
+  const [otherIncome, setOtherIncome] = useState('');
   const [recoveries, setRecoveries] = useState('');
   const [marketRent, setMarketRent] = useState('');
   const [vacancy, setVacancy] = useState('');
-  const [incentives, setIncentives] = useState('0');
-  const [arrearsAdj, setArrearsAdj] = useState('0');
+  const [incentives, setIncentives] = useState('');
+  const [arrearsAdj, setArrearsAdj] = useState('');
   const [nonRecoverable, setNonRecoverable] = useState('');
   const [rates, setRates] = useState('');
   const [water, setWater] = useState('');
@@ -213,23 +246,23 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [wale, setWale] = useState('');
   const [tenantCovenant, setTenantCovenant] = useState<'government' | 'nationalTenant' | 'listedCompany' | 'establishedSme' | 'newBusiness' | 'relatedParty' | 'weakUnknown'>('establishedSme');
   const [rentOverMarket, setRentOverMarket] = useState<'yes' | 'no' | 'unknown'>('no');
-  const [aboveMarketPct, setAboveMarketPct] = useState('0');
+  const [aboveMarketPct, setAboveMarketPct] = useState('');
   const [noiBasis, setNoiBasis] = useState<'actual' | 'stabilised' | 'lenderAdjusted'>('lenderAdjusted');
 
   const [stampDuty, setStampDuty] = useState('');
   const [transferRegistrationFee, setTransferRegistrationFee] = useState('');
   const [mortgageRegistrationFee, setMortgageRegistrationFee] = useState('');
   const [pexaSettlementFee, setPexaSettlementFee] = useState('');
-  const [autoEstimatedAcquisitionCosts, setAutoEstimatedAcquisitionCosts] = useState('0');
+  const [autoEstimatedAcquisitionCosts, setAutoEstimatedAcquisitionCosts] = useState('');
   const [legal, setLegal] = useState('');
   const [bankLegal, setBankLegal] = useState('');
   const [valuationFee, setValuationFee] = useState('');
   const [dueDiligence, setDueDiligence] = useState('');
-  const [environmentalCost, setEnvironmentalCost] = useState('0');
-  const [asbestosCost, setAsbestosCost] = useState('0');
+  const [environmentalCost, setEnvironmentalCost] = useState('');
+  const [asbestosCost, setAsbestosCost] = useState('');
   const [capexReserve, setCapexReserve] = useState('');
   const [workingCapital, setWorkingCapital] = useState('');
-  const [otherCosts, setOtherCosts] = useState('0');
+  const [otherCosts, setOtherCosts] = useState('');
   const [gstTreatment, setGstTreatment] = useState<'gstInclusive' | 'plusGst' | 'gstFreeGoingConcern' | 'marginScheme' | 'unknown'>('unknown');
   const [gstCashflow, setGstCashflow] = useState<'yes' | 'no' | 'unknown'>('unknown');
   const [gstClaimable, setGstClaimable] = useState<'yes' | 'no' | 'unknown'>('unknown');
@@ -239,15 +272,15 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [profile, setProfile] = useState<LenderPolicyProfileKey>('mainstreamCommercialBank');
   const [rate, setRate] = useState('');
   const [buffer, setBuffer] = useState('');
-  const [floorRate, setFloorRate] = useState('0');
+  const [floorRate, setFloorRate] = useState('');
   const [assessmentBasis, setAssessmentBasis] = useState<'contractPlusBuffer' | 'higherOfBufferAndFloor' | 'interestOnlyAssessment' | 'principalAndInterestAssessment' | 'custom'>('contractPlusBuffer');
   const [term, setTerm] = useState('');
-  const [ioPeriod, setIoPeriod] = useState('0');
+  const [ioPeriod, setIoPeriod] = useState('');
   const [amortisation, setAmortisation] = useState('');
-  const [maxLvr, setMaxLvr] = useState('0.65');
-  const [minIcr, setMinIcr] = useState('1.50');
-  const [minDscr, setMinDscr] = useState('1.25');
-  const [minDebtYield, setMinDebtYield] = useState('0.09');
+  const [maxLvr, setMaxLvr] = useState('');
+  const [minIcr, setMinIcr] = useState('');
+  const [minDscr, setMinDscr] = useState('');
+  const [minDebtYield, setMinDebtYield] = useState('');
 
   const [tenantStrength, setTenantStrength] = useState<'strong' | 'established' | 'weak' | 'unknown'>('established');
   const [vacancyLevel, setVacancyLevel] = useState<'none' | 'minor' | 'major'>('minor');
@@ -258,7 +291,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [asbestosRisk, setAsbestosRisk] = useState<'low' | 'unknown' | 'likely' | 'confirmed'>('unknown');
   const [capexRequired, setCapexRequired] = useState<'none' | 'some' | 'heavy'>('some');
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [scenarioName, setScenarioName] = useState('Proposed commercial / industrial acquisition');
+  const [scenarioName, setScenarioName] = useState('');
   const [scenarioType, setScenarioType] = useState<ScenarioType>('Acquire Commercial Asset');
   const [scenarioStatus, setScenarioStatus] = useState<ScenarioStatus>('Draft');
   const [savedScenario, setSavedScenario] = useState<ClientScenario | null>(null);
@@ -286,11 +319,15 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const [globalInputSync, setGlobalInputSync] = useState(true);
   const [activeTab, setActiveTab] = useState('quick');
   const [showUnchangedMetrics, setShowUnchangedMetrics] = useState(false);
-  const [recommendedScenarioName, setRecommendedScenarioName] = useState('Base Case');
+  const [recommendedScenarioName, setRecommendedScenarioName] = useState('');
 
   useEffect(() => { setAssetCategory(initialAssetCategory); }, [initialAssetCategory]);
 
   const showBusinessFields = ['company', 'discretionaryTrust', 'unitTrust', 'holdingCompany', 'spv', 'operatingBusiness'].includes(purchaserType) || purpose === 'ownerOccupied' || purpose === 'relatedPartyLease';
+  const linkedActualNoi = (linkedProfile.noiOutputs as any)?.actualNoi ?? (linkedProfile.noiOutputs as any)?.actualNOI;
+  const linkedStabilisedNoi = (linkedProfile.noiOutputs as any)?.stabilisedNoi ?? (linkedProfile.noiOutputs as any)?.stabilisedNOI;
+  const linkedLenderNoi = (linkedProfile.noiOutputs as any)?.lenderAdjustedNoi ?? (linkedProfile.noiOutputs as any)?.lenderAdjustedNOI;
+  const selectedLinkedNoi = noiBasis === 'actual' ? linkedActualNoi : noiBasis === 'stabilised' ? linkedStabilisedNoi : linkedLenderNoi ?? linkedStabilisedNoi ?? linkedActualNoi;
 
   useEffect(() => {
     let alive = true;
@@ -343,13 +380,13 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
       dealProfile: { assetCategory, assetSubtype, acquisitionPurpose: purpose, leaseStatus, state, proposedLoan: proposedLoan ? num(proposedLoan) : undefined },
       purchaserStructure: { purchaserType, borrowerEntityName: entityName, corporateTrustee: purchaserType.includes('Trust') ? 'yes' : 'notApplicable', guaranteesAvailable: guarantees, relatedPartyTenant: relatedPartyTenant === 'yes', gstRegistered, availableCashEquity: valueOrUndefined(availableEquity), sponsorLiquidity: valueOrUndefined(sponsorLiquidity), liquidityMultiplier: num(liquidityMult), existingBusinessDebts: num(businessDebt), existingBusinessEbitda: num(businessEbitda), existingRentPaid: num(currentRent), proposedRentPayable: num(proposedRent), smsfBalance: num(smsfBalance), smsfSpecialistReviewRequired: purchaserType === 'smsf' },
       propertyValuation: { purchasePrice: valueOrUndefined(purchasePrice), estimatedMarketValue: valueOrUndefined(estimatedValue), bankValuation: bankValue ? num(bankValue) : undefined, useConservativeValuation: conservativeValue === 'yes', landArea: valueOrUndefined(landArea), buildingArea: valueOrUndefined(buildingArea), lettableArea: valueOrUndefined(lettableArea), valuationConfidence, clearanceHeight: valueOrUndefined(clearance), rollerDoors: valueOrUndefined(rollerDoors), truckAccessQuality: truckAccess, powerCapacity, slabCondition, roofCondition },
-      income: { grossPassingRent: valueOrUndefined(passingRent), otherIncome: num(otherIncome), recoveredOutgoings: valueOrUndefined(recoveries), marketRent: valueOrUndefined(marketRent), vacancyAllowancePct: valueOrUndefined(vacancy), incentivesAdjustment: num(incentives), tenantArrearsAdjustment: num(arrearsAdj), nonRecoverableExpenses: num(nonRecoverable), councilRates: num(rates), water: num(water), landTax: num(landTax), insurance: num(insurance), strataOwnersCorp: 0, managementFees: num(management), repairsMaintenance: num(repairs), utilities: 0, cleaning: 0, security: 0, otherExpenses: 0, wale: num(wale), tenantCovenant, rentOverMarket, percentageAboveMarket: num(aboveMarketPct), noiBasis },
+      income: { grossPassingRent: valueOrUndefined(passingRent) ?? sourceNumber(selectedLinkedNoi), otherIncome: valueOrUndefined(otherIncome) ?? sourceNumber((linkedProfile.leaseIncome as any)?.otherIncome), recoveredOutgoings: valueOrUndefined(recoveries) ?? sourceNumber((linkedProfile.leaseIncome as any)?.recoveredOutgoings), marketRent: valueOrUndefined(marketRent) ?? sourceNumber((linkedProfile.leaseIncome as any)?.marketRent), vacancyAllowancePct: valueOrUndefined(vacancy) ?? sourceNumber((linkedProfile.leaseIncome as any)?.vacancyAllowancePct), incentivesAdjustment: valueOrUndefined(incentives) ?? Number.NaN, tenantArrearsAdjustment: valueOrUndefined(arrearsAdj) ?? Number.NaN, nonRecoverableExpenses: valueOrUndefined(nonRecoverable) ?? Number.NaN, councilRates: valueOrUndefined(rates) ?? Number.NaN, water: valueOrUndefined(water) ?? Number.NaN, landTax: valueOrUndefined(landTax) ?? Number.NaN, insurance: valueOrUndefined(insurance) ?? Number.NaN, strataOwnersCorp: Number.NaN, managementFees: valueOrUndefined(management) ?? Number.NaN, repairsMaintenance: valueOrUndefined(repairs) ?? Number.NaN, utilities: Number.NaN, cleaning: Number.NaN, security: Number.NaN, otherExpenses: Number.NaN, wale: valueOrUndefined(wale) ?? Number.NaN, tenantCovenant, rentOverMarket, percentageAboveMarket: valueOrUndefined(aboveMarketPct), noiBasis },
       acquisitionCosts: { depositPaid: 0, stampDuty: num(stampDuty), transferRegistrationFee: num(transferRegistrationFee), mortgageRegistrationFee: num(mortgageRegistrationFee), pexaSettlementFee: num(pexaSettlementFee), legalConveyancingFee: num(legal), bankLegalFee: num(bankLegal), valuationFee: num(valuationFee), loanApplicationFee: 0, buyersAgentFee: 0, buildingInspection: 0, pestInspection: 0, structuralInspection: assetCategory === 'industrial' ? 5000 : 0, fireComplianceInspection: 2500, planningZoningReview: 2500, environmentalReport: num(environmentalCost), asbestosReport: num(asbestosCost), dueDiligence: num(dueDiligence), capexReserve: num(capexReserve), workingCapitalReserve: num(workingCapital), otherAcquisitionCosts: num(otherCosts) + num(autoEstimatedAcquisitionCosts), gstTreatment, gstAmount: 0, gstClaimable, gstCashflowRequired: gstCashflow, goingConcernConfirmed, landholderAcquisition, vicCommercialIndustrialPropertyTax: state === 'VIC' ? 'yes' : 'no', saQualifyingNonResidentialLand: state === 'SA' ? 'yes' : 'no' },
       lendingAssumptions: { profile, contractInterestRatePct: num(rate), assessmentBufferPct: num(buffer), assessmentFloorRatePct: num(floorRate), assessmentBasis, repaymentType: assessmentBasis === 'interestOnlyAssessment' ? 'interestOnly' : 'principalAndInterest', exitStrategy: 'unknown', loanTermYears: num(term), interestOnlyPeriodYears: num(ioPeriod), amortisationYears: num(amortisation), maxLvr: num(maxLvr), minIcr: num(minIcr), minDscr: num(minDscr), minDebtYield: num(minDebtYield), debtYieldEnabled: true },
       riskInputs: { tenantStrength, vacancyLevel, buildingCondition, zoningCertainty: zoning, leaseDocumentationComplete: leaseDocs, environmentalRisk, asbestosRisk, capexRequired, rentComparedToMarket: rentOverMarket === 'yes' ? 'materiallyOver' : 'belowOrAtMarket' },
     };
     return calculateCommercialIndustrialBorrowing(inputs);
-  }, [assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, gstTreatment, gstCashflow, gstClaimable, goingConcernConfirmed, landholderAcquisition, profile, rate, buffer, floorRate, assessmentBasis, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired]);
+  }, [assetCategory, assetSubtype, purpose, leaseStatus, state, proposedLoan, purchaserType, entityName, guarantees, gstRegistered, relatedPartyTenant, availableEquity, sponsorLiquidity, liquidityMult, businessDebt, businessEbitda, currentRent, proposedRent, smsfBalance, purchasePrice, estimatedValue, bankValue, conservativeValue, landArea, buildingArea, lettableArea, valuationConfidence, clearance, rollerDoors, truckAccess, powerCapacity, slabCondition, roofCondition, passingRent, otherIncome, recoveries, marketRent, vacancy, incentives, arrearsAdj, nonRecoverable, rates, water, landTax, insurance, management, repairs, wale, tenantCovenant, rentOverMarket, aboveMarketPct, noiBasis, stampDuty, legal, bankLegal, valuationFee, dueDiligence, environmentalCost, asbestosCost, capexReserve, workingCapital, otherCosts, autoEstimatedAcquisitionCosts, transferRegistrationFee, mortgageRegistrationFee, pexaSettlementFee, gstTreatment, gstCashflow, gstClaimable, goingConcernConfirmed, landholderAcquisition, profile, rate, buffer, floorRate, assessmentBasis, term, ioPeriod, amortisation, maxLvr, minIcr, minDscr, minDebtYield, tenantStrength, vacancyLevel, buildingCondition, zoning, leaseDocs, environmentalRisk, asbestosRisk, capexRequired, selectedLinkedNoi, linkedProfile]);
 
 
   const selectedClient = selectedClientProfile ?? blankClientProfile;
@@ -363,27 +400,27 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const readinessItems = useMemo(() => [
     { label: 'Purchase price or estimated market value', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
     { label: 'Proposed loan amount or target/max LVR', complete: hasValue(proposedLoan) || hasValue(maxLvr) },
-    { label: 'Gross passing rent or annual NOI', complete: hasValue(passingRent) || hasValue(nonRecoverable) },
+    { label: 'NOI source value', complete: hasValue(passingRent) || hasValue(nonRecoverable) || Number.isFinite(Number(selectedLinkedNoi)) },
     { label: 'Contract interest rate', complete: hasValue(rate) },
     { label: 'Loan term years', complete: hasValue(term) },
     { label: 'Max LVR', complete: hasValue(maxLvr) },
     { label: 'Minimum ICR or Minimum DSCR', complete: hasValue(minIcr) || hasValue(minDscr) },
     { label: 'Lease status', complete: hasValue(leaseStatus) },
     { label: 'Purchaser type', complete: hasValue(purchaserType) },
-  ], [purchasePrice, estimatedValue, proposedLoan, maxLvr, passingRent, nonRecoverable, rate, term, minIcr, minDscr, leaseStatus, purchaserType]);
+  ], [purchasePrice, estimatedValue, proposedLoan, maxLvr, passingRent, nonRecoverable, selectedLinkedNoi, rate, term, minIcr, minDscr, leaseStatus, purchaserType]);
   const completedReadinessItems = readinessItems.filter(item => item.complete).length;
   const completenessPct = Math.round((completedReadinessItems / readinessItems.length) * 100);
   const assessmentReady = completedReadinessItems === readinessItems.length;
-  const noRequiredInputsStarted = [purchasePrice || estimatedValue, passingRent || marketRent || nonRecoverable, rate, term].every(value => !hasValue(String(value)));
+  const noRequiredInputsStarted = [purchasePrice || estimatedValue, passingRent || marketRent || nonRecoverable || (Number.isFinite(Number(selectedLinkedNoi)) ? String(selectedLinkedNoi) : ''), rate, term].every(value => !hasValue(String(value)));
   const missingRequiredInputs = readinessItems.filter(item => !item.complete).map(item => item.label);
-  const readinessStatus = noRequiredInputsStarted ? 'Awaiting required inputs' : assessmentReady ? result.creditAssessmentStatusLabel : 'Preliminary estimate';
+  const readinessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Calculated' : 'Preliminary Estimate';
   const readinessHelper = noRequiredInputsStarted
     ? 'Complete the required deal, income and lending fields to generate a borrowing estimate.'
     : assessmentReady
       ? result.proposedLoanSupportabilityMessage
       : 'This result is indicative and may change once valuation, lease, GST and borrower documents are confirmed.';
-  const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Assessment Ready' : 'Preliminary Estimate';
-  const purchaseAbilityStatus = !assessmentReady ? 'Awaiting Inputs' : result.fundsToComplete.requiredEquity == null ? 'Funds to Complete Pending' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Funds to Complete Supported' : result.creditAssessmentStatus === 'red' ? 'Not Supportable' : 'Equity Shortfall';
+  const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Ready to Calculate' : 'Preliminary Estimate';
+  const purchaseAbilityStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : !assessmentReady ? 'Preliminary Estimate' : result.fundsToComplete.requiredEquity == null ? 'Review Required' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Calculated' : 'Review Required';
   const validCalculatedResult = assessmentReady && Number.isFinite(result.finalRiskAdjustedLoan) && result.finalRiskAdjustedLoan > 0;
   const criticalExportFields = useMemo(() => [
     { label: 'Purchase price', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
@@ -408,7 +445,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     return false;
   });
   const allRequiredDocumentsVerified = missingCriticalDocuments.length === 0;
-  const exportReadinessStatus = exportBlocked ? 'Export blocked' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Ready to export' : 'Export allowed with assumptions';
+  const exportReadinessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : exportBlocked ? 'Review Required' : allRequiredDocumentsVerified && !hasAssumptionsPresent ? 'Verified' : 'Ready to Calculate';
   const exportButtonDisabled = exportBlocked;
   const exportButtonLabel = exportBlocked ? 'Export Scenario Report' : hasAssumptionsPresent || !allRequiredDocumentsVerified ? 'Export Scenario Report (with assumptions)' : 'Export Scenario Report';
   const documentChecklistGroups = Object.entries(documentCategories).map(([category, configuredItems]) => ({
@@ -431,12 +468,23 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     Documents: [...result.documentChecklist.slice(0, 3)],
   }), [availableEquity, businessEbitda, showBusinessFields, purchasePrice, estimatedValue, assetSubtype, passingRent, marketRent, nonRecoverable, leaseDocs, rate, term, maxLvr, gstTreatment, gstCashflow, result.documentChecklist]);
   const criticalMissingItems = Object.entries(missingInformationGroups).flatMap(([group, items]) => items.map(item => ({ group, item }))).slice(0, 5);
+  const noiSourceMetrics = [
+    { label: 'Actual NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.actualNoi) : 'Pending' },
+    { label: 'Stabilised NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.stabilisedNoi) : 'Pending' },
+    { label: 'Lender-adjusted NOI', value: assessmentReady ? formatAdvancedMoney(result.noi.lenderAdjustedNoi) : 'Pending' },
+  ];
+  const gstSourceMetrics = [
+    { label: 'GST cashflow required', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.gstCashflowRequirement) : 'Pending' },
+    { label: 'GST economic cost', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.gst.economicCost) : 'Pending' },
+    { label: 'Net acquisition cost', value: assessmentReady ? formatAdvancedMoney(result.fundsToComplete.totalCostBase) : 'Pending' },
+  ];
   const warningSummary = useMemo(() => {
-    const critical = missingRequiredInputs.map(w => ({ severity: 'Critical', text: w }));
+    if (noRequiredInputsStarted) return [];
+    const critical = missingRequiredInputs.map(w => ({ severity: 'Required', text: w }));
     const required = result.warnings.slice(0, 4).map(w => ({ severity: 'Required', text: w }));
     const recommended = result.documentChecklist.slice(0, 3).map(w => ({ severity: 'Recommended', text: w }));
     return [...critical, ...required, ...recommended].slice(0, 8);
-  }, [missingRequiredInputs, result.warnings, result.documentChecklist]);
+  }, [noRequiredInputsStarted, missingRequiredInputs, result.warnings, result.documentChecklist]);
   const hasRequiredWarnings = warningSummary.some(w => w.severity === 'Required');
   const scenarioMinimumMissing = useMemo(() => [
     { label: 'Purchase price or estimated market value', complete: hasValue(purchasePrice) || hasValue(estimatedValue) },
@@ -804,17 +852,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
               {assetCategory === 'industrial' && <><Field label="Clearance height m" value={clearance} onChange={setClearance} step="0.1" /><Field label="Roller doors" value={rollerDoors} onChange={setRollerDoors} /><SelectField label="Truck access" value={truckAccess} onChange={setTruckAccess} options={[{ value: 'poor', label: 'Poor' }, { value: 'average', label: 'Average' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }]} /><SelectField label="Power capacity" value={powerCapacity} onChange={setPowerCapacity} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'singlePhase', label: 'Single phase' }, { value: 'threePhase', label: '3 phase' }, { value: 'highCapacity', label: 'High capacity' }, { value: 'substationPresent', label: 'Substation present' }]} /><SelectField label="Slab condition" value={slabCondition} onChange={setSlabCondition} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'good', label: 'Good' }, { value: 'average', label: 'Average' }, { value: 'poor', label: 'Poor' }]} /><SelectField label="Roof condition" value={roofCondition} onChange={setRoofCondition} options={[{ value: 'unknown', label: 'Unknown' }, { value: 'good', label: 'Good' }, { value: 'average', label: 'Average' }, { value: 'poor', label: 'Poor' }]} /></>}
             </AccordionContent></AccordionItem>
 
-            <AccordionItem value="income"><AccordionTrigger>2. Income / NOI</AccordionTrigger><AccordionContent><p className="mb-3 text-xs text-muted-foreground">Enter rent and expense assumptions used to determine lender-adjusted NOI.</p><div className="grid md:grid-cols-3 gap-3">
-              <Field label="Gross passing rent p.a." value={passingRent} onChange={setPassingRent} /><Field label="Other income p.a." value={otherIncome} onChange={setOtherIncome} /><Field label="Recovered outgoings p.a." value={recoveries} onChange={setRecoveries} />
-              <Field label="Market rent p.a." value={marketRent} onChange={setMarketRent} /><Field label="Vacancy allowance %" value={vacancy} onChange={setVacancy} step="0.1" /><Field label="Incentives / rent-free adjustment" value={incentives} onChange={setIncentives} />
-              <Field label="Tenant arrears adjustment" value={arrearsAdj} onChange={setArrearsAdj} /><Field label="Non-recoverable expenses" value={nonRecoverable} onChange={setNonRecoverable} /><Field label="Council rates" value={rates} onChange={setRates} />
-              <Field label="Water" value={water} onChange={setWater} /><Field label="Land tax" value={landTax} onChange={setLandTax} /><Field label="Insurance" value={insurance} onChange={setInsurance} />
-              <Field label="Management fees" value={management} onChange={setManagement} /><Field label="Repairs and maintenance" value={repairs} onChange={setRepairs} /><Field label="WALE years" value={wale} onChange={setWale} step="0.1" />
-              <SelectField label="Tenant covenant" value={tenantCovenant} onChange={setTenantCovenant} options={[['government', 'Government'], ['nationalTenant', 'National tenant'], ['listedCompany', 'Listed company'], ['establishedSme', 'Established SME'], ['newBusiness', 'New business'], ['relatedParty', 'Related party'], ['weakUnknown', 'Weak / unknown']].map(([value, label]) => ({ value: value as typeof tenantCovenant, label }))} />
-              <SelectField label="Rent over market?" value={rentOverMarket} onChange={setRentOverMarket} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }, { value: 'unknown', label: 'Unknown' }]} />
-              {rentOverMarket === 'yes' && <Field label="% above market" value={aboveMarketPct} onChange={setAboveMarketPct} step="0.1" />}
-              <SelectField label="NOI basis for borrowing" value={noiBasis} onChange={setNoiBasis} options={[{ value: 'actual', label: 'Actual NOI' }, { value: 'stabilised', label: 'Stabilised NOI' }, { value: 'lenderAdjusted', label: 'Lender-adjusted NOI' }]} />
-            </div></AccordionContent></AccordionItem>
+            <AccordionItem value="income"><AccordionTrigger>2. Income / NOI</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><SourceTabNotice title="NOI is sourced from the NOI tab" description="Borrowing Capacity consumes final NOI outputs only. Rent, recoveries, vacancy, expenses and lease data are primary inputs in the NOI tab." tab="noi" metrics={noiSourceMetrics} /></AccordionContent></AccordionItem>
 
             <AccordionItem value="costs"><AccordionTrigger>Show advanced fields: Acquisition Costs & Funds to Complete</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3">
               <Field label="Stamp duty estimate" value={stampDuty} onChange={setStampDuty} /><Field label="Legal / conveyancing" value={legal} onChange={setLegal} /><Field label="Bank legal fee" value={bankLegal} onChange={setBankLegal} />
@@ -825,11 +863,7 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
               <Field label="PEXA / settlement fee" value={pexaSettlementFee} onChange={setPexaSettlementFee} />
               <Field label="Other statutory fees" value={otherCosts} onChange={setOtherCosts} />
               <Field label="Auto-estimated acquisition costs" value={autoEstimatedAcquisitionCosts} onChange={setAutoEstimatedAcquisitionCosts} />
-              <SelectField label="GST treatment" value={gstTreatment} onChange={setGstTreatment} options={[['gstInclusive', 'GST inclusive'], ['plusGst', 'Plus GST'], ['gstFreeGoingConcern', 'GST-free going concern'], ['marginScheme', 'Margin scheme'], ['unknown', 'Unknown']].map(([value, label]) => ({ value: value as typeof gstTreatment, label }))} />
-              <SelectField label="GST cashflow at settlement?" value={gstCashflow} onChange={setGstCashflow} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
-              <SelectField label="GST claimable as ITC?" value={gstClaimable} onChange={setGstClaimable} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
-              <SelectField label="Going concern confirmed?" value={goingConcernConfirmed} onChange={setGoingConcernConfirmed} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} />
-              <SelectField label="Landholder acquisition?" value={landholderAcquisition} onChange={setLandholderAcquisition} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }, { value: 'unknown', label: 'Unknown' }]} />
+              <SourceTabNotice title="GST values are sourced from the GST tab" description="Borrowing Capacity consumes GST cashflow and economic cost for funds-to-complete. Contract GST clauses, purchaser GST registration and claimability are maintained in the GST tab." tab="gst" metrics={gstSourceMetrics} />
             </AccordionContent></AccordionItem>
 
             <AccordionItem value="assumptions"><AccordionTrigger>3. Lending Assumptions</AccordionTrigger><AccordionContent><p className="mb-3 text-xs text-muted-foreground">Set lender policy assumptions used to test LVR, ICR, DSCR and debt yield.</p><div className="grid md:grid-cols-3 gap-3">
@@ -923,11 +957,11 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
 
               <AccordionItem value="valuation"><AccordionTrigger>2. Valuation & Security</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><Field label="Bank valuation" value={bankValue} onChange={setBankValue} /><SelectField label="Use conservative valuation?" value={conservativeValue} onChange={setConservativeValue} options={[{ value: 'yes', label: 'Yes — lowest available' }, { value: 'no', label: 'No' }]} /><Field label="Land area sqm" value={landArea} onChange={setLandArea} /><Field label="Building area sqm" value={buildingArea} onChange={setBuildingArea} /><Field label="Lettable area sqm" value={lettableArea} onChange={setLettableArea} /><SelectField label="Valuation confidence" value={valuationConfidence} onChange={setValuationConfidence} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} />{advancedMetricRows.slice(0, 3).map(([label, value]) => <MoneyRow key={label} label={label} value={value} />)}</AccordionContent></AccordionItem>
 
-              <AccordionItem value="noi"><AccordionTrigger>3. NOI Build-Up</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><Field label="Other income p.a." value={otherIncome} onChange={setOtherIncome} /><Field label="Incentives / rent-free adjustment" value={incentives} onChange={setIncentives} /><Field label="Tenant arrears adjustment" value={arrearsAdj} onChange={setArrearsAdj} /><Field label="Non-recoverable expenses" value={nonRecoverable} onChange={setNonRecoverable} /><Field label="Council rates" value={rates} onChange={setRates} /><Field label="Water" value={water} onChange={setWater} /><Field label="Land tax" value={landTax} onChange={setLandTax} /><Field label="Insurance" value={insurance} onChange={setInsurance} /><Field label="Management fees" value={management} onChange={setManagement} /><Field label="Repairs and maintenance" value={repairs} onChange={setRepairs} /><Field label="Market rent p.a." value={marketRent} onChange={setMarketRent} /><Field label="Vacancy allowance %" value={vacancy} onChange={setVacancy} step="0.1" /><Field label="WALE years" value={wale} onChange={setWale} step="0.1" /><SelectField label="Tenant covenant" value={tenantCovenant} onChange={setTenantCovenant} options={[["government", "Government"], ["nationalTenant", "National tenant"], ["listedCompany", "Listed company"], ["establishedSme", "Established SME"], ["newBusiness", "New business"], ["relatedParty", "Related party"], ["weakUnknown", "Weak / unknown"]].map(([value, label]) => ({ value: value as typeof tenantCovenant, label }))} /><SelectField label="Rent over market?" value={rentOverMarket} onChange={setRentOverMarket} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }, { value: 'unknown', label: 'Unknown' }]} /><div className="md:col-span-3 grid md:grid-cols-3 gap-2 text-sm"><MoneyRow label="Actual NOI" value={formatAdvancedMoney(result.noi.actualNoi)} /><MoneyRow label="Stabilised NOI" value={formatAdvancedMoney(result.noi.stabilisedNoi)} /><MoneyRow label="Lender-adjusted NOI" value={formatAdvancedMoney(result.noi.lenderAdjustedNoi)} /></div></AccordionContent></AccordionItem>
+              <AccordionItem value="noi"><AccordionTrigger>3. NOI Source Values</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><SourceTabNotice title="NOI build-up lives in the NOI tab" description="This advanced borrowing section shows the linked NOI outputs only. Edit rent, recoveries, vacancy, expenses and lease data in the NOI tab." tab="noi" metrics={noiSourceMetrics} /></AccordionContent></AccordionItem>
 
               <AccordionItem value="policy"><AccordionTrigger>4. Lending Policy</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><Field label="Assessment floor rate %" value={floorRate} onChange={setFloorRate} step="0.05" /><SelectField label="Assessment basis" value={assessmentBasis} onChange={setAssessmentBasis} options={[["contractPlusBuffer", "Contract rate plus buffer"], ["higherOfBufferAndFloor", "Higher of buffer and floor"], ["interestOnlyAssessment", "Interest-only assessment"], ["principalAndInterestAssessment", "Principal-and-interest assessment"], ["custom", "Custom"]].map(([value, label]) => ({ value, label }))} /><Field label="Interest-only years" value={ioPeriod} onChange={setIoPeriod} /><Field label="Amortisation years" value={amortisation} onChange={setAmortisation} /><Field label="Minimum debt yield (0–1)" value={minDebtYield} onChange={setMinDebtYield} step="0.01" /><MoneyRow label="LVR risk adjustment" value={formatAdvancedPct(result.baseRiskAdjustedCriteria.lvrRiskAdjustment)} /><MoneyRow label="ICR risk adjustment" value={formatAdvancedRatio(result.baseRiskAdjustedCriteria.icrRiskAdjustment)} /><MoneyRow label="DSCR risk adjustment" value={formatAdvancedRatio(result.baseRiskAdjustedCriteria.dscrRiskAdjustment)} /><MoneyRow label="Debt yield risk adjustment" value={formatAdvancedPct(result.baseRiskAdjustedCriteria.debtYieldRiskAdjustment)} /><MoneyRow label="Final minimum ICR used" value={formatAdvancedRatio(result.baseRiskAdjustedCriteria.finalMinimumIcrUsed)} /><MoneyRow label="Final minimum DSCR used" value={formatAdvancedRatio(result.baseRiskAdjustedCriteria.finalMinimumDscrUsed)} /><MoneyRow label="Final debt yield used" value={formatAdvancedPct(result.baseRiskAdjustedCriteria.finalMinimumDebtYieldUsed)} /></AccordionContent></AccordionItem>
 
-              <AccordionItem value="gst"><AccordionTrigger>5. GST & Acquisition Costs</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><Field label="Stamp duty estimate" value={stampDuty} onChange={setStampDuty} /><Field label="Legal / conveyancing" value={legal} onChange={setLegal} /><Field label="Bank legal fee" value={bankLegal} onChange={setBankLegal} /><Field label="Valuation fee" value={valuationFee} onChange={setValuationFee} /><Field label="Due diligence allowance" value={dueDiligence} onChange={setDueDiligence} /><Field label="Capex reserve" value={capexReserve} onChange={setCapexReserve} /><Field label="Working capital reserve" value={workingCapital} onChange={setWorkingCapital} /><Field label="Environmental report" value={environmentalCost} onChange={setEnvironmentalCost} /><Field label="Asbestos report" value={asbestosCost} onChange={setAsbestosCost} /><Field label="Transfer registration fee" value={transferRegistrationFee} onChange={setTransferRegistrationFee} /><Field label="Mortgage registration fee" value={mortgageRegistrationFee} onChange={setMortgageRegistrationFee} /><Field label="PEXA / settlement fee" value={pexaSettlementFee} onChange={setPexaSettlementFee} /><Field label="Other statutory fees" value={otherCosts} onChange={setOtherCosts} /><Field label="Auto-estimated acquisition costs" value={autoEstimatedAcquisitionCosts} onChange={setAutoEstimatedAcquisitionCosts} /><SelectField label="GST treatment" value={gstTreatment} onChange={setGstTreatment} options={[["gstInclusive", "GST inclusive"], ["plusGst", "Plus GST"], ["gstFreeGoingConcern", "GST-free going concern"], ["marginScheme", "Margin scheme"], ["unknown", "Unknown"]].map(([value, label]) => ({ value: value as typeof gstTreatment, label }))} /><SelectField label="GST cashflow at settlement?" value={gstCashflow} onChange={setGstCashflow} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} /><SelectField label="GST claimable as ITC?" value={gstClaimable} onChange={setGstClaimable} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} /><SelectField label="Going concern confirmed?" value={goingConcernConfirmed} onChange={setGoingConcernConfirmed} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]} /><SelectField label="Landholder acquisition?" value={landholderAcquisition} onChange={setLandholderAcquisition} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }, { value: 'unknown', label: 'Unknown' }]} /></AccordionContent></AccordionItem>
+              <AccordionItem value="gst"><AccordionTrigger>5. GST Source Values</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><SourceTabNotice title="GST treatment is sourced from the GST tab" description="Borrowing Capacity consumes GST treatment, settlement cashflow, claimability and GST economic cost. Contract GST clauses and purchaser GST registration are maintained in the GST calculator, not duplicated here." tab="gst" metrics={gstSourceMetrics} /></AccordionContent></AccordionItem>
 
               <AccordionItem value="business"><AccordionTrigger>6. Business Servicing & Group Debt</AccordionTrigger><AccordionContent className="grid md:grid-cols-3 gap-3"><MoneyRow label="Business status" value={assessmentReady ? title(result.businessServicing.status) : 'Pending'} /><Field label="Business EBITDA / NPBT" value={businessEbitda} onChange={setBusinessEbitda} /><Field label="Current business rent" value={currentRent} onChange={setCurrentRent} /><Field label="Proposed related-party rent" value={proposedRent} onChange={setProposedRent} /><Field label="Existing business debts" value={businessDebt} onChange={setBusinessDebt} /><Field label="Sponsor liquidity" value={sponsorLiquidity} onChange={setSponsorLiquidity} /><Field label="Liquidity multiplier" value={liquidityMult} onChange={setLiquidityMult} step="0.5" /><MoneyRow label="Business debt service available" value={formatAdvancedMoney(result.businessServicing.businessDebtServiceAvailable)} /><MoneyRow label="Business DSCR" value={formatAdvancedRatio(result.businessServicing.businessDscr)} /><MoneyRow label="Combined property/business DSCR" value={formatAdvancedRatio(result.businessServicing.combinedPropertyBusinessDscr)} /><MoneyRow label="Total group debt" value={formatAdvancedMoney(result.groupDebt.totalGroupDebtAfterAcquisition)} /><MoneyRow label="Debt to EBITDA" value={result.groupDebt.debtToEbitda == null ? 'Pending — EBITDA not provided.' : formatAdvancedRatio(result.groupDebt.debtToEbitda)} /><MoneyRow label="Group DSCR" value={formatAdvancedRatio(result.groupDebt.groupDscr)} /></AccordionContent></AccordionItem>
 

@@ -74,12 +74,12 @@ export function IcrDscrCalculatorCard() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [stressOpen, setStressOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [rateShockPct, setRateShockPct] = useState('1.00');
-  const [noiReductionPct, setNoiReductionPct] = useState('10');
-  const [debtIncreasePct, setDebtIncreasePct] = useState('10');
-  const [conservativeIcrIncrease, setConservativeIcrIncrease] = useState('0.25');
-  const [conservativeDscrIncrease, setConservativeDscrIncrease] = useState('0.10');
-  const [conservativeDebtYieldIncreasePct, setConservativeDebtYieldIncreasePct] = useState('1.00');
+  const [rateShockPct, setRateShockPct] = useState('');
+  const [noiReductionPct, setNoiReductionPct] = useState('');
+  const [debtIncreasePct, setDebtIncreasePct] = useState('');
+  const [conservativeIcrIncrease, setConservativeIcrIncrease] = useState('');
+  const [conservativeDscrIncrease, setConservativeDscrIncrease] = useState('');
+  const [conservativeDebtYieldIncreasePct, setConservativeDebtYieldIncreasePct] = useState('');
 
   const audit = (action: string, fieldName: string, previousValue: unknown, newValue: unknown, source: string) => appendAiAudit({ action, fieldKey: `icrDscr.${fieldName}`, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId, dealId: prefill?.propertyId } as any);
 

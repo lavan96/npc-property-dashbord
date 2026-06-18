@@ -185,7 +185,7 @@ export function SourceActions({ field }: { field: ReturnType<typeof useCascadedI
           <p>New source value available. This field currently uses a saved override.</p>
           <div className="mt-1 flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={field.keepOverride}>Keep override</Button>
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={field.useSourceValue}>Use source value</Button>
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={field.useSourceValue}>Use source value</Button><Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => window.alert(`Current override: ${field.value}\nNew source (${field.pendingSource?.source}): ${field.pendingSource?.value}`)}>Compare values</Button>
           </div>
         </div>
       )}
