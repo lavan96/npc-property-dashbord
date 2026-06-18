@@ -641,13 +641,20 @@ export const ReportTemplateSchema = z.object({
       engineVersion: z.string().optional(),
       mode: z.string().optional(),
       diagnosticsPath: z.string().nullable().optional(),
+      /** Legacy `rasters.json` path. Retained for backward-compat; never embedded. */
       rastersPath: z.string().nullable().optional(),
+      legacyRastersPath: z.string().nullable().optional(),
+      /** Phase 3 — lightweight Storage-backed raster manifest. */
+      rastersManifestPath: z.string().nullable().optional(),
+      /** Phase 3 — per-page PNG object paths (mirrors manifest order). */
+      pageRasterPaths: z.array(z.string()).optional(),
       markdownPath: z.string().nullable().optional(),
       outlinePath: z.string().nullable().optional(),
       doctagsPath: z.string().nullable().optional(),
       jobId: z.string().optional(),
       importedAt: z.string().optional(),
     }).optional(),
+
   }).optional(),
 });
 
