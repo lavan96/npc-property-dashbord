@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { calcSiteMetrics } from '@/utils/industrial';
-import { useApplyPrefill, useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
+import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
+import { prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
 const pct = (n: number) => `${n.toFixed(2)}%`;
@@ -15,20 +16,38 @@ const hasValue = (v: string) => v.trim() !== '';
 
 export function SiteCoverCard() {
   const { prefill } = useCalculatorPrefill();
-  const [gla, setGla] = useState('');
-  const [site, setSite] = useState('');
-  const [hardstand, setHardstand] = useState('');
-  const [office, setOffice] = useState('');
-  const [price, setPrice] = useState('');
 
-  useApplyPrefill((p) => {
-    if (p.glaSqm != null) setGla(String(p.glaSqm));
-    if (p.siteAreaSqm != null) setSite(String(p.siteAreaSqm));
-    if (p.hardstandSqm != null) setHardstand(String(p.hardstandSqm));
-    if (p.officePct != null) setOffice(String(p.officePct));
-    const px = p.purchasePrice ?? p.valuation;
-    if (px != null) setPrice(String(px));
-  });
+  const gla = useCascadedIndustrialField(prefill, [
+    { value: prefill?.glaSqm, source: 'Property Profile' },
+    { value: prefillValue(prefill, 'scrapedGlaSqm'), source: 'Scraped' },
+    { value: prefillValue(prefill, 'buildingAreaSqm') ?? prefill?.gfaSqm ?? prefill?.nlaSqm, source: 'Property Profile' },
+  ]);
+
+  const site = useCascadedIndustrialField(prefill, [
+    { value: prefill?.siteAreaSqm, source: 'Property Profile' },
+    { value: prefillValue(prefill, 'titleSiteAreaSqm'), source: 'Scraped' },
+    { value: prefillValue(prefill, 'scrapedSiteAreaSqm'), source: 'Scraped' },
+  ]);
+
+  const hardstand = useCascadedIndustrialField(prefill, [
+    { value: prefill?.hardstandSqm, source: 'Property Profile' },
+    { value: prefillValue(prefill, 'aiEstimatedHardstandSqm'), source: 'AI Estimate' },
+  ]);
+
+  const office = useCascadedIndustrialField(prefill, [
+    { value: prefill?.officePct, source: 'Property Profile' },
+    { value: prefillValue(prefill, 'aiEstimatedOfficePct'), source: 'AI Estimate' },
+  ]);
+
+  const price = useCascadedIndustrialField(prefill, [
+    { value: prefill?.purchasePrice, source: 'Property Profile' },
+    { value: prefillValue(prefill, 'capRateTabPrice') ?? prefill?.valuation, source: 'Cap Rate Tab' },
+    { value: prefillValue(prefill, 'gstTabPurchasePrice'), source: 'GST Tab' },
+    { value: prefillValue(prefill, 'borrowingCapacityPurchasePrice'), source: 'Borrowing Capacity' },
+    { value: prefillValue(prefill, 'dcfPurchasePrice'), source: 'DCF Tab' },
+  ]);
+
+  const hasRequiredInputs = [gla.value, site.value, hardstand.value, office.value, price.value].every(hasValue);
 
   useEffect(() => {
     if (!prefill) {
@@ -43,12 +62,12 @@ export function SiteCoverCard() {
   const hasRequiredInputs = [gla, site, hardstand, office, price].every(hasValue);
 
   const result = useMemo(() => calcSiteMetrics({
-    glaSqm: num(gla),
-    siteAreaSqm: num(site),
-    hardstandSqm: num(hardstand),
-    officePct: num(office),
-    price: num(price),
-  }), [gla, site, hardstand, office, price]);
+    glaSqm: num(gla.value),
+    siteAreaSqm: num(site.value),
+    hardstandSqm: num(hardstand.value),
+    officePct: num(office.value),
+    price: num(price.value),
+  }), [gla.value, site.value, hardstand.value, office.value, price.value]);
 
   const band = result.coverageBand === 'balanced' ? 'default' :
     result.coverageBand === 'over-developed' ? 'destructive' : 'secondary';
@@ -58,16 +77,16 @@ export function SiteCoverCard() {
       <CardHeader>
         <CardTitle>Site Cover & $/m²</CardTitle>
         <CardDescription>Industrial site density, hardstand ratio and price-per-area benchmarks.</CardDescription>
-        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: num(gla) || undefined, site_area_sqm: num(site) || undefined, hardstand_sqm: num(hardstand) || undefined, office_pct: num(office) || undefined, site_cover_pct: Number(result.siteCoverPct.toFixed(2)) || undefined, purchase_price: num(price) || undefined })} /></div>
+        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: num(gla.value) || undefined, site_area_sqm: num(site.value) || undefined, hardstand_sqm: num(hardstand.value) || undefined, office_pct: num(office.value) || undefined, site_cover_pct: Number(result.siteCoverPct.toFixed(2)) || undefined, purchase_price: num(price.value) || undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>GLA (m²)</Label><Input type="number" value={gla} placeholder="Pulled from property profile or enter manually" onChange={e => setGla(e.target.value)} /></div>
-            <div><Label>Site Area (m²)</Label><Input type="number" value={site} placeholder="Pulled from property profile or enter manually" onChange={e => setSite(e.target.value)} /></div>
-            <div><Label>Hardstand (m²)</Label><Input type="number" value={hardstand} placeholder="Pulled from property profile or enter manually" onChange={e => setHardstand(e.target.value)} /></div>
-            <div><Label>Office (%)</Label><Input type="number" step="0.1" value={office} placeholder="Enter office component percentage" onChange={e => setOffice(e.target.value)} /></div>
-            <div className="col-span-2"><Label>Price ($)</Label><Input type="number" value={price} placeholder="Pulled from property profile or enter manually" onChange={e => setPrice(e.target.value)} /></div>
+            <div><CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} /><SourceActions field={gla} /></div>
+            <div><CascadedInput label="Site Area (m²)" value={site.value} placeholder="Pulled from property profile or enter manually" source={site.source} onChange={site.setValue} onVerify={site.markVerified} /><SourceActions field={site} /></div>
+            <div><CascadedInput label="Hardstand (m²)" value={hardstand.value} placeholder="Pulled from property profile or enter manually" source={hardstand.source} onChange={hardstand.setValue} onVerify={hardstand.markVerified} /><SourceActions field={hardstand} /></div>
+            <div><CascadedInput label="Office (%)" value={office.value} placeholder="Enter office component percentage" source={office.source} onChange={office.setValue} onVerify={office.markVerified} step="0.1" /><SourceActions field={office} /></div>
+            <div className="col-span-2"><CascadedInput label="Price ($)" value={price.value} placeholder="Pulled from property profile or enter manually" source={price.source} onChange={price.setValue} onVerify={price.markVerified} /><SourceActions field={price} /></div>
           </div>
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
@@ -87,6 +106,18 @@ export function SiteCoverCard() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function CascadedInput({ label, value, placeholder, source, onChange, onVerify, step }: { label: string; value: string; placeholder: string; source: IndustrialMetricSource; onChange: (value: string) => void; onVerify: () => void; step?: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <Label>{label}</Label>
+        <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="text-[10px] text-primary hover:underline" onClick={onVerify}>Verify</button></div>
+      </div>
+      <Input type="number" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </div>
   );
 }
 
