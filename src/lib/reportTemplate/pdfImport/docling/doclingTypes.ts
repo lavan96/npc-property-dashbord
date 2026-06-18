@@ -193,3 +193,46 @@ export interface DoclingRasterResponse {
 
 /** Convenience: page-keyed lookup of rasters. */
 export type DoclingRasterByPage = Record<number, { width: number; height: number; dataUrl: string }>;
+
+// ─── Phase 3: Storage-backed raster manifest ─────────────────────────────────
+// The Cloud Run sidecar now writes one PNG per page to Storage plus a single
+// lightweight manifest. Template schema MUST only carry references (paths),
+// never the raw page image bytes.
+
+export interface RasterManifestPage {
+  page_no: number;
+  width: number;
+  height: number;
+  /** Storage object path inside `pdf-import-diagnostics`. */
+  path: string;
+  /** e.g. `image/png` */
+  mime: string;
+  bytes?: number;
+}
+
+export interface RasterManifest {
+  /** e.g. `phase3-raster-manifest-v1` */
+  version: string;
+  /** `png` | `jpeg` */
+  format: string;
+  dpi: number;
+  page_count: number;
+  pages: RasterManifestPage[];
+}
+
+/**
+ * Per-page raster reference embedded in `page.meta.sourceRasterRef`. Renderers
+ * resolve `path` to a signed URL on demand via `getArtifactSignedUrl`.
+ */
+export interface PdfImportRasterRef {
+  kind: 'pdf_import_raster_ref';
+  jobId: string;
+  manifestPath: string | null;
+  pageNo: number;
+  path: string;
+  width: number;
+  height: number;
+  mime: string;
+  dpi: number | null;
+}
+

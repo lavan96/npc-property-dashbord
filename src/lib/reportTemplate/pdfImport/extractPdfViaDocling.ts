@@ -27,7 +27,16 @@ import type {
   DoclingDocument,
   DoclingRasterByPage,
   DoclingRasterResponse,
+  RasterManifest,
 } from './docling/doclingTypes';
+import { downloadRasterManifest } from './rasterArtifactRefs';
+
+/**
+ * Phase 3 compatibility flag — keep `false` so legacy base64 `rasters.json` is
+ * NEVER auto-loaded into the schema. Toggle only for one-off debug sessions.
+ */
+const allowLegacyRastersJson = false;
+
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
@@ -119,9 +128,17 @@ function normalizeArtifacts(job: JobRow) {
     const v = payload[k];
     return typeof v === 'string' && v.length > 0 ? v : null;
   };
+  const payloadArr = (k: string): string[] => {
+    const v = payload[k];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  };
   return {
     doclingPath: pickStr('docling_path') ?? job.diagnostics_path ?? null,
-    rastersPath: pickStr('rasters_path'),
+    // Legacy `rasters.json` (may contain base64). Never embedded by default.
+    legacyRastersPath: pickStr('legacy_rasters_path') ?? pickStr('rasters_path'),
+    // Phase 3 — lightweight Storage-backed manifest.
+    rastersManifestPath: pickStr('rasters_manifest_path'),
+    pageRasterPaths: payloadArr('page_raster_paths'),
     markdownPath: pickStr('markdown_path'),
     outlinePath: pickStr('outline_path'),
     doctagsPath: pickStr('doctags_path'),
@@ -131,6 +148,7 @@ function normalizeArtifacts(job: JobRow) {
     autoModeSelected: payload.auto_mode_selected === true,
   };
 }
+
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   try {
@@ -245,7 +263,22 @@ interface JobRow {
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
-  result_payload: { docling_path?: string; rasters_path?: string; markdown_path?: string; outline_path?: string; doctags_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
+  result_payload: {
+    docling_path?: string;
+    doctags_path?: string;
+    outline_path?: string;
+    markdown_path?: string;
+    rasters_path?: string;
+    legacy_rasters_path?: string;
+    rasters_manifest_path?: string;
+    page_raster_paths?: string[];
+    mode?: string;
+    requested_mode?: string;
+    summary?: unknown;
+    auto_mode_selected?: boolean;
+    page_count?: number;
+  } | null;
+
   attempts?: Array<{ endpoint?: string; ok?: boolean; status?: number; attempt?: number; error_code?: string; retryable?: boolean; message?: string } | unknown> | null;
 }
 
@@ -471,27 +504,44 @@ export async function extractPdfViaDocling(
     const artifacts = normalizeArtifacts(job);
     const effectiveMode = wireModeToDocling(artifacts.requestedMode, mode);
 
-    // TEMP: Do not embed raster base64/data URLs into the template schema —
-    // they blow up the resync payload and cause `template-import-pdf` upstream
-    // timeouts. Raster references are still persisted in `template.meta.pdfImport`
-    // (rastersPath) so pixel-perfect rendering can rehydrate them lazily.
-    const shouldEmbedRasters = false;
-    let rasterPayload: unknown | null = null;
-    if (shouldEmbedRasters && artifacts.rastersPath) {
+    // Phase 3 — prefer Storage-backed raster manifest over legacy rasters.json.
+    // The manifest only contains paths + metadata; per-page PNGs are signed on
+    // demand at render time via `getArtifactSignedUrl`. Legacy `rasters.json`
+    // (which may contain base64) is only loaded when an explicit compatibility
+    // flag is set and is NEVER persisted into the template schema.
+    let rasterManifest: RasterManifest | null = null;
+    if (artifacts.rastersManifestPath) {
       try {
-        rasterPayload = await downloadJson<unknown>(artifacts.rastersPath);
+        rasterManifest = await downloadRasterManifest(artifacts.rastersManifestPath);
       } catch (e) {
-        console.warn('[PDF_IMPORT_DEBUG] optional raster download skipped', {
-          path: artifacts.rastersPath,
+        console.warn('[PDF_IMPORT_DEBUG] raster manifest download failed', {
+          path: artifacts.rastersManifestPath,
           error: (e as Error).message,
         });
       }
     }
+
+    let rasterPayload: unknown | null = null;
+    if (allowLegacyRastersJson && artifacts.legacyRastersPath) {
+      try {
+        rasterPayload = await downloadJson<unknown>(artifacts.legacyRastersPath);
+      } catch (e) {
+        console.warn('[PDF_IMPORT_DEBUG] optional legacy raster download skipped', {
+          path: artifacts.legacyRastersPath,
+          error: (e as Error).message,
+        });
+      }
+    }
+    // Note: `rasters` here is in-memory only — used by the mapper for sizing
+    // hints. It is NEVER copied into the persisted schema (the sanitizer
+    // strips any data: URLs before resync/finalize as a belt-and-braces guard).
     const rasters = rasterPayload ? rastersByPage(rasterPayload) : undefined;
 
     console.info('[PDF_IMPORT_DEBUG] downloading docling artifact', {
       jobId: job.id,
       doclingPath: artifacts.doclingPath,
+      rastersManifestPath: artifacts.rastersManifestPath,
+      pageRasterPathsCount: artifacts.pageRasterPaths.length,
       resultPayloadKeys: Object.keys(job.result_payload ?? {}),
     });
 
@@ -500,7 +550,7 @@ export async function extractPdfViaDocling(
       try {
         doclingDoc = await downloadJson<DoclingDocument>(artifacts.doclingPath);
       } catch (e) {
-        if (effectiveMode === 'pixel-perfect' && rasters && Object.keys(rasters).length > 0) {
+        if (effectiveMode === 'pixel-perfect' && ((rasters && Object.keys(rasters).length > 0) || rasterManifest)) {
           console.warn('[PDF_IMPORT_DEBUG] docling download failed, falling back to raster-only pixel-perfect', {
             error: (e as Error).message,
           });
@@ -510,11 +560,18 @@ export async function extractPdfViaDocling(
       }
     }
     if (!doclingDoc) {
-      if (effectiveMode === 'pixel-perfect' && rasters && Object.keys(rasters).length > 0) {
+      const manifestPages = rasterManifest?.pages ?? [];
+      if (effectiveMode === 'pixel-perfect' && (manifestPages.length > 0 || (rasters && Object.keys(rasters).length > 0))) {
         const pages: Record<string, { page_no: number; size: { width: number; height: number } }> = {};
-        for (const [pageNoStr, r] of Object.entries(rasters)) {
-          const pageNo = Number(pageNoStr);
-          pages[String(pageNo)] = { page_no: pageNo, size: { width: r.width, height: r.height } };
+        if (manifestPages.length > 0) {
+          for (const p of manifestPages) {
+            pages[String(p.page_no)] = { page_no: p.page_no, size: { width: p.width, height: p.height } };
+          }
+        } else if (rasters) {
+          for (const [pageNoStr, r] of Object.entries(rasters)) {
+            const pageNo = Number(pageNoStr);
+            pages[String(pageNo)] = { page_no: pageNo, size: { width: r.width, height: r.height } };
+          }
         }
         doclingDoc = { pages, texts: [], tables: [], pictures: [] } as DoclingDocument;
       } else {
@@ -556,7 +613,10 @@ export async function extractPdfViaDocling(
         engineVersion: job.engine_version ?? 'docling',
         mode: effectiveMode,
         diagnosticsPath: artifacts.doclingPath,
-        rastersPath: artifacts.rastersPath ?? null,
+        rastersPath: artifacts.legacyRastersPath ?? null,
+        legacyRastersPath: artifacts.legacyRastersPath ?? null,
+        rastersManifestPath: artifacts.rastersManifestPath ?? null,
+        pageRasterPaths: artifacts.pageRasterPaths,
         markdownPath: artifacts.markdownPath ?? null,
         outlinePath: artifacts.outlinePath ?? null,
         doctagsPath: artifacts.doctagsPath ?? null,
@@ -564,6 +624,34 @@ export async function extractPdfViaDocling(
         importedAt: new Date().toISOString(),
       },
     };
+
+    // Phase 3 — attach per-page raster references (storage paths only). The
+    // canvas/PDF renderer resolves them to signed URLs at render time and must
+    // treat the background as locked (not selectable as a normal image layer).
+    if (rasterManifest && effectiveMode !== 'semantic') {
+      const refByPageNo = new Map<number, typeof rasterManifest.pages[number]>();
+      for (const p of rasterManifest.pages) refByPageNo.set(p.page_no, p);
+      template.pages.forEach((page, idx) => {
+        const pageNo = idx + 1;
+        const ref = refByPageNo.get(pageNo);
+        if (!ref) return;
+        (page as any).meta = {
+          ...((page as any).meta ?? {}),
+          sourceRasterRef: {
+            kind: 'pdf_import_raster_ref' as const,
+            jobId,
+            manifestPath: artifacts.rastersManifestPath,
+            pageNo,
+            path: ref.path,
+            width: ref.width,
+            height: ref.height,
+            mime: ref.mime,
+            dpi: rasterManifest?.dpi ?? null,
+          },
+        };
+      });
+    }
+
     const schemaValidation = validateReconstructedSchema(template);
     if (!schemaValidation.ok) {
       throw new Error(`Docling reconstructed schema failed validation: ${schemaValidation.errors.join('; ')}`);

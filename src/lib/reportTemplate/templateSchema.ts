@@ -528,7 +528,24 @@ export const PageSchema = z.object({
   }).optional(),
   // Phase 10 — per-page theme override (id into template.themes)
   themeId: z.string().optional(),
+  // Phase 3 (PDF import) — opaque per-page metadata. Currently used to carry
+  // `sourceRasterRef` (Storage path to the rasterised source page); renderers
+  // resolve the signed URL on demand and never persist it back to the schema.
+  meta: z.object({
+    sourceRasterRef: z.object({
+      kind: z.literal('pdf_import_raster_ref'),
+      jobId: z.string(),
+      manifestPath: z.string().nullable().optional(),
+      pageNo: z.number(),
+      path: z.string(),
+      width: z.number(),
+      height: z.number(),
+      mime: z.string(),
+      dpi: z.number().nullable().optional(),
+    }).optional(),
+  }).passthrough().optional(),
 });
+
 
 export type Page = z.infer<typeof PageSchema>;
 
@@ -624,13 +641,20 @@ export const ReportTemplateSchema = z.object({
       engineVersion: z.string().optional(),
       mode: z.string().optional(),
       diagnosticsPath: z.string().nullable().optional(),
+      /** Legacy `rasters.json` path. Retained for backward-compat; never embedded. */
       rastersPath: z.string().nullable().optional(),
+      legacyRastersPath: z.string().nullable().optional(),
+      /** Phase 3 — lightweight Storage-backed raster manifest. */
+      rastersManifestPath: z.string().nullable().optional(),
+      /** Phase 3 — per-page PNG object paths (mirrors manifest order). */
+      pageRasterPaths: z.array(z.string()).optional(),
       markdownPath: z.string().nullable().optional(),
       outlinePath: z.string().nullable().optional(),
       doctagsPath: z.string().nullable().optional(),
       jobId: z.string().optional(),
       importedAt: z.string().optional(),
     }).optional(),
+
   }).optional(),
 });
 
