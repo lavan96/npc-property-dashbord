@@ -149,25 +149,6 @@ function SourceTabNotice({ title, description, tab, metrics }: { title: string; 
 }
 
 
-function openSourceTab(tab: string) {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('calculator-tab-open', { detail: { tab } }));
-}
-
-function SourceTabNotice({ title, description, tab, metrics }: { title: string; description: string; tab: string; metrics?: Array<{ label: string; value: number | string | null | undefined }> }) {
-  return (
-    <div className="md:col-span-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="font-semibold text-foreground">{title}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => openSourceTab(tab)}>Open source tab</Button>
-      </div>
-      {metrics?.length ? <div className="mt-3 grid gap-2 md:grid-cols-3">{metrics.map((metric) => <MoneyRow key={metric.label} label={metric.label} value={metric.value} />)}</div> : null}
-    </div>
-  );
-}
 
 function ClientProfileCombobox({ value, options, loading, onChange }: { value: string; options: ClientProfileOption[]; loading?: boolean; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false);
