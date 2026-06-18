@@ -8,8 +8,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks } from 'lucide-react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
 import { CapRateCalculatorCard } from '@/components/commercial/calculators/CapRateCalculatorCard';
@@ -32,6 +32,352 @@ import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commer
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
+
+
+type AssumptionGroup = 'Property' | 'Income / NOI' | 'Valuation / Cap Rate' | 'Lending / Debt' | 'GST / Acquisition' | 'DCF / Forecasting' | '10-Year Cash Flow' | 'Industrial Metrics' | 'Report Outputs';
+type AssumptionFilter = 'All' | 'Missing' | 'AI Estimated' | 'Manual Overrides' | 'Specialist Review Required' | 'Verified' | 'Used in Report';
+interface GlobalAssumptionRow { group: AssumptionGroup; field: string; value: unknown; source: string; confidence: string; verification: string; aiEstimated: boolean; manuallyOverridden: boolean; requiredForCalculation: boolean; requiredForReportExport: boolean; lastUpdated: string; warningStatus: string; }
+
+const assumptionFilters: AssumptionFilter[] = ['All', 'Missing', 'AI Estimated', 'Manual Overrides', 'Specialist Review Required', 'Verified', 'Used in Report'];
+const requiredCalculationHints = ['purchasePrice', 'estimatedMarketValue', 'grossPassingRent', 'marketRent', 'vacancyAllowancePct', 'contractInterestRatePct', 'loanTermYears', 'maxLvr', 'minIcr', 'minDscr', 'treatment', 'initialNoi', 'terminalCapRatePct', 'discountRatePct'];
+const requiredReportHints = ['purchasePrice', 'estimatedMarketValue', 'actualNoi', 'stabilisedNoi', 'lenderAdjustedNoi', 'capitalisationRate', 'icr', 'dscr', 'debtYield', 'gstEconomicCost', 'netAcquisitionCost', 'leveredIrr', 'unleveredIrr', 'equityMultiple', 'siteCover', 'rentPerSqm'];
+
+function flattenAssumptionObject(group: AssumptionGroup, label: string, value: unknown, rows: GlobalAssumptionRow[], registry: Record<string, any>) {
+  if (value == null) return;
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => flattenAssumptionObject(group, key, nestedValue, rows, registry));
+    return;
+  }
+  const assumption = registry[label] ?? registry[`${group}.${label}`] ?? Object.values(registry).find((item: any) => item?.fieldKey?.endsWith?.(`.${label}`));
+  const source = assumption?.sourceDetail || assumption?.source || (value === '' ? 'Blank' : 'Manual');
+  const confidence = assumption?.confidenceTag || (source === 'Blank' ? 'Blank' : 'Manual');
+  const verification = assumption?.verificationRequired ? 'Review Required' : confidence === 'Verified' || source === 'Verified' ? 'Verified' : value === '' ? 'Missing' : 'Pending';
+  rows.push({
+    group,
+    field: label,
+    value,
+    source,
+    confidence,
+    verification,
+    aiEstimated: source === 'ai' || source === 'AI Estimate' || confidence === 'AI Estimate',
+    manuallyOverridden: source === 'manual' || source === 'Manual' || source === 'User Override',
+    requiredForCalculation: requiredCalculationHints.some((hint) => label.toLowerCase().includes(hint.toLowerCase())),
+    requiredForReportExport: requiredReportHints.some((hint) => label.toLowerCase().includes(hint.toLowerCase())),
+    lastUpdated: assumption?.updatedAt || 'Pending',
+    warningStatus: assumption?.verificationRequired ? 'Review Required' : value === '' ? 'Missing' : 'Clear',
+  });
+}
+
+function formatAssumptionValue(value: unknown) {
+  if (value == null || value === '' || (typeof value === 'number' && !Number.isFinite(value))) return 'Pending';
+  if (typeof value === 'number') return Math.abs(value) >= 1000 ? value.toLocaleString('en-AU') : String(value);
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) return value.length ? `${value.length} item(s)` : 'Pending';
+  return String(value);
+}
+
+function buildGlobalAssumptionRows(profile: any): GlobalAssumptionRow[] {
+  const rows: GlobalAssumptionRow[] = [];
+  const registry = profile.assumptions ?? {};
+  const sections: Array<[AssumptionGroup, Record<string, unknown>]> = [
+    ['Property', { ...profile.dealProfile, ...profile.propertyValuation, ...profile.purchaserStructure }],
+    ['Income / NOI', { ...profile.leaseIncome, ...profile.operatingExpenses, ...profile.noiOutputs }],
+    ['Valuation / Cap Rate', { ...profile.capRateOutputs }],
+    ['Lending / Debt', { ...profile.debtInputs, ...profile.lendingAssumptions, borrowingCapacity: profile.borrowingOutputs?.finalRiskAdjustedLoan, icr: profile.borrowingOutputs?.icr, dscr: profile.borrowingOutputs?.dscr, debtYield: profile.borrowingOutputs?.debtYield }],
+    ['GST / Acquisition', { ...profile.gstInputs, ...profile.acquisitionCosts, ...profile.gstOutputs, ...profile.fundsToComplete }],
+    ['DCF / Forecasting', { ...profile.dcfInputs, ...profile.dcfOutputs }],
+    ['10-Year Cash Flow', { ...(profile.tenYearCashFlowOutputs?.summary ?? {}) }],
+    ['Industrial Metrics', { ...profile.industrialMetrics }],
+    ['Report Outputs', { reportPayload: profile.reportPayload ? 'Prepared' : '', ...profile.riskOutputs, clientScenario: profile.clientScenarioOutputs?.scenarioName }],
+  ];
+  sections.forEach(([group, section]) => {
+    if (Object.keys(section).length === 0) rows.push({ group, field: 'No assumptions captured', value: '', source: 'Blank', confidence: 'Blank', verification: 'Missing', aiEstimated: false, manuallyOverridden: false, requiredForCalculation: false, requiredForReportExport: false, lastUpdated: 'Pending', warningStatus: 'Missing' });
+    Object.entries(section).forEach(([key, value]) => flattenAssumptionObject(group, key, value, rows, registry));
+  });
+  return rows;
+}
+
+function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const profile = useCommercialDealState(s => s.profile);
+  const [filter, setFilter] = useState<AssumptionFilter>('All');
+  const rows = useMemo(() => buildGlobalAssumptionRows(profile), [profile]);
+  const filteredRows = rows.filter(row => {
+    if (filter === 'Missing') return formatAssumptionValue(row.value) === 'Pending' || row.verification === 'Missing';
+    if (filter === 'AI Estimated') return row.aiEstimated;
+    if (filter === 'Manual Overrides') return row.manuallyOverridden;
+    if (filter === 'Specialist Review Required') return row.verification === 'Review Required' || row.warningStatus === 'Review Required';
+    if (filter === 'Verified') return row.verification === 'Verified';
+    if (filter === 'Used in Report') return row.requiredForReportExport;
+    return true;
+  });
+  const grouped = filteredRows.reduce<Record<string, GlobalAssumptionRow[]>>((acc, row) => ({ ...acc, [row.group]: [...(acc[row.group] ?? []), row] }), {});
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-6xl">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Global Assumption Status</SheetTitle>
+          <SheetDescription>Central validation workspace for the full commercial / industrial assessment.</SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {assumptionFilters.map(item => <Button key={item} size="sm" variant={filter === item ? 'default' : 'outline'} onClick={() => setFilter(item)}>{item}</Button>)}
+        </div>
+        <div className="mt-4 space-y-5">
+          {Object.entries(grouped).map(([group, groupRows]) => (
+            <div key={group} className="rounded-xl border bg-card/70 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{group}</h3><Badge variant="outline">{groupRows.length} assumption(s)</Badge></div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1100px] text-left text-xs">
+                  <thead className="text-muted-foreground"><tr>{['Assumption','Value','Source','Confidence','Verification','AI','Override','Calc req.','Report req.','Last updated','Warning'].map(header => <th key={header} className="border-b px-2 py-2 font-medium">{header}</th>)}</tr></thead>
+                  <tbody>{groupRows.map((row, index) => <tr key={`${row.group}-${row.field}-${index}`} className="border-b last:border-0"><td className="px-2 py-2 font-medium text-foreground">{row.field}</td><td className="px-2 py-2">{formatAssumptionValue(row.value)}</td><td className="px-2 py-2">{row.source}</td><td className="px-2 py-2">{row.confidence}</td><td className="px-2 py-2">{row.verification}</td><td className="px-2 py-2">{row.aiEstimated ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.manuallyOverridden ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForCalculation ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForReportExport ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.lastUpdated}</td><td className="px-2 py-2">{row.warningStatus}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+
+function dispatchCalculatorSuiteEvent(name: string, detail: Record<string, unknown> = {}) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(name, { detail: { timestamp: new Date().toISOString(), ...detail } }));
+}
+
+function estimateTargetSection(fieldKey: string): any {
+  if (fieldKey.includes('noi') || fieldKey.includes('lease') || fieldKey.includes('rent')) return 'leaseIncome';
+  if (fieldKey.includes('capRate') || fieldKey.includes('valuation')) return 'propertyValuation';
+  if (fieldKey.includes('gst')) return 'gstInputs';
+  if (fieldKey.includes('dcf')) return 'dcfInputs';
+  if (fieldKey.includes('industrial')) return 'industrialMetrics';
+  if (fieldKey.includes('lending') || fieldKey.includes('debt')) return 'lendingAssumptions';
+  return 'riskInputs';
+}
+
+
+type ReportReadinessStatus =
+  | 'Awaiting Property'
+  | 'Missing Critical Inputs'
+  | 'AI Estimates Pending Review'
+  | 'Calculations Ready'
+  | 'Calculations Out of Date'
+  | 'Report Review Required'
+  | 'PDF Ready'
+  | 'Report Generated'
+  | 'Verified';
+interface ReportReadiness {
+  status: ReportReadinessStatus;
+  pdfDisabled: boolean;
+  allowWithWarning: boolean;
+  blockingReasons: string[];
+  warningReasons: string[];
+  requiredSections: string[];
+}
+const reportSectionsRequired = [
+  'Property summary',
+  'Assumption summary',
+  'Source and confidence summary',
+  'Key warnings',
+  'Calculator outputs',
+  '10-year cashflow table',
+  'Commentary',
+  'Scenario notes',
+  'Disclaimer / review note',
+];
+
+function hasMeaningfulValue(value: unknown) {
+  return (
+    value !== undefined
+    && value !== null
+    && value !== ''
+    && !(typeof value === 'number' && !Number.isFinite(value))
+  );
+}
+
+function calculateReportReadiness(
+  profile: any,
+  propertyLinked: boolean,
+  calculationsGenerated: boolean,
+  calculationsOutOfDate: boolean,
+  reportGenerated: boolean,
+  verified: boolean
+): ReportReadiness {
+  const pendingAi = Object.values(profile.aiEstimateMetadata ?? {}).some((estimate: any) => !estimate?.accepted);
+  const aiIncluded = Object.values(profile.aiEstimateMetadata ?? {}).some((estimate: any) => estimate?.accepted);
+  const manualOverrides = Object.values(profile.scenarioOverrides ?? {}).some(
+    (override: any) => override && Object.keys(override).length > 0
+  );
+  const specialistGstReview = ['unknown', undefined, null, ''].includes((profile.gstInputs as any)?.treatment)
+    || ['unknown', undefined, null, ''].includes((profile.acquisitionCosts as any)?.gstTreatment);
+  const externalVerificationIncomplete = Object.values(profile.documentVerificationStatus ?? {}).some(
+    status => !['verified', 'reviewed', 'not applicable'].includes(String(status))
+  );
+  const criticalMissing = [
+    ['Property value / purchase price', (profile.propertyValuation as any)?.purchasePrice ?? (profile.propertyValuation as any)?.estimatedMarketValue],
+    ['NOI', (profile.noiOutputs as any)?.actualNoi ?? (profile.noiOutputs as any)?.lenderAdjustedNoi ?? (profile.leaseIncome as any)?.grossPassingRent],
+    ['Lending assumptions', (profile.lendingAssumptions as any)?.contractInterestRatePct ?? (profile.lendingAssumptions as any)?.maxLvr],
+  ].filter(([, value]) => !hasMeaningfulValue(value)).map(([label]) => String(label));
+  const tenYearGenerated = Boolean(profile.tenYearCashFlowOutputs?.years?.length || profile.tenYearCashFlowOutputs?.summary);
+  const criticalWarnings = [
+    ...((profile.borrowingOutputs as any)?.warnings ?? []),
+    ...((profile.dcfOutputs as any)?.warnings ?? []),
+    ...((profile.gstOutputs as any)?.warnings ?? []),
+  ].filter((warning: unknown) => /critical|required|specialist|missing|unresolved/i.test(String(warning)));
+  const blockingReasons = [
+    !propertyLinked && 'No property is linked',
+    ...criticalMissing.map(item => `Missing critical input: ${item}`),
+    !calculationsGenerated && 'Calculated outputs have not been generated',
+    calculationsOutOfDate && 'Calculations are out of date',
+    !tenYearGenerated && '10-Year Cash Flow has not been generated',
+    criticalWarnings.length > 0 && 'Critical warnings are unresolved',
+  ].filter(Boolean) as string[];
+  const warningReasons = [
+    aiIncluded && 'AI estimates are included',
+    manualOverrides && 'Manual overrides are active',
+    specialistGstReview && 'Tax/GST assumptions require specialist review',
+    externalVerificationIncomplete && 'External verification has not been completed',
+  ].filter(Boolean) as string[];
+  const pdfDisabled = blockingReasons.length > 0;
+  const allowWithWarning = !pdfDisabled && warningReasons.length > 0;
+  const status: ReportReadinessStatus = !propertyLinked
+    ? 'Awaiting Property'
+    : criticalMissing.length > 0
+      ? 'Missing Critical Inputs'
+      : pendingAi
+        ? 'AI Estimates Pending Review'
+        : calculationsOutOfDate
+          ? 'Calculations Out of Date'
+          : !calculationsGenerated
+            ? 'Calculations Ready'
+            : pdfDisabled
+              ? 'Report Review Required'
+              : verified
+                ? 'Verified'
+                : reportGenerated
+                  ? 'Report Generated'
+                  : 'PDF Ready';
+  return { status, pdfDisabled, allowWithWarning, blockingReasons, warningReasons, requiredSections: reportSectionsRequired };
+}
+
+function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean }) {
+  const profile = useCommercialDealState(s => s.profile);
+  const acceptAiEstimateIntoGlobal = useCommercialDealState(s => s.acceptAiEstimateIntoGlobal);
+  const [status, setStatus] = useState('Awaiting Inputs');
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
+  const [outOfDate, setOutOfDate] = useState(false);
+  const [reportGeneratedAt, setReportGeneratedAt] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
+  const [signature, setSignature] = useState('');
+  const acceptedEstimates = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => estimate?.accepted);
+  const pendingEstimateCount = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => !estimate?.accepted).length;
+  const currentSignature = useMemo(
+    () => JSON.stringify({ assumptions: profile.assumptions, overrides: profile.scenarioOverrides, ai: profile.aiEstimateMetadata }),
+    [profile.assumptions, profile.scenarioOverrides, profile.aiEstimateMetadata]
+  );
+  const reportReadiness = useMemo(
+    () => calculateReportReadiness(profile, propertyLinked, Boolean(lastRunAt), outOfDate, Boolean(reportGeneratedAt), verified),
+    [profile, propertyLinked, lastRunAt, outOfDate, reportGeneratedAt, verified]
+  );
+
+  useEffect(() => {
+    if (!lastRunAt) { setSignature(currentSignature); return; }
+    if (signature && signature !== currentSignature) {
+      setOutOfDate(true);
+      setReportGeneratedAt(null);
+      setVerified(false);
+      setStatus('Out of Date');
+    }
+  }, [currentSignature, lastRunAt, signature]);
+
+  const runAiEstimates = () => {
+    setStatus('AI Estimate Preview Pending');
+    dispatchCalculatorSuiteEvent('commercial-calculators-run-ai-estimates', { propertyLinked });
+  };
+
+  const applyAccepted = () => {
+    acceptedEstimates.forEach((estimate: any) => acceptAiEstimateIntoGlobal(estimate, estimateTargetSection(estimate.fieldKey), estimate.fieldKey.split('.').pop()));
+    setStatus(acceptedEstimates.length ? 'Accepted Assumptions Applied' : 'No Accepted Assumptions');
+    setOutOfDate(true);
+    dispatchCalculatorSuiteEvent('commercial-calculators-assumptions-applied', { count: acceptedEstimates.length });
+  };
+
+  const refreshLinkedTabs = () => {
+    setStatus('Linked Tabs Refreshed');
+    dispatchCalculatorSuiteEvent('commercial-calculators-refresh-linked-tabs');
+  };
+
+  const generateCalculations = () => {
+    const timestamp = new Date().toISOString();
+    setLastRunAt(timestamp);
+    setSignature(currentSignature);
+    setOutOfDate(false);
+    setStatus('Calculated');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-calculations');
+  };
+
+  const generateTenYear = () => {
+    if (outOfDate) { setStatus('Review Required'); return; }
+    setStatus('10-Year Cash Flow Requested');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-ten-year-cash-flow');
+  };
+
+  const generateReport = () => {
+    if (reportReadiness.pdfDisabled) { setStatus('Report Review Required'); return; }
+    const warningText = reportReadiness.allowWithWarning ? `\n\nWarnings:\n- ${reportReadiness.warningReasons.join('\n- ')}` : '';
+    if (typeof window !== 'undefined' && !window.confirm(`Generate report using the current calculated outputs?${warningText}`)) return;
+    const timestamp = new Date().toISOString();
+    setReportGeneratedAt(timestamp);
+    setVerified(false);
+    setStatus('Report Generated');
+    dispatchCalculatorSuiteEvent('commercial-calculators-generate-report', { sections: reportReadiness.requiredSections });
+  };
+
+  const markVerified = () => {
+    if (!reportGeneratedAt) { setStatus('Report Review Required'); return; }
+    setVerified(true);
+    setStatus('Verified');
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/80'}`}>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-semibold text-foreground">Global Generation Controls</h2>
+            <Badge variant={reportReadiness.pdfDisabled ? 'secondary' : 'default'}>{reportReadiness.status}</Badge>
+            <Badge variant={outOfDate ? 'secondary' : 'outline'}>{status}</Badge>
+            {lastRunAt && <Badge variant="outline">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}
+            {reportGeneratedAt && <Badge variant="outline">Report generated {new Date(reportGeneratedAt).toLocaleString()}</Badge>}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Run AI estimates as previews, apply accepted assumptions into the Master Property Context, refresh linked tabs, regenerate calculations, then explicitly generate cash flow and report outputs.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Accepted AI estimates: {acceptedEstimates.length} · Pending estimate previews: {pendingEstimateCount} · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {reportReadiness.pdfDisabled
+              ? `PDF disabled: ${reportReadiness.blockingReasons.join('; ')}`
+              : reportReadiness.allowWithWarning
+                ? `PDF allowed with warning: ${reportReadiness.warningReasons.join('; ')}`
+                : 'PDF ready when report content is confirmed.'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <Button type="button" size="sm" variant="outline" onClick={runAiEstimates}>Run AI Estimates</Button>
+          <Button type="button" size="sm" variant="outline" onClick={applyAccepted}>Apply Accepted Assumptions</Button>
+          <Button type="button" size="sm" variant="outline" onClick={refreshLinkedTabs}>Refresh All Linked Tabs</Button>
+          <Button type="button" size="sm" onClick={generateCalculations}>Generate Calculations</Button>
+          <Button type="button" size="sm" variant="outline" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
+          <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
+          <Button type="button" size="sm" variant="outline" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function GstTreatmentOverviewPanel() {
   const [open, setOpen] = useState(false);
@@ -208,6 +554,15 @@ const calculatorTabs = [
   { value: 'rent', label: 'Industrial Metrics', subLabel: '($/m² + Site Cover)' },
 ] as const;
 
+const calculatorTabGroups: Array<{ group: string; tabs: Array<(typeof calculatorTabs)[number]['value']> }> = [
+  { group: 'Property & Overview', tabs: ['overview', 'rent'] },
+  { group: 'Income & Valuation', tabs: ['noi', 'cap'] },
+  { group: 'Lending & Tax', tabs: ['borrowing', 'icr', 'gst'] },
+  { group: 'Forecasting & Reports', tabs: ['dcf', 'ten-year'] },
+];
+
+const tabByValue = Object.fromEntries(calculatorTabs.map(tab => [tab.value, tab])) as Record<(typeof calculatorTabs)[number]['value'], (typeof calculatorTabs)[number]>;
+
 export default function PropertyCalculators() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -239,6 +594,18 @@ export default function PropertyCalculators() {
 
 function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomain; setDomain: (domain: CalculatorDomain) => void }) {
   const { prefill } = useCalculatorPrefill();
+  const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
+  const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
+  const assumptionStatusAction = <Button type="button" variant="outline" size="sm" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      if (calculatorTabs.some((item) => item.value === tab)) setActiveTab(tab as (typeof calculatorTabs)[number]['value']);
+    };
+    window.addEventListener('calculator-tab-open', handler);
+    return () => window.removeEventListener('calculator-tab-open', handler);
+  }, []);
 
   const blockedTab = (title: string) => (
     <CalculatorTabShell title={title} subtitle="Link a saved commercial or industrial property before reviewing calculated tab outputs." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Property required']}>
@@ -247,6 +614,8 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   );
 
   return (
+      <>
+      <GlobalAssumptionStatusDrawer open={assumptionDrawerOpen} onOpenChange={setAssumptionDrawerOpen} />
       <div className="container mx-auto p-4 md:p-6 space-y-6">
         <div className="mx-auto w-full max-w-7xl space-y-6">
         <div className="rounded-2xl border border-primary/15 bg-card/60 p-5 md:p-6 shadow-sm">
@@ -280,6 +649,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
                 Industrial
               </ToggleGroupItem>
             </ToggleGroup>
+            <div className="mt-3">{assumptionStatusAction}</div>
           </div>
           </div>
         </div>
@@ -289,38 +659,65 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
           <CalculatorPropertyBar />
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/75 p-2 shadow-sm">
-          <TabsList className="h-auto min-w-max w-full justify-start gap-2 bg-transparent p-0">
-            {calculatorTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="group/tab h-16 min-w-[150px] shrink-0 rounded-lg px-4 py-2 text-center data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-              >
-                <span className="flex w-full flex-col items-center justify-center gap-0.5 leading-tight">
-                  <span className="whitespace-nowrap text-sm font-semibold">{tab.label}</span>
-                  <span className="whitespace-nowrap text-[11px] font-medium text-muted-foreground group-data-[state=active]/tab:text-primary-foreground/80">
-                    {tab.subLabel}
-                  </span>
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
+
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
+          <div className="rounded-xl border border-border/70 bg-card/75 p-3 shadow-sm">
+            <div className="md:hidden">
+              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])}>
+                <SelectTrigger className="h-12 border-primary/30 bg-background/80">
+                  <SelectValue aria-label="Selected calculator tab" />
+                </SelectTrigger>
+                <SelectContent>
+                  {calculatorTabGroups.map(group => (
+                    <div key={group.group} className="px-1 py-1">
+                      <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
+                      {group.tabs.map(value => <SelectItem key={value} value={value}>{tabByValue[value].label} {tabByValue[value].subLabel}</SelectItem>)}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="hidden gap-3 md:grid xl:grid-cols-4">
+              {calculatorTabGroups.map(group => (
+                <div key={group.group} className="rounded-lg border border-border/60 bg-background/35 p-2">
+                  <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
+                  <div className="grid gap-2">
+                    {group.tabs.map(value => {
+                      const tab = tabByValue[value];
+                      const selected = activeTab === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setActiveTab(value)}
+                          className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${selected ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/40' : 'bg-card/60 text-foreground hover:bg-primary/10'}`}
+                          aria-current={selected ? 'page' : undefined}
+                        >
+                          <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
+                          <span className={`mt-0.5 block text-[11px] leading-tight ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{tab.subLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <TabsContent value="overview" className="mt-4">{prefill ? <CalculatorTabShell title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell> : blockedTab('Overview Report')}</TabsContent>
-          <TabsContent value="borrowing" className="mt-4">{prefill ? <CalculatorTabShell title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell> : blockedTab('Borrowing Capacity Unified')}</TabsContent>
-          <TabsContent value="noi" className="mt-4">{prefill ? <CalculatorTabShell title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell> : blockedTab('Net Operating Income (NOI)')}</TabsContent>
-          <TabsContent value="cap" className="mt-4">{prefill ? <CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell> : blockedTab('Capitalisation Rate')}</TabsContent>
-          <TabsContent value="icr" className="mt-4">{prefill ? <CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell> : blockedTab('ICR / DSCR')}</TabsContent>
-          <TabsContent value="gst" className="mt-4">{prefill ? <CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell> : blockedTab('Goods & Services Tax')}</TabsContent>
-          <TabsContent value="dcf" className="mt-4">{prefill ? <CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell> : blockedTab('Discounted Cash Flow')}</TabsContent>
-          <TabsContent value="ten-year" className="mt-4">{prefill ? <CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell> : blockedTab('10-Year Cash Flow Report')}</TabsContent>
-          <TabsContent value="rent" className="mt-4">{prefill ? <CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell> : blockedTab('Industrial Metrics $/m² + Site Cover')}</TabsContent>
+          <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="borrowing" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="noi" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="cap" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="icr" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="gst" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="dcf" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="ten-year" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="rent" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell>}</TabsContent>
         </Tabs>
         </div>
       </div>
+      </>
   );
 }
 

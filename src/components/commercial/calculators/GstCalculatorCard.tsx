@@ -702,7 +702,7 @@ function FieldConflict({ conflict, onKeep, onUse }: { conflict?: SourceCandidate
     <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">
       <div>New source value available. This field currently uses a saved override.</div>
       <div className="mt-1 text-muted-foreground">{sourceLabel(conflict.source)}: {conflict.value}</div>
-      <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" className="h-7" onClick={onKeep}>Keep override</Button><Button size="sm" className="h-7" onClick={onUse}>Use source value</Button></div>
+      <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" className="h-7" onClick={onKeep}>Keep override</Button><Button size="sm" className="h-7" onClick={onUse}>Use source value</Button><Button size="sm" variant="ghost" className="h-7" onClick={() => window.alert(`Current override is preserved. New ${sourceLabel(conflict.source)} value: ${conflict.value}`)}>Compare values</Button></div>
     </div>
   );
 }
