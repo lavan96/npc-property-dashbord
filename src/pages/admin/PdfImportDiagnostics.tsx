@@ -566,7 +566,15 @@ export default function PdfImportDiagnostics() {
                         {row.error_text ? (
                           <div className="text-destructive truncate">{row.error_text}</div>
                         ) : null}
+                        {row.result_payload?.rasters_manifest_path ? (
+                          <div className="text-success text-[10px] truncate">
+                            manifest · {(row.result_payload.page_raster_paths?.length ?? 0)} pages
+                          </div>
+                        ) : (row.result_payload?.rasters_path || row.result_payload?.legacy_rasters_path) ? (
+                          <div className="text-warning text-[10px] truncate">legacy rasters.json only</div>
+                        ) : null}
                       </TableCell>
+
                       <TableCell className="text-right text-sm">
                         {row.page_count ?? '—'}
                       </TableCell>
