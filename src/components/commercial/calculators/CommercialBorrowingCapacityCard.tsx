@@ -685,7 +685,6 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
   const scenarioRows = useMemo(() => buildScenarioComparisonRows(currentPortfolio, scenarioComparison.proposed), [currentPortfolio, scenarioComparison.proposed]);
   const visibleScenarioRows = useMemo(() => scenarioRows.filter(row => showUnchangedMetrics || row.indicator !== 'neutral'), [scenarioRows, showUnchangedMetrics]);
   const formatScenarioValue = (value: any, kind?: string) => value == null || value === 'N/A' || value === 'NaN' || (typeof value === 'number' && !Number.isFinite(value)) ? 'Pending' : kind === 'pct' ? pct(value) : kind === 'ratio' ? `${Number(value).toFixed(2)}x` : kind === 'text' || kind === 'risk' ? title(String(value)) : fmt(Number(value));
-  const formatAdvancedMoney = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const formatAdvancedPct = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? pct(Number(value)) : 'Pending';
   const formatAdvancedRatio = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? `${Number(value).toFixed(2)}x` : 'Pending';
   const advancedMetricRows = [

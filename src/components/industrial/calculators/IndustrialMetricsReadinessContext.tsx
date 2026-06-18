@@ -120,7 +120,7 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
         </div>
       </div>
 
-      {children}
+
 
       <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
