@@ -174,7 +174,7 @@ export function useCascadedIndustrialField(
 
 export function SourceBadge({ source }: { source: IndustrialMetricSource }) {
   const variant = source === 'User Override' ? 'secondary' : source === 'Verified' ? 'default' : 'outline';
-  return <Badge variant={variant} className="whitespace-nowrap text-[10px]">{sourceLabels[source]}</Badge>;
+  return <Badge variant={variant} className="whitespace-nowrap border-primary/30 bg-background/60 px-1.5 py-0 text-[10px] leading-5 text-foreground">Source: {sourceLabels[source]}</Badge>;
 }
 
 export function SourceActions({ field }: { field: ReturnType<typeof useCascadedIndustrialField> }) {
