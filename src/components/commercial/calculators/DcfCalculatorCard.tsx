@@ -23,6 +23,8 @@ type Candidate = { value: number; source: DcfSourceState; detail?: string };
 type FieldMeta = { source: DcfSourceState; original?: Candidate; pending?: Candidate; history: string[] };
 type NoiTreatmentMode = 'adjusted' | 'apply' | 'requires_confirmation';
 type GeneratedCashflowRow = { year: number; openingNoi: number; vacancyAdjustment: number; effectiveNoi: number; rentalGrowthApplied: number; capex: number; downtimeAdjustment: number; unleveredCashFlow: number; debtService: number; interestComponent: number; principalComponent: number; leveredCashFlow: number; loanBalance: number; terminalValue?: number; sellingCosts?: number; netSaleProceedsToEquity?: number; finalYearTotalCashFlow?: number };
+type EstimateOrigin = 'Research Engine' | 'Previous Tab' | 'AI Estimate';
+type EstimateItem = { id: string; field?: DcfFieldKey; noiMode?: NoiTreatmentMode; label: string; value: string; sourceBasis: string; confidence: 'High' | 'Medium' | 'Low'; origin: EstimateOrigin; missingInfo: string; riskNotes: string; recommendedVerification: string; selected: boolean };
 
 type FieldState = Record<DcfFieldKey, string>;
 type MetaState = Record<DcfFieldKey, FieldMeta>;
@@ -121,6 +123,9 @@ export function DcfCalculatorCard() {
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [estimatePanelOpen, setEstimatePanelOpen] = useState(false);
+  const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
+  const [estimates, setEstimates] = useState<EstimateItem[]>([]);
 
   const linkedLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
 
@@ -310,6 +315,80 @@ export function DcfCalculatorCard() {
     });
   };
 
+  const contextAvailable = Boolean(prefill || property || fieldKeys.some((key) => meta[key].source !== 'Blank'));
+
+  const estimateFromCandidate = (field: DcfFieldKey, label: string, c: Candidate | undefined): EstimateItem | undefined => {
+    if (!c) return undefined;
+    const origin: EstimateOrigin = c.source === 'Research Engine' ? 'Research Engine' : c.source === 'AI Estimate' ? 'AI Estimate' : 'Previous Tab';
+    return {
+      id: field,
+      field,
+      label,
+      value: String(c.value),
+      sourceBasis: c.detail ? `${c.source} — ${c.detail}` : c.source,
+      confidence: origin === 'Research Engine' ? 'High' : origin === 'Previous Tab' ? 'Medium' : 'Low',
+      origin,
+      missingInfo: origin === 'AI Estimate' ? 'Verify against lease evidence, market report and lender assumptions.' : 'None identified from available context.',
+      riskNotes: field === 'vacancy' ? 'Vacancy assumptions can materially change Year 1 and downside returns.' : field === 'termCap' || field === 'discount' ? 'Exit yield and discount rate assumptions are market-sensitive.' : 'Review before client-report reliance.',
+      recommendedVerification: origin === 'Research Engine' ? 'Confirm against market evidence and source date.' : origin === 'Previous Tab' ? 'Confirm source tab inputs are final.' : 'Treat as unverified AI estimate until independently supported.',
+      selected: true,
+    };
+  };
+
+  const handleEstimateForMe = () => {
+    if (!contextAvailable) {
+      setEstimatePanelOpen(true);
+      setEstimates([]);
+      setEstimateMessage('More property, NOI, market and lending information is required before DCF assumptions can be estimated.');
+      return;
+    }
+    const suggested = [
+      estimateFromCandidate('growth', 'Rental Growth %', cascade.growth),
+      estimateFromCandidate('vacancy', 'Vacancy Allowance %', cascade.vacancy),
+      estimateFromCandidate('termCap', 'Terminal Cap %', cascade.termCap),
+      estimateFromCandidate('sellingCosts', 'Selling Costs %', cascade.sellingCosts),
+      estimateFromCandidate('discount', 'Discount Rate %', cascade.discount),
+      estimateFromCandidate('annualCapex', 'Annual Capex', cascade.annualCapex),
+      estimateFromCandidate('downtimeMonths', 'Downtime Months', cascade.downtimeMonths),
+      estimateFromCandidate('hold', 'Hold Period', cascade.hold),
+    ].filter(Boolean) as EstimateItem[];
+    if (meta.initialNoi.source === 'NOI Tab' || meta.initialNoi.original?.detail === 'Vacancy included') {
+      suggested.push({ id: 'noi-mode', label: 'NOI Treatment Mode', value: noiTreatmentLabels.adjusted, noiMode: 'adjusted', sourceBasis: meta.initialNoi.original?.detail ? `Base NOI — ${meta.initialNoi.original.detail}` : 'Base NOI source indicates vacancy-adjusted NOI', confidence: 'High', origin: 'Previous Tab', missingInfo: 'None identified from available context.', riskNotes: 'Avoid applying vacancy twice when NOI already includes vacancy loss.', recommendedVerification: 'Confirm NOI tab basis before client report.', selected: true });
+    }
+    suggested.push({ id: 'scenario-conservative', label: 'Conservative scenario assumptions', value: 'Lower growth, higher vacancy, softer exit cap', sourceBasis: 'DCF scenario framework using available assumptions', confidence: 'Low', origin: 'AI Estimate', missingInfo: 'Requires final lease, market and capex evidence.', riskNotes: 'Downside assumptions should be supported before client presentation.', recommendedVerification: 'Review against market evidence and risk appetite.', selected: false });
+    suggested.push({ id: 'scenario-optimistic', label: 'Optimistic scenario assumptions', value: 'Higher growth, lower exit cap, stable vacancy', sourceBasis: 'DCF scenario framework using available assumptions', confidence: 'Low', origin: 'AI Estimate', missingInfo: 'Requires market support.', riskNotes: 'Upside case should not be treated as base case.', recommendedVerification: 'Verify against rent growth and exit-yield evidence.', selected: false });
+    suggested.push({ id: 'scenario-stress', label: 'Higher vacancy / capex / rate cases', value: 'Stress vacancy, capex and interest rate independently', sourceBasis: 'DCF sensitivity framework', confidence: 'Low', origin: 'AI Estimate', missingInfo: 'Requires sponsor/lender stress parameters.', riskNotes: 'Stress cases may materially reduce levered return.', recommendedVerification: 'Confirm with lender and client risk tolerance.', selected: false });
+    setEstimates(suggested);
+    setEstimateMessage(suggested.length ? null : 'More property, NOI, market and lending information is required before DCF assumptions can be estimated.');
+    setEstimatePanelOpen(true);
+  };
+
+  const updateEstimate = (id: string, patch: Partial<EstimateItem>) => setEstimates((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  const rejectEstimate = (id: string) => setEstimates((items) => items.filter((item) => item.id !== id));
+
+  const applyEstimates = (selectedOnly: boolean) => {
+    const selected = estimates.filter((item) => !selectedOnly || item.selected);
+    if (!selected.length) return;
+    setFields((current) => {
+      const next = { ...current };
+      selected.forEach((item) => { if (item.field) next[item.field] = item.value; });
+      return next;
+    });
+    setMeta((current) => {
+      const next = { ...current };
+      selected.forEach((item) => {
+        if (!item.field) return;
+        const source: DcfSourceState = item.origin === 'Research Engine' ? 'Research Engine' : 'AI Estimate';
+        const estimate = { value: parseNumber(item.value) ?? 0, source, detail: item.sourceBasis };
+        next[item.field] = { source, original: estimate, history: [...next[item.field].history, `${new Date().toISOString()}: ${item.label} estimate accepted from ${item.origin}; original estimate ${item.value}.`] };
+      });
+      return next;
+    });
+    const mode = selected.find((item) => item.noiMode)?.noiMode;
+    if (mode) { setNoiTreatmentMode(mode); setNoiTreatmentTouched(true); }
+    setEstimateMessage(`${selected.length} estimate${selected.length === 1 ? '' : 's'} accepted. Accepted AI estimates remain unverified until supporting evidence is reviewed.`);
+  };
+
   const handleGenerateCashflow = () => {
     if (!canGenerate) return;
     const inputs = buildDcfInputs();
@@ -337,7 +416,7 @@ export function DcfCalculatorCard() {
           <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
           <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{linkedLabel}</Badge>
           <span className="text-xs text-muted-foreground">Assumptions tracked in status drawer</span>
-          <Button size="sm" variant="outline">Estimate for me</Button>
+          <Button size="sm" variant="outline" onClick={handleEstimateForMe}>Estimate for me</Button>
           <Button size="sm" onClick={handleGenerateCashflow} disabled={!canGenerate} title={!canGenerate ? 'Complete purchase price, Base NOI, hold period, growth, terminal cap and discount rate before generating cashflow.' : undefined}>{cashflowOutOfDate ? 'Regenerate Cashflow' : 'Generate Cashflow'}</Button>
           <SaveBackButton build={() => ({ purchase_price: valueOrUndefined(fields.price), valuation: valueOrUndefined(fields.price) })} />
         </div>
@@ -349,6 +428,17 @@ export function DcfCalculatorCard() {
           {cashflowCurrent && <p className="mt-1 text-xs text-emerald-200">Cashflow generated · {generatedAt ? new Date(generatedAt).toLocaleString() : 'Generated'} · {DCF_CALCULATION_VERSION}</p>}
           {cashflowOutOfDate && <p className="mt-1 text-xs text-amber-200">Cashflow out of date · Last generated {generatedAt ? new Date(generatedAt).toLocaleString() : 'previously'} · {DCF_CALCULATION_VERSION}</p>}
         </div>
+
+        {estimatePanelOpen && (
+          <div className="rounded-lg border border-primary/20 bg-muted/20 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><Label>AI / Research Estimate Preview</Label><p className="text-xs text-muted-foreground">Review suggested DCF assumptions before applying them. Estimates never auto-populate fields.</p></div>
+              <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => applyEstimates(false)} disabled={!estimates.length}>Accept all estimates</Button><Button size="sm" onClick={() => applyEstimates(true)} disabled={!estimates.some((e) => e.selected)}>Accept selected estimates</Button><Button size="sm" variant="ghost" onClick={() => setEstimatePanelOpen(false)}>Close</Button></div>
+            </div>
+            {estimateMessage && <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</p>}
+            {!!estimates.length && <div className="mt-3 space-y-2">{estimates.map((item) => <div key={item.id} className="rounded-md border bg-background/40 p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={item.selected} onChange={(e) => updateEstimate(item.id, { selected: e.target.checked })} />{item.label}</label><div className="flex flex-wrap gap-1"><Badge variant="outline">{item.origin}</Badge><Badge variant="outline">{item.confidence} confidence</Badge></div></div><div className="mt-2 grid gap-2 md:grid-cols-[220px_1fr]"><div><Label className="text-[11px]">Suggested value</Label><Input className="mt-1 h-8" value={item.value} onChange={(e) => updateEstimate(item.id, { value: e.target.value })} /></div><div className="grid gap-1 text-muted-foreground"><div>Source basis: <span className="text-foreground">{item.sourceBasis}</span></div><div>Missing information: <span className="text-foreground">{item.missingInfo}</span></div><div>Risk notes: <span className="text-foreground">{item.riskNotes}</span></div><div>Recommended verification: <span className="text-foreground">{item.recommendedVerification}</span></div></div></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => applyEstimates(true)} disabled={!item.selected}>Apply selected</Button><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => rejectEstimate(item.id)}>Reject estimate</Button></div></div>)}</div>}
+          </div>
+        )}
 
         <div className="rounded-lg border bg-muted/20 p-3">
           <div className="grid gap-3 md:grid-cols-[minmax(220px,320px)_1fr]">
