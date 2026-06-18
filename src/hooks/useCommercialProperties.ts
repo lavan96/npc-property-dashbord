@@ -107,6 +107,29 @@ export interface CommercialFinancing {
   updated_at: string;
 }
 
+export interface CommercialDcfRun {
+  id: string;
+  property_id: string;
+  user_id: string;
+  scenario_name?: string | null;
+  hold_period_years?: number | null;
+  discount_rate?: number | null;
+  terminal_cap_rate?: number | null;
+  rental_growth_assumptions?: any;
+  vacancy_allowance_pct?: number | null;
+  capex_schedule?: any;
+  loan_amount?: number | null;
+  interest_rate?: number | null;
+  loan_term_years?: number | null;
+  outputs?: Record<string, any> | null;
+  irr?: number | null;
+  npv?: number | null;
+  equity_multiple?: number | null;
+  peak_equity?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 type Table = 'commercial_properties' | 'commercial_leases' | 'commercial_dcf_runs' | 'commercial_capex' | 'commercial_financing';
 
 type EdgeEnvelope<T> = { success?: boolean; data?: T };
@@ -144,6 +167,16 @@ export const commercialApi = {
     call<CommercialLease>('update', 'commercial_leases', { recordId, data }),
   deleteLease: (recordId: string) =>
     call('delete', 'commercial_leases', { recordId }),
+
+  // DCF runs (assumptions, audit trail, generated schedule and report-ready outputs)
+  listDcfRuns: (propertyId: string) =>
+    call<CommercialDcfRun[]>('list', 'commercial_dcf_runs', { propertyId }),
+  createDcfRun: (data: Partial<CommercialDcfRun>) =>
+    call<CommercialDcfRun>('create', 'commercial_dcf_runs', { data }),
+  updateDcfRun: (recordId: string, data: Partial<CommercialDcfRun>) =>
+    call<CommercialDcfRun>('update', 'commercial_dcf_runs', { recordId, data }),
+  deleteDcfRun: (recordId: string) =>
+    call('delete', 'commercial_dcf_runs', { recordId }),
 
   // Capex
   listCapex: (propertyId: string) =>

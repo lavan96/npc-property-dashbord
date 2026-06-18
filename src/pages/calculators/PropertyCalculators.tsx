@@ -79,6 +79,64 @@ function GstTreatmentOverviewPanel() {
   );
 }
 
+function DcfOverviewPanel() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-foreground">Discounted Cash Flow Overview</h2>
+          <div className="max-w-4xl space-y-2 text-sm leading-6 text-muted-foreground">
+            <p>
+              This section forecasts the expected cashflow and exit value of a commercial or industrial property over the selected hold period. It uses rental income, vacancy, capex, acquisition costs, debt assumptions and exit cap rate assumptions to estimate the investment’s return profile.
+            </p>
+            <p>
+              The DCF model helps assess whether the asset produces sufficient cashflow and capital return over time, rather than only looking at the purchase price, yield or borrowing capacity at acquisition.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs md:justify-end">
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Cashflow forecast</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Exit value</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Return profile</Badge>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 lg:grid-cols-[1fr_1.1fr]">
+        <div className="text-sm leading-6 text-muted-foreground">
+          <p className="font-medium text-foreground">This calculator separates:</p>
+          <ol className="mt-1 grid list-decimal gap-1 pl-5 text-xs leading-5 sm:grid-cols-2">
+            <li>Year-by-year operating cashflow</li>
+            <li>Capex and downtime impacts</li>
+            <li>Unlevered return before debt</li>
+            <li>Levered return after debt</li>
+            <li>Terminal value at exit</li>
+            <li>Net sale proceeds to equity</li>
+            <li>NPV, IRR and equity multiple</li>
+            <li>Sensitivity to exit cap rate and key assumptions</li>
+          </ol>
+        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          The output is a forecast only and should be reviewed against lease assumptions, market rent growth, vacancy expectations, capex requirements, funding costs and exit yield evidence before being relied upon in a client report.
+        </p>
+      </div>
+
+      <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 px-0 text-primary hover:bg-transparent hover:text-primary/80">
+            Why this matters
+            <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pb-1 text-xs leading-5 text-muted-foreground">
+          DCF is important because a commercial or industrial asset may appear attractive on yield alone, but returns can change materially once downtime, capex, debt service, exit cap rate and sale costs are included. This model helps compare base, conservative and upside scenarios before presenting the asset to a client.
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
 const calculatorTabs = [
   { value: 'overview', label: 'Overview', subLabel: '(Report)' },
   { value: 'borrowing', label: 'Borrowing Capacity', subLabel: '(Unified)' },
@@ -200,7 +258,7 @@ export default function PropertyCalculators() {
           <TabsContent value="cap" className="mt-4"><CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="icr" className="mt-4"><CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together. Blank or unlinked industrial fields remain empty until imported or entered." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Property-level information is incomplete. Add or import property details before relying on this calculation.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>
         </Tabs>
