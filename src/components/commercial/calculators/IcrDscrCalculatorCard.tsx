@@ -72,6 +72,13 @@ export function IcrDscrCalculatorCard() {
   const [fields, setFields] = useState<Record<IcrField, FieldState>>({ noi: field(), loan: field(), proposedLoan: field(), rate: field(), term: field(), buffer: field(), floorRate: field(), targetIcr: field(), targetDscr: field(), minDebtYield: field() });
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [stressOpen, setStressOpen] = useState(false);
+  const [rateShockPct, setRateShockPct] = useState('1.00');
+  const [noiReductionPct, setNoiReductionPct] = useState('10');
+  const [debtIncreasePct, setDebtIncreasePct] = useState('10');
+  const [conservativeIcrIncrease, setConservativeIcrIncrease] = useState('0.25');
+  const [conservativeDscrIncrease, setConservativeDscrIncrease] = useState('0.10');
+  const [conservativeDebtYieldIncreasePct, setConservativeDebtYieldIncreasePct] = useState('1.00');
 
   const audit = (action: string, fieldName: string, previousValue: unknown, newValue: unknown, source: string) => appendAiAudit({ action, fieldKey: `icrDscr.${fieldName}`, previousValue, newValue, source, timestamp: new Date().toISOString(), user: 'current-user', propertyId: prefill?.propertyId, dealId: prefill?.propertyId } as any);
 
@@ -402,6 +409,60 @@ export function IcrDscrCalculatorCard() {
     'Consider alternate lender thresholds',
   ];
 
+  const ioComparisonEnabled = Boolean((profile.lendingAssumptions as any)?.repaymentType === 'interestOnly' || (profile.lendingAssumptions as any)?.assessmentBasis === 'interestOnlyAssessment' || Number((profile.lendingAssumptions as any)?.interestOnlyPeriodYears) > 0);
+  const stressScenarios = useMemo(() => {
+    if (!coverage) return [];
+    const baseNoi = parsedInputs.noi!;
+    const baseLoan = preliminaryLoanAmount!;
+    const baseRate = parsedInputs.rate!;
+    const baseBuffer = parsedInputs.buffer!;
+    const baseFloor = parsedInputs.floorRate!;
+    const baseTerm = parsedInputs.term!;
+    const baseIcr = parsedInputs.targetIcr!;
+    const baseDscr = parsedInputs.targetDscr!;
+    const baseDebtYield = parsedInputs.minDebtYieldPct! / 100;
+    const rateShock = parseNumeric(rateShockPct) ?? 0;
+    const noiReduction = (parseNumeric(noiReductionPct) ?? 0) / 100;
+    const debtIncrease = (parseNumeric(debtIncreasePct) ?? 0) / 100;
+    const conservativeIcr = parseNumeric(conservativeIcrIncrease) ?? 0;
+    const conservativeDscr = parseNumeric(conservativeDscrIncrease) ?? 0;
+    const conservativeDebtYield = (parseNumeric(conservativeDebtYieldIncreasePct) ?? 0) / 100;
+    const run = (label: string, overrides: Partial<{ noi: number; loanAmount: number; assessmentRateOverridePct: number; repaymentType: 'interestOnly' | 'principalAndInterest'; minimumIcr: number; minimumDscr: number; minimumDebtYield: number }>) => {
+      const result = calculateIcrDscrEngine({
+        noi: overrides.noi ?? baseNoi,
+        loanAmount: overrides.loanAmount ?? baseLoan,
+        contractInterestRatePct: baseRate,
+        assessmentBufferPct: baseBuffer,
+        assessmentFloorRatePct: baseFloor,
+        assessmentRateOverridePct: overrides.assessmentRateOverridePct,
+        repaymentType: overrides.repaymentType ?? 'principalAndInterest',
+        amortisationYears: baseTerm,
+        minimumIcr: overrides.minimumIcr ?? baseIcr,
+        minimumDscr: overrides.minimumDscr ?? baseDscr,
+        minimumDebtYield: overrides.minimumDebtYield ?? baseDebtYield,
+      });
+      const constraint = [{ label: 'ICR', value: result.maxLoanByIcr }, { label: 'DSCR', value: result.maxLoanByDscr }, { label: 'Debt Yield', value: result.maxLoanByDebtYield }].filter(item => Number.isFinite(item.value)).reduce((lowest, item) => item.value < lowest.value ? item : lowest).label;
+      const pass = result.icr >= (overrides.minimumIcr ?? baseIcr) && result.dscr >= (overrides.minimumDscr ?? baseDscr) && result.debtYield >= (overrides.minimumDebtYield ?? baseDebtYield);
+      const marginal = pass && (result.icr - (overrides.minimumIcr ?? baseIcr) < 0.15 || result.dscr - (overrides.minimumDscr ?? baseDscr) < 0.1 || result.debtYield - (overrides.minimumDebtYield ?? baseDebtYield) < 0.005);
+      return { label, result, constraint, status: pass ? marginal ? 'Marginal' : 'Pass' : 'Fail', noi: overrides.noi ?? baseNoi, loanAmount: overrides.loanAmount ?? baseLoan };
+    };
+    const scenarios = [
+      run('Base Case', {}),
+      run('Higher Rate Case', { assessmentRateOverridePct: coverage.assessmentRateUsedPct + rateShock }),
+      run('Lower NOI Case', { noi: baseNoi * Math.max(0, 1 - noiReduction) }),
+      run('Higher Debt Case', { loanAmount: baseLoan * (1 + debtIncrease) }),
+      run('Conservative Lender Case', { minimumIcr: baseIcr + conservativeIcr, minimumDscr: baseDscr + conservativeDscr, minimumDebtYield: baseDebtYield + conservativeDebtYield }),
+    ];
+    if (ioComparisonEnabled) scenarios.splice(4, 0, run('Interest-Only Comparison', { repaymentType: 'interestOnly' }));
+    return scenarios;
+  }, [coverage, conservativeDebtYieldIncreasePct, conservativeDscrIncrease, conservativeIcrIncrease, debtIncreasePct, ioComparisonEnabled, noiReductionPct, parsedInputs, preliminaryLoanAmount, rateShockPct]);
+
+  const saveCoverageScenarios = () => {
+    if (!coverage || stressScenarios.length === 0) return;
+    updateGlobal('icrDscrOutputs', { coverageScenarios: stressScenarios, coverageScenariosSavedAt: new Date().toISOString() });
+    toast.success('Coverage stress scenarios saved for comparison and reporting.');
+  };
+
   useEffect(() => {
     if (!coverage || lowestSupportableLoan == null) return;
     updateGlobal('icrDscrOutputs', {
@@ -520,6 +581,25 @@ export function IcrDscrCalculatorCard() {
             </div>
           </section>
 
+          <Collapsible open={stressOpen} onOpenChange={setStressOpen}>
+            <div className="rounded-lg border border-border/60 bg-muted/20">
+              <CollapsibleTrigger asChild><Button variant="ghost" className="flex w-full justify-between p-4 text-left"><span>Coverage Stress Tests</span><ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 border-t border-border/60 p-4">
+                <p className="text-sm text-muted-foreground">Coverage-only stress tests. These do not overwrite base assumptions and are not saved unless you use Save as Coverage Scenario.</p>
+                <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+                  <StressInput label="Rate increase %" value={rateShockPct} onChange={setRateShockPct} />
+                  <StressInput label="NOI reduction %" value={noiReductionPct} onChange={setNoiReductionPct} />
+                  <StressInput label="Debt increase %" value={debtIncreasePct} onChange={setDebtIncreasePct} />
+                  <StressInput label="ICR uplift" value={conservativeIcrIncrease} onChange={setConservativeIcrIncrease} />
+                  <StressInput label="DSCR uplift" value={conservativeDscrIncrease} onChange={setConservativeDscrIncrease} />
+                  <StressInput label="Debt yield uplift %" value={conservativeDebtYieldIncreasePct} onChange={setConservativeDebtYieldIncreasePct} />
+                </div>
+                {!coverage ? <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Stress test results appear once the base coverage calculation is ready.</p> : <div className="grid gap-3 xl:grid-cols-2">{stressScenarios.map(scenario => <StressScenarioCard key={scenario.label} scenario={scenario} />)}</div>}
+                <Button size="sm" variant="outline" onClick={saveCoverageScenarios} disabled={!coverage || stressScenarios.length === 0}>Save as Coverage Scenario</Button>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           <section className="rounded-lg border border-border/60 bg-background/50 p-4">
             <h3 className="text-base font-semibold">Recommended Next Action</h3>
             <p className="mt-1 text-sm text-muted-foreground">{recommendedAction}</p>
@@ -553,6 +633,15 @@ function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, place
       {state.pendingSource && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New source value available. This field currently uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}
     </div>
   );
+}
+
+function StressInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <div><Label className="text-xs text-muted-foreground">{label}</Label><Input type="text" inputMode="decimal" value={value} onChange={event => onChange(event.target.value)} /></div>;
+}
+
+function StressScenarioCard({ scenario }: { scenario: { label: string; result: ReturnType<typeof calculateIcrDscrEngine>; constraint: string; status: string; noi: number; loanAmount: number } }) {
+  const statusClass = scenario.status === 'Pass' ? 'text-emerald-400' : scenario.status === 'Marginal' ? 'text-amber-300' : 'text-red-300';
+  return <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-sm"><div className="mb-2 flex items-center justify-between gap-2"><div className="font-semibold">{scenario.label}</div><Badge variant={scenario.status === 'Pass' ? 'default' : scenario.status === 'Marginal' ? 'outline' : 'destructive'}>{scenario.status}</Badge></div><div className="grid gap-x-4 gap-y-1 sm:grid-cols-2"><Row label="Assessment Rate" value={`${scenario.result.assessmentRateUsedPct.toFixed(2)}%`} /><Row label="NOI" value={fmt(scenario.noi)} /><Row label="Loan Amount" value={fmt(scenario.loanAmount)} /><Row label="Annual Interest" value={fmt(scenario.result.annualInterest)} /><Row label="Annual Debt Service" value={fmt(scenario.result.annualDebtService)} /><Row label="ICR" value={`${scenario.result.icr}x`} /><Row label="DSCR" value={`${scenario.result.dscr}x`} /><Row label="Debt Yield" value={`${(scenario.result.debtYield * 100).toFixed(2)}%`} /><Row label="Binding Constraint" value={scenario.constraint} /><div className={`flex justify-between ${statusClass}`}><span>Status</span><span>{scenario.status}</span></div></div></div>;
 }
 
 function MetricCard({ label, value, prominent }: { label: string; value: string; prominent?: boolean }) {
