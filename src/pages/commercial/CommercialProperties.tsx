@@ -48,6 +48,7 @@ export default function CommercialProperties() {
   const [activeKind, setActiveKind] = useState<'all' | AssetKind>('all');
   const [commercialOpen, setCommercialOpen] = useState(false);
   const [industrialOpen, setIndustrialOpen] = useState(false);
+  const [addToCalcOpen, setAddToCalcOpen] = useState(false);
   const [editingCommercial, setEditingCommercial] = useState<CommercialProperty | null>(null);
   const [editingIndustrial, setEditingIndustrial] = useState<IndustrialProperty | null>(null);
   const navigate = useNavigate();
