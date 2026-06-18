@@ -19,6 +19,7 @@ import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalcul
 import { TenYearCashFlowCard } from '@/components/commercial/calculators/TenYearCashFlowCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
 import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
+import { OverviewCommandLayer } from '@/components/commercial/OverviewCommandLayer';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
 import { SiteCoverCard } from '@/components/industrial/calculators/SiteCoverCard';
 import { IndustrialMetricsReadinessProvider } from '@/components/industrial/calculators/IndustrialMetricsReadinessContext';
@@ -731,7 +732,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
             </div>
           </div>
 
-          <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Command layer for the calculator suite — active property, readiness per tab, key outputs, critical warnings, next best action and report controls." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Command layer']}><OverviewCommandLayer /><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="borrowing" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="noi" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="cap" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell>}</TabsContent>
