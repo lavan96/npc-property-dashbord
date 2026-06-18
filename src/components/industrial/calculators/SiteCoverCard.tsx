@@ -157,13 +157,13 @@ export function SiteCoverCard() {
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
           {!canCalculateAll && <EmptyState critical={hasCriticalIssue} />}
-          <OutputRow label="Site Cover" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
+          <OutputRow label="Site Cover %" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
           <div className="flex justify-between items-center gap-4">
             <span className="flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Coverage Band<Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge></span>
             {coverageBand === 'Pending' ? <span className="text-muted-foreground text-sm">Pending</span> : <Badge variant="secondary" className="capitalize">{coverageBand}</Badge>}
           </div>
           <OutputRow label="Hardstand Ratio" tooltip="Hardstand m² ÷ site area m²." value={formatPercent(hardstandRatio)} tone={benchmarkTone} muted />
-          <OutputRow label="Office Ratio" tooltip="Office area m² ÷ GLA m², or office % where office area is unavailable." value={formatPercent(officeRatio)} tone={benchmarkTone} muted />
+          <OutputRow label="Office %" tooltip="Office area m² ÷ GLA m², or office % where office area is unavailable." value={formatPercent(officeRatio)} tone={benchmarkTone} muted />
           <Separator />
           <OutputRow label="$/m² GLA" tooltip="Purchase price ÷ GLA m²." value={formatCurrency(pricePerGla, 0)} tone={benchmarkTone} />
           <OutputRow label="$/m² Site" tooltip="Purchase price ÷ site area m²." value={formatCurrency(pricePerSite, 0)} tone={benchmarkTone} />

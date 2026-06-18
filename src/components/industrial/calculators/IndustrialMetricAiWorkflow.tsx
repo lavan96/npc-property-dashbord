@@ -58,11 +58,14 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
 
   return (
     <Card className="border-primary/20 bg-card/70">
-      <CardHeader className="space-y-1 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <details>
+        <summary className="cursor-pointer list-none">
+          <CardHeader className="space-y-1 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+        </summary>
+        <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
           {actions.map((action) => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => runAction(action)}>{action.label}</Button>)}
         </div>
@@ -95,7 +98,8 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
             </div>
           </div>
         )}
-      </CardContent>
+        </CardContent>
+      </details>
     </Card>
   );
 }

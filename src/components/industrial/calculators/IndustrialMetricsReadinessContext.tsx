@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { assessIndustrialBenchmark, industrialBenchmarkConfig } from './industrialMetricBenchmarks';
 import { formatCurrency, formatPercent, parseMetricNumber, type IndustrialMetricSource } from './industrialMetricCascade';
@@ -55,6 +56,7 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
   const [searchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [includeInReport, setIncludeInReport] = useState(true);
   const assessment = useMemo(() => assessReadiness(fields, Boolean(prefill)), [fields, prefill]);
   const saveSnapshot = useMemo(() => buildSaveSnapshot(fields, assessment.status, prefill?.propertyId ?? null, property?.user_id ?? null, searchParams.get('scenarioId')), [assessment.status, fields, prefill?.propertyId, property, searchParams]);
   const canSaveBack = Boolean(prefill) && saveSnapshot.linkedValues > 0;
@@ -67,11 +69,11 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
         industrialMetrics: saveSnapshot,
         savedAt: saveSnapshot.timestamp,
         calculationVersion: saveSnapshot.calculationVersion,
-        reportSync: {
+        reportSync: includeInReport ? {
           overview: saveSnapshot.reportMetrics,
           tenYearCashFlowCommentary: saveSnapshot.reportMetrics,
           clientPdf: saveSnapshot.reportMetrics,
-        },
+        } : null,
       };
       const patch = domain === 'industrial'
         ? {
@@ -100,40 +102,66 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
   const visibleWarnings = assessment.warnings.slice(0, 3);
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-foreground">Industrial Metrics Status</h3>
-            <StatusBadge status={assessment.status} />
+    <>
+      <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold text-foreground">Data Source &amp; Sync</h3>
+              <StatusBadge status={assessment.status} />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{assessment.nextAction}</p>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{assessment.nextAction}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <Badge variant="outline">{assessment.requiredComplete ? 'Required complete' : 'Required incomplete'}</Badge>
-          <Badge variant="outline">{assessment.recommendedMissing} recommended missing</Badge>
-          <Button size="sm" variant="outline" disabled={!canSaveBack || saving} title={!prefill ? 'Select or link a property before saving industrial metrics.' : 'Save verified industrial metrics and audit trail to the linked property profile.'} onClick={() => setDialogOpen(true)}>Save Back to Property</Button>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline">{prefill ? 'Property linked' : 'Manual / no property linked'}</Badge>
+            <Badge variant="outline">{assessment.requiredComplete ? 'Required complete' : 'Required incomplete'}</Badge>
+            <Badge variant="outline">{assessment.recommendedMissing} recommended missing</Badge>
+          </div>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        {visibleWarnings.map((warning) => <WarningCard key={`${warning.category}-${warning.message}`} warning={warning} />)}
-        {visibleWarnings.length === 0 && <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200"><CheckCircle2 className="mr-1 inline h-4 w-4" />Industrial metrics are ready for report inclusion.</div>}
-      </div>
+      {children}
 
-      {assessment.warnings.length > 3 && (
+      <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Benchmark Notes &amp; Report Readiness</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Review assumptions, warnings and report inclusion before saving metrics.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <label className="flex items-center gap-2 text-muted-foreground">
+              <Switch checked={includeInReport} onCheckedChange={setIncludeInReport} aria-label="Include industrial metrics in report" />
+              Include in report
+            </label>
+            <Button size="sm" variant="outline" disabled={!canSaveBack || saving} title={!prefill ? 'Select or link a property before saving industrial metrics.' : 'Save verified industrial metrics and audit trail to the linked property profile.'} onClick={() => setDialogOpen(true)}>Save Back to Property</Button>
+          </div>
+        </div>
+
         <details className="mt-3 rounded-md border border-border/60 bg-background/30 p-2 text-xs text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">View all assumptions and warnings</summary>
-          <div className="mt-2 space-y-2">
-            {assessment.warnings.map((warning) => <WarningCard key={`${warning.category}-${warning.severity}-${warning.message}`} warning={warning} />)}
-          </div>
+          <summary className="cursor-pointer font-medium text-foreground">View benchmark notes</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {saveSnapshot.benchmarkNotes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
         </details>
-      )}
-      <SaveBackDialog open={dialogOpen} onOpenChange={setDialogOpen} snapshot={saveSnapshot} saving={saving} onConfirm={handleSave} />
-    </div>
+
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          {visibleWarnings.map((warning) => <WarningCard key={`${warning.category}-${warning.message}`} warning={warning} />)}
+          {visibleWarnings.length === 0 && <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200"><CheckCircle2 className="mr-1 inline h-4 w-4" />Industrial metrics are ready for report inclusion.</div>}
+        </div>
+
+        {assessment.warnings.length > 3 && (
+          <details className="mt-3 rounded-md border border-border/60 bg-background/30 p-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">View all assumptions and warnings</summary>
+            <div className="mt-2 space-y-2">
+              {assessment.warnings.map((warning) => <WarningCard key={`${warning.category}-${warning.severity}-${warning.message}`} warning={warning} />)}
+            </div>
+          </details>
+        )}
+        <SaveBackDialog open={dialogOpen} onOpenChange={setDialogOpen} snapshot={saveSnapshot} saving={saving} onConfirm={handleSave} />
+      </div>
+    </>
   );
 }
-
 
 function buildSaveSnapshot(fields: Partial<Record<FieldKey, FieldState>>, readinessStatus: IndustrialMetricsReadinessStatus, propertyId: string | null, userId: string | null | undefined, scenarioId: string | null) {
   const values = {
@@ -162,7 +190,7 @@ function buildSaveSnapshot(fields: Partial<Record<FieldKey, FieldState>>, readin
   const verifiedValues = fieldEntries.filter(([, field]) => field?.source === 'Verified').length;
   const sources = Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, { source: field?.source ?? 'Blank', currentValue: field?.value ?? '', originalSource: field?.originalSource, originalValue: field?.originalValue, userOverrideValue: field?.source === 'User Override' ? field.value : null, aiOrResearchEstimateValue: field?.source === 'AI Estimate' || field?.source === 'Research Engine' ? field.value : null, assumptionHistory: field?.history ?? [] }]));
   const reportMetrics = { rentPerSqm: calculated.netRentPerSqm, grossRentPerSqm: calculated.grossRentPerSqm, siteCover: calculated.siteCover, hardstandRatio: calculated.hardstandRatio, officeRatio: calculated.officeRatio, pricePerSqmGla: calculated.pricePerSqmGla, pricePerSqmSite: calculated.pricePerSqmSite, benchmarkStatus: benchmark.status };
-  return { values, sources, calculated, benchmarkStatus: benchmark.status, readinessStatus, timestamp: new Date().toISOString(), userId: userId ?? null, calculationVersion: 'industrial-metrics-v1', propertyId, scenarioId, linkedValues, aiEstimates, manualOverrides, verifiedValues, reportMetrics };
+  return { values, sources, calculated, benchmarkStatus: benchmark.status, benchmarkNotes: benchmark.notes, readinessStatus, timestamp: new Date().toISOString(), userId: userId ?? null, calculationVersion: 'industrial-metrics-v1', propertyId, scenarioId, linkedValues, aiEstimates, manualOverrides, verifiedValues, reportMetrics };
 }
 
 function SaveBackDialog({ open, onOpenChange, snapshot, saving, onConfirm }: { open: boolean; onOpenChange: (open: boolean) => void; snapshot: ReturnType<typeof buildSaveSnapshot>; saving: boolean; onConfirm: () => void }) {

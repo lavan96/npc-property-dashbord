@@ -110,25 +110,25 @@ export function RentPerSqmCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Rent per m² (GLA)</CardTitle>
+        <CardTitle>Rent per m² GLA</CardTitle>
         <CardDescription>Convert annual rent and outgoings into industrial $/m² benchmarks.</CardDescription>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <IndustrialMetricAiWorkflow actions={aiActions} />
-          <CascadedInput label="Base Rent (PA $)" value={baseRent.value} placeholder="Pulled from NOI tab or enter manually" source={baseRent.source} onChange={baseRent.setValue} onVerify={baseRent.markVerified} />
+          <CascadedInput label="Base Rent p.a. ($)" value={baseRent.value} placeholder="Pulled from NOI tab or enter manually" source={baseRent.source} onChange={baseRent.setValue} onVerify={baseRent.markVerified} />
           <SourceActions field={baseRent} />
           <CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} />
           <SourceActions field={gla} />
-          <CascadedInput label="Outgoings (PA $)" value={outgoings.value} placeholder="Pulled from NOI / lease data or enter manually" source={outgoings.source} onChange={outgoings.setValue} onVerify={outgoings.markVerified} />
+          <CascadedInput label="Outgoings p.a. ($)" value={outgoings.value} placeholder="Pulled from NOI / lease data or enter manually" source={outgoings.source} onChange={outgoings.setValue} onVerify={outgoings.markVerified} />
           <SourceActions field={outgoings} />
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
           {!canCalculateRent && <EmptyState critical={hasZeroDenominator} />}
-          <OutputRow label="Net rent / m² / PA" tooltip="Base rent p.a. ÷ GLA m²." value={result ? formatCurrency(result.netRentPerSqmPa) : 'Pending'} tone={benchmarkTone} bold />
-          <OutputRow label="Outgoings / m² / PA" tooltip="Outgoings p.a. ÷ GLA m²." value={result ? formatCurrency(result.outgoingsPerSqmPa) : 'Pending'} tone={benchmarkTone} muted />
+          <OutputRow label="Net rent / m² p.a." tooltip="Base rent p.a. ÷ GLA m²." value={result ? formatCurrency(result.netRentPerSqmPa) : 'Pending'} tone={benchmarkTone} bold />
+          <OutputRow label="Outgoings / m² p.a." tooltip="Outgoings p.a. ÷ GLA m²." value={result ? formatCurrency(result.outgoingsPerSqmPa) : 'Pending'} tone={benchmarkTone} muted />
           <Separator />
-          <OutputRow label="Gross rent / m² / PA" tooltip="Base rent p.a. plus outgoings p.a. ÷ GLA m²." value={result ? formatCurrency(result.grossRentPerSqmPa) : 'Pending'} tone={benchmarkTone} highlight />
+          <OutputRow label="Gross rent / m² p.a." tooltip="Base rent p.a. plus outgoings p.a. ÷ GLA m²." value={result ? formatCurrency(result.grossRentPerSqmPa) : 'Pending'} tone={benchmarkTone} highlight />
           <OutputRow label="Benchmark status" value={benchmarkStatus} tone={benchmarkTone} muted />
           <OutputRow label="Report summary" value={canCalculateRent ? (allVerified ? 'Verified for report output.' : 'Preliminary Benchmark — verify inputs before relying on report output.') : 'Pending'} tone={benchmarkTone} muted />
         </div>
