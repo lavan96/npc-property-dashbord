@@ -108,6 +108,7 @@ export function GstCalculatorCard() {
   const [itcClaimability, setItcClaimability] = useState<ConfirmationState>('unknown');
   const [settlementTiming, setSettlementTiming] = useState<RefundTiming>('unknown');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [extractionNotice, setExtractionNotice] = useState('');
   const [extractionPreview, setExtractionPreview] = useState<GstExtractionPreview | null>(null);
   const [previewSelections, setPreviewSelections] = useState<Record<GstFieldKey, boolean>>({ price: false, treatment: true, registered: true, goingConcernConfirmed: true, itcClaimability: false, settlementTiming: false });
@@ -338,6 +339,15 @@ export function GstCalculatorCard() {
     return warnings.sort((a, b) => a.priority - b.priority);
   }, [dataEntryStarted, hasPurchasePrice, treatment, sources.treatment, sources.price, registered, itcClaimability, goingConcernConfirmed, settlementTiming, priorCostValue, contractReviewed, professionalConfirmed, settlementCashflowValue, sourceConflicts.treatment]);
   const priorityWarnings = gstWarnings.slice(0, 3);
+  const statusBadgeClass = readinessStatus === 'GST Treatment Verified'
+    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100'
+    : readinessStatus === 'GST Treatment Review Required'
+      ? 'border-red-500/40 bg-red-500/10 text-red-100'
+      : readinessStatus === 'Preliminary GST Estimate' || sources.treatment === 'AI Estimate'
+        ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+        : readinessStatus === 'GST Assessment Ready'
+          ? 'border-primary/40 bg-primary/10 text-primary'
+          : 'border-border/70 bg-muted/20 text-muted-foreground';
 
   const checklist = [
     { label: 'Purchase price confirmed', complete: hasPurchasePrice },
@@ -446,7 +456,7 @@ export function GstCalculatorCard() {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{prefill ? 'Linked property source' : 'Manual entry / no property linked'}</Badge>
               <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
-              <Badge variant={readinessStatus === "GST Treatment Verified" ? "default" : readinessStatus === "GST Treatment Review Required" ? "destructive" : "outline"} className={readinessStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{readinessStatus}</Badge>
+              <Badge variant="outline" className={statusBadgeClass}>{readinessStatus}</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setAdvancedOpen(true)} title="Open GST assumptions and warning log.">Assumption Status</Button>
@@ -498,10 +508,10 @@ export function GstCalculatorCard() {
           </section>
         )}
         <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-          <section className="rounded-xl border border-border/70 bg-muted/20 p-4">
+          <section className="order-2 rounded-xl border border-border/70 bg-muted/20 p-4 xl:order-1">
             <div className="mb-3">
               <h3 className="text-base font-semibold text-foreground">GST Inputs</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Confirm the GST treatment and purchaser registration status used to estimate GST cashflow and economic cost.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Confirm purchase price, GST treatment and registration status used to estimate GST cashflow and economic cost.</p>
             </div>
             <div className="space-y-3">
               <FieldShell label="Purchase Price" source={sources.price} conflict={sourceConflicts.price} onKeep={() => setSourceConflicts(prev => { const next = { ...prev }; delete next.price; return next; })} onUse={() => useSourceValue('price', sourceConflicts.price)}>
@@ -533,8 +543,9 @@ export function GstCalculatorCard() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-primary/20 bg-background/35 p-4">
+          <section className="order-1 rounded-xl border border-primary/20 bg-background/35 p-4 xl:order-2">
             <h3 className="text-base font-semibold text-foreground">GST Output Summary</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Review estimated GST payable, claimable amount, settlement cashflow and net acquisition cost.</p>
             {!hasRequiredInputs && (
               <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
                 <p className="text-sm font-semibold text-primary">Awaiting GST Inputs</p>
@@ -551,26 +562,25 @@ export function GstCalculatorCard() {
               <Row label="Net Acquisition Cost" value={netAcquisitionCostValue === null ? PENDING : fmt(netAcquisitionCostValue)} highlight />
             </div>
             {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-3">{result.notes}</p>}
-            {priorityWarnings.length > 0 && (
-              <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-                <div className="font-medium">Priority GST warnings</div>
-                <div className="mt-2 space-y-1">{priorityWarnings.map(w => <p key={`${w.category}-${w.message}`}>• {w.message}</p>)}</div>
-                <button type="button" className="mt-2 text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</button>
-              </div>
-            )}
           </section>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-border/70 bg-muted/20 p-4">
-            <h3 className="text-base font-semibold text-foreground">Required Confirmation</h3>
-            <div className="mt-3 space-y-2 text-sm">
+          <Collapsible open={confirmationOpen} onOpenChange={setConfirmationOpen} className="rounded-xl border border-border/70 bg-muted/20 p-4">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="h-auto w-full justify-between p-0 text-left hover:bg-transparent">
+                <span><span className="block text-base font-semibold text-foreground">Required Confirmation Checklist</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Verify the contract GST clause, purchaser GST registration and professional confirmation before relying on the result.</span></span>
+                <ChevronDown className={`h-4 w-4 text-primary transition-transform ${confirmationOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-2 text-sm">
               {checklist.map(item => <div key={item.label} className="flex items-center justify-between gap-3"><span>{item.label}</span><Badge variant={item.complete ? 'default' : 'outline'}>{item.complete ? 'Done' : 'Pending'}</Badge></div>)}
-            </div>
-          </section>
+            </CollapsibleContent>
+          </Collapsible>
           <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
             <h3 className="text-base font-semibold text-primary">Recommended Next Action</h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{nextAction}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Review the missing confirmation items and complete specialist checks where required.</p>
+            <p className="mt-2 text-sm leading-6 text-foreground">{nextAction}</p>
           </section>
         </div>
 
@@ -591,6 +601,16 @@ export function GstCalculatorCard() {
             <AdvancedBlock title="Audit history" lines={history.length ? history.map(h => `${h.field}: ${h.previousValue} (${sourceLabel(h.previousSource)}) → ${h.nextValue} (${sourceLabel(h.nextSource)})`) : ['No GST assumption changes recorded yet.']} />
           </CollapsibleContent>
         </Collapsible>
+
+        {priorityWarnings.length > 0 && (
+          <section className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div><span className="font-medium">Compact Warnings</span><span className="ml-2 text-muted-foreground">Showing top {priorityWarnings.length}.</span></div>
+              <button type="button" className="text-left text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</button>
+            </div>
+            <div className="mt-2 grid gap-2 md:grid-cols-3">{priorityWarnings.map(w => <p key={`${w.category}-${w.message}`}>• {w.message}</p>)}</div>
+          </section>
+        )}
       </CardContent>
       <AlertDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <AlertDialogContent className="max-w-2xl">

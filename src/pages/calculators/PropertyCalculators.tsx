@@ -36,32 +36,17 @@ function GstTreatmentOverviewPanel() {
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">GST Treatment Overview</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            This section assesses how Goods &amp; Services Tax may affect a commercial or industrial property acquisition. The GST treatment can change settlement cashflow, the amount potentially claimable as an input tax credit, and the true economic acquisition cost.
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            A compact check of GST treatment, settlement cashflow, ITC claimability and net acquisition cost for commercial and industrial acquisitions.
           </p>
         </div>
-        <div className="grid gap-3 text-sm leading-6 text-muted-foreground lg:grid-cols-[1.35fr_1fr]">
-          <div className="space-y-3">
-            <p>
-              For commercial and industrial assets, GST may be treated differently depending on whether the transaction is a taxable supply, GST-free going concern, margin scheme transaction, out-of-scope transaction, or an unknown treatment requiring solicitor/accountant confirmation.
-            </p>
-            <p>
-              This output is an estimate only and must be confirmed against the contract of sale, tax invoice, GST clauses, purchaser GST registration status and solicitor/accountant advice before being relied upon.
-            </p>
-          </div>
-          <div className="rounded-xl border border-primary/15 bg-background/35 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-primary">This calculator separates</div>
-            <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs leading-5 text-muted-foreground">
-              <li>GST payable at settlement</li>
-              <li>GST potentially claimable as an input tax credit</li>
-              <li>GST settlement cashflow impact</li>
-              <li>GST economic cost after claimability</li>
-              <li>Net acquisition cost used for reporting and scenario modelling</li>
-            </ol>
-          </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Cashflow</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Claimability</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Verification</Badge>
         </div>
       </div>
 
@@ -72,10 +57,22 @@ function GstTreatmentOverviewPanel() {
             <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent>
-          <p className="pb-1 text-xs leading-5 text-muted-foreground">
+        <CollapsibleContent className="space-y-3 pb-1 text-xs leading-5 text-muted-foreground">
+          <p>
             GST may increase settlement cashflow even where it is later claimable. Going concern treatment may remove GST from settlement if conditions are met, but it must be verified. Unknown GST treatment should be treated as a specialist review item.
           </p>
+          <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
+            <p>
+              This output is an estimate only and must be confirmed against the contract of sale, tax invoice, GST clauses, purchaser GST registration status and solicitor/accountant advice before being relied upon.
+            </p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>GST payable at settlement</li>
+              <li>GST potentially claimable as an input tax credit</li>
+              <li>GST settlement cashflow impact</li>
+              <li>GST economic cost after claimability</li>
+              <li>Net acquisition cost used for reporting and scenario modelling</li>
+            </ol>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
