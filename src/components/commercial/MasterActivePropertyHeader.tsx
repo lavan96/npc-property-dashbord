@@ -25,13 +25,17 @@ import {
   type CompletenessReport,
 } from '@/utils/commercial/propertyInjectionPipeline';
 import { useMasterAssumptionStore } from '@/utils/commercial/masterPropertyAssumptionStore';
+import { useReportFreshnessStore } from '@/utils/commercial/reportFreshnessStore';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { AiEstimateReviewPanel, type PendingAiEstimate } from './AiEstimateReviewPanel';
 
 export function MasterActivePropertyHeader() {
   const { domain, prefill, property } = useCalculatorPrefill();
   const assumptions = useMasterAssumptionStore(s => s.assumptions);
-  const acceptAiEstimate = useMasterAssumptionStore(s => s.acceptAiEstimate);
+  const { reportsOutOfDate, updatedTabs } = useReportFreshnessStore();
   const [running, setRunning] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [pendingEstimates, setPendingEstimates] = useState<PendingAiEstimate[]>([]);
 
   // Cascade prefill into master store whenever the active property changes.
   useEffect(() => {
@@ -73,25 +77,37 @@ export function MasterActivePropertyHeader() {
       if (error) throw new Error(error.message || 'AI estimates failed');
       if (!data?.success) throw new Error(data?.error || 'AI estimates returned no data');
 
-      const estimates: Array<{ key: string; value: any; confidence?: 'high' | 'medium' | 'low'; rationale?: string }> =
-        data.estimates || [];
-
-      let applied = 0;
-      for (const est of estimates) {
-        if (est.value === null || est.value === undefined || est.value === '') continue;
-        const meta = completeness.missing.find(m => m.key === est.key);
-        acceptAiEstimate({
-          key: est.key,
-          estimatedValue: est.value,
-          confidence: est.confidence ?? 'low',
-          label: meta?.label,
-          tabDependencies: meta?.tabs,
-          notes: est.rationale,
+      const raw: Array<any> = data.estimates || [];
+      const pending: PendingAiEstimate[] = raw
+        .filter(e => e.value !== null && e.value !== undefined && e.value !== '')
+        .map(e => {
+          const meta = completeness.missing.find(m => m.key === e.key);
+          const current = assumptions[e.key]?.value ?? null;
+          return {
+            key: e.key,
+            label: meta?.label ?? e.label ?? e.key,
+            unit: e.unit ?? null,
+            currentValue: current,
+            suggestedValue: e.value,
+            suggestedRange: e.range ?? null,
+            confidence: e.confidence ?? 'low',
+            sourceBasis: e.sourceBasis ?? (e.rationale ? [e.rationale] : ['AI estimate']),
+            missingInformation: e.missingData ?? [],
+            riskNotes: e.riskNotes ?? [],
+            affectedTabs: e.affectedTabs ?? meta?.tabs ?? [],
+            specialistReview: Boolean(e.specialistReview),
+            source: e.source ?? 'AI Estimate',
+          };
         });
-        applied++;
+
+      if (pending.length === 0) {
+        toast.info('AI returned no usable estimates.');
+        return;
       }
 
-      toast.success(`AI estimates applied for ${applied} field${applied === 1 ? '' : 's'}. Review before relying on them.`);
+      setPendingEstimates(pending);
+      setReviewOpen(true);
+      toast.success(`${pending.length} AI estimate${pending.length === 1 ? '' : 's'} ready for review.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'AI estimates failed';
       toast.error(msg);
