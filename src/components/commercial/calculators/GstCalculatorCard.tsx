@@ -275,16 +275,31 @@ export function GstCalculatorCard() {
   const purchasePriceValue = parseNumeric(price);
   const priorCostValue = parseNumeric(priorCost);
   const isZeroGstTreatment = treatment === 'input_taxed' || treatment === 'out_of_scope' || treatment === 'no_gst';
+  const hasPurchasePrice = purchasePriceValue !== null && purchasePriceValue > 0;
+  const hasTreatment = treatment !== 'unknown';
   const isSpecialistTreatment = treatment === 'unknown' || treatment === 'custom_review';
-  const dataEntryStarted = purchasePriceValue !== null || treatment !== 'unknown' || registered !== 'unknown' || goingConcernConfirmed !== 'unknown' || itcClaimability !== 'unknown' || settlementTiming !== 'unknown';
-  const hasRequiredInputs = purchasePriceValue !== null && purchasePriceValue > 0 && treatment !== 'unknown' && treatment !== 'custom_review' && (treatment !== 'standard' || (registered !== 'unknown' && itcClaimability !== 'unknown' && settlementTiming !== 'unknown')) && (treatment !== 'going_concern' || goingConcernConfirmed === 'yes') && (treatment !== 'margin_scheme' || priorCostValue !== null);
+  const dataEntryStarted = hasPurchasePrice || hasTreatment || registered !== 'unknown' || goingConcernConfirmed !== 'unknown' || itcClaimability !== 'unknown' || settlementTiming !== 'unknown';
+  const hasRequiredInputs = hasPurchasePrice && treatment !== 'unknown' && treatment !== 'custom_review' && (treatment !== 'standard' || (registered !== 'unknown' && itcClaimability !== 'unknown' && settlementTiming !== 'unknown')) && (treatment !== 'going_concern' || goingConcernConfirmed === 'yes') && (treatment !== 'margin_scheme' || priorCostValue !== null);
+  const contractReviewed = sources.treatment === 'Contract Extracted';
+  const treatmentConfirmed = ['Contract Extracted', 'Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.treatment);
+  const professionalConfirmed = ['Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.treatment) || ['Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.goingConcernConfirmed);
+  const internallyInconsistent = (treatment === 'going_concern' && goingConcernConfirmed === 'no') || (treatment === 'standard' && registered === 'no' && itcClaimability === 'yes') || (treatment === 'margin_scheme' && priorCostValue === null);
   const formulaTreatment: GstTreatment = isZeroGstTreatment ? 'input_taxed' : treatment as GstTreatment;
   const purchaserCanClaimItc = registered === 'yes' && itcClaimability === 'yes';
   const result = useMemo(() => hasRequiredInputs ? calculateCommercialGst({
     purchasePrice: purchasePriceValue, treatment: formulaTreatment, priorCost: priorCostValue ?? 0, purchaserRegistered: purchaserCanClaimItc,
   }) : null, [hasRequiredInputs, purchasePriceValue, formulaTreatment, priorCostValue, purchaserCanClaimItc, settlementTiming]);
   const assessment = useMemo(() => hasRequiredInputs ? calculateCommercialGstEngine({ purchasePrice: purchasePriceValue, treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : isZeroGstTreatment ? 'unknown' : 'unknown', vendorGstRegistered: 'unknown', purchaserGstRegistered: registered, goingConcernAgreedInWriting: goingConcernConfirmed, enterpriseCarriedOnUntilSettlement: goingConcernConfirmed, supplierProvidesAllThingsNecessary: goingConcernConfirmed, propertyLeasedOrOperatingEnterprise: goingConcernConfirmed, gstClaimableAsInputTaxCredit: purchaserCanClaimItc ? 'yes' : 'no', estimatedRefundTiming: settlementTiming === 'unknown' ? 'unknown' : settlementTiming }) : null, [hasRequiredInputs, purchasePriceValue, treatment, isZeroGstTreatment, registered, goingConcernConfirmed, purchaserCanClaimItc, settlementTiming]);
-  const verificationStatus = isSpecialistTreatment && dataEntryStarted ? 'Specialist Review Required' : isZeroGstTreatment && hasRequiredInputs ? 'Verified' : hasRequiredInputs ? assessment?.gstVerificationStatus ?? 'Unknown' : 'Awaiting GST Inputs';
+  const confirmationItemsComplete = Boolean(prefill) && contractReviewed && registered !== 'unknown' && treatmentConfirmed && professionalConfirmed;
+  const readinessStatus = !hasPurchasePrice || !hasTreatment
+    ? (dataEntryStarted && treatment === 'unknown' && hasPurchasePrice ? 'GST Treatment Review Required' : 'Awaiting GST Inputs')
+    : sources.treatment === 'AI Estimate' || sources.treatment === 'User Override' || isSpecialistTreatment || internallyInconsistent
+      ? 'GST Treatment Review Required'
+      : confirmationItemsComplete
+        ? 'GST Treatment Verified'
+        : hasRequiredInputs
+          ? 'GST Assessment Ready'
+          : 'Preliminary GST Estimate';
   const canExtractFromContract = Boolean(prefill);
   const gstAmountValue = hasRequiredInputs && assessment && result ? (assessment.gstAmount || result.gstAmount) : null;
   const gstClaimableValue = hasRequiredInputs && assessment && result ? (assessment.gstClaimableAmount || result.gstClaimable) : null;
@@ -293,11 +308,11 @@ export function GstCalculatorCard() {
   const netAcquisitionCostValue = hasRequiredInputs && result && purchasePriceValue !== null ? (isZeroGstTreatment ? result.netAcquisitionCost : (assessment?.netAcquisitionCost || result.netAcquisitionCost)) : null;
   const timingRiskValue = hasRequiredInputs && assessment ? (isZeroGstTreatment ? 'low' : assessment.gstTimingRisk) : null;
   const checklist = [
-    { label: 'Contract GST clause reviewed', complete: treatment !== 'unknown' },
+    { label: 'Contract GST clause reviewed', complete: contractReviewed },
     { label: 'Purchaser GST registration confirmed', complete: registered !== 'unknown' },
     { label: 'Going concern conditions confirmed, if applicable', complete: treatment !== 'going_concern' || goingConcernConfirmed === 'yes' },
     { label: 'Tax invoice / settlement statement reviewed', complete: settlementTiming !== 'unknown' || isZeroGstTreatment },
-    { label: 'Solicitor/accountant confirmation received', complete: ['Solicitor Confirmed', 'Accountant Confirmed', 'Verified'].includes(sources.goingConcernConfirmed) || verificationStatus === 'Verified' },
+    { label: 'Solicitor/accountant confirmation received', complete: professionalConfirmed },
   ];
   const nextAction = !purchasePriceValue || treatment === 'unknown'
     ? 'Inputs are incomplete. Confirm purchase price and GST treatment.'
@@ -307,7 +322,7 @@ export function GstCalculatorCard() {
         ? 'Taxable supply selected. Confirm whether GST is payable at settlement and whether ITC is claimable.'
         : isSpecialistTreatment
           ? 'GST treatment is unknown. Obtain solicitor/accountant confirmation before relying on the result.'
-          : verificationStatus === 'Verified'
+          : readinessStatus === 'GST Treatment Verified'
             ? 'GST treatment is verified. Net acquisition cost can be used in reporting.'
             : 'Review GST assumptions and resolve any remaining confirmation items before relying on the result.';
 
@@ -323,7 +338,7 @@ export function GstCalculatorCard() {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{prefill ? 'Linked property source' : 'Manual entry / no property linked'}</Badge>
               <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
-              <Badge variant={verificationStatus === "Verified" ? "default" : verificationStatus === "Specialist Review Required" ? "destructive" : "outline"} className={verificationStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{verificationStatus}</Badge>
+              <Badge variant={readinessStatus === "GST Treatment Verified" ? "default" : readinessStatus === "GST Treatment Review Required" ? "destructive" : "outline"} className={readinessStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{readinessStatus}</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" disabled title="Assumption status is shown in field badges and the advanced GST breakdown.">Assumption Status</Button>
