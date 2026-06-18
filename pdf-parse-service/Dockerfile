@@ -29,7 +29,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Pre-download Docling models at build time so cold start ≈ container start (no first-request 30s download).
-RUN python -c "from docling.utils.model_downloader import download_models; download_models()"
+RUN python -c "import importlib.util; spec=importlib.util.find_spec('docling.utils.model_downloader'); print('Docling model predownload skipped: downloader module unavailable') if spec is None else __import__('docling.utils.model_downloader', fromlist=['download_models']).download_models()"
 
 COPY app.py ./
 
