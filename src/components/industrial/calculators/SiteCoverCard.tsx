@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Info, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
+import { useIndustrialMetricsReadiness } from './IndustrialMetricsReadinessContext';
 import { assessIndustrialBenchmark } from './industrialMetricBenchmarks';
 import { formatCurrency, formatPercent, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
@@ -16,6 +17,7 @@ type Tone = 'preliminary' | 'verified' | 'critical';
 
 export function SiteCoverCard() {
   const { prefill } = useCalculatorPrefill();
+  const { updateField } = useIndustrialMetricsReadiness();
 
   const gla = useCascadedIndustrialField(prefill, [
     { value: prefill?.glaSqm, source: 'Property Profile' },
@@ -46,6 +48,15 @@ export function SiteCoverCard() {
     { value: prefillValue(prefill, 'borrowingCapacityPurchasePrice'), source: 'Borrowing Capacity' },
     { value: prefillValue(prefill, 'dcfPurchasePrice'), source: 'DCF Tab' },
   ]);
+
+
+  useEffect(() => {
+    updateField('gla', gla.value, gla.source);
+    updateField('siteArea', site.value, site.source);
+    updateField('hardstand', hardstand.value, hardstand.source);
+    updateField('officePct', office.value, office.source);
+    updateField('price', price.value, price.source);
+  }, [gla.value, gla.source, site.value, site.source, hardstand.value, hardstand.source, office.value, office.source, price.value, price.source, updateField]);
 
   const parsed = useMemo(() => ({
     gla: parseMetricNumber(gla.value),

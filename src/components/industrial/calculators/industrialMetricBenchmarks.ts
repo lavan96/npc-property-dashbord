@@ -33,6 +33,7 @@ export const industrialBenchmarkConfig = {
     balancedExplanation: 'Balanced office ratio indicates a typical industrial office component.',
     highExplanation: 'High office ratio may affect warehouse usability and industrial comparability.',
   },
+  rentPerSqmGla: { min: 80, max: 350 },
   pricePerSqmGla: { min: 1000, max: 4500 },
   pricePerSqmSite: { min: 250, max: 2000 },
 } as const;

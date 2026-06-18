@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Info, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,10 +10,12 @@ import { calcRentPerSqm } from '@/utils/industrial';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
+import { useIndustrialMetricsReadiness } from './IndustrialMetricsReadinessContext';
 import { formatCurrency, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
 export function RentPerSqmCard() {
   const { prefill } = useCalculatorPrefill();
+  const { updateField } = useIndustrialMetricsReadiness();
 
   const baseRent = useCascadedIndustrialField(prefill, [
     { value: prefill?.grossPassingRentPa, source: 'NOI Tab' },
@@ -34,6 +36,13 @@ export function RentPerSqmCard() {
     { value: prefillValue(prefill, 'leaseScrapedOutgoingsPa'), source: 'Scraped' },
     { value: prefillValue(prefill, 'outgoingsStatementPa'), source: 'Lease Extracted' },
   ]);
+
+
+  useEffect(() => {
+    updateField('baseRent', baseRent.value, baseRent.source);
+    updateField('gla', gla.value, gla.source);
+    updateField('outgoings', outgoings.value, outgoings.source);
+  }, [baseRent.value, baseRent.source, gla.value, gla.source, outgoings.value, outgoings.source, updateField]);
 
   const parsed = useMemo(() => ({
     baseRent: parseMetricNumber(baseRent.value),
