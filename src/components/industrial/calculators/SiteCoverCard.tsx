@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
+import { Info, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { calcSiteMetrics } from '@/utils/industrial';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
-import { prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
+import { formatCurrency, formatPercent, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
-const fmt = (n: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
-const pct = (n: number) => `${n.toFixed(2)}%`;
-const num = (v: string) => v === '' ? 0 : Number(v);
-const hasValue = (v: string) => v.trim() !== '';
+type Tone = 'preliminary' | 'verified' | 'critical';
 
 export function SiteCoverCard() {
   const { prefill } = useCalculatorPrefill();
@@ -47,37 +46,47 @@ export function SiteCoverCard() {
     { value: prefillValue(prefill, 'dcfPurchasePrice'), source: 'DCF Tab' },
   ]);
 
-  const hasRequiredInputs = [gla.value, site.value, hardstand.value, office.value, price.value].every(hasValue);
+  const parsed = useMemo(() => ({
+    gla: parseMetricNumber(gla.value),
+    site: parseMetricNumber(site.value),
+    hardstand: parseMetricNumber(hardstand.value),
+    officePct: parseMetricNumber(office.value),
+    officeArea: parseMetricNumber(String(prefillValue(prefill, 'officeAreaSqm') ?? '')),
+    price: parseMetricNumber(price.value),
+  }), [gla.value, site.value, hardstand.value, office.value, price.value, prefill]);
 
-  useEffect(() => {
-    if (!prefill) {
-      setGla('');
-      setSite('');
-      setHardstand('');
-      setOffice('');
-      setPrice('');
-    }
-  }, [prefill]);
+  const hasGlaZero = parsed.gla !== null && parsed.gla <= 0;
+  const hasSiteZero = parsed.site !== null && parsed.site <= 0;
+  const hasCriticalIssue = hasGlaZero || hasSiteZero;
+  const allVerified = [gla.source, site.source, hardstand.source, office.source, price.source].every((source) => source === 'Verified');
+  const benchmarkTone: Tone = hasCriticalIssue ? 'critical' : allVerified ? 'verified' : 'preliminary';
 
-  const hasRequiredInputs = [gla, site, hardstand, office, price].every(hasValue);
+  const siteCover = parsed.gla !== null && parsed.site !== null && parsed.site > 0 ? (parsed.gla / parsed.site) * 100 : null;
+  const hardstandRatio = parsed.hardstand !== null && parsed.site !== null && parsed.site > 0 ? (parsed.hardstand / parsed.site) * 100 : null;
+  const officeRatio = parsed.officeArea !== null && parsed.gla !== null && parsed.gla > 0
+    ? (parsed.officeArea / parsed.gla) * 100
+    : parsed.officePct;
+  const pricePerGla = parsed.price !== null && parsed.gla !== null && parsed.gla > 0 ? parsed.price / parsed.gla : null;
+  const pricePerSite = parsed.price !== null && parsed.site !== null && parsed.site > 0 ? parsed.price / parsed.site : null;
+  const canCalculateAll = siteCover !== null && hardstandRatio !== null && officeRatio !== null && pricePerGla !== null && pricePerSite !== null;
 
-  const result = useMemo(() => calcSiteMetrics({
-    glaSqm: num(gla.value),
-    siteAreaSqm: num(site.value),
-    hardstandSqm: num(hardstand.value),
-    officePct: num(office.value),
-    price: num(price.value),
-  }), [gla.value, site.value, hardstand.value, office.value, price.value]);
+  const result = useMemo(() => canCalculateAll ? calcSiteMetrics({
+    glaSqm: parsed.gla ?? 0,
+    siteAreaSqm: parsed.site ?? 0,
+    hardstandSqm: parsed.hardstand ?? 0,
+    officePct: officeRatio ?? 0,
+    price: parsed.price ?? 0,
+  }) : null, [canCalculateAll, officeRatio, parsed.gla, parsed.hardstand, parsed.price, parsed.site]);
 
-  const band = result.coverageBand === 'balanced' ? 'default' :
-    result.coverageBand === 'over-developed' ? 'destructive' : 'secondary';
+  const coverageBand = siteCover === null ? 'Pending' : result?.coverageBand ?? 'Pending';
+  const benchmarkStatus = hasCriticalIssue ? 'Critical physical-data issue' : canCalculateAll ? (allVerified ? 'Verified benchmark' : 'Preliminary benchmark') : 'Pending';
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Site Cover & $/m²</CardTitle>
         <CardDescription>Industrial site density, hardstand ratio and price-per-area benchmarks.</CardDescription>
-        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: num(gla.value) || undefined, site_area_sqm: num(site.value) || undefined, hardstand_sqm: num(hardstand.value) || undefined, office_pct: num(office.value) || undefined, site_cover_pct: Number(result.siteCoverPct.toFixed(2)) || undefined, purchase_price: num(price.value) || undefined })} /></div>
+        <div className="pt-2"><SaveBackButton label="Save Back to Property" build={() => ({ gla_sqm: parsed.gla && parsed.gla > 0 ? parsed.gla : undefined, site_area_sqm: parsed.site && parsed.site > 0 ? parsed.site : undefined, hardstand_sqm: parsed.hardstand ?? undefined, office_pct: parsed.officePct ?? undefined, site_cover_pct: siteCover !== null ? Number(siteCover.toFixed(2)) : undefined, purchase_price: parsed.price ?? undefined })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
@@ -90,19 +99,19 @@ export function SiteCoverCard() {
           </div>
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
-          {!hasRequiredInputs && <EmptyState />}
-          <Row label="Site Cover" value={hasRequiredInputs ? pct(result.siteCoverPct) : 'Pending'} bold />
-          <div className="flex justify-between items-center">
-            <span>Coverage Band</span>
-            {hasRequiredInputs ? <Badge variant={band as any} className="capitalize">{result.coverageBand}</Badge> : <span className="text-muted-foreground text-sm">Pending</span>}
+          {!canCalculateAll && <EmptyState critical={hasCriticalIssue} />}
+          <OutputRow label="Site Cover" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
+          <div className="flex justify-between items-center gap-4">
+            <span className="flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Coverage Band<Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge></span>
+            {coverageBand === 'Pending' ? <span className="text-muted-foreground text-sm">Pending</span> : <Badge variant={result?.coverageBand === 'over-developed' ? 'destructive' : 'secondary'} className="capitalize">{coverageBand}</Badge>}
           </div>
-          <Row label="Hardstand Ratio" value={hasRequiredInputs ? pct(result.hardstandRatioPct) : 'Pending'} muted />
-          <Row label="Office %" value={hasRequiredInputs ? pct(result.officePct) : 'Pending'} muted />
+          <OutputRow label="Hardstand Ratio" tooltip="Hardstand m² ÷ site area m²." value={formatPercent(hardstandRatio)} tone={benchmarkTone} muted />
+          <OutputRow label="Office Ratio" tooltip="Office area m² ÷ GLA m², or office % where office area is unavailable." value={formatPercent(officeRatio)} tone={benchmarkTone} muted />
           <Separator />
-          <Row label="$/m² GLA" value={hasRequiredInputs ? fmt(result.pricePerSqmGla) : 'Pending'} />
-          <Row label="$/m² Site" value={hasRequiredInputs ? fmt(result.pricePerSqmSite) : 'Pending'} />
-          <Row label="Benchmark notes" value={hasRequiredInputs ? 'Review against comparable industrial evidence.' : 'Pending'} muted />
-          <Row label="Report summary" value={hasRequiredInputs ? 'Ready for report output.' : 'Pending'} muted />
+          <OutputRow label="$/m² GLA" tooltip="Purchase price ÷ GLA m²." value={formatCurrency(pricePerGla, 0)} tone={benchmarkTone} />
+          <OutputRow label="$/m² Site" tooltip="Purchase price ÷ site area m²." value={formatCurrency(pricePerSite, 0)} tone={benchmarkTone} />
+          <OutputRow label="Benchmark status" value={benchmarkStatus} tone={benchmarkTone} muted />
+          <OutputRow label="Report summary" value={canCalculateAll ? (allVerified ? 'Verified for report output.' : 'Preliminary — verify inputs before relying on report output.') : 'Pending'} tone={benchmarkTone} muted />
         </div>
       </CardContent>
     </Card>
@@ -116,24 +125,42 @@ function CascadedInput({ label, value, placeholder, source, onChange, onVerify, 
         <Label>{label}</Label>
         <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="text-[10px] text-primary hover:underline" onClick={onVerify}>Verify</button></div>
       </div>
-      <Input type="number" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      <Input type="text" inputMode="decimal" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
     </div>
   );
 }
 
-function EmptyState() {
+function EmptyState({ critical }: { critical: boolean }) {
   return (
-    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-      <p className="font-semibold text-amber-200">Awaiting Industrial Inputs</p>
-      <p className="text-muted-foreground">Import property size, rent, outgoings and price data to calculate industrial benchmarks.</p>
+    <div className={`rounded-lg border p-3 text-sm ${critical ? 'border-red-500/30 bg-red-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+      <p className={`font-semibold ${critical ? 'text-red-200' : 'text-amber-200'}`}>{critical ? 'Check Industrial Inputs' : 'Awaiting Industrial Inputs'}</p>
+      <p className="text-muted-foreground">{critical ? 'GLA and site area must be greater than zero before site benchmarks can be calculated.' : 'Import property size, rent, outgoings and price data to calculate industrial benchmarks.'}</p>
     </div>
   );
 }
 
-function Row({ label, value, bold, muted }: { label: string; value: string; bold?: boolean; muted?: boolean }) {
+function OutputRow({ label, value, tooltip, tone, bold, muted }: { label: string; value: string; tooltip?: string; tone: Tone; bold?: boolean; muted?: boolean }) {
+  const toneClass = tone === 'critical' ? 'text-red-300' : tone === 'verified' ? 'text-green-300' : 'text-amber-300';
   return (
-    <div className={`flex justify-between items-center gap-4 ${bold ? 'font-semibold' : ''} ${muted ? 'text-muted-foreground text-sm' : ''}`}>
-      <span>{label}</span><span className="text-right">{value}</span>
+    <div className={`flex justify-between items-center gap-4 ${bold ? 'font-semibold' : ''} ${muted ? 'text-sm' : ''}`}>
+      <span className="flex items-center gap-1 text-muted-foreground">
+        <Lock className="h-3 w-3" />
+        {label}
+        {tooltip && <FormulaTooltip text={tooltip} />}
+        <Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge>
+      </span>
+      <span className={`text-right ${value === 'Pending' ? 'text-muted-foreground' : toneClass}`}>{value}</span>
     </div>
+  );
+}
+
+function FormulaTooltip({ text }: { text: string }) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger type="button" className="text-muted-foreground hover:text-foreground"><Info className="h-3 w-3" /></TooltipTrigger>
+        <TooltipContent>{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

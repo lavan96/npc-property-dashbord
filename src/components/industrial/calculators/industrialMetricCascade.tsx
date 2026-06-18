@@ -57,6 +57,24 @@ const sourceLabels: Record<IndustrialMetricSource, string> = {
   Verified: 'Verified',
 };
 
+
+export function parseMetricNumber(value: string): number | null {
+  const cleaned = value.replace(/[$,%\s]/g, '').replace(/,/g, '');
+  if (cleaned === '') return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function formatCurrency(value: number | null, maximumFractionDigits = 2): string {
+  if (value === null || !Number.isFinite(value)) return 'Pending';
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits }).format(value);
+}
+
+export function formatPercent(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return 'Pending';
+  return `${value.toFixed(2)}%`;
+}
+
 function hasNumber(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
