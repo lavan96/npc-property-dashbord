@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { calcRentPerSqm } from '@/utils/industrial';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
+import { IndustrialMetricAiWorkflow, type IndustrialMetricAiAction } from './IndustrialMetricAiWorkflow';
 import { formatCurrency, parseMetricNumber, prefillValue, SourceActions, SourceBadge, useCascadedIndustrialField, type IndustrialMetricSource } from './industrialMetricCascade';
 
 export function RentPerSqmCard() {
@@ -52,6 +53,52 @@ export function RentPerSqmCard() {
   const benchmarkTone = hasZeroDenominator ? 'critical' : allVerified ? 'verified' : 'preliminary';
   const benchmarkStatus = hasZeroDenominator ? 'Critical physical-data issue' : canCalculateRent ? (allVerified ? 'Verified benchmark' : 'Preliminary benchmark') : 'Pending';
 
+  const aiActions: IndustrialMetricAiAction[] = [
+    {
+      id: 'estimate-gla',
+      label: 'Estimate GLA from listing / floor plan',
+      buildPreview: () => {
+        const candidate = parsed.gla ?? prefillValue(prefill, 'scrapedGlaSqm') ?? prefillValue(prefill, 'buildingAreaSqm') ?? (prefill?.siteAreaSqm ? Number((prefill.siteAreaSqm * 0.4).toFixed(2)) : null);
+        if (!candidate || !prefill) return null;
+        return {
+          actionId: 'estimate-gla',
+          label: 'Estimate GLA from listing / floor plan',
+          suggestedValue: String(candidate),
+          suggestedBenchmarkRange: `${Math.round(candidate * 0.9).toLocaleString()}–${Math.round(candidate * 1.1).toLocaleString()} m²`,
+          confidence: prefill.glaSqm || prefillValue(prefill, 'scrapedGlaSqm') ? 'High' : 'Low',
+          source: 'AI Estimate',
+          sourceBasis: 'Uses linked property profile, scraped area fields, building description or a site-area-derived industrial footprint estimate where direct GLA is unavailable.',
+          dataPointsUsed: [prefill.address, prefill.glaSqm ? `Profile GLA ${prefill.glaSqm} m²` : '', prefill.siteAreaSqm ? `Site area ${prefill.siteAreaSqm} m²` : ''].filter(Boolean),
+          missingData: [prefillValue(prefill, 'floorPlanAreaSqm') ? '' : 'Measured floor plan area', prefillValue(prefill, 'buildingDescription') ? '' : 'Detailed building description'].filter(Boolean),
+          riskNotes: ['Treat as preliminary unless confirmed against survey, lease plan or agent floor plan.'],
+          verificationRequirements: ['Confirm GLA against property profile, lease plan, survey or floor plan before relying on outputs.'],
+          targetField: gla,
+        };
+      },
+    },
+    {
+      id: 'estimate-market-rent',
+      label: 'Estimate market rent per m²',
+      buildPreview: () => {
+        if (!prefill || parsed.baseRent === null || parsed.gla === null || parsed.gla <= 0) return null;
+        const value = Number((parsed.baseRent / parsed.gla).toFixed(2));
+        return {
+          actionId: 'estimate-market-rent',
+          label: 'Estimate market rent per m²',
+          suggestedValue: `${formatCurrency(value)} / m²`,
+          suggestedBenchmarkRange: `${formatCurrency(value * 0.9)}–${formatCurrency(value * 1.1)} / m²`,
+          confidence: 'Medium',
+          source: 'Research Engine',
+          sourceBasis: 'Uses NOI rent and parsed GLA as a benchmark proxy pending comparable industrial rental evidence.',
+          dataPointsUsed: [`Base rent ${formatCurrency(parsed.baseRent)}`, `GLA ${parsed.gla} m²`, prefill.address],
+          missingData: ['Verified industrial comparable rents', 'Lease incentives and rent basis confirmation'],
+          riskNotes: ['Market rent per m² may differ materially by clearance, access, power, office ratio and lease structure.'],
+          verificationRequirements: ['Review against comparable leasing evidence before relying on the benchmark.'],
+        };
+      },
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -61,6 +108,7 @@ export function RentPerSqmCard() {
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
+          <IndustrialMetricAiWorkflow actions={aiActions} />
           <CascadedInput label="Base Rent (PA $)" value={baseRent.value} placeholder="Pulled from NOI tab or enter manually" source={baseRent.source} onChange={baseRent.setValue} onVerify={baseRent.markVerified} />
           <SourceActions field={baseRent} />
           <CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} />

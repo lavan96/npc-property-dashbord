@@ -153,9 +153,23 @@ export function useCascadedIndustrialField(
     };
   });
 
+  const applySourceValue = (value: string, source: IndustrialMetricSource) => {
+    setField((current) => ({
+      ...current,
+      value,
+      source,
+      originalValue: value,
+      originalSource: source,
+      history: current.value !== ''
+        ? [...current.history, { value: current.value, source: current.source, replacedBy: source, changedAt: new Date().toISOString() }]
+        : current.history,
+      pendingSource: undefined,
+    }));
+  };
+
   const markVerified = () => setField((current) => ({ ...current, source: 'Verified' }));
 
-  return { ...field, setValue, keepOverride, useSourceValue, markVerified };
+  return { ...field, setValue, applySourceValue, keepOverride, useSourceValue, markVerified };
 }
 
 export function SourceBadge({ source }: { source: IndustrialMetricSource }) {
