@@ -27,7 +27,7 @@ import {
 import { useMasterAssumptionStore } from '@/utils/commercial/masterPropertyAssumptionStore';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
-export function ActivePropertyHeader() {
+export function MasterActivePropertyHeader() {
   const { domain, prefill, property } = useCalculatorPrefill();
   const assumptions = useMasterAssumptionStore(s => s.assumptions);
   const acceptAiEstimate = useMasterAssumptionStore(s => s.acceptAiEstimate);
