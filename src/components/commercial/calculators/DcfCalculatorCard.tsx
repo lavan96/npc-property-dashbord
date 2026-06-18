@@ -9,10 +9,12 @@ import { runDcfAssessment, type DcfAssessmentInputs, type DcfAssessmentResult } 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getDefaultCommercialIndustrialDealProfile, useCommercialDealState } from '@/utils/commercial/commercialDealState';
+import { commercialApi } from '@/hooks/useCommercialProperties';
+import { toast } from 'sonner';
 
 const PENDING = 'Pending';
 const EMPTY_STATUS = 'Awaiting DCF Inputs';
@@ -88,8 +90,6 @@ const parseNumber = (value: string): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 const num = (v: string) => parseNumber(v) ?? 0;
-const valueOrUndefined = (v: string) => parseNumber(v) ?? undefined;
-const isPositiveNumber = (v: string) => { const n = parseNumber(v); return n != null && n > 0; };
 const hasNumber = (v: string) => parseNumber(v) != null;
 const safePct = (n: number | null | undefined) => (n != null && Number.isFinite(n) ? `${n}%` : PENDING);
 const asNum = (...values: unknown[]) => values.map(Number).find((v) => Number.isFinite(v) && v !== 0);
@@ -113,7 +113,7 @@ const aiIncludesVacancy = (metadata: unknown): boolean | undefined => {
 };
 
 export function DcfCalculatorCard() {
-  const { prefill, property } = useCalculatorPrefill();
+  const { prefill, property, pushBack } = useCalculatorPrefill();
   const profile = useCommercialDealState((s) => s.profile);
   const updateGlobal = useCommercialDealState((s) => s.updateGlobal);
   const [fields, setFields] = useState<FieldState>(blankFields);
@@ -135,6 +135,8 @@ export function DcfCalculatorCard() {
   const [estimateMessage, setEstimateMessage] = useState<string | null>(null);
   const [estimates, setEstimates] = useState<EstimateItem[]>([]);
   const [showWarningLog, setShowWarningLog] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savingDcf, setSavingDcf] = useState(false);
 
   const linkedLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
 
@@ -512,8 +514,157 @@ export function DcfCalculatorCard() {
     if (includeCommentary && !dcfCommentary && generatedCommentary) setDcfCommentary(generatedCommentary);
   }, [includeCommentary, dcfCommentary, generatedCommentary]);
 
+  const linkedSourceStates: DcfSourceState[] = ['Property Profile', 'Scraped', 'NOI Tab', 'Cap Rate Tab', 'GST Tab', 'ICR / DSCR Tab', 'Borrowing Capacity'];
+  const validAssumptionCount = fieldKeys.filter((key) => hasNumber(fields[key])).length + Object.values(noneConfirmed).filter(Boolean).length;
+  const linkedSourceValueCount = fieldKeys.filter((key) => linkedSourceStates.includes(meta[key].source)).length;
+  const estimateSourceValueCount = fieldKeys.filter((key) => meta[key].source === 'AI Estimate' || meta[key].source === 'Research Engine').length;
+  const userOverrideCount = fieldKeys.filter((key) => meta[key].source === 'User Override').length;
+  const canSaveBack = Boolean(prefill && validAssumptionCount > 0);
+  const saveBackTooltip = !prefill
+    ? 'Select or link a property before saving DCF assumptions.'
+    : validAssumptionCount === 0
+      ? 'Enter at least one valid DCF assumption before saving.'
+      : 'Save DCF assumptions and outputs back to the linked property profile.';
+
+  const sourceSnapshot = () => Object.fromEntries(fieldKeys.map((key) => [key, {
+    source: meta[key].source,
+    originalSourceValue: meta[key].original ?? null,
+    pendingSourceValue: meta[key].pending ?? null,
+    userOverrideValue: meta[key].source === 'User Override' ? fields[key] : null,
+    acceptedEstimateValue: meta[key].source === 'AI Estimate' || meta[key].source === 'Research Engine' ? fields[key] : null,
+    history: meta[key].history,
+  }]));
+
+  const buildSavePayload = () => {
+    const v = parsed.values;
+    const finalInputs = {
+      purchasePrice: v.price,
+      acquisitionCosts: v.acqCosts ?? (noneConfirmed.acqCosts ? 0 : null),
+      baseNoi: v.initialNoi,
+      noiTreatmentMode,
+      holdPeriodYears: v.hold,
+      rentalGrowthPct: v.growth,
+      vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : v.vacancy,
+      terminalCapRatePct: v.termCap,
+      sellingCostsPct: v.sellingCosts,
+      discountRatePct: v.discount,
+      loanAmount: v.loan,
+      interestRatePct: v.interest,
+      loanTermYears: v.term,
+      annualCapex: v.annualCapex ?? (noneConfirmed.annualCapex ? 0 : null),
+      downtimeMonths: v.downtimeMonths ?? (noneConfirmed.downtimeMonths ? 0 : null),
+    };
+    return {
+      finalInputs,
+      sourceStateByField: sourceSnapshot(),
+      originalSourceValues: Object.fromEntries(fieldKeys.map((key) => [key, meta[key].original ?? null])),
+      userOverrideValues: Object.fromEntries(fieldKeys.filter((key) => meta[key].source === 'User Override').map((key) => [key, fields[key]])),
+      aiResearchEstimateValues: Object.fromEntries(fieldKeys.filter((key) => meta[key].source === 'AI Estimate' || meta[key].source === 'Research Engine').map((key) => [key, { value: fields[key], source: meta[key].source, basis: meta[key].original?.detail ?? null }])),
+      generatedYearlyCashflowSchedule: generatedRows,
+      scenarioOutputs: scenarioCards,
+      sensitivityOutputs: sensitivityRows,
+      readinessStatus,
+      warnings: dcfWarnings,
+      generatedAt,
+      calculationVersion: DCF_CALCULATION_VERSION,
+      cashflowGeneratedStatus: cashflowCurrent ? 'Cashflow Generated' : cashflowOutOfDate ? 'Cashflow Out of Date' : 'Not Generated',
+      propertyId: prefill?.propertyId ?? null,
+      scenarioId: (profile as any)?.clientScenarioOutputs?.scenarioId ?? (profile as any)?.clientScenarioOutputs?.id ?? null,
+      userId: (property as any)?.user_id ?? null,
+      commentary: includeCommentary ? dcfCommentary : null,
+      counts: { linkedSourceValueCount, estimateSourceValueCount, userOverrideCount },
+      downstreamRecalculation: {
+        reportOverview: true,
+        tenYearCashflowReport: true,
+        scenarioComparison: true,
+        clientReport: true,
+        dcfOnlyWrite: true,
+        circularOverwriteProtection: 'DCF save-back writes DCF inputs/outputs only and does not overwrite NOI, Cap Rate, GST, Borrowing Capacity or ICR / DSCR tabs.',
+      },
+    };
+  };
+
+  const handleConfirmSaveBack = async () => {
+    if (!prefill) return;
+    setSavingDcf(true);
+    try {
+      const payload = buildSavePayload();
+      updateGlobal('dcfInputs', payload.finalInputs);
+      updateGlobal('dcfOutputs', {
+        result: generatedResult,
+        rows: generatedRows,
+        scenarios: scenarioCards,
+        sensitivity: sensitivityRows,
+        readinessStatus,
+        generatedAt,
+        calculationVersion: DCF_CALCULATION_VERSION,
+      });
+      if (prefill.domain === 'commercial') {
+        const res = await commercialApi.createDcfRun({
+          property_id: prefill.propertyId,
+          scenario_name: String(payload.scenarioId ?? 'base'),
+          hold_period_years: payload.finalInputs.holdPeriodYears,
+          discount_rate: payload.finalInputs.discountRatePct,
+          terminal_cap_rate: payload.finalInputs.terminalCapRatePct,
+          rental_growth_assumptions: { value: payload.finalInputs.rentalGrowthPct, source: meta.growth.source },
+          vacancy_allowance_pct: payload.finalInputs.vacancyAllowancePct,
+          capex_schedule: generatedRows.map((row) => ({ year: row.year, capex: row.capex, downtimeAdjustment: row.downtimeAdjustment })),
+          loan_amount: payload.finalInputs.loanAmount,
+          interest_rate: payload.finalInputs.interestRatePct,
+          loan_term_years: payload.finalInputs.loanTermYears,
+          outputs: payload,
+          irr: generatedResult?.leveredIrr ?? generatedResult?.unleveredIrr ?? null,
+          npv: generatedResult?.leveredNpv ?? generatedResult?.unleveredNpv ?? null,
+          equity_multiple: generatedResult?.equityMultiple ?? null,
+          peak_equity: generatedResult?.equityInvested ?? null,
+        });
+        if (res.error) throw new Error(res.error.message);
+      } else {
+        const existingNotes = typeof (property as any)?.notes === 'string' ? (property as any).notes : '';
+        const auditNote = `DCF assumptions saved ${new Date().toISOString()} (${DCF_CALCULATION_VERSION}) · status: ${readinessStatus} · generated: ${payload.cashflowGeneratedStatus}.`;
+        await pushBack({ notes: existingNotes ? `${existingNotes}\n\n${auditNote}` : auditNote });
+      }
+      setSaveDialogOpen(false);
+      toast.success('DCF assumptions and cashflow saved to property profile.');
+    } catch (error) {
+      toast.error('Unable to save DCF assumptions to the property profile.', { description: error instanceof Error ? error.message : 'Please try again.' });
+    } finally {
+      setSavingDcf(false);
+    }
+  };
+
+  const modalRows: Array<[string, string]> = [
+    ['Purchase Price', parsed.values.price != null ? fmt0(parsed.values.price) : PENDING],
+    ['Acquisition Costs', parsed.values.acqCosts != null ? fmt0(parsed.values.acqCosts) : noneConfirmed.acqCosts ? fmt0(0) : PENDING],
+    ['Base NOI', parsed.values.initialNoi != null ? fmt0(parsed.values.initialNoi) : PENDING],
+    ['NOI Treatment Mode', noiTreatmentLabels[noiTreatmentMode]],
+    ['Hold Period', parsed.values.hold != null ? `${parsed.values.hold} years` : PENDING],
+    ['Rental Growth', safePct(parsed.values.growth)],
+    ['Vacancy Allowance', noiTreatmentMode === 'adjusted' ? '0% (already vacancy-adjusted)' : safePct(parsed.values.vacancy)],
+    ['Terminal Cap', safePct(parsed.values.termCap)],
+    ['Selling Costs', safePct(parsed.values.sellingCosts)],
+    ['Discount Rate', safePct(parsed.values.discount)],
+    ['Loan Amount', parsed.values.loan != null ? fmt0(parsed.values.loan) : PENDING],
+    ['Interest Rate', safePct(parsed.values.interest)],
+    ['Loan Term', parsed.values.term != null ? `${parsed.values.term} years` : PENDING],
+    ['Annual Capex', parsed.values.annualCapex != null ? fmt0(parsed.values.annualCapex) : noneConfirmed.annualCapex ? fmt0(0) : PENDING],
+    ['Downtime Months', parsed.values.downtimeMonths != null ? `${parsed.values.downtimeMonths} months` : noneConfirmed.downtimeMonths ? '0 months' : PENDING],
+    ['Unlevered IRR', safePct(result?.unleveredIrr)],
+    ['Levered IRR', safePct(result?.leveredIrr)],
+    ['Unlevered NPV', result ? fmt0(result.unleveredNpv) : PENDING],
+    ['Levered NPV', result ? fmt0(result.leveredNpv) : PENDING],
+    ['Equity Multiple', result ? `${result.equityMultiple}x` : PENDING],
+    ['Terminal Value', result ? fmt0(result.terminalValue) : PENDING],
+    ['Net Sale Proceeds to Equity', result ? fmt0(result.netSaleProceeds) : PENDING],
+    ['Cashflow generated status', cashflowCurrent ? 'Cashflow Generated' : cashflowOutOfDate ? 'Cashflow Out of Date' : 'Not Generated'],
+    ['Linked source values', String(linkedSourceValueCount)],
+    ['AI / research estimates', String(estimateSourceValueCount)],
+    ['User overrides', String(userOverrideCount)],
+  ];
+
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Discounted Cash Flow (DCF)</CardTitle>
@@ -524,7 +675,7 @@ export function DcfCalculatorCard() {
           <span className="text-xs text-muted-foreground">Assumptions tracked in status drawer</span>
           <Button size="sm" variant="outline" onClick={handleEstimateForMe}>Estimate for me</Button>
           <Button size="sm" onClick={handleGenerateCashflow} disabled={!canGenerate} title={!canGenerate ? 'Complete purchase price, Base NOI, hold period, growth, terminal cap and discount rate before generating cashflow.' : undefined}>{cashflowOutOfDate ? 'Regenerate Cashflow' : 'Generate Cashflow'}</Button>
-          <SaveBackButton build={() => ({ purchase_price: valueOrUndefined(fields.price), valuation: valueOrUndefined(fields.price) })} />
+          <Button size="sm" variant="outline" disabled={!canSaveBack || savingDcf} title={saveBackTooltip} onClick={() => setSaveDialogOpen(true)}>Save Back to Property</Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -645,6 +796,34 @@ export function DcfCalculatorCard() {
         {result?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
       </CardContent>
     </Card>
+    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Save these DCF assumptions and outputs back to the property profile?</DialogTitle>
+          <DialogDescription>
+            This saves DCF-only assumptions, audit metadata, generated schedule and outputs without overwriting NOI, Cap Rate, GST, Borrowing Capacity or ICR / DSCR source tabs.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-3">
+          <div className="grid gap-2 md:grid-cols-2">
+            {modalRows.map(([label, value]) => (
+              <div key={label} className="rounded border bg-muted/20 p-2 text-sm">
+                <div className="text-xs text-muted-foreground">{label}</div>
+                <div className="font-medium text-foreground">{value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 rounded border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+            Downstream recalculation will be triggered for Report Overview, 10-Year Cashflow Report, Scenario Comparison and Client report via the DCF input/output sync keys only.
+          </div>
+        </ScrollArea>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setSaveDialogOpen(false)} disabled={savingDcf}>Cancel</Button>
+          <Button onClick={handleConfirmSaveBack} disabled={savingDcf}>{savingDcf ? 'Saving…' : 'Save DCF to Property'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
