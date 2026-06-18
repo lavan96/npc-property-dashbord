@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
 import { CapRateCalculatorCard } from '@/components/commercial/calculators/CapRateCalculatorCard';
@@ -32,6 +32,7 @@ import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commer
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 
@@ -317,6 +318,15 @@ const calculatorTabs = [
   { value: 'rent', label: 'Industrial Metrics', subLabel: '($/m² + Site Cover)' },
 ] as const;
 
+const calculatorTabGroups: Array<{ group: string; tabs: Array<(typeof calculatorTabs)[number]['value']> }> = [
+  { group: 'Property & Overview', tabs: ['overview', 'rent'] },
+  { group: 'Income & Valuation', tabs: ['noi', 'cap'] },
+  { group: 'Lending & Tax', tabs: ['borrowing', 'icr', 'gst'] },
+  { group: 'Forecasting & Reports', tabs: ['dcf', 'ten-year'] },
+];
+
+const tabByValue = Object.fromEntries(calculatorTabs.map(tab => [tab.value, tab])) as Record<(typeof calculatorTabs)[number]['value'], (typeof calculatorTabs)[number]>;
+
 export default function PropertyCalculators() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -414,23 +424,47 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
-          <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/75 p-2 shadow-sm">
-          <TabsList className="h-auto min-w-max w-full justify-start gap-2 bg-transparent p-0">
-            {calculatorTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="group/tab h-16 min-w-[150px] shrink-0 rounded-lg px-4 py-2 text-center data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-              >
-                <span className="flex w-full flex-col items-center justify-center gap-0.5 leading-tight">
-                  <span className="whitespace-nowrap text-sm font-semibold">{tab.label}</span>
-                  <span className="whitespace-nowrap text-[11px] font-medium text-muted-foreground group-data-[state=active]/tab:text-primary-foreground/80">
-                    {tab.subLabel}
-                  </span>
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="rounded-xl border border-border/70 bg-card/75 p-3 shadow-sm">
+            <div className="md:hidden">
+              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])}>
+                <SelectTrigger className="h-12 border-primary/30 bg-background/80">
+                  <SelectValue aria-label="Selected calculator tab" />
+                </SelectTrigger>
+                <SelectContent>
+                  {calculatorTabGroups.map(group => (
+                    <div key={group.group} className="px-1 py-1">
+                      <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
+                      {group.tabs.map(value => <SelectItem key={value} value={value}>{tabByValue[value].label} {tabByValue[value].subLabel}</SelectItem>)}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="hidden gap-3 md:grid xl:grid-cols-4">
+              {calculatorTabGroups.map(group => (
+                <div key={group.group} className="rounded-lg border border-border/60 bg-background/35 p-2">
+                  <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
+                  <div className="grid gap-2">
+                    {group.tabs.map(value => {
+                      const tab = tabByValue[value];
+                      const selected = activeTab === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setActiveTab(value)}
+                          className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${selected ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/40' : 'bg-card/60 text-foreground hover:bg-primary/10'}`}
+                          aria-current={selected ? 'page' : undefined}
+                        >
+                          <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
+                          <span className={`mt-0.5 block text-[11px] leading-tight ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{tab.subLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>

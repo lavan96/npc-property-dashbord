@@ -419,7 +419,6 @@ export function CommercialBorrowingCapacityCard({ initialAssetCategory = 'commer
     : assessmentReady
       ? result.proposedLoanSupportabilityMessage
       : 'This result is indicative and may change once valuation, lease, GST and borrower documents are confirmed.';
-  const formatAdvancedMoney = (value: number | null | undefined) => assessmentReady && isUsableNumber(value) ? fmt(Number(value)) : 'Pending';
   const completenessStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : assessmentReady ? 'Ready to Calculate' : 'Preliminary Estimate';
   const purchaseAbilityStatus = noRequiredInputsStarted ? 'Awaiting Inputs' : !assessmentReady ? 'Preliminary Estimate' : result.fundsToComplete.requiredEquity == null ? 'Review Required' : result.fundsToComplete.equitySurplusShortfall >= 0 ? 'Calculated' : 'Review Required';
   const validCalculatedResult = assessmentReady && Number.isFinite(result.finalRiskAdjustedLoan) && result.finalRiskAdjustedLoan > 0;
