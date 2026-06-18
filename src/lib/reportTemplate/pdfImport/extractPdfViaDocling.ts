@@ -27,128 +27,19 @@ import type {
   DoclingDocument,
   DoclingRasterByPage,
   DoclingRasterResponse,
-  RasterManifest,
 } from './docling/doclingTypes';
-import { downloadRasterManifest } from './rasterArtifactRefs';
-
-/**
- * Phase 3 compatibility flag — keep `false` so legacy base64 `rasters.json` is
- * NEVER auto-loaded into the schema. Toggle only for one-off debug sessions.
- */
-const allowLegacyRastersJson = false;
-
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
-// `recoverable_failed` is terminal-for-this-attempt but should surface as a
-// retry-friendly error rather than a hard failure.
-const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled', 'recoverable_failed']);
+const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
-
-/**
- * Recursively strip embedded raster/image bytes from any value. Removes
- * dataUrl / image_base64 / imageBase64 / base64 keys, strings starting with
- * `data:image`, and src/url strings starting with `data:`. Used before
- * resync/finalize to keep the template-import-pdf payload lightweight.
- */
-function stripEmbeddedImageData<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => stripEmbeddedImageData(item))
-      .filter((item) => item !== null && item !== undefined) as T;
-  }
-
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-      const lowerKey = key.toLowerCase();
-      if (
-        lowerKey === 'dataurl' ||
-        lowerKey === 'image_base64' ||
-        lowerKey === 'imagebase64' ||
-        lowerKey === 'base64'
-      ) {
-        continue;
-      }
-      if (typeof raw === 'string') {
-        const lowerValue = raw.slice(0, 256).toLowerCase();
-        if (
-          lowerValue.startsWith('data:image') ||
-          raw.includes('data:image') ||
-          ((lowerKey === 'src' || lowerKey === 'url') && lowerValue.startsWith('data:'))
-        ) {
-          continue;
-        }
-      }
-      out[key] = stripEmbeddedImageData(raw);
-    }
-    return out as T;
-  }
-
-  if (typeof value === 'string' && value.includes('data:image')) {
-    return null as unknown as T;
-  }
-
-  return value;
-}
-
-function inspectEmbeddedImageData(value: unknown) {
-  const json = JSON.stringify(value);
-  return {
-    bytes: new Blob([json]).size,
-    dataImage: json.includes('data:image'),
-    base64: /base64[,":]/i.test(json) || json.includes('image_base64'),
-  };
-}
 
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
-  if (data?.error) {
-    const msg = String(data.error);
-    if (/^unknown operation/i.test(msg)) {
-      // Cryptic on its own — tell the caller which op the deployed function rejected.
-      throw new Error(`template-import-pdf rejected operation "${body?.operation}" (${msg}). Redeploy the edge function.`);
-    }
-    throw new Error(describeAuthError(msg) ?? msg);
-  }
+  if (data?.error) throw new Error(describeAuthError(String(data.error)) ?? String(data.error));
   return data;
 }
-
-/**
- * Normalize the dispatcher / sidecar `result_payload` into a single artifacts
- * record. All paths are optional — pixel-perfect runs may carry only
- * `rasters_path`, semantic runs may carry only `docling_path` + `markdown_path`.
- * Falls back to `job.diagnostics_path` for backwards compatibility with the
- * Wave G chunked pipeline (which writes there first and `result_payload` later).
- */
-function normalizeArtifacts(job: JobRow) {
-  const payload = (job.result_payload ?? {}) as Record<string, unknown>;
-  const pickStr = (k: string): string | null => {
-    const v = payload[k];
-    return typeof v === 'string' && v.length > 0 ? v : null;
-  };
-  const payloadArr = (k: string): string[] => {
-    const v = payload[k];
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-  };
-  return {
-    doclingPath: pickStr('docling_path') ?? job.diagnostics_path ?? null,
-    // Legacy `rasters.json` (may contain base64). Never embedded by default.
-    legacyRastersPath: pickStr('legacy_rasters_path') ?? pickStr('rasters_path'),
-    // Phase 3 — lightweight Storage-backed manifest.
-    rastersManifestPath: pickStr('rasters_manifest_path'),
-    pageRasterPaths: payloadArr('page_raster_paths'),
-    markdownPath: pickStr('markdown_path'),
-    outlinePath: pickStr('outline_path'),
-    doctagsPath: pickStr('doctags_path'),
-    pageCount: typeof payload.page_count === 'number' ? payload.page_count : null,
-    requestedMode: pickStr('requested_mode') ?? pickStr('mode'),
-    summary: payload.summary,
-    autoModeSelected: payload.auto_mode_selected === true,
-  };
-}
-
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   try {
@@ -180,133 +71,30 @@ function modeToWire(mode: DoclingPlanMode): string {
   return mode === 'pixel-perfect' ? 'pixel_perfect' : mode;
 }
 
-async function downloadJson<T>(path: string): Promise<T> {
-  console.info('[PDF_IMPORT_DEBUG] requesting signed artifact URL', { path });
-
+async function downloadJson<T>(path: string): Promise<T | null> {
+  // Sign via the dispatcher — the anon client can't sign URLs on the private
+  // diagnostics bucket under our custom-auth model.
   const { data, error } = await invokeSecureFunction(
     'pdf-parse-dispatch',
     { operation: 'download', path },
     { timeoutMs: 30_000 },
   );
-
-  if (error) {
-    throw new Error(
-      `pdf-parse-dispatch download invoke failed for ${path}: ${
-        describeAuthError(error.message) ?? error.message ?? 'unknown invoke error'
-      }`,
-    );
-  }
-
-  const payload = data as {
-    signed_url?: string;
-    signedUrl?: string;
-    error?: string;
-    details?: unknown;
-    function?: string;
-    received_operation?: string;
-    received_keys?: string[];
-  } | null;
-
-  if (payload?.error) {
-    throw new Error(
-      `pdf-parse-dispatch download failed for ${path}: ${payload.error}${
-        payload.details ? ` details=${JSON.stringify(payload.details)}` : ''
-      }${payload.function ? ` function=${payload.function}` : ''}${
-        payload.received_operation ? ` received_operation=${payload.received_operation}` : ''
-      }${payload.received_keys ? ` received_keys=${payload.received_keys.join(',')}` : ''}`,
-    );
-  }
-
-  const signedUrl = payload?.signed_url ?? payload?.signedUrl;
-
-  if (!signedUrl) {
-    throw new Error(
-      `pdf-parse-dispatch download returned no signed_url for ${path}. Response keys: ${
-        payload ? Object.keys(payload).join(', ') : 'null'
-      }`,
-    );
-  }
-
-  console.info('[PDF_IMPORT_DEBUG] fetching signed artifact URL', {
-    path,
-    signedUrlPrefix: signedUrl.slice(0, 80),
-  });
-
-  const res = await fetch(signedUrl);
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Signed artifact fetch failed for ${path}: HTTP ${res.status} ${res.statusText}. ${text.slice(0, 500)}`,
-    );
-  }
-
-  try {
-    return (await res.json()) as T;
-  } catch (e) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Signed artifact JSON parse failed for ${path}: ${(e as Error).message}. Body preview: ${text.slice(0, 300)}`,
-    );
-  }
+  if (error) return null;
+  const signed = (data as { signed_url?: string } | null)?.signed_url;
+  if (!signed) return null;
+  const res = await fetch(signed);
+  if (!res.ok) return null;
+  return (await res.json()) as T;
 }
 
-/**
- * Resolve a Storage object path to a short-lived signed URL via the
- * `pdf-parse-dispatch { operation: 'download' }` edge function. Returns the
- * `signed_url` (or `null` on failure) — unlike `downloadJson`, it does NOT
- * fetch the body, so it's used to point a renderer at a page raster without
- * pulling the bytes through the app.
- */
 async function downloadUrl(path: string): Promise<string | null> {
   const { data, error } = await invokeSecureFunction(
     'pdf-parse-dispatch',
     { operation: 'download', path },
     { timeoutMs: 30_000 },
   );
-
-  if (error) {
-    console.warn('[PDF_IMPORT_DEBUG] downloadUrl invoke failed', {
-      path,
-      error: describeAuthError(error.message) ?? error.message ?? 'unknown invoke error',
-    });
-    return null;
-  }
-
-  const payload = data as { signed_url?: string; signedUrl?: string; error?: string } | null;
-  if (payload?.error) {
-    console.warn('[PDF_IMPORT_DEBUG] downloadUrl returned error', { path, error: payload.error });
-    return null;
-  }
-
-  return payload?.signed_url ?? payload?.signedUrl ?? null;
-}
-
-/**
- * Phase 3 — resolve a downloaded `rasters-manifest.json` into a page-keyed map
- * whose `dataUrl` is a freshly signed Storage URL (NEVER base64). Each page's
- * `path` is signed on demand via `downloadUrl`; pages that fail to sign are
- * skipped so one bad page can't abort the whole import.
- */
-async function manifestToRastersByPage(manifest: RasterManifest): Promise<DoclingRasterByPage> {
-  const out: DoclingRasterByPage = {};
-  for (const page of manifest.pages ?? []) {
-    if (page?.page_no == null) continue;
-    const signedUrl = await downloadUrl(page.path);
-    if (!signedUrl) {
-      console.warn('[PDF_IMPORT_DEBUG] manifest page sign skipped', {
-        pageNo: page.page_no,
-        path: page.path,
-      });
-      continue;
-    }
-    out[page.page_no] = {
-      width: page.width,
-      height: page.height,
-      dataUrl: signedUrl,
-    };
-  }
-  return out;
+  if (error) return null;
+  return (data as { signed_url?: string } | null)?.signed_url ?? null;
 }
 
 interface JobRow {
@@ -321,22 +109,7 @@ interface JobRow {
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
-  result_payload: {
-    docling_path?: string;
-    doctags_path?: string;
-    outline_path?: string;
-    markdown_path?: string;
-    rasters_path?: string;
-    legacy_rasters_path?: string;
-    rasters_manifest_path?: string;
-    page_raster_paths?: string[];
-    mode?: string;
-    requested_mode?: string;
-    summary?: unknown;
-    auto_mode_selected?: boolean;
-    page_count?: number;
-  } | null;
-
+  result_payload: { docling_path?: string; rasters_path?: string; rasters_manifest_path?: string; page_raster_paths?: string[]; legacy_rasters_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
   attempts?: Array<{ endpoint?: string; ok?: boolean; status?: number; attempt?: number; error_code?: string; retryable?: boolean; message?: string } | unknown> | null;
 }
 
@@ -480,6 +253,27 @@ function rastersByPage(payload: unknown): DoclingRasterByPage | undefined {
   return out;
 }
 
+async function manifestToRastersByPage(payload: unknown): Promise<DoclingRasterByPage | undefined> {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const pages = (payload as { pages?: Array<{ page_no?: number; width?: number; height?: number; path?: string }> }).pages;
+  if (!Array.isArray(pages)) return undefined;
+
+  const out: DoclingRasterByPage = {};
+  for (const page of pages) {
+    if (page?.page_no == null || !page.path) continue;
+    const signedUrl = await downloadUrl(page.path);
+    if (!signedUrl) continue;
+
+    out[page.page_no] = {
+      width: Number(page.width ?? 0),
+      height: Number(page.height ?? 0),
+      dataUrl: signedUrl,
+    };
+  }
+
+  return Object.keys(out).length ? out : undefined;
+}
+
 export async function extractPdfViaDocling(
   file: File,
   options: ImportOptions,
@@ -542,122 +336,34 @@ export async function extractPdfViaDocling(
 
     onProgress({ phase: 'extracting', message: 'Docling parsing…' });
     const job = await pollJob(jobId, onProgress);
-    if (job.status === 'recoverable_failed') {
-      // Distinct retry-able failure — the dispatcher's stuck-job recovery may
-      // re-dispatch the same job_id; surface a message the dialog can offer
-      // a retry against rather than burying it as a hard error.
-      throw new Error(
-        `Docling job is recoverable (will be retried by the dispatcher). last_stage=${job.stage ?? 'unknown'}; ${job.error_code ?? ''} ${job.error_text ?? ''}`.trim(),
-      );
-    }
     if (job.status !== 'succeeded') {
       throw new Error(
-        `Docling job ${job.status} (stage=${job.stage ?? 'unknown'}): ${job.error_code ?? 'unknown'} — ${job.error_text ?? ''}`.trim(),
+        `Docling job ${job.status}: ${job.error_code ?? 'unknown'} — ${job.error_text ?? ''}`.trim(),
       );
     }
 
-    // Per the spec — status=succeeded + stage=parsed is the success contract.
-    // result_payload may carry any subset of artifact paths; do not require
-    // docling.json for pixel-perfect when rasters are present.
-    const artifacts = normalizeArtifacts(job);
-    const effectiveMode = wireModeToDocling(artifacts.requestedMode, mode);
+    const doclingPath = job.result_payload?.docling_path ?? job.diagnostics_path;
+    if (!doclingPath) throw new Error('Docling job did not produce a diagnostics path');
 
-    // Phase 3 — prefer Storage-backed raster manifest over legacy rasters.json.
-    // The manifest only contains paths + metadata; per-page PNGs are signed on
-    // demand at render time via `getArtifactSignedUrl`. Legacy `rasters.json`
-    // (which may contain base64) is only loaded when an explicit compatibility
-    // flag is set and is NEVER persisted into the template schema.
-    let rasterManifest: RasterManifest | null = null;
-    if (artifacts.rastersManifestPath) {
-      try {
-        rasterManifest = await downloadRasterManifest(artifacts.rastersManifestPath);
-      } catch (e) {
-        console.warn('[PDF_IMPORT_DEBUG] raster manifest download failed', {
-          path: artifacts.rastersManifestPath,
-          error: (e as Error).message,
-        });
-      }
+    const doclingDoc = await downloadJson<DoclingDocument>(doclingPath);
+    if (!doclingDoc) throw new Error('Failed to download docling.json');
+    if (job.result_payload?.summary && !doclingDoc.summary) {
+      doclingDoc.summary = job.result_payload.summary as DoclingDocument['summary'];
     }
 
-    let rasterPayload: unknown | null = null;
-    if (allowLegacyRastersJson && artifacts.legacyRastersPath) {
-      try {
-        rasterPayload = await downloadJson<unknown>(artifacts.legacyRastersPath);
-      } catch (e) {
-        console.warn('[PDF_IMPORT_DEBUG] optional legacy raster download skipped', {
-          path: artifacts.legacyRastersPath,
-          error: (e as Error).message,
-        });
-      }
-    }
-    // Build the page-keyed raster map the mapper uses for backgrounds + sizing.
-    // Prefer the Phase 3 manifest: each page resolves to a signed Storage URL
-    // (no base64) via `manifestToRastersByPage`. Only fall back to the legacy
-    // base64 `rasters.json` when the compatibility flag is on.
-    let rasters: DoclingRasterByPage | undefined;
-    if (rasterManifest) {
-      try {
-        rasters = await manifestToRastersByPage(rasterManifest);
-      } catch (e) {
-        console.warn('[PDF_IMPORT_DEBUG] manifest → rastersByPage failed', {
-          error: (e as Error).message,
-        });
-      }
-    }
-    if (!rasters && rasterPayload) {
-      rasters = rastersByPage(rasterPayload);
-    }
+    const rasterManifestPayload = job.result_payload?.rasters_manifest_path
+      ? await downloadJson<unknown>(job.result_payload.rasters_manifest_path)
+      : null;
+    const rasters = rasterManifestPayload
+      ? await manifestToRastersByPage(rasterManifestPayload)
+      : job.result_payload?.rasters_path
+        ? rastersByPage(await downloadJson<unknown>(job.result_payload.rasters_path))
+        : undefined;
 
-    console.info('[PDF_IMPORT_DEBUG] downloading docling artifact', {
-      jobId: job.id,
-      doclingPath: artifacts.doclingPath,
-      rastersManifestPath: artifacts.rastersManifestPath,
-      pageRasterPathsCount: artifacts.pageRasterPaths.length,
-      resultPayloadKeys: Object.keys(job.result_payload ?? {}),
-    });
-
-    let doclingDoc: DoclingDocument | null = null;
-    if (artifacts.doclingPath) {
-      try {
-        doclingDoc = await downloadJson<DoclingDocument>(artifacts.doclingPath);
-      } catch (e) {
-        if (effectiveMode === 'pixel-perfect' && ((rasters && Object.keys(rasters).length > 0) || rasterManifest)) {
-          console.warn('[PDF_IMPORT_DEBUG] docling download failed, falling back to raster-only pixel-perfect', {
-            error: (e as Error).message,
-          });
-        } else {
-          throw e;
-        }
-      }
-    }
-    if (!doclingDoc) {
-      const manifestPages = rasterManifest?.pages ?? [];
-      if (effectiveMode === 'pixel-perfect' && (manifestPages.length > 0 || (rasters && Object.keys(rasters).length > 0))) {
-        const pages: Record<string, { page_no: number; size: { width: number; height: number } }> = {};
-        if (manifestPages.length > 0) {
-          for (const p of manifestPages) {
-            pages[String(p.page_no)] = { page_no: p.page_no, size: { width: p.width, height: p.height } };
-          }
-        } else if (rasters) {
-          for (const [pageNoStr, r] of Object.entries(rasters)) {
-            const pageNo = Number(pageNoStr);
-            pages[String(pageNo)] = { page_no: pageNo, size: { width: r.width, height: r.height } };
-          }
-        }
-        doclingDoc = { pages, texts: [], tables: [], pictures: [] } as DoclingDocument;
-      } else {
-        throw new Error(
-          `Failed to download docling.json (artifact=${artifacts.doclingPath ?? 'none'}). result_payload had keys: ${Object.keys(job.result_payload ?? {}).join(', ') || 'none'}`,
-        );
-      }
-    }
-    if (artifacts.summary && !doclingDoc.summary) {
-      doclingDoc.summary = artifacts.summary as DoclingDocument['summary'];
-    }
-
+    const effectiveMode = wireModeToDocling(job.result_payload?.mode, mode);
     onProgress({
       phase: 'finalizing',
-      message: artifacts.autoModeSelected
+      message: job.result_payload?.auto_mode_selected
         ? 'Mapping Docling → template (Pixel-Perfect selected for OCR-heavy PDF)…'
         : 'Mapping Docling → template…',
     });
@@ -668,164 +374,61 @@ export async function extractPdfViaDocling(
       engineVersion: job.engine_version ?? 'docling',
     });
 
-
-    const rawTemplate = applyTemplateImportPlan(plan, {
+    const template = applyTemplateImportPlan(plan, {
       templateName: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
     });
-
-    // Sanitize: strip any embedded raster/image bytes that may have leaked into
-    // the reconstructed schema. The template-import-pdf resync/finalize payload
-    // must only reference storage paths, never embed data:image / base64 blobs.
-    const template = stripEmbeddedImageData(rawTemplate);
     template.meta = {
       ...(template.meta ?? {}),
       pdfImport: {
         engine: 'docling',
         engineVersion: job.engine_version ?? 'docling',
         mode: effectiveMode,
-        diagnosticsPath: artifacts.doclingPath,
-        rastersPath: artifacts.legacyRastersPath ?? null,
-        legacyRastersPath: artifacts.legacyRastersPath ?? null,
-        rastersManifestPath: artifacts.rastersManifestPath ?? null,
-        pageRasterPaths: artifacts.pageRasterPaths,
-        markdownPath: artifacts.markdownPath ?? null,
-        outlinePath: artifacts.outlinePath ?? null,
-        doctagsPath: artifacts.doctagsPath ?? null,
+        diagnosticsPath: doclingPath,
         jobId,
         importedAt: new Date().toISOString(),
       },
     };
-
-    // Phase 3 — attach per-page raster references (storage paths only). The
-    // canvas/PDF renderer resolves them to signed URLs at render time and must
-    // treat the background as locked (not selectable as a normal image layer).
-    if (rasterManifest && effectiveMode !== 'semantic') {
-      const refByPageNo = new Map<number, typeof rasterManifest.pages[number]>();
-      for (const p of rasterManifest.pages) refByPageNo.set(p.page_no, p);
-      template.pages.forEach((page, idx) => {
-        const pageNo = idx + 1;
-        const ref = refByPageNo.get(pageNo);
-        if (!ref) return;
-        (page as any).meta = {
-          ...((page as any).meta ?? {}),
-          sourceRasterRef: {
-            kind: 'pdf_import_raster_ref' as const,
-            jobId,
-            manifestPath: artifacts.rastersManifestPath,
-            pageNo,
-            path: ref.path,
-            width: ref.width,
-            height: ref.height,
-            mime: ref.mime,
-            dpi: rasterManifest?.dpi ?? null,
-          },
-        };
-      });
-    }
-
     const schemaValidation = validateReconstructedSchema(template);
     if (!schemaValidation.ok) {
       throw new Error(`Docling reconstructed schema failed validation: ${schemaValidation.errors.join('; ')}`);
     }
 
-    const cdir = stripEmbeddedImageData(
-      reportTemplateToCdir(template, {
-        kind: 'pdf',
-        checksum: sourceChecksum,
-        filename: file.name,
-      }),
-    );
+    const cdir = reportTemplateToCdir(template, {
+      kind: 'pdf',
+      checksum: sourceChecksum,
+      filename: file.name,
+    });
     // Phase 3: Feed real text and bounds expectations into CDIR fidelity so
     // `textAccuracy` and `medianPositionDrift` are measured against the
     // source Docling document instead of empty arrays.
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
-    const cdirFidelity = stripEmbeddedImageData(buildCdirFidelityReport(cdir, doclingExpectations));
+    const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
     const totalPages = job.page_count ?? template.pages.length;
 
-    // Payload diagnostics — guard against the resync timeout we hit when
-    // raster data leaks into the schema. After sanitization, dataImage and
-    // base64 must both be false; otherwise fail fast with a clear message.
-    const schemaInspection = inspectEmbeddedImageData(template);
-    const cdirInspection = inspectEmbeddedImageData(cdir);
-    const fidelityInspection = inspectEmbeddedImageData(cdirFidelity);
-    console.info('[PDF_IMPORT_DEBUG] sanitized payload sizes', {
-      schema: schemaInspection,
-      cdir: cdirInspection,
-      fidelity: fidelityInspection,
-    });
-    const MAX_PAYLOAD_BYTES = 50 * 1024 * 1024;
-    if (
-      schemaInspection.dataImage ||
-      schemaInspection.base64 ||
-      cdirInspection.dataImage ||
-      cdirInspection.base64 ||
-      fidelityInspection.dataImage ||
-      fidelityInspection.base64
-    ) {
-      throw new Error(
-        `Refusing to resync: sanitized payload still contains embedded image data ` +
-        `(schemaBytes=${schemaInspection.bytes}, schemaDataImage=${schemaInspection.dataImage}, schemaBase64=${schemaInspection.base64}, ` +
-        `cdirDataImage=${cdirInspection.dataImage}, cdirBase64=${cdirInspection.base64}). Raster data must stay in storage references.`,
-      );
-    }
-    if (schemaInspection.bytes > MAX_PAYLOAD_BYTES) {
-      throw new Error(
-        `Refusing to resync: schema payload exceeds ${MAX_PAYLOAD_BYTES} bytes (schemaBytes=${schemaInspection.bytes}).`,
-      );
-    }
-
-
-    // Per spec: when the underlying pdf_import_jobs row is already
-    // `succeeded/parsed` and we have artifacts in hand, a downstream
-    // template-import-pdf persistence failure (e.g. an older deployment
-    // missing `resync`) must NOT mask the successful import. We attempt
-    // persistence, but on `unknown operation`-style failures we fall back to
-    // returning the loaded template + artifacts so the UI can render the job.
-    let finRes: any;
-    try {
-      finRes = options.targetTemplateId
-        ? await invokeImport({
-            operation: 'resync',
-            import_id: importId,
-            template_id: options.targetTemplateId,
-            schema: template,
-            page_count: totalPages,
-            source_filename: file.name,
-            source_checksum: sourceChecksum,
-            cdir,
-            cdir_fidelity: cdirFidelity,
-            note: `Re-synced from ${file.name} (docling)`,
-          })
-        : await invokeImport({
-            operation: 'finalize',
-            import_id: importId,
-            name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-            schema: template,
-            page_count: totalPages,
-            source_filename: file.name,
-            source_checksum: sourceChecksum,
-            cdir,
-            cdir_fidelity: cdirFidelity,
-          });
-    } catch (persistErr) {
-      const msg = String((persistErr as Error)?.message ?? persistErr);
-      const isUnknownOp = /unknown operation/i.test(msg);
-      // Only swallow when we have a real target template to fall back onto.
-      if (isUnknownOp && options.targetTemplateId) {
-        console.warn(
-          `[docling] persistence step rejected (${msg}). Job ${jobId} succeeded; ` +
-          `returning loaded artifacts so the UI can render. Redeploy template-import-pdf to restore resync.`,
-        );
-        finRes = {
-          template: {
-            id: options.targetTemplateId,
-            name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-          },
-        };
-      } else {
-        throw persistErr;
-      }
-    }
+    const finRes = options.targetTemplateId
+      ? await invokeImport({
+          operation: 'resync',
+          import_id: importId,
+          template_id: options.targetTemplateId,
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+          source_checksum: sourceChecksum,
+          cdir,
+          cdir_fidelity: cdirFidelity,
+          note: `Re-synced from ${file.name} (docling)`,
+        })
+      : await invokeImport({
+          operation: 'finalize',
+          import_id: importId,
+          name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+          schema: template,
+          page_count: totalPages,
+          source_filename: file.name,
+          source_checksum: sourceChecksum,
+          cdir,
+          cdir_fidelity: cdirFidelity,
+        });
 
     onProgress({ phase: 'done', totalPages });
     const textBlocks = plan.pages.reduce(
