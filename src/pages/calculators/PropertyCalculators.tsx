@@ -29,6 +29,7 @@ import {
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
 import { MasterActivePropertyHeader } from '@/components/commercial/MasterActivePropertyHeader';
+import { GlobalReadinessBanner } from '@/components/commercial/GlobalReadinessBanner';
 import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
 import { Plus } from 'lucide-react';
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
@@ -661,6 +662,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
         <div className="space-y-3">
           <ActivePropertyHeader />
           <MasterActivePropertyHeader />
+          <GlobalReadinessBanner />
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setAddPropertyOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add property to calculators

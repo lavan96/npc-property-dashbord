@@ -30,11 +30,13 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { AiEstimateReviewPanel, type PendingAiEstimate } from './AiEstimateReviewPanel';
 
 import { markFieldInsufficient } from '@/utils/commercial/pendingFieldDisplay';
+import { useGlobalSignalsStore } from '@/utils/commercial/globalReadiness';
 
 export function MasterActivePropertyHeader() {
   const { domain, prefill, property } = useCalculatorPrefill();
   const assumptions = useMasterAssumptionStore(s => s.assumptions);
   const { reportsOutOfDate, updatedTabs } = useReportFreshnessStore();
+  const setSignal = useGlobalSignalsStore(s => s.setSignal);
   const [running, setRunning] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [pendingEstimates, setPendingEstimates] = useState<PendingAiEstimate[]>([]);
@@ -51,6 +53,14 @@ export function MasterActivePropertyHeader() {
     // re-derive whenever store contents change
     [domain, assumptions], // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  // Publish lifecycle signals into the Global Readiness store.
+  useEffect(() => {
+    setSignal('hasProperty', Boolean(prefill && property));
+    setSignal('extractionInFlight', running);
+    setSignal('aiEstimatesAvailable', completeness.missing.length > 0);
+    setSignal('pendingAiReviewCount', pendingEstimates.filter(p => p.suggestedValue != null).length);
+  }, [prefill, property, running, completeness.missing.length, pendingEstimates, setSignal]);
 
   const handleRunAiEstimates = async () => {
     if (!prefill) {
