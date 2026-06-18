@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Calculator } from 'lucide-react';
+import { Calculator, ChevronDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
@@ -29,6 +29,55 @@ import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropert
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+function GstTreatmentOverviewPanel() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">GST Treatment Overview</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            A compact check of GST treatment, settlement cashflow, ITC claimability and net acquisition cost for commercial and industrial acquisitions.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Cashflow</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Claimability</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Verification</Badge>
+        </div>
+      </div>
+
+      <Collapsible open={open} onOpenChange={setOpen} className="mt-3 border-t border-border/60 pt-2">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 px-0 text-primary hover:bg-transparent hover:text-primary/80">
+            Why this matters
+            <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pb-1 text-xs leading-5 text-muted-foreground">
+          <p>
+            GST may increase settlement cashflow even where it is later claimable. Going concern treatment may remove GST from settlement if conditions are met, but it must be verified. Unknown GST treatment should be treated as a specialist review item.
+          </p>
+          <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
+            <p>
+              This output is an estimate only and must be confirmed against the contract of sale, tax invoice, GST clauses, purchaser GST registration status and solicitor/accountant advice before being relied upon.
+            </p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>GST payable at settlement</li>
+              <li>GST potentially claimable as an input tax credit</li>
+              <li>GST settlement cashflow impact</li>
+              <li>GST economic cost after claimability</li>
+              <li>Net acquisition cost used for reporting and scenario modelling</li>
+            </ol>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
 
 const calculatorTabs = [
   { value: 'overview', label: 'Overview', subLabel: '(Report)' },
@@ -150,7 +199,7 @@ export default function PropertyCalculators() {
           <TabsContent value="noi" className="mt-4"><CalculatorTabShell title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="cap" className="mt-4"><CalculatorTabShell title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="icr" className="mt-4"><CalculatorTabShell title="ICR / DSCR" subtitle="Loan assumptions, interest/debt service and lender threshold comparisons are presented in one flow." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><IcrDscrCalculatorCard /></CalculatorTabShell></TabsContent>
-          <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstCalculatorCard /></CalculatorTabShell></TabsContent>
+          <TabsContent value="gst" className="mt-4"><CalculatorTabShell title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="dcf" className="mt-4"><CalculatorTabShell title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfCalculatorCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="ten-year" className="mt-4"><CalculatorTabShell title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell></TabsContent>
           <TabsContent value="rent" className="mt-4"><CalculatorTabShell title="Industrial Metrics $/m² + Site Cover" subtitle="Physical property inputs and valuation/rent metrics are reviewed together. Blank or unlinked industrial fields remain empty until imported or entered." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Property-level information is incomplete. Add or import property details before relying on this calculation.' }, { title: 'Benchmark notes', body: 'Use the outputs as a guide and confirm specialist industrial assumptions before client-facing reliance.' }, { title: 'Save-back', body: 'Each metric card keeps its own save-back action so property linkage remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></CalculatorTabShell></TabsContent>
