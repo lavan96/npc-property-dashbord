@@ -82,7 +82,7 @@ export function GstCalculatorCard() {
             </div>
           )}
           <Row label="GST Amount" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstAmount || result.gstAmount) : PENDING} />
-          <Row label="GST Claimable (ITC)" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstClaimableAmount || result.gstClaimable) : PENDING} /><Row label="GST settlement cashflow" value={hasRequiredInputs && assessment ? fmt(assessment.gstSettlementCashflowRequirement) : PENDING} /><Row label="GST economic cost" value={hasRequiredInputs && assessment ? fmt(assessment.gstEconomicCost) : PENDING} /><Row label="GST timing risk" value={hasRequiredInputs && assessment ? assessment.gstTimingRisk : PENDING} />
+          <Row label="GST Claimable (ITC)" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstClaimableAmount || result.gstClaimable) : PENDING} /><Row label="GST Settlement Cashflow" value={hasRequiredInputs && assessment ? fmt(assessment.gstSettlementCashflowRequirement) : PENDING} /><Row label="GST Economic Cost" value={hasRequiredInputs && assessment ? fmt(assessment.gstEconomicCost) : PENDING} /><Row label="GST Timing Risk" value={hasRequiredInputs && assessment ? assessment.gstTimingRisk : PENDING} />
           <Separator />
           <Row label="Net Acquisition Cost" value={hasRequiredInputs && assessment && result ? fmt(assessment.netAcquisitionCost || result.netAcquisitionCost) : PENDING} highlight />
           {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-2">{result.notes}</p>}{hasRequiredInputs && assessment?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
