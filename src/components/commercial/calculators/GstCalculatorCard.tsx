@@ -8,9 +8,10 @@ import { calculateCommercialGst, calculateCommercialGstEngine, type GstTreatment
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
-import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 
 const fmt = (n: number) =>
   Number.isFinite(n)
@@ -95,7 +96,9 @@ const sourceLabel = (source: SourceState) => ({
 }[source]);
 
 export function GstCalculatorCard() {
-  const { prefill, property } = useCalculatorPrefill();
+  const { prefill, property, pushBack } = useCalculatorPrefill();
+  const updateGlobal = useCommercialDealState(s => s.updateGlobal);
+  const setSourceMode = useCommercialDealState(s => s.setSourceMode);
   const rawProperty = (property ?? {}) as Record<string, unknown>;
   const [price, setPrice] = useState('');
   const [treatment, setTreatment] = useState<GstTreatmentInput>('unknown');
@@ -108,6 +111,9 @@ export function GstCalculatorCard() {
   const [extractionNotice, setExtractionNotice] = useState('');
   const [extractionPreview, setExtractionPreview] = useState<GstExtractionPreview | null>(null);
   const [previewSelections, setPreviewSelections] = useState<Record<GstFieldKey, boolean>>({ price: false, treatment: true, registered: true, goingConcernConfirmed: true, itcClaimability: false, settlementTiming: false });
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
   const [sources, setSources] = useState<Record<GstFieldKey, SourceState>>({ price: 'Blank', treatment: 'Blank', registered: 'Blank', goingConcernConfirmed: 'Blank', itcClaimability: 'Blank', settlementTiming: 'Blank' });
   const [history, setHistory] = useState<AssumptionHistoryEntry[]>([]);
   const [sourceConflicts, setSourceConflicts] = useState<Partial<Record<GstFieldKey, SourceCandidate<string>>>>({});
@@ -355,6 +361,79 @@ export function GstCalculatorCard() {
             ? 'GST treatment is verified. Net acquisition cost can be used in reporting.'
             : 'Review GST assumptions and resolve any remaining confirmation items before relying on the result.';
 
+  const sourceCounts = {
+    overrides: Object.values(sources).filter(source => source === 'User Override').length,
+    contract: Object.values(sources).filter(source => source === 'Contract Extracted').length,
+    ai: Object.values(sources).filter(source => source === 'AI Estimate').length,
+    verified: Object.values(sources).filter(source => ['Verified', 'Solicitor Confirmed', 'Accountant Confirmed'].includes(source)).length,
+  };
+  const hasAnySaveValue = Boolean(purchasePriceValue || persistedTreatment(treatment) || registered !== 'unknown' || goingConcernConfirmed !== 'unknown' || itcClaimability !== 'unknown');
+  const saveBackDisabled = !prefill || !hasAnySaveValue || saving;
+  const calculatedOutputs = {
+    gstAmount: gstAmountValue,
+    gstClaimable: gstClaimableValue,
+    gstSettlementCashflow: settlementCashflowValue,
+    gstEconomicCost: economicCostValue,
+    gstTimingRisk: timingRiskValue,
+    netAcquisitionCost: netAcquisitionCostValue,
+  };
+  const saveSnapshot = {
+    inputs: { purchasePrice: purchasePriceValue, treatment, purchaserGstRegistered: registered, goingConcernConfirmed, itcClaimability, settlementTiming, priorCost: priorCostValue },
+    sources,
+    originalSourceValues: sourceCandidates,
+    userOverrideValues: Object.fromEntries(Object.entries(sources).filter(([, source]) => source === 'User Override').map(([field]) => [field, currentValues[field as GstFieldKey]])),
+    contractExtractedValues: Object.fromEntries(Object.entries(sources).filter(([, source]) => source === 'Contract Extracted').map(([field]) => [field, currentValues[field as GstFieldKey]])),
+    aiEstimatedValues: Object.fromEntries(Object.entries(sources).filter(([, source]) => source === 'AI Estimate').map(([field]) => [field, currentValues[field as GstFieldKey]])),
+    outputs: calculatedOutputs,
+    readinessStatus,
+    checklist,
+    warnings: gstWarnings,
+    timestamp: new Date().toISOString(),
+    userId: rawProperty.user_id,
+    calculationVersion: 'gst-treatment-v1',
+    propertyId: prefill?.propertyId,
+    scenarioId: rawProperty.scenario_id,
+  };
+  const saveRows = [
+    ['Purchase Price', purchasePriceValue === null ? PENDING : fmt(purchasePriceValue)],
+    ['GST Treatment', treatment],
+    ['Purchaser GST-Registered status', registered],
+    ['Going Concern confirmed status', goingConcernConfirmed],
+    ['GST Claimability status', itcClaimability],
+    ['Settlement GST timing', settlementTiming],
+    ['GST Amount', gstAmountValue === null ? PENDING : fmt(gstAmountValue)],
+    ['GST Claimable (ITC)', gstClaimableValue === null ? PENDING : fmt(gstClaimableValue)],
+    ['GST Settlement Cashflow', settlementCashflowValue === null ? PENDING : fmt(settlementCashflowValue)],
+    ['GST Economic Cost', economicCostValue === null ? PENDING : fmt(economicCostValue)],
+    ['GST Timing Risk', timingRiskValue ?? PENDING],
+    ['Net Acquisition Cost', netAcquisitionCostValue === null ? PENDING : fmt(netAcquisitionCostValue)],
+    ['Number of user overrides', String(sourceCounts.overrides)],
+    ['Number of contract extracted values', String(sourceCounts.contract)],
+    ['Number of AI-estimated values', String(sourceCounts.ai)],
+    ['Number of verified values', String(sourceCounts.verified)],
+  ];
+  const confirmSaveBack = async () => {
+    if (!prefill) return;
+    setSaving(true);
+    try {
+      const patch: Record<string, unknown> = {};
+      if (purchasePriceValue !== null) patch.purchase_price = purchasePriceValue;
+      const savedTreatment = persistedTreatment(treatment);
+      if (savedTreatment) patch.gst_treatment = savedTreatment;
+      await pushBack(patch);
+      updateGlobal('gstInputs', { purchasePrice: purchasePriceValue ?? undefined, treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : 'unknown', purchaserGstRegistered: registered, gstClaimableAsInputTaxCredit: purchaserCanClaimItc ? 'yes' : 'no', estimatedRefundTiming: settlementTiming === 'unknown' ? undefined : settlementTiming, otherAcquisitionCosts: undefined } as any);
+      updateGlobal('gstOutputs', { ...(calculatedOutputs as any), readinessStatus, savedAt: saveSnapshot.timestamp, sourceSummary: sources, confirmationChecklist: checklist } as any);
+      updateGlobal('acquisitionCosts', { gstTreatment: treatment, gstAmount: gstAmountValue ?? undefined, gstClaimable: purchaserCanClaimItc ? 'yes' : 'no', gstCashflowRequired: (settlementCashflowValue ?? 0) > 0 ? 'yes' : 'no', goingConcernConfirmed } as any);
+      updateGlobal('reportPayload', { gst: { treatment, settlementCashflow: settlementCashflowValue, economicCost: economicCostValue, timingRisk: timingRiskValue, readinessStatus, verificationStatus: readinessStatus, savedAt: saveSnapshot.timestamp } } as any);
+      updateGlobal('scenarioOverrides', { gst: saveSnapshot } as any);
+      setSourceMode('gst', 'savedPropertyLinked');
+      setSaveNotice('GST assumptions saved to property profile. Downstream GST fields were refreshed for Borrowing Capacity, Funds to Complete, Report Overview, Scenario comparison and Client report outputs.');
+      setSaveDialogOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Card className="border-primary/20 bg-card/80 shadow-sm">
       <CardHeader className="space-y-3">
@@ -372,12 +451,13 @@ export function GstCalculatorCard() {
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setAdvancedOpen(true)} title="Open GST assumptions and warning log.">Assumption Status</Button>
               <Button size="sm" variant="outline" onClick={runExtractionWorkflow} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "More property or contract information may be required before GST treatment can be estimated."}>Estimate / extract from contract</Button>
-              <SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: persistedTreatment(treatment) })} />
+              <Button size="sm" variant="outline" disabled={saveBackDisabled} onClick={() => setSaveDialogOpen(true)} title={!prefill ? "Select or link a property before saving GST assumptions." : "Save GST assumptions back to the linked property profile."}>{saving ? "Saving..." : "Save Back to Property"}</Button>
             </div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {saveNotice && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">{saveNotice}</div>}
         {extractionNotice && <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{extractionNotice}</div>}
         {extractionPreview && (
           <section className="rounded-xl border border-primary/20 bg-background/35 p-4">
@@ -512,6 +592,25 @@ export function GstCalculatorCard() {
           </CollapsibleContent>
         </Collapsible>
       </CardContent>
+      <AlertDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save these GST assumptions back to the property profile?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This saves GST fields only and refreshes downstream GST sync payloads without overwriting unrelated calculator assumptions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-[55vh] overflow-y-auto rounded-lg border border-border/70 bg-muted/20 p-3 text-sm">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {saveRows.map(([label, value]) => <div key={label} className="flex justify-between gap-3"><span className="text-muted-foreground">{label}</span><span className="text-right text-foreground">{value}</span></div>)}
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(event) => { event.preventDefault(); void confirmSaveBack(); }} disabled={saving}>{saving ? 'Saving...' : 'Save GST assumptions'}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
