@@ -19,6 +19,7 @@ import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalcul
 import { TenYearCashFlowCard } from '@/components/commercial/calculators/TenYearCashFlowCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
 import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
+import { OverviewCommandLayer } from '@/components/commercial/OverviewCommandLayer';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
 import { SiteCoverCard } from '@/components/industrial/calculators/SiteCoverCard';
 import { IndustrialMetricsReadinessProvider } from '@/components/industrial/calculators/IndustrialMetricsReadinessContext';
