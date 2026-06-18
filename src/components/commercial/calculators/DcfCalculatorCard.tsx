@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getDefaultCommercialIndustrialDealProfile, useCommercialDealState } from '@/utils/commercial/commercialDealState';
 
 const PENDING = 'Pending';
@@ -20,6 +21,7 @@ type DcfFieldKey = 'price' | 'acqCosts' | 'initialNoi' | 'hold' | 'growth' | 'va
 type DcfSourceState = 'Blank' | 'Property Profile' | 'Scraped' | 'NOI Tab' | 'Cap Rate Tab' | 'GST Tab' | 'ICR / DSCR Tab' | 'Borrowing Capacity' | 'Research Engine' | 'AI Estimate' | 'Manual' | 'User Override' | 'Verified';
 type Candidate = { value: number; source: DcfSourceState; detail?: string };
 type FieldMeta = { source: DcfSourceState; original?: Candidate; pending?: Candidate; history: string[] };
+type NoiTreatmentMode = 'adjusted' | 'apply' | 'requires_confirmation';
 
 type FieldState = Record<DcfFieldKey, string>;
 type MetaState = Record<DcfFieldKey, FieldMeta>;
@@ -44,6 +46,12 @@ const placeholders: Record<DcfFieldKey, string> = {
   term: 'Enter loan term',
   annualCapex: 'Enter annual capex',
   downtimeMonths: 'Enter downtime months',
+};
+
+const noiTreatmentLabels: Record<NoiTreatmentMode, string> = {
+  adjusted: 'NOI already vacancy-adjusted',
+  apply: 'Apply vacancy allowance in DCF',
+  requires_confirmation: 'Requires confirmation',
 };
 
 const sourceLabels: Record<DcfSourceState, string> = {
@@ -78,6 +86,17 @@ const candidate = (value: unknown, source: DcfSourceState, detail?: string): Can
   return Number.isFinite(n) && n !== 0 ? { value: n, source, detail } : undefined;
 };
 const changedFromDefault = (value: unknown, defaultValue: unknown) => Number.isFinite(Number(value)) && Number(value) !== 0 && Number(value) !== Number(defaultValue ?? 0);
+const aiIncludesVacancy = (metadata: unknown): boolean | undefined => {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const m = metadata as Record<string, any>;
+  const values = [m.vacancyAdjusted, m.includesVacancy, m.vacancyIncluded, m.valueAlreadyVacancyAdjusted, m.metadata?.vacancyAdjusted, m.metadata?.includesVacancy];
+  const bool = values.find((v) => typeof v === 'boolean');
+  if (typeof bool === 'boolean') return bool;
+  const text = [m.reasoningSummary, m.notes, m.sourceDetail].filter(Boolean).join(' ').toLowerCase();
+  if (text.includes('vacancy-adjusted') || text.includes('vacancy adjusted') || text.includes('after vacancy') || text.includes('includes vacancy')) return true;
+  if (text.includes('before vacancy') || text.includes('pre-vacancy') || text.includes('excludes vacancy')) return false;
+  return undefined;
+};
 
 export function DcfCalculatorCard() {
   const { prefill, property } = useCalculatorPrefill();
@@ -85,6 +104,8 @@ export function DcfCalculatorCard() {
   const [fields, setFields] = useState<FieldState>(blankFields);
   const [meta, setMeta] = useState<MetaState>(blankMeta);
   const [generated, setGenerated] = useState(false);
+  const [noiTreatmentMode, setNoiTreatmentMode] = useState<NoiTreatmentMode>('apply');
+  const [noiTreatmentTouched, setNoiTreatmentTouched] = useState(false);
 
   const linkedLabel = prefill ? `Linked property: ${prefill.address || prefill.propertyId}` : 'Manual entry / no property linked';
 
@@ -94,6 +115,7 @@ export function DcfCalculatorCard() {
     const research = p.research_engine ?? p.research ?? p.market_research ?? {};
     const ai = profile.aiEstimateMetadata;
     const aiValue = (key: string) => ai[key]?.estimatedValue ?? ai[`dcfInputs.${key}`]?.estimatedValue;
+    const aiInitialNoi = ai.initialNoi ?? ai['dcfInputs.initialNoi'];
     const acqCostTotal = asNum(profile.fundsToComplete?.totalAcquisitionCosts, (profile.gstOutputs?.gstEconomicCost ?? 0) + (profile.acquisitionCosts?.otherAcquisitionCosts ?? 0), profile.acquisitionCosts?.otherAcquisitionCosts);
     const actualNoi = asNum(profile.noiOutputs?.actualNoi, (profile.noiOutputs as any)?.netOperatingIncome, profile.leaseIncome.grossPassingRent);
     const stabilisedNoi = asNum(profile.noiOutputs?.stabilisedNoi, (profile.noiOutputs as any)?.stabilizedNoi, profile.leaseIncome.marketRent);
@@ -106,7 +128,7 @@ export function DcfCalculatorCard() {
     return {
       price: candidate(prefill?.purchasePrice ?? prefill?.valuation, 'Property Profile') ?? candidate(gstPurchase, 'GST Tab') ?? candidate(borrowingPurchase ?? purchaseFromGlobal, 'Borrowing Capacity') ?? candidate(scrape.purchasePrice ?? scrape.price, 'Scraped'),
       acqCosts: candidate(profile.fundsToComplete?.totalAcquisitionCosts, 'Borrowing Capacity', 'Funds-to-complete') ?? candidate(profile.gstOutputs?.gstEconomicCost, 'GST Tab', 'Net GST economic cost') ?? candidate(acqCostTotal, 'Borrowing Capacity') ?? candidate(aiValue('acquisitionCosts'), 'AI Estimate'),
-      initialNoi: candidate(selectedNoi, 'NOI Tab', lenderNoi ? 'Lender-Adjusted NOI' : stabilisedNoi ? 'Stabilised NOI' : actualNoi ? 'Actual NOI' : undefined) ?? candidate(prefill?.passingNoi ?? prefill?.marketNoi, 'Property Profile'),
+      initialNoi: candidate(selectedNoi, 'NOI Tab', lenderNoi ? 'Lender-Adjusted NOI' : stabilisedNoi ? 'Stabilised NOI' : actualNoi ? 'Actual NOI' : undefined) ?? candidate(prefill?.passingNoi ?? prefill?.marketNoi, 'Property Profile') ?? candidate(aiValue('initialNoi'), 'AI Estimate', aiIncludesVacancy(aiInitialNoi) === true ? 'Vacancy included' : aiIncludesVacancy(aiInitialNoi) === false ? 'Before vacancy' : undefined),
       hold: changedFromDefault(profile.dcfInputs.holdPeriodYears, defaultProfile.dcfInputs.holdPeriodYears) ? candidate(profile.dcfInputs.holdPeriodYears, 'Manual') : undefined,
       growth: candidate(research.rentalGrowthPct ?? research.marketGrowthPct ?? research.rent_growth_pct, 'Research Engine') ?? candidate(aiValue('rentalGrowthPct'), 'AI Estimate'),
       vacancy: (changedFromDefault(profile.leaseIncome.vacancyAllowancePct, defaultProfile.leaseIncome.vacancyAllowancePct) ? candidate(profile.leaseIncome.vacancyAllowancePct, 'NOI Tab') : undefined) ?? candidate(research.vacancyAllowancePct ?? research.vacancy_pct, 'Research Engine') ?? candidate(aiValue('vacancyAllowancePct'), 'AI Estimate'),
@@ -150,6 +172,22 @@ export function DcfCalculatorCard() {
     setGenerated(false);
   }, [cascade]);
 
+  useEffect(() => {
+    if (noiTreatmentTouched) return;
+    const noi = meta.initialNoi;
+    if (noi.source === 'NOI Tab' && ['Actual NOI', 'Stabilised NOI', 'Lender-Adjusted NOI'].includes(noi.original?.detail ?? '')) {
+      setNoiTreatmentMode('adjusted');
+      return;
+    }
+    if (noi.source === 'AI Estimate') {
+      if (noi.original?.detail === 'Vacancy included') setNoiTreatmentMode('adjusted');
+      else if (noi.original?.detail === 'Before vacancy') setNoiTreatmentMode('apply');
+      else setNoiTreatmentMode('requires_confirmation');
+      return;
+    }
+    if (noi.source === 'Manual') setNoiTreatmentMode('requires_confirmation');
+  }, [meta.initialNoi, noiTreatmentTouched]);
+
   const updateField = (key: DcfFieldKey, value: string) => {
     setFields((current) => ({ ...current, [key]: value }));
     setMeta((current) => {
@@ -173,15 +211,17 @@ export function DcfCalculatorCard() {
 
   const keepOverride = (key: DcfFieldKey) => setMeta((current) => ({ ...current, [key]: { ...current[key], pending: undefined, history: [...current[key].history, `${new Date().toISOString()}: Kept saved override instead of new source value.`] } }));
 
-  const canGenerate = isPositiveNumber(fields.price) && isPositiveNumber(fields.initialNoi) && isPositiveNumber(fields.hold) && hasNumber(fields.growth) && isPositiveNumber(fields.termCap) && isPositiveNumber(fields.discount);
+  const noiTreatmentConfirmed = noiTreatmentMode !== 'requires_confirmation';
+  const vacancyMayBeDoubleCounted = noiTreatmentMode === 'apply' && (meta.initialNoi.source === 'NOI Tab' || meta.initialNoi.original?.detail === 'Vacancy included');
+  const canGenerate = noiTreatmentConfirmed && isPositiveNumber(fields.price) && isPositiveNumber(fields.initialNoi) && isPositiveNumber(fields.hold) && hasNumber(fields.growth) && isPositiveNumber(fields.termCap) && isPositiveNumber(fields.discount);
   const isComplete = generated && canGenerate;
 
   const result = useMemo(() => {
     if (!isComplete) return null;
     return runDcfAssessment({
-      purchasePrice: num(fields.price), acquisitionCosts: num(fields.acqCosts), initialNoi: num(fields.initialNoi), holdPeriodYears: Math.max(1, num(fields.hold)), rentalGrowthPct: num(fields.growth), vacancyAllowancePct: num(fields.vacancy), terminalCapRatePct: num(fields.termCap), sellingCostsPct: num(fields.sellingCosts), discountRatePct: num(fields.discount), loanAmount: num(fields.loan), interestRatePct: num(fields.interest), loanTermYears: num(fields.term), annualCapex: num(fields.annualCapex), downtimeMonths: num(fields.downtimeMonths), exitCapSensitivityPct: [num(fields.termCap) - 0.5, num(fields.termCap), num(fields.termCap) + 0.5],
+      purchasePrice: num(fields.price), acquisitionCosts: num(fields.acqCosts), initialNoi: num(fields.initialNoi), holdPeriodYears: Math.max(1, num(fields.hold)), rentalGrowthPct: num(fields.growth), vacancyAllowancePct: noiTreatmentMode === 'adjusted' ? 0 : num(fields.vacancy), terminalCapRatePct: num(fields.termCap), sellingCostsPct: num(fields.sellingCosts), discountRatePct: num(fields.discount), loanAmount: num(fields.loan), interestRatePct: num(fields.interest), loanTermYears: num(fields.term), annualCapex: num(fields.annualCapex), downtimeMonths: num(fields.downtimeMonths), exitCapSensitivityPct: [num(fields.termCap) - 0.5, num(fields.termCap), num(fields.termCap) + 0.5],
     });
-  }, [isComplete, fields]);
+  }, [isComplete, fields, noiTreatmentMode]);
 
   return (
     <Card>
@@ -201,6 +241,28 @@ export function DcfCalculatorCard() {
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
           <div className="text-sm font-semibold text-primary">{isComplete ? 'DCF Outputs Generated' : EMPTY_STATUS}</div>
           {!isComplete && <p className="mt-1 text-xs text-muted-foreground">{EMPTY_HELPER}</p>}
+        </div>
+
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,320px)_1fr]">
+            <div>
+              <Label className="text-xs">NOI Treatment Mode</Label>
+              <Select value={noiTreatmentMode} onValueChange={(v) => { setNoiTreatmentMode(v as NoiTreatmentMode); setNoiTreatmentTouched(true); setGenerated(false); }}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adjusted">NOI already vacancy-adjusted</SelectItem>
+                  <SelectItem value="apply">Apply vacancy allowance in DCF</SelectItem>
+                  <SelectItem value="requires_confirmation">Requires confirmation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+              <p>Controls whether the DCF applies the vacancy allowance to Base NOI or treats Base NOI as already after vacancy.</p>
+              <p>Current mode: <span className="font-medium text-foreground">{noiTreatmentLabels[noiTreatmentMode]}</span></p>
+              {noiTreatmentMode === 'requires_confirmation' && <p className="text-amber-200">Requires confirmation before generating cashflow.</p>}
+              {vacancyMayBeDoubleCounted && <p className="text-amber-200">Base NOI appears to already include vacancy. Applying vacancy again may double-count vacancy loss.</p>}
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-3">
