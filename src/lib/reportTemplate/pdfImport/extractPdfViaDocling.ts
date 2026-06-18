@@ -27,7 +27,16 @@ import type {
   DoclingDocument,
   DoclingRasterByPage,
   DoclingRasterResponse,
+  RasterManifest,
 } from './docling/doclingTypes';
+import { downloadRasterManifest } from './rasterArtifactRefs';
+
+/**
+ * Phase 3 compatibility flag — keep `false` so legacy base64 `rasters.json` is
+ * NEVER auto-loaded into the schema. Toggle only for one-off debug sessions.
+ */
+const allowLegacyRastersJson = false;
+
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
