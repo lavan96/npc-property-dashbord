@@ -688,8 +688,7 @@ async def _upload_raster_manifest_artifacts(
     for page in raster_result.get("pages") or []:
         page_no = int(page.get("page_no") or (len(page_raster_paths) + 1))
         data, mime = _decode_raster_page_bytes(page)
-        ext = "jpg" if fmt == "jpeg" else "png"
-        path = f"{prefix}/pages/page-{page_no:03d}.{ext}"
+        path = f"{prefix}/pages/page-{page_no:03d}.png"
         uploaded_path = await _storage_upload(client, path, data, mime or "image/png")
         page_path = uploaded_path or path
         page_raster_paths.append(page_path)
@@ -869,7 +868,7 @@ async def _run_async_job(req: ParseRequest) -> None:
             legacy_rasters_path = None
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
                 dpi = req.raster_dpi or RASTER_DPI
-                raster_format = (req.raster_format or RASTER_FORMAT or "png").lower()
+                raster_format = "png" if RASTER_ARTIFACT_MODE == "manifest" else (req.raster_format or RASTER_FORMAT or "png").lower()
                 raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=raster_format)
                 cloud_run_ms += int(raster_result.get("raster_ms") or 0)
                 if RASTER_ARTIFACT_MODE == "manifest":
@@ -902,7 +901,6 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "docling_path": docling_path,
                 "rasters_manifest_path": rasters_manifest_path,
                 "page_raster_paths": page_raster_paths,
-                "legacy_rasters_path": legacy_rasters_path,
                 "doctags_path": doctags_path,
                 "markdown_path": markdown_path,
                 "outline_path": outline_path,
@@ -915,6 +913,8 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "auto_mode_selected": effective_mode != requested_mode,
                 "cache_hit": False,
             }
+            if legacy_rasters_path:
+                result_payload["legacy_rasters_path"] = legacy_rasters_path
             if rasters_path:
                 result_payload["rasters_path"] = rasters_path
             await _post_callback(client, callback_url, callback_token, job_id, {
@@ -1183,7 +1183,7 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             mode = (req.mode or "semantic").lower()
             if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
                 dpi = req.raster_dpi or RASTER_DPI
-                raster_format = (req.raster_format or RASTER_FORMAT or "png").lower()
+                raster_format = "png" if RASTER_ARTIFACT_MODE == "manifest" else (req.raster_format or RASTER_FORMAT or "png").lower()
                 try:
                     raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_format)
                     if RASTER_ARTIFACT_MODE == "manifest":
