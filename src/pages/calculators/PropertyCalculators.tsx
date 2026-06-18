@@ -656,8 +656,28 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
 
         <div className="space-y-3">
           <ActivePropertyHeader />
+          <MasterActivePropertyHeader />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAddPropertyOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add property to calculators
+            </Button>
+          </div>
           <CalculatorPropertyBar />
         </div>
+        <AddPropertyToCalculatorsDialog
+          open={addPropertyOpen}
+          onOpenChange={setAddPropertyOpen}
+          defaultDomain={domain}
+          onPropertyReady={({ id, domain: dom }) => {
+            if (dom !== domain) setDomain(dom);
+            const next = new URLSearchParams(window.location.search);
+            next.set('domain', dom);
+            next.set('propertyId', id);
+            window.history.replaceState(null, '', `?${next.toString()}`);
+            // CalculatorPrefillProvider auto-loads from ?propertyId on mount; force re-mount via domain change above when dom differs.
+            window.dispatchEvent(new Event('popstate'));
+          }}
+        />
 
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
