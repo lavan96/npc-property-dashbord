@@ -26,6 +26,7 @@ const title = (v: string) => v.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.t
 const badgeVariant = (r?: string) => (r === 'green' ? 'default' : r === 'amber' ? 'secondary' : 'destructive');
 const TEN_YEAR_CALCULATION_VERSION = '10-Year Cash Flow v1.0';
 const EXIT_VALUE_DIFFERENCE_THRESHOLD = 0.1;
+const TEN_YEAR_REPORT_VERSION = 'PDF Report v1.0';
 
 const summaryFormulaTooltip = (label: string) => {
   if (label === 'Levered IRR') return 'Internal rate of return on equity contributions and levered cashflows, including terminal proceeds where applicable.';
@@ -211,6 +212,11 @@ export function TenYearCashFlowCard() {
   const [capexNoneConfirmed, setCapexNoneConfirmed] = useState(false);
   const [generatedCashFlow, setGeneratedCashFlow] = useState<{ result: TenYearCashFlowResult; generatedAt: string; signature: string; calculationVersion: string } | null>(null);
   const [reportVerified, setReportVerified] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState({ assumptions: true, formulaNotes: true, warnings: true, scenarioNotes: true, commentary: true, fullTable: true, summaryCards: true, aiEstimateNotes: true });
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfConfirmOpen, setPdfConfirmOpen] = useState(false);
+  const [pdfExportHistory, setPdfExportHistory] = useState<Array<{ timestamp: string; calculationVersion: string; reportVersion: string; scenarioName: string }>>([]);
+  const [lastPdfGeneratedAt, setLastPdfGeneratedAt] = useState<string | null>(null);
   const cascade = useMemo<CascadeMap>(() => {
     const pick = (...candidates: Array<{ value: unknown; source: SourceState }>): CascadeValue | undefined => {
       for (const c of candidates) if (typeof c.value === 'number' && Number.isFinite(c.value)) return { value: c.value, source: c.source };
@@ -408,6 +414,7 @@ export function TenYearCashFlowCard() {
     if (!modelReady) return;
     setGeneratedCashFlow({ result, generatedAt: new Date().toISOString(), signature: generationSignature, calculationVersion: TEN_YEAR_CALCULATION_VERSION });
   };
+  const togglePdfOption = (key: keyof typeof pdfOptions) => setPdfOptions(options => ({ ...options, [key]: !options[key] }));
   const s = reportResult.summary;
   const pending = !modelReady;
   const year10 = reportResult.years[9];
@@ -475,6 +482,26 @@ export function TenYearCashFlowCard() {
             : generatedCurrent
               ? reportVerified ? 'Report is ready for PDF generation.' : 'Report is ready for PDF generation.'
               : 'Complete missing assumptions before generating the report.';
+  const criticalWarnings = validationWarnings.filter(w => w.severity === 'Critical');
+  const requiredWarnings = validationWarnings.filter(w => w.severity === 'Required');
+  const preliminaryPdfWarnings = validationWarnings.filter(w => w.severity === 'Recommended' && ['AI / Research', 'Manual Overrides', 'Tax', 'GST'].includes(w.category));
+  const pdfGenerationBlocked = !generatedCashFlow || generatedOutOfDate || criticalWarnings.length > 0 || requiredWarnings.length > 0 || exitValuePdfBlocked;
+  const runPdfGeneration = () => {
+    const timestamp = new Date().toISOString();
+    setLastPdfGeneratedAt(timestamp);
+    setPdfExportHistory(history => [...history, { timestamp, calculationVersion: generatedCashFlow?.calculationVersion ?? TEN_YEAR_CALCULATION_VERSION, reportVersion: TEN_YEAR_REPORT_VERSION, scenarioName: scenarioName || '10-Year Cash Flow Scenario' }]);
+    setPdfConfirmOpen(false);
+  };
+  const exportScenarioData = () => {
+    const payload = { scenarioName, property: dealProfile, generatedCashFlow, pdfOptions, annualOverrides, exportHistory: pdfExportHistory, reportVersion: TEN_YEAR_REPORT_VERSION };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(scenarioName || 'ten-year-cash-flow-scenario').replace(/\s+/g, '-').toLowerCase()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const assumptionPlaceholders: Partial<Record<keyof TenYearCashFlowInputs, string>> = { purchasePrice: 'Pulled from property profile or enter manually', totalCostBase: 'Calculated from purchase price, costs and GST', passingRent: 'Pulled from NOI or enter manually', rentGrowthPct: 'Pulled from research engine or enter manually', vacancyAllowancePct: 'Pulled from NOI / research or enter manually', outgoingsGrowthPct: 'Enter outgoings growth', annualCapexReserve: 'Enter capex reserve', terminalCapRatePct: 'Pulled from Cap Rate / DCF or enter manually', taxRatePct: 'Enter tax rate or confirm accountant review', gstEconomicCost: 'Pulled from GST tab or enter manually' };
   const summaryCards = mode === 'investor'
@@ -631,12 +658,12 @@ export function TenYearCashFlowCard() {
               <div className="flex flex-wrap gap-2">{cashFlowAiEstimateActions.map(action => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => openEstimatePreview(action)}><Sparkles className="h-3.5 w-3.5 mr-1" />{action.label}</Button>)}</div>
               {assumptionHistory.length > 0 && <div className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Assumption history:</span> {assumptionHistory.slice(-3).map(item => `${title(String(item.field))}: ${item.value} (${item.source})`).join(' · ')}</div>}
             </div>
-            <Button disabled={!generatedCurrent || exitValuePdfBlocked} variant="outline" title={!generatedCurrent ? 'Generate or regenerate the current 10-year cash flow before exporting a PDF report.' : exitValuePdfBlocked ? 'Confirm exit value reconciliation before exporting a PDF report.' : 'Generate PDF Report'}><FileText className="h-3.5 w-3.5 mr-1" />Generate PDF Report</Button>
           </div>
         </CardContent>
       </Card>
     </TooltipProvider>
     <Card className={generatedOutOfDate ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardContent className="space-y-3 pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-primary">{generatedCurrent ? '10-year cashflow generated' : generatedOutOfDate ? 'Cashflow out of date' : 'Generate 10-Year Cash Flow'}</p>{generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">Generated {new Date(generatedCashFlow.generatedAt).toLocaleString()} · {generatedCashFlow.calculationVersion}</p>} {!generatedCashFlow && <p className="mt-1 text-xs text-muted-foreground">The cashflow table and report outputs will appear after generation.</p>}</div><Button type="button" disabled={!modelReady} onClick={generateCashFlow} title={!modelReady ? 'Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.' : generatedOutOfDate ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}>{generatedOutOfDate ? 'Regenerate Cash Flow' : generatedCurrent ? 'Regenerate Cash Flow' : 'Generate 10-Year Cash Flow'}</Button>{generatedCurrent && !exitValuePdfBlocked && <Button type="button" variant={reportVerified ? 'default' : 'outline'} onClick={() => setReportVerified(v => !v)}>{reportVerified ? 'Report Verified' : 'Mark Report Verified'}</Button>}</div>{!modelReady && <p className="text-xs text-muted-foreground">Complete purchase price, NOI, growth, vacancy, capex, debt and exit assumptions before generating the 10-year model.</p>}{generatedOutOfDate && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-100">Cashflow out of date. Regenerate before PDF export.</div>}</CardContent></Card>
+    <Card className="border-primary/20 bg-primary/5"><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> PDF Report Controls</CardTitle><CardDescription>Configure and export the final validated 10-year cashflow report.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-wrap items-center gap-2"><Badge variant={pdfGenerationBlocked ? 'outline' : preliminaryPdfWarnings.length ? 'secondary' : 'default'}>Readiness: {reportStatus}</Badge>{lastPdfGeneratedAt && <Badge variant="outline">Last PDF {new Date(lastPdfGeneratedAt).toLocaleString()}</Badge>}<Badge variant="outline">{TEN_YEAR_REPORT_VERSION}</Badge></div><div className="grid gap-2 md:grid-cols-4">{Object.entries({ assumptions: 'Include assumptions', formulaNotes: 'Include formula notes', warnings: 'Include warnings', scenarioNotes: 'Include scenario notes', commentary: 'Include commentary', fullTable: 'Include full 10-year table', summaryCards: 'Include summary cards', aiEstimateNotes: 'Include AI estimate notes' } as Record<keyof typeof pdfOptions, string>).map(([key, label]) => <Button key={key} type="button" variant={pdfOptions[key as keyof typeof pdfOptions] ? 'default' : 'outline'} onClick={() => togglePdfOption(key as keyof typeof pdfOptions)}>{label}</Button>)}</div>{preliminaryPdfWarnings.length > 0 && !pdfGenerationBlocked && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-100">PDF can be generated with warnings: preliminary assumptions, AI estimates, manual overrides or tax/GST items require review.</div>}<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!generatedCashFlow} onClick={() => setPdfPreviewOpen(true)}>Preview Report</Button><Button type="button" disabled={pdfGenerationBlocked} onClick={() => setPdfConfirmOpen(true)} title={pdfGenerationBlocked ? 'Resolve generation, critical warning or required assumption blockers before PDF generation.' : 'Generate PDF'}>Generate PDF</Button><Button type="button" variant="outline" onClick={exportScenarioData}>Export Scenario Data</Button></div>{pdfExportHistory.length > 0 && <div className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Export history:</span> {pdfExportHistory.slice(-3).map(item => `${new Date(item.timestamp).toLocaleString()} (${item.reportVersion})`).join(' · ')}</div>}</CardContent></Card>
     {!generatedCashFlow && <Card className="border-primary/30 bg-primary/5"><CardContent className="pt-4"><p className="font-semibold text-primary">Awaiting Cash Flow Inputs</p><p className="mt-1 text-sm text-muted-foreground">Import property, NOI, GST, debt and DCF assumptions or enter values manually to generate the 10-year cash flow report.</p></CardContent></Card>}
     {generatedCashFlow && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">{summaryCards.map(([label, value]) => <SummaryCard key={String(label)} label={String(label)} value={value as any} pending={false} />)}<SummaryCard label="Risk status" value={title(s.riskStatus)} pending={false} /></div>}
     {generatedCashFlow && <Card className={exitValueMaterialDifference ? 'border-amber-500/30 bg-amber-500/10' : 'border-primary/20 bg-primary/5'}><CardHeader><CardTitle className="text-base">Exit Value Reconciliation</CardTitle><CardDescription>Capital-growth value and income-capitalised terminal value are both preserved and compared before client reporting.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div className="grid gap-3 md:grid-cols-5"><SummaryCard label="Year 10 Capital Growth Value" value={year10CapitalGrowthValue} pending={false} /><SummaryCard label="Terminal Cap Value" value={terminalCapValue} pending={false} /><SummaryCard label="Difference" value={exitValueDifference} pending={false} /><SummaryCard label="Difference %" value={exitValueDifferencePct == null ? PENDING : `${(exitValueDifferencePct * 100).toFixed(1)}%`} pending={false} /><SummaryCard label="Selected Exit Value Used in Report" value={selectedExitValueUsed} pending={false} /></div>{exitValueMaterialDifference && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100">Exit value methods materially differ. Confirm which value should be used for client reporting.</div>}<p className="text-muted-foreground">Exit value has been modelled using {exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.</p>{(exitValueMaterialDifference || exitValueMethod === 'Manual Verified Exit Value') && <Button type="button" variant={exitReconciliationConfirmed ? 'default' : 'outline'} onClick={() => setExitReconciliationConfirmed(v => !v)}>{exitReconciliationConfirmed ? 'Exit reconciliation confirmed' : 'Confirm exit value for client reporting'}</Button>}</CardContent></Card>}
@@ -647,6 +674,46 @@ export function TenYearCashFlowCard() {
     {annualOverrideCount > 0 && <Card className="border-amber-500/30 bg-amber-500/10"><CardHeader><CardTitle className="text-base">Annual Override Assumption Status</CardTitle><CardDescription>Overrides are included in assumption status, audit trail, PDF assumption notes and scenario save data through the 10-year cashflow inputs payload.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm"><div><h4 className="font-medium">Audit Trail</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{assumptionHistory.filter(item => item.source === 'Annual Override').slice(-8).map((item, index) => <li key={`${item.field}-${item.year}-${item.timestamp}-${index}`}>Year {item.year}: {title(String(item.field))} overridden to {item.value} by Current user at {new Date(item.timestamp).toLocaleString()}</li>)}</ul></div><div><h4 className="font-medium">PDF report assumption notes</h4><p className="text-muted-foreground">Annual overrides are active. Review assumption history before generating report.</p></div><div><h4 className="font-medium">Scenario save data</h4><p className="text-muted-foreground">The active annual override map is stored on the generated cashflow inputs for scenario persistence.</p></div></CardContent></Card>}
     <Card><CardHeader><CardTitle className="text-base">Assumption Status</CardTitle><CardDescription>Full validation warning log grouped by category and severity.</CardDescription></CardHeader><CardContent className="space-y-3 text-sm">{Object.entries(groupedWarnings).map(([category, warnings]) => <div key={category}><h4 className="font-medium">{category}</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{warnings.map((warning, index) => <li key={`${category}-${index}`}><span className="font-medium">{warning.severity}:</span> {warning.message}</li>)}</ul></div>)}</CardContent></Card>
     <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Commentary</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground leading-relaxed">{!generatedCashFlow ? PENDING : `${reportResult.commentary} Exit value has been modelled using ${exitValueMethod}. Capital-growth value and income-capitalised terminal value have been compared for reasonableness.`}</p></CardContent></Card>
+    <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader><DialogTitle>10-Year Cash Flow PDF Preview</DialogTitle><DialogDescription>Preview the sections that will be included in the polished PDF output.</DialogDescription></DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p><span className="font-medium">Scenario:</span> {scenarioName || '10-Year Cash Flow Scenario'}</p>
+          <p><span className="font-medium">Readiness:</span> {reportStatus}</p>
+          <p><span className="font-medium">Generated:</span> {generatedCashFlow ? new Date(generatedCashFlow.generatedAt).toLocaleString() : PENDING}</p>
+          <ul className="grid gap-1 md:grid-cols-2 text-muted-foreground">
+            {pdfOptions.assumptions && <li>Cover / property summary and key assumptions</li>}
+            {pdfOptions.summaryCards && <li>Summary output cards</li>}
+            {pdfOptions.fullTable && <li>Full 10-year cashflow table</li>}
+            <li>Valuation / exit value section</li><li>Debt metrics section</li><li>NOI and cashflow section</li><li>Capex and leasing section</li>
+            {pdfOptions.warnings && <li>Warnings and assumptions</li>}
+            {pdfOptions.scenarioNotes && <li>Scenario notes</li>}
+            {pdfOptions.commentary && <li>Editable report commentary</li>}
+            {pdfOptions.aiEstimateNotes && <li>AI estimate notes</li>}
+            {pdfOptions.formulaNotes && <li>Formula notes</li>}
+            <li>Disclaimer / estimate note</li>
+          </ul>
+        </div>
+        <DialogFooter><Button type="button" onClick={() => setPdfPreviewOpen(false)}>Close Preview</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={pdfConfirmOpen} onOpenChange={setPdfConfirmOpen}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader><DialogTitle>Generate 10-Year Cash Flow PDF Report?</DialogTitle><DialogDescription>Confirm the final report inputs before generating the PDF record.</DialogDescription></DialogHeader>
+        <div className="grid gap-3 text-sm md:grid-cols-2">
+          <div><span className="font-medium">Scenario name:</span> {scenarioName || '10-Year Cash Flow Scenario'}</div>
+          <div><span className="font-medium">Property address:</span> {String((dealProfile as any)?.address ?? (dealProfile as any)?.propertyAddress ?? 'Not provided')}</div>
+          <div><span className="font-medium">Data source:</span> {buildGlobalSyncLabel(sourceMode as CalculatorSourceMode)}</div>
+          <div><span className="font-medium">Generated date:</span> {generatedCashFlow ? new Date(generatedCashFlow.generatedAt).toLocaleString() : PENDING}</div>
+          <div><span className="font-medium">Readiness status:</span> {reportStatus}</div>
+          <div><span className="font-medium">Commentary included:</span> {pdfOptions.commentary ? 'Yes' : 'No'}</div>
+          <div><span className="font-medium">AI estimate notes included:</span> {pdfOptions.aiEstimateNotes ? 'Yes' : 'No'}</div>
+          <div><span className="font-medium">Key assumptions:</span> Rent growth {inputs.rentGrowthPct}% · Vacancy {inputs.vacancyAllowancePct}% · Exit {exitValueMethod}</div>
+        </div>
+        <div className="text-sm"><h4 className="font-medium">Key warnings</h4><ul className="mt-1 list-disc pl-5 text-muted-foreground">{priorityWarnings.map((warning, index) => <li key={index}>{warning.category}: {warning.message}</li>)}</ul></div>
+        <DialogFooter><Button type="button" variant="outline" onClick={() => setPdfConfirmOpen(false)}>Cancel</Button><Button type="button" onClick={runPdfGeneration}>Generate PDF</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
     <Dialog open={Boolean(estimatePreview)} onOpenChange={(open) => { if (!open) setEstimatePreview(null); }}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
