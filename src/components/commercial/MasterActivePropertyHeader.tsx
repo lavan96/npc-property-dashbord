@@ -29,6 +29,8 @@ import { useReportFreshnessStore } from '@/utils/commercial/reportFreshnessStore
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { AiEstimateReviewPanel, type PendingAiEstimate } from './AiEstimateReviewPanel';
 
+import { markFieldInsufficient } from '@/utils/commercial/pendingFieldDisplay';
+
 export function MasterActivePropertyHeader() {
   const { domain, prefill, property } = useCalculatorPrefill();
   const assumptions = useMasterAssumptionStore(s => s.assumptions);
@@ -78,27 +80,40 @@ export function MasterActivePropertyHeader() {
       if (!data?.success) throw new Error(data?.error || 'AI estimates returned no data');
 
       const raw: Array<any> = data.estimates || [];
-      const pending: PendingAiEstimate[] = raw
-        .filter(e => e.value !== null && e.value !== undefined && e.value !== '')
-        .map(e => {
-          const meta = completeness.missing.find(m => m.key === e.key);
-          const current = assumptions[e.key]?.value ?? null;
-          return {
-            key: e.key,
-            label: meta?.label ?? e.label ?? e.key,
-            unit: e.unit ?? null,
-            currentValue: current,
-            suggestedValue: e.value,
-            suggestedRange: e.range ?? null,
-            confidence: e.confidence ?? 'low',
-            sourceBasis: e.sourceBasis ?? (e.rationale ? [e.rationale] : ['AI estimate']),
-            missingInformation: e.missingData ?? [],
-            riskNotes: e.riskNotes ?? [],
-            affectedTabs: e.affectedTabs ?? meta?.tabs ?? [],
-            specialistReview: Boolean(e.specialistReview),
-            source: e.source ?? 'AI Estimate',
-          };
+      // Keep estimates with null value too — they surface as "Insufficient
+      // information" rows so the user sees WHY no estimate is possible
+      // instead of silently dropping the field.
+      const pending: PendingAiEstimate[] = raw.map(e => {
+        const meta = completeness.missing.find(m => m.key === e.key);
+        const current = assumptions[e.key]?.value ?? null;
+        const hasValue = e.value !== null && e.value !== undefined && e.value !== '';
+        return {
+          key: e.key,
+          label: meta?.label ?? e.label ?? e.key,
+          unit: e.unit ?? null,
+          currentValue: current,
+          suggestedValue: hasValue ? e.value : null,
+          suggestedRange: e.range ?? null,
+          confidence: e.confidence ?? 'low',
+          sourceBasis: e.sourceBasis ?? (e.rationale ? [e.rationale] : ['AI estimate']),
+          missingInformation: e.missingData ?? [],
+          riskNotes: e.riskNotes ?? [],
+          affectedTabs: e.affectedTabs ?? meta?.tabs ?? [],
+          specialistReview: Boolean(e.specialistReview),
+          source: e.source ?? 'AI Estimate',
+        };
+      });
+
+      // Auto-mark insufficient-basis fields on the master store so downstream
+      // surfaces render the canned copy rather than $0 / N/A / undefined.
+      const insufficient = pending.filter(p => p.suggestedValue === null);
+      for (const ins of insufficient) {
+        markFieldInsufficient(ins.key, {
+          label: ins.label,
+          tabDependencies: ins.affectedTabs,
+          reason: ins.riskNotes.join('; ') || 'AI engine reported no reasonable basis.',
         });
+      }
 
       if (pending.length === 0) {
         toast.info('AI returned no usable estimates.');
@@ -107,7 +122,11 @@ export function MasterActivePropertyHeader() {
 
       setPendingEstimates(pending);
       setReviewOpen(true);
-      toast.success(`${pending.length} AI estimate${pending.length === 1 ? '' : 's'} ready for review.`);
+      const usable = pending.length - insufficient.length;
+      toast.success(
+        `${usable} AI estimate${usable === 1 ? '' : 's'} ready for review` +
+          (insufficient.length ? `, ${insufficient.length} flagged as insufficient information.` : '.'),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'AI estimates failed';
       toast.error(msg);
