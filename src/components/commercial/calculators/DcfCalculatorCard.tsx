@@ -275,3 +275,7 @@ function Metric({ label, value, highlight }: { label: string; value: string; hig
 function PendingPanel({ compact = false }: { compact?: boolean }) {
   return <div className={`rounded border border-dashed bg-muted/20 text-sm text-muted-foreground ${compact ? 'mt-2 p-2' : 'p-4'}`}>{PENDING}</div>;
 }
+
+function PendingPanel({ compact = false }: { compact?: boolean }) {
+  return <div className={`rounded border border-dashed bg-muted/20 text-sm text-muted-foreground ${compact ? 'mt-2 p-2' : 'p-4'}`}>{PENDING}</div>;
+}
