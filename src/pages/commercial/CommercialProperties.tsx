@@ -120,10 +120,13 @@ export default function CommercialProperties() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => navigate('/calculators?domain=commercial')}>Calculators</Button>
+          <Button variant="default" onClick={() => setAddToCalcOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Add property to Calculators
+          </Button>
           <Button variant="outline" onClick={() => openNew('industrial')}>
             <Factory className="h-4 w-4 mr-2" /> New Industrial
           </Button>
-          <Button onClick={() => openNew('commercial')}>
+          <Button variant="outline" onClick={() => openNew('commercial')}>
             <Plus className="h-4 w-4 mr-2" /> New Commercial
           </Button>
         </div>
