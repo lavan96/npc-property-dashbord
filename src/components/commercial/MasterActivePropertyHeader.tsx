@@ -211,7 +211,28 @@ export function MasterActivePropertyHeader() {
             {completeness.totalEstimated} field{completeness.totalEstimated === 1 ? '' : 's'} populated by AI estimate. These are labelled as estimates and must be verified before relying on report outputs.
           </div>
         )}
+
+        {pendingEstimates.length > 0 && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-2 text-xs text-sky-700 dark:text-sky-300">
+            <span>{pendingEstimates.length} AI estimate{pendingEstimates.length === 1 ? '' : 's'} awaiting review.</span>
+            <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>Open review panel</Button>
+          </div>
+        )}
+
+        {reportsOutOfDate && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+            <span>
+              Final report is out of date — assumptions changed on: {updatedTabs.join(', ') || 'multiple tabs'}.
+            </span>
+          </div>
+        )}
       </CardContent>
+
+      <AiEstimateReviewPanel
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        estimates={pendingEstimates}
+      />
     </Card>
   );
 }
