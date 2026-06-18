@@ -62,7 +62,7 @@ export function assessIndustrialBenchmark(inputs: AssessmentInputs, config = ind
   const notes: string[] = [];
   let status: IndustrialBenchmarkStatus = inputs.verified ? 'Verified' : 'Preliminary Benchmark';
   let coverageBand = 'Balanced';
-  let explanation = config.siteCoverPct.balancedExplanation;
+  let explanation: string = config.siteCoverPct.balancedExplanation;
 
   if ((inputs.siteCoverPct ?? 0) < config.siteCoverPct.lowMax) {
     status = 'Under-Improved';
