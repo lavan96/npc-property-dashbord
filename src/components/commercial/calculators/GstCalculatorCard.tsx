@@ -3,25 +3,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { calculateCommercialGst, calculateCommercialGstEngine, type GstTreatment } from '@/utils/commercial';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useApplyPrefill } from '@/contexts/CalculatorPrefillContext';
+import { useApplyPrefill, useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { SaveBackButton } from '@/components/commercial/SaveBackButton';
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0);
+  Number.isFinite(n)
+    ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n)
+    : 'Pending';
+
+const PENDING = 'Pending';
+type GstTreatmentInput = GstTreatment | 'unknown';
+type ConfirmationState = 'yes' | 'no' | 'unknown';
 
 const num = (v: string) => (v === '' ? 0 : Number(v));
+const optionalNum = (v: string) => (v === '' ? undefined : Number(v));
 
 export function GstCalculatorCard() {
-  const [price, setPrice] = useState('3000000');
-  const [treatment, setTreatment] = useState<GstTreatment>('going_concern');
-  const [priorCost, setPriorCost] = useState('1800000');
-  const [registered, setRegistered] = useState(true);
-  const [goingConcernConfirmed, setGoingConcernConfirmed] = useState(false);
+  const { prefill } = useCalculatorPrefill();
+  const [price, setPrice] = useState('');
+  const [treatment, setTreatment] = useState<GstTreatmentInput>('unknown');
+  const [priorCost, setPriorCost] = useState('');
+  const [registered, setRegistered] = useState<ConfirmationState>('unknown');
+  const [goingConcernConfirmed, setGoingConcernConfirmed] = useState<ConfirmationState>('unknown');
 
   useApplyPrefill((p) => {
     if (p.purchasePrice != null) setPrice(String(p.purchasePrice));
@@ -31,25 +38,29 @@ export function GstCalculatorCard() {
     }
   });
 
-  const result = useMemo(() => calculateCommercialGst({
-    purchasePrice: num(price), treatment, priorCost: num(priorCost), purchaserRegistered: registered,
-  }), [price, treatment, priorCost, registered]);
-  const assessment = useMemo(() => calculateCommercialGstEngine({ purchasePrice: num(price), treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : 'unknown', vendorGstRegistered: 'unknown', purchaserGstRegistered: registered ? 'yes' : 'no', goingConcernAgreedInWriting: goingConcernConfirmed ? 'yes' : 'unknown', enterpriseCarriedOnUntilSettlement: goingConcernConfirmed ? 'yes' : 'unknown', supplierProvidesAllThingsNecessary: goingConcernConfirmed ? 'yes' : 'unknown', propertyLeasedOrOperatingEnterprise: goingConcernConfirmed ? 'yes' : 'unknown', gstClaimableAsInputTaxCredit: registered ? 'yes' : 'no', estimatedRefundTiming: 'oneToThreeMonths' }), [price, treatment, registered, goingConcernConfirmed]);
+  const hasRequiredInputs = num(price) > 0 && treatment !== 'unknown' && registered !== 'unknown' && (treatment !== 'going_concern' || goingConcernConfirmed !== 'unknown');
+  const result = useMemo(() => hasRequiredInputs ? calculateCommercialGst({
+    purchasePrice: num(price), treatment, priorCost: num(priorCost), purchaserRegistered: registered === 'yes',
+  }) : null, [hasRequiredInputs, price, treatment, priorCost, registered]);
+  const assessment = useMemo(() => hasRequiredInputs ? calculateCommercialGstEngine({ purchasePrice: num(price), treatment: treatment === 'going_concern' ? 'goingConcern' : treatment === 'standard' ? 'gstInclusive' : treatment === 'margin_scheme' ? 'marginScheme' : 'unknown', vendorGstRegistered: 'unknown', purchaserGstRegistered: registered, goingConcernAgreedInWriting: goingConcernConfirmed, enterpriseCarriedOnUntilSettlement: goingConcernConfirmed, supplierProvidesAllThingsNecessary: goingConcernConfirmed, propertyLeasedOrOperatingEnterprise: goingConcernConfirmed, gstClaimableAsInputTaxCredit: registered, estimatedRefundTiming: 'oneToThreeMonths' }) : null, [hasRequiredInputs, price, treatment, registered, goingConcernConfirmed]);
+  const verificationStatus = hasRequiredInputs ? assessment?.gstVerificationStatus ?? 'Unknown' : 'Awaiting GST Inputs';
+  const canExtractFromContract = Boolean(prefill);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>GST Treatment</CardTitle>
-        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={assessment.gstVerificationStatus === "Verified" ? "default" : "destructive"}>{assessment.gstVerificationStatus}</Badge><Button size="sm" variant="outline" disabled title="Contract extraction is not configured for this workspace yet; review GST assumptions manually or save linked property values.">Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: num(price), gst_treatment: treatment })} /></div>
+        <CardDescription>Australian commercial acquisition GST — separates economic cost from settlement cashflow.</CardDescription><div className="flex flex-wrap gap-2 pt-2 items-center"><Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge><Badge variant={verificationStatus === "Verified" ? "default" : "outline"} className={verificationStatus === "Awaiting GST Inputs" ? "border-primary/40 text-primary" : undefined}>{verificationStatus}</Badge><Button size="sm" variant="outline" disabled={!canExtractFromContract} title={canExtractFromContract ? "Estimate GST treatment from linked property or contract context." : "Link a property, paste contract text or upload contract data before estimating GST treatment."}>Estimate / extract from contract</Button><SaveBackButton build={() => ({ purchase_price: optionalNum(price), gst_treatment: treatment === "unknown" ? undefined : treatment })} /></div>
       </CardHeader>
       <CardContent className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <div><Label>Purchase Price</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} /></div>
+          <div><Label>Purchase Price</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="Pulled from property profile or enter manually" /></div>
           <div>
-            <Label>Treatment</Label>
-            <Select value={treatment} onValueChange={v => setTreatment(v as GstTreatment)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Label>GST Treatment</Label>
+            <Select value={treatment} onValueChange={v => setTreatment(v as GstTreatmentInput)}>
+              <SelectTrigger>{treatment === 'unknown' ? <span className="text-muted-foreground">Select GST treatment</span> : <SelectValue />}</SelectTrigger>
               <SelectContent>
+                <SelectItem value="unknown">Unknown</SelectItem>
                 <SelectItem value="going_concern">Going Concern</SelectItem>
                 <SelectItem value="margin_scheme">Margin Scheme</SelectItem>
                 <SelectItem value="standard">Standard</SelectItem>
@@ -58,19 +69,42 @@ export function GstCalculatorCard() {
             </Select>
           </div>
           {treatment === 'margin_scheme' && (
-            <div><Label>Prior Acquisition Cost</Label><Input type="number" value={priorCost} onChange={e => setPriorCost(e.target.value)} /></div>
+            <div><Label>Prior Acquisition Cost</Label><Input type="number" value={priorCost} onChange={e => setPriorCost(e.target.value)} placeholder="Enter prior acquisition cost if known" /></div>
           )}
-          <div className="flex items-center justify-between pt-2"><Label>Purchaser GST-Registered</Label><Switch checked={registered} onCheckedChange={setRegistered} /></div><div className="flex items-center justify-between pt-2"><Label>Going concern conditions confirmed?</Label><Switch checked={goingConcernConfirmed} onCheckedChange={setGoingConcernConfirmed} /></div>
+          <SelectField label="Purchaser GST-Registered" value={registered} onChange={setRegistered} placeholder="Confirm purchaser GST registration" />
+          <SelectField label="Going concern conditions confirmed?" value={goingConcernConfirmed} onChange={setGoingConcernConfirmed} placeholder="Confirm contract conditions" />
         </div>
         <div className="space-y-3 bg-muted/40 rounded-lg p-4">
-          <Row label="GST Amount" value={fmt(assessment.gstAmount || result.gstAmount)} />
-          <Row label="GST Claimable (ITC)" value={fmt(assessment.gstClaimableAmount || result.gstClaimable)} /><Row label="GST settlement cashflow" value={fmt(assessment.gstSettlementCashflowRequirement)} /><Row label="GST economic cost" value={fmt(assessment.gstEconomicCost)} /><Row label="GST timing risk" value={assessment.gstTimingRisk} />
+          {!hasRequiredInputs && (
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+              <p className="text-sm font-semibold text-primary">Awaiting GST Inputs</p>
+              <p className="mt-1 text-xs text-muted-foreground">Link a property, extract contract terms or enter purchase price and GST treatment to estimate settlement cashflow and economic cost.</p>
+            </div>
+          )}
+          <Row label="GST Amount" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstAmount || result.gstAmount) : PENDING} />
+          <Row label="GST Claimable (ITC)" value={hasRequiredInputs && assessment && result ? fmt(assessment.gstClaimableAmount || result.gstClaimable) : PENDING} /><Row label="GST Settlement Cashflow" value={hasRequiredInputs && assessment ? fmt(assessment.gstSettlementCashflowRequirement) : PENDING} /><Row label="GST Economic Cost" value={hasRequiredInputs && assessment ? fmt(assessment.gstEconomicCost) : PENDING} /><Row label="GST Timing Risk" value={hasRequiredInputs && assessment ? assessment.gstTimingRisk : PENDING} />
           <Separator />
-          <Row label="Net Acquisition Cost" value={fmt(assessment.netAcquisitionCost || result.netAcquisitionCost)} highlight />
-          <p className="text-xs text-muted-foreground pt-2">{result.notes}</p>{assessment.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
+          <Row label="Net Acquisition Cost" value={hasRequiredInputs && assessment && result ? fmt(assessment.netAcquisitionCost || result.netAcquisitionCost) : PENDING} highlight />
+          {hasRequiredInputs && result && <p className="text-xs text-muted-foreground pt-2">{result.notes}</p>}{hasRequiredInputs && assessment?.warnings.map(w => <p key={w} className="text-xs text-amber-200">• {w}</p>)}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SelectField({ label, value, onChange, placeholder }: { label: string; value: ConfirmationState; onChange: (v: ConfirmationState) => void; placeholder: string }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <Select value={value} onValueChange={v => onChange(v as ConfirmationState)}>
+        <SelectTrigger>{value === 'unknown' ? <span className="text-muted-foreground">{placeholder}</span> : <SelectValue />}</SelectTrigger>
+        <SelectContent>
+          <SelectItem value="unknown">Unknown / Unconfirmed</SelectItem>
+          <SelectItem value="yes">Yes</SelectItem>
+          <SelectItem value="no">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
