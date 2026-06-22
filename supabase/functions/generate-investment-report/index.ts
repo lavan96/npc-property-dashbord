@@ -1536,12 +1536,29 @@ Generate the ${sectionDef.name} sections now:`;
     sectionPrompt = limitPromptContext(sectionPrompt, PERPLEXITY_SAFE_USER_MESSAGE_BYTES, `Final section prompt for ${sectionDef.name}`, 'tail');
   }
   const safeSystemMessage = limitPromptContext(systemMessage, PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES, 'System prompt', 'head');
+  const emergencySectionPrompt = `Generate ONLY this investment report section for ${propertyAddress}: ${sectionDef.name}.
+
+Required headings:
+${sectionDef.sections.map(s => `## ${s}`).join('\n')}
+
+Use Australian property advisory language, real web research via Perplexity, concise markdown, inline source names, and no placeholders. Keep figures internally consistent. If exact supplied context is unavailable because the source packet was too large, research the suburb/property details live and state uncertainty rather than inventing facts.
+
+${investmentScoreContext ? limitPromptContext(investmentScoreContext, 5_000, `Emergency investment score context for ${sectionDef.name}`, 'head') : ''}
+
+Previous-section consistency hints:
+${previousSections ? sliceTailByBytes(previousSections, 4_000) : 'None'}
+
+Start now with the first heading.`;
   console.log(`📏 Prompt size for ${sectionDef.name}: user=${byteLength(sectionPrompt)} bytes, system=${byteLength(safeSystemMessage)} bytes`);
 
   // Retry loop with improved backoff and jitter
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📝 Generating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
+      const userPromptForAttempt = attempt > 1 ? emergencySectionPrompt : sectionPrompt;
+      if (attempt > 1) {
+        console.log(`🧯 Using emergency compact prompt for ${sectionDef.name}: ${byteLength(userPromptForAttempt)} bytes`);
+      }
       
       const response = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
@@ -1555,7 +1572,7 @@ Generate the ${sectionDef.name} sections now:`;
           temperature: 0.1,
           messages: [
             { role: 'system', content: safeSystemMessage },
-            { role: 'user', content: sectionPrompt }
+            { role: 'user', content: userPromptForAttempt }
           ]
         }),
       }, 150000, 'perplexity-api'); // 150 second timeout per section, with circuit breaker tracking
@@ -1564,8 +1581,10 @@ Generate the ${sectionDef.name} sections now:`;
         const errorText = await response.text();
         console.error(`❌ Section ${sectionDef.id} API error (attempt ${attempt}):`, response.status, errorText);
         
-        // If rate limited or server error, wait and retry with jitter
-        if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+        const isPromptTooLarge = response.status === 400 && /content exceeds maximum length|100KB|maximum length/i.test(errorText);
+        // If prompt is too large, rate limited or server error, wait and retry with jitter
+        if ((isPromptTooLarge || response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+          if (isPromptTooLarge) console.warn(`🧯 Perplexity rejected ${sectionDef.name} prompt as too large; retrying with emergency compact prompt.`);
           const waitTime = getRetryDelayWithJitter(attempt, response.status === 429 ? 5000 : 3000);
           console.log(`⏳ Waiting ${(waitTime/1000).toFixed(1)}s before retry (with jitter)...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
