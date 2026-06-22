@@ -1383,6 +1383,70 @@ VISUAL-FIRST RULES (CRITICAL):
   pause genuinely serves the reader. Never two in a row.
 `;
 
+const textEncoder = new TextEncoder();
+const PERPLEXITY_MESSAGE_HARD_LIMIT_BYTES = 100_000;
+const PERPLEXITY_SAFE_USER_MESSAGE_BYTES = 90_000;
+const PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES = 35_000;
+const DOCUMENT_CONTEXT_MAX_BYTES = 36_000;
+const TEMPLATE_CONTEXT_MAX_BYTES = 18_000;
+
+function byteLength(value: string): number {
+  return textEncoder.encode(value).length;
+}
+
+function sliceHeadByBytes(value: string, maxBytes: number): string {
+  if (byteLength(value) <= maxBytes) return value;
+  let lo = 0;
+  let hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (byteLength(value.slice(0, mid)) <= maxBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  return value.slice(0, lo);
+}
+
+function sliceTailByBytes(value: string, maxBytes: number): string {
+  if (byteLength(value) <= maxBytes) return value;
+  let lo = 0;
+  let hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (byteLength(value.slice(value.length - mid)) <= maxBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  return value.slice(value.length - lo);
+}
+
+function compactPromptContext(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/[\t ]{2,}/g, ' ')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function limitPromptContext(value: string, maxBytes: number, label: string, mode: 'head' | 'tail' | 'head-tail' = 'head-tail'): string {
+  const compacted = compactPromptContext(value);
+  const originalBytes = byteLength(compacted);
+  if (originalBytes <= maxBytes) return compacted;
+
+  const notice = `\n\n[${label} truncated from ${originalBytes.toLocaleString()} bytes to stay within Perplexity's ${PERPLEXITY_MESSAGE_HARD_LIMIT_BYTES / 1000}KB message limit. Prioritise extracted specifications and request fresh web research for missing details.]\n\n`;
+  const remaining = Math.max(0, maxBytes - byteLength(notice));
+  let text: string;
+  if (mode === 'head') {
+    text = sliceHeadByBytes(compacted, remaining) + notice;
+  } else if (mode === 'tail') {
+    text = notice + sliceTailByBytes(compacted, remaining);
+  } else {
+    const headBudget = Math.floor(remaining * 0.62);
+    const tailBudget = remaining - headBudget;
+    text = `${sliceHeadByBytes(compacted, headBudget)}${notice}${sliceTailByBytes(compacted, tailBudget)}`;
+  }
+  console.log(`✂️ ${label} trimmed: ${originalBytes} → ${byteLength(text)} bytes`);
+  return text;
+}
+
 // Helper function to generate a single section via API with retry logic
 
 async function generateReportSection(
@@ -1425,7 +1489,7 @@ ${score.risks?.length ? `- Risks: ${score.risks.join(', ')}` : ''}
 `;
   }
 
-  const sectionPrompt = `${basePrompt}
+  const sectionInstructions = `
 
 ---
 **SECTION GENERATION TASK:**
@@ -1459,6 +1523,14 @@ ${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysi
 ${EDITORIAL_PRIMITIVES_BLOCK}
 
 Generate the ${sectionDef.name} sections now:`;
+  const basePromptBudget = Math.max(12_000, PERPLEXITY_SAFE_USER_MESSAGE_BYTES - byteLength(sectionInstructions) - 2_000);
+  const safeBasePrompt = limitPromptContext(basePrompt, basePromptBudget, `Base prompt for ${sectionDef.name}`);
+  let sectionPrompt = `${safeBasePrompt}${sectionInstructions}`;
+  if (byteLength(sectionPrompt) > PERPLEXITY_SAFE_USER_MESSAGE_BYTES) {
+    sectionPrompt = limitPromptContext(sectionPrompt, PERPLEXITY_SAFE_USER_MESSAGE_BYTES, `Final section prompt for ${sectionDef.name}`, 'head');
+  }
+  const safeSystemMessage = limitPromptContext(systemMessage, PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES, 'System prompt', 'head');
+  console.log(`📏 Prompt size for ${sectionDef.name}: user=${byteLength(sectionPrompt)} bytes, system=${byteLength(safeSystemMessage)} bytes`);
 
   // Retry loop with improved backoff and jitter
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1476,7 +1548,7 @@ Generate the ${sectionDef.name} sections now:`;
           max_tokens: sectionDef.maxTokens,
           temperature: 0.1,
           messages: [
-            { role: 'system', content: systemMessage },
+            { role: 'system', content: safeSystemMessage },
             { role: 'user', content: sectionPrompt }
           ]
         }),
@@ -1554,9 +1626,9 @@ Generate the ${sectionDef.name} sections now:`;
               max_tokens: Math.min(2500, sectionDef.maxTokens),
               temperature: 0.1,
               messages: [
-                { role: 'system', content: systemMessage },
+                { role: 'system', content: safeSystemMessage },
                 { role: 'user', content: sectionPrompt },
-                { role: 'assistant', content: content },
+                { role: 'assistant', content: limitPromptContext(content, 50_000, `Continuation prior content for ${sectionDef.name}`, 'tail') },
                 { role: 'user', content: continuePrompt },
               ],
             }),
