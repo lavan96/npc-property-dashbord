@@ -19,7 +19,6 @@ import { DcfCalculatorCard } from '@/components/commercial/calculators/DcfCalcul
 import { TenYearCashFlowCard } from '@/components/commercial/calculators/TenYearCashFlowCard';
 import { CommercialBorrowingCapacityCard } from '@/components/commercial/calculators/CommercialBorrowingCapacityCard';
 import { CommercialIndustrialOverviewCard } from '@/components/commercial/calculators/CommercialIndustrialOverviewCard';
-import { OverviewCommandLayer } from '@/components/commercial/OverviewCommandLayer';
 import { RentPerSqmCard } from '@/components/industrial/calculators/RentPerSqmCard';
 import { SiteCoverCard } from '@/components/industrial/calculators/SiteCoverCard';
 import { IndustrialMetricsReadinessProvider } from '@/components/industrial/calculators/IndustrialMetricsReadinessContext';
@@ -29,10 +28,6 @@ import {
   useCalculatorPrefill,
 } from '@/contexts/CalculatorPrefillContext';
 import { CalculatorPropertyBar } from '@/components/commercial/CalculatorPropertyBar';
-import { MasterActivePropertyHeader } from '@/components/commercial/MasterActivePropertyHeader';
-import { GlobalReadinessBanner } from '@/components/commercial/GlobalReadinessBanner';
-import { AddPropertyToCalculatorsDialog } from '@/components/commercial/AddPropertyToCalculatorsDialog';
-import { Plus } from 'lucide-react';
 import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commercial/calculators/CalculatorLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -602,7 +597,6 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
   const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
   const assumptionStatusAction = <Button type="button" variant="outline" size="sm" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
-  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -662,29 +656,8 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
 
         <div className="space-y-3">
           <ActivePropertyHeader />
-          <MasterActivePropertyHeader />
-          <GlobalReadinessBanner />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setAddPropertyOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add property to calculators
-            </Button>
-          </div>
           <CalculatorPropertyBar />
         </div>
-        <AddPropertyToCalculatorsDialog
-          open={addPropertyOpen}
-          onOpenChange={setAddPropertyOpen}
-          defaultDomain={domain}
-          onPropertyReady={({ id, domain: dom }) => {
-            if (dom !== domain) setDomain(dom);
-            const next = new URLSearchParams(window.location.search);
-            next.set('domain', dom);
-            next.set('propertyId', id);
-            window.history.replaceState(null, '', `?${next.toString()}`);
-            // CalculatorPrefillProvider auto-loads from ?propertyId on mount; force re-mount via domain change above when dom differs.
-            window.dispatchEvent(new Event('popstate'));
-          }}
-        />
 
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
@@ -732,7 +705,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
             </div>
           </div>
 
-          <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Command layer for the calculator suite — active property, readiness per tab, key outputs, critical warnings, next best action and report controls." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Command layer']}><OverviewCommandLayer /><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="overview" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Overview Report" subtitle="Review linked-property completeness, AI estimate readiness and report actions before moving into detailed calculators. Report actions are kept at the top of the overview card to avoid duplicated action sections." chips={[domain === 'industrial' ? 'Industrial domain' : 'Commercial domain', 'Report actions first']}><CommercialIndustrialOverviewCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="borrowing" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Borrowing Capacity Unified" subtitle="Client profile integration, scenario modelling and risk-adjusted lending outputs are grouped into a guided assessment flow." chips={["Mode + data source", "Scenario modelling", "Required documents"]}><CommercialBorrowingCapacityCard initialAssetCategory={domain} /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="noi" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Net Operating Income (NOI)" subtitle="Income, vacancy, recoveries and operating expenses feed a clear NOI bridge and warning panel." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><NoiCalculatorCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="cap" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Capitalisation Rate" subtitle="Supporting data, NOI/value inputs, target yield and sensitivity outputs remain separated." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><CapRateCalculatorCard /></CalculatorTabShell>}</TabsContent>

@@ -467,23 +467,9 @@ interface PlanResult {
   scanned_page_ratio: number;
   ocr_hint: boolean;
   byte_size: number;
-  recommended_lane?: string;
-  recommended_mode?: string;
-  recommended_chunk_size?: number;
-  requires_raster?: boolean;
-  requires_ocr?: boolean;
-  requires_picture_description?: boolean;
-  image_heavy?: boolean;
-  design_heavy?: boolean;
-  table_likelihood?: string;
-  estimated_complexity?: string;
-  selectable_text_ratio?: number;
-  has_selectable_text?: boolean;
-  plan_ms?: number;
-  max_pdf_bytes?: number;
 }
 
-async function callSidecarPlan(signedUrl: string, jobId: string, mode: string, requestPayload: Record<string, unknown>): Promise<PlanResult | null> {
+async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanResult | null> {
   try {
     const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/plan`, {
       method: 'POST',
@@ -492,12 +478,7 @@ async function callSidecarPlan(signedUrl: string, jobId: string, mode: string, r
         Authorization: `Bearer ${PARSE_TOKEN}`,
         'X-Request-Id': jobId,
       },
-      body: JSON.stringify({
-        url: signedUrl,
-        mode,
-        max_chunk_pages: typeof requestPayload?.max_chunk_pages === 'number' ? requestPayload.max_chunk_pages : undefined,
-        force_chunking: requestPayload?.force_chunked === true,
-      }),
+      body: JSON.stringify({ url: signedUrl }),
     });
     if (!res.ok) {
       console.warn('[pdf-parse-dispatch] /plan returned', res.status);
@@ -668,7 +649,7 @@ async function runJob(
 
     // ---- Wave G: planning (page count + OCR hint) --------------------------
     await setStage(admin, jobId, 'planning');
-    const plan = await callSidecarPlan(signedUrl, jobId, mode, requestPayload);
+    const plan = await callSidecarPlan(signedUrl, jobId);
     const planRecord: Record<string, unknown> = plan ?? {};
     if (source) planRecord.source = source;
     await updateJob(admin, jobId, { plan_payload: planRecord });
@@ -684,11 +665,6 @@ async function runJob(
         kind: 'chunked_plan',
         page_count: plan.page_count,
         ocr_hint: plan.ocr_hint,
-        recommended_lane: plan.recommended_lane,
-        recommended_mode: plan.recommended_mode,
-        recommended_chunk_size: plan.recommended_chunk_size,
-        requires_raster: plan.requires_raster,
-        requires_ocr: plan.requires_ocr,
       });
       await runChunkedDispatch(admin, jobId, signedUrl, mode, plan.page_count, plan.ocr_hint, requestPayload);
       await updateJob(admin, jobId, { bytes_in: bytesIn });
