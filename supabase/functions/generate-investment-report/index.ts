@@ -1385,10 +1385,10 @@ VISUAL-FIRST RULES (CRITICAL):
 
 const textEncoder = new TextEncoder();
 const PERPLEXITY_MESSAGE_HARD_LIMIT_BYTES = 100_000;
-const PERPLEXITY_SAFE_USER_MESSAGE_BYTES = 90_000;
+const PERPLEXITY_SAFE_USER_MESSAGE_BYTES = 70_000;
 const PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES = 35_000;
-const DOCUMENT_CONTEXT_MAX_BYTES = 36_000;
-const TEMPLATE_CONTEXT_MAX_BYTES = 18_000;
+const DOCUMENT_CONTEXT_MAX_BYTES = 24_000;
+const TEMPLATE_CONTEXT_MAX_BYTES = 12_000;
 
 function byteLength(value: string): number {
   return textEncoder.encode(value).length;
@@ -1536,13 +1536,33 @@ Generate the ${sectionDef.name} sections now:`;
     sectionPrompt = limitPromptContext(sectionPrompt, PERPLEXITY_SAFE_USER_MESSAGE_BYTES, `Final section prompt for ${sectionDef.name}`, 'tail');
   }
   const safeSystemMessage = limitPromptContext(systemMessage, PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES, 'System prompt', 'head');
+  const emergencySectionPrompt = `Generate ONLY this investment report section for ${propertyAddress}: ${sectionDef.name}.
+
+Required headings:
+${sectionDef.sections.map(s => `## ${s}`).join('\n')}
+
+Use Australian property advisory language, real web research via Perplexity, concise markdown, inline source names, and no placeholders. Keep figures internally consistent. If exact supplied context is unavailable because the source packet was too large, research the suburb/property details live and state uncertainty rather than inventing facts.
+
+${investmentScoreContext ? limitPromptContext(investmentScoreContext, 5_000, `Emergency investment score context for ${sectionDef.name}`, 'head') : ''}
+
+Previous-section consistency hints:
+${previousSections ? sliceTailByBytes(previousSections, 4_000) : 'None'}
+
+Start now with the first heading.`;
   console.log(`📏 Prompt size for ${sectionDef.name}: user=${byteLength(sectionPrompt)} bytes, system=${byteLength(safeSystemMessage)} bytes`);
 
   // Retry loop with improved backoff and jitter
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📝 Generating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
+      const userPromptForAttempt = attempt > 1 ? emergencySectionPrompt : sectionPrompt;
+      if (attempt > 1) {
+        console.log(`🧯 Using emergency compact prompt for ${sectionDef.name}: ${byteLength(userPromptForAttempt)} bytes`);
+      }
       
+      const systemPromptForAttempt = attempt > 1
+        ? 'You are an Australian property investment analyst. Produce concise, sourced markdown and never invent exact figures.'
+        : safeSystemMessage;
       const response = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
@@ -1554,8 +1574,8 @@ Generate the ${sectionDef.name} sections now:`;
           max_tokens: sectionDef.maxTokens,
           temperature: 0.1,
           messages: [
-            { role: 'system', content: safeSystemMessage },
-            { role: 'user', content: sectionPrompt }
+            { role: 'system', content: systemPromptForAttempt },
+            { role: 'user', content: userPromptForAttempt }
           ]
         }),
       }, 150000, 'perplexity-api'); // 150 second timeout per section, with circuit breaker tracking
@@ -1564,8 +1584,10 @@ Generate the ${sectionDef.name} sections now:`;
         const errorText = await response.text();
         console.error(`❌ Section ${sectionDef.id} API error (attempt ${attempt}):`, response.status, errorText);
         
-        // If rate limited or server error, wait and retry with jitter
-        if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+        const isPromptTooLarge = response.status === 400 && /content exceeds maximum length|100KB|maximum length/i.test(errorText);
+        // If prompt is too large, rate limited or server error, wait and retry with jitter
+        if ((isPromptTooLarge || response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+          if (isPromptTooLarge) console.warn(`🧯 Perplexity rejected ${sectionDef.name} prompt as too large; retrying with emergency compact prompt.`);
           const waitTime = getRetryDelayWithJitter(attempt, response.status === 429 ? 5000 : 3000);
           console.log(`⏳ Waiting ${(waitTime/1000).toFixed(1)}s before retry (with jitter)...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -4746,7 +4768,13 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       console.log('🔍 Fetching AI structure template directly from database...');
 
       const rawTier = propertyDetails?.reportTier || 'compass';
-      const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
+      const requestedEngine = propertyDetails?.generationEngine;
+      const isCompassTier = rawTier === 'compass' || rawTier === 'compass-40';
+      const generationEngine = isCompassTier
+        ? 'compass-40'
+        : requestedEngine === 'compass-40'
+          ? 'compass-40'
+          : 'legacy';
       // Respect explicit frontend engine selection.
       //  - 'compass-40' → always activate the trimmed canonical overlay.
       //  - 'legacy'     → always use the full legacy DB template, even on
@@ -4754,6 +4782,10 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       //                   force-enabled the overlay for any compass tier broke
       //                   the user-visible Generation Engine selector.)
       compass40OverlayActive = generationEngine === 'compass-40';
+      if (compass40OverlayActive && propertyDetails?.generationEngine !== 'compass-40') {
+        propertyDetails = { ...(propertyDetails || {}), generationEngine: 'compass-40' };
+        console.log('⚙️ Compass-tier report promoted to compass-40 engine for prompt-size safety');
+      }
       console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive}, tier: ${rawTier})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',

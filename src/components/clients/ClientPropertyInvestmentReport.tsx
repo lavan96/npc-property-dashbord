@@ -254,6 +254,8 @@ export function ClientPropertyInvestmentReport({
         price: preGenData.purchasePrice || property.value,
         propertyType: property.property_type === 'investment' ? 'house' : property.property_type,
         buildType: preGenData.buildType,
+        reportTier: 'compass',
+        generationEngine: 'compass-40',
         
         // Pre-generation overrides
         ...preGenData,

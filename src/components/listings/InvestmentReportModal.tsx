@@ -97,9 +97,15 @@ export function InvestmentReportModal({
       });
       if (!ok) { setIsGenerating(false); setIsBackgroundGeneration(false); return; }
 
+      const safePropertyDetails = {
+        ...(propertyDetails || {}),
+        reportTier: propertyDetails?.reportTier || 'compass',
+        generationEngine: propertyDetails?.generationEngine || 'compass-40',
+      };
+
       const { data, error } = await invokeSecureFunction('generate-investment-report', {
         propertyAddress,
-        propertyDetails
+        propertyDetails: safePropertyDetails
       });
 
       console.log('Edge function response:', { data, error });
