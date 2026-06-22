@@ -104,7 +104,7 @@ export function useChunkedRegeneration() {
       // last successfully saved section.
       // Resolve effective engine: explicit option wins; else stored value; else default 'legacy'.
       const effectiveEngine: GenerationEngine =
-        generationEngine ?? (report?.generation_engine === 'compass-40' ? 'compass-40' : 'legacy');
+        generationEngine ?? (report?.generation_engine === 'legacy' ? 'legacy' : 'compass-40');
 
       const startPayload: Record<string, any> = {
         status: 'processing',
