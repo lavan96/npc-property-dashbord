@@ -9,6 +9,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const textEncoder = new TextEncoder();
+const PERPLEXITY_MESSAGE_HARD_LIMIT_BYTES = 100_000;
+const PERPLEXITY_SAFE_USER_MESSAGE_BYTES = 90_000;
+const PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES = 35_000;
+
+function byteLength(value: string): number {
+  return textEncoder.encode(value).length;
+}
+
+function sliceHeadByBytes(value: string, maxBytes: number): string {
+  if (byteLength(value) <= maxBytes) return value;
+  let lo = 0;
+  let hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (byteLength(value.slice(0, mid)) <= maxBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  return value.slice(0, lo);
+}
+
+function sliceTailByBytes(value: string, maxBytes: number): string {
+  if (byteLength(value) <= maxBytes) return value;
+  let lo = 0;
+  let hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (byteLength(value.slice(value.length - mid)) <= maxBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  return value.slice(value.length - lo);
+}
+
+function compactPromptContext(value: string): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/[\t ]{2,}/g, ' ')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function limitPromptContext(value: string, maxBytes: number, label: string, mode: 'head' | 'tail' | 'head-tail' = 'head-tail'): string {
+  const compacted = compactPromptContext(value);
+  const originalBytes = byteLength(compacted);
+  if (originalBytes <= maxBytes) return compacted;
+
+  const notice = `\n\n[${label} truncated from ${originalBytes.toLocaleString()} bytes to stay within Perplexity's ${PERPLEXITY_MESSAGE_HARD_LIMIT_BYTES / 1000}KB message limit.]\n\n`;
+  const remaining = Math.max(0, maxBytes - byteLength(notice));
+  if (mode === 'head') return sliceHeadByBytes(compacted, remaining) + notice;
+  if (mode === 'tail') return notice + sliceTailByBytes(compacted, remaining);
+  const headBudget = Math.floor(remaining * 0.62);
+  const tailBudget = remaining - headBudget;
+  const text = `${sliceHeadByBytes(compacted, headBudget)}${notice}${sliceTailByBytes(compacted, tailBudget)}`;
+  console.log(`✂️ ${label} trimmed: ${originalBytes} → ${byteLength(text)} bytes`);
+  return text;
+}
+
 interface RegenerateRequest {
   reportId: string;
   manualOverrides: Record<string, any>;
@@ -1213,7 +1270,7 @@ ${sectionDef.sections.map((s, i) => `${i + 1}. ## ${s}`).join('\n')}
   // IMPORTANT: This is a REGENERATION - we generate COMPLETELY FRESH content
   // DO NOT reference original content - this ensures truly new analysis each time
   const _brandRq = await getBrandConfig();
-  const sectionPrompt = `You are an expert Australian property investment analyst for ${_brandRq.companyName}.
+  let sectionPrompt = `You are an expert Australian property investment analyst for ${_brandRq.companyName}.
 You are creating a FRESH, COMPREHENSIVE section for an investment report for: ${propertyAddress}
 
 **SECTION TO CREATE:** ${sectionDef.name}
@@ -1265,7 +1322,19 @@ Generate the ${sectionDef.name} section now:`;
   // MUST match generate-investment-report, with regeneration note added
   // CRITICAL FIX: Removed hardcoded "$1,500 maintenance" instruction - use data-driven values from overrides
   const { resolvePrompt: _resolveRegenPrompt } = await import('../_shared/engine-prompts.ts');
-  const systemMessage = (await _resolveRegenPrompt('regenerate.qualitative_system', { brand_name: _brandRq.companyName })).text;
+  const systemMessage = limitPromptContext((await _resolveRegenPrompt('regenerate.qualitative_system', { brand_name: _brandRq.companyName })).text, PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES, 'Regeneration system prompt', 'head');
+  if (byteLength(sectionPrompt) > PERPLEXITY_SAFE_USER_MESSAGE_BYTES) {
+    const previousBlock = previousSections
+      ? `\n\n**CONTEXT FROM PREVIOUS SECTIONS (tail only for consistency — do not repeat):**\n${sliceTailByBytes(previousSections, 3_500)}\n`
+      : '';
+    sectionPrompt = limitPromptContext(
+      `You are an expert Australian property investment analyst for ${_brandRq.companyName}.\nCreate a fresh section for: ${propertyAddress}\n\n**SECTION:** ${sectionDef.name}\n**Subsections:** ${sectionDef.sections.join(', ')}\n\n${templateSection}\n\n**LIVE DATA:**\n${enhancedDataContext}\n\n**CLIENT VALUES:**\n${overrideSummary}\n\n${investmentScoreContext}${previousBlock}\n\nGenerate only this section using exact markdown headings and no placeholders.`,
+      PERPLEXITY_SAFE_USER_MESSAGE_BYTES,
+      `Regeneration prompt for ${sectionDef.name}`,
+      'head-tail'
+    );
+  }
+  console.log(`📏 Regeneration prompt size for ${sectionDef.name}: user=${byteLength(sectionPrompt)} bytes, system=${byteLength(systemMessage)} bytes`);
 
   // Retry loop - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
