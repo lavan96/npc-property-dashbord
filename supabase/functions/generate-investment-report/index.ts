@@ -4747,9 +4747,10 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
       const rawTier = propertyDetails?.reportTier || 'compass';
       const requestedEngine = propertyDetails?.generationEngine;
-      const generationEngine = requestedEngine === 'legacy'
-        ? 'legacy'
-        : (requestedEngine === 'compass-40' || rawTier === 'compass' || rawTier === 'compass-40')
+      const isCompassTier = rawTier === 'compass' || rawTier === 'compass-40';
+      const generationEngine = isCompassTier
+        ? 'compass-40'
+        : requestedEngine === 'compass-40'
           ? 'compass-40'
           : 'legacy';
       // Respect explicit frontend engine selection.
