@@ -1560,6 +1560,9 @@ Start now with the first heading.`;
         console.log(`🧯 Using emergency compact prompt for ${sectionDef.name}: ${byteLength(userPromptForAttempt)} bytes`);
       }
       
+      const systemPromptForAttempt = attempt > 1
+        ? 'You are an Australian property investment analyst. Produce concise, sourced markdown and never invent exact figures.'
+        : safeSystemMessage;
       const response = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
@@ -1571,7 +1574,7 @@ Start now with the first heading.`;
           max_tokens: sectionDef.maxTokens,
           temperature: 0.1,
           messages: [
-            { role: 'system', content: safeSystemMessage },
+            { role: 'system', content: systemPromptForAttempt },
             { role: 'user', content: userPromptForAttempt }
           ]
         }),
