@@ -1270,7 +1270,7 @@ ${sectionDef.sections.map((s, i) => `${i + 1}. ## ${s}`).join('\n')}
   // IMPORTANT: This is a REGENERATION - we generate COMPLETELY FRESH content
   // DO NOT reference original content - this ensures truly new analysis each time
   const _brandRq = await getBrandConfig();
-  const sectionPrompt = `You are an expert Australian property investment analyst for ${_brandRq.companyName}.
+  let sectionPrompt = `You are an expert Australian property investment analyst for ${_brandRq.companyName}.
 You are creating a FRESH, COMPREHENSIVE section for an investment report for: ${propertyAddress}
 
 **SECTION TO CREATE:** ${sectionDef.name}
@@ -1322,7 +1322,19 @@ Generate the ${sectionDef.name} section now:`;
   // MUST match generate-investment-report, with regeneration note added
   // CRITICAL FIX: Removed hardcoded "$1,500 maintenance" instruction - use data-driven values from overrides
   const { resolvePrompt: _resolveRegenPrompt } = await import('../_shared/engine-prompts.ts');
-  const systemMessage = (await _resolveRegenPrompt('regenerate.qualitative_system', { brand_name: _brandRq.companyName })).text;
+  const systemMessage = limitPromptContext((await _resolveRegenPrompt('regenerate.qualitative_system', { brand_name: _brandRq.companyName })).text, PERPLEXITY_SAFE_SYSTEM_MESSAGE_BYTES, 'Regeneration system prompt', 'head');
+  if (byteLength(sectionPrompt) > PERPLEXITY_SAFE_USER_MESSAGE_BYTES) {
+    const previousBlock = previousSections
+      ? `\n\n**CONTEXT FROM PREVIOUS SECTIONS (tail only for consistency — do not repeat):**\n${sliceTailByBytes(previousSections, 3_500)}\n`
+      : '';
+    sectionPrompt = limitPromptContext(
+      `You are an expert Australian property investment analyst for ${_brandRq.companyName}.\nCreate a fresh section for: ${propertyAddress}\n\n**SECTION:** ${sectionDef.name}\n**Subsections:** ${sectionDef.sections.join(', ')}\n\n${templateSection}\n\n**LIVE DATA:**\n${enhancedDataContext}\n\n**CLIENT VALUES:**\n${overrideSummary}\n\n${investmentScoreContext}${previousBlock}\n\nGenerate only this section using exact markdown headings and no placeholders.`,
+      PERPLEXITY_SAFE_USER_MESSAGE_BYTES,
+      `Regeneration prompt for ${sectionDef.name}`,
+      'head-tail'
+    );
+  }
+  console.log(`📏 Regeneration prompt size for ${sectionDef.name}: user=${byteLength(sectionPrompt)} bytes, system=${byteLength(systemMessage)} bytes`);
 
   // Retry loop - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
