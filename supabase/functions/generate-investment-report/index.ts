@@ -4746,7 +4746,12 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       console.log('🔍 Fetching AI structure template directly from database...');
 
       const rawTier = propertyDetails?.reportTier || 'compass';
-      const generationEngine = (propertyDetails?.generationEngine === 'compass-40') ? 'compass-40' : 'legacy';
+      const requestedEngine = propertyDetails?.generationEngine;
+      const generationEngine = requestedEngine === 'legacy'
+        ? 'legacy'
+        : (requestedEngine === 'compass-40' || rawTier === 'compass' || rawTier === 'compass-40')
+          ? 'compass-40'
+          : 'legacy';
       // Respect explicit frontend engine selection.
       //  - 'compass-40' → always activate the trimmed canonical overlay.
       //  - 'legacy'     → always use the full legacy DB template, even on
@@ -4754,6 +4759,10 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
       //                   force-enabled the overlay for any compass tier broke
       //                   the user-visible Generation Engine selector.)
       compass40OverlayActive = generationEngine === 'compass-40';
+      if (compass40OverlayActive && propertyDetails?.generationEngine !== 'compass-40') {
+        propertyDetails = { ...(propertyDetails || {}), generationEngine: 'compass-40' };
+        console.log('⚙️ Compass-tier report promoted to compass-40 engine for prompt-size safety');
+      }
       console.log(`⚙️ Generation engine: ${generationEngine} (compass-40 overlay: ${compass40OverlayActive}, tier: ${rawTier})`);
       const tierMapping: Record<string, string> = {
         'compass-40': 'compass',
