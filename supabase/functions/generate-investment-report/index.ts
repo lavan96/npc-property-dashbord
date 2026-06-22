@@ -4479,13 +4479,19 @@ Instead, focus EXCLUSIVELY on area-level analysis:
 7. Consider the property description when assessing investment potential
 8. Verify the suburb/postcode from the listing for accurate location analysis`;
       
+      const limitedDocumentContent = limitPromptContext(
+        String(documentContent),
+        DOCUMENT_CONTEXT_MAX_BYTES,
+        `${fromPdfUpload ? 'PDF' : 'Scraped'} listing content`,
+        'head-tail'
+      );
       const documentContextSection = `
 ---
 **PROPERTY LISTING DATA (SOURCE: ${contentSourceLabel})**
 
-The following is the full content ${fromPdfUpload ? 'extracted from the property listing PDF' : 'scraped from the property listing'}. Use this as PRIMARY context for the property details, features, description, and any specific information mentioned in the listing:
+The following is the available content ${fromPdfUpload ? 'extracted from the property listing PDF' : 'scraped from the property listing'}. Use this as PRIMARY context for property details, features, description, and specific information mentioned in the listing. If this block was truncated, use the extracted specifications below and fresh web research to fill gaps without inventing facts:
 
-${documentContent}
+${limitedDocumentContent}
 ${extractedDetailsText}
 ---
 
@@ -4850,13 +4856,14 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
 
     // Inject template context into prompt if available
     if (templateContext) {
+      const limitedTemplateContext = limitPromptContext(templateContext, TEMPLATE_CONTEXT_MAX_BYTES, 'Reference template structure', 'head');
       const templateSection = `
 ---
 **REFERENCE TEMPLATE STRUCTURE (Follow this structure closely):**
 
-The following is extracted from your reference templates. Use this structure and formatting as a guide for generating the report:
+The following is extracted from your reference templates. Use this structure and formatting as a guide for generating the report. If the template was truncated, follow the section-generation task and canonical rules as the authority:
 
-${templateContext}
+${limitedTemplateContext}
 
 ---
 
