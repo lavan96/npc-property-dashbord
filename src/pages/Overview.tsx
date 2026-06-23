@@ -23,35 +23,76 @@ import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { toast } from 'sonner';
 import { generateOverviewSnapshotPDF } from '@/components/overview/OverviewSnapshotPDF';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
   Line,
   ResponsiveContainer,
   Legend
 } from 'recharts';
 
 const COLORS = [
-  'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 
-  'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--chart-6))',
-  'hsl(var(--chart-7))', 'hsl(var(--chart-8))', 'hsl(var(--chart-9))', 
-  'hsl(var(--chart-10))'
+  'hsl(var(--primary))',
+  'hsl(var(--success))',
+  'hsl(173 80% 38%)',
+  'hsl(215 16% 47%)',
+  'hsl(43 74% 35%)',
+  'hsl(160 64% 42%)',
+  'hsl(220 13% 56%)',
+  'hsl(35 92% 52%)',
+  'hsl(188 72% 34%)',
+  'hsl(30 10% 45%)'
 ];
+
+const OVERVIEW_CHART_COLORS = {
+  brand: 'hsl(var(--primary))',
+  positive: 'hsl(var(--success))',
+  teal: 'hsl(173 80% 38%)',
+  neutral: 'hsl(215 16% 47%)',
+  grid: 'hsl(var(--border))',
+  axis: 'hsl(var(--muted-foreground))',
+  tooltipBorder: 'hsl(var(--primary) / 0.24)',
+  tooltipShadow: '0 18px 45px hsl(30 10% 15% / 0.14)',
+};
+
+const premiumTooltipStyle = {
+  backgroundColor: 'hsl(var(--card) / 0.98)',
+  border: `1px solid ${OVERVIEW_CHART_COLORS.tooltipBorder}`,
+  borderRadius: '14px',
+  boxShadow: OVERVIEW_CHART_COLORS.tooltipShadow,
+  color: 'hsl(var(--foreground))',
+  padding: '10px 12px',
+};
+
+const chartAxisTick = (isMobile: boolean) => ({
+  fill: OVERVIEW_CHART_COLORS.axis,
+  fontSize: isMobile ? 10 : 12,
+  fontWeight: 500,
+});
+
+const chartGridProps = {
+  stroke: OVERVIEW_CHART_COLORS.grid,
+  strokeDasharray: '4 6',
+  opacity: 0.55,
+};
 
 const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] px-3 pb-8 pt-2 sm:px-5 lg:px-8';
 const SECTION_SURFACE = 'rounded-[1.75rem] border border-border/60 bg-card/55 p-4 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
 const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-sm shadow-black/5 transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
 const EXECUTIVE_KPI_CARD = 'group relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:text-3xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-10 [&_.dashboard-kpi-title+div]:w-10 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
-const CHART_CARD = `${PREMIUM_CARD} hover-scale overflow-hidden`;
+const CHART_CARD = `${PREMIUM_CARD} group overflow-hidden bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
+const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-3 md:px-5 md:py-4';
+const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
+const CHART_CONTENT = 'px-2 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5';
 
 function OverviewSection({
   eyebrow,
@@ -132,7 +173,7 @@ export default function Overview() {
     suburb: 'all',
     propertyType: 'all',
   });
-  
+
   const [uniqueValues, setUniqueValues] = useState({
     states: [] as string[],
     postcodes: [] as string[],
@@ -193,7 +234,7 @@ export default function Overview() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const result = await propertyDataService.fetchAllListings({
         includeDebugInfo: true
       });
@@ -520,40 +561,39 @@ export default function Overview() {
         {/* Row 1: Suburbs and Property Types */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Listings by Suburb (Top 10)</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Listings by Suburb (Top 10)</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 350}>
                 <BarChart data={suburbData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 80 } : { top: 20, right: 30, left: 20, bottom: 100 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis 
-                    dataKey="suburb" 
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis
+                    dataKey="suburb"
                     angle={-45}
                     textAnchor="end"
                     height={isMobile ? 80 : 100}
                     fontSize={isMobile ? 10 : 12}
                     interval={0}
+                    tick={chartAxisTick(isMobile)}
+                    tickLine={false}
+                    axisLine={{ stroke: OVERVIEW_CHART_COLORS.grid }}
                   />
-                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 30 : 60} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                  <YAxis tick={chartAxisTick(isMobile)} tickLine={false} axisLine={false} width={isMobile ? 30 : 60} />
+                  <Tooltip
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.brand} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.positive, radius: [8, 8, 0, 0] }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Property Types</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Property Types</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 280 : 350}>
                 <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
                   <Pie
@@ -578,12 +618,15 @@ export default function Overview() {
                     outerRadius={isMobile ? 70 : 100}
                     fill="#8884d8"
                     dataKey="count"
+                    stroke="hsl(var(--card))"
+                    strokeWidth={2}
+                    activeShape={{ outerRadius: isMobile ? 76 : 108 }}
                   >
                     {propertyTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => {
                       const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
                       const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
@@ -593,25 +636,21 @@ export default function Overview() {
                       const data = payload?.[0]?.payload;
                       return data ? `Property Type: ${data.type}` : 'Property Type';
                     }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Legend 
-                    verticalAlign="bottom" 
+                  <Legend
+                    verticalAlign="bottom"
                     height={isMobile ? 50 : 60}
                     wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
                     content={() => (
-                      <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
+                      <div className="flex flex-wrap justify-center gap-2 rounded-xl bg-muted/30 px-2 py-2 md:gap-3">
                         {propertyTypeData.map((entry, index) => {
                           const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
                           const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
                           return (
-                            <div key={entry.type} className="flex items-center gap-1">
-                              <div 
-                                className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                            <div key={entry.type} className="flex items-center gap-1.5 rounded-full bg-background/70 px-2 py-1 shadow-sm ring-1 ring-border/50">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full md:h-3 md:w-3"
                                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
                               />
                               <span className="text-[10px] md:text-xs text-muted-foreground">
@@ -632,42 +671,40 @@ export default function Overview() {
         {/* Row 2: Daily Listings and Property Status */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Daily Listings (Last 30 Days)</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Daily Listings (Last 30 Days)</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
                 <LineChart data={dailyData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 30 } : { top: 20, right: 30, left: 20, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis 
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis
                     dataKey="date"
                     fontSize={isMobile ? 9 : 12}
-                    tick={{ textAnchor: 'middle' }}
+                    tick={{ ...chartAxisTick(isMobile), textAnchor: 'middle' }}
+                    tickLine={false}
+                    axisLine={{ stroke: OVERVIEW_CHART_COLORS.grid }}
                     tickFormatter={(value) => {
                       const date = new Date(value);
                       return `${date.getDate()}/${date.getMonth() + 1}`;
                     }}
                     interval={isMobile ? 'preserveStartEnd' : undefined}
                   />
-                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
-                  <Tooltip 
+                  <YAxis tick={chartAxisTick(isMobile)} tickLine={false} axisLine={false} width={isMobile ? 25 : 60} />
+                  <Tooltip
                     labelFormatter={(value) => {
                       const date = new Date(value);
                       return date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
                     }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    stroke="hsl(var(--primary))" 
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke={OVERVIEW_CHART_COLORS.brand}
                     strokeWidth={isMobile ? 2 : 3}
-                    dot={isMobile ? false : { fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: isMobile ? 4 : 6, fill: 'hsl(var(--primary))' }}
+                    dot={isMobile ? false : { fill: OVERVIEW_CHART_COLORS.brand, stroke: 'hsl(var(--card))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: isMobile ? 5 : 7, fill: OVERVIEW_CHART_COLORS.positive, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -675,10 +712,10 @@ export default function Overview() {
           </Card>
 
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Property Status</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Property Status</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                 <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
                   <Pie
@@ -703,12 +740,15 @@ export default function Overview() {
                     outerRadius={isMobile ? 65 : 90}
                     fill="#8884d8"
                     dataKey="count"
+                    stroke="hsl(var(--card))"
+                    strokeWidth={2}
+                    activeShape={{ outerRadius: isMobile ? 76 : 108 }}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => {
                       const total = categoryData.reduce((sum, item) => sum + item.count, 0);
                       const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
@@ -718,25 +758,21 @@ export default function Overview() {
                       const data = payload?.[0]?.payload;
                       return data ? `Status: ${data.status}` : 'Status';
                     }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Legend 
-                    verticalAlign="bottom" 
+                  <Legend
+                    verticalAlign="bottom"
                     height={isMobile ? 50 : 60}
                     wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
                     content={() => (
-                      <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
+                      <div className="flex flex-wrap justify-center gap-2 rounded-xl bg-muted/30 px-2 py-2 md:gap-3">
                         {categoryData.map((entry, index) => {
                           const total = categoryData.reduce((sum, item) => sum + item.count, 0);
                           const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
                           return (
-                            <div key={entry.status} className="flex items-center gap-1">
-                              <div 
-                                className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                            <div key={entry.status} className="flex items-center gap-1.5 rounded-full bg-background/70 px-2 py-1 shadow-sm ring-1 ring-border/50">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full md:h-3 md:w-3"
                                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
                               />
                               <span className="text-[10px] md:text-xs text-muted-foreground">
@@ -764,64 +800,62 @@ export default function Overview() {
         {/* Row 3: Source and Agency Distribution */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Top Sender Emails</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Top Sender Emails</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
                 <BarChart data={sourceData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 90 } : { top: 20, right: 30, left: 20, bottom: 120 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis 
-                    dataKey="source" 
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis
+                    dataKey="source"
                     angle={-45}
                     textAnchor="end"
                     height={isMobile ? 90 : 120}
                     fontSize={isMobile ? 9 : 11}
                     interval={0}
+                    tick={chartAxisTick(isMobile)}
+                    tickLine={false}
+                    axisLine={{ stroke: OVERVIEW_CHART_COLORS.grid }}
                   />
-                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
-                  <Tooltip 
+                  <YAxis tick={chartAxisTick(isMobile)} tickLine={false} axisLine={false} width={isMobile ? 25 : 60} />
+                  <Tooltip
                     formatter={(value) => [value, 'Count']}
                     labelFormatter={(value) => `Source: ${value}`}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.teal} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
           <Card className={CHART_CARD}>
-            <CardHeader className="pb-2 md:pb-4">
-              <CardTitle className="text-base md:text-lg">Top Agencies</CardTitle>
+            <CardHeader className={CHART_HEADER}>
+              <CardTitle className={CHART_TITLE}>Top Agencies</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 md:px-6">
+            <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
                 <BarChart data={agencyData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 90 } : { top: 20, right: 30, left: 20, bottom: 120 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis 
-                    dataKey="agency" 
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis
+                    dataKey="agency"
                     angle={-45}
                     textAnchor="end"
                     height={isMobile ? 90 : 120}
                     fontSize={isMobile ? 9 : 11}
                     interval={0}
+                    tick={chartAxisTick(isMobile)}
+                    tickLine={false}
+                    axisLine={{ stroke: OVERVIEW_CHART_COLORS.grid }}
                   />
-                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
-                  <Tooltip 
+                  <YAxis tick={chartAxisTick(isMobile)} tickLine={false} axisLine={false} width={isMobile ? 25 : 60} />
+                  <Tooltip
                     formatter={(value) => [value, 'Count']}
                     labelFormatter={(value) => `Agency: ${value}`}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
+                    contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.neutral} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -835,9 +869,9 @@ export default function Overview() {
       <Card className={CHART_CARD}>
         <CardHeader className="flex flex-row items-center justify-between pb-6">
           <CardTitle className="text-xl">Recent Activity</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="hover-scale"
             onClick={() => navigate('/listings')}
           >
@@ -847,8 +881,8 @@ export default function Overview() {
         <CardContent>
           <div className="space-y-3 md:space-y-4">
             {recentListings.map((listing, index) => (
-              <div 
-                key={listing.id} 
+              <div
+                key={listing.id}
                 className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 border rounded-lg hover:bg-muted/50 transition-all duration-200 hover-scale gap-2"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
