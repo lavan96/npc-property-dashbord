@@ -51,14 +51,10 @@ const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-car
 const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
 const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-50/70 hover:text-amber-700 dark:border-white/10 dark:bg-slate-950/45 dark:hover:bg-amber-400/10 dark:hover:text-amber-200';
 const LISTINGS_CHIP_ACTIVE = 'border-amber-400/70 bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-400 hover:text-white dark:border-amber-300/60';
-const LISTINGS_HEADER_ICON_ACTION = LISTINGS_SECONDARY_ACTION;
-const LISTINGS_REFRESH_ACTION = LISTINGS_SECONDARY_ACTION;
-const LISTINGS_TABLE_CARD = 'overflow-hidden rounded-[1.65rem] border-border/70 bg-gradient-to-br from-card/95 via-card/90 to-muted/20 shadow-[0_20px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/[0.03] dark:border-white/10 dark:from-slate-950/90 dark:via-slate-950/80 dark:to-slate-900/40 dark:ring-white/[0.04]';
-const LISTINGS_TABLE_SCROLL = 'overflow-x-auto bg-gradient-to-b from-background/70 to-card/80';
-const LISTINGS_TABLE = 'min-w-[1180px] border-separate border-spacing-0';
-const LISTINGS_TABLE_HEADER = 'sticky top-0 z-10 bg-gradient-to-r from-slate-100/95 via-muted/95 to-slate-100/95 shadow-[inset_0_-1px_0_hsl(var(--border)),0_8px_20px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-muted/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-900/95 dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.10),0_10px_24px_rgba(0,0,0,0.24)]';
-const LISTINGS_TABLE_HEAD = 'h-14 whitespace-nowrap px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300';
-const LISTINGS_TABLE_CELL = 'px-5 py-4';
+const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-3 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
+const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
+const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -635,24 +631,24 @@ export default function Listings() {
       ) : (
         <Card className={cn(LISTINGS_CARD_SURFACE, LISTINGS_TABLE_CARD)}>
           <CardContent className="p-0">
-            <div className={LISTINGS_TABLE_SCROLL}>
-            <Table className={LISTINGS_TABLE}>
-            <TableHeader className={LISTINGS_TABLE_HEADER}>
-              <TableRow className="border-b border-border/80 hover:bg-transparent dark:border-white/10">
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "w-14 pl-6 pr-3")}>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[1180px] border-separate border-spacing-0">
+            <TableHeader className="bg-muted/45 dark:bg-white/[0.04]">
+              <TableRow className="border-border/70 hover:bg-transparent">
+                <TableHead className={cn(LISTING_TABLE_HEAD, "w-14 pl-5")}>
                   <Checkbox
                     checked={selectedListings.size === filteredListings.length && filteredListings.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[320px]")}>Property</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[140px]")}>Price</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[170px]")}>Beds/Baths/Cars</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[190px]")}>Inspection</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[180px]")}>Source</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[145px]")}>Confidence</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[190px]")}>Received</TableHead>
-                <TableHead className={cn(LISTINGS_TABLE_HEAD, "w-16 pr-6 text-right")}></TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[320px]")}>Property</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[140px] text-right")}>Price</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[170px]")}>Beds/Baths/Cars</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px]")}>Inspection</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[170px]")}>Source</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[130px]")}>Confidence</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px] text-right")}>Received</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "w-16 pr-5 text-right")}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -671,26 +667,36 @@ export default function Listings() {
                   onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
                   onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
                 >
-                  <TableRow className="border-border/55 bg-card/40 transition-colors hover:bg-primary/[0.045] dark:border-white/10 dark:bg-slate-950/30 dark:hover:bg-white/[0.04]">
+                  <TableRow
+                    className={cn(
+                      "group border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.075] hover:via-primary/[0.035] hover:to-transparent dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
+                      selectedListings.has(listing.id) && "bg-primary/[0.085] shadow-[inset_4px_0_0_hsl(var(--primary))] hover:from-primary/[0.12] dark:bg-primary/10"
+                    )}
+                  >
                     {/* preserve original cells */}
-                  <TableCell className="pl-6 pr-3">
+                  <TableCell className="py-4 pl-5 align-middle">
                     <Checkbox
                       checked={selectedListings.has(listing.id)}
                       onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
                     />
                   </TableCell>
                   
-                  <TableCell className={cn(LISTINGS_TABLE_CELL, "min-w-[320px]")}>
-                    <div className="space-y-1">
-                      <div className="font-semibold leading-5 text-foreground">{listing.address || 'Unknown Address'}</div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>
+                  <TableCell className="py-4 align-middle">
+                    <div className="min-w-0 space-y-2">
+                      <div className={cn(
+                        "max-w-[360px] truncate text-[15px] font-semibold leading-5 tracking-[-0.01em] text-foreground",
+                        !listing.address && "text-muted-foreground"
+                      )}>
+                        {listing.address || 'Unknown Address'}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <span className="min-w-0 truncate leading-5">
                           {listing.suburb || 'Unknown Suburb'}
                           {(listing.state || extractAUState(listing.address || '')) && `, ${listing.state || extractAUState(listing.address || '')}`}
                           {(listing.zipCode || extractPostcode(listing.address || '')) && ` ${listing.zipCode || extractPostcode(listing.address || '')}`}
                         </span>
                         {listing.propertyType && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary shadow-sm dark:border-primary/30 dark:bg-primary/10">
                             {listing.propertyType}
                           </Badge>
                         )}
@@ -698,56 +704,62 @@ export default function Listings() {
                     </div>
                   </TableCell>
                   
-                  <TableCell className={cn(LISTINGS_TABLE_CELL, "font-semibold tabular-nums text-foreground")}>
-                    {listing.price && listing.price > 0 ? formatCurrency(listing.price) : '-'}
+                  <TableCell className="py-4 text-right align-middle">
+                    {listing.price && listing.price > 0 ? (
+                      <span className="font-semibold tabular-nums text-foreground">{formatCurrency(listing.price)}</span>
+                    ) : (
+                      <span className={LISTING_MISSING_VALUE}>-</span>
+                    )}
                   </TableCell>
                   
-                  <TableCell className={LISTINGS_TABLE_CELL}>
-                    <div className="flex items-center gap-3 text-sm tabular-nums">
-                      <div className="flex items-center gap-1">
-                        <Bed className="h-3 w-3 text-muted-foreground" />
-                        <span>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
+                  <TableCell className="py-4 align-middle">
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                        <Bed className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={cn("font-semibold tabular-nums", !(listing.beds && listing.beds > 0) && "text-muted-foreground")}>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Bath className="h-3 w-3 text-muted-foreground" />
-                        <span>{listing.baths && listing.baths > 0 ? listing.baths : '-'}</span>
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                        <Bath className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={cn("font-semibold tabular-nums", !(listing.baths && listing.baths > 0) && "text-muted-foreground")}>{listing.baths && listing.baths > 0 ? listing.baths : '-'}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Car className="h-3 w-3 text-muted-foreground" />
-                        <span>{listing.carSpaces && listing.carSpaces > 0 ? listing.carSpaces : '-'}</span>
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                        <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={cn("font-semibold tabular-nums", !(listing.carSpaces && listing.carSpaces > 0) && "text-muted-foreground")}>{listing.carSpaces && listing.carSpaces > 0 ? listing.carSpaces : '-'}</span>
                       </div>
                     </div>
                   </TableCell>
                   
-                  <TableCell className={LISTINGS_TABLE_CELL}>
+                  <TableCell className="py-4 align-middle">
                     {listing.inspectionStart ? (
-                      <div className="text-sm">{formatDate(listing.inspectionStart)}</div>
+                      <div className="inline-flex rounded-xl border border-border/60 bg-background/65 px-3 py-1.5 text-sm font-medium tabular-nums shadow-sm">{formatDate(listing.inspectionStart)}</div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className={LISTING_MISSING_VALUE}>-</span>
                     )}
                   </TableCell>
                   
-                  <TableCell className={LISTINGS_TABLE_CELL}>
-                    <div className="text-sm font-medium text-foreground/90">{listing.agencyName || 'Unknown Agency'}</div>
+                  <TableCell className="py-4 align-middle">
+                    <div className={cn("max-w-[180px] truncate text-sm font-medium leading-5", !listing.agencyName && "text-muted-foreground")}>{listing.agencyName || 'Unknown Agency'}</div>
                   </TableCell>
                   
-                  <TableCell className={LISTINGS_TABLE_CELL}>
+                  <TableCell className="py-4 align-middle">
                     {listing.confidence !== undefined && listing.confidence !== null ? (
-                      <ConfidenceBadge confidence={listing.confidence} />
+                      <div className="inline-flex rounded-full bg-background/70 p-0.5 shadow-sm ring-1 ring-border/55">
+                        <ConfidenceBadge confidence={listing.confidence} />
+                      </div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className={LISTING_MISSING_VALUE}>-</span>
                     )}
                   </TableCell>
                   
-                  <TableCell className={cn(LISTINGS_TABLE_CELL, "tabular-nums")}>
+                  <TableCell className="py-4 text-right align-middle">
                     {listing.receivedAt ? (
-                      <div className="text-sm">{formatDate(listing.receivedAt)}</div>
+                      <div className="text-sm font-medium tabular-nums text-muted-foreground">{formatDate(listing.receivedAt)}</div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className={LISTING_MISSING_VALUE}>-</span>
                     )}
                   </TableCell>
                   
-                  <TableCell className="pl-3 pr-6 text-right">
+                  <TableCell className="py-4 pr-5 text-right align-middle">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
