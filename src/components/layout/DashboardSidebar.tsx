@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home, 
@@ -37,13 +38,13 @@ import {
   Cpu,
   Coins,
   Inbox,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -52,6 +53,7 @@ import {
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
+import { cn } from '@/lib/utils';
 
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
@@ -81,6 +83,58 @@ const navigationItems = [
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
   { title: 'Token Usage', url: '/billing/usage', icon: Coins, moduleKey: '__always__' },
 ];
+
+
+const navigationGroups = [
+  {
+    title: 'Main Dashboard',
+    itemTitles: ['Overview', 'Listings', 'Commercial / Industrial', 'Calendar', 'Sources'],
+  },
+  {
+    title: 'Reports & Analysis',
+    itemTitles: ['Reports', 'Generated Reports', 'Cash Flow Analysis', 'Report Q&A', 'Portfolio Reports', 'Report Requests', 'Charts'],
+  },
+  {
+    title: 'Client & CRM',
+    itemTitles: ['Clients', 'Client Tracker', 'CRM Conversations', 'Portal Messages', 'Email Copilot', 'Call Logs'],
+  },
+  {
+    title: 'Operations',
+    itemTitles: ['Deal Pipeline', 'Reminders', 'Checklists', 'Agreements', 'Game Plan', 'Marketing'],
+  },
+  {
+    title: 'Help & Usage',
+    itemTitles: ['User Guide', 'Token Usage'],
+  },
+];
+
+const adminGroup = {
+  title: 'Administration',
+  itemTitles: [
+    'Automation',
+    'Templates',
+    'Branding',
+    'Integrations',
+    'Cloudflare',
+    'API Usage',
+    'Model Hub',
+    'Monitoring',
+    'Quality Assurance',
+    'Data Import',
+    'Depreciation Comps',
+    'Error Logs',
+    'Activity Logs',
+    'Settings',
+    'User Management',
+    'Finance Portal',
+    'Portal Config',
+    'Token Audit Log',
+    'PDF Import Engine',
+    'PDF Import Diagnostics',
+    'BC Segment Engine',
+    'Reclassify Property',
+  ],
+};
 
 const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap, moduleKey: 'automation' },
@@ -114,6 +168,7 @@ export function DashboardSidebar() {
   const { settings } = useWhiteLabel();
   const { hasModuleAccess, isSuperadmin, loading: permissionsLoading } = usePermissions();
   const isCollapsed = state === 'collapsed';
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   
   const isActive = (path: string) => {
     if (path === '/commercial') {
@@ -137,6 +192,113 @@ export function DashboardSidebar() {
         item.moduleKey === '__superadmin_only__' ? isSuperadmin : (isSuperadmin || hasModuleAccess(item.moduleKey))
       );
 
+  const visibleNavItemsByTitle = useMemo(
+    () => new Map(visibleNavItems.map((item) => [item.title, item])),
+    [visibleNavItems]
+  );
+
+  const visibleAdminItemsByTitle = useMemo(
+    () => new Map(visibleAdminItems.map((item) => [item.title, item])),
+    [visibleAdminItems]
+  );
+
+  const groupedNavItems = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.itemTitles.flatMap((title) => {
+        const item = visibleNavItemsByTitle.get(title);
+        return item ? [item] : [];
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const groupedAdminItems = {
+    ...adminGroup,
+    items: adminGroup.itemTitles.flatMap((title) => {
+      const item = visibleAdminItemsByTitle.get(title);
+      return item ? [item] : [];
+    }),
+  };
+
+  const renderNavigationItem = (item: (typeof navigationItems)[number], isAdministration = false) => {
+    const active = isActive(item.url);
+
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          asChild
+          isActive={active}
+          tooltip={item.title}
+          className={cn(
+            'dashboard-sidebar-menu-button',
+            isAdministration && 'dashboard-sidebar-menu-button-admin',
+            active && 'dashboard-sidebar-menu-button-active'
+          )}
+        >
+          <NavLink 
+            to={item.url} 
+            className="flex min-w-0 items-center gap-2 text-sm font-medium"
+            title={item.title}
+            aria-current={active ? 'page' : undefined}
+          >
+            <item.icon className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span className="min-w-0 truncate">{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
+  const renderGroup = (
+    group: { title: string; items: typeof visibleNavItems },
+    options: { administration?: boolean } = {}
+  ) => {
+    const hasActiveItem = group.items.some((item) => isActive(item.url));
+    const isGroupCollapsed = !hasActiveItem && Boolean(collapsedGroups[group.title]);
+
+    if (isCollapsed) {
+      return (
+        <SidebarGroup
+          key={group.title}
+          className={cn(
+            'dashboard-sidebar-group-collapsed',
+            options.administration && 'dashboard-sidebar-admin-group-collapsed'
+          )}
+        >
+          <SidebarGroupContent>
+            <SidebarMenu>{group.items.map((item) => renderNavigationItem(item, options.administration))}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      );
+    }
+
+    return (
+      <SidebarGroup
+        key={group.title}
+        className={cn('dashboard-sidebar-group', options.administration && 'dashboard-sidebar-admin-group')}
+      >
+        <button
+          type="button"
+          className={cn(
+            'dashboard-sidebar-group-trigger',
+            hasActiveItem && 'dashboard-sidebar-group-trigger-active',
+            options.administration && 'dashboard-sidebar-admin-trigger'
+          )}
+          aria-expanded={!isGroupCollapsed}
+          onClick={() => setCollapsedGroups((current) => ({ ...current, [group.title]: !current[group.title] }))}
+        >
+          <span>{group.title}</span>
+          <ChevronDown className={cn('h-4 w-4 transition-transform', isGroupCollapsed && '-rotate-90')} />
+        </button>
+        {!isGroupCollapsed && (
+          <SidebarGroupContent className="mt-1">
+            <SidebarMenu>{group.items.map((item) => renderNavigationItem(item, options.administration))}</SidebarMenu>
+          </SidebarGroupContent>
+        )}
+      </SidebarGroup>
+    );
+  };
+
   // Determine which logo to show based on sidebar state
   const currentLogo = isCollapsed 
     ? (settings.sidebarIcon || settings.sidebarLogo) 
@@ -144,7 +306,7 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="dashboard-sidebar-surface border-r-0">
-      <SidebarContent>
+      <SidebarContent className="dashboard-sidebar-content">
         {/* Brand */}
         <div className={`dashboard-sidebar-header ${isCollapsed ? 'p-3' : 'p-6'}`}>
           {isCollapsed ? (
@@ -166,51 +328,15 @@ export function DashboardSidebar() {
           )}
         </div>
 
-        {/* Main Navigation */}
-        <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>Dashboard</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <nav className="dashboard-sidebar-nav" aria-label="Dashboard navigation">
+          {groupedNavItems.map((group) => renderGroup(group))}
 
-        {/* Admin Section - only show if user has access to any admin items */}
-        {visibleAdminItems.length > 0 && (
-          <SidebarGroup>
-            {!isCollapsed && <SidebarGroupLabel>Administration</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleAdminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <NavLink 
-                        to={item.url} 
-                        className="flex items-center gap-2 text-sm font-medium"
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+          {groupedAdminItems.items.length > 0 && (
+            <div className="dashboard-sidebar-admin-divider">
+              {renderGroup(groupedAdminItems, { administration: true })}
+            </div>
+          )}
+        </nav>
       </SidebarContent>
     </Sidebar>
   );
