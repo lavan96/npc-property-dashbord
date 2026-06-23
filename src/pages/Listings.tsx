@@ -711,7 +711,7 @@ export default function Listings() {
                           {(listing.zipCode || extractPostcode(listing.address || '')) && ` ${listing.zipCode || extractPostcode(listing.address || '')}`}
                         </span>
                         {listing.propertyType && (
-                          <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary shadow-sm dark:border-primary/30 dark:bg-primary/10">
+                          <Badge variant="outline" className={cn(LISTING_BADGE_BASE, LISTING_PROPERTY_TYPE_BADGE)}>
                             {listing.propertyType}
                           </Badge>
                         )}
@@ -759,7 +759,7 @@ export default function Listings() {
                   <TableCell className="py-4 align-middle">
                     {listing.confidence !== undefined && listing.confidence !== null ? (
                       <div className="inline-flex rounded-full bg-background/70 p-0.5 shadow-sm ring-1 ring-border/55">
-                        <ConfidenceBadge confidence={listing.confidence} />
+                        <ConfidenceBadge confidence={listing.confidence} className={cn(LISTING_CONFIDENCE_BADGE, getListingConfidenceBadgeTone(listing.confidence))} />
                       </div>
                     ) : (
                       <span className={LISTING_MISSING_VALUE}>-</span>
