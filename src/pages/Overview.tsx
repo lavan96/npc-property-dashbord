@@ -595,7 +595,7 @@ export default function Overview() {
                   <Tooltip
                     contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.brand} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.positive, radius: [8, 8, 0, 0] }} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.brand} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.positive, radius: [8, 8, 0, 0] } as any} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
