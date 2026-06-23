@@ -34,7 +34,7 @@ import {
   FileSignature,
   Globe,
   Send,
-  Map,
+  Map as MapIcon,
   Cpu,
   Coins,
   Inbox,
