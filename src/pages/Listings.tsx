@@ -55,6 +55,14 @@ const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-c
 const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
 const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
+const LISTINGS_TABLE_CARD = 'overflow-hidden';
+const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.02em] shadow-sm';
+const LISTING_PROPERTY_TYPE_BADGE = 'border-slate-200/80 bg-slate-50/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200';
+const LISTING_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
+const getListingConfidenceBadgeTone = (confidence: number) =>
+  confidence >= 0.7
+    ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-400/30 dark:bg-teal-400/10 dark:text-teal-200'
+    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -696,7 +704,7 @@ export default function Listings() {
                           {(listing.zipCode || extractPostcode(listing.address || '')) && ` ${listing.zipCode || extractPostcode(listing.address || '')}`}
                         </span>
                         {listing.propertyType && (
-                          <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary shadow-sm dark:border-primary/30 dark:bg-primary/10">
+                          <Badge variant="outline" className={cn(LISTING_BADGE_BASE, LISTING_PROPERTY_TYPE_BADGE)}>
                             {listing.propertyType}
                           </Badge>
                         )}
@@ -744,7 +752,7 @@ export default function Listings() {
                   <TableCell className="py-4 align-middle">
                     {listing.confidence !== undefined && listing.confidence !== null ? (
                       <div className="inline-flex rounded-full bg-background/70 p-0.5 shadow-sm ring-1 ring-border/55">
-                        <ConfidenceBadge confidence={listing.confidence} />
+                        <ConfidenceBadge confidence={listing.confidence} className={cn(LISTING_CONFIDENCE_BADGE, getListingConfidenceBadgeTone(listing.confidence))} />
                       </div>
                     ) : (
                       <span className={LISTING_MISSING_VALUE}>-</span>

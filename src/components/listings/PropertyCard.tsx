@@ -23,6 +23,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
+const LISTING_CARD_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.02em] shadow-sm';
+const LISTING_CARD_PROPERTY_TYPE_BADGE = 'border-slate-200/80 bg-slate-50/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200';
+const LISTING_CARD_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
+const getListingCardConfidenceBadgeTone = (confidence: number) =>
+  confidence >= 0.7
+    ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-400/30 dark:bg-teal-400/10 dark:text-teal-200'
+    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200';
+
 interface PropertyCardProps {
   listing: PropertyListing;
   isSelected: boolean;
@@ -66,7 +74,7 @@ export function PropertyCard({
             <h3 className="font-medium text-sm leading-tight truncate">
               {listing.address || 'Unknown Address'}
             </h3>
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
               <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground truncate">
                 {listing.suburb || 'Unknown Suburb'}
@@ -74,7 +82,7 @@ export function PropertyCard({
                 {listing.zipCode && ` ${listing.zipCode}`}
               </span>
               {listing.propertyType && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                <Badge variant="outline" className={cn(LISTING_CARD_BADGE_BASE, LISTING_CARD_PROPERTY_TYPE_BADGE, "shrink-0")}>
                   {listing.propertyType}
                 </Badge>
               )}
@@ -139,7 +147,7 @@ export function PropertyCard({
           {/* Confidence Badge */}
           <div className="ml-auto">
             {listing.confidence !== undefined ? (
-              <ConfidenceBadge confidence={listing.confidence} />
+              <ConfidenceBadge confidence={listing.confidence} className={cn(LISTING_CARD_CONFIDENCE_BADGE, getListingCardConfidenceBadgeTone(listing.confidence))} />
             ) : null}
           </div>
         </div>
