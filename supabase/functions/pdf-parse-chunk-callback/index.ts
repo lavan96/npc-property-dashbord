@@ -21,6 +21,7 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CALLBACK_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const PARSE_URL = (Deno.env.get('PDF_PARSE_SERVICE_URL') ?? '').replace(/\/$/, '');
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
+const DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
@@ -340,7 +341,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         for (const [k, v] of Object.entries(pages)) {
           const localNo = Number(k);
           const globalNo = localNo + offset;
-          (mergedDoc.pages as any)[String(globalNo)] = v;
+          const pageValue = v && typeof v === 'object'
+            ? { ...(v as Record<string, unknown>), page_no: globalNo }
+            : v;
+          (mergedDoc.pages as any)[String(globalNo)] = pageValue;
           if (globalNo > pageCount) pageCount = globalNo;
         }
       }
@@ -512,6 +516,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       chunk_raster_manifest_paths: chunkRasterManifestPaths,
       page_raster_paths: pageRasterPaths,
       artifact_contract_version: 'raster-manifest-v1',
+      docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
       page_count: finalPageCount,
       summary: {
         ...summary,

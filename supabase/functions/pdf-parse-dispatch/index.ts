@@ -29,6 +29,7 @@ const SOURCE_BUCKET = 'template-import-assets';
 const ENGINE = 'docling';
 const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest';
 const ARTIFACT_CONTRACT_VERSION = 'raster-manifest-v1';
+const DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
 const PHASE3_ENGINE_MARKER = 'phase3-raster-manifest';
 const MAX_SIDECAR_ATTEMPTS = 3;
 
@@ -57,6 +58,10 @@ function isCurrentArtifactContract(row: any, mode: string): boolean {
   if (typeof manifestPath !== 'string' || !manifestPath) return false;
   if (!Array.isArray(pageRasterPaths) || pageRasterPaths.length === 0) return false;
   if (pageCount > 0 && pageRasterPaths.length < pageCount) return false;
+
+  const artifactResult = ((row as any)?.result_payload ?? {}) as Record<string, unknown>;
+  const isChunkedResult = artifactResult.chunked === true || Array.isArray((artifactResult as any).chunk_raster_manifest_paths);
+  if (isChunkedResult && artifactResult.docling_page_rebase_version !== DOCLING_PAGE_REBASE_VERSION) return false;
 
   return true;
 }
