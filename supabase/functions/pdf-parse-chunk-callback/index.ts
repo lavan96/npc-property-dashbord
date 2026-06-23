@@ -305,6 +305,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const markdownParts: string[] = [];
   const doctagsParts: string[] = [];
   const rasterPages: any[] = [];
+  const chunkRasterManifestPaths: string[] = [];
+  const pageRasterPaths: string[] = [];
+  const parentRasterManifestPages: any[] = [];
   let totalTextChars = 0;
   let totalOcrChars = 0;
   let totalTableCells = 0;
@@ -374,6 +377,41 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         }
       }
     }
+
+    if (ap.rasters_manifest_path) {
+      chunkRasterManifestPaths.push(ap.rasters_manifest_path);
+      const manifest = await downloadJson(admin, ap.rasters_manifest_path);
+      if (manifest?.pages && Array.isArray(manifest.pages)) {
+        for (const page of manifest.pages) {
+          const localPageNo = Number(page.page_no ?? 0);
+          const globalPageNo = typeof page.global_page_no === 'number'
+            ? page.global_page_no
+            : localPageNo + offset;
+
+          if (typeof page.path === 'string' && page.path) {
+            pageRasterPaths.push(page.path);
+          }
+
+          parentRasterManifestPages.push({
+            page_no: globalPageNo,
+            source_chunk_index: c.chunk_index,
+            source_chunk_page_no: localPageNo || null,
+            width: page.width ?? null,
+            height: page.height ?? null,
+            path: page.path ?? null,
+            mime: page.mime ?? 'image/png',
+            bytes: page.bytes ?? null,
+          });
+        }
+      }
+    }
+
+    const chunkPageRasterPaths = Array.isArray((ap as any).page_raster_paths)
+      ? ((ap as any).page_raster_paths as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
+    for (const path of chunkPageRasterPaths) {
+      if (!pageRasterPaths.includes(path)) pageRasterPaths.push(path);
+    }
     const s = (c.summary ?? {}) as any;
     totalTextChars += Number(s.text_chars ?? 0);
     totalOcrChars += Number(s.ocr_chars ?? 0);
@@ -405,6 +443,17 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     : null;
   const rastersPath = rasterPages.length
     ? await uploadJson(admin, `${jobId}/rasters.json`, { format: 'png', pages: rasterPages })
+    : null;
+
+  parentRasterManifestPages.sort((a, b) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
+  const rastersManifestPath = parentRasterManifestPages.length
+    ? await uploadJson(admin, `${jobId}/rasters-manifest.json`, {
+        version: 'phase3-raster-manifest-v1',
+        source: 'chunk-merge',
+        page_count: parentRasterManifestPages.length,
+        pages: parentRasterManifestPages,
+        chunk_raster_manifest_paths: chunkRasterManifestPaths,
+      })
     : null;
 
   if (!doclingPath) {
@@ -445,6 +494,11 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       markdown_path: markdownPath,
       doctags_path: doctagsPath,
       rasters_path: rastersPath,
+      legacy_rasters_path: rastersPath,
+      rasters_manifest_path: rastersManifestPath,
+      chunk_raster_manifest_paths: chunkRasterManifestPaths,
+      page_raster_paths: pageRasterPaths,
+      artifact_contract_version: 'raster-manifest-v1',
       page_count: pageCount,
       summary,
     },
