@@ -13,6 +13,7 @@ export function TokenBalanceBanner() {
   const { balance, lowBalance } = useTokenBalance();
   const { pathname } = useLocation();
   const isOverviewPage = pathname === "/";
+  const isListingsPage = pathname === "/listings";
 
   if (!lowBalance || !balance) return null;
 
@@ -20,9 +21,9 @@ export function TokenBalanceBanner() {
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
 
-  if (isOverviewPage) {
+  if (isOverviewPage || isListingsPage) {
     return (
-      <Alert className="relative overflow-hidden rounded-2xl border-amber-300/60 bg-gradient-to-r from-amber-50/90 via-card to-card px-4 py-3 shadow-sm shadow-amber-950/5 dark:border-amber-400/25 dark:from-amber-500/10 dark:via-slate-950/80 dark:to-slate-950/70">
+      <Alert className="relative overflow-hidden rounded-2xl border-amber-300/55 bg-gradient-to-r from-amber-50/85 via-card/90 to-card/85 px-4 py-3 shadow-[0_10px_30px_rgba(146,64,14,0.07)] backdrop-blur dark:border-amber-400/25 dark:from-amber-500/10 dark:via-slate-950/80 dark:to-slate-950/70">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
         <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-300" />
         <AlertTitle className="text-sm font-semibold text-amber-900 dark:text-amber-200">Token balance low</AlertTitle>
@@ -35,7 +36,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 border-amber-300/70 bg-amber-500 text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white focus-visible:ring-amber-400 active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
+            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_12px_28px_rgba(217,119,6,0.22)] focus-visible:ring-amber-400 active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
           >
             Top up
           </Button>
