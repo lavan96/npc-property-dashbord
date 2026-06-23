@@ -42,6 +42,13 @@ import { ListingRowContextMenu } from '@/components/listings/ListingRowContextMe
 import { ReportCommandPalette } from '@/components/reports/ReportCommandPalette';
 import { Command as CommandIcon } from 'lucide-react';
 
+
+const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
+const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
+const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
+const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const LISTINGS_CHIP_ACTION = 'h-8 rounded-full border-border/70 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary dark:border-white/10';
+
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
 const InvestmentReportModal = lazy(() => import('@/components/listings/InvestmentReportModal').then(m => ({ default: m.InvestmentReportModal })));
@@ -399,11 +406,15 @@ export default function Listings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
+        <div className={LISTINGS_SECTION_SURFACE}>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Listings</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Manage and review property listings</p>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_rgba(245,158,11,0.55)]" />
+              Property Intelligence
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-foreground md:text-4xl">Listings</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground/90 md:text-base">Manage and review property listings</p>
           </div>
           <div className="flex gap-2">
             <Skeleton className="h-9 w-20" />
@@ -417,7 +428,7 @@ export default function Listings() {
             ))}
           </div>
         ) : (
-          <Card>
+          <Card className={LISTINGS_CARD_SURFACE}>
             <CardHeader>
               <div className="flex items-center gap-4">
                 <Skeleton className="h-10 w-64" />
@@ -438,17 +449,22 @@ export default function Listings() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Listings</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
+      <section className={`${LISTINGS_SECTION_SURFACE} bg-gradient-to-br from-card/85 via-card/70 to-muted/25 dark:from-slate-950/70 dark:via-slate-950/45 dark:to-slate-900/35`}>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_rgba(245,158,11,0.55)]" />
+              Property Intelligence
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-foreground md:text-4xl">Listings</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground/90 md:text-base">
             {filteredListings.length} of {listings.length} properties
           </p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-background/55 p-2 shadow-inner dark:border-white/10 dark:bg-slate-950/35">
           <AirtableTableSelector
             value={selectedTable}
             onChange={(next) => {
@@ -467,7 +483,7 @@ export default function Listings() {
             onClick={() => setIsCommandPaletteOpen(true)}
             size="sm"
             variant="outline"
-            className="gap-1.5"
+            className={`${LISTINGS_SECONDARY_ACTION} gap-1.5`}
             aria-label="Open command palette"
           >
             <CommandIcon className="h-4 w-4" />
@@ -475,7 +491,7 @@ export default function Listings() {
               ⌘K
             </kbd>
           </Button>
-          <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching}>
+          <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching} className={LISTINGS_SECONDARY_ACTION}>
             {isFetching ? (
               <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
             ) : (
@@ -483,11 +499,12 @@ export default function Listings() {
             )}
             <span className="hidden md:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
           </Button>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Search and Filters */}
-      <div className="flex flex-col gap-3">
+      <section className={`${LISTINGS_SECTION_SURFACE} space-y-4`}>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -495,7 +512,7 @@ export default function Listings() {
               placeholder="Search properties..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10"
+              className="h-11 rounded-full border-border/70 bg-background/70 pl-10 shadow-inner transition-colors focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/45"
             />
           </div>
           
@@ -515,7 +532,7 @@ export default function Listings() {
           )}
           
           {hasActiveFilters && !isMobile && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="rounded-full text-muted-foreground hover:text-destructive">
               <X className="h-4 w-4 mr-1" />
               Clear
             </Button>
@@ -528,7 +545,7 @@ export default function Listings() {
             variant={filters.hasInspection ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
-            className="h-8 text-xs"
+            className={LISTINGS_CHIP_ACTION}
           >
             Has Inspection
           </Button>
@@ -536,7 +553,7 @@ export default function Listings() {
             variant={filters.lowConfidence ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
-            className="h-8 text-xs"
+            className={LISTINGS_CHIP_ACTION}
           >
             Low Confidence
           </Button>
@@ -544,7 +561,7 @@ export default function Listings() {
             variant={filters.offMarket ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, offMarket: !prev.offMarket }))}
-            className="h-8 text-xs"
+            className={LISTINGS_CHIP_ACTION}
           >
             Off-Market
           </Button>
@@ -560,13 +577,13 @@ export default function Listings() {
             </Button>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Content: Cards on Mobile, Table on Desktop */}
       {isMobile ? (
         <div className="space-y-3">
           {filteredListings.length === 0 ? (
-            <Card>
+            <Card className={LISTINGS_CARD_SURFACE}>
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">No listings found.</p>
                 <Button variant="outline" onClick={loadListings} className="mt-4">
@@ -592,11 +609,12 @@ export default function Listings() {
           )}
         </div>
       ) : (
-        <Card>
+        <Card className={`${LISTINGS_CARD_SURFACE} overflow-hidden`}>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
-            <TableHeader>
-              <TableRow>
+            <TableHeader className="bg-muted/35 dark:bg-white/[0.03]">
+              <TableRow className="border-border/70 hover:bg-transparent">
                 <TableHead className="w-12">
                   <Checkbox
                     checked={selectedListings.size === filteredListings.length && filteredListings.length > 0}
@@ -629,7 +647,7 @@ export default function Listings() {
                   onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
                   onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
                 >
-                  <TableRow className="hover:bg-muted/50">
+                  <TableRow className="border-border/60 transition-colors hover:bg-primary/[0.045] dark:border-white/10 dark:hover:bg-white/[0.04]">
                     {/* preserve original cells */}
                   <TableCell>
                     <Checkbox
@@ -745,6 +763,7 @@ export default function Listings() {
               ))}
             </TableBody>
           </Table>
+            </div>
           
           {filteredListings.length === 0 && (
             <div className="text-center py-12">
@@ -818,7 +837,7 @@ export default function Listings() {
       {/* Floating Action Bar */}
       {selectedListings.size > 0 && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md md:max-w-lg md:w-auto">
-          <Card className="shadow-lg border-2">
+          <Card className="rounded-2xl border border-primary/25 bg-card/95 shadow-[0_18px_50px_rgba(15,23,42,0.18)] backdrop-blur dark:border-primary/30 dark:bg-slate-950/90 dark:shadow-black/45">
             <CardContent className="py-2 px-3 md:py-3 md:px-6">
               <div className="flex items-center gap-2 md:gap-4">
                 <div className="flex items-center gap-2 min-w-0">
