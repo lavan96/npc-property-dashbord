@@ -41,6 +41,8 @@ import { cn } from '@/lib/utils';
 
 const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
 const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
+const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-slate-950/85 dark:via-slate-950/70 dark:to-primary/10 dark:shadow-black/35';
+const LISTINGS_STATE_ICON = 'mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_14px_34px_rgba(245,158,11,0.14)]';
 const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
 const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
@@ -58,13 +60,15 @@ const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full bor
 const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
 const LISTINGS_TABLE_CARD = 'overflow-hidden';
 const LISTING_SELECTION_CHECKBOX = 'h-5 w-5 rounded-md border-border/80 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2';
-const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.02em] shadow-sm';
-const LISTING_PROPERTY_TYPE_BADGE = 'max-w-full border-slate-200/80 bg-slate-50/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200';
+const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold leading-none tracking-[0.02em] shadow-sm';
+const LISTING_PROPERTY_TYPE_BADGE = 'max-w-full border-amber-200/70 bg-amber-50/75 text-amber-800 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100';
 const LISTING_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
 const getListingConfidenceBadgeTone = (confidence: number) =>
   confidence >= 0.7
-    ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-400/30 dark:bg-teal-400/10 dark:text-teal-200'
-    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200';
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200'
+    : confidence >= 0.45
+      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200'
+      : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-200';
 
 
 // Lazy load heavy modal components
@@ -794,7 +798,7 @@ export default function Listings() {
           <CardContent className="p-0">
             <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Listings table" tabIndex={0}>
             <Table className="min-w-[1180px] border-separate border-spacing-0 lg:min-w-[1240px]">
-            <TableHeader className="bg-muted/45 dark:bg-white/[0.04]">
+            <TableHeader className="sticky top-0 z-10 bg-muted/55 backdrop-blur dark:bg-slate-950/80">
               <TableRow className="border-border/70 hover:bg-transparent">
                 <TableHead className={cn(LISTING_TABLE_HEAD, "w-14 pl-5")}>
                   <Checkbox
@@ -832,12 +836,12 @@ export default function Listings() {
                 >
                   <TableRow
                     className={cn(
-                      "group relative border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.085] hover:via-primary/[0.04] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.10),inset_0_-1px_0_hsl(var(--primary)/0.08)] focus-within:bg-primary/[0.055] dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
+                      "group relative border-b border-border/50 bg-card/80 transition-all duration-200 odd:bg-card/92 even:bg-muted/[0.22] hover:bg-gradient-to-r hover:from-primary/[0.095] hover:via-primary/[0.045] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.12),inset_0_-1px_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/[0.06] dark:border-white/10 dark:odd:bg-slate-950/62 dark:even:bg-white/[0.025] dark:hover:from-primary/10 dark:hover:via-white/[0.04]",
                       selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-slate-950/55"
                     )}
                   >
                     {/* preserve original cells */}
-                  <TableCell className="py-4 pl-5 align-middle">
+                  <TableCell className="py-4 pl-5 align-middle first:rounded-l-xl">
                     <Checkbox
                       checked={selectedListings.has(listing.id)}
                       onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
@@ -878,16 +882,16 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell className="py-4 align-middle">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                    <div className="flex items-center gap-2 text-sm text-foreground">
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 shadow-sm">
                         <Bed className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className={cn("font-semibold tabular-nums", !(listing.beds && listing.beds > 0) && "text-muted-foreground")}>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
                       </div>
-                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 shadow-sm">
                         <Bath className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className={cn("font-semibold tabular-nums", !(listing.baths && listing.baths > 0) && "text-muted-foreground")}>{listing.baths && listing.baths > 0 ? listing.baths : '-'}</span>
                       </div>
-                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
+                      <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 shadow-sm">
                         <Car className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className={cn("font-semibold tabular-nums", !(listing.carSpaces && listing.carSpaces > 0) && "text-muted-foreground")}>{listing.carSpaces && listing.carSpaces > 0 ? listing.carSpaces : '-'}</span>
                       </div>
@@ -918,13 +922,13 @@ export default function Listings() {
                   
                   <TableCell className="py-4 text-right align-middle">
                     {listing.receivedAt ? (
-                      <div className="text-sm font-medium tabular-nums text-muted-foreground">{formatDate(listing.receivedAt)}</div>
+                      <div className="text-sm font-medium tabular-nums text-muted-foreground/90">{formatDate(listing.receivedAt)}</div>
                     ) : (
                       <span className={LISTING_MISSING_VALUE}>-</span>
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 pr-5 text-right align-middle">
+                  <TableCell className="py-4 pr-5 text-right align-middle last:rounded-r-xl">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
@@ -1045,7 +1049,7 @@ export default function Listings() {
       {/* Floating Action Bar */}
       {selectedListings.size > 0 && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md md:max-w-lg md:w-auto">
-          <Card className="rounded-2xl border border-primary/25 bg-card/95 shadow-[0_18px_50px_rgba(15,23,42,0.18)] backdrop-blur dark:border-primary/30 dark:bg-slate-950/90 dark:shadow-black/45">
+          <Card className="rounded-2xl border border-primary/30 bg-card/95 shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-primary/10 backdrop-blur dark:border-primary/30 dark:bg-slate-950/90 dark:shadow-black/45">
             <CardContent className="py-2 px-3 md:py-3 md:px-6">
               <div className="flex items-center gap-2 md:gap-4">
                 <div className="flex items-center gap-2 min-w-0">
