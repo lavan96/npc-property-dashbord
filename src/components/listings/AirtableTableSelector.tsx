@@ -65,14 +65,14 @@ export function AirtableTableSelector({ value, onChange }: AirtableTableSelector
   };
 
   return (
-    <div className="flex items-center gap-2 min-w-[200px]">
-      <Database className="h-4 w-4 text-muted-foreground shrink-0" />
+    <div className="flex min-w-[220px] items-center gap-2 rounded-full border border-border/55 bg-card/75 px-2.5 py-1 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/45 md:min-w-[260px]">
+      <Database className="h-4 w-4 text-primary shrink-0" />
       <Select
         value={effectiveValue}
         onValueChange={handleChange}
         disabled={isLoading || isError || tables.length === 0}
       >
-        <SelectTrigger className="h-9 w-[200px] md:w-[240px]" aria-label="Select Airtable table">
+        <SelectTrigger className="h-8 w-[180px] rounded-full border-0 bg-transparent px-1 text-sm font-semibold shadow-none transition-colors hover:text-primary focus:ring-0 focus:ring-offset-0 md:w-[220px]" aria-label="Select Airtable table">
           {isLoading ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

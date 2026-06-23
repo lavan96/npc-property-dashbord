@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -454,54 +454,59 @@ export default function Listings() {
   return (
     <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
       {/* Header */}
-      <section className={`${LISTINGS_SECTION_SURFACE} bg-gradient-to-br from-card/85 via-card/70 to-muted/25 dark:from-slate-950/70 dark:via-slate-950/45 dark:to-slate-900/35`}>
+      <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-slate-950/80 dark:via-slate-950/55 dark:to-primary/10`}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
+          <div className="min-w-0 max-w-3xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90 shadow-sm dark:border-primary/20 dark:bg-primary/10">
               <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_rgba(245,158,11,0.55)]" />
               Property Intelligence
             </div>
-            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-foreground md:text-4xl">Listings</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground/90 md:text-base">
-            {filteredListings.length} of {listings.length} properties
-          </p>
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+              <h1 className="text-4xl font-bold tracking-[-0.06em] text-foreground md:text-5xl">Listings</h1>
+              <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/45">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span className="tabular-nums">{filteredListings.length} of {listings.length}</span>
+                <span className="font-medium text-muted-foreground">properties</span>
+              </div>
+            </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-background/55 p-2 shadow-inner dark:border-white/10 dark:bg-slate-950/35">
-          <AirtableTableSelector
-            value={selectedTable}
-            onChange={(next) => {
-              setSelectedTable(next);
-              propertyDataService.clearCache();
-            }}
-          />
+          <div className="flex flex-wrap items-center justify-start gap-2 rounded-[1.35rem] border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/40 dark:shadow-black/20 lg:justify-end">
+            <AirtableTableSelector
+              value={selectedTable}
+              onChange={(next) => {
+                setSelectedTable(next);
+                propertyDataService.clearCache();
+              }}
+            />
 
-          {selectedListings.size > 0 && !isMobile && (
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export ({selectedListings.size})
-            </Button>
-          )}
-          <Button
-            onClick={() => setIsCommandPaletteOpen(true)}
-            size="sm"
-            variant="outline"
-            className={`${LISTINGS_SECONDARY_ACTION} gap-1.5`}
-            aria-label="Open command palette"
-          >
-            <CommandIcon className="h-4 w-4" />
-            <kbd className="hidden md:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
-              ⌘K
-            </kbd>
-          </Button>
-          <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching} className={LISTINGS_SECONDARY_ACTION}>
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 md:mr-2" />
+            {selectedListings.size > 0 && !isMobile && (
+              <Button variant="outline" size="sm" className={`${LISTINGS_SECONDARY_ACTION} gap-2`}>
+                <Download className="h-4 w-4" />
+                Export ({selectedListings.size})
+              </Button>
             )}
-            <span className="hidden md:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
-          </Button>
+            <Button
+              onClick={() => setIsCommandPaletteOpen(true)}
+              size="sm"
+              variant="outline"
+              className={`${LISTINGS_HEADER_ICON_ACTION} gap-2`}
+              aria-label="Open command palette"
+            >
+              <CommandIcon className="h-4 w-4" />
+              <kbd className="hidden pointer-events-none h-5 select-none items-center rounded-full border border-border/70 bg-muted/80 px-1.5 font-mono text-[10px] font-semibold text-muted-foreground md:inline-flex">
+                ⌘K
+              </kbd>
+            </Button>
+            <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching} data-refreshing={isFetching} className={`${LISTINGS_REFRESH_ACTION} gap-2`}>
+              {isFetching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="hidden md:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
+            </Button>
           </div>
         </div>
       </section>
